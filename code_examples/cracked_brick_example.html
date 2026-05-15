@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cracked Brick Components Example</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .code-block pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .feature {
+            margin: 20px 0;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            background: #f8f9ff;
+        }
+        .feature h3 {
+            margin-top: 0;
+            color: #007bff;
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧱 Cracked Brick Components</h1>
+        
+        <div class="feature">
+            <h3>New Components Added</h3>
+            <p>I've created two new components for you:</p>
+            <ul>
+                <li><strong>CrackedBrick</strong> - Individual cracked brick primitive with different crack intensities</li>
+                <li><strong>CrackedDestructibleWall</strong> - Destructible wall made of cracked bricks with breakable system integration</li>
+            </ul>
+        </div>
+
+        <div class="feature">
+            <h3>1. CrackedBrick Component</h3>
+            <p>A primitive component for individual cracked bricks with three crack intensity levels:</p>
+            
+            <div class="code-block">
+                <pre><code>import { CrackedBrick } from './components/primitives/elements';
+
+// Light cracks
+&lt;CrackedBrick
+  position={[0, 0, 0]}
+  crackIntensity="light"
+  size={[1, 0.5, 0.5]}
+  enabled={true}
+  breakingOptions={{
+    fragmentCount: 6,
+    fractureImpulse: 0.8,
+    minSizeForFracture: 0.2,
+    maxSizeForFracture: 0.6,
+  }}
+  onBreak={(impactPoint) => console.log('Brick broken!')}
+/&gt;
+
+// Medium cracks
+&lt;CrackedBrick
+  position={[2, 0, 0]}
+  crackIntensity="medium"
+  size={[1, 0.5, 0.5]}
+  enabled={true}
+  breakingOptions={{
+    fragmentCount: 8,
+    fractureImpulse: 0.8,
+    minSizeForFracture: 0.2,
+    maxSizeForFracture: 0.6,
+  }}
+  onBreak={(impactPoint) => console.log('Brick broken!')}
+/&gt;
+
+// Heavy cracks
+&lt;CrackedBrick
+  position={[4, 0, 0]}
+  crackIntensity="heavy"
+  size={[1, 0.5, 0.5]}
+  enabled={true}
+  breakingOptions={{
+    fragmentCount: 10,
+    fractureImpulse: 0.8,
+    minSizeForFracture: 0.2,
+    maxSizeForFracture: 0.6,
+  }}
+  onBreak={(impactPoint) => console.log('Brick broken!')}
+/&gt;</code></pre>
+            </div>
+
+            <h4>Features:</h4>
+            <ul>
+                <li><strong>Light cracks:</strong> 2 crack lines, minimal damage</li>
+                <li><strong>Medium cracks:</strong> 4 crack lines, moderate damage</li>
+                <li><strong>Heavy cracks:</strong> 6 crack lines, chipped edges, moss patches, dust particles</li>
+                <li>Uses brick texture from the texture system</li>
+                <li>Integrated with breakable system</li>
+                <li>Physics-based breaking with fragments</li>
+            </ul>
+        </div>
+
+        <div class="feature">
+            <h3>2. CrackedDestructibleWall Component</h3>
+            <p>A destructible wall made of cracked bricks that integrates with the breakable system:</p>
+            
+            <div class="code-block">
+                <pre><code>import { CrackedDestructibleWall } from './components/primitives/objects';
+
+&lt;CrackedDestructibleWall
+  position={[0, 1.5, 0]}
+  rotation={[0, 0, 0]}
+  health={3}
+  bombRequired={false}
+  enabled={true}
+  breakingOptions={{
+    fragmentCount: 12,
+    fractureImpulse: 1.0,
+    minSizeForFracture: 0.3,
+    maxSizeForFracture: 0.8,
+  }}
+  onBreak={(impactPoint) => console.log('Wall damaged!')}
+  onDestroy={() => console.log('Wall destroyed!')}
+/&gt;</code></pre>
+            </div>
+
+            <h4>Features:</h4>
+            <ul>
+                <li>Wall made of individual cracked bricks with mortar lines</li>
+                <li>Health system with visual damage progression</li>
+                <li>Crack intensity increases as health decreases</li>
+                <li>Optional bomb requirement</li>
+                <li>Integrated with breakable system for physics-based destruction</li>
+                <li>Visual health bar and interaction prompts</li>
+                <li>Damage particles and visual effects</li>
+            </ul>
+        </div>
+
+        <div class="feature">
+            <h3>3. Demo Room</h3>
+            <p>I've created a demo room showcasing both components:</p>
+            
+            <div class="code-block">
+                <pre><code>import { CrackedBrickDemo } from './components/primitives/demo-rooms';
+
+// Use in your app
+&lt;CrackedBrickDemo onRoomComplete={() => console.log('Demo complete!')} /&gt;</code></pre>
+            </div>
+
+            <h4>Demo Features:</h4>
+            <ul>
+                <li>2 destructible walls (one normal, one requiring bomb)</li>
+                <li>6 individual cracked bricks with different crack intensities</li>
+                <li>Interactive breaking system</li>
+                <li>Progress tracking</li>
+                <li>Reset functionality (R key)</li>
+                <li>Breaking toggle (B key)</li>
+            </ul>
+        </div>
+
+        <div class="note">
+            <strong>Note:</strong> Both components are fully integrated with the existing breakable system and use the same HOC pattern as other breakable components in your codebase.
+        </div>
+
+        <div class="feature">
+            <h3>4. Integration with Existing System</h3>
+            <p>The components are fully integrated with your existing systems:</p>
+            <ul>
+                <li>Uses <code>withOptionalBreaking</code> HOC for breakable functionality</li>
+                <li>Compatible with the texture loading system</li>
+                <li>Uses Rapier physics for collision detection</li>
+                <li>Follows the same prop patterns as other primitives</li>
+                <li>Exported through the main primitives index</li>
+            </ul>
+        </div>
+
+        <div class="feature">
+            <h3>5. Usage in Your App</h3>
+            <p>To use these components in your application:</p>
+            
+            <div class="code-block">
+                <pre><code>// Import the components
+import { CrackedBrick, CrackedDestructibleWall } from './components/primitives';
+
+// Or import from specific modules
+import { CrackedBrick } from './components/primitives/elements';
+import { CrackedDestructibleWall } from './components/primitives/objects';
+
+// Use in your 3D scene
+function MyScene() {
+  return (
+    &lt;group&gt;
+      {/* Individual cracked bricks */}
+      &lt;CrackedBrick
+        position={[0, 0, 0]}
+        crackIntensity="medium"
+        enabled={true}
+        onBreak={(point) => console.log('Brick broken!')}
+      /&gt;
+      
+      {/* Destructible wall */}
+      &lt;CrackedDestructibleWall
+        position={[5, 1.5, 0]}
+        health={3}
+        enabled={true}
+        onDestroy={() => console.log('Wall destroyed!')}
+      /&gt;
+    &lt;/group&gt;
+  );
+}</code></pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

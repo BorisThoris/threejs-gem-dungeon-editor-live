@@ -1,0 +1,110 @@
+[
+    {
+        "id": "wood",
+        "name": "Wood Grain",
+        "category": "Natural",
+        "description": "Wood Grain texture",
+        "width": 256,
+        "height": 256,
+        "filename": "wood.png",
+        "previewFilename": "wood_preview.png",
+        "url": "/preset-textures/wood.png",
+        "previewUrl": "/preset-textures/wood_preview.png"
+    },
+    {
+        "id": "grass",
+        "name": "Grass",
+        "category": "Natural",
+        "description": "Grass texture",
+        "width": 256,
+        "height": 256,
+        "filename": "grass.png",
+        "previewFilename": "grass_preview.png",
+        "url": "/preset-textures/grass.png",
+        "previewUrl": "/preset-textures/grass_preview.png"
+    },
+    {
+        "id": "water",
+        "name": "Water",
+        "category": "Natural",
+        "description": "Water texture",
+        "width": 256,
+        "height": 256,
+        "filename": "water.png",
+        "previewFilename": "water_preview.png",
+        "url": "/preset-textures/water.png",
+        "previewUrl": "/preset-textures/water_preview.png"
+    },
+    {
+        "id": "cobblestone",
+        "name": "Cobblestone",
+        "category": "Building",
+        "description": "Cobblestone texture",
+        "width": 256,
+        "height": 256,
+        "filename": "cobblestone.png",
+        "previewFilename": "cobblestone_preview.png",
+        "url": "/preset-textures/cobblestone.png",
+        "previewUrl": "/preset-textures/cobblestone_preview.png"
+    },
+    {
+        "id": "brick",
+        "name": "Brick",
+        "category": "Building",
+        "description": "Brick texture",
+        "width": 256,
+        "height": 256,
+        "filename": "brick.png",
+        "previewFilename": "brick_preview.png",
+        "url": "/preset-textures/brick.png",
+        "previewUrl": "/preset-textures/brick_preview.png"
+    },
+    {
+        "id": "pixel_checkerboard",
+        "name": "Pixel Checkerboard",
+        "category": "Pixel Art",
+        "description": "Pixel Checkerboard texture",
+        "width": 64,
+        "height": 64,
+        "filename": "pixel_checkerboard.png",
+        "previewFilename": "pixel_checkerboard_preview.png",
+        "url": "/preset-textures/pixel_checkerboard.png",
+        "previewUrl": "/preset-textures/pixel_checkerboard_preview.png"
+    },
+    {
+        "id": "pixel_brick",
+        "name": "Pixel Brick",
+        "category": "Pixel Art",
+        "description": "Pixel Brick texture",
+        "width": 64,
+        "height": 64,
+        "filename": "pixel_brick.png",
+        "previewFilename": "pixel_brick_preview.png",
+        "url": "/preset-textures/pixel_brick.png",
+        "previewUrl": "/preset-textures/pixel_brick_preview.png"
+    },
+    {
+        "id": "diamond_pattern",
+        "name": "Diamond Pattern",
+        "category": "Patterns",
+        "description": "Diamond Pattern texture",
+        "width": 128,
+        "height": 128,
+        "filename": "diamond_pattern.png",
+        "previewFilename": "diamond_pattern_preview.png",
+        "url": "/preset-textures/diamond_pattern.png",
+        "previewUrl": "/preset-textures/diamond_pattern_preview.png"
+    },
+    {
+        "id": "noise",
+        "name": "Noise",
+        "category": "Abstract",
+        "description": "Noise texture",
+        "width": 256,
+        "height": 256,
+        "filename": "noise.png",
+        "previewFilename": "noise_preview.png",
+        "url": "/preset-textures/noise.png",
+        "previewUrl": "/preset-textures/noise_preview.png"
+    }
+]
