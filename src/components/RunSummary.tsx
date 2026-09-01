@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
 import useMapStore from "../store/mapStore";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
-import { ENABLED_BIOME_CATEGORIES } from "../configs/mapGeneration";
+import { ENABLED_BIOME_CATEGORIES, getRunSeed } from "../configs/mapGeneration";
 
 type Outcome = "won" | "lost";
 
@@ -50,7 +50,7 @@ export function RunSummary() {
     // one exists, so clear it first.
     useConsolidatedGameStore.getState().resetGame();
     useMapStore.getState().clearMap();
-    useMapStore.getState().generateMap({}, ENABLED_BIOME_CATEGORIES);
+    useMapStore.getState().generateMap({ seed: getRunSeed() }, ENABLED_BIOME_CATEGORIES);
     gameEvents.emit(GAME_EVENTS.RUN_STARTED);
     setSummary(null);
   }, []);

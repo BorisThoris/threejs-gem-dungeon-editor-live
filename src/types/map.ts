@@ -179,6 +179,11 @@ export interface MapConfig {
   maxRooms: number;
   specialRoomChance: number;
   connectionChance: number;
+  /**
+   * Seed for the generator's random stream. The same seed lays out the same
+   * dungeon; leave it unset for a random one.
+   */
+  seed?: string;
 }
 
 export interface GameMap {

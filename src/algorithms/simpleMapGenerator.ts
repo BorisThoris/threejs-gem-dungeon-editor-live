@@ -10,6 +10,7 @@ import {
 import { ensureRoomConnectivity, analyzeConnectivity } from '../utils/roomConnectivityValidator';
 import { getWeightedBiomes, getAllBiomes } from '../types/biomeCategories';
 import { getBiomeWallConfig, hasBiomeWallConfig } from '../types/biomeWalls';
+import { randomSource } from '../utils/seededRandom';
 
 export interface SimpleMapConfig extends MapConfig {
   useShapedRooms: boolean;
@@ -36,6 +37,11 @@ export interface SimpleMapConfig extends MapConfig {
   // regardless of biome categories - this is how the demo ships a small set of
   // finished rooms instead of every biome in the project.
   allowedRoomTypes?: string[];
+  /**
+   * Makes the layout reproducible. The same seed generates the same dungeon;
+   * omit it and generation falls back to `Math.random` as before.
+   */
+  seed?: string;
 }
 
 export const defaultSimpleConfig: SimpleMapConfig = {
@@ -91,9 +97,15 @@ export class SimpleMapGenerator {
   private startX: number;
   private startZ: number;
   private roomIdCounter = 1;
+  /**
+   * Every random decision in this class draws from here, so a seeded run
+   * replays exactly. Never call `Math.random()` directly below.
+   */
+  private random: () => number;
 
   constructor(config: Partial<SimpleMapConfig> = {}) {
     this.config = { ...defaultSimpleConfig, ...config };
+    this.random = randomSource(this.config.seed);
     this.gridSize = 12;
     this.startX = Math.floor(this.gridSize / 2);
     this.startZ = Math.floor(this.gridSize / 2);
@@ -180,7 +192,7 @@ export class SimpleMapGenerator {
   }
 
   private generateRooms(): void {
-    const maxRooms = this.config.minRooms + Math.floor(Math.random() * (this.config.maxRooms - this.config.minRooms));
+    const maxRooms = this.config.minRooms + Math.floor(this.random() * (this.config.maxRooms - this.config.minRooms));
     const directions = [
       { dx: 0, dz: -1 }, { dx: 0, dz: 1 },
       { dx: -1, dz: 0 }, { dx: 1, dz: 0 }
@@ -193,11 +205,11 @@ export class SimpleMapGenerator {
       attempts++;
       
       // Pick a random existing room to branch from
-      const sourceRoom = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+      const sourceRoom = this.rooms[Math.floor(this.random() * this.rooms.length)];
       const sourceGridPos = this.getGridPosition(sourceRoom.position);
       
       // Pick a random direction
-      const direction = directions[Math.floor(Math.random() * directions.length)];
+      const direction = directions[Math.floor(this.random() * directions.length)];
       const newX = sourceGridPos.x + direction.dx;
       const newZ = sourceGridPos.z + direction.dz;
       
@@ -216,7 +228,7 @@ export class SimpleMapGenerator {
 
   private pickMultiTilePattern(): 'line' | 'L' | 'T' | 'plus' | 'block' | 'U' | 'C' | 'H' {
     const patterns: Array<'line' | 'L' | 'T' | 'plus' | 'block' | 'U' | 'C' | 'H'> = ['line', 'L', 'T', 'plus', 'block', 'U', 'C', 'H'];
-    return patterns[Math.floor(Math.random() * patterns.length)];
+    return patterns[Math.floor(this.random() * patterns.length)];
   }
 
   private getRandomDirection(): { dx: number; dz: number } {
@@ -226,7 +238,7 @@ export class SimpleMapGenerator {
       { dx: 0, dz: 1 },   // South
       { dx: 0, dz: -1 },  // North
     ];
-    return directions[Math.floor(Math.random() * directions.length)];
+    return directions[Math.floor(this.random() * directions.length)];
   }
 
   private getShapeForPattern(pattern: 'line' | 'L' | 'T' | 'plus' | 'block' | 'U' | 'C' | 'H'): 'square' | 'circle' | 'triangle' | 'hexagon' | 'octagon' | 'diamond' | 'star' | 'cross' | 'spiral' | 'L' | 'T' | 'U' | 'C' | 'H' | 'plus' | 'line' | 'block' {
@@ -262,7 +274,7 @@ export class SimpleMapGenerator {
     const maxSeg = Math.max(2, Math.min(this.config.multiTileMaxSegments ?? 4, 6));
 
     if (pattern === 'line') {
-      const len = 1 + Math.floor(Math.random() * (maxSeg - 1));
+      const len = 1 + Math.floor(this.random() * (maxSeg - 1));
       for (let i = 1; i <= len; i++) tiles.push({ x: startX + dir.dx * i, z: startZ + dir.dz * i });
       return tiles;
     }
@@ -331,27 +343,32 @@ export class SimpleMapGenerator {
     if (!this.config.useShapedRooms) return;
     
     this.rooms.forEach(room => {
-      if (Math.random() < this.config.shapeChance) {
+      if (this.random() < this.config.shapeChance) {
         const shapes: Array<Room['shape']> = ['circle', 'triangle', 'hexagon', 'octagon', 'diamond'];
-        room.shape = shapes[Math.floor(Math.random() * shapes.length)];
+        room.shape = shapes[Math.floor(this.random() * shapes.length)];
+
+        // Measure from the size the room is actually built at. Sizing the shape
+        // from the nominal `size` left every widened room drawn smaller than
+        // its own walls.
+        const base = room.actualSize || room.size;
         
         // Adjust size for different shapes
         switch (room.shape) {
           case 'circle':
-            room.width = room.size;
-            room.height = room.size;
+            room.width = base;
+            room.height = base;
             break;
           case 'triangle':
-            room.width = room.size * 0.8;
-            room.height = room.size * 0.8;
+            room.width = base * 0.8;
+            room.height = base * 0.8;
             break;
           case 'hexagon':
-            room.width = room.size * 1.2;
-            room.height = room.size * 1.1;
+            room.width = base * 1.2;
+            room.height = base * 1.1;
             break;
           case 'diamond':
-            room.width = room.size * 1.3;
-            room.height = room.size * 1.3;
+            room.width = base * 1.3;
+            room.height = base * 1.3;
             break;
         }
       }
@@ -364,7 +381,7 @@ export class SimpleMapGenerator {
     const portalCount = Math.floor(this.rooms.length * this.config.portalChance);
     
     for (let i = 0; i < portalCount; i++) {
-      const room = this.rooms[Math.floor(Math.random() * this.rooms.length)];
+      const room = this.rooms[Math.floor(this.random() * this.rooms.length)];
       if (!room.isPortal && room.type !== RoomType.START && room.type !== RoomType.END) {
         room.isPortal = true;
         room.type = RoomType.PORTAL;
@@ -516,7 +533,7 @@ export class SimpleMapGenerator {
     
     // Random scale for biome walls (0.8x - 1.2x)
     const biomeScale: [number, number, number] = hasBiomeConfig 
-      ? [0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4, 0.8 + Math.random() * 0.4]
+      ? [0.8 + this.random() * 0.4, 0.8 + this.random() * 0.4, 0.8 + this.random() * 0.4]
       : [1, 1, 1];
 
     // Calculate room size variation
@@ -525,16 +542,16 @@ export class SimpleMapGenerator {
     let maxSize = this.config.maxRoomSizeMultiplier || 2.0;
     
     if (this.config.useVariableRoomSizes && 
-        Math.random() < (this.config.sizeVariationChance || 0.4) &&
+        this.random() < (this.config.sizeVariationChance || 0.4) &&
         type !== 'start' && type !== 'end') { // Don't vary start/end room sizes
-      const sizeMultiplier = minSize + Math.random() * (maxSize - minSize);
+      const sizeMultiplier = minSize + this.random() * (maxSize - minSize);
       actualRoomSize = this.config.roomSize * sizeMultiplier;
       console.log(`🔷 Variable size room created: ${roomId} (${type}) - Size: ${actualRoomSize.toFixed(1)} (${sizeMultiplier.toFixed(2)}x)`);
     }
 
     // Check if this should be a multi-tile room
     const shouldBeMultiTile = this.config.useMultiTileRooms && 
-      Math.random() < (this.config.multiTileChance || 0.35) &&
+      this.random() < (this.config.multiTileChance || 0.35) &&
       type !== 'start' && type !== 'end'; // Don't make start/end rooms multi-tile
 
     let isMultiTile = false;
@@ -676,14 +693,14 @@ export class SimpleMapGenerator {
     // An explicit allow-list wins over everything else.
     const allowed = this.config.allowedRoomTypes;
     if (allowed && allowed.length > 0) {
-      return allowed[Math.floor(Math.random() * allowed.length)];
+      return allowed[Math.floor(this.random() * allowed.length)];
     }
 
     // Use biome categories if enabled, otherwise fall back to old system
     if (this.config.enabledBiomeCategories && this.config.enabledBiomeCategories.length > 0) {
       const weightedBiomes = getWeightedBiomes(this.config.enabledBiomeCategories);
       const total = weightedBiomes.reduce((sum, biome) => sum + biome.weight, 0);
-      let r = Math.random() * total;
+      let r = this.random() * total;
       
       for (const biome of weightedBiomes) {
         if ((r -= biome.weight) <= 0) {
@@ -715,7 +732,7 @@ export class SimpleMapGenerator {
       RoomType.TRAP,
     ].map((t) => ({ t, w: Math.max(0.0001, weights[t] ?? 0.2) }));
     const total = pool.reduce((s, p) => s + p.w, 0);
-    let r = Math.random() * total;
+    let r = this.random() * total;
     for (const p of pool) {
       if ((r -= p.w) <= 0) return p.t;
     }
@@ -726,14 +743,58 @@ export class SimpleMapGenerator {
     const otherRooms = this.rooms.filter(r => r.id !== room.id && !r.isPortal);
     if (otherRooms.length === 0) return room.id;
     
-    return otherRooms[Math.floor(Math.random() * otherRooms.length)].id;
+    return otherRooms[Math.floor(this.random() * otherRooms.length)].id;
+  }
+
+  /**
+   * A free grid cell for the exit, next to the room furthest from the start.
+   *
+   * The end room used to be dropped at a hardcoded `z = roomSize * 3` with no
+   * check on whether anything was already there. Whenever generation happened to
+   * fill that cell, the exit was placed inside another room: two rooms at one
+   * position, and door placement - which works from the vector between two rooms -
+   * put both of that room's doorways on the same wall. The exit became a doorway
+   * the player could stand in without reliably reaching it.
+   */
+  private findEndRoomCell(): { room: Room; grid: Position; world: Position } | null {
+    const distanceFromStart = (room: Room) =>
+      Math.abs(room.position.x) + Math.abs(room.position.z);
+    const candidates = [...this.rooms].sort(
+      (a, b) => distanceFromStart(b) - distanceFromStart(a)
+    );
+    const directions = [
+      { dx: 0, dz: 1 },
+      { dx: 1, dz: 0 },
+      { dx: 0, dz: -1 },
+      { dx: -1, dz: 0 },
+    ];
+
+    for (const room of candidates) {
+      const gridPosition = this.getGridPosition(room.position);
+      for (const { dx, dz } of directions) {
+        const x = gridPosition.x + dx;
+        const z = gridPosition.z + dz;
+        if (x < 0 || z < 0 || x >= this.gridSize || z >= this.gridSize) continue;
+        if (this.grid[x][z]) continue;
+        return {
+          room,
+          grid: { x, z },
+          world: {
+            x: (x - this.startX) * this.config.roomSize,
+            z: (z - this.startZ) * this.config.roomSize,
+          },
+        };
+      }
+    }
+    return null;
   }
 
   private createEndRoom(): Room {
     const endRoomId = `room_${this.roomIdCounter++}`;
+    const cell = this.findEndRoomCell();
     const endRoom: Room = {
       id: endRoomId,
-      position: { x: 0, z: this.config.roomSize * 3 },
+      position: cell ? cell.world : { x: 0, z: this.config.roomSize * 3 },
       type: RoomType.END,
       connections: [],
       size: this.config.roomSize,
@@ -746,7 +807,14 @@ export class SimpleMapGenerator {
     };
     
     this.rooms.push(endRoom);
-    
+
+    // Claim the cell, so nothing else is placed on top of the exit either.
+    if (cell) {
+      this.grid[cell.grid.x][cell.grid.z] = endRoom;
+      this.connectRooms(endRoom, cell.room);
+      return endRoom;
+    }
+
     // Connect to nearest room
     const nearestRoom = this.rooms
       .filter(r => r.id !== endRoom.id)

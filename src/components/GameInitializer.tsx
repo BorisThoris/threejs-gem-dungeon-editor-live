@@ -5,7 +5,7 @@ import { Environment } from "@react-three/drei";
 import GameLoadingScreen from "./GameLoadingScreen";
 import useInitializationStore from "../store/initializationStore";
 import useMapStore from "../store/mapStore";
-import { ENABLED_BIOME_CATEGORIES } from "../configs/mapGeneration";
+import { ENABLED_BIOME_CATEGORIES, getRunSeed } from "../configs/mapGeneration";
 import useRoomManagerStore from "../store/roomManagerStore";
 import useGameStore from "../store/gameStore";
 import { texturePreloader } from "../utils/texturePreloader";
@@ -146,7 +146,7 @@ const GameInitializer: React.FC<GameInitializerProps> = ({ children }) => {
           // Sole owner of map generation. UnifiedRoomManager used to generate
           // one too, so two different maps were built on boot and the one the
           // player explored was whichever landed last.
-          generateMap({}, ENABLED_BIOME_CATEGORIES);
+          generateMap({ seed: getRunSeed() }, ENABLED_BIOME_CATEGORIES);
           await new Promise((resolve) => setTimeout(resolve, 300));
         }
         setProgress(0.2);

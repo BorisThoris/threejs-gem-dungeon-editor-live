@@ -38,3 +38,17 @@ export const DEMO_ROOM_TYPES: string[] = [
   "arena", // open combat-shaped space
   "normal", // plain connector room
 ];
+
+/**
+ * The seed for this run's dungeon, read from `?seed=` on the URL.
+ *
+ * Generation was unseeded, so nobody - a player filing a bug, a designer
+ * re-checking a layout, or an end-to-end test - could ask for the same dungeon
+ * twice. With a seed on the URL the run is reproducible; without one it is
+ * random exactly as before.
+ */
+export function getRunSeed(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  const seed = new URLSearchParams(window.location.search).get("seed");
+  return seed && seed.length > 0 ? seed : undefined;
+}
