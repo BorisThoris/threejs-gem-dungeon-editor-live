@@ -30,7 +30,11 @@ const PressurePlatePuzzleBiome: React.FC<PressurePlatePuzzleBiomeProps> = ({
   isVisible = true,
   dragMode = false,
 }) => {
-  const biomeSize = size * 2; // Simple scaling for now
+  // The room's own footprint. This used to be `size * 2`, alone among the
+  // fifteen biomes, so the challenge room laid a floor slab twice the width of
+  // the room it sits in - a 25-unit room got a 51-unit slab that pushed out
+  // through all four walls and the doorways.
+  const biomeSize = size;
   const { playerStats, loseLife, addPoints, addExperience } =
     useConsolidatedGameStore();
 

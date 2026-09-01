@@ -4,6 +4,18 @@ import * as THREE from "three";
 import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
 import { cameraRotationRefs } from "../utils/cameraRotationRef";
+import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
+
+/**
+ * Whether the game is currently accepting player input. Pausing, a room
+ * transition and the end-of-run screen all clear this flag. Read imperatively
+ * (getState, not a hook) so the listeners below never cause a re-render.
+ *
+ * Only the decision to START a look consults it: a look already in progress
+ * keeps working across a room transition, which briefly clears the flag.
+ */
+const isPlayerInControl = () =>
+  useConsolidatedGameStore.getState().isMovementEnabled;
 
 export const useMouseLook = (editorMode: boolean = false) => {
   const { camera } = useThree();
@@ -148,6 +160,11 @@ export const useMouseLook = (editorMode: boolean = false) => {
     // Right mouse button to enable mouse look
     const handleMouseDown = (event: MouseEvent) => {
       if (event.button === 2) {
+        // Right-dragging while the pause menu is up used to capture the
+        // pointer: the cursor vanished over the menu the player was trying to
+        // click, and the camera swung around behind it.
+        if (!isPlayerInControl()) return;
+
         // Right mouse button
         isMouseDown.current = true;
 

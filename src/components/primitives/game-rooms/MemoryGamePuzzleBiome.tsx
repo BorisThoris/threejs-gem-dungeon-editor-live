@@ -633,6 +633,11 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
           // Celebration burst: slower and longer-lived than an explosion.
           burstParticles(6, 3, 0.05, 3.3);
 
+          // The room's owner hangs the gem award off onPuzzleComplete (see
+          // Room.tsx), but this component only ever called onRoomComplete - so
+          // beating all five levels of the memory game paid out nothing, and
+          // the gems the end door needs could not come from here at all.
+          onPuzzleComplete?.();
           onRoomComplete?.();
           onDoorsUnlock?.();
 

@@ -82,6 +82,43 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
   // fullscreen atlas opening.
   useLayoutEffect(applyCameraRotation);
 
+  /**
+   * Both maps size themselves in pixels from the viewport, but the layout that
+   * frame sits in is expressed in vw/vh. Nothing recomputed the pixel radius
+   * when the window changed size, so after any resize the room dots were laid
+   * out for the old viewport and drifted out of their circle. One state update
+   * per resize (coalesced to an animation frame) is cheap - resizes are not a
+   * hot path.
+   */
+  const [viewport, setViewport] = useState(() => ({
+    width: typeof window === "undefined" ? 1280 : window.innerWidth,
+    height: typeof window === "undefined" ? 800 : window.innerHeight,
+  }));
+
+  useEffect(() => {
+    let frame = 0;
+    const handleResize = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        setViewport((previous) =>
+          previous.width === window.innerWidth &&
+          previous.height === window.innerHeight
+            ? previous
+            : { width: window.innerWidth, height: window.innerHeight }
+        );
+      });
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   // Listen for Tab key to toggle fullscreen map, ESC to close, and C to complete current room
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -141,7 +178,8 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
     const maxDistance = Math.max(...distancesFromCenter);
 
     // Minimap radius (pixels) - dynamic based on container size
-    const containerSize = Math.min(window.innerWidth * 0.25, 400) - 40; // 25vw minus padding
+    const containerSize =
+      Math.min(Math.max(viewport.width * 0.25, 200), 400) - 40; // 25vw, clamped to the container's min/max, minus padding
     const minimapRadius = containerSize / 2;
     const worldRadius = Math.max(maxDistance, 5); // Minimum radius to prevent division by zero
     const scale = minimapRadius / worldRadius;
@@ -164,7 +202,7 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
         ),
       })),
     };
-  }, [currentMap, currentRoomId]);
+  }, [currentMap, currentRoomId, viewport.width]);
 
   // Calculate fullscreen map data (dynamic sizing)
   const fullscreenMapData = useMemo(() => {
@@ -196,7 +234,7 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
     const maxDistance = Math.max(...distancesFromCenter);
 
     // Dynamic fullscreen map radius based on viewport
-    const viewportSize = Math.min(window.innerWidth, window.innerHeight);
+    const viewportSize = Math.min(viewport.width, viewport.height);
     const fullscreenRadius = Math.min(viewportSize * 0.35, 500); // 35% of viewport or max 500px
     const worldRadius = Math.max(maxDistance, 5);
     const scale = fullscreenRadius / worldRadius;
@@ -219,7 +257,7 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
         ),
       })),
     };
-  }, [currentMap, currentRoomId]);
+  }, [currentMap, currentRoomId, viewport.width, viewport.height]);
 
   // Get room color based on state
   const getRoomColor = (room: Room) => {
