@@ -67,6 +67,11 @@ export function Player({
   // Player position ref for hand positioning
   const playerPositionRef = useRef<[number, number, number]>([0, 0, 0]);
 
+  // Reused every frame. Allocating a Vector3 (and, in dev, a debug object and
+  // a linvel object) on every single frame is steady garbage, and GC pauses are
+  // exactly what "random stutters" feels like.
+  const playerPosition = useRef(new THREE.Vector3());
+
   // Main game loop
   useFrame((state, delta) => {
     if (!isSpawned || !ref.current) return;
@@ -76,17 +81,32 @@ export function Player({
 
     // Get player position
     const { x, y, z } = ref.current.translation();
-    const playerPosition = new THREE.Vector3(x, y, z);
-    playerPositionRef.current = [x, y, z];
+    playerPosition.current.set(x, y, z);
+    playerPositionRef.current[0] = x;
+    playerPositionRef.current[1] = y;
+    playerPositionRef.current[2] = z;
 
     // Dev-only probe so player physics can be inspected from the console or a
-    // headless browser. Stripped from production builds.
+    // headless browser. Stripped from production builds; the object is written
+    // in place rather than replaced so it costs nothing per frame.
     if (import.meta.env.DEV) {
-      (window as any).__playerDebug = { x, y, z, linvel: ref.current.linvel() };
+      const probe = ((window as any).__playerDebug ??= {
+        x: 0,
+        y: 0,
+        z: 0,
+        linvel: { x: 0, y: 0, z: 0 },
+      });
+      const v = ref.current.linvel();
+      probe.x = x;
+      probe.y = y;
+      probe.z = z;
+      probe.linvel.x = v.x;
+      probe.linvel.y = v.y;
+      probe.linvel.z = v.z;
     }
 
     // Update camera position
-    updateCameraPosition(playerPosition);
+    updateCameraPosition(playerPosition.current);
 
     // Handle movement
     handleMovement(ref.current);

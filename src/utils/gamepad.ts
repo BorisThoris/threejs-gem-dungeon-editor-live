@@ -50,7 +50,11 @@ function risingEdge(pad: Gamepad, index: number): boolean {
   return pressed && !was;
 }
 
-const IDLE: GamepadState = {
+// One mutable state object, reused. This is read every frame from two places
+// (movement and camera look); returning a fresh object each time, on top of the
+// array navigator.getGamepads() allocates per call, was steady garbage for no
+// reason - and it happened even with no controller plugged in.
+const state: GamepadState = {
   connected: false,
   moveX: 0,
   moveY: 0,
@@ -61,31 +65,53 @@ const IDLE: GamepadState = {
   pausePressed: false,
 };
 
-export function readGamepad(): GamepadState {
-  if (typeof navigator === "undefined" || !navigator.getGamepads) return IDLE;
+function clear(): GamepadState {
+  state.connected = false;
+  state.moveX = 0;
+  state.moveY = 0;
+  state.lookX = 0;
+  state.lookY = 0;
+  state.dash = false;
+  state.interactPressed = false;
+  state.pausePressed = false;
+  return state;
+}
 
-  // getGamepads() returns a live-ish snapshot with nulls for empty slots.
+// Both callers want the same reading for the same frame, and rising-edge
+// detection must not be consumed twice, so the poll is memoised per frame.
+let lastPollAt = -1;
+
+export function readGamepad(): GamepadState {
+  if (typeof navigator === "undefined" || !navigator.getGamepads) return clear();
+
+  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+  // Within the same frame, hand back the reading already taken.
+  if (now - lastPollAt < 4) return state;
+  lastPollAt = now;
+
+  // getGamepads() returns a snapshot with nulls for empty slots.
   const pads = navigator.getGamepads();
   let pad: Gamepad | null = null;
-  for (const candidate of pads) {
+  for (let i = 0; i < pads.length; i++) {
+    const candidate = pads[i];
     if (candidate && candidate.connected) {
       pad = candidate;
       break;
     }
   }
-  if (!pad) return IDLE;
+  if (!pad) return clear();
 
-  return {
-    connected: true,
-    moveX: applyDeadzone(pad.axes[0] ?? 0),
-    moveY: applyDeadzone(pad.axes[1] ?? 0),
-    lookX: applyDeadzone(pad.axes[2] ?? 0),
-    lookY: applyDeadzone(pad.axes[3] ?? 0),
-    dash: (pad.buttons[BUTTON_DASH]?.pressed ?? false) ||
-      (pad.buttons[BUTTON_INTERACT]?.value ?? 0) > 0.9,
-    interactPressed: risingEdge(pad, BUTTON_INTERACT),
-    pausePressed: risingEdge(pad, BUTTON_PAUSE),
-  };
+  state.connected = true;
+  state.moveX = applyDeadzone(pad.axes[0] ?? 0);
+  state.moveY = applyDeadzone(pad.axes[1] ?? 0);
+  state.lookX = applyDeadzone(pad.axes[2] ?? 0);
+  state.lookY = applyDeadzone(pad.axes[3] ?? 0);
+  state.dash =
+    (pad.buttons[BUTTON_DASH]?.pressed ?? false) ||
+    (pad.buttons[BUTTON_INTERACT]?.value ?? 0) > 0.9;
+  state.interactPressed = risingEdge(pad, BUTTON_INTERACT);
+  state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
+  return state;
 }
 
 export function isGamepadConnected(): boolean {

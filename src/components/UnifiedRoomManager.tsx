@@ -54,6 +54,8 @@ const DEFAULT_ROOM_SIZE = 10;
 const WALL_THICKNESS = 0.2;
 const GROUND_LEVEL = -0.5;
 const DOOR_HEIGHT_OFFSET = 1.25;
+// Keeps doors that share a wall clear of the corners.
+const DOOR_WALL_MARGIN = 3;
 
 // Catch floor rendered while a room is swapping in. Generously sized because
 // the player is teleported to an edge spawn of the incoming room, which can be
@@ -63,65 +65,76 @@ const TRANSITION_FLOOR_THICKNESS = 2;
 // Centre it so the slab's top surface sits at the normal standing height.
 const TRANSITION_FLOOR_Y = GROUND_LEVEL - TRANSITION_FLOOR_THICKNESS / 2;
 
-// Memoized door position calculator
-const calculateDoorPosition = (
-  roomSize: number,
-  index: number,
-  totalDoors: number,
-  currentRoom?: RoomData,
-  targetRoom?: RoomData
-): DoorPosition => {
-  // Use actual room size if available
-  const actualRoomSize = currentRoom?.actualSize || roomSize;
+// Where each door sits on the room's walls.
+//
+// This used to map every neighbour to one of exactly four cardinal points from
+// the sign of dx/dz, and ignored the index/total arguments entirely. Rooms here
+// routinely have three or four connections, so two neighbours lying in the same
+// general direction were handed *identical* coordinates: one door was buried
+// inside the other, and two walk-through triggers overlapped on one spot.
+//
+// Doors are now assigned a wall the same way, then any wall with more than one
+// door has them spread evenly along it.
+const DOOR_WALLS = {
+  east: { axis: "x" as const, sign: 1, rotation: [0, -Math.PI / 2, 0] as const },
+  west: { axis: "x" as const, sign: -1, rotation: [0, Math.PI / 2, 0] as const },
+  north: { axis: "z" as const, sign: 1, rotation: [0, 0, 0] as const },
+  south: { axis: "z" as const, sign: -1, rotation: [0, Math.PI, 0] as const },
+};
 
-  // Use proper door positioning based on room positions
-  if (currentRoom && targetRoom) {
-    const dx = (targetRoom.position?.x || 0) - (currentRoom.position?.x || 0);
-    const dz = (targetRoom.position?.z || 0) - (currentRoom.position?.z || 0);
+type WallName = keyof typeof DOOR_WALLS;
 
-    const roomHalfSize = actualRoomSize / 2;
+const wallFor = (currentRoom?: RoomData, targetRoom?: RoomData): WallName => {
+  const dx = (targetRoom?.position?.x || 0) - (currentRoom?.position?.x || 0);
+  const dz = (targetRoom?.position?.z || 0) - (currentRoom?.position?.z || 0);
+  if (Math.abs(dx) > Math.abs(dz)) return dx > 0 ? "east" : "west";
+  return dz > 0 ? "north" : "south";
+};
 
-    if (Math.abs(dx) > Math.abs(dz)) {
-      // East or West
-      if (dx > 0) {
-        return {
-          position: [roomHalfSize, 0.5, 0],
-          rotation: [0, -Math.PI / 2, 0],
-        };
-      } else {
-        return {
-          position: [-roomHalfSize, 0.5, 0],
-          rotation: [0, Math.PI / 2, 0],
-        };
-      }
-    } else {
-      // North or South
-      if (dz > 0) {
-        return {
-          position: [0, 0.5, roomHalfSize],
-          rotation: [0, 0, 0],
-        };
-      } else {
-        return {
-          position: [0, 0.5, -roomHalfSize],
-          rotation: [0, Math.PI, 0],
-        };
-      }
+/**
+ * Lay out every door for a room at once, so collisions on a wall can be seen
+ * and spread out.
+ */
+const calculateDoorPositions = (
+  currentRoom: RoomData | undefined,
+  connectedRooms: RoomData[]
+): DoorPosition[] => {
+  const roomSize =
+    currentRoom?.actualSize || currentRoom?.size || DEFAULT_ROOM_SIZE;
+  const half = roomSize / 2;
+
+  const walls = connectedRooms.map((target) => wallFor(currentRoom, target));
+
+  const perWall = new Map<WallName, number>();
+  walls.forEach((w) => perWall.set(w, (perWall.get(w) || 0) + 1));
+
+  const placedOnWall = new Map<WallName, number>();
+
+  return walls.map((wall) => {
+    const spec = DOOR_WALLS[wall];
+    const total = perWall.get(wall) || 1;
+    const index = placedOnWall.get(wall) || 0;
+    placedOnWall.set(wall, index + 1);
+
+    // Single door sits centred; several are spaced across the usable width of
+    // the wall, leaving a margin so none ends up inside a corner.
+    let offset = 0;
+    if (total > 1) {
+      const usable = Math.max(0, roomSize - DOOR_WALL_MARGIN * 2);
+      const step = usable / (total - 1);
+      offset = -usable / 2 + step * index;
     }
-  } else {
-    // Fallback: distribute doors around perimeter
-    const angleStep = (2 * Math.PI) / totalDoors;
-    const radius = actualRoomSize / 2;
-    const angle = index * angleStep;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const rotationY = angle + Math.PI;
+
+    const position: [number, number, number] =
+      spec.axis === "x"
+        ? [half * spec.sign, 0.5, offset]
+        : [offset, 0.5, half * spec.sign];
 
     return {
-      position: [x, 0.5, z],
-      rotation: [0, rotationY, 0],
+      position,
+      rotation: [...spec.rotation] as [number, number, number],
     };
-  }
+  });
 };
 
 // Memoized room data getter
@@ -285,6 +298,13 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       };
     }, [currentRoom]);
 
+    // Lay all the doors out together so two neighbours on the same wall get
+    // spread along it instead of landing on identical coordinates.
+    const doorPositions = useMemo(
+      () => calculateDoorPositions(currentRoom, connectedRooms as RoomData[]),
+      [currentRoom, connectedRooms]
+    );
+
     // Trap rooms get a ring of spikes between the door and the gem, so the
     // risk sits on the path to the reward rather than off in a corner.
     const hazardPlacements = useMemo(() => {
@@ -391,13 +411,7 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
         {connectedRooms.map((room: RoomData, index: number) => {
           if (!room) return null;
 
-          const doorPosition = calculateDoorPosition(
-            currentRoom?.actualSize || currentRoom?.size || DEFAULT_ROOM_SIZE,
-            index,
-            connectedRooms.length,
-            currentRoom,
-            room
-          );
+          const doorPosition = doorPositions[index];
           const doorId = `door-${activeRoomId}-${room.id}`;
           const roomName = room.name || room.id;
 

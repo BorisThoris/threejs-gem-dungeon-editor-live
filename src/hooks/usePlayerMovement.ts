@@ -21,8 +21,14 @@ const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
 
 export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementProps) => {
   const { camera } = useThree();
-  const keys = usePhysicalKeyboard();
-  const { isMovementEnabled } = useConsolidatedGameStore();
+  const keysRef = usePhysicalKeyboard();
+
+  // Read with a selector, not the whole store. Subscribing to the entire store
+  // re-rendered this hook's component on every unrelated state change - a gem
+  // picked up, a room marked visited, a life lost.
+  const isMovementEnabled = useConsolidatedGameStore(
+    (state) => state.isMovementEnabled
+  );
 
   // Reusable objects to avoid garbage collection
   const frontVector = useRef(new Vector3());
@@ -47,13 +53,12 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
       return;
     }
 
-    const { forward, backward, left, right, dash } = {
-      forward: keys["KeyW"] || keys["ArrowUp"] || false,
-      backward: keys["KeyS"] || keys["ArrowDown"] || false,
-      left: keys["KeyA"] || keys["ArrowLeft"] || false,
-      right: keys["KeyD"] || keys["ArrowRight"] || false,
-      dash: keys["ShiftLeft"] || keys["ShiftRight"] || false,
-    };
+    const keys = keysRef.current;
+    const forward = keys["KeyW"] || keys["ArrowUp"] || false;
+    const backward = keys["KeyS"] || keys["ArrowDown"] || false;
+    const left = keys["KeyA"] || keys["ArrowLeft"] || false;
+    const right = keys["KeyD"] || keys["ArrowRight"] || false;
+    const dash = keys["ShiftLeft"] || keys["ShiftRight"] || false;
 
     // The left stick contributes alongside the keys rather than replacing
     // them, so a player can use either at any moment without a mode switch.

@@ -22,6 +22,9 @@ import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
  * outside every Suspense boundary, means detection keeps running no matter what
  * the room is doing.
  */
+// Reused each frame rather than allocated - this runs at 60Hz forever.
+const probePosition = { x: 0, y: 0, z: 0 };
+
 export function RoomDetection() {
   const { camera } = useThree();
 
@@ -53,11 +56,10 @@ export function RoomDetection() {
     // the player leaving the world.
     if (isTransitioning || !playerRoomDetection.isDetectionEnabled()) return;
 
-    const detectedRoomId = playerRoomDetection.detectCurrentRoom({
-      x: camera.position.x,
-      y: camera.position.y,
-      z: camera.position.z,
-    });
+    probePosition.x = camera.position.x;
+    probePosition.y = camera.position.y;
+    probePosition.z = camera.position.z;
+    const detectedRoomId = playerRoomDetection.detectCurrentRoom(probePosition);
 
     const previousRoomId = playerRoomDetection.getLastReportedRoomId();
     if (detectedRoomId === previousRoomId) return;

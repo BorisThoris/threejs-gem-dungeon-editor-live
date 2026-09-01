@@ -11,22 +11,43 @@ export interface TextureDefinition {
 }
 
 // Create simple procedural textures
-export const loadTextureFromImage = async (textureId: string): Promise<Texture> => {
-  try {
+/**
+ * Procedural textures, generated once and reused.
+ *
+ * Each call used to build a fresh canvas, draw it pixel by pixel and upload a
+ * brand new GPU texture. Room.tsx asks for three of them every time the room
+ * type changes, so every transition paid for three canvas draws and three
+ * uploads - and nothing ever disposed the previous set, so GPU memory grew with
+ * each room entered. There are only a handful of distinct textures in the game
+ * and they never change, so one of each is enough for the whole session.
+ */
+const textureCache = new Map<string, Texture>();
 
-    
+export const loadTextureFromImage = async (textureId: string): Promise<Texture> => {
+  const cached = textureCache.get(textureId);
+  if (cached) return cached;
+
+  try {
     // Create procedural textures based on textureId
     const texture = createProceduralTexture(textureId);
     texture.wrapS = texture.wrapT = RepeatWrapping;
     texture.needsUpdate = true;
-    
 
+    textureCache.set(textureId, texture);
     return texture;
   } catch (error) {
     console.error(`Failed to create texture ${textureId}:`, error);
     // Return a fallback texture
-    return createFallbackTexture(textureId);
+    const fallback = createFallbackTexture(textureId);
+    textureCache.set(textureId, fallback);
+    return fallback;
   }
+};
+
+/** Free every cached texture. For teardown; the game itself never needs this. */
+export const disposeTextureCache = (): void => {
+  textureCache.forEach((texture) => texture.dispose());
+  textureCache.clear();
 };
 
 // Convert pixel array to canvas texture (fallback)
