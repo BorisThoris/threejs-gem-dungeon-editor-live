@@ -38,8 +38,17 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
   const timeRef = useRef(0);
   const { camera, size, scene } = useThree();
 
-  // Mouse position tracking
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  /**
+   * Mouse position tracking.
+   *
+   * This used to be React state written on every mousemove, which cost far more
+   * than a re-render: `handleGrab` lists it as a dependency, the listener
+   * effect below lists `handleGrab`, so every single mouse event re-rendered
+   * the hand AND tore down and re-attached five window listeners. Only
+   * useFrame and the grab raycast read the value, and neither needs a render,
+   * so it lives in a ref.
+   */
+  const mousePosition = useRef({ x: 0, y: 0 });
   const [isCursorOnScreen, setIsCursorOnScreen] = useState(true);
   const targetPosition = useRef(new THREE.Vector3());
   const currentPosition = useRef(new THREE.Vector3());
@@ -81,10 +90,13 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
 
     // Create a raycaster from camera through mouse position
     const raycaster = new THREE.Raycaster();
-    const mouseVector = new THREE.Vector2(mousePosition.x, mousePosition.y);
+    const mouseVector = new THREE.Vector2(
+      mousePosition.current.x,
+      mousePosition.current.y
+    );
     raycaster.setFromCamera(mouseVector, camera);
 
-    console.log("🖐️ PlayerHand: Mouse position:", mousePosition);
+    console.log("🖐️ PlayerHand: Mouse position:", mousePosition.current);
     console.log("🖐️ PlayerHand: Mouse vector:", mouseVector);
 
     // Find objects that intersect with the ray
@@ -202,7 +214,7 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
     } else {
       console.log("🖐️ PlayerHand: No objects intersected with ray");
     }
-  }, [isGrabbing, mousePosition, camera, scene]);
+  }, [isGrabbing, camera, scene]);
 
   const handleRelease = useCallback(() => {
     if (!isGrabbing || !grabbedObject) {
@@ -312,15 +324,19 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
       const x = (canvasX / canvasRect.width) * 2 - 1;
       const y = -(canvasY / canvasRect.height) * 2 + 1;
 
-      setMousePosition({ x, y });
+      mousePosition.current.x = x;
+      mousePosition.current.y = y;
 
-      // Check if cursor is on the canvas
+      // Check if cursor is on the canvas. Only push a state update when the
+      // answer actually changes - this fires on every mouse event.
       const isOnScreen =
         canvasX >= 0 &&
         canvasX <= canvasRect.width &&
         canvasY >= 0 &&
         canvasY <= canvasRect.height;
-      setIsCursorOnScreen(isOnScreen);
+      setIsCursorOnScreen((wasOnScreen) =>
+        wasOnScreen === isOnScreen ? wasOnScreen : isOnScreen
+      );
     };
 
     const handleMouseEnter = () => setIsCursorOnScreen(true);
@@ -370,7 +386,10 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
 
     if (followMouse) {
       // Camera raycast for hand positioning (like CS weapon collision)
-      const mouseVector = new THREE.Vector2(mousePosition.x, mousePosition.y);
+      const mouseVector = new THREE.Vector2(
+      mousePosition.current.x,
+      mousePosition.current.y
+    );
       cameraRaycastRef.current.setFromCamera(mouseVector, camera);
 
       // Get camera position and direction
@@ -528,7 +547,10 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
       } else if (!isGrabbing) {
         // Hover detection: check for objects near the hand
         const raycaster = new THREE.Raycaster();
-        const mouseVector = new THREE.Vector2(mousePosition.x, mousePosition.y);
+        const mouseVector = new THREE.Vector2(
+      mousePosition.current.x,
+      mousePosition.current.y
+    );
         raycaster.setFromCamera(mouseVector, camera);
 
         const intersectableObjects: THREE.Object3D[] = [];
