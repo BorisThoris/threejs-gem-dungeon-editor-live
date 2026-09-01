@@ -1,5 +1,21 @@
 import * as THREE from 'three';
 
+/** How close the player must stand for a door to offer itself. */
+export const DOOR_INTERACT_RADIUS = 3;
+
+/**
+ * How far into the room the player materialises after travelling.
+ *
+ * This used to be 1, which dropped you a metre from the door you had just come
+ * through - inside its interact radius - so the new room greeted you with a
+ * prompt to go straight back where you came from, and a second tap of E would
+ * bounce you. Spawning clear of the radius means you arrive in the room rather
+ * than on its doorstep. Small rooms clamp so the player never lands past the
+ * middle.
+ */
+export const entranceDistanceFor = (roomHalfSize: number): number =>
+  Math.min(DOOR_INTERACT_RADIUS + 0.5, roomHalfSize * 0.6);
+
 export interface DoorPosition {
   position: [number, number, number];
   rotation: [number, number, number];
@@ -31,8 +47,7 @@ export const calculateDoorPosition = (
   const dz = targetRoom.position.z - currentRoom.position.z;
   
   const roomHalfSize = actualRoomSize / 2;
-  const entranceDistance = 1;
-  
+
   if (Math.abs(dx) > Math.abs(dz)) {
     // East or West
     if (dx > 0) {
@@ -88,7 +103,7 @@ export const calculatePlayerSpawnPosition = (
   roomSize: number = 10
 ): { position: THREE.Vector3; rotation: THREE.Euler } => {
   const roomHalfSize = roomSize / 2;
-  const entranceDistance = 1;
+  const entranceDistance = entranceDistanceFor(roomHalfSize);
   
   let position: THREE.Vector3;
   let rotation: THREE.Euler;

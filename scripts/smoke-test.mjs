@@ -87,6 +87,11 @@ for (let i = 0; i < 10; i++) {
     await p.evaluate(([x, z]) => window.dispatchEvent(new CustomEvent('playerTeleport',
       { detail: { position: [x, 2.5, z], rotation: [0, 0, 0] } })), [dx * half, dz * half]);
     await p.waitForTimeout(1500);
+    // Doors no longer open by being walked into - the player asks for them.
+    // Standing at the wall and pressing E is exactly what a real player does,
+    // and a wall with no door simply ignores it.
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(1500);
     const s = await st();
     if (s.y !== null) { minY = Math.min(minY, s.y); if (s.y < -30) fell = true; }
     if (s.room !== s0.room) { s0 = s; break; }
@@ -100,7 +105,7 @@ for (let i = 0; i < 20; i++) {
   await p.waitForTimeout(300);
 }
 const explored = await st();
-ok('walked into another room', explored.visited >= 2, `${explored.visited} rooms visited`);
+ok('travelled to another room by pressing E', explored.visited >= 2, `${explored.visited} rooms visited`);
 ok('never fell out of the world', !fell, `lowest y seen ${minY.toFixed(2)}`);
 // The one state a player can never recover from: not moving, and no
 // transition running to explain it.

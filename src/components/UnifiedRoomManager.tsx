@@ -244,10 +244,9 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       };
     }, []);
 
-    // Memoized door click handler
-    const handleDoorClickCallback = useCallback(
+    // Starts a transition to a connected room.
+    const travelTo = useCallback(
       (room: RoomData, doorId: string) => {
-        console.log(`🚪 UnifiedRoomManager: Door clicked -> ${room.id}`);
         if (!activeRoomId || !currentRoom) return;
 
         // Determine direction from current room to target room
@@ -435,20 +434,28 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
                 type={doorType}
                 isLocked={!isUnlocked}
                 glowEffect={doorType === "secret"}
-                onDoorClick={() => handleDoorClickCallback(room, doorId)}
                 onStateChange={(newState) =>
                   handleDoorStateChange(doorId, newState)
                 }
               />
 
-              {/* Walking into the doorway travels. Clicking still works, but a
-                  first-person player should never have to discover that. */}
+              {/* Travel is an explicit E press. Walking into a doorway used to
+                  teleport you on contact - so brushing past a door on the way
+                  to a gem threw you into the next room - and the door mesh was
+                  also clickable, which no first-person player would guess and
+                  which fired on stray clicks. Both are gone. */}
               <DoorTrigger
                 position={doorPosition.position}
+                label={roomName}
                 enabled={isUnlocked}
+                blockedReason={
+                  isEndDoor
+                    ? `Needs ${GEMS_REQUIRED_FOR_END} gems (${gemCount}/${GEMS_REQUIRED_FOR_END})`
+                    : "Locked"
+                }
                 onEnter={() => {
                   if (isEndDoor && !spendGems(GEMS_REQUIRED_FOR_END)) return;
-                  handleDoorClickCallback(room, doorId);
+                  travelTo(room, doorId);
                 }}
               />
             </group>

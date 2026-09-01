@@ -6,6 +6,7 @@ import type { Room } from "../../../types/map";
 import { BreakableCeiling, RoomFloor } from "../elements";
 import AdvancedMinecraftSign from "../elements/AdvancedMinecraftSign";
 import Door from "../../Door";
+import DoorTrigger from "../../DoorTrigger";
 
 // Import all room content components
 import StartRoom from "./StartRoom";
@@ -406,15 +407,22 @@ const RoomFactory: React.FC<RoomFactoryProps> = ({
             );
 
             return (
-              <Door
-                key={`door-${connectionId}`}
-                position={doorPosition.pos}
-                rotation={doorPosition.rot}
-                targetRoomId={connectionId}
-                direction={doorPosition.direction}
-                showLabel={true}
-                onDoorClick={() => onRoomChange?.(connectionId)}
-              />
+              <group key={`door-${connectionId}`}>
+                <Door
+                  position={doorPosition.pos}
+                  rotation={doorPosition.rot}
+                  targetRoomId={connectionId}
+                  direction={doorPosition.direction}
+                  showLabel={true}
+                />
+                {/* Travel is an explicit E press, never a click on the panel. */}
+                <DoorTrigger
+                  position={doorPosition.pos}
+                  label={connectionId}
+                  onEnter={() => onRoomChange?.(connectionId)}
+                  enabled={Boolean(onRoomChange)}
+                />
+              </group>
             );
           })}
         </group>

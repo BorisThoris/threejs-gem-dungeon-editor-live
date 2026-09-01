@@ -3,6 +3,7 @@ import { segmentManager } from "../../../utils/segmentUtils";
 import type { RoomSegments } from "../../../utils/segmentUtils";
 import WallSegment from "./WallSegment";
 import Door from "../../Door";
+import DoorTrigger from "../../DoorTrigger";
 
 interface RoomSegmentRendererProps {
   roomId: string;
@@ -89,25 +90,33 @@ const RoomSegmentRenderer: React.FC<RoomSegmentRendererProps> = memo(
 
         {/* Render door segments */}
         {segments.doors.map((doorSegment) => (
-          <Door
-            key={doorSegment.id}
-            position={doorSegment.position}
-            rotation={doorSegment.rotation}
-            targetRoomId={
-              doorSegment.targetRoomId || `room_${doorSegment.direction}`
-            }
-            direction={doorSegment.direction}
-            showLabel={true}
-            onDoorClick={() => {
-              console.log(
-                `🚪 RoomSegmentRenderer: Door clicked ${doorSegment.direction} -> ${doorSegment.targetRoomId}`
-              );
-              onDoorClick?.(
-                doorSegment.targetRoomId || `room_${doorSegment.direction}`,
-                doorSegment.direction
-              );
-            }}
-          />
+          <group key={doorSegment.id}>
+            <Door
+              position={doorSegment.position}
+              rotation={doorSegment.rotation}
+              targetRoomId={
+                doorSegment.targetRoomId || `room_${doorSegment.direction}`
+              }
+              direction={doorSegment.direction}
+              showLabel={true}
+            />
+            {/*
+              Doors are opened by walking up and pressing E, never by clicking
+              the panel. The trigger is a sibling of the mesh so the two stay
+              independent: the Door draws, the DoorTrigger decides.
+            */}
+            <DoorTrigger
+              position={doorSegment.position}
+              label={doorSegment.targetRoomId || doorSegment.direction}
+              onEnter={() =>
+                onDoorClick?.(
+                  doorSegment.targetRoomId || `room_${doorSegment.direction}`,
+                  doorSegment.direction
+                )
+              }
+              enabled={Boolean(onDoorClick)}
+            />
+          </group>
         ))}
 
         {/* Render floor segments */}

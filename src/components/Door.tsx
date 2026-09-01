@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { RigidBody } from "@react-three/rapier";
 import { Text } from "./GameText";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
@@ -73,7 +72,11 @@ interface DoorProps {
   position: [number, number, number];
   rotation: [number, number, number];
   targetRoomId: string;
-  onDoorClick: () => void;
+  /**
+   * Doors are no longer clickable. Travel is an explicit E press handled by
+   * DoorTrigger - clicking a door mesh is undiscoverable in a first-person
+   * game and used to fire on stray clicks that happened to land on scenery.
+   */
   showLabel?: boolean;
   direction?: "north" | "south" | "east" | "west";
 
@@ -92,7 +95,6 @@ const Door: React.FC<DoorProps> = React.memo(
     position,
     rotation,
     targetRoomId,
-    onDoorClick,
     showLabel = true,
     direction,
     state = "closed",
@@ -177,66 +179,6 @@ const Door: React.FC<DoorProps> = React.memo(
 
       return baseMaterial;
     };
-
-    const handleClick = useCallback(
-      (e: any) => {
-        e.stopPropagation();
-
-        // Only respond to left mouse button clicks (button 0)
-        if (e.button !== 0) {
-          return;
-        }
-
-        if (!canInteract) {
-          // Handle locked/broken door interaction
-          console.log(`Door is ${currentState} - cannot interact`);
-          return;
-        }
-
-        // Handle door state transitions based on current state
-        if (onStateChange) {
-          if (currentState === "closed" && canTransition("closed", "opening")) {
-            onStateChange("opening");
-          } else if (
-            currentState === "open" &&
-            canTransition("open", "closing")
-          ) {
-            onStateChange("closing");
-          }
-        }
-
-        // Handle door-specific interactions
-        if (behavior.interactionType === "hidden") {
-          console.log("Secret door clicked - checking for key");
-          // Could check for required key here
-        }
-
-        onDoorClick();
-      },
-      [onDoorClick, canInteract, currentState, onStateChange, behavior]
-    );
-
-    const handlePointerOver = useCallback(
-      (e: any) => {
-        e.stopPropagation();
-        document.body.style.cursor = canInteract ? "pointer" : "not-allowed";
-      },
-      [canInteract]
-    );
-
-    const handlePointerOut = useCallback((e: any) => {
-      e.stopPropagation();
-      document.body.style.cursor = "default";
-    }, []);
-
-    // Walking through a doorway unmounts the door while the pointer is still
-    // over it, so onPointerOut never fires and the cursor stays stuck on
-    // "pointer"/"not-allowed" for the rest of the session.
-    useEffect(() => {
-      return () => {
-        document.body.style.cursor = "default";
-      };
-    }, []);
 
     // Generate enhanced door label with state info
     const doorLabel = showLabel
@@ -327,19 +269,6 @@ const Door: React.FC<DoorProps> = React.memo(
             />
           </mesh>
         )}
-
-        {/* Clickable area */}
-        <RigidBody type="fixed" sensor>
-          <mesh
-            position={[0, 1.5, 0.1]}
-            onPointerDown={handleClick}
-            onPointerOver={handlePointerOver}
-            onPointerOut={handlePointerOut}
-          >
-            <boxGeometry args={[2.2, 3.2, 0.1]} />
-            <meshBasicMaterial transparent opacity={0} />
-          </mesh>
-        </RigidBody>
 
         {/* Door label */}
         {doorLabel && (

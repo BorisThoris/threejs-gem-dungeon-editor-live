@@ -1105,7 +1105,6 @@ const ThreeDEditor: React.FC = () => {
                     state={doorsLocked ? "locked" : "closed"}
                     type={doorsLocked ? "locked" : "standard"}
                     isLocked={doorsLocked}
-                    onDoorClick={() => console.log("North door clicked")}
                   />
 
                   {/* South Door */}
@@ -1117,7 +1116,6 @@ const ThreeDEditor: React.FC = () => {
                     state={doorsLocked ? "locked" : "closed"}
                     type={doorsLocked ? "locked" : "standard"}
                     isLocked={doorsLocked}
-                    onDoorClick={() => console.log("South door clicked")}
                   />
 
                   {/* East Door */}
@@ -1129,7 +1127,6 @@ const ThreeDEditor: React.FC = () => {
                     state={doorsLocked ? "locked" : "closed"}
                     type={doorsLocked ? "locked" : "standard"}
                     isLocked={doorsLocked}
-                    onDoorClick={() => console.log("East door clicked")}
                   />
 
                   {/* West Door */}
@@ -1141,7 +1138,6 @@ const ThreeDEditor: React.FC = () => {
                     state={doorsLocked ? "locked" : "closed"}
                     type={doorsLocked ? "locked" : "standard"}
                     isLocked={doorsLocked}
-                    onDoorClick={() => console.log("West door clicked")}
                   />
                 </>
               )}

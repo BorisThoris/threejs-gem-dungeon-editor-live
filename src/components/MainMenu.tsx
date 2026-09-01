@@ -75,6 +75,8 @@ const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
               <dd style={definitionStyle}>W A S D</dd>
               <dt style={termStyle}>Look</dt>
               <dd style={definitionStyle}>Hold right mouse</dd>
+              <dt style={termStyle}>Open door</dt>
+              <dd style={definitionStyle}>E at the doorway</dd>
               <dt style={termStyle}>Pause</dt>
               <dd style={definitionStyle}>Esc or X</dd>
               <dt style={termStyle}>Lives</dt>

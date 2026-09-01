@@ -36,6 +36,8 @@ export const UI_EVENTS = {
   PLAYER_STATS_UPDATE: "PLAYER_STATS_UPDATE",
   INVENTORY_UPDATE: "INVENTORY_UPDATE",
   ROOM_CHANGE: "ROOM_CHANGE",
+  // Payload: { key, text, enabled } while a door is in reach, or null.
+  DOOR_PROMPT: "DOOR_PROMPT",
   GAME_PAUSE: "GAME_PAUSE",
   GAME_UNPAUSE: "GAME_UNPAUSE",
 };

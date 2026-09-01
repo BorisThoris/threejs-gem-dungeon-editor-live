@@ -11,6 +11,7 @@ import RunManager from "./RunManager";
 import RunSummary from "./RunSummary";
 import GameAudio from "./GameAudio";
 import GameHUD from "./GameHUD";
+import DoorPrompt from "./DoorPrompt";
 import MainMenu from "./MainMenu";
 import MapUI from "./MapUI";
 import Minimap from "./Minimap";
@@ -282,6 +283,9 @@ const StartScreenContent: React.FC<StartScreenContentProps> = ({
       {/* Heads-up display - lives, gems and the current room, straight from
           the consolidated store. */}
       <GameHUD />
+
+      {/* "Press E to open" while standing at a door. */}
+      <DoorPrompt />
 
       {/* Sound effects, synthesised - no audio files to ship or license. */}
       <GameAudio />
