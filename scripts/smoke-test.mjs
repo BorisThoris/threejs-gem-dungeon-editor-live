@@ -53,7 +53,12 @@ const st = () => p.evaluate(() => {
 
 let s0 = await st();
 ok('a room is active', !!s0.room, s0.room);
-ok('player is resting on a floor', s0.vy === 0, `y=${s0.y} vy=${s0.vy}`);
+// Resting is not enough: the player must be resting on the ROOM's floor. This
+// check used to assert only that vy had reached 0, and passed happily with the
+// player standing on the safety slab 2.6 units below the ground plane.
+const REST_Y = 1.1;
+ok('player is resting on the room floor', s0.vy === 0 && Math.abs(s0.y - REST_Y) < 0.2,
+   `y=${s0.y} (want ~${REST_Y}) vy=${s0.vy}`);
 ok('HUD shows lives and gems', await p.evaluate(() =>
   /LIVES/i.test(document.body.innerText) && /GEMS/i.test(document.body.innerText)));
 
@@ -127,7 +132,10 @@ if (again) {
   await again.click();
   await p.waitForTimeout(4000);
   const fresh = await st();
-  ok('restart gives a fresh run', fresh.lives === 3 && fresh.gems === 0 && fresh.move === true, JSON.stringify(fresh));
+  ok('restart gives a fresh run', fresh.lives === 3 && fresh.gems === 0 && fresh.move === true,
+     JSON.stringify(fresh));
+  ok('restarted player stands on the room floor', Math.abs(fresh.y - REST_Y) < 0.2,
+     `y=${fresh.y} (want ~${REST_Y})`);
 }
 
 ok('no uncaught page errors from game code', errors.filter(e => !/Failed to fetch/.test(e)).length === 0,

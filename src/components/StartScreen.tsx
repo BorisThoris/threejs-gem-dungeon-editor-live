@@ -1,10 +1,9 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Physics, RigidBody } from "@react-three/rapier";
+import { CuboidCollider, Physics, RigidBody } from "@react-three/rapier";
 import { useCameraController } from "../hooks/useCameraController";
 import { Player } from "./Player";
-import { PLAYER_SPAWN_Y } from "../configs/worldGeometry";
-import { SafeSpawnArea } from "./SafeSpawnArea";
+import { GROUND_Y, PLAYER_SPAWN_Y } from "../configs/worldGeometry";
 import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
 import GamepadLook from "./GamepadLook";
@@ -30,28 +29,50 @@ import GameInitializer from "./GameInitializer";
 
 // A trimesh built from a plane has zero thickness, so a fast-moving body can
 // pass straight through it. Every floor in the game is a solid box instead.
-const GROUND_THICKNESS = 1;
+const GROUND_THICKNESS = 2;
 
-// Ground Plane Component
-const Ground: React.FC = () => {
+/**
+ * The floor of last resort, level with every room's floor.
+ *
+ * This used to be a visible 50x50 slab of dark green sitting with its top two
+ * metres BELOW the ground plane, which is a hole, not a floor. The player
+ * spawns before the first room's colliders have mounted, so for the first
+ * second of every run there was nothing at standing height to land on: they
+ * fell straight past where the floor was about to appear, came to rest on this
+ * slab underneath it, and stayed there - under the room, for the whole run.
+ *
+ * It went unnoticed because SafeSpawnArea was mounted at the origin in every
+ * room and its 8x8 slab happened to sit exactly at the ground plane. That was
+ * the floor the player was actually standing on, and removing it is what
+ * exposed this.
+ *
+ * Now it is invisible, level with the rooms, and wide enough to cover an edge
+ * spawn in the largest room the generator makes. Rooms draw the floor you see;
+ * this only guarantees there is always something underfoot.
+ */
+const GroundPlane: React.FC = () => {
   return (
-    <RigidBody type="fixed" colliders="cuboid">
-      <mesh position={[0, -2 - GROUND_THICKNESS / 2, 0]} receiveShadow>
-        <boxGeometry args={[50, GROUND_THICKNESS, 50]} />
-        <meshLambertMaterial color="#2d5016" />
-      </mesh>
+    <RigidBody type="fixed" colliders={false}>
+      <CuboidCollider
+        args={[200, GROUND_THICKNESS / 2, 200]}
+        position={[0, GROUND_Y - GROUND_THICKNESS / 2, 0]}
+      />
     </RigidBody>
   );
 };
 
-// Safety Floor - very large invisible catch plane to prevent falling
+/**
+ * The backstop under the backstop, in case anything ever gets past the ground.
+ *
+ * Declared as a collider rather than a mesh: `colliders="cuboid"` derives
+ * shapes by walking the meshes below it, and a mesh with visible={false} is
+ * not walked - so this "safety" floor has never had a collider at all and has
+ * never caught anything. Same for the catch floor used during transitions.
+ */
 const SafetyFloor: React.FC = () => {
   return (
-    <RigidBody type="fixed" colliders="cuboid">
-      <mesh position={[0, -11, 0]} visible={false}>
-        <boxGeometry args={[2000, 2, 2000]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0} />
-      </mesh>
+    <RigidBody type="fixed" colliders={false}>
+      <CuboidCollider args={[1000, 1, 1000]} position={[0, -11, 0]} />
     </RigidBody>
   );
 };
@@ -106,7 +127,7 @@ const GhostScene: React.FC = () => {
             a slow font or texture can never leave the player standing in an
             empty world - or, as it did, stop the scene mounting at all. */}
         <Player initialSpawnPosition={[0, PLAYER_SPAWN_Y, 0]} showDebugInfo={false} />
-        <Ground />
+        <GroundPlane />
         <SafetyFloor />
 
         {/* Must stay outside the Suspense boundaries below: when it lived
@@ -116,9 +137,13 @@ const GhostScene: React.FC = () => {
         <GamepadLook />
         <RunManager />
 
-        <Suspense fallback={null}>
-          <SafeSpawnArea position={[0, 0, 0]} size={8} />
-        </Suspense>
+        {/* SafeSpawnArea used to be mounted here, at the world origin, which
+            means it was in EVERY room and not just the first one: an 8x8 slab
+            of duplicate floor, a bright green disc standing 0.1 above it, and
+            two lines of text at head height reading "Safe Spawn Area" over the
+            top of whatever the room itself had to say. Every room now lays a
+            full floor at the ground plane and the transition catch floor
+            covers the gap between rooms, so it was propping nothing up. */}
 
         <Suspense fallback={null}>
           {/* Room Instance Manager - Single room at a time */}

@@ -2,9 +2,7 @@ import React, { useState, useEffect, memo, useMemo } from "react";
 import { RigidBody } from "@react-three/rapier";
 import {
   CircleGeometry,
-  ConeGeometry,
-  CylinderGeometry,
-  OctahedronGeometry,
+  PlaneGeometry,
 } from "three";
 import * as THREE from "three";
 import type { Room as RoomType, Item } from "../types/map";
@@ -221,41 +219,52 @@ const Room: React.FC<RoomProps> = memo(
     //   };
     // };
 
+    /**
+     * Floor and wall tint, per room type.
+     *
+     * These used to be the Material Design swatches the 2D map legend draws
+     * rooms with - #4CAF50 green for start, #FFD700 gold for treasure, #E91E63
+     * pink for a boss. Tinting a first-person dungeon floor with them made the
+     * starting room look like a lawn. Same mistake as roomHeight: map data
+     * driving the play space.
+     *
+     * The type still reads at a glance, but as a tint on stone rather than a
+     * hue. Values stay bright enough that the floor texture multiplied by them
+     * is still legible.
+     */
     const getRoomColor = (type: string): string => {
       switch (type) {
         case RoomTypeValues.START:
-          return "#4CAF50"; // Green
+          return "#87977f"; // mossy stone
         case RoomTypeValues.END:
-          return "#F44336"; // Red
+          return "#9b8079"; // iron-red stone
         case RoomTypeValues.TREASURE:
-          return "#FFD700"; // Gold
+          return "#9c9176"; // old gold
         case RoomTypeValues.ENEMY:
-          return "#FF5722"; // Orange
+          return "#9a8175";
         case RoomTypeValues.PUZZLE:
-          return "#9C27B0"; // Purple
-        case RoomTypeValues.BOSS:
-          return "#E91E63"; // Pink
-        case RoomTypeValues.SECRET:
-          return "#607D8B"; // Blue Grey
-        // Enhanced room types
         case RoomTypeValues.MEMORY_CHAMBER:
-          return "#673AB7"; // Deep Purple
+          return "#8b84a0"; // faded violet
+        case RoomTypeValues.BOSS:
+          return "#96788a";
+        case RoomTypeValues.SECRET:
+          return "#7f8a92";
         case RoomTypeValues.SHOP:
-          return "#4CAF50"; // Green
+          return "#80978c"; // verdigris
         case RoomTypeValues.TRAP:
-          return "#FF5722"; // Orange
+          return "#9a8074";
         case RoomTypeValues.CHALLENGE:
-          return "#FF9800"; // Amber
+          return "#9a8f75";
         case RoomTypeValues.LIBRARY:
-          return "#795548"; // Brown
+          return "#95866f"; // old timber
         case RoomTypeValues.CURSED_ROOM:
-          return "#9C27B0"; // Purple
+          return "#87799a";
         case RoomTypeValues.DEVIL_ROOM:
-          return "#E91E63"; // Pink
+          return "#96788a";
         case RoomTypeValues.ANGEL_ROOM:
-          return "#00BCD4"; // Cyan
+          return "#88a0a4";
         default:
-          return "#2196F3"; // Blue
+          return "#8c8c96"; // plain stone
       }
     };
 
@@ -319,38 +328,49 @@ const Room: React.FC<RoomProps> = memo(
       }
     });
 
-    // Get room shape geometry
-    const getRoomGeometry = () => {
+    /**
+     * The room's floor outline.
+     *
+     * Every shape but "circle" used to be a solid: a cone for a triangle, a
+     * cylinder for a hexagon or octagon, an octahedron for a diamond. The mesh
+     * that carries them is rotated flat for a plane, which laid those solids on
+     * their sides - a 16-unit cone sticking sideways through the floor of the
+     * first room the player sees. A third of rooms get a shape, so most runs
+     * opened on one.
+     *
+     * They are all flat polygons now: CircleGeometry with the right number of
+     * segments is a triangle at 3, a diamond at 4, a hexagon at 6 and an
+     * octagon at 8, and every one of them lies down the way a plane does.
+     *
+     * The shape is the floor's outline inside a square room, not the room's
+     * own footprint - the walls, the colliders and the doorways are still laid
+     * out on the square. Making a room genuinely N-sided means teaching the
+     * wall renderer to follow a perimeter and put doorways on it.
+     */
+    const floorGeometry = useMemo(() => {
       const width = room.width || roomSize;
       const height = room.height || roomSize;
+      const radius = width / 2;
 
       switch (room.shape) {
         case "circle":
-          return <primitive object={new CircleGeometry(width / 2, 32)} />;
+          return new CircleGeometry(radius, 48);
         case "triangle":
-          return <primitive object={new ConeGeometry(width / 2, height, 3)} />;
-        case "hexagon":
-          return (
-            <primitive
-              object={new CylinderGeometry(width / 2, width / 2, 0.1, 6)}
-            />
-          );
-        case "octagon":
-          return (
-            <primitive
-              object={new CylinderGeometry(width / 2, width / 2, 0.1, 8)}
-            />
-          );
+          return new CircleGeometry(radius, 3);
         case "diamond":
-          return <primitive object={new OctahedronGeometry(width / 2)} />;
-        case "star":
-          return <boxGeometry args={[width, 0.1, height]} />; // Fallback to box for star
-        case "cross":
-          return <boxGeometry args={[width, 0.1, height]} />;
+          return new CircleGeometry(radius, 4);
+        case "hexagon":
+          return new CircleGeometry(radius, 6);
+        case "octagon":
+          return new CircleGeometry(radius, 8);
         default:
-          return <planeGeometry args={[width, height]} />;
+          return new PlaneGeometry(width, height);
       }
-    };
+    }, [room.shape, room.width, room.height, roomSize]);
+
+    // Geometries are GPU buffers, not plain objects: the old code built a new
+    // one on every render of every room and never released any of them.
+    useEffect(() => () => floorGeometry.dispose(), [floorGeometry]);
 
     return (
       <group
@@ -387,7 +407,7 @@ const Room: React.FC<RoomProps> = memo(
           receiveShadow
           onClick={onClick}
         >
-          {getRoomGeometry()}
+          <primitive object={floorGeometry} attach="geometry" />
           <meshLambertMaterial
             color={roomColor}
             transparent

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useCallback, useMemo } from "react";
-import { RigidBody } from "@react-three/rapier";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import * as THREE from "three";
 
 // Store imports - consolidated
@@ -22,6 +22,7 @@ import RoomTransitionEffect from "./RoomTransitionEffect";
 import { playerRoomDetection } from "../utils/playerRoomDetection";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
 import { GEMS_REQUIRED_FOR_END } from "../configs/runRules";
+import { GROUND_Y } from "../configs/worldGeometry";
 
 // Types
 interface RoomData {
@@ -51,7 +52,7 @@ interface UnifiedRoomManagerProps {
 // Constants
 const DEFAULT_ROOM_SIZE = 10;
 const WALL_THICKNESS = 0.2;
-const GROUND_LEVEL = -0.5;
+
 const DOOR_HEIGHT_OFFSET = 1.25;
 // Keeps doors that share a wall clear of the corners.
 const DOOR_WALL_MARGIN = 3;
@@ -61,8 +62,35 @@ const DOOR_WALL_MARGIN = 3;
 // well outside the previous room's footprint.
 const TRANSITION_FLOOR_SIZE = 200;
 const TRANSITION_FLOOR_THICKNESS = 2;
-// Centre it so the slab's top surface sits at the normal standing height.
-const TRANSITION_FLOOR_Y = GROUND_LEVEL - TRANSITION_FLOOR_THICKNESS / 2;
+// Centred so the slab's TOP sits exactly on the shared ground plane, which is
+// what every room floor does. This was computed from a local GROUND_LEVEL of
+// -0.5 that disagreed with the rest of the game, and then used negated - so the
+// slab's top sat at +2.5 and the player rode a ledge two and a half metres up
+// through every transition, then dropped when it unmounted.
+const TRANSITION_FLOOR_Y = GROUND_Y - TRANSITION_FLOOR_THICKNESS / 2;
+
+/**
+ * A wide, invisible floor at the ground plane.
+ *
+ * Used whenever no room's colliders are mounted: during a transition, when the
+ * room subtree is unmounted, and on the first frames of a run before the start
+ * room has loaded. Without it the player is standing over nothing.
+ */
+const CatchFloor = () => (
+  <RigidBody type="fixed" colliders={false}>
+    {/* An explicit collider, not an invisible mesh: `colliders="cuboid"`
+        derives shapes by walking child meshes, and it does not walk one with
+        visible={false} - so this floor had no collider and caught nothing. */}
+    <CuboidCollider
+      args={[
+        TRANSITION_FLOOR_SIZE / 2,
+        TRANSITION_FLOOR_THICKNESS / 2,
+        TRANSITION_FLOOR_SIZE / 2,
+      ]}
+      position={[0, TRANSITION_FLOOR_Y, 0]}
+    />
+  </RigidBody>
+);
 
 // Where each door sits on the room's walls.
 //
@@ -352,18 +380,7 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
     if (activeTransitioning) {
       return (
         <group>
-          <RigidBody type="fixed" colliders="cuboid">
-            <mesh position={[0, -TRANSITION_FLOOR_Y, 0]} visible={false}>
-              <boxGeometry
-                args={[
-                  TRANSITION_FLOOR_SIZE,
-                  TRANSITION_FLOOR_THICKNESS,
-                  TRANSITION_FLOOR_SIZE,
-                ]}
-              />
-              <meshBasicMaterial color="#000000" />
-            </mesh>
-          </RigidBody>
+          <CatchFloor />
 
           <mesh position={[0, 2, 0]}>
             <planeGeometry args={[8, 4]} />
@@ -377,8 +394,13 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       );
     }
 
+    // No room yet - the very first frames of a run, before the start room's
+    // colliders have mounted. This returned null, so for those frames there was
+    // nothing at all under the player and they began the run falling. It went
+    // unnoticed because SafeSpawnArea happened to be mounted at the origin in
+    // every room and caught them; removing that scaffolding is what exposed it.
     if (!currentRoom) {
-      return null;
+      return <CatchFloor />;
     }
 
     // Get room component for rendering

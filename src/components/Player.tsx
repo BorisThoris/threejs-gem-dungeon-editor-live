@@ -101,6 +101,9 @@ export function Player({
         z: 0,
         linvel: { x: 0, y: 0, z: 0 },
       });
+      // The scene itself, so a harness can measure what the player is
+      // standing on rather than inferring it from constants.
+      (window as any).__scene = state.scene;
       const v = ref.current.linvel();
       probe.x = x;
       probe.y = y;
