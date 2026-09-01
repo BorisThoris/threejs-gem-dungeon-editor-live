@@ -55,7 +55,7 @@ const BrickHouse: React.FC<BrickHouseProps> = ({
   onPrototypeAction: _onPrototypeAction,
 }) => {
   // Load brick texture
-  const [brickTexture, setBrickTexture] = useState(null);
+  const [brickTexture, setBrickTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

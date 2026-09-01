@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Text, Box, Cylinder, Sphere, Html } from "@react-three/drei";
+import { Box, Cylinder, Sphere, Html } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import RoomActionCards, { type ActionCard } from "../../RoomActionCards";
@@ -83,18 +84,34 @@ const MiddleStairsRoom: React.FC<MiddleStairsRoomProps> = ({
       title: "Climb Up",
       description: "Ascend to the next level",
       icon: "⬆️",
+      action: () => {
+        setHasClimbed(true);
+        onClimb();
+        hideCards();
+      },
+      disabled: hasClimbed,
     },
     {
       id: "descend",
       title: "Go Down",
       description: "Descend to the previous level",
       icon: "⬇️",
+      action: () => {
+        setHasDescended(true);
+        onDescend();
+        hideCards();
+      },
+      disabled: hasDescended,
     },
     {
       id: "examine",
       title: "Examine Stairs",
       description: "Study the connecting staircase",
       icon: "🔍",
+      action: () => {
+        console.log("Examining the connecting staircase");
+        hideCards();
+      },
     },
   ];
 

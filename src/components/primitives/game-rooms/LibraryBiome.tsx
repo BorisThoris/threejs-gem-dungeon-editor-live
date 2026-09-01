@@ -1,12 +1,13 @@
 import React, { useState, useRef } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { useFrame } from "@react-three/fiber";
 import type { Item } from "../../../types/map";
 import ItemSprite from "../objects/ItemSprite";
 import OptimizedPuzzleRouter from "../../OptimizedPuzzleRouter";
 import RoomActionCards from "../../RoomActionCards";
 import { useRoomActions } from "../../../hooks/useRoomActions";
+import * as THREE from "three";
 
 interface LibraryBiomeProps {
   books?: Item[];
@@ -35,7 +36,9 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
     bookRefs.current.forEach((bookRef, index) => {
       if (bookRef) {
         const glowIntensity = Math.sin(time * 2 + index) * 0.2 + 0.3;
-        bookRef.material.emissiveIntensity = glowIntensity;
+        if (bookRef.material instanceof THREE.MeshStandardMaterial) {
+          bookRef.material.emissiveIntensity = glowIntensity;
+        }
 
         // Slight floating animation
         const floatOffset = Math.sin(time * 1.5 + index) * 0.02;
@@ -46,7 +49,9 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
     // Animate reading table glow
     if (tableRef.current && isReading) {
       const glowIntensity = Math.sin(time * 3) * 0.3 + 0.7;
-      tableRef.current.material.emissiveIntensity = glowIntensity;
+      if (tableRef.current.material instanceof THREE.MeshStandardMaterial) {
+        tableRef.current.material.emissiveIntensity = glowIntensity;
+      }
     }
   });
 
@@ -181,8 +186,6 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
               color="#FFD700"
               transparent
               opacity={0.2}
-              emissive="#FFD700"
-              emissiveIntensity={0.3}
             />
           </mesh>
 
@@ -199,8 +202,6 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
               <sphereGeometry args={[0.05]} />
               <meshBasicMaterial
                 color="#FFD700"
-                emissive="#FFD700"
-                emissiveIntensity={0.8}
                 transparent
                 opacity={0.7}
               />

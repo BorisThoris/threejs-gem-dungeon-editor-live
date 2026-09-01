@@ -80,7 +80,16 @@ const Floor: React.FC<FloorProps> = ({
 }) => {
   // Get material properties based on material type
   const getMaterialProperties = (material: FloorMaterial) => {
-    const properties = {
+    const properties: Record<
+      FloorMaterial,
+      {
+        color: string;
+        roughness: number;
+        metalness: number;
+        emissive?: string;
+        emissiveIntensity?: number;
+      }
+    > = {
       stone: { color: "#4a4a4a", roughness: 0.9, metalness: 0.1 },
       wood: { color: "#8B4513", roughness: 0.7, metalness: 0.0 },
       marble: { color: "#f5f5f5", roughness: 0.1, metalness: 0.0 },
@@ -97,7 +106,15 @@ const Floor: React.FC<FloorProps> = ({
 
   // Get pattern-specific properties
   const getPatternProperties = (pattern: FloorPattern) => {
-    const patterns = {
+    const patterns: Record<
+      FloorPattern,
+      {
+        roughness: number;
+        metalness: number;
+        emissive?: string;
+        emissiveIntensity?: number;
+      }
+    > = {
       smooth: { roughness: 0.1, metalness: 0.0 },
       rough: { roughness: 0.9, metalness: 0.0 },
       polished: { roughness: 0.0, metalness: 0.1 },

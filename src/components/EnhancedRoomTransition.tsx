@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Text } from "@react-three/drei";
+import { Text } from "./GameText";
 import * as THREE from "three";
 
 export interface EnhancedRoomTransitionProps {

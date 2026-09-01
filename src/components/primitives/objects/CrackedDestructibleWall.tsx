@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { Box } from "@react-three/drei";
 import * as THREE from "three";
 import useGameStore from "../../../store/gameStore";
@@ -43,7 +43,7 @@ const CrackedDestructibleWall: React.FC<CrackedDestructibleWallProps> = ({
   const [canDestroy, setCanDestroy] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isDamaged, setIsDamaged] = useState(false);
-  const [brickTexture, setBrickTexture] = useState(null);
+  const [brickTexture, setBrickTexture] = useState<THREE.Texture | null>(null);
 
   // Load brick texture
   useEffect(() => {

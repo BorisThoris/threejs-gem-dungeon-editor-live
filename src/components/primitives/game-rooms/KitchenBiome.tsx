@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";

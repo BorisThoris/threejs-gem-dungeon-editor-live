@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import * as THREE from "three";
 
 export interface AltarProps {

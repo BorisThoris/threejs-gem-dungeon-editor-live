@@ -1,7 +1,8 @@
 import React from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics, RigidBody } from "@react-three/rapier";
-import { OrbitControls, Environment, Text } from "@react-three/drei";
+import { OrbitControls, Environment } from "@react-three/drei";
+import { Text } from "./GameText";
 import Skeleton from "./primitives/objects/Skeleton";
 
 const SkeletonDebug: React.FC = () => {

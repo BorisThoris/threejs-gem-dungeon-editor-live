@@ -55,7 +55,7 @@ const StoneWall: React.FC<StoneWallProps> = ({
 }) => {
   const wallsEnabled = useWallsEnabled();
   // Load stone texture
-  const [stoneTexture, setStoneTexture] = useState(null);
+  const [stoneTexture, setStoneTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

@@ -38,6 +38,9 @@ export interface PlayerStats {
   points: number;
   keys: number;
   bombs: number;
+  // Gems are the demo's one currency: found in rooms, spent on the locked door
+  // to the end room.
+  gems: number;
   streak: number;
   maxStreak: number;
   currentFloor: number;
@@ -72,6 +75,8 @@ export interface GameState {
   // Room Completion Tracking
   visitedRooms: Set<string>;
   completedRooms: Set<string>;
+  // Rooms whose gem has already been taken, so revisiting cannot farm it.
+  collectedGemRooms: Set<string>;
   
   // Player Movement (from playerMovementStore)
   isMovementEnabled: boolean;
@@ -119,6 +124,9 @@ export interface GameActions {
   gainLife: () => void;
   addKey: () => void;
   useKey: () => boolean;
+  collectGem: (roomId: string) => boolean;
+  spendGems: (amount: number) => boolean;
+  hasCollectedGem: (roomId: string) => boolean;
   addBomb: () => void;
   useBomb: () => boolean;
   updateStreak: (increment: boolean) => void;
@@ -170,6 +178,7 @@ const initialStats: PlayerStats = {
   points: 100,
   keys: 2,
   bombs: 1,
+  gems: 0,
   streak: 0,
   maxStreak: 0,
   currentFloor: 1,
@@ -206,6 +215,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
     transition: null,
     visitedRooms: new Set(),
     completedRooms: new Set(),
+    collectedGemRooms: new Set(),
     isMovementEnabled: true,
     fromRoomId: null,
     toRoomId: null,
@@ -521,6 +531,45 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
       return false;
     },
 
+    hasCollectedGem: (roomId: string) => get().collectedGemRooms.has(roomId),
+
+    collectGem: (roomId: string) => {
+      const state = get();
+      // Each room holds exactly one gem, and only once - otherwise a player
+      // could walk in and out of the same room to fill their pockets.
+      if (state.collectedGemRooms.has(roomId)) return false;
+
+      const collectedGemRooms = new Set(state.collectedGemRooms);
+      collectedGemRooms.add(roomId);
+
+      set({
+        collectedGemRooms,
+        playerStats: {
+          ...state.playerStats,
+          gems: state.playerStats.gems + 1,
+        },
+      });
+
+      gameEvents.emit(GAME_EVENTS.GEM_COLLECTED, {
+        roomId,
+        total: state.playerStats.gems + 1,
+      });
+      return true;
+    },
+
+    spendGems: (amount: number) => {
+      const state = get();
+      if (state.playerStats.gems < amount) return false;
+
+      set({
+        playerStats: {
+          ...state.playerStats,
+          gems: state.playerStats.gems - amount,
+        },
+      });
+      return true;
+    },
+
     addBomb: () => {
       set((state) => ({
         playerStats: {
@@ -828,3 +877,10 @@ export const useRoomCompletionActions = () => useConsolidatedGameStore((state) =
 }));
 
 export default useConsolidatedGameStore;
+
+// Dev-only handle so game state can be inspected from the console (or a
+// headless browser) without wiring a debug panel. Stripped from production.
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__gameStore =
+    useConsolidatedGameStore;
+}

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import * as THREE from "three";
 
 interface AdvancedMinecraftSignProps {

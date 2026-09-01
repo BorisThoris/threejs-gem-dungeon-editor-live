@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
@@ -16,7 +16,7 @@ const WorkshopBiome: React.FC<WorkshopBiomeProps> = ({
   size = 10,
 }) => {
   const [crafting, setCrafting] = useState(false);
-  const [itemCrafted] = useState(false);
+  const [itemCrafted, setItemCrafted] = useState(false);
 
   const playerDimensions = useGameStore(
     (state) => state.playerStats.dimensions

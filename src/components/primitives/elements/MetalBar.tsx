@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface MetalBarProps {
   position?: [number, number, number];
@@ -63,7 +64,7 @@ const MetalBar: React.FC<MetalBarProps> = ({
   const details = getMetalDetails();
 
   // Load metal texture from image file (using pixel_checkerboard for metallic pattern)
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("pixel_checkerboard")
@@ -92,8 +93,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
           )}
           <meshLambertMaterial
             color={details.color}
-            metalness={details.metalness}
-            roughness={details.roughness}
             map={texture}
           />
         </mesh>
@@ -106,16 +105,12 @@ const MetalBar: React.FC<MetalBarProps> = ({
               <cylinderGeometry args={[0.02, 0.02, size[0] - 0.4, 8]} />
               <meshLambertMaterial
                 color="#8B4513"
-                metalness={0.3}
-                roughness={0.8}
               />
             </mesh>
             <mesh position={[-0.2, size[1] / 2 + 0.01, 0]}>
               <cylinderGeometry args={[0.015, 0.015, size[0] - 0.6, 8]} />
               <meshLambertMaterial
                 color="#8B4513"
-                metalness={0.3}
-                roughness={0.8}
               />
             </mesh>
           </>
@@ -130,8 +125,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
               />
               <meshLambertMaterial
                 color="#E6E6FA"
-                metalness={0.9}
-                roughness={0.1}
               />
             </mesh>
           </>
@@ -146,8 +139,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
               />
               <meshLambertMaterial
                 color="#4B0082"
-                metalness={0.8}
-                roughness={0.3}
               />
             </mesh>
           </>
@@ -162,8 +153,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
               />
               <meshLambertMaterial
                 color="#FFA500"
-                metalness={0.95}
-                roughness={0.05}
                 emissive="#FFD700"
                 emissiveIntensity={0.1}
               />
@@ -178,8 +167,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
           />
           <meshLambertMaterial
             color={details.color}
-            metalness={details.metalness + 0.1}
-            roughness={details.roughness - 0.1}
           />
         </mesh>
         <mesh position={[-size[0] / 2, size[1] / 2, 0]}>
@@ -188,8 +175,6 @@ const MetalBar: React.FC<MetalBarProps> = ({
           />
           <meshLambertMaterial
             color={details.color}
-            metalness={details.metalness + 0.1}
-            roughness={details.roughness - 0.1}
           />
         </mesh>
       </group>

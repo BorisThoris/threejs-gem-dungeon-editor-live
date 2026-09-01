@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 

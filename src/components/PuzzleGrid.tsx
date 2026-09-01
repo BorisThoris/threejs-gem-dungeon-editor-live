@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "./GameText";
 import type { Puzzle, PuzzleTile } from "../types/map";
 
 interface PuzzleGridProps {

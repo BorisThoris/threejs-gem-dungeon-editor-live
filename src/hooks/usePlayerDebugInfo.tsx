@@ -1,4 +1,4 @@
-import { Text } from "@react-three/drei";
+import { Text } from "../components/GameText";
 
 interface UsePlayerDebugInfoProps {
   showDebugInfo: boolean;

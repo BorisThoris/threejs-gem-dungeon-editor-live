@@ -59,8 +59,6 @@ const WallSegment: React.FC<WallSegmentProps> = ({
         <meshLambertMaterial
           color={segment.color}
           map={texture}
-          roughness={0.8}
-          metalness={0.0}
         />
       </mesh>
     </RigidBody>

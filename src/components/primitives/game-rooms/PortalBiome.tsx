@@ -1,9 +1,10 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
+import type * as THREE from "three";
 
 interface PortalBiomeProps {
   size?: number;
@@ -26,7 +27,9 @@ const PortalBiome: React.FC<PortalBiomeProps> = ({
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Refs for animated elements
-  const portalCoreRef = useRef<THREE.Mesh>(null);
+  const portalCoreRef = useRef<
+    THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>
+  >(null);
   const outerRingRef = useRef<THREE.Mesh>(null);
   const innerRingRef = useRef<THREE.Mesh>(null);
 

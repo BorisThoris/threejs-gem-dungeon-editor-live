@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import * as THREE from "three";
 import { CrackedBrick } from "../elements";
 import { CrackedDestructibleWall } from "../objects";

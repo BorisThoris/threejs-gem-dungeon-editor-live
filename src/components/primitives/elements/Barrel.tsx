@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface BarrelProps {
   position?: [number, number, number];
@@ -19,7 +20,7 @@ const Barrel: React.FC<BarrelProps> = ({
   onBreak,
 }) => {
   // Load wood texture for barrel
-  const [woodTexture, setWoodTexture] = useState(null);
+  const [woodTexture, setWoodTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("wood")

@@ -1,9 +1,11 @@
 import React, { useState } from "react";
-import { Text, Box, Cylinder, Sphere, Html } from "@react-three/drei";
+import { Box, Cylinder, Sphere, Html } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 import RoomActionCards, { type ActionCard } from "../../RoomActionCards";
 import { Tile, Stair, Handrail } from "../elements";
+import type { TileProps } from "../elements/Tile";
 
 interface StairsRoomProps {
   direction?: "up" | "down";
@@ -276,8 +278,8 @@ const StairsRoom: React.FC<StairsRoomProps> = ({
           let tileType = "normal";
           let tileHeight = 0.1;
           let tileColor = "#5A5A5A";
-          let material = "stone" as const;
-          let pattern = "smooth" as const;
+          let material: TileProps["material"] = "stone";
+          let pattern: TileProps["pattern"] = "smooth";
 
           // Define circular zones
           if (distanceFromCenter < openingRadius + 0.5) {

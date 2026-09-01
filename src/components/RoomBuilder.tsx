@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Text } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei";
+import { Text } from "./GameText";
 import { Physics } from "@react-three/rapier";
 import MultiBiomeRoom from "./primitives/game-rooms/MultiBiomeRoom";
 

@@ -14,6 +14,7 @@ import Door from "./Door";
 import DoorDebugger from "./DoorDebugger";
 import DebugSign from "./DebugSign";
 import RoomInstanceRenderer from "./RoomInstanceRenderer";
+import Gem from "./Gem";
 import RoomTransitionEffect from "./RoomTransitionEffect";
 
 // Data and utils
@@ -24,6 +25,7 @@ import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
 interface RoomData {
   id: string;
   name?: string;
+  type?: string;
   size?: number;
   actualSize?: number;
   connections?: string[];
@@ -248,6 +250,36 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       [activeRoomId, startTransition, currentRoom]
     );
 
+    // Where this room's gem sits. Derived from the room id so it lands in the
+    // same spot every time the player comes back, without storing anything.
+    // The start room keeps its gem - walking into one within the first few
+    // seconds is how the player learns what gems are for. The end room does
+    // not, since arriving there is the reward.
+    const gemPlacement = useMemo(() => {
+      if (!currentRoom?.id) return null;
+      if (currentRoom.type === "end") return null;
+
+      let hash = 0;
+      for (let i = 0; i < currentRoom.id.length; i++) {
+        hash = (hash * 31 + currentRoom.id.charCodeAt(i)) | 0;
+      }
+
+      const roomSize =
+        currentRoom.actualSize || currentRoom.size || DEFAULT_ROOM_SIZE;
+      // Keep it well inside the walls and off the exact centre.
+      const radius = Math.max(1.5, roomSize / 2 - 2);
+      const angle = ((hash >>> 0) % 360) * (Math.PI / 180);
+
+      return {
+        roomId: currentRoom.id,
+        position: [
+          Math.cos(angle) * radius,
+          0.9,
+          Math.sin(angle) * radius,
+        ] as [number, number, number],
+      };
+    }, [currentRoom]);
+
     // Memoized door state change handler
     const handleDoorStateChange = useCallback(
       (doorId: string, newState: string) => {
@@ -317,6 +349,13 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
           onInteraction={onInteraction}
           onRoomTransition={handleRoomTransition}
         />
+
+        {/* One gem per room - the reason to walk into a room at all. Rendered
+            as a sibling of the room rather than inside it so that a room whose
+            textures are still loading cannot delay the collectible. */}
+        {gemPlacement && (
+          <Gem roomId={gemPlacement.roomId} position={gemPlacement.position} />
+        )}
 
         {/* Render doors */}
         {connectedRooms.map((room: RoomData, index: number) => {

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import useMapStore from "../../../store/mapStore";
 import { useGameState } from "../../../hooks/useGameState";
 import { gameEvents, GAME_EVENTS } from "../../../utils/gameEvents";
 import type { Room } from "../../../types/map";
 import { BreakableCeiling, RoomFloor } from "../elements";
+import AdvancedMinecraftSign from "../elements/AdvancedMinecraftSign";
 import Door from "../../Door";
 
 // Import all room content components
@@ -25,6 +26,7 @@ import SpecialBiome from "./SpecialBiome";
 import CorridorRoom from "./CorridorRoom";
 import ColosseumRoom from "./ColosseumRoom";
 import ShapedShell from "./ShapedShell";
+import type * as THREE from "three";
 
 // Room configuration interface
 interface RoomConfig {
@@ -313,6 +315,12 @@ const RoomFactory: React.FC<RoomFactoryProps> = ({
         `RoomFactory: Entered ${currentRoom.id} (${currentRoom.type})`
       );
       console.log(`RoomFactory: Room connections:`, currentRoom.connections);
+
+      if (!currentRoom.connections || currentRoom.connections.length === 0) {
+        console.warn(
+          `RoomFactory: No connections found for room ${currentRoom.id}`
+        );
+      }
     }
   }, [currentRoom, updateRoom, updateGamePhase]);
 
@@ -410,11 +418,7 @@ const RoomFactory: React.FC<RoomFactoryProps> = ({
             );
           })}
         </group>
-      ) : (
-        console.warn(
-          `RoomFactory: No connections found for room ${currentRoom.id}`
-        )
-      )}
+      ) : null}
 
       {/* Room-specific content - Render actual room components */}
       <roomConfig.component {...roomProps} />

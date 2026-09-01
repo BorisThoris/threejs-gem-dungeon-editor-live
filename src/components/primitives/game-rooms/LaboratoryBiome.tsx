@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
 import RoomActionCards from "../../RoomActionCards";
 import { useRoomActions } from "../../../hooks/useRoomActions";
+import * as THREE from "three";
 
 interface LaboratoryBiomeProps {
   size?: number;
@@ -44,7 +45,9 @@ const LaboratoryBiome: React.FC<LaboratoryBiomeProps> = ({
     // Animate experiment vial bubbling
     if (vialRef.current && experimenting) {
       const bubbleIntensity = Math.sin(time * 4) * 0.2 + 0.8;
-      vialRef.current.material.emissiveIntensity = bubbleIntensity;
+      if (vialRef.current.material instanceof THREE.MeshStandardMaterial) {
+        vialRef.current.material.emissiveIntensity = bubbleIntensity;
+      }
 
       // Slight rotation for bubbling effect
       vialRef.current.rotation.y = Math.sin(time * 2) * 0.1;
@@ -54,7 +57,9 @@ const LaboratoryBiome: React.FC<LaboratoryBiomeProps> = ({
     equipmentRefs.current.forEach((equipmentRef, index) => {
       if (equipmentRef && experimenting) {
         const glowIntensity = Math.sin(time * 3 + index) * 0.3 + 0.7;
-        equipmentRef.material.emissiveIntensity = glowIntensity;
+        if (equipmentRef.material instanceof THREE.MeshStandardMaterial) {
+          equipmentRef.material.emissiveIntensity = glowIntensity;
+        }
       }
     });
   });

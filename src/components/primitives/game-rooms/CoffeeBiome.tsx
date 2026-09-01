@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { refBasedPlayerState } from "../../../utils/refBasedPlayerState";
 import { refBasedGameState } from "../../../utils/refBasedGameState";
 import { coffeeRoomUI } from "../../../utils/coffeeRoomUI";

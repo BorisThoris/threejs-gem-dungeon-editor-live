@@ -64,7 +64,7 @@ const Tile: React.FC<TileProps> = ({
   onPrototypeAction,
 }) => {
   // Load appropriate texture based on material
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

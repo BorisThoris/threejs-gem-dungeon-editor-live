@@ -1,5 +1,5 @@
 import React from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "./GameText";
 
 interface DebugSignProps {
   position: [number, number, number];

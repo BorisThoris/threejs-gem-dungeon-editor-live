@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import * as THREE from "three";
-import { Text, Html } from "@react-three/drei";
+import { Html } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import { useConsolidatedGameStore } from "../../../store/consolidatedGameStore";

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import useGameStore from "../../../store/gameStore";
 
 interface DestructibleWallProps {

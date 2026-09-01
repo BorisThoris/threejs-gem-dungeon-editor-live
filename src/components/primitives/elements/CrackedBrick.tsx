@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface CrackedBrickProps {
   position?: [number, number, number];
@@ -63,7 +64,7 @@ const CrackedBrick: React.FC<CrackedBrickProps> = ({
   const details = getCrackDetails();
 
   // Load brick texture from image file
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("brick")
@@ -106,7 +107,6 @@ const CrackedBrick: React.FC<CrackedBrickProps> = ({
           <boxGeometry args={size} />
           <meshLambertMaterial
             color={details.color}
-            roughness={details.roughness}
             map={texture}
           />
         </mesh>
@@ -139,11 +139,11 @@ const CrackedBrick: React.FC<CrackedBrickProps> = ({
             {/* Chipped edges */}
             <mesh position={[size[0] / 2 - 0.05, size[1] / 2, 0]}>
               <boxGeometry args={[0.05, size[1] * 0.3, size[2] * 0.8]} />
-              <meshLambertMaterial color="#654321" roughness={0.9} />
+              <meshLambertMaterial color="#654321" />
             </mesh>
             <mesh position={[-size[0] / 2 + 0.05, size[1] / 2, 0]}>
               <boxGeometry args={[0.05, size[1] * 0.4, size[2] * 0.7]} />
-              <meshLambertMaterial color="#654321" roughness={0.9} />
+              <meshLambertMaterial color="#654321" />
             </mesh>
 
             {/* Moss patches in cracks */}
@@ -157,7 +157,7 @@ const CrackedBrick: React.FC<CrackedBrickProps> = ({
                 ]}
               >
                 <boxGeometry args={[0.03, 0.03, 0.01]} />
-                <meshLambertMaterial color="#228B22" roughness={0.8} />
+                <meshLambertMaterial color="#228B22" />
               </mesh>
             ))}
           </>

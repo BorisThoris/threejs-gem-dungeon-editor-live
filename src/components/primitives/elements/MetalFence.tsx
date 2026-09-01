@@ -49,7 +49,7 @@ const MetalFence: React.FC<MetalFenceProps> = ({
   onPrototypeAction: _onPrototypeAction,
 }) => {
   // Load metal texture
-  const [metalTexture, setMetalTexture] = useState(null);
+  const [metalTexture, setMetalTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

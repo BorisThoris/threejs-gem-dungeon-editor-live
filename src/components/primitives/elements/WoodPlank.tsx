@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface WoodPlankProps {
   position?: [number, number, number];
@@ -63,7 +64,7 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
   const details = getWoodDetails();
 
   // Load wood texture from image file
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("wood")
@@ -84,7 +85,6 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
           <boxGeometry args={size} />
           <meshLambertMaterial
             color={details.color}
-            roughness={details.roughness}
             map={texture}
           />
         </mesh>
@@ -101,7 +101,6 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
                 <boxGeometry args={[0.02, 0.01, size[2] - 0.02]} />
                 <meshLambertMaterial
                   color={details.grainColor}
-                  roughness={details.roughness + 0.2}
                 />
               </mesh>
             ))}
@@ -117,7 +116,6 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
                 <boxGeometry args={[size[0] - 0.02, 0.01, 0.02]} />
                 <meshLambertMaterial
                   color={details.grainColor}
-                  roughness={details.roughness + 0.2}
                 />
               </mesh>
             ))}
@@ -129,7 +127,7 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
           <>
             <mesh position={[0.3, size[1] / 2 + 0.01, 0.1]}>
               <cylinderGeometry args={[0.05, 0.05, 0.01, 8]} />
-              <meshLambertMaterial color="#654321" roughness={0.8} />
+              <meshLambertMaterial color="#654321" />
             </mesh>
           </>
         )}
@@ -138,7 +136,7 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
           <>
             <mesh position={[-0.2, size[1] / 2 + 0.01, -0.1]}>
               <cylinderGeometry args={[0.03, 0.03, 0.01, 8]} />
-              <meshLambertMaterial color="#D2B48C" roughness={0.7} />
+              <meshLambertMaterial color="#D2B48C" />
             </mesh>
           </>
         )}
@@ -150,7 +148,6 @@ const WoodPlank: React.FC<WoodPlankProps> = ({
           />
           <meshLambertMaterial
             color={details.grainColor}
-            roughness={details.roughness + 0.1}
           />
         </mesh>
       </group>

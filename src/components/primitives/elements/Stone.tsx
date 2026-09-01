@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface StoneProps {
   position?: [number, number, number];
@@ -63,7 +64,7 @@ const Stone: React.FC<StoneProps> = ({
   const details = getStoneDetails();
 
   // Load stone texture from image file
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("cobblestone")
@@ -92,8 +93,6 @@ const Stone: React.FC<StoneProps> = ({
           )}
           <meshLambertMaterial
             color={details.color}
-            roughness={details.roughness}
-            metalness={details.metalness}
             map={texture}
           />
         </mesh>
@@ -104,7 +103,7 @@ const Stone: React.FC<StoneProps> = ({
             {/* Rough surface texture */}
             <mesh position={[0, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[size[0] - 0.1, 0.02, size[2] - 0.1]} />
-              <meshLambertMaterial color="#2F2F2F" roughness={0.9} />
+              <meshLambertMaterial color="#2F2F2F" />
             </mesh>
           </>
         )}
@@ -114,7 +113,7 @@ const Stone: React.FC<StoneProps> = ({
             {/* Marble veining */}
             <mesh position={[0, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[size[0] - 0.05, 0.01, size[2] - 0.05]} />
-              <meshLambertMaterial color="#E6E6FA" roughness={0.2} />
+              <meshLambertMaterial color="#E6E6FA" />
             </mesh>
           </>
         )}
@@ -124,11 +123,11 @@ const Stone: React.FC<StoneProps> = ({
             {/* Granite speckles */}
             <mesh position={[0.1, size[1] / 2 + 0.01, 0.1]}>
               <boxGeometry args={[0.05, 0.01, 0.05]} />
-              <meshLambertMaterial color="#2F4F4F" roughness={0.5} />
+              <meshLambertMaterial color="#2F4F4F" />
             </mesh>
             <mesh position={[-0.1, size[1] / 2 + 0.01, -0.1]}>
               <boxGeometry args={[0.03, 0.01, 0.03]} />
-              <meshLambertMaterial color="#2F4F4F" roughness={0.5} />
+              <meshLambertMaterial color="#2F4F4F" />
             </mesh>
           </>
         )}
@@ -138,7 +137,7 @@ const Stone: React.FC<StoneProps> = ({
             {/* Sandstone layers */}
             <mesh position={[0, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[size[0] - 0.02, 0.01, size[2] - 0.02]} />
-              <meshLambertMaterial color="#DEB887" roughness={0.8} />
+              <meshLambertMaterial color="#DEB887" />
             </mesh>
           </>
         )}

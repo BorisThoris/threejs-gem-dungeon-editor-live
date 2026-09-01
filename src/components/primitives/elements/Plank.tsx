@@ -54,7 +54,7 @@ const Plank: React.FC<PlankProps> = ({
   onPrototypeAction,
 }) => {
   // Load wood texture
-  const [woodTexture, setWoodTexture] = useState(null);
+  const [woodTexture, setWoodTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("wood")
@@ -180,7 +180,7 @@ const Plank: React.FC<PlankProps> = ({
       )}
 
       {/* Knots for natural wood look */}
-      {woodType !== "polished" && Math.random() > 0.7 && (
+      {Math.random() > 0.7 && (
         <Box
           args={[0.1, 0.01, 0.1]}
           position={[

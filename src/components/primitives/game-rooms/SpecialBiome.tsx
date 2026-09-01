@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import type { Item } from "../../../types/map";
 import ItemSprite from "../objects/ItemSprite";
 import AdvancedMinecraftSign from "../elements/AdvancedMinecraftSign";

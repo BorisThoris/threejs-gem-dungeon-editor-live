@@ -17,7 +17,9 @@ const AnimatedSmoke: React.FC<AnimatedSmokeProps> = ({
   animationSpeed = 1.0,
   opacity = 0.6,
 }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const meshRef = useRef<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>>(
+    null
+  );
 
   // Create smoke texture spritesheet (4 frames)
   const smokeTexture = useMemo(() => {
@@ -101,8 +103,11 @@ const AnimatedSmoke: React.FC<AnimatedSmokeProps> = ({
       const frameWidth = 1 / 4; // 4 frames
       const offsetX = frame * frameWidth;
 
-      meshRef.current.material.map.offset.x = offsetX;
-      meshRef.current.material.map.needsUpdate = true;
+      const { map } = meshRef.current.material;
+      if (map) {
+        map.offset.x = offsetX;
+        map.needsUpdate = true;
+      }
     }
 
     // Gentle floating animation

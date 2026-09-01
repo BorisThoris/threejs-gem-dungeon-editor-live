@@ -29,44 +29,32 @@ const RagdollJoints: React.FC<{
   // Create joints using hooks
   useSphericalJoint(headRef, spineRef, [
     [0, -0.2, 0], // anchor1
-    [0, 0, 0, 1], // rotation1 (quaternion)
     [0, 0.4, 0], // anchor2
-    [0, 0, 0, 1], // rotation2 (quaternion)
   ]);
 
   useSphericalJoint(spineRef, pelvisRef, [
     [0, -0.4, 0], // anchor1
-    [0, 0, 0, 1], // rotation1
     [0, 0.1, 0], // anchor2
-    [0, 0, 0, 1], // rotation2
   ]);
 
   useSphericalJoint(spineRef, leftArmRef, [
     [-0.2, 0.1, 0], // anchor1
-    [0, 0, 0, 1], // rotation1
     [0, 0.3, 0], // anchor2
-    [0, 0, 0, 1], // rotation2
   ]);
 
   useSphericalJoint(spineRef, rightArmRef, [
     [0.2, 0.1, 0], // anchor1
-    [0, 0, 0, 1], // rotation1
     [0, 0.3, 0], // anchor2
-    [0, 0, 0, 1], // rotation2
   ]);
 
   useSphericalJoint(pelvisRef, leftLegRef, [
     [-0.1, -0.1, 0], // anchor1
-    [0, 0, 0, 1], // rotation1
     [0, 0.4, 0], // anchor2
-    [0, 0, 0, 1], // rotation2
   ]);
 
   useSphericalJoint(pelvisRef, rightLegRef, [
     [0.1, -0.1, 0], // anchor1
-    [0, 0, 0, 1], // rotation1
     [0, 0.4, 0], // anchor2
-    [0, 0, 0, 1], // rotation2
   ]);
 
   return null; // Joints are created by hooks, no JSX needed

@@ -1,5 +1,5 @@
 import React from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 
 // Example of a custom room component
 // This shows how easy it is to create new room types

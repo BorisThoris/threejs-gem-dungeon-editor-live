@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Text, Environment } from "@react-three/drei";
+import { OrbitControls, Environment } from "@react-three/drei";
+import { Text } from "./GameText";
 import useMapStore from "../store/mapStore";
 import { analyzeConnectivity } from "../utils/roomConnectivityValidator";
 import type { Room } from "../types/map";

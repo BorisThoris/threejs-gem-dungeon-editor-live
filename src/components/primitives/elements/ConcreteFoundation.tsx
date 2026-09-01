@@ -51,7 +51,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
   onPrototypeAction: _onPrototypeAction,
 }) => {
   // Load concrete texture
-  const [concreteTexture, setConcreteTexture] = useState(null);
+  const [concreteTexture, setConcreteTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

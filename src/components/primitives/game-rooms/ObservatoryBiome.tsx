@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
 import RoomActionCards from "../../RoomActionCards";
 import { useRoomActions } from "../../../hooks/useRoomActions";
+import * as THREE from "three";
 
 interface ObservatoryBiomeProps {
   size?: number;
@@ -44,14 +45,18 @@ const ObservatoryBiome: React.FC<ObservatoryBiomeProps> = ({
     // Animate telescope lens glow
     if (telescopeRef.current && observing) {
       const glowIntensity = Math.sin(time * 2) * 0.3 + 0.7;
-      telescopeRef.current.material.emissiveIntensity = glowIntensity;
+      if (telescopeRef.current.material instanceof THREE.MeshStandardMaterial) {
+        telescopeRef.current.material.emissiveIntensity = glowIntensity;
+      }
     }
 
     // Animate stars twinkling
     starRefs.current.forEach((starRef, index) => {
       if (starRef) {
         const twinkleIntensity = Math.sin(time * 3 + index) * 0.4 + 0.6;
-        starRef.material.emissiveIntensity = twinkleIntensity;
+        if (starRef.material instanceof THREE.MeshStandardMaterial) {
+          starRef.material.emissiveIntensity = twinkleIntensity;
+        }
 
         // Slight position variation for twinkling
         const twinkleOffset = Math.sin(time * 4 + index) * 0.01;

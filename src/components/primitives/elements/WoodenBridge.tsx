@@ -49,7 +49,7 @@ const WoodenBridge: React.FC<WoodenBridgeProps> = ({
   onPrototypeAction: _onPrototypeAction,  
 }) => {
   // Load wood texture
-  const [woodTexture, setWoodTexture] = useState(null);
+  const [woodTexture, setWoodTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     const loadTexture = async () => {

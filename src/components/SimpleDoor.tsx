@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "./GameText";
 import * as THREE from "three";
 
 interface DoorProps {

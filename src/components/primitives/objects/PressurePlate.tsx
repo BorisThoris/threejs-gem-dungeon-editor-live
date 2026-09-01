@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 
 export interface PressurePlateProps {
   position?: [number, number, number];

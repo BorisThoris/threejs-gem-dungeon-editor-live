@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
 import RoomActionCards from "../../RoomActionCards";
 import { useRoomActions } from "../../../hooks/useRoomActions";
+import * as THREE from "three";
 
 interface ArenaBiomeProps {
   onRewardClaim?: () => void;
@@ -56,14 +57,18 @@ const ArenaBiome: React.FC<ArenaBiomeProps> = ({ onRewardClaim }) => {
     // Animate arena ring glow
     if (arenaRingRef.current && isFighting) {
       const glowIntensity = Math.sin(time * 4) * 0.3 + 0.7;
-      arenaRingRef.current.material.emissiveIntensity = glowIntensity;
+      if (arenaRingRef.current.material instanceof THREE.MeshStandardMaterial) {
+        arenaRingRef.current.material.emissiveIntensity = glowIntensity;
+      }
     }
 
     // Animate torches flickering
     torchRefs.current.forEach((torchRef, index) => {
       if (torchRef) {
         const flickerIntensity = Math.sin(time * 6 + index) * 0.2 + 0.8;
-        torchRef.material.emissiveIntensity = flickerIntensity;
+        if (torchRef.material instanceof THREE.MeshStandardMaterial) {
+          torchRef.material.emissiveIntensity = flickerIntensity;
+        }
       }
     });
   });

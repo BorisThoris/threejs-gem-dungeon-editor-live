@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Text } from "@react-three/drei";
+import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
 import RoomActionCards from "../../RoomActionCards";
 import { useRoomActions } from "../../../hooks/useRoomActions";
+import * as THREE from "three";
 
 interface TreasureBiomeProps {
   size?: number;
@@ -24,7 +25,9 @@ const TreasureBiome: React.FC<TreasureBiomeProps> = ({
   const [treasureOpened, setTreasureOpened] = useState(false);
 
   // Refs for animated elements
-  const chestRef = useRef<THREE.Mesh>(null);
+  const chestRef = useRef<THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>>(
+    null
+  );
   const coinsRefs = useRef<THREE.Mesh[]>([]);
 
   const { cards, isVisible, showCards, hideCards } = useRoomActions({
@@ -47,7 +50,9 @@ const TreasureBiome: React.FC<TreasureBiomeProps> = ({
 
         // Pulsing glow
         const glowIntensity = Math.sin(time * 3 + index) * 0.2 + 0.5;
-        coinRef.material.emissiveIntensity = glowIntensity;
+        if (coinRef.material instanceof THREE.MeshStandardMaterial) {
+          coinRef.material.emissiveIntensity = glowIntensity;
+        }
       }
     });
 

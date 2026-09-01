@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
+import type * as THREE from "three";
 
 export interface ConcreteProps {
   position?: [number, number, number];
@@ -57,7 +58,7 @@ const Concrete: React.FC<ConcreteProps> = ({
   const details = getConcreteDetails();
 
   // Load concrete texture from image file (using cobblestone as base)
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("cobblestone")
@@ -80,7 +81,6 @@ const Concrete: React.FC<ConcreteProps> = ({
           <boxGeometry args={size} />
           <meshLambertMaterial
             color={details.color}
-            roughness={details.roughness}
             map={texture}
           />
         </mesh>
@@ -93,16 +93,12 @@ const Concrete: React.FC<ConcreteProps> = ({
               <boxGeometry args={[size[0] - 0.1, 0.02, 0.02]} />
               <meshLambertMaterial
                 color="#C0C0C0"
-                metalness={0.8}
-                roughness={0.2}
               />
             </mesh>
             <mesh position={[0, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[0.02, 0.02, size[2] - 0.1]} />
               <meshLambertMaterial
                 color="#C0C0C0"
-                metalness={0.8}
-                roughness={0.2}
               />
             </mesh>
           </>
@@ -113,16 +109,16 @@ const Concrete: React.FC<ConcreteProps> = ({
             {/* Exposed aggregate texture */}
             <mesh position={[0, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[size[0] - 0.02, 0.01, size[2] - 0.02]} />
-              <meshLambertMaterial color="#8B7D6B" roughness={0.9} />
+              <meshLambertMaterial color="#8B7D6B" />
             </mesh>
             {/* Random aggregate pieces */}
             <mesh position={[0.1, size[1] / 2 + 0.01, 0.1]}>
               <boxGeometry args={[0.03, 0.01, 0.03]} />
-              <meshLambertMaterial color="#696969" roughness={0.8} />
+              <meshLambertMaterial color="#696969" />
             </mesh>
             <mesh position={[-0.1, size[1] / 2 + 0.01, -0.1]}>
               <boxGeometry args={[0.02, 0.01, 0.02]} />
-              <meshLambertMaterial color="#696969" roughness={0.8} />
+              <meshLambertMaterial color="#696969" />
             </mesh>
           </>
         )}
@@ -134,8 +130,6 @@ const Concrete: React.FC<ConcreteProps> = ({
               <boxGeometry args={[size[0] - 0.01, 0.01, size[2] - 0.01]} />
               <meshLambertMaterial
                 color="#FFFFFF"
-                roughness={0.05}
-                metalness={0.1}
               />
             </mesh>
           </>
@@ -161,11 +155,11 @@ const Concrete: React.FC<ConcreteProps> = ({
             {/* Weathering stains */}
             <mesh position={[0.1, size[1] / 2 + 0.01, 0.1]}>
               <boxGeometry args={[0.1, 0.01, 0.1]} />
-              <meshLambertMaterial color="#8B7D6B" roughness={0.8} />
+              <meshLambertMaterial color="#8B7D6B" />
             </mesh>
             <mesh position={[-0.1, size[1] / 2 + 0.01, -0.1]}>
               <boxGeometry args={[0.08, 0.01, 0.08]} />
-              <meshLambertMaterial color="#8B7D6B" roughness={0.8} />
+              <meshLambertMaterial color="#8B7D6B" />
             </mesh>
           </>
         )}
@@ -175,11 +169,11 @@ const Concrete: React.FC<ConcreteProps> = ({
             {/* Chipped edges */}
             <mesh position={[size[0] / 2 - 0.05, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[0.05, 0.01, size[2] - 0.1]} />
-              <meshLambertMaterial color="#696969" roughness={0.9} />
+              <meshLambertMaterial color="#696969" />
             </mesh>
             <mesh position={[-size[0] / 2 + 0.05, size[1] / 2 + 0.01, 0]}>
               <boxGeometry args={[0.05, 0.01, size[2] - 0.1]} />
-              <meshLambertMaterial color="#696969" roughness={0.9} />
+              <meshLambertMaterial color="#696969" />
             </mesh>
           </>
         )}

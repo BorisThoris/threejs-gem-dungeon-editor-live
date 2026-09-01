@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface GlassProps {
   position?: [number, number, number];
@@ -58,7 +59,7 @@ const Glass: React.FC<GlassProps> = ({
   const details = getGlassDetails();
 
   // Load glass texture from image file (using water as base for transparency)
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("water")
@@ -81,8 +82,6 @@ const Glass: React.FC<GlassProps> = ({
             color={details.color}
             transparent
             opacity={details.opacity}
-            roughness={0.1}
-            metalness={0.0}
             map={texture}
           />
         </mesh>
@@ -94,8 +93,6 @@ const Glass: React.FC<GlassProps> = ({
           />
           <meshLambertMaterial
             color="#C0C0C0"
-            metalness={0.8}
-            roughness={0.2}
           />
         </mesh>
 
@@ -109,7 +106,6 @@ const Glass: React.FC<GlassProps> = ({
                 color="#F0F8FF"
                 transparent
                 opacity={0.3}
-                roughness={0.8}
               />
             </mesh>
           </>
@@ -124,7 +120,6 @@ const Glass: React.FC<GlassProps> = ({
                 color="#FF6347"
                 transparent
                 opacity={0.6}
-                roughness={0.2}
               />
             </mesh>
             <mesh position={[0.1, size[1] / 2 + 0.01, 0]}>
@@ -133,7 +128,6 @@ const Glass: React.FC<GlassProps> = ({
                 color="#32CD32"
                 transparent
                 opacity={0.6}
-                roughness={0.2}
               />
             </mesh>
             <mesh position={[-0.1, size[1] / 2 + 0.01, 0]}>
@@ -142,7 +136,6 @@ const Glass: React.FC<GlassProps> = ({
                 color="#FFD700"
                 transparent
                 opacity={0.6}
-                roughness={0.2}
               />
             </mesh>
           </>
@@ -155,8 +148,6 @@ const Glass: React.FC<GlassProps> = ({
               <boxGeometry args={[size[0] - 0.02, 0.01, thickness - 0.01]} />
               <meshLambertMaterial
                 color="#C0C0C0"
-                metalness={0.8}
-                roughness={0.3}
               />
             </mesh>
             {/* Wire pattern */}
@@ -164,8 +155,6 @@ const Glass: React.FC<GlassProps> = ({
               <boxGeometry args={[0.01, 0.01, thickness - 0.01]} />
               <meshLambertMaterial
                 color="#2F2F2F"
-                metalness={0.9}
-                roughness={0.1}
               />
             </mesh>
           </>
@@ -180,8 +169,6 @@ const Glass: React.FC<GlassProps> = ({
             color="#FFFFFF"
             transparent
             opacity={0.1}
-            roughness={0.05}
-            metalness={0.1}
           />
         </mesh>
       </group>

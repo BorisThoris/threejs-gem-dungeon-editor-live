@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { loadTextureFromImage } from "../../../utils/textureUtils";
 import withOptionalBreaking from "../../withOptionalBreaking";
+import type * as THREE from "three";
 
 export interface BrickProps {
   position?: [number, number, number];
@@ -50,7 +51,7 @@ const Brick: React.FC<BrickProps> = ({
   const details = getBrickDetails();
 
   // Load brick texture from image file
-  const [texture, setTexture] = useState(null);
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
 
   useEffect(() => {
     loadTextureFromImage("brick")
@@ -71,7 +72,6 @@ const Brick: React.FC<BrickProps> = ({
           <boxGeometry args={size} />
           <meshLambertMaterial
             color={details.color}
-            roughness={details.roughness}
             map={texture}
           />
         </mesh>
@@ -84,7 +84,7 @@ const Brick: React.FC<BrickProps> = ({
               <boxGeometry
                 args={[size[0] - 0.05, size[1] - 0.05, size[2] - 0.05]}
               />
-              <meshLambertMaterial color="#8B4513" roughness={0.9} />
+              <meshLambertMaterial color="#8B4513" />
             </mesh>
           </>
         )}
@@ -94,11 +94,11 @@ const Brick: React.FC<BrickProps> = ({
             {/* Moss patches */}
             <mesh position={[0.2, size[1] / 2, 0.1]}>
               <boxGeometry args={[0.1, 0.1, 0.05]} />
-              <meshLambertMaterial color="#228B22" roughness={0.8} />
+              <meshLambertMaterial color="#228B22" />
             </mesh>
             <mesh position={[-0.2, size[1] / 2, -0.1]}>
               <boxGeometry args={[0.08, 0.08, 0.03]} />
-              <meshLambertMaterial color="#228B22" roughness={0.8} />
+              <meshLambertMaterial color="#228B22" />
             </mesh>
             {/* Cracks */}
             <mesh position={[0, size[1] / 2, 0]}>
@@ -117,8 +117,6 @@ const Brick: React.FC<BrickProps> = ({
               />
               <meshLambertMaterial
                 color={details.color}
-                roughness={0.1}
-                metalness={0.1}
               />
             </mesh>
           </>

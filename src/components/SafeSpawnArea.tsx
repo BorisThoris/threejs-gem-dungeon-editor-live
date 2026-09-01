@@ -1,6 +1,6 @@
 import React from "react";
 import { RigidBody } from "@react-three/rapier";
-import { Text } from "@react-three/drei";
+import { Text } from "./GameText";
 
 interface SafeSpawnAreaProps {
   position: [number, number, number];
