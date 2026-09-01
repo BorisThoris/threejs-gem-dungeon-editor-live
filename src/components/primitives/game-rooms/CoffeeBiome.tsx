@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import { Text } from "../../GameText";
-import { refBasedPlayerState } from "../../../utils/refBasedPlayerState";
+import { useConsolidatedGameStore } from "../../../store/consolidatedGameStore";
 import { refBasedGameState } from "../../../utils/refBasedGameState";
 import { coffeeRoomUI } from "../../../utils/coffeeRoomUI";
 import {
@@ -41,8 +41,12 @@ const CoffeeBiome: React.FC<CoffeeBiomeProps> = ({ onRewardClaim }) => {
 
     // Apply speed boost using ref-based system (30 seconds per coffee)
     refBasedGameState.addBuff("speedBoost", "speed", 0.2, 30000); // 30 seconds in milliseconds
-    refBasedPlayerState.addPoints(20); // Reward points
-    refBasedPlayerState.addExperience(15); // Reward experience
+    // Pays into the one store the HUD reads. This used to reward
+    // refBasedPlayerState, a third stats object nothing displays, so the
+    // player got nothing they could see for finishing the room.
+    const { addPoints, addExperience } = useConsolidatedGameStore.getState();
+    addPoints(20);
+    addExperience(15);
 
     // Call reward callback
     onRewardClaim?.();

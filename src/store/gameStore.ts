@@ -1,4 +1,19 @@
 import { create } from 'zustand';
+import { useConsolidatedGameStore } from './consolidatedGameStore';
+
+// Every player statistic lives in the consolidated store. This one used to keep
+// its own copy - and so did refBasedPlayerState - which meant a run's score was
+// split across three objects depending on which store the room's author reached
+// for: GymBiome paid into this one, PressurePlatePuzzleBiome into the
+// consolidated one, CoffeeBiome into the ref class, and no screen summed them.
+// This store also had two score counters of its own, `playerStats.points` and
+// `totalScore`.
+//
+// Rather than rewrite 35 call sites, the stat actions here now forward to the
+// consolidated store, and the local `playerStats` is kept as a mirror of it
+// (see the subscription at the bottom of this file) so anything still reading
+// from here sees the truth.
+const consolidated = () => useConsolidatedGameStore.getState();
 import type { Item } from '../types/map';
 
 export interface PlayerDimensions {
@@ -188,101 +203,39 @@ const useGameStore = create<GameState & GameActions>((set, get) => ({
   gamePhase: 'exploration',
 
   updateStats: (stats) => {
-    set((state) => ({
-      playerStats: { ...state.playerStats, ...stats }
-    }));
+    consolidated().updateStats(stats);
   },
 
   addExperience: (amount) => {
-    set((state) => {
-      const newExp = state.playerStats.experience + amount;
-      const newLevel = Math.floor(newExp / 100) + 1;
-      const levelUp = newLevel > state.playerStats.level;
-      
-      return {
-        playerStats: {
-          ...state.playerStats,
-          experience: newExp,
-          level: newLevel,
-          maxLives: levelUp ? state.playerStats.maxLives + 1 : state.playerStats.maxLives,
-          lives: levelUp ? state.playerStats.maxLives + 1 : state.playerStats.lives,
-        }
-      };
-    });
+    consolidated().addExperience(amount);
   },
 
   addPoints: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        points: state.playerStats.points + amount
-      }
-    }));
+    consolidated().addPoints(amount);
   },
 
   loseLife: () => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        lives: Math.max(0, state.playerStats.lives - 1),
-        streak: 0 // Reset streak on death
-      }
-    }));
+    consolidated().loseLife();
   },
 
   gainLife: () => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        lives: Math.min(state.playerStats.maxLives, state.playerStats.lives + 1)
-      }
-    }));
+    consolidated().gainLife();
   },
 
   addKey: () => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        keys: state.playerStats.keys + 1
-      }
-    }));
+    consolidated().addKey();
   },
 
   useKey: () => {
-    const state = get();
-    if (state.playerStats.keys > 0) {
-      set((state) => ({
-        playerStats: {
-          ...state.playerStats,
-          keys: state.playerStats.keys - 1
-        }
-      }));
-      return true;
-    }
-    return false;
+    return consolidated().useKey();
   },
 
   addBomb: () => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        bombs: state.playerStats.bombs + 1
-      }
-    }));
+    consolidated().addBomb();
   },
 
   useBomb: () => {
-    const state = get();
-    if (state.playerStats.bombs > 0) {
-      set((state) => ({
-        playerStats: {
-          ...state.playerStats,
-          bombs: state.playerStats.bombs - 1
-        }
-      }));
-      return true;
-    }
-    return false;
+    return consolidated().useBomb();
   },
 
   updateStreak: (increment) => {
@@ -300,62 +253,28 @@ const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   // Character upgrades
   upgradeSize: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        size: Math.max(0.5, state.playerStats.size + amount),
-        maxLives: Math.max(3, state.playerStats.maxLives + Math.floor(amount * 2)) // Size increases max health
-      }
-    }));
+    consolidated().upgradeSize(amount);
   },
 
   upgradeSpeed: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        speed: Math.max(0.5, state.playerStats.speed + amount)
-      }
-    }));
+    consolidated().upgradeSpeed(amount);
   },
 
   upgradeStrength: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        strength: Math.max(0.5, state.playerStats.strength + amount)
-      }
-    }));
+    consolidated().upgradeStrength(amount);
   },
 
   upgradeDefense: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        defense: Math.max(0, state.playerStats.defense + amount)
-      }
-    }));
+    consolidated().upgradeDefense(amount);
   },
 
   upgradeLuck: (amount) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        luck: Math.max(0, state.playerStats.luck + amount)
-      }
-    }));
+    consolidated().upgradeLuck(amount);
   },
 
   // Temporary buffs
   addBuff: (buffType, duration) => {
-    set((state) => ({
-      playerStats: {
-        ...state.playerStats,
-        buffs: {
-          ...state.playerStats.buffs,
-          [buffType]: Math.max(state.playerStats.buffs[buffType], duration)
-        }
-      }
-    }));
+    consolidated().addBuff(buffType, duration);
   },
 
   updateBuffs: () => {
@@ -514,13 +433,7 @@ const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   addScore: (points) => {
-    set((state) => ({
-      totalScore: state.totalScore + points,
-      playerStats: {
-        ...state.playerStats,
-        points: state.playerStats.points + points
-      }
-    }));
+    consolidated().addPoints(points);
   },
 
   setGamePhase: (phase) => {
@@ -544,3 +457,14 @@ const useGameStore = create<GameState & GameActions>((set, get) => ({
 }));
 
 export default useGameStore;
+
+
+// Mirror the consolidated store's player stats into this one, so any remaining
+// reader of `useGameStore().playerStats` sees live values rather than a copy
+// that stopped changing when the writes were forwarded away.
+useConsolidatedGameStore.subscribe(
+  (state) => state.playerStats,
+  (playerStats) => {
+    useGameStore.setState({ playerStats: playerStats as GameState['playerStats'] });
+  }
+);
