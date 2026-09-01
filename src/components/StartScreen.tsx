@@ -7,6 +7,7 @@ import { Player } from "./Player";
 import { SafeSpawnArea } from "./SafeSpawnArea";
 import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
+import GamepadLook from "./GamepadLook";
 import RunManager from "./RunManager";
 import RunSummary from "./RunSummary";
 import GameAudio from "./GameAudio";
@@ -97,6 +98,7 @@ const GhostScene: React.FC = () => {
             inside the room subtree, a suspending texture permanently killed the
             detection loop. */}
         <RoomDetection />
+        <GamepadLook />
         <RunManager />
 
         <Suspense fallback={null}>

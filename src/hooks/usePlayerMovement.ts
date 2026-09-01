@@ -3,6 +3,7 @@ import { useThree } from "@react-three/fiber";
 import { Euler, Quaternion, Vector3 } from "three";
 import { usePhysicalKeyboard } from "./usePhysicalKeyboard";
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
+import { readGamepad } from "../utils/gamepad";
 
 interface UsePlayerMovementProps {
   isSpawned: boolean;
@@ -15,6 +16,8 @@ interface UsePlayerMovementProps {
 const MAX_FALL_SPEED = 25;
 
 const UP = new Vector3(0, 1, 0);
+
+const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
 
 export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementProps) => {
   const { camera } = useThree();
@@ -52,18 +55,31 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
       dash: keys["ShiftLeft"] || keys["ShiftRight"] || false,
     };
 
+    // The left stick contributes alongside the keys rather than replacing
+    // them, so a player can use either at any moment without a mode switch.
+    const pad = readGamepad();
+
     // Movement follows where the camera is facing, but only its yaw. Applying
     // the full camera quaternion folded pitch into the movement vector, so
     // looking at the floor slowed the player down and looking up sped them up.
     cameraEuler.current.setFromQuaternion(camera.quaternion, "YXZ");
     yawQuaternion.current.setFromAxisAngle(UP, cameraEuler.current.y);
 
-    const speed = dash ? 8 : 5;
-    frontVector.current.set(0, 0, +backward - +forward);
-    sideVector.current.set(+left - +right, 0, 0);
+    const speed = dash || pad.dash ? 8 : 5;
+
+    // Clamp rather than normalise, so a partly-deflected stick actually walks
+    // slower instead of snapping to full speed.
+    const inputZ = clampUnit(+backward - +forward + pad.moveY);
+    const inputX = clampUnit(+left - +right - pad.moveX);
+
+    frontVector.current.set(0, 0, inputZ);
+    sideVector.current.set(inputX, 0, 0);
+    direction.current.subVectors(frontVector.current, sideVector.current);
+
+    const magnitude = direction.current.length();
+    if (magnitude > 1) direction.current.divideScalar(magnitude);
+
     direction.current
-      .subVectors(frontVector.current, sideVector.current)
-      .normalize()
       .multiplyScalar(speed)
       .applyQuaternion(yawQuaternion.current);
 
