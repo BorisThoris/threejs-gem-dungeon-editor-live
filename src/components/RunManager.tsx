@@ -40,7 +40,7 @@ export function RunManager() {
       (lives) => {
         if (lives > 0 || resolved.current) return;
         resolved.current = true;
-        useConsolidatedGameStore.getState().disableMovement();
+        useConsolidatedGameStore.getState().resolveRun();
         gameEvents.emit(GAME_EVENTS.RUN_LOST, {
           ...useConsolidatedGameStore.getState().playerStats,
         });
@@ -59,7 +59,7 @@ export function RunManager() {
 
         resolved.current = true;
         const state = useConsolidatedGameStore.getState();
-        state.disableMovement();
+        state.resolveRun();
         gameEvents.emit(GAME_EVENTS.RUN_WON, { ...state.playerStats });
       }
     );

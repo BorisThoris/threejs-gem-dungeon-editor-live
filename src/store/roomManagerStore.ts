@@ -4,7 +4,7 @@ import type { RoomInstance, RoomManagerState, RoomManagerActions, RoomTransition
 import type { Room } from '../types/map';
 import useMapStore from './mapStore';
 // Note: playerMovementStore functionality moved to consolidatedGameStore
-import { calculatePlayerSpawnPosition } from '../utils/doorUtils';
+import { calculatePlayerSpawnPosition, PLAYER_SPAWN_HEIGHT } from '../utils/doorUtils';
 import * as THREE from 'three';
 
 const useRoomManagerStore = create<RoomManagerState & RoomManagerActions>((set, get) => ({
@@ -138,7 +138,7 @@ const useRoomManagerStore = create<RoomManagerState & RoomManagerActions>((set, 
     
     // Emit teleportation event for player to listen to
     if (targetRoom) {
-      const roomSize = targetRoom.size || 10;
+      const roomSize = targetRoom.actualSize || targetRoom.size || 10;
       
       // Use unified door utilities to calculate spawn position
       let { position, rotation } = calculatePlayerSpawnPosition(direction, roomSize);

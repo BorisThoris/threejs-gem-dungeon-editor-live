@@ -305,6 +305,50 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       });
     }, [currentRoom]);
 
+    // Where each doorway out of this room sits. Hoisted out of the render so
+    // that the scene and the dev probe below cannot disagree about it.
+    const doorPlacements = useMemo(() => {
+      if (!currentRoom) return [];
+      const roomSize =
+        currentRoom.actualSize || currentRoom.size || DEFAULT_ROOM_SIZE;
+      return connectedRooms.map((room: RoomData, index: number) => ({
+        room,
+        placement: calculateDoorPosition(
+          roomSize,
+          index,
+          connectedRooms.length,
+          currentRoom,
+          room
+        ),
+      }));
+    }, [connectedRooms, currentRoom]);
+
+    // Dev-only probe: the gem, hazards and doorways of the room the player is
+    // standing in, taken from the same values the scene renders from.
+    //
+    // An end-to-end test that walks the dungeon has to know where to walk. The
+    // previous smoke test re-derived the gem placement from the room id with a
+    // copy of the hash in the test file, which only ever proved the test agreed
+    // with itself - the game could move the gem and the test would still pass.
+    // Reading the real numbers costs one dev-only assignment. Stripped from
+    // production builds.
+    useEffect(() => {
+      if (!import.meta.env.DEV) return;
+      (window as any).__roomProbe = {
+        roomId: currentRoom?.id ?? null,
+        roomType: currentRoom?.type ?? null,
+        size: currentRoom
+          ? currentRoom.actualSize || currentRoom.size || DEFAULT_ROOM_SIZE
+          : null,
+        gem: gemPlacement?.position ?? null,
+        hazards: hazardPlacements,
+        doors: doorPlacements.map(({ room, placement }: any) => ({
+          roomId: room.id,
+          position: placement.position,
+        })),
+      };
+    }, [currentRoom, gemPlacement, hazardPlacements, doorPlacements]);
+
     // Memoized door state change handler
     const handleDoorStateChange = useCallback(
       (doorId: string, newState: string) => {
@@ -336,7 +380,12 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       return (
         <group>
           <RigidBody type="fixed" colliders="cuboid">
-            <mesh position={[0, -TRANSITION_FLOOR_Y, 0]} visible={false}>
+            {/* TRANSITION_FLOOR_Y is already the slab's centre, below ground.
+                Negating it put this floor at +1.5 instead: not a floor at all,
+                but a hidden slab hanging in the air exactly where an arriving
+                player is placed. They spawned inside it, physics pushed them
+                out of the bottom, and they came to rest underneath the room. */}
+            <mesh position={[0, TRANSITION_FLOOR_Y, 0]} visible={false}>
               <boxGeometry
                 args={[
                   TRANSITION_FLOOR_SIZE,
@@ -388,16 +437,10 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
         ))}
 
         {/* Render doors */}
-        {connectedRooms.map((room: RoomData, index: number) => {
+        {doorPlacements.map(({ room, placement }: any) => {
           if (!room) return null;
 
-          const doorPosition = calculateDoorPosition(
-            currentRoom?.actualSize || currentRoom?.size || DEFAULT_ROOM_SIZE,
-            index,
-            connectedRooms.length,
-            currentRoom,
-            room
-          );
+          const doorPosition = placement;
           const doorId = `door-${activeRoomId}-${room.id}`;
           const roomName = room.name || room.id;
 

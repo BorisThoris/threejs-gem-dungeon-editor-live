@@ -41,9 +41,20 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
     // accelerate off the bottom of the world.
     const yVelocity = Math.max(velocity.y, -MAX_FALL_SPEED);
 
-    // Check if movement is enabled (frozen during transitions)
+    // Frozen: hold the body completely still, vertical included.
+    //
+    // The freeze used to preserve `velocity.y` so a player caught mid-jump kept
+    // falling. During a room transition that is a trap: the player is set down
+    // above the incoming room and starts falling, the transition's catch floor
+    // unmounts, and the new room's floor has not mounted yet - so they drop
+    // through the gap and the floor appears above their head. They land on the
+    // world ground under the room, alive, upright, and unable to move in any
+    // direction for the rest of the run.
+    //
+    // Holding them in place costs a fraction of a second of hang time and means
+    // they only ever fall onto a floor that exists.
     if (!isMovementEnabled) {
-      rigidBody.setLinvel({ x: 0, y: yVelocity, z: 0 }, true);
+      rigidBody.setLinvel({ x: 0, y: 0, z: 0 }, true);
       return;
     }
 

@@ -82,7 +82,17 @@ export function Player({
     // Dev-only probe so player physics can be inspected from the console or a
     // headless browser. Stripped from production builds.
     if (import.meta.env.DEV) {
-      (window as any).__playerDebug = { x, y, z, linvel: ref.current.linvel() };
+      // `yaw` matters as much as the position: movement is applied relative to
+      // where the camera looks, and arriving in a room turns it to face inward,
+      // so the same key sends the player a different way than it did a moment
+      // earlier.
+      (window as any).__playerDebug = {
+        x,
+        y,
+        z,
+        yaw: new THREE.Euler().setFromQuaternion(state.camera.quaternion, "YXZ").y,
+        linvel: ref.current.linvel(),
+      };
     }
 
     // Update camera position

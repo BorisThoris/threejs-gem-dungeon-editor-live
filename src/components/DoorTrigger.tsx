@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
+import { DOOR_REARM_RADIUS, DOOR_TRIGGER_RADIUS } from "../utils/doorUtils";
 
 interface DoorTriggerProps {
   position: [number, number, number];
@@ -11,9 +12,10 @@ interface DoorTriggerProps {
   enabled?: boolean;
 }
 
-const TRIGGER_RADIUS = 1.5;
-/** Distance the player must back away before the doorway can fire again. */
-const REARM_RADIUS = 2.4;
+// Shared with the spawn maths in doorUtils, which has to place an arriving
+// player outside the radius of the doorway they just came through.
+const TRIGGER_RADIUS = DOOR_TRIGGER_RADIUS;
+const REARM_RADIUS = DOOR_REARM_RADIUS;
 
 /**
  * Walks the player through a doorway instead of making them click it.
@@ -30,9 +32,15 @@ export function DoorTrigger({
   onEnter,
   enabled = true,
 }: DoorTriggerProps) {
-  // Latches after firing so holding position in the doorway does not retrigger
-  // the transition every frame.
-  const armed = useRef(true);
+  // Starts disarmed, and the frame loop below arms it as soon as the player is
+  // clear of the doorway.
+  //
+  // Arriving in a room puts the player just inside the doorway they came
+  // through, and that doorway is a brand-new trigger: mounting it already armed
+  // meant it fired on the first frame and walked them straight back out. The
+  // rule that fixes it is also the honest one - you travel by walking *into* a
+  // doorway, not by being stood in one.
+  const armed = useRef(false);
 
   useFrame((state) => {
     const { isTransitioning, isMovementEnabled } =

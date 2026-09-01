@@ -68,7 +68,14 @@ const Room: React.FC<RoomProps> = memo(
     onRoomTransition,
     disableDoors = false,
   }) => {
-    const roomSize = room.size || 10;
+    // `actualSize`, not `size`: the generator gives rooms varying widths and
+    // records the real one in `actualSize`, and everything that places things in
+    // a room - doorways, the gem, trap hazards, and the spot an arriving player
+    // is put down on - measures from that. Only the walls and floor were still
+    // built from the nominal `size`, so in any room the generator widened, the
+    // doors and the gem sat outside the walls and walking through a door left
+    // the player standing in the void behind them, unable to walk back in.
+    const roomSize = room.actualSize || room.size || 10;
 
     // Solving a room's puzzle hands over that room's gem. Both of these
     // biomes already tracked completion; nothing was listening.
@@ -360,19 +367,21 @@ const Room: React.FC<RoomProps> = memo(
       >
         {/* Physical Floor with Collision - always a full solid slab for reliable
             physics. A zero-thickness plane trimesh lets fast bodies tunnel
-            straight through, which is how the player fell out of the world. */}
+            straight through, which is how the player fell out of the world.
+
+            It spans the full room rather than `room.width`/`room.height`: those
+            describe the decorative shape and are derived from the nominal size,
+            so a widened or a triangular room got a floor smaller than its own
+            walls. The player was set down inside the walls but past the edge of
+            the floor, dropped through the gap, and landed on the catch slab
+            underneath the room with no way back up. The shape is drawn by the
+            visual overlay below; the collider's job is to be under all of it. */}
         <RigidBody type="fixed" colliders="cuboid">
           <mesh
             position={[0, -roomHeight / 2 - FLOOR_THICKNESS / 2, 0]}
             receiveShadow
           >
-            <boxGeometry
-              args={[
-                room.width || roomSize,
-                FLOOR_THICKNESS,
-                room.height || roomSize,
-              ]}
-            />
+            <boxGeometry args={[roomSize, FLOOR_THICKNESS, roomSize]} />
             <meshLambertMaterial
               color={roomColor}
               transparent

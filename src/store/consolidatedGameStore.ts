@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import type { RoomInstance, RoomTransition } from '../types/roomInstance';
 import type { Room } from '../types/map';
 import useMapStore from './mapStore';
-import { calculatePlayerSpawnPosition } from '../utils/doorUtils';
+import { calculatePlayerSpawnPosition, PLAYER_SPAWN_HEIGHT } from '../utils/doorUtils';
 import { gameEvents, GAME_EVENTS } from '../utils/gameEvents';
 import * as THREE from 'three';
 
@@ -80,6 +80,11 @@ export interface GameState {
   
   // Player Movement (from playerMovementStore)
   isMovementEnabled: boolean;
+  /**
+   * Set once a run has been won or lost. The freeze that ends a run has to
+   * outlast anything else that hands movement back.
+   */
+  isRunResolved: boolean;
   fromRoomId: string | null;
   toRoomId: string | null;
   
@@ -114,6 +119,8 @@ export interface GameActions {
   // Player Movement
   enableMovement: () => void;
   disableMovement: () => void;
+  /** Ends the run: freezes the player and keeps them frozen. */
+  resolveRun: () => void;
   updateTransitionProgress: (progress: number) => void;
   
   // Player Stats
@@ -217,6 +224,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
     completedRooms: new Set(),
     collectedGemRooms: new Set(),
     isMovementEnabled: true,
+    isRunResolved: false,
     fromRoomId: null,
     toRoomId: null,
     playerStats: initialStats,
@@ -336,7 +344,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
       
       // Emit teleportation event for player to listen to; face toward room center
       if (targetRoom) {
-        const roomSize = targetRoom.size || 10;
+        const roomSize = targetRoom.actualSize || targetRoom.size || 10;
         let { position, rotation } = calculatePlayerSpawnPosition(direction, roomSize);
         const roomHalfSize = roomSize / 2;
 
@@ -347,7 +355,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
         
         if (!isWithinBounds) {
           console.warn('[Transition] Spawn out of bounds, falling back to center:', position.toArray());
-          position = new THREE.Vector3(0, 0.5, 0);
+          position = new THREE.Vector3(0, PLAYER_SPAWN_HEIGHT, 0);
           rotation = new THREE.Euler(0, 0, 0);
         }
 
@@ -368,7 +376,11 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
       // new room's colliders had mounted yet.
       const finishTransition = () => {
         set({
-          isMovementEnabled: true,
+          // Walking through the final door starts a transition and then wins the
+          // run, in that order - so this ran after the victory freeze and handed
+          // control straight back. The player could stroll around the exit room
+          // behind their own summary screen.
+          isMovementEnabled: !get().isRunResolved,
           isTransitioning: false,
           transitionProgress: 1,
           fromRoomId: null,
@@ -451,6 +463,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
     // Player Movement Actions
     enableMovement: () => set({ isMovementEnabled: true }),
     disableMovement: () => set({ isMovementEnabled: false }),
+    resolveRun: () => set({ isMovementEnabled: false, isRunResolved: true }),
     updateTransitionProgress: (progress: number) => set({
       transitionProgress: Math.max(0, Math.min(1, progress)),
     }),
@@ -846,6 +859,8 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
 
     resetGame: () => {
       set({
+        isRunResolved: false,
+        isMovementEnabled: true,
         playerStats: initialStats,
         gamePhase: 'exploration',
         globalBreakingEnabled: true,
