@@ -444,23 +444,12 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
       ) {
         // Hand stops at collision point (like CS weapon collision)
         targetPos = intersects[0].point.clone();
-        console.log(
-          "🖐️ PlayerHand: Camera raycast hit at distance:",
-          intersects[0].distance.toFixed(2)
-        );
       } else {
         // Hand extends to fixed distance if no collision
         targetPos = cameraPosition
           .clone()
           .add(rayDirection.multiplyScalar(handDistance.current));
 
-        // Debug: Log when grabbed objects are being ignored
-        if (grabbedObject) {
-          console.log(
-            "🖐️ PlayerHand: Ignoring grabbed object in raycast:",
-            grabbedObject.name || "unnamed"
-          );
-        }
       }
 
       // Smooth movement towards target
@@ -506,16 +495,6 @@ const PlayerHand: React.FC<PlayerHandProps> = ({
             .copy(direction)
             .multiplyScalar(velocityMagnitude);
 
-          // Debug velocity tracking (subtle, like Black & White)
-          if (velocityMagnitude > 0.005) {
-            // Scaled down threshold
-            // Only log when moving significantly
-            console.log(
-              "🖐️ Hand moving:",
-              velocityMagnitude.toFixed(3),
-              "units/sec"
-            );
-          }
         } else {
           // Hand is stationary - clear velocity immediately
           handVelocity.current.set(0, 0, 0);
