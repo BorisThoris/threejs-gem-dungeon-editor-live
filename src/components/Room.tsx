@@ -9,6 +9,10 @@ import {
 import * as THREE from "three";
 import type { Room as RoomType, Item } from "../types/map";
 import { RoomType as RoomTypeValues } from "../types/map";
+
+// Floor slabs are solid boxes rather than plane trimeshes so that a body
+// moving fast cannot tunnel through them between physics steps.
+const FLOOR_THICKNESS = 1;
 import BiomeWallRenderer from "./BiomeWallRenderer";
 import { getBiomeWallConfig } from "../types/biomeWalls";
 import ItemSprite from "./primitives/objects/ItemSprite";
@@ -347,15 +351,20 @@ const Room: React.FC<RoomProps> = memo(
         scale={scale}
         rotation={[0, room.rotation || 0, 0]}
       >
-        {/* Physical Floor with Collision - always full square for reliable physics */}
-        <RigidBody type="fixed" colliders="trimesh">
+        {/* Physical Floor with Collision - always a full solid slab for reliable
+            physics. A zero-thickness plane trimesh lets fast bodies tunnel
+            straight through, which is how the player fell out of the world. */}
+        <RigidBody type="fixed" colliders="cuboid">
           <mesh
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, -roomHeight / 2, 0]}
+            position={[0, -roomHeight / 2 - FLOOR_THICKNESS / 2, 0]}
             receiveShadow
           >
-            <planeGeometry
-              args={[room.width || roomSize, room.height || roomSize]}
+            <boxGeometry
+              args={[
+                room.width || roomSize,
+                FLOOR_THICKNESS,
+                room.height || roomSize,
+              ]}
             />
             <meshLambertMaterial
               color={roomColor}
@@ -421,7 +430,7 @@ const Room: React.FC<RoomProps> = memo(
         )}
 
         {/* Roof */}
-        <RigidBody type="fixed" colliders="trimesh">
+        <RigidBody type="fixed" colliders="cuboid">
           <mesh
             position={[0, wallHeight, 0]}
             rotation={[0, 0, 0]}
@@ -438,14 +447,17 @@ const Room: React.FC<RoomProps> = memo(
           </mesh>
         </RigidBody>
 
-        {/* Safety Ground Plane - prevents falling through floor */}
-        <RigidBody type="fixed" colliders="trimesh">
+        {/* Safety Ground Slab - the backstop under the room floor. This was a
+            zero-thickness plane, which a falling body passes straight through;
+            it only works as a backstop if it has volume. */}
+        <RigidBody type="fixed" colliders="cuboid">
           <mesh
-            position={[0, -roomHeight / 2 - 1, 0]}
-            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -roomHeight / 2 - 1 - FLOOR_THICKNESS / 2, 0]}
             receiveShadow
           >
-            <planeGeometry args={[roomSize * 2, roomSize * 2]} />
+            <boxGeometry
+              args={[roomSize * 2, FLOOR_THICKNESS, roomSize * 2]}
+            />
             <meshLambertMaterial color="#4A4A4A" transparent opacity={0.1} />
           </mesh>
         </RigidBody>

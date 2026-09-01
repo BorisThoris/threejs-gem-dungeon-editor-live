@@ -7,6 +7,10 @@ import { calculatePlayerSpawnPosition } from '../utils/doorUtils';
 import { gameEvents, GAME_EVENTS } from '../utils/gameEvents';
 import * as THREE from 'three';
 
+// Only used if the destination room never reports itself loaded; the normal
+// path completes as soon as the room is on screen.
+const TRANSITION_FALLBACK_MS = 1500;
+
 // ============================================================================
 // CONSOLIDATED GAME STORE
 // ============================================================================
@@ -245,8 +249,6 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
           isTransitioning: false,
         };
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
         roomInstance.isLoaded = true;
         roomInstance.loadedAt = Date.now();
 
@@ -348,8 +350,10 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
         gameEvents.emit(GAME_EVENTS.CAMERA_SET_ROTATION, { x: rotation.x, y: rotation.y, z: rotation.z });
       }
       
-      // Complete transition and re-enable movement after a delay
-      setTimeout(() => {
+      // Complete the transition once the destination room is actually loaded,
+      // rather than after a fixed delay that had no relationship to whether the
+      // new room's colliders had mounted yet.
+      const finishTransition = () => {
         set({
           isMovementEnabled: true,
           isTransitioning: false,
@@ -358,7 +362,18 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
           toRoomId: null,
         });
         get().unloadRoom(fromRoomId);
-      }, 1500);
+      };
+
+      const destination = get().roomInstances.get(toRoomId);
+      if (destination?.isLoaded) {
+        // Give React one paint to mount the room subtree before handing control
+        // back, so the player is never unfrozen above an unmounted floor.
+        requestAnimationFrame(() => requestAnimationFrame(finishTransition));
+      } else {
+        // Destination never reported loaded - fall back to the old fixed delay
+        // rather than leaving the player frozen forever.
+        setTimeout(finishTransition, TRANSITION_FALLBACK_MS);
+      }
     },
 
     completeTransition: () => {

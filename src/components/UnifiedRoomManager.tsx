@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useCallback, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
+import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
 // Store imports - consolidated
@@ -48,6 +49,14 @@ const DEFAULT_ROOM_SIZE = 10;
 const WALL_THICKNESS = 0.2;
 const GROUND_LEVEL = -0.5;
 const DOOR_HEIGHT_OFFSET = 1.25;
+
+// Catch floor rendered while a room is swapping in. Generously sized because
+// the player is teleported to an edge spawn of the incoming room, which can be
+// well outside the previous room's footprint.
+const TRANSITION_FLOOR_SIZE = 200;
+const TRANSITION_FLOOR_THICKNESS = 2;
+// Centre it so the slab's top surface sits at the normal standing height.
+const TRANSITION_FLOOR_Y = GROUND_LEVEL - TRANSITION_FLOOR_THICKNESS / 2;
 
 // Memoized door position calculator
 const calculateDoorPosition = (
@@ -340,10 +349,27 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       [startTransition]
     );
 
-    // Show loading/transition state
+    // Show loading/transition state.
+    // The room subtree (and every collider in it) is unmounted here, so this
+    // branch MUST provide its own floor - otherwise the player spends the whole
+    // transition falling through an empty world, which is exactly what used to
+    // happen.
     if (activeTransitioning) {
       return (
         <group>
+          <RigidBody type="fixed" colliders="cuboid">
+            <mesh position={[0, -TRANSITION_FLOOR_Y, 0]} visible={false}>
+              <boxGeometry
+                args={[
+                  TRANSITION_FLOOR_SIZE,
+                  TRANSITION_FLOOR_THICKNESS,
+                  TRANSITION_FLOOR_SIZE,
+                ]}
+              />
+              <meshBasicMaterial color="#000000" />
+            </mesh>
+          </RigidBody>
+
           <mesh position={[0, 2, 0]}>
             <planeGeometry args={[8, 4]} />
             <meshBasicMaterial color="#000000" transparent opacity={0.8} />

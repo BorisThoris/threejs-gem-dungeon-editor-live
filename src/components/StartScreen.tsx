@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics, RigidBody } from "@react-three/rapier";
 import { Environment } from "@react-three/drei";
@@ -21,22 +21,16 @@ import GameInitializer from "./GameInitializer";
 
 // First-person controls handled by FirstPersonPlayer component
 
+// A trimesh built from a plane has zero thickness, so a fast-moving body can
+// pass straight through it. Every floor in the game is a solid box instead.
+const GROUND_THICKNESS = 1;
+
 // Ground Plane Component
 const Ground: React.FC = () => {
   return (
-    <RigidBody type="fixed" colliders="trimesh">
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -2, 0]}
-        receiveShadow
-        onClick={() => {
-          // Floor clicked
-        }}
-        onPointerOver={() => {
-          // Floor hovered
-        }}
-      >
-        <planeGeometry args={[50, 50]} />
+    <RigidBody type="fixed" colliders="cuboid">
+      <mesh position={[0, -2 - GROUND_THICKNESS / 2, 0]} receiveShadow>
+        <boxGeometry args={[50, GROUND_THICKNESS, 50]} />
         <meshLambertMaterial color="#2d5016" />
       </mesh>
     </RigidBody>
@@ -46,13 +40,9 @@ const Ground: React.FC = () => {
 // Safety Floor - very large invisible catch plane to prevent falling
 const SafetyFloor: React.FC = () => {
   return (
-    <RigidBody type="fixed" colliders="trimesh">
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -10, 0]}
-        visible={false}
-      >
-        <planeGeometry args={[2000, 2000]} />
+    <RigidBody type="fixed" colliders="cuboid">
+      <mesh position={[0, -11, 0]} visible={false}>
+        <boxGeometry args={[2000, 2, 2000]} />
         <meshBasicMaterial color="#000000" transparent opacity={0} />
       </mesh>
     </RigidBody>
@@ -65,8 +55,11 @@ const GhostScene: React.FC = () => {
   useCameraController();
   return (
     <>
-      {/* Environment */}
-      <Environment files="./night.hdr" ground={{ scale: 100 }} />
+      {/* Environment. Isolated: if the HDR is slow or missing it must not stop
+          the player and floors from mounting. */}
+      <Suspense fallback={null}>
+        <Environment files="./night.hdr" ground={{ scale: 100 }} />
+      </Suspense>
 
       {/* Lighting */}
       <ambientLight intensity={0.2} />
@@ -80,21 +73,29 @@ const GhostScene: React.FC = () => {
       </directionalLight>
 
       {/* Physics World */}
-      <Physics timeStep="vary" gravity={[0, -9.81, 0]}>
-        {/* Safe Spawn Area */}
-        <SafeSpawnArea position={[0, 0, 0]} size={8} />
-
-        {/* Safe First Person Player */}
+      {/*
+        Fixed timestep, not "vary": a variable timestep hands Rapier the whole
+        wall-clock delta after any hitch, which integrates a huge amount of
+        gravity in a single step and tunnels the player straight through the
+        floor.
+      */}
+      <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
+        {/* The player and the floors mount first and unconditionally. Anything
+            that loads an asset goes inside its own Suspense boundary below, so
+            a slow font or texture can never leave the player standing in an
+            empty world - or, as it did, stop the scene mounting at all. */}
         <Player initialSpawnPosition={[0, 1.5, 0]} showDebugInfo={false} />
-
-        {/* Room Instance Manager - Single room at a time */}
-        <UnifiedRoomManager mode="instance" />
-
-        {/* Ground */}
         <Ground />
-
-        {/* Safety catch floor (invisible) */}
         <SafetyFloor />
+
+        <Suspense fallback={null}>
+          <SafeSpawnArea position={[0, 0, 0]} size={8} />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          {/* Room Instance Manager - Single room at a time */}
+          <UnifiedRoomManager mode="instance" />
+        </Suspense>
       </Physics>
     </>
   );
@@ -221,7 +222,6 @@ const StartScreenContent: React.FC = () => {
               }}
               dpr={[1, 2]}
               performance={{ min: 0.5 }}
-              frameloop="demand"
               onCreated={({ gl, scene, camera }) => {
                 // Canvas created successfully
               }}

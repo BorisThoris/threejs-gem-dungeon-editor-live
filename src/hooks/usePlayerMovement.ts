@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useThree } from "@react-three/fiber";
-import { Vector3 } from "three";
+import { Euler, Quaternion, Vector3 } from "three";
 import { usePhysicalKeyboard } from "./usePhysicalKeyboard";
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
 
@@ -9,24 +9,38 @@ interface UsePlayerMovementProps {
   editorMode: boolean;
 }
 
+// Terminal velocity. Even with a fixed timestep and CCD, an unbounded fall
+// speed eventually outruns collision detection; capping it keeps every step
+// well inside the thickness of the floor slabs.
+const MAX_FALL_SPEED = 25;
+
+const UP = new Vector3(0, 1, 0);
+
 export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementProps) => {
   const { camera } = useThree();
   const keys = usePhysicalKeyboard();
   const { isMovementEnabled } = useConsolidatedGameStore();
 
-  // Reusable vectors to avoid garbage collection
+  // Reusable objects to avoid garbage collection
   const frontVector = useRef(new Vector3());
   const sideVector = useRef(new Vector3());
   const direction = useRef(new Vector3());
+  const cameraEuler = useRef(new Euler(0, 0, 0, "YXZ"));
+  const yawQuaternion = useRef(new Quaternion());
 
   const handleMovement = (rigidBody: any) => {
     if (!isSpawned || !rigidBody || editorMode) return;
 
+    const velocity = rigidBody.linvel();
+
+    // Clamp downward speed before anything else, so it applies during
+    // transitions and cutscenes too - that is exactly when the player used to
+    // accelerate off the bottom of the world.
+    const yVelocity = Math.max(velocity.y, -MAX_FALL_SPEED);
+
     // Check if movement is enabled (frozen during transitions)
     if (!isMovementEnabled) {
-      // Stop any existing movement
-      const velocity = rigidBody.linvel();
-      rigidBody.setLinvel({ x: 0, y: velocity.y, z: 0 }, true);
+      rigidBody.setLinvel({ x: 0, y: yVelocity, z: 0 }, true);
       return;
     }
 
@@ -38,9 +52,12 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
       dash: keys["ShiftLeft"] || keys["ShiftRight"] || false,
     };
 
-    const velocity = rigidBody.linvel();
+    // Movement follows where the camera is facing, but only its yaw. Applying
+    // the full camera quaternion folded pitch into the movement vector, so
+    // looking at the floor slowed the player down and looking up sped them up.
+    cameraEuler.current.setFromQuaternion(camera.quaternion, "YXZ");
+    yawQuaternion.current.setFromAxisAngle(UP, cameraEuler.current.y);
 
-    // Calculate movement (slower speeds) - reuse vectors
     const speed = dash ? 8 : 5;
     frontVector.current.set(0, 0, +backward - +forward);
     sideVector.current.set(+left - +right, 0, 0);
@@ -48,12 +65,8 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
       .subVectors(frontVector.current, sideVector.current)
       .normalize()
       .multiplyScalar(speed)
-      .applyQuaternion(camera.quaternion);
+      .applyQuaternion(yawQuaternion.current);
 
-    // No jumping - keep current Y velocity
-    const yVelocity = velocity.y;
-
-    // Apply movement
     rigidBody.setLinvel(
       { x: direction.current.x, y: yVelocity, z: direction.current.z },
       true

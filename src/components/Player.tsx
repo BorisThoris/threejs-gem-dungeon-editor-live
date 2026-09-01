@@ -79,6 +79,12 @@ export function Player({
     const playerPosition = new THREE.Vector3(x, y, z);
     playerPositionRef.current = [x, y, z];
 
+    // Dev-only probe so player physics can be inspected from the console or a
+    // headless browser. Stripped from production builds.
+    if (import.meta.env.DEV) {
+      (window as any).__playerDebug = { x, y, z, linvel: ref.current.linvel() };
+    }
+
     // Update camera position
     updateCameraPosition(playerPosition);
 
@@ -98,6 +104,9 @@ export function Player({
         colliders={false}
         mass={50}
         type="dynamic"
+        // Continuous collision detection: without it a body that moves further
+        // than a collider is thick in one step passes through it entirely.
+        ccd
         position={spawnPosition}
         enabledRotations={[false, false, false]}
         lockRotations
