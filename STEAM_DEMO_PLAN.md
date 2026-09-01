@@ -296,3 +296,93 @@ Run rules live in `src/configs/runRules.ts`:
 
 Which rooms the demo generates: `DEMO_ROOM_TYPES` in
 `src/configs/mapGeneration.ts`.
+
+---
+
+## 6. What walking the dungeon found
+
+`scripts/smoke-test.mjs` proved the loop was wired together, but it moved the
+player with `playerTeleport` events and located each gem by re-deriving the
+placement hash in the test file. Both hid faults: teleporting sets a position
+directly, so it never exercises movement, collision, or arrival in a room, and a
+test that recomputes the game's own formula agrees with itself no matter what the
+game does.
+
+`scripts/seeded-run.mjs` plays instead - W/A/S/D, walking over gems, walking
+through doorways - and reads every position out of the running scene. Dungeon
+generation is now seeded (`?seed=`), so each of the following was reproducible
+before it was fixed, and the test moved one room further after each one.
+
+### 6.1 The player was set down inside the floor on every transition
+
+`calculatePlayerSpawnPosition` returned `y = 0.5`. The player capsule is 1.1
+units tall from its centre and room floors are solid slabs, so arriving put the
+capsule 0.6 units inside the floor; Rapier resolved the overlap downwards and
+the player finished the transition underneath the room. Movement still ran and
+still set a velocity every frame - the body simply had nowhere to go. Walking
+through the first door ended the run's mobility permanently.
+
+The old smoke test could not see this: it teleports the player to `y = 2.5`
+after every transition, which is exactly the correction the bug needed.
+
+### 6.2 Arriving spawned the player in the doorway on the far wall
+
+`direction` is the way the player travelled, so travelling north means entering
+through the new room's *south* wall. The spawn used the north edge - the far
+side of the room, standing inside the doorway that leads out the other end. That
+trigger fired on the next frame and travelled again. One step north out of the
+start room carried the player through three rooms without a key being pressed,
+and the rooms in between were never explored and never marked visited.
+
+A doorway now also starts disarmed and arms only once the player is clear of it,
+so travel means walking *into* a doorway rather than being stood in one.
+
+### 6.3 The transition's catch floor was above the ground, not below it
+
+`TRANSITION_FLOOR_Y` is already the slab's centre, below ground level. It was
+rendered at `-TRANSITION_FLOOR_Y`, which put a hidden 2-unit slab at `+1.5` -
+exactly where an arriving player is placed. It caught nothing, and the player
+was pushed out of the bottom of it.
+
+### 6.4 Rooms were built at one size and furnished at another
+
+The generator gives rooms varying widths and records the real one in
+`actualSize`. Doorways, the gem, trap hazards and the arrival spot all measured
+from `actualSize`; only `Room.tsx` still built its walls and floor from the
+nominal `size`. In every widened room the doors and the gem sat outside the
+walls, and walking through a door left the player in the void behind them. The
+collision floor also spanned `room.width`/`room.height` - the decorative shape,
+derived from the nominal size - so a widened or triangular room had a floor
+smaller than its own walls and a gap to fall through at the edges.
+
+### 6.5 The exit could be placed inside another room
+
+`createEndRoom` dropped the exit at a hardcoded `z = roomSize * 3` without
+checking whether anything was there. When generation had already filled that
+cell, two rooms shared one position, and door placement - which works from the
+vector between two rooms - put both of that room's doorways on the same wall.
+The exit is now placed in a free cell beside the room furthest from the start,
+and claims that cell.
+
+### 6.6 Winning gave control straight back
+
+Walking through the final door starts a transition and then wins the run, in
+that order, so the transition's completion re-enabled movement after the victory
+freeze. The player could walk around the exit room behind their own summary
+screen. The run-end freeze is now recorded in the store and outlives anything
+else that hands movement back.
+
+### Still open
+
+- **Trap rooms can be inescapable.** Hazards are placed in a ring at
+  `roomSize / 2 - 3.5`, which in a 16-unit room is the same radius as the props
+  the biome furnishes it with. A player blocked by a crate there is standing on
+  spikes, and loses a life every cooldown until the run ends. Seeds `demo-run-1`
+  and `alpha-7` both fail this way.
+- **`yarn check-types` fails at 141 against a baseline of 138**, unchanged by
+  this work - the same three errors are present at `8060fd4`. Two of them are
+  `Cannot find module 'fs'/'path'` in `primitiveScanner.ts`, which look like a
+  missing `@types/node` rather than a code change.
+- The walk itself is not perfectly reliable in heavily furnished rooms. It
+  sidesteps obstacles and retries a doorway three times, which is enough for the
+  default seed, but a cluttered room can still stall it.

@@ -14,10 +14,41 @@
  * is not at the Playwright default.
  */
 import { chromium } from 'playwright-core';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+/** Playwright's own Chromium, wherever this platform keeps it. */
+function findChromium() {
+  const roots = [
+    process.env.PLAYWRIGHT_BROWSERS_PATH,
+    '/opt/pw-browsers',
+    process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, 'ms-playwright'),
+    process.env.HOME && join(process.env.HOME, '.cache', 'ms-playwright'),
+  ].filter(Boolean);
+
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    const builds = readdirSync(root)
+      .filter((entry) => entry.startsWith('chromium-'))
+      .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]));
+    for (const build of builds) {
+      const candidates = [
+        'chrome-win/chrome.exe',
+        'chrome-linux/chrome',
+        'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+      ];
+      for (const candidate of candidates) {
+        const executable = join(root, build, candidate);
+        if (existsSync(executable)) return executable;
+      }
+    }
+  }
+  return undefined;
+}
 
 const PORT = process.argv[2] || process.env.PORT || '5199';
-const CHROMIUM = process.env.CHROMIUM_PATH ||
-  '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+// Playwright keeps its browsers somewhere different on every platform.
+const CHROMIUM = process.env.CHROMIUM_PATH || findChromium();
 let failures = 0;
 const b = await chromium.launch({
   executablePath: CHROMIUM,
@@ -32,7 +63,10 @@ const ok = (label, cond, detail = '') => {
   console.log(`${cond ? 'PASS' : 'FAIL'}  ${label}${detail ? '  - ' + detail : ''}`);
 };
 
-await p.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load', timeout: 60000 }).catch(() => {});
+// `localhost`, not `127.0.0.1`: Vite binds ::1 on Windows, so the IPv4 host
+// connects to nothing. Swallowing the navigation error then made that look
+// like thirteen unrelated gameplay failures.
+await p.goto(`http://localhost:${PORT}/`, { waitUntil: 'load', timeout: 60000 });
 await p.waitForTimeout(2500);
 
 ok('main menu appears before gameplay', await p.evaluate(() => /start/i.test(document.body.innerText)));

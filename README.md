@@ -119,8 +119,26 @@ yarn dev --port 5199        # one terminal
 node scripts/smoke-test.mjs # another
 ```
 
-It needs `playwright-core` and a Chromium binary, which are deliberately not
-project dependencies - run it before shipping a build, not on every commit.
+`scripts/seeded-run.mjs` plays a whole run instead of simulating one. It presses
+W/A/S/D, walks over gems to pick them up, walks through doorways to travel, and
+keeps going until it walks out through the end door - asserting the dungeon is
+reproducible, that the keys move the player, that gems are collected by touching
+them, that the exit charges its toll and that the run ends in a victory summary.
+It reads every position out of the running scene rather than recomputing the
+game's own formulas, so it cannot quietly agree with itself.
+
+```bash
+node scripts/seeded-run.mjs                 # the default dungeon
+node scripts/seeded-run.mjs --seed x42      # a different one
+node scripts/seeded-run.mjs --verbose       # narrate every move
+```
+
+The dungeon is seeded from `?seed=` on the URL, so a run is reproducible: the
+same seed lays out the same rooms, and a failure can be replayed by opening the
+game at that seed and walking it yourself.
+
+Both need `playwright-core` and a Chromium binary, which are deliberately not
+project dependencies - run them before shipping a build, not on every commit.
 
 ## Desktop Packaging
 
