@@ -131,7 +131,7 @@ export function OverlayUI({
           pointerEvents: "none",
         }}
       >
-        WASD to move • Right-click and hold to look around • X to pause
+        WASD to move • Right-click and hold to look around • E to use doors and objects • X to pause
       </div>
     </div>
   );

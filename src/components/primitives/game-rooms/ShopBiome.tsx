@@ -3,8 +3,9 @@ import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
+import InteractTrigger from "../../InteractTrigger";
+import { useConsolidatedGameStore } from "../../../store/consolidatedGameStore";
+import { GEMS_PER_LIFE } from "../../../configs/runRules";
 
 interface ShopBiomeProps {
   size?: number;
@@ -17,15 +18,27 @@ const ShopBiome: React.FC<ShopBiomeProps> = ({ onShopOpen, size = 10 }) => {
   );
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
-  const [shopOpen, setShopOpen] = useState(false);
+  const [bought, setBought] = useState(0);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "shop",
-    onShopOpen: () => {
-      setShopOpen(true);
-      onShopOpen?.();
-    },
-  });
+  // The shop is where the run's two currencies meet. Gems were only ever spent
+  // at the exit and lives could only ever be lost, so the shopkeeper stood in a
+  // room with nothing to sell and no way to be spoken to: the only way in was
+  // an action-card overlay that renders nothing at all.
+  const gems = useConsolidatedGameStore((state) => state.playerStats.gems);
+  const lives = useConsolidatedGameStore((state) => state.playerStats.lives);
+  const maxLives = useConsolidatedGameStore((state) => state.playerStats.maxLives);
+  const spendGems = useConsolidatedGameStore((state) => state.spendGems);
+  const gainLife = useConsolidatedGameStore((state) => state.gainLife);
+
+  const canAfford = gems >= GEMS_PER_LIFE;
+  const needsLife = lives < maxLives;
+
+  const buyLife = () => {
+    if (!needsLife || !spendGems(GEMS_PER_LIFE)) return;
+    gainLife();
+    setBought((n) => n + 1);
+    onShopOpen?.();
+  };
 
   return (
     <group>
@@ -100,7 +113,9 @@ const ShopBiome: React.FC<ShopBiomeProps> = ({ onShopOpen, size = 10 }) => {
         outlineWidth={0.03}
         outlineColor="#000000"
       >
-        {shopOpen ? "Shop is open!" : "Use action cards below to browse items!"}
+        {needsLife
+          ? `${GEMS_PER_LIFE} gem restores a life`
+          : "You are at full health"}
       </Text>
 
       {/* Shop Info */}
@@ -113,21 +128,22 @@ const ShopBiome: React.FC<ShopBiomeProps> = ({ onShopOpen, size = 10 }) => {
         outlineWidth={0.02}
         outlineColor="#000000"
       >
-        {shopOpen
-          ? "Browse and purchase items!"
-          : "Buy items to enhance your abilities!"}
+        {bought > 0
+          ? `Thank you. ${bought} life${bought > 1 ? "s" : ""} restored.`
+          : `You carry ${gems} gem${gems === 1 ? "" : "s"}`}
       </Text>
 
-      {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "browse") {
-            setShopOpen(true);
-            hideCards();
-          }
-        }}
+      {/* Step up to the counter and press E, the same verb as every door. */}
+      <InteractTrigger
+        position={[0, 0, 2]}
+        label={`Buy a life (${GEMS_PER_LIFE} gem)`}
+        onInteract={buyLife}
+        enabled={canAfford && needsLife}
+        blockedReason={
+          !needsLife
+            ? "Already at full health"
+            : `Needs ${GEMS_PER_LIFE} gem (${gems}/${GEMS_PER_LIFE})`
+        }
       />
     </group>
   );

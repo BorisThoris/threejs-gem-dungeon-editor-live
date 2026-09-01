@@ -3,8 +3,6 @@ import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 interface BedroomBiomeProps {
   size?: number;
@@ -24,13 +22,6 @@ const BedroomBiome: React.FC<BedroomBiomeProps> = ({
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "bedroom",
-    onRestComplete: () => {
-      setWellRested(true);
-      onRestComplete?.();
-    },
-  });
 
   return (
     <group>
@@ -147,16 +138,6 @@ const BedroomBiome: React.FC<BedroomBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "rest") {
-            setResting(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

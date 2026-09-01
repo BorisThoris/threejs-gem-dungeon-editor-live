@@ -3,8 +3,6 @@ import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 interface KitchenBiomeProps {
   size?: number;
@@ -24,13 +22,6 @@ const KitchenBiome: React.FC<KitchenBiomeProps> = ({
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "kitchen",
-    onCookingComplete: () => {
-      setMealReady(true);
-      onCookingComplete?.();
-    },
-  });
 
   return (
     <group>
@@ -142,16 +133,6 @@ const KitchenBiome: React.FC<KitchenBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "start_cooking") {
-            setCooking(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

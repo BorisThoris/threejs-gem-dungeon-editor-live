@@ -3,8 +3,6 @@ import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 interface WorkshopBiomeProps {
   size?: number;
@@ -24,13 +22,6 @@ const WorkshopBiome: React.FC<WorkshopBiomeProps> = ({
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "workshop",
-    onCraftComplete: () => {
-      setItemCrafted(true);
-      onCraftComplete?.();
-    },
-  });
 
   return (
     <group>
@@ -163,16 +154,6 @@ const WorkshopBiome: React.FC<WorkshopBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "start_crafting") {
-            setCrafting(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

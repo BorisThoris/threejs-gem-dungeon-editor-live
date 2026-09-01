@@ -4,8 +4,6 @@ import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 import * as THREE from "three";
 
 interface ObservatoryBiomeProps {
@@ -30,13 +28,6 @@ const ObservatoryBiome: React.FC<ObservatoryBiomeProps> = ({
   const telescopeRef = useRef<THREE.Mesh>(null);
   const starRefs = useRef<THREE.Mesh[]>([]);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "observatory",
-    onObservationComplete: () => {
-      setDiscoveryMade(true);
-      onObservationComplete?.();
-    },
-  });
 
   // Animation frame for cosmic effects
   useFrame((state) => {
@@ -248,16 +239,6 @@ const ObservatoryBiome: React.FC<ObservatoryBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "observe_stars") {
-            setObserving(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

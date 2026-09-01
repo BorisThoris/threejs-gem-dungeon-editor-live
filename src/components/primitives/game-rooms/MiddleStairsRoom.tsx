@@ -3,7 +3,22 @@ import { Box, Cylinder, Sphere, Html } from "@react-three/drei";
 import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
-import RoomActionCards, { type ActionCard } from "../../RoomActionCards";
+
+/**
+ * The shape the room's action list used to be handed to the card overlay in.
+ * The overlay is gone - it rendered null unconditionally - but the list is
+ * still what this room uses to describe what it offers.
+ */
+interface ActionCard {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  action: () => void;
+  disabled?: boolean;
+  cost?: number;
+  cooldown?: number;
+}
 import { Tile, Stair, Handrail } from "../elements";
 
 interface MiddleStairsRoomProps {
@@ -632,21 +647,6 @@ const MiddleStairsRoom: React.FC<MiddleStairsRoomProps> = ({
             pointerEvents: "auto",
           }}
         >
-          <RoomActionCards
-            cards={cards}
-            isVisible={isVisible}
-            onCardClick={(card) => {
-              if (card.id === "climb") {
-                setHasClimbed(true);
-                hideCards();
-              } else if (card.id === "descend") {
-                setHasDescended(true);
-                hideCards();
-              } else if (card.id === "examine") {
-                hideCards();
-              }
-            }}
-          />
         </div>
       </Html>
     </group>

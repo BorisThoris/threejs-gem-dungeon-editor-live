@@ -1,12 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Text } from "../../GameText";
 import { useFrame } from "@react-three/fiber";
 import type { Item } from "../../../types/map";
 import ItemSprite from "../objects/ItemSprite";
-import OptimizedPuzzleRouter from "../../OptimizedPuzzleRouter";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
+import InteractTrigger from "../../InteractTrigger";
+import { uiEvents, UI_EVENTS } from "../../../utils/uiEvents";
 import * as THREE from "three";
 
 interface LibraryBiomeProps {
@@ -19,14 +18,25 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
   const [showPuzzle, setShowPuzzle] = useState(false);
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
 
+  /**
+   * The puzzle is drawn by PuzzleOverlay, out in the DOM layer. This room used
+   * to render OptimizedPuzzleRouter itself, from inside the R3F canvas, where
+   * its <div>s and <span>s are not valid three.js objects - it threw the
+   * moment it was opened. It was never opened, because the only trigger was an
+   * action card that rendered nothing.
+   */
+  const openPuzzle = () => {
+    setShowPuzzle(true);
+    uiEvents.emit(UI_EVENTS.PUZZLE_OPEN, {
+      puzzleType: "number",
+      difficulty: "hard",
+    });
+  };
+
   // Refs for animated elements
   const bookRefs = useRef<THREE.Mesh[]>([]);
   const tableRef = useRef<THREE.Mesh>(null);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "library",
-    onPuzzleStart: () => setShowPuzzle(true),
-  });
 
   // Animation frame for magical effects
   useFrame((state) => {
@@ -57,7 +67,7 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
 
   // Create simple bookshelf models instead of loading VOX
 
-  const handlePuzzleComplete = () => {
+  const handlePuzzleComplete = useCallback(() => {
     setPuzzleCompleted(true);
     setSelectedBook(books[0]); // Use first book as example
     setIsReading(true);
@@ -68,7 +78,18 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
       setIsReading(false);
       setSelectedBook(null);
     }, 2000);
-  };
+  }, [books]);
+
+  useEffect(() => {
+    if (!showPuzzle) return;
+    return uiEvents.on(
+      UI_EVENTS.PUZZLE_RESULT,
+      ({ completed }: { completed: boolean }) => {
+        setShowPuzzle(false);
+        if (completed) handlePuzzleComplete();
+      }
+    );
+  }, [showPuzzle, handlePuzzleComplete]);
 
   return (
     <group>
@@ -283,25 +304,16 @@ const LibraryBiome: React.FC<LibraryBiomeProps> = ({ books = [] }) => {
         distance={8}
       />
 
-      {/* Optimized Puzzle Overlay */}
-      <OptimizedPuzzleRouter
-        isVisible={showPuzzle}
-        onComplete={handlePuzzleComplete}
-        onExit={() => setShowPuzzle(false)}
-        puzzleType="number"
-        difficulty="hard"
-      />
-
-      {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "study") {
-            setShowPuzzle(true);
-            hideCards();
-          }
-        }}
+      {/* The lectern is the way into the study puzzle. It previously had no
+          way in at all: the only trigger was an action card, and the card
+          component returns null unconditionally, so the puzzle in this room
+          could never be started by a player. */}
+      <InteractTrigger
+        position={[0, 0, 0]}
+        label="Study the tome"
+        onInteract={openPuzzle}
+        enabled={!showPuzzle}
+        blockedReason="Already studying"
       />
     </group>
   );

@@ -6,8 +6,6 @@ import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import { useConsolidatedGameStore } from "../../../store/consolidatedGameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 import Table from "../elements/Table";
 import Candle from "../elements/Candle";
 import BreakableMesh from "../../BreakableMesh";
@@ -187,9 +185,6 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "puzzle",
-  });
 
   // Get game store for health management
   const { playerStats, loseLife, addExperience, addPoints } =
@@ -1109,16 +1104,6 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
 
       {/* Action Cards */}
       <Html position={[0, 2, 0]}>
-        <RoomActionCards
-          cards={cards}
-          isVisible={isVisible}
-          onCardClick={(card) => {
-            if (card.id === "start_puzzle" && !gameStarted) {
-              startMemoryGame();
-              hideCards();
-            }
-          }}
-        />
       </Html>
     </group>
   );

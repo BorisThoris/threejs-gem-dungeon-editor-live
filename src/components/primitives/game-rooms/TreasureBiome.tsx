@@ -4,8 +4,6 @@ import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 import * as THREE from "three";
 
 interface TreasureBiomeProps {
@@ -30,13 +28,6 @@ const TreasureBiome: React.FC<TreasureBiomeProps> = ({
   );
   const coinsRefs = useRef<THREE.Mesh[]>([]);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "treasure",
-    onTreasureOpen: () => {
-      setTreasureOpened(true);
-      onTreasureOpen?.();
-    },
-  });
 
   // Animation frame for glowing effects
   useFrame((state) => {
@@ -214,16 +205,6 @@ const TreasureBiome: React.FC<TreasureBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "open_chest") {
-            setTreasureOpened(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

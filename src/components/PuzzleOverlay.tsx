@@ -1,197 +1,62 @@
-import React, { useEffect, useState } from "react";
-import useGameStore from "../store/gameStore";
+import { useEffect, useState } from "react";
 
-interface PuzzleOverlayProps {
-  isVisible: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  title?: string;
-  subtitle?: string;
+import OptimizedPuzzleRouter from "./OptimizedPuzzleRouter";
+import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
+import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
+
+interface PuzzleRequest {
+  puzzleType?: "memory" | "sequence" | "number";
+  difficulty?: "easy" | "medium" | "hard";
 }
 
-const PuzzleOverlay: React.FC<PuzzleOverlayProps> = ({
-  isVisible,
-  onClose,
-  children,
-  title,
-  subtitle,
-}) => {
-  const { setGamePhase } = useGameStore();
-  const [isAnimating, setIsAnimating] = useState(false);
+/**
+ * The one place a puzzle is allowed to be drawn.
+ *
+ * Puzzles are full-screen DOM, and every room that wanted one rendered it from
+ * inside the R3F canvas, where React tries to reconcile <div> and <span> as
+ * three.js objects. That threw on sight - but nobody ever saw it, because the
+ * only way to open a puzzle was an action-card overlay that returned null
+ * unconditionally. Making the library's lectern usable was what finally ran
+ * the code.
+ *
+ * Rooms now ask through UI_EVENTS.PUZZLE_OPEN and hear the outcome back on
+ * UI_EVENTS.PUZZLE_RESULT, so a room never has to know where the DOM lives.
+ */
+export function PuzzleOverlay() {
+  const [request, setRequest] = useState<PuzzleRequest | null>(null);
+  const enableMovement = useConsolidatedGameStore((s) => s.enableMovement);
+  const disableMovement = useConsolidatedGameStore((s) => s.disableMovement);
 
   useEffect(() => {
-    if (isVisible) {
-      setIsAnimating(true);
-      setGamePhase("puzzle");
-      // Lock pointer for first-person controls
-      document.body.style.cursor = "default";
-      document.body.style.userSelect = "auto";
-    } else {
-      setGamePhase("exploration");
-      // Restore pointer lock for first-person controls
-      document.body.style.cursor = "none";
-      document.body.style.userSelect = "none";
-    }
-  }, [isVisible, setGamePhase]);
+    return uiEvents.on(UI_EVENTS.PUZZLE_OPEN, (next: PuzzleRequest | null) => {
+      setRequest(next);
+    });
+  }, []);
 
+  // A puzzle takes the screen, so it takes the controls with it: walking around
+  // behind a modal you cannot see past is how players end up in a wall.
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isVisible) {
-        onClose();
-      }
-    };
+    if (request) disableMovement();
+    else enableMovement();
+    return () => enableMovement();
+  }, [request, enableMovement, disableMovement]);
 
-    if (isVisible) {
-      document.addEventListener("keydown", handleKeyDown);
-    }
+  if (!request) return null;
 
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isVisible, onClose]);
-
-  if (!isVisible) return null;
+  const finish = (completed: boolean) => {
+    setRequest(null);
+    uiEvents.emit(UI_EVENTS.PUZZLE_RESULT, { completed });
+  };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.95)",
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: '"Orbitron", "Courier New", monospace',
-        color: "#00ff00",
-        animation: isAnimating ? "fadeIn 0.3s ease-out" : "none",
-        cursor: "default",
-        userSelect: "auto",
-        overflow: "auto",
-      }}
-    >
-      {/* Header */}
-      {(title || subtitle) && (
-        <div
-          style={{
-            textAlign: "center",
-            marginBottom: "2rem",
-            padding: "0 2rem",
-          }}
-        >
-          {title && (
-            <h1
-              style={{
-                fontSize: "2.5rem",
-                fontWeight: "bold",
-                color: "#00ff00",
-                margin: "0 0 1rem 0",
-                textShadow: "0 0 10px #00ff00",
-              }}
-            >
-              {title}
-            </h1>
-          )}
-          {subtitle && (
-            <p
-              style={{
-                fontSize: "1.2rem",
-                color: "#ccc",
-                margin: 0,
-                lineHeight: 1.4,
-              }}
-            >
-              {subtitle}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Content */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          maxWidth: "1200px",
-          padding: "0 2rem",
-        }}
-      >
-        {children}
-      </div>
-
-      {/* Close Button */}
-      <div
-        style={{
-          position: "absolute",
-          top: "2rem",
-          right: "2rem",
-          zIndex: 1001,
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            background: "rgba(255, 0, 0, 0.2)",
-            border: "2px solid #ff0000",
-            color: "#ff0000",
-            padding: "0.5rem 1rem",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontSize: "1rem",
-            fontWeight: "bold",
-            fontFamily: "inherit",
-            transition: "all 0.2s ease",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.background = "rgba(255, 0, 0, 0.4)";
-            e.currentTarget.style.boxShadow = "0 0 10px #ff0000";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.background = "rgba(255, 0, 0, 0.2)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          ESC - Close
-        </button>
-      </div>
-
-      {/* Instructions */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: "2rem",
-          left: "50%",
-          transform: "translateX(-50%)",
-          textAlign: "center",
-          color: "#666",
-          fontSize: "0.9rem",
-        }}
-      >
-        Press ESC to close or click the X button
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-      `}</style>
-    </div>
+    <OptimizedPuzzleRouter
+      isVisible
+      onComplete={() => finish(true)}
+      onExit={() => finish(false)}
+      puzzleType={request.puzzleType ?? "number"}
+      difficulty={request.difficulty ?? "medium"}
+    />
   );
-};
+}
 
 export default PuzzleOverlay;

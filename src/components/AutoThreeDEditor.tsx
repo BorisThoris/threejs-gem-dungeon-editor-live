@@ -8,9 +8,7 @@ import Door from "./Door";
 import { useURLParams, parseJSON, serializeJSON } from "../hooks/useURLParams";
 
 // Import the consolidated card system
-import { useRoomActions } from "../hooks/useRoomActions";
 import { mapToRoomType, hasActionCards } from "../utils/roomTypeMapper";
-import RoomActionCards from "./RoomActionCards";
 
 // Import configuration arrays
 import { ROOM_CONFIGS } from "../configs/roomConfigs";
@@ -727,25 +725,6 @@ const AutoThreeDEditor: React.FC = () => {
                   return <Component {...getCurrentProps()} />;
                 })()}
 
-              {/* Action Cards for Biomes - DISABLED */}
-              {false &&
-                selectedCategory === "biomes" &&
-                getCurrentSelection() &&
-                hasActionCards(getCurrentSelection()!.type) &&
-                showActionCards &&
-                roomActionCards &&
-                roomActionCards.length > 0 && (
-                  <RoomActionCards
-                    cards={roomActionCards}
-                    isVisible={true}
-                    onCardClick={(card) => {
-                      console.log(
-                        "Card clicked in AutoThreeDEditor:",
-                        card.title
-                      );
-                    }}
-                  />
-                )}
             </Suspense>
           </Physics>
         </Canvas>

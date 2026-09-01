@@ -1,6 +1,6 @@
 {
   "project": "tsconfig.app.json",
-  "errors": 126,
+  "errors": 116,
   "updated": "2026-09-01",
   "note": "Ratchet baseline for `yarn check-types`. This number may only go DOWN. Lower it with `node scripts/check-types.mjs --update` after fixing errors."
 }

@@ -4,8 +4,6 @@ import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 import * as THREE from "three";
 
 interface LaboratoryBiomeProps {
@@ -30,13 +28,6 @@ const LaboratoryBiome: React.FC<LaboratoryBiomeProps> = ({
   const vialRef = useRef<THREE.Mesh>(null);
   const equipmentRefs = useRef<THREE.Mesh[]>([]);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "laboratory",
-    onExperimentComplete: () => {
-      setExperimentComplete(true);
-      onExperimentComplete?.();
-    },
-  });
 
   // Animation frame for glowing effects
   useFrame((state) => {
@@ -257,16 +248,6 @@ const LaboratoryBiome: React.FC<LaboratoryBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "start_experiment") {
-            setExperimenting(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

@@ -13,12 +13,12 @@ import RunSummary from "./RunSummary";
 import GameAudio from "./GameAudio";
 import GameHUD from "./GameHUD";
 import DoorPrompt from "./DoorPrompt";
+import PuzzleOverlay from "./PuzzleOverlay";
 import MainMenu from "./MainMenu";
 import MapUI from "./MapUI";
 import Minimap from "./Minimap";
 import Cursor from "./Cursor";
 import PauseMenu from "./PauseMenu";
-import EventDrivenActionCards from "./EventDrivenActionCards";
 import SharedNavigation from "./SharedNavigation";
 // WallToggleProvider removed - now using Zustand store
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
@@ -287,12 +287,10 @@ const StartScreenContent: React.FC<StartScreenContentProps> = ({
 
       {/* "Press E to open" while standing at a door. */}
       <DoorPrompt />
+      <PuzzleOverlay />
 
       {/* Sound effects, synthesised - no audio files to ship or license. */}
       <GameAudio />
-
-      {/* Event-Driven Action Cards */}
-      <EventDrivenActionCards />
 
       {/* Map UI Overlay */}
       <MapUI />

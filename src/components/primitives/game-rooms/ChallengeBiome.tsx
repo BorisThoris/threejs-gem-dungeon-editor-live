@@ -1,7 +1,5 @@
 import React, { useState } from "react";
 import { Text } from "../../GameText";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 interface ChallengeBiomeProps {
   onChallengeStart?: () => void;
@@ -11,13 +9,6 @@ const ChallengeBiome: React.FC<ChallengeBiomeProps> = ({ onChallengeStart }) => 
   const [challengeActive, setChallengeActive] = useState(false);
   const [challengeCompleted, setChallengeCompleted] = useState(false);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "challenge",
-    onChallengeStart: () => {
-      setChallengeActive(true);
-      onChallengeStart?.();
-    },
-  });
 
   return (
     <group>
@@ -156,19 +147,6 @@ const ChallengeBiome: React.FC<ChallengeBiomeProps> = ({ onChallengeStart }) => 
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "accept_challenge") {
-            setChallengeActive(true);
-            hideCards();
-          } else if (card.id === "skip") {
-            setChallengeCompleted(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

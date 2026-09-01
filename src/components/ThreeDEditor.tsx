@@ -16,9 +16,7 @@ import { Player } from "./Player";
 import { useURLParams, parseJSON, serializeJSON } from "../hooks/useURLParams";
 
 // Import the consolidated card system
-import { useRoomActions } from "../hooks/useRoomActions";
 import { mapToRoomType, hasActionCards } from "../utils/roomTypeMapper";
-import RoomActionCards from "./RoomActionCards";
 
 // Import player state for debugging
 import {
@@ -1503,13 +1501,6 @@ const ThreeDEditor: React.FC = () => {
                 maxWidth: "300px",
               }}
             >
-              <RoomActionCards
-                cards={roomActionCards}
-                isVisible={true}
-                onCardClick={(card) => {
-                  console.log("Card clicked in ThreeDEditor:", card.title);
-                }}
-              />
             </div>
           )}
 

@@ -87,6 +87,13 @@ const OptimizedPuzzleRouter: React.FC<OptimizedPuzzleRouterProps> = ({
     return null;
   }
 
+  /**
+   * Plain DOM, and it must be mounted OUTSIDE the R3F canvas. Rooms used to
+   * render this themselves from inside the scene graph, where React tried to
+   * reconcile <div> and <span> as three.js objects and threw "Span is not part
+   * of the THREE namespace". PuzzleOverlay mounts it in the DOM layer instead
+   * and rooms ask for a puzzle through UI_EVENTS.PUZZLE_OPEN.
+   */
   return (
     <div
       style={{

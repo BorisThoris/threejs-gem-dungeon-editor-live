@@ -3,8 +3,6 @@ import { Text } from "../../GameText";
 import { RigidBody } from "@react-three/rapier";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 interface GardenBiomeProps {
   size?: number;
@@ -24,13 +22,6 @@ const GardenBiome: React.FC<GardenBiomeProps> = ({
   const scale = getBiomeScale(playerDimensions);
   const biomeSize = size;
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "garden",
-    onGardenComplete: () => {
-      setGardenComplete(true);
-      onGardenComplete?.();
-    },
-  });
 
   return (
     <group>
@@ -129,16 +120,6 @@ const GardenBiome: React.FC<GardenBiomeProps> = ({
       </Text>
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "water_plants") {
-            setPlantsWatered(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

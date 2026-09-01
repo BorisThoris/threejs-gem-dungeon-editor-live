@@ -1,6 +1,4 @@
 import React from "react";
-import RoomActionCards from "./RoomActionCards";
-import { useRoomActions } from "../hooks/useRoomActions";
 import { mapToRoomType } from "../utils/roomTypeMapper";
 import type { Room } from "../types/map";
 
@@ -18,15 +16,6 @@ const RoomInteraction: React.FC<RoomInteractionProps> = ({
   // Game store functions handled through card system
 
   const actionRoomType = mapToRoomType(room.type);
-  const { cards, isVisible, hideCards } = useRoomActions({
-    roomType: (actionRoomType || "meditation") as any, // fallback to meditation
-    onPuzzleStart: () => onInteraction("puzzle", room.id),
-    onShopOpen: () => onInteraction("shop", room.id),
-    onChallengeStart: () => onInteraction("challenge", room.id),
-    onTreasureOpen: () => onInteraction("treasure", room.id),
-    onArenaFight: () => onInteraction("arena", room.id),
-    onBossFight: () => onInteraction("boss", room.id),
-  });
 
   // Cards are now shown based on room loading, not proximity
   if (!actionRoomType) return null;
@@ -38,14 +27,6 @@ const RoomInteraction: React.FC<RoomInteractionProps> = ({
   /*
   return (
     <>
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          onInteraction(card.id, room.id);
-          hideCards();
-        }}
-      />
     </>
   );
   */

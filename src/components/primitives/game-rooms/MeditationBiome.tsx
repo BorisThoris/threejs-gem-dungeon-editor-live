@@ -3,8 +3,6 @@ import { Text } from "../../GameText";
 import useGameStore from "../../../store/gameStore";
 import { Candle, Crystal, PotionBottle } from "../elements";
 import OptimizedPuzzleRouter from "../../OptimizedPuzzleRouter";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 // All interactions handled through card system
 type MeditationRoomProps = Record<string, never>;
@@ -16,10 +14,6 @@ const MeditationBiome: React.FC<MeditationRoomProps> = () => {
   const [showPuzzle, setShowPuzzle] = useState(false);
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
 
-  const { cards, isVisible, hideCards } = useRoomActions({
-    roomType: "meditation",
-    onPuzzleStart: () => setShowPuzzle(true),
-  });
 
   const handlePuzzleComplete = () => {
     setPuzzleCompleted(true);
@@ -246,16 +240,6 @@ const MeditationBiome: React.FC<MeditationRoomProps> = () => {
       />
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "meditate") {
-            setShowPuzzle(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

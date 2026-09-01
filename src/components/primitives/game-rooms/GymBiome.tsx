@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { Text } from "../../GameText";
 import useGameStore from "../../../store/gameStore";
 import OptimizedPuzzleRouter from "../../OptimizedPuzzleRouter";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 
 // All interactions handled through card system
 type BenchPressRoomProps = Record<string, never>;
@@ -15,10 +13,6 @@ const GymBiome: React.FC<BenchPressRoomProps> = () => {
   const [showPuzzle, setShowPuzzle] = useState(false);
   const [puzzleCompleted, setPuzzleCompleted] = useState(false);
 
-  const { cards, isVisible, hideCards } = useRoomActions({
-    roomType: "benchpress",
-    onPuzzleStart: () => setShowPuzzle(true),
-  });
 
   const handlePuzzleComplete = () => {
     setPuzzleCompleted(true);
@@ -161,16 +155,6 @@ const GymBiome: React.FC<BenchPressRoomProps> = () => {
       />
 
       {/* Action Cards */}
-      <RoomActionCards
-        cards={cards}
-        isVisible={isVisible}
-        onCardClick={(card) => {
-          if (card.id === "lift") {
-            setShowPuzzle(true);
-            hideCards();
-          }
-        }}
-      />
     </group>
   );
 };

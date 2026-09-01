@@ -42,6 +42,22 @@ const OptimizedNumberPuzzle: React.FC<OptimizedNumberPuzzleProps> = ({
     }
   };
 
+  /**
+   * Defined before `start`, which calls it when the timer runs out.
+   *
+   * It used to be declared afterwards, so `start` closed over a `const` in its
+   * temporal dead zone: the initialising effect threw "Cannot access
+   * 'generateNewNumbers' before initialization" and the puzzle never rendered.
+   * Nobody had hit it because there was no way to open a puzzle at all - the
+   * only trigger was an action card that rendered nothing.
+   */
+  const generateNewNumbers = useCallback(() => {
+    return Array.from(
+      { length: sequenceLength },
+      () => Math.floor(Math.random() * numberRange) + 1
+    );
+  }, [sequenceLength, numberRange]);
+
   const start = useCallback(() => {
     clearTimer();
     setIsComplete(false);
@@ -71,14 +87,6 @@ const OptimizedNumberPuzzle: React.FC<OptimizedNumberPuzzleProps> = ({
     setIsRunning(false);
     setTimeLeft(45);
   }, []);
-
-  // Generate new numbers
-  const generateNewNumbers = useCallback(() => {
-    return Array.from(
-      { length: sequenceLength },
-      () => Math.floor(Math.random() * numberRange) + 1
-    );
-  }, [sequenceLength, numberRange]);
 
   // Initialize puzzle
   useEffect(() => {

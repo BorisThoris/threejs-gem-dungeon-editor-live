@@ -38,6 +38,17 @@ export const UI_EVENTS = {
   ROOM_CHANGE: "ROOM_CHANGE",
   // Payload: { key, text, enabled } while a door is in reach, or null.
   DOOR_PROMPT: "DOOR_PROMPT",
+  /**
+   * Payload: { puzzleType, difficulty } to open a puzzle, or null to close it.
+   *
+   * Puzzles are full-screen DOM. Rooms live inside the R3F canvas, so a room
+   * cannot render one itself - React tries to reconcile <div> as a three.js
+   * object. The room asks; the overlay outside the canvas answers, the same
+   * way the door prompt works.
+   */
+  PUZZLE_OPEN: "PUZZLE_OPEN",
+  /** Payload: { completed: boolean } once the player finishes or backs out. */
+  PUZZLE_RESULT: "PUZZLE_RESULT",
   GAME_PAUSE: "GAME_PAUSE",
   GAME_UNPAUSE: "GAME_UNPAUSE",
 };

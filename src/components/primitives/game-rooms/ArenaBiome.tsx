@@ -4,8 +4,6 @@ import { RigidBody } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import useGameStore from "../../../store/gameStore";
 import { getBiomeScale } from "../../../utils/biomeScaling";
-import RoomActionCards from "../../RoomActionCards";
-import { useRoomActions } from "../../../hooks/useRoomActions";
 import * as THREE from "three";
 
 interface ArenaBiomeProps {
@@ -22,10 +20,6 @@ const ArenaBiome: React.FC<ArenaBiomeProps> = ({ onRewardClaim }) => {
   const arenaRingRef = useRef<THREE.Mesh>(null);
   const torchRefs = useRef<THREE.Mesh[]>([]);
 
-  const { cards, isVisible, showCards, hideCards } = useRoomActions({
-    roomType: "arena",
-    onFightStart: () => setIsFighting(true),
-  });
 
   const handleFight = () => {
     if (isFighting) return;
