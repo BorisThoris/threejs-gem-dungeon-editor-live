@@ -46,6 +46,7 @@ const st = () => p.evaluate(() => {
   return {
     room: s.currentRoomId, gems: s.playerStats.gems, lives: s.playerStats.lives,
     visited: s.visitedRooms.size, move: s.isMovementEnabled,
+    transitioning: s.isTransitioning,
     y: d ? +d.y.toFixed(2) : null, vy: d ? +d.linvel.y.toFixed(2) : null,
   };
 });
@@ -91,10 +92,20 @@ for (let i = 0; i < 10; i++) {
     if (s.room !== s0.room) { s0 = s; break; }
   }
 }
+// A transition disables movement while it runs, so let any in-flight one
+// settle before asserting - otherwise this races the last step of the walk.
+for (let i = 0; i < 20; i++) {
+  const s = await st();
+  if (!s.transitioning) break;
+  await p.waitForTimeout(300);
+}
 const explored = await st();
 ok('walked into another room', explored.visited >= 2, `${explored.visited} rooms visited`);
 ok('never fell out of the world', !fell, `lowest y seen ${minY.toFixed(2)}`);
-ok('movement still enabled after exploring', explored.move === true);
+// The one state a player can never recover from: not moving, and no
+// transition running to explain it.
+ok('movement still enabled after exploring', explored.move === true,
+   explored.move ? '' : `transitioning=${explored.transitioning} lives=${explored.lives}`);
 ok('collected gems while exploring', explored.gems > 0, `${explored.gems} gems`);
 
 // lose a run and restart
