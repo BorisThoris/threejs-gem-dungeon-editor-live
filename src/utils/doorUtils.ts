@@ -10,6 +10,10 @@ export interface Room {
   id: string;
   position: { x: number; z: number };
   connections: string[];
+  /** Measured footprint of the generated room, when it has been laid out. */
+  actualSize?: number;
+  /** Authored/base footprint of the room. */
+  size?: number;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { Room } from './map';
+import type { Room } from './map';
 
 export interface RoomInstance {
   id: string;

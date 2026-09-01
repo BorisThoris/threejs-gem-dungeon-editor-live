@@ -197,7 +197,12 @@ export interface MapState {
 }
 
 export interface MapActions {
-  generateMap: (config?: Partial<MapConfig>) => void;
+  // The implementation has always accepted a biome-category filter; the type
+  // did not, so every call that passed one was a type error.
+  generateMap: (
+    config?: Partial<MapConfig>,
+    enabledBiomeCategories?: string[]
+  ) => void;
   setCurrentRoom: (roomId: string) => void;
   markRoomVisited: (roomId: string) => void;
   clearMap: () => void;

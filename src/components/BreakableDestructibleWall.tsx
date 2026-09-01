@@ -2,7 +2,7 @@ import React from "react";
 import withOptionalBreaking from "./withOptionalBreaking";
 import type { BreakingOptions } from "../hooks/useBreaking";
 import * as THREE from "three";
-import DestructibleWall from "./DestructibleWall";
+import DestructibleWall from "./primitives/objects/DestructibleWall";
 
 // Structural breaking options (more durable)
 const structuralBreakingOptions: BreakingOptions = {

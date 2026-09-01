@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Text } from "@react-three/drei";
 import type { Item } from "../types/map";
-import ItemSprite from "./ItemSprite";
+import ItemSprite from "./primitives/objects/ItemSprite";
 
 interface SecretRoomProps {
   isDiscovered: boolean;

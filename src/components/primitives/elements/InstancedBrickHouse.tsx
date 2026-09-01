@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
-import withOptionalBreaking from "../../../withOptionalBreaking";
-import { loadTextureFromImage } from "../../../../utils/textureUtils";
+import withOptionalBreaking from "../../withOptionalBreaking";
+import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface InstancedBrickHouseProps {
   position: [number, number, number];

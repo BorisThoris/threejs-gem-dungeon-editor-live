@@ -1,4 +1,4 @@
-import { ComponentConfig } from './componentScanner';
+import type { ComponentConfig } from './componentScanner';
 
 /**
  * Dynamically loads components and creates configurations

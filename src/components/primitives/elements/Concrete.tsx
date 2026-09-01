@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
-import { loadTextureFromImage } from "../../../../utils/textureUtils";
+import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface ConcreteProps {
   position?: [number, number, number];

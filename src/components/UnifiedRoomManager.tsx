@@ -19,7 +19,6 @@ import RoomTransitionEffect from "./RoomTransitionEffect";
 // Data and utils
 import { playerRoomDetection } from "../utils/playerRoomDetection";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
-import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
 
 // Types
 interface RoomData {
@@ -170,7 +169,7 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       toRoomId,
     } = consolidatedStore;
     const { isDoorUnlocked, getDoorState, getDoorType, unlockDoor } = doorStore;
-    const { currentMap, generateMap } = mapStore;
+    const { currentMap } = mapStore;
     const { updateRoom, updateGamePhase } = gameState;
 
     // Refs for room detection
@@ -195,10 +194,9 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
     // Initialize map and load start room
     useEffect(() => {
       const initializeGame = async () => {
-        if (!currentMap) {
-          generateMap();
-          return;
-        }
+        // The map is generated once by GameInitializer during the loading
+        // screen; just wait for it rather than racing it with a second one.
+        if (!currentMap) return;
 
         if (!activeRoomId) {
           await loadRoom(currentMap.startRoomId);
@@ -209,7 +207,7 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       };
 
       initializeGame();
-    }, [currentMap, activeRoomId, generateMap, loadRoom, setActiveRoom]);
+    }, [currentMap, activeRoomId, loadRoom, setActiveRoom]);
 
     // Handle room changes
     useEffect(() => {

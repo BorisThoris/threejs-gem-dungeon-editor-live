@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Box } from "@react-three/drei";
 import * as THREE from "three";
-import withOptionalBreaking from "../../../withOptionalBreaking";
-import { loadTextureFromImage } from "../../../../utils/textureUtils";
+import withOptionalBreaking from "../../withOptionalBreaking";
+import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface ConcreteFoundationProps {
   position: [number, number, number];

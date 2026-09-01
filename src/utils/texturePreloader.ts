@@ -7,7 +7,7 @@ interface TextureCache {
 
 class TexturePreloader {
   private cache: TextureCache = {};
-  private loadingPromises: { [key: string]: Promise<THREE.Texture> } = {};
+  private loadingPromises: { [key: string]: Promise<THREE.Texture> | undefined } = {};
 
   async preloadTexture(type: string): Promise<THREE.Texture> {
     // Return cached texture if available

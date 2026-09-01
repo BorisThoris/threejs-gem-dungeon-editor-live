@@ -109,21 +109,7 @@ const GhostScene: React.FC = () => {
 
 const StartScreenContent: React.FC = () => {
   const { inventory, useItem: consumeItem } = useGameStore();
-  const { generateMap, currentMap } = useMapStore();
   const [isPaused, setIsPaused] = React.useState(false);
-  const [enabledBiomeCategories, setEnabledBiomeCategories] = useState<
-    string[]
-  >([
-    "buff",
-    "resource",
-    "puzzle",
-    "transport",
-    "obstacle",
-    "special",
-    "religious",
-    "social",
-    "geometric",
-  ]);
 
   // Initialize DOM UI manager
   React.useEffect(() => {
@@ -142,12 +128,9 @@ const StartScreenContent: React.FC = () => {
     };
   }, [consumeItem]);
 
-  // Generate map on component mount
-  React.useEffect(() => {
-    if (!currentMap) {
-      generateMap({}, enabledBiomeCategories);
-    }
-  }, [currentMap, generateMap, enabledBiomeCategories]);
+  // Map generation is owned by UnifiedRoomManager. Generating it here too meant
+  // two different maps were produced on boot and the one the player ended up in
+  // was whichever finished last.
 
   // Update UI when inventory changes (throttled)
   React.useEffect(() => {

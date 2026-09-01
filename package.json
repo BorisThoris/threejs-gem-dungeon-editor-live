@@ -11,6 +11,8 @@
         "start": "vite",
         "dev": "vite",
         "build": "vite build",
+        "typecheck": "tsc --noEmit -p tsconfig.app.json",
+        "check-types": "node scripts/check-types.mjs",
         "lint": "eslint .",
         "preview": "vite preview",
         "electron": "electron .",

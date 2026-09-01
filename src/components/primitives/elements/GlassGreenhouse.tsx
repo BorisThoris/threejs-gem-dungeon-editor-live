@@ -2,8 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Box, Cylinder } from "@react-three/drei";
 import * as THREE from "three";
-import withOptionalBreaking from "../../../withOptionalBreaking";
-import { loadTextureFromImage } from "../../../../utils/textureUtils";
+import withOptionalBreaking from "../../withOptionalBreaking";
+import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface GlassGreenhouseProps {
   position: [number, number, number];

@@ -2,7 +2,7 @@ import React from "react";
 import withOptionalBreaking from "./withOptionalBreaking";
 import type { BreakingOptions } from "../hooks/useBreaking";
 import * as THREE from "three";
-import ItemSprite from "./ItemSprite";
+import ItemSprite from "./primitives/objects/ItemSprite";
 import type { Item } from "../types/map";
 
 // Small object breaking options (fewer fragments)

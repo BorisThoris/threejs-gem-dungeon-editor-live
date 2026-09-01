@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Room } from '../store/roomStore';
+import type { Room } from '../types/map';
 
 export interface RoomLayout {
   size: number;

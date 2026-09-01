@@ -22,6 +22,14 @@ const useMapStore = create<MapState & MapActions>((set, get) => ({
 
   // Actions
   generateMap: (config = {}, enabledBiomeCategories?: string[]) => {
+    // Generating is idempotent per session. Callers guard on `!currentMap`, but
+    // that check races: React re-invokes effects in development, and the second
+    // invocation ran before the first had stored its map, so two different
+    // dungeons were built and the player explored whichever landed last.
+    // To deliberately build a new dungeon (starting a new run), call clearMap()
+    // first.
+    if (get().isGenerating || get().currentMap) return;
+
     set({ isGenerating: true, error: null });
     
     try {

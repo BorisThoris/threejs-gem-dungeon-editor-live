@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { RigidBody } from "@react-three/rapier";
-// import { loadTextureFromImage } from "../../../../utils/textureUtils";
+// import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface PillarProps {
   position?: [number, number, number];

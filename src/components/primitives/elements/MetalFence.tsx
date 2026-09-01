@@ -3,7 +3,7 @@ import { RigidBody } from "@react-three/rapier";
 import { Box, Cylinder } from "@react-three/drei";
 import * as THREE from "three";
 import withOptionalBreaking from "../../withOptionalBreaking";
-import { loadTextureFromImage } from "../../../../utils/textureUtils";
+import { loadTextureFromImage } from "../../../utils/textureUtils";
 
 export interface MetalFenceProps {
   position: [number, number, number];
