@@ -1,4 +1,4 @@
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics, RigidBody } from "@react-three/rapier";
 import { Environment } from "@react-three/drei";
@@ -9,6 +9,8 @@ import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
 import RunManager from "./RunManager";
 import RunSummary from "./RunSummary";
+import GameHUD from "./GameHUD";
+import MainMenu from "./MainMenu";
 import MapUI from "./MapUI";
 import Minimap from "./Minimap";
 import Cursor from "./Cursor";
@@ -16,10 +18,9 @@ import PauseMenu from "./PauseMenu";
 import EventDrivenActionCards from "./EventDrivenActionCards";
 import SharedNavigation from "./SharedNavigation";
 // WallToggleProvider removed - now using Zustand store
-import useGameStore from "../store/gameStore";
-import useMapStore from "../store/mapStore";
+import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
 import { domUIManager } from "../utils/domUIManager";
-import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
+import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
 import GameInitializer from "./GameInitializer";
 
 // First-person controls handled by FirstPersonPlayer component
@@ -110,68 +111,108 @@ const GhostScene: React.FC = () => {
   );
 };
 
-const StartScreenContent: React.FC = () => {
-  const { inventory, useItem: consumeItem } = useGameStore();
-  const [isPaused, setIsPaused] = React.useState(false);
+interface StartScreenContentProps {
+  onQuitToMenu: () => void;
+}
 
-  // Initialize DOM UI manager
-  React.useEffect(() => {
+const StartScreenContent: React.FC<StartScreenContentProps> = ({
+  onQuitToMenu,
+}) => {
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Mirrors `isPaused` for the key handler, so the listener can be registered
+  // once instead of being torn down and rebuilt on every pause.
+  const pausedRef = useRef(false);
+  // Whether movement was the player's to have before the pause. Restoring it
+  // blindly would hand control back to a player whose run RunManager has
+  // already ended, or who is mid room-transition.
+  const movementBeforePause = useRef(true);
+  // A finished run owns the screen (RunSummary); pausing on top of it does
+  // nothing useful.
+  const runOver = useRef(false);
+
+  // Initialize DOM UI manager (mouse-look indicator + controls line)
+  useEffect(() => {
     domUIManager.init();
-
-    // Listen for item use events from DOM UI
-    const handleItemUse = (event: CustomEvent) => {
-      consumeItem(event.detail.id);
-    };
-
-    window.addEventListener("itemUse", handleItemUse as EventListener);
-
     return () => {
-      window.removeEventListener("itemUse", handleItemUse as EventListener);
       domUIManager.destroy();
     };
-  }, [consumeItem]);
+  }, []);
 
-  // Map generation is owned by UnifiedRoomManager. Generating it here too meant
-  // two different maps were produced on boot and the one the player ended up in
-  // was whichever finished last.
+  // Map generation is owned by GameInitializer.
 
-  // Update UI when inventory changes (throttled)
-  React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      uiEvents.emit(UI_EVENTS.INVENTORY_UPDATE, inventory);
-    }, 100); // Throttle updates
+  const pause = useCallback(() => {
+    if (pausedRef.current || runOver.current) return;
+    pausedRef.current = true;
 
-    return () => clearTimeout(timeoutId);
-  }, [inventory]);
-
-  // Player stats are now handled by ref-based state (no React re-renders)
-
-  // Item use is now handled by DOM UI manager
-
-  // Handle pause/unpause
-  const handlePause = () => {
+    const store = useConsolidatedGameStore.getState();
+    movementBeforePause.current = store.isMovementEnabled;
+    store.disableMovement();
     setIsPaused(true);
-  };
+  }, []);
 
-  const handleUnpause = () => {
+  const unpause = useCallback(() => {
+    if (!pausedRef.current) return;
+    pausedRef.current = false;
+
+    // Only give movement back if the pause is what took it away.
+    if (movementBeforePause.current && !runOver.current) {
+      useConsolidatedGameStore.getState().enableMovement();
+    }
     setIsPaused(false);
-  };
+  }, []);
 
-  // Listen for X key to pause/unpause
-  React.useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "x" || event.key === "X") {
-        if (isPaused) {
-          handleUnpause();
-        } else {
-          handlePause();
-        }
-      }
+  const quitToMenu = useCallback(() => {
+    pausedRef.current = false;
+    setIsPaused(false);
+    useConsolidatedGameStore.getState().enableMovement();
+    onQuitToMenu();
+  }, [onQuitToMenu]);
+
+  // A run that has already been decided must not be un-frozen by an unpause.
+  useEffect(() => {
+    const end = () => {
+      runOver.current = true;
+      pausedRef.current = false;
+      setIsPaused(false);
+    };
+    const start = () => {
+      runOver.current = false;
     };
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [isPaused]);
+    const offWon = gameEvents.on(GAME_EVENTS.RUN_WON, end);
+    const offLost = gameEvents.on(GAME_EVENTS.RUN_LOST, end);
+    const offStarted = gameEvents.on(GAME_EVENTS.RUN_STARTED, start);
+    return () => {
+      offWon();
+      offLost();
+      offStarted();
+    };
+  }, []);
+
+  // Escape is what players reach for; X is kept because the old build used it.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" && event.key !== "x" && event.key !== "X") {
+        return;
+      }
+      // Overlays that own Escape (the fullscreen map, the puzzle screens)
+      // call preventDefault on it. They register their window listener after
+      // this one, so the flag is only trustworthy once the whole dispatch has
+      // finished - hence the deferral. Closing an overlay must not also pause.
+      setTimeout(() => {
+        if (event.defaultPrevented) return;
+        if (pausedRef.current) {
+          unpause();
+        } else {
+          pause();
+        }
+      }, 0);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [pause, unpause]);
 
   return (
     <div
@@ -188,40 +229,43 @@ const StartScreenContent: React.FC = () => {
         cursor: "none", // Hide default cursor
       }}
     >
-      {!isPaused &&
-        (() => {
-          return (
-            <Canvas
-              shadows
-              style={{
-                width: "100%",
-                height: "100%",
-                background: "transparent",
-                display: "block",
-                cursor: "default", // Show default cursor in free hand mode
-              }}
-              gl={{
-                antialias: true,
-                alpha: true,
-                powerPreference: "high-performance",
-                stencil: false,
-                depth: true,
-              }}
-              camera={{
-                fov: 95,
-                position: [0, 5, 0],
-                rotation: [0, -Math.PI / 2, 0], // Look straight ahead
-              }}
-              dpr={[1, 2]}
-              performance={{ min: 0.5 }}
-              onCreated={({ gl, scene, camera }) => {
-                // Canvas created successfully
-              }}
-            >
-              <GhostScene />
-            </Canvas>
-          );
-        })()}
+      {/*
+        The Canvas stays mounted for the whole session. Unmounting it on pause
+        - which is what this did - threw away the physics world, the player
+        body and every loaded room, so "pause" silently restarted the run at
+        the spawn point. Gameplay is frozen through the store instead, and the
+        pause menu is drawn over the top.
+      */}
+      <Canvas
+        shadows
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "transparent",
+          display: "block",
+          cursor: "default", // Show default cursor in free hand mode
+        }}
+        gl={{
+          antialias: true,
+          alpha: true,
+          powerPreference: "high-performance",
+          stencil: false,
+          depth: true,
+        }}
+        camera={{
+          fov: 95,
+          position: [0, 5, 0],
+          rotation: [0, -Math.PI / 2, 0], // Look straight ahead
+        }}
+        dpr={[1, 2]}
+        performance={{ min: 0.5 }}
+      >
+        <GhostScene />
+      </Canvas>
+
+      {/* Heads-up display - lives, gems and the current room, straight from
+          the consolidated store. */}
+      <GameHUD />
 
       {/* Event-Driven Action Cards */}
       <EventDrivenActionCards />
@@ -239,20 +283,28 @@ const StartScreenContent: React.FC = () => {
       <RunSummary />
 
       {/* Pause Menu */}
-      <PauseMenu isVisible={isPaused} onUnpause={handleUnpause} />
+      <PauseMenu
+        isVisible={isPaused}
+        onUnpause={unpause}
+        onQuitToMenu={quitToMenu}
+      />
 
       {/* Shared Navigation */}
       {import.meta.env.DEV && <SharedNavigation currentPage="game" />}
-
-      {/* UI is now handled by DOM UI Manager - no React re-renders */}
     </div>
   );
 };
 
 const StartScreen: React.FC = () => {
+  const [inMenu, setInMenu] = useState(true);
+
+  if (inMenu) {
+    return <MainMenu onStartGame={() => setInMenu(false)} />;
+  }
+
   return (
     <GameInitializer>
-      <StartScreenContent />
+      <StartScreenContent onQuitToMenu={() => setInMenu(true)} />
     </GameInitializer>
   );
 };

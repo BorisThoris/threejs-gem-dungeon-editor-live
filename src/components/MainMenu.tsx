@@ -1,314 +1,193 @@
-import React, { useState } from "react";
-import { useSaveSystem } from "../hooks/useSaveSystem";
-import { useSettings } from "../hooks/useSettings";
+import React, { useCallback, useState } from "react";
+
+import { GEMS_REQUIRED_FOR_END, STARTING_LIVES } from "../configs/runRules";
 
 interface MainMenuProps {
+  /** Boots the dungeon: initialisation, map generation, then play. */
   onStartGame: () => void;
-  onLoadGame: () => void;
-  onShowSettings: () => void;
-  onShowCredits: () => void;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({
-  onStartGame,
-  onLoadGame,
-  onShowSettings,
-  onShowCredits,
-}) => {
-  const { hasSaveData, getSaveInfo, deleteSave } = useSaveSystem();
-  useSettings();
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+type Panel = "menu" | "controls" | "quit";
 
-  const saveInfo = getSaveInfo();
+/**
+ * The screen the game opens on.
+ *
+ * It used to boot straight into a run with no way to read the controls first
+ * and no front door at all - this component existed but was never mounted.
+ * Styled to match RunSummary so the demo's two full-screen menus look like
+ * they belong to the same game.
+ */
+const MainMenu: React.FC<MainMenuProps> = ({ onStartGame }) => {
+  const [panel, setPanel] = useState<Panel>("menu");
 
-  const handleDeleteSave = () => {
-    if (deleteSave()) {
-      setShowConfirmDelete(false);
+  const quit = useCallback(() => {
+    setPanel("quit");
+    // Works in the Electron build; browsers refuse to close a tab the script
+    // did not open, which is why the farewell panel is shown either way.
+    try {
+      window.close();
+    } catch {
+      /* ignored: the panel below is the fallback */
     }
-  };
+  }, []);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        background:
-          "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "white",
-        fontFamily: "monospace",
-        zIndex: 10000,
-      }}
-    >
-      {/* Game Title */}
-      <div
-        style={{
-          fontSize: "4rem",
-          fontWeight: "bold",
-          marginBottom: "2rem",
-          textShadow: "0 0 20px #00ffff",
-          textAlign: "center",
-        }}
-      >
-        GHOST DUNGEON
-      </div>
+    <div style={backdropStyle}>
+      <div style={panelStyle}>
+        <h1 style={titleStyle}>GHOST DUNGEON</h1>
+        <p style={subtitleStyle}>
+          Find {GEMS_REQUIRED_FOR_END} gems, open the last door, get out alive.
+        </p>
 
-      {/* Subtitle */}
-      <div
-        style={{
-          fontSize: "1.2rem",
-          marginBottom: "3rem",
-          color: "#cccccc",
-          textAlign: "center",
-        }}
-      >
-        A Roguelike Puzzle Dungeon Crawler
-      </div>
-
-      {/* Menu Buttons */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem",
-          minWidth: "300px",
-        }}
-      >
-        {/* New Game */}
-        <button
-          onClick={onStartGame}
-          style={{
-            padding: "15px 30px",
-            fontSize: "1.2rem",
-            background: "linear-gradient(45deg, #4CAF50, #45a049)",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-            transition: "all 0.3s ease",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.4)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-          }}
-        >
-          🎮 NEW GAME
-        </button>
-
-        {/* Load Game */}
-        {hasSaveData() && (
-          <button
-            onClick={onLoadGame}
-            style={{
-              padding: "15px 30px",
-              fontSize: "1.2rem",
-              background: "linear-gradient(45deg, #2196F3, #1976D2)",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-              transition: "all 0.3s ease",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.4)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-            }}
-          >
-            💾 LOAD GAME
-            {saveInfo && (
-              <div style={{ fontSize: "0.8rem", marginTop: "5px" }}>
-                Level {saveInfo.level} • Floor {saveInfo.floor} • Score:{" "}
-                {saveInfo.score}
-              </div>
-            )}
-          </button>
-        )}
-
-        {/* Settings */}
-        <button
-          onClick={onShowSettings}
-          style={{
-            padding: "15px 30px",
-            fontSize: "1.2rem",
-            background: "linear-gradient(45deg, #FF9800, #F57C00)",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-            transition: "all 0.3s ease",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.4)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-          }}
-        >
-          ⚙️ SETTINGS
-        </button>
-
-        {/* Credits */}
-        <button
-          onClick={onShowCredits}
-          style={{
-            padding: "15px 30px",
-            fontSize: "1.2rem",
-            background: "linear-gradient(45deg, #9C27B0, #7B1FA2)",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-            transition: "all 0.3s ease",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.4)";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-          }}
-        >
-          📜 CREDITS
-        </button>
-
-        {/* Delete Save */}
-        {hasSaveData() && (
-          <button
-            onClick={() => setShowConfirmDelete(true)}
-            style={{
-              padding: "10px 20px",
-              fontSize: "1rem",
-              background: "linear-gradient(45deg, #F44336, #D32F2F)",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-              transition: "all 0.3s ease",
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.4)";
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)";
-            }}
-          >
-            🗑️ DELETE SAVE
-          </button>
-        )}
-      </div>
-
-      {/* Game Info */}
-      <div
-        style={{
-          marginTop: "3rem",
-          fontSize: "0.9rem",
-          color: "#888888",
-          textAlign: "center",
-          maxWidth: "600px",
-        }}
-      >
-        <div>Inspired by Binding of Isaac and Noita</div>
-        <div>
-          Explore procedurally generated dungeons, solve puzzles, and discover
-          secrets!
-        </div>
-        <div style={{ marginTop: "1rem" }}>
-          <strong>Controls:</strong> WASD to move • Mouse to look • Click to
-          interact
-        </div>
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      {showConfirmDelete && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.8)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10001,
-          }}
-        >
-          <div
-            style={{
-              background: "#2a2a2a",
-              padding: "2rem",
-              borderRadius: "8px",
-              textAlign: "center",
-              border: "2px solid #ff4444",
-            }}
-          >
-            <h3 style={{ color: "#ff4444", marginBottom: "1rem" }}>
-              Delete Save Game?
-            </h3>
-            <p style={{ marginBottom: "2rem" }}>
-              This action cannot be undone. Are you sure you want to delete your
-              save?
-            </p>
-            <div
-              style={{ display: "flex", gap: "1rem", justifyContent: "center" }}
+        {panel === "menu" && (
+          <div style={buttonColumnStyle}>
+            <button
+              type="button"
+              data-testid="menu-start"
+              onClick={onStartGame}
+              style={primaryButtonStyle}
             >
+              Start run
+            </button>
+            <button
+              type="button"
+              data-testid="menu-controls"
+              onClick={() => setPanel("controls")}
+              style={secondaryButtonStyle}
+            >
+              Controls
+            </button>
+            <button
+              type="button"
+              data-testid="menu-quit"
+              onClick={quit}
+              style={secondaryButtonStyle}
+            >
+              Quit
+            </button>
+          </div>
+        )}
+
+        {panel === "controls" && (
+          <>
+            <dl style={listStyle}>
+              <dt style={termStyle}>Move</dt>
+              <dd style={definitionStyle}>W A S D</dd>
+              <dt style={termStyle}>Look</dt>
+              <dd style={definitionStyle}>Hold right mouse</dd>
+              <dt style={termStyle}>Pause</dt>
+              <dd style={definitionStyle}>Esc or X</dd>
+              <dt style={termStyle}>Lives</dt>
+              <dd style={definitionStyle}>{STARTING_LIVES} per run</dd>
+            </dl>
+            <div style={buttonColumnStyle}>
               <button
-                onClick={handleDeleteSave}
-                style={{
-                  padding: "10px 20px",
-                  background: "#ff4444",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
+                type="button"
+                onClick={() => setPanel("menu")}
+                style={secondaryButtonStyle}
               >
-                Yes, Delete
-              </button>
-              <button
-                onClick={() => setShowConfirmDelete(false)}
-                style={{
-                  padding: "10px 20px",
-                  background: "#666666",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Cancel
+                Back
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+
+        {panel === "quit" && (
+          <>
+            <p style={{ ...subtitleStyle, margin: "0 0 24px" }}>
+              Thanks for playing. You can close this window now.
+            </p>
+            <div style={buttonColumnStyle}>
+              <button
+                type="button"
+                onClick={() => setPanel("menu")}
+                style={secondaryButtonStyle}
+              >
+                Back
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
+
+const backdropStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "#06080e",
+  zIndex: 4000,
+  fontFamily: "'Press Start 2P', monospace",
+  color: "#f2f4f8",
+};
+
+const panelStyle: React.CSSProperties = {
+  background: "#12151f",
+  border: "2px solid #7fe3ff",
+  borderRadius: 6,
+  padding: "38px 44px",
+  textAlign: "center",
+  minWidth: 380,
+  maxWidth: 520,
+};
+
+const titleStyle: React.CSSProperties = {
+  margin: "0 0 18px",
+  fontSize: 22,
+  lineHeight: 1.4,
+  color: "#7fe3ff",
+};
+
+const subtitleStyle: React.CSSProperties = {
+  margin: "0 0 30px",
+  fontSize: 10,
+  lineHeight: 1.8,
+  color: "#8b93a7",
+};
+
+const buttonColumnStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  alignItems: "stretch",
+};
+
+const baseButtonStyle: React.CSSProperties = {
+  fontFamily: "inherit",
+  fontSize: 11,
+  padding: "14px 26px",
+  cursor: "pointer",
+  border: "none",
+  borderRadius: 4,
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  ...baseButtonStyle,
+  color: "#0a0c12",
+  background: "#7fe3ff",
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  ...baseButtonStyle,
+  color: "#f2f4f8",
+  background: "#1d2333",
+  border: "1px solid #2b3345",
+};
+
+const listStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto",
+  gap: "12px 20px",
+  fontSize: 10,
+  margin: "0 0 28px",
+  textAlign: "left",
+};
+
+const termStyle: React.CSSProperties = { color: "#8b93a7" };
+const definitionStyle: React.CSSProperties = { margin: 0 };
 
 export default MainMenu;

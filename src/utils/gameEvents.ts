@@ -68,6 +68,9 @@ export const GAME_EVENTS = {
   GEM_COLLECTED: 'gem_collected',
   RUN_WON: 'run_won',
   RUN_LOST: 'run_lost',
+  // Fired when the player starts another run from the summary screen, so the
+  // UI can drop any "this run is over" state it is holding.
+  RUN_STARTED: 'run_started',
 } as const;
 
 export type GameEventType = typeof GAME_EVENTS[keyof typeof GAME_EVENTS];

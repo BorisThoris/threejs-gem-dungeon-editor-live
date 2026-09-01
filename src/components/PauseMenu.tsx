@@ -3,9 +3,15 @@ import React from "react";
 interface PauseMenuProps {
   isVisible: boolean;
   onUnpause: () => void;
+  /** Abandons the run and returns to the main menu. */
+  onQuitToMenu?: () => void;
 }
 
-const PauseMenu: React.FC<PauseMenuProps> = ({ isVisible, onUnpause }) => {
+const PauseMenu: React.FC<PauseMenuProps> = ({
+  isVisible,
+  onUnpause,
+  onQuitToMenu,
+}) => {
   if (!isVisible) return null;
 
   // Developer tool shortcuts are dev-only. `import.meta.env.DEV` is statically
@@ -40,7 +46,7 @@ const PauseMenu: React.FC<PauseMenuProps> = ({ isVisible, onUnpause }) => {
 
       <div style={{ textAlign: "center", marginBottom: "2rem" }}>
         <p style={{ fontSize: "1.2rem", margin: "0 0 1rem 0" }}>
-          Press X to unpause
+          Press Esc or X to unpause
         </p>
         <p style={{ fontSize: "1rem", opacity: 0.7, margin: 0 }}>
           Or click the button below
@@ -79,8 +85,28 @@ const PauseMenu: React.FC<PauseMenuProps> = ({ isVisible, onUnpause }) => {
             e.currentTarget.style.transform = "scale(1)";
           }}
         >
-          Lol, unpause
+          Resume
         </button>
+
+        {onQuitToMenu && (
+          <button
+            data-testid="pause-quit"
+            onClick={onQuitToMenu}
+            style={{
+              padding: "12px 24px",
+              fontSize: "1.2rem",
+              backgroundColor: "#1d2333",
+              color: "white",
+              border: "1px solid #2b3345",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontFamily: "monospace",
+              fontWeight: "bold",
+            }}
+          >
+            Quit to main menu
+          </button>
+        )}
 
         {/* 3D Editor Button - Only show in dev mode */}
         {isDevMode && (

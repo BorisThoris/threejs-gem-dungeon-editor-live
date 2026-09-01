@@ -51,6 +51,7 @@ export function RunSummary() {
     useConsolidatedGameStore.getState().resetGame();
     useMapStore.getState().clearMap();
     useMapStore.getState().generateMap({}, ENABLED_BIOME_CATEGORIES);
+    gameEvents.emit(GAME_EVENTS.RUN_STARTED);
     setSummary(null);
   }, []);
 
