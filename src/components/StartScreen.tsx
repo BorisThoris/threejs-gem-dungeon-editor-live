@@ -7,6 +7,8 @@ import { Player } from "./Player";
 import { SafeSpawnArea } from "./SafeSpawnArea";
 import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
+import RunManager from "./RunManager";
+import RunSummary from "./RunSummary";
 import MapUI from "./MapUI";
 import Minimap from "./Minimap";
 import Cursor from "./Cursor";
@@ -93,6 +95,7 @@ const GhostScene: React.FC = () => {
             inside the room subtree, a suspending texture permanently killed the
             detection loop. */}
         <RoomDetection />
+        <RunManager />
 
         <Suspense fallback={null}>
           <SafeSpawnArea position={[0, 0, 0]} size={8} />
@@ -231,6 +234,9 @@ const StartScreenContent: React.FC = () => {
 
       {/* Cursor - Outside Canvas so it's always visible */}
       {!isPaused && <Cursor />}
+
+      {/* End-of-run screen */}
+      <RunSummary />
 
       {/* Pause Menu */}
       <PauseMenu isVisible={isPaused} onUnpause={handleUnpause} />

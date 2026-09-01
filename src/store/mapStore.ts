@@ -109,3 +109,8 @@ const useMapStore = create<MapState & MapActions>((set, get) => ({
 }));
 
 export default useMapStore;
+// Dev-only handle, matching consolidatedGameStore, so the dungeon can be
+// inspected from the console. Stripped from production.
+if (import.meta.env.DEV) {
+  (window as unknown as Record<string, unknown>).__mapStore = useMapStore;
+}

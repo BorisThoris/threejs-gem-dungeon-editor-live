@@ -28,6 +28,8 @@ export interface SimpleMapConfig extends MapConfig {
   // Advanced generation
   roomTypeWeights?: Record<string, number>;
   hubChance?: number; // chance to spawn a hub/atrium (plus/block)
+  corridorRunChance?: number; // chance to extend a corridor into a longer run
+  culDeSacChance?: number; // chance to terminate a branch in a dead end
   useThemes?: boolean;
   enabledBiomeCategories?: string[]; // New: categories to use for generation
 }
@@ -533,7 +535,7 @@ export class SimpleMapGenerator {
 
     let isMultiTile = false;
     let tilePositions: Array<{ x: number; z: number }> = [];
-    let shape: 'square' | 'circle' | 'triangle' | 'hexagon' | 'octagon' | 'diamond' | 'star' | 'cross' | 'spiral' = 'square';
+    let shape: NonNullable<Room['shape']> = 'square';
 
     if (shouldBeMultiTile) {
       isMultiTile = true;
@@ -573,7 +575,7 @@ export class SimpleMapGenerator {
         ? biomeConfig.entryPoints.map(ep => ({
             id: `${roomId}-${ep.direction}`,
             direction: ep.direction,
-            position: ep.position,
+            position: { x: ep.position[0], z: ep.position[2] },
             width: ep.width,
             height: ep.height,
             isActive: false,

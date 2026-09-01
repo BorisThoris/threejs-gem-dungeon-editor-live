@@ -15,12 +15,14 @@ import DoorDebugger from "./DoorDebugger";
 import DebugSign from "./DebugSign";
 import RoomInstanceRenderer from "./RoomInstanceRenderer";
 import Gem from "./Gem";
+import Hazard from "./Hazard";
 import DoorTrigger from "./DoorTrigger";
 import RoomTransitionEffect from "./RoomTransitionEffect";
 
 // Data and utils
 import { playerRoomDetection } from "../utils/playerRoomDetection";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
+import { GEMS_REQUIRED_FOR_END } from "../configs/runRules";
 
 // Types
 interface RoomData {
@@ -172,6 +174,8 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       toRoomId,
     } = consolidatedStore;
     const { isDoorUnlocked, getDoorState, getDoorType, unlockDoor } = doorStore;
+    const gemCount = consolidatedStore.playerStats.gems;
+    const spendGems = consolidatedStore.spendGems;
     const { currentMap } = mapStore;
     const { updateRoom, updateGamePhase } = gameState;
 
@@ -281,6 +285,26 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       };
     }, [currentRoom]);
 
+    // Trap rooms get a ring of spikes between the door and the gem, so the
+    // risk sits on the path to the reward rather than off in a corner.
+    const hazardPlacements = useMemo(() => {
+      if (!currentRoom?.id || currentRoom.type !== "trap") return [];
+
+      const roomSize =
+        currentRoom.actualSize || currentRoom.size || DEFAULT_ROOM_SIZE;
+      const radius = Math.max(1.2, roomSize / 2 - 3.5);
+      const count = 5;
+
+      return Array.from({ length: count }, (_, i) => {
+        const angle = (i / count) * Math.PI * 2;
+        return [
+          Math.cos(angle) * radius,
+          0,
+          Math.sin(angle) * radius,
+        ] as [number, number, number];
+      });
+    }, [currentRoom]);
+
     // Memoized door state change handler
     const handleDoorStateChange = useCallback(
       (doorId: string, newState: string) => {
@@ -358,6 +382,11 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
           <Gem roomId={gemPlacement.roomId} position={gemPlacement.position} />
         )}
 
+        {/* Trap rooms actually trap now. */}
+        {hazardPlacements.map((hazard, i) => (
+          <Hazard key={`hazard-${i}`} position={hazard} />
+        ))}
+
         {/* Render doors */}
         {connectedRooms.map((room: RoomData, index: number) => {
           if (!room) return null;
@@ -372,8 +401,14 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
           const doorId = `door-${activeRoomId}-${room.id}`;
           const roomName = room.name || room.id;
 
-          // Render door with simplified logic
-          const isUnlocked = isDoorUnlocked(doorId);
+          // The door to the end room is the one thing gems are for: it stays
+          // shut until the player has found enough of them, and opening it
+          // spends them.
+          const isEndDoor = room.id === currentMap?.endRoomId;
+          const canAffordEnd = gemCount >= GEMS_REQUIRED_FOR_END;
+          const isUnlocked = isEndDoor
+            ? canAffordEnd
+            : isDoorUnlocked(doorId);
           const doorState = getDoorState(doorId);
           const doorType = getDoorType(doorId);
 
@@ -399,7 +434,10 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
               <DoorTrigger
                 position={doorPosition.position}
                 enabled={isUnlocked}
-                onEnter={() => handleDoorClickCallback(room, doorId)}
+                onEnter={() => {
+                  if (isEndDoor && !spendGems(GEMS_REQUIRED_FOR_END)) return;
+                  handleDoorClickCallback(room, doorId);
+                }}
               />
             </group>
           );

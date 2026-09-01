@@ -14,6 +14,8 @@ export interface EntryPoint {
   connectedTo?: string; // ID of the entry point it connects to (in another room)
   type?: 'door' | 'corridor' | 'portal'; // Type of connection
   isActive?: boolean; // Whether this entry point is currently in use
+  width?: number; // Opening width, when the biome config specifies one
+  height?: number; // Opening height, when the biome config specifies one
 }
 
 export interface Room {
