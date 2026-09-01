@@ -35,7 +35,17 @@ export type RoomType =
   | "laboratory"
   | "observatory"
   | "vault"
-  | "shrine";
+  | "shrine"
+
+  // Living-quarters biomes. These four rooms pass their own completion
+  // callbacks (onRestComplete, onGardenComplete, onCookingComplete,
+  // onCraftComplete) but were missing from this union entirely, so
+  // getRoomCards fell through to `default: return []`: the rooms rendered
+  // with no action cards at all and their completion handlers could never run.
+  | "bedroom"
+  | "garden"
+  | "kitchen"
+  | "workshop";
 
 interface UseRoomActionsProps {
   roomType: RoomType;
@@ -45,6 +55,17 @@ interface UseRoomActionsProps {
   onTreasureOpen?: () => void;
   onArenaFight?: () => void;
   onBossFight?: () => void;
+
+  // Callbacks the biomes already pass in. They were not declared here, so
+  // TypeScript dropped them on the floor and the arena/laboratory/observatory
+  // and living-quarters rooms never told their owner they had been completed.
+  onFightStart?: () => void;
+  onExperimentComplete?: () => void;
+  onObservationComplete?: () => void;
+  onRestComplete?: () => void;
+  onGardenComplete?: () => void;
+  onCookingComplete?: () => void;
+  onCraftComplete?: () => void;
 }
 
 export const useRoomActions = ({
@@ -55,6 +76,13 @@ export const useRoomActions = ({
   onTreasureOpen,
   onArenaFight,
   onBossFight,
+  onFightStart,
+  onExperimentComplete,
+  onObservationComplete,
+  onRestComplete,
+  onGardenComplete,
+  onCookingComplete,
+  onCraftComplete,
 }: UseRoomActionsProps) => {
   const { playerStats, addPoints, addExperience, upgradeDefense, upgradeStrength, addBuff } = useGameStore();
   const [isVisible, setIsVisible] = useState(false);
@@ -260,6 +288,7 @@ export const useRoomActions = ({
             icon: "⚔️",
             action: () => {
               onArenaFight?.();
+              onFightStart?.();
             },
             cost: 0,
           },
@@ -666,6 +695,7 @@ export const useRoomActions = ({
             action: () => {
               addPoints(90);
               addExperience(45);
+              onExperimentComplete?.();
             },
             cost: 0,
           },
@@ -692,6 +722,7 @@ export const useRoomActions = ({
             action: () => {
               addPoints(80);
               addExperience(40);
+              onObservationComplete?.();
             },
             cost: 0,
           },
@@ -764,6 +795,117 @@ export const useRoomActions = ({
           },
         ];
 
+      case "bedroom":
+        return [
+          {
+            id: "sleep",
+            title: "Sleep",
+            description: "Rest until you are fully recovered",
+            icon: "🛏️",
+            action: () => {
+              addBuff("defenseBoost", 120);
+              addPoints(40);
+              addExperience(20);
+              onRestComplete?.();
+            },
+            cost: 0,
+          },
+          {
+            id: "nap",
+            title: "Short Nap",
+            description: "Take the edge off without losing the day",
+            icon: "😴",
+            action: () => {
+              addPoints(15);
+              addExperience(10);
+            },
+            cost: 0,
+          },
+        ];
+
+      case "garden":
+        return [
+          {
+            id: "tend_garden",
+            title: "Tend the Garden",
+            description: "Work the beds until the garden is in order",
+            icon: "🌱",
+            action: () => {
+              addPoints(50);
+              addExperience(30);
+              onGardenComplete?.();
+            },
+            cost: 0,
+          },
+          {
+            id: "gather_herbs",
+            title: "Gather Herbs",
+            description: "Collect what is already ripe",
+            icon: "🌿",
+            action: () => {
+              addPoints(25);
+              addExperience(15);
+            },
+            cost: 0,
+          },
+        ];
+
+      case "kitchen":
+        return [
+          {
+            id: "cook_meal",
+            title: "Cook a Meal",
+            description: "Prepare a hot meal from what is in the pantry",
+            icon: "🍳",
+            action: () => {
+              addBuff("strengthBoost", 90);
+              addPoints(45);
+              addExperience(25);
+              onCookingComplete?.();
+            },
+            cost: 0,
+          },
+          {
+            id: "snack",
+            title: "Grab a Snack",
+            description: "Something quick before moving on",
+            icon: "🥪",
+            action: () => {
+              addPoints(15);
+              addExperience(5);
+            },
+            cost: 0,
+          },
+        ];
+
+      case "workshop":
+        return [
+          {
+            id: "craft_item",
+            title: "Craft an Item",
+            description: "Make something useful at the bench",
+            icon: "🔨",
+            action: () => {
+              addPoints(70);
+              addExperience(40);
+              onCraftComplete?.();
+            },
+            cost: 0,
+          },
+          {
+            id: "repair_gear",
+            title: "Repair Gear",
+            description: "Patch up what the dungeon has worn down",
+            icon: "🧰",
+            action: () => {
+              upgradeDefense(0.15);
+              addPoints(30);
+              addExperience(20);
+            },
+            cost: 25,
+          },
+        ];
+
       default:
         return [];
     }
@@ -775,6 +917,13 @@ export const useRoomActions = ({
     onTreasureOpen,
     onArenaFight,
     onBossFight,
+    onFightStart,
+    onExperimentComplete,
+    onObservationComplete,
+    onRestComplete,
+    onGardenComplete,
+    onCookingComplete,
+    onCraftComplete,
     upgradeDefense,
     upgradeStrength,
     addBuff,

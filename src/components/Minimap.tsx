@@ -1,4 +1,11 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import useMapStore from "../store/mapStore";
 import {
   useConsolidatedGameStore,
@@ -14,29 +21,66 @@ interface MinimapProps {
 }
 
 const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
-  const { currentMap } = useMapStore();
-  const { currentRoomId } = useConsolidatedGameStore();
+  // Selectors, not whole-store subscriptions: `useMapStore()` and
+  // `useConsolidatedGameStore()` with no selector re-render this 1,200-line
+  // component on every unrelated store write (room instances loading, phase
+  // changes, transition progress).
+  const currentMap = useMapStore((state) => state.currentMap);
+  const currentRoomId = useConsolidatedGameStore((state) => state.currentRoomId);
   const visitedRooms = useVisitedRooms();
   const completedRooms = useCompletedRooms();
-  const { markRoomCompleted } = useConsolidatedGameStore();
+  const markRoomCompleted = useConsolidatedGameStore(
+    (state) => state.markRoomCompleted
+  );
   const [isMinimapVisible, setIsMinimapVisible] = useState(isVisible);
   const [isFullscreenMapVisible, setIsFullscreenMapVisible] = useState(false);
-  const [cameraRotation, setCameraRotation] = useState({
-    y: -Math.PI / 2,
-    x: 0,
-  });
 
-  // Listen for camera rotation changes using refs
+  /**
+   * Camera heading drives the map rotation, and it changes on every single
+   * mousemove while the player is looking around. Holding it in React state
+   * meant a full re-render of the minimap - both maps, every room dot, every
+   * connection, hundreds of freshly allocated inline style objects - per mouse
+   * event, hundreds of times a second during a look. The rotation is a single
+   * CSS transform, so it is written straight to the two rotating containers,
+   * coalesced to one write per animation frame.
+   */
+  const cameraYawRef = useRef(cameraRotationRefs.getRotation().y);
+  const minimapRotorRef = useRef<HTMLDivElement | null>(null);
+  const fullscreenRotorRef = useRef<HTMLDivElement | null>(null);
+
+  const applyCameraRotation = useCallback(() => {
+    const transform = `translate(-50%, -50%) rotate(${cameraYawRef.current}rad)`;
+    if (minimapRotorRef.current) {
+      minimapRotorRef.current.style.transform = transform;
+    }
+    if (fullscreenRotorRef.current) {
+      fullscreenRotorRef.current.style.transform = transform;
+    }
+  }, []);
+
   useEffect(() => {
+    let frame = 0;
     const unsubscribe = cameraRotationRefs.subscribe(() => {
-      setCameraRotation(cameraRotationRefs.getRotation());
+      cameraYawRef.current = cameraRotationRefs.getRotation().y;
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        applyCameraRotation();
+      });
     });
 
-    // Set initial rotation
-    setCameraRotation(cameraRotationRefs.getRotation());
+    cameraYawRef.current = cameraRotationRefs.getRotation().y;
+    applyCameraRotation();
 
-    return unsubscribe;
-  }, []);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      unsubscribe();
+    };
+  }, [applyCameraRotation]);
+
+  // Re-apply after any render that (re)mounts a rotating container, e.g. the
+  // fullscreen atlas opening.
+  useLayoutEffect(applyCameraRotation);
 
   // Listen for Tab key to toggle fullscreen map, ESC to close, and C to complete current room
   useEffect(() => {
@@ -369,15 +413,16 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
               pointerEvents: "auto",
             }}
           >
-            {/* Map Content Container - Rotates with camera */}
+            {/* Map Content Container - Rotates with camera (transform is
+                written imperatively, see applyCameraRotation) */}
             <div
+              ref={minimapRotorRef}
               style={{
                 position: "absolute",
                 top: "50%",
                 left: "50%",
                 width: "100%",
                 height: "100%",
-                transform: `translate(-50%, -50%) rotate(${cameraRotation.y}rad)`,
                 transformOrigin: "center center",
                 pointerEvents: "none",
               }}
@@ -568,40 +613,46 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
                 );
               })}
 
-              {/* Player Direction Indicator */}
-              {currentRoom && (
+            </div>
+
+            {/* Player Direction Indicator.
+                This lives OUTSIDE the rotating container on purpose. The map
+                spins under the player so that "up" is always where the player
+                is facing; when the arrow spun with it, it pointed at the
+                heading only when the camera happened to face north. */}
+            {currentRoom && (
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${
+                    minimapData.minimapRadius + currentRoom.minimapX - 2
+                  }px`,
+                  top: `${
+                    minimapData.minimapRadius + currentRoom.minimapZ - 2
+                  }px`,
+                  width: "4px",
+                  height: "4px",
+                  backgroundColor: "#ff0000",
+                  borderRadius: "50%",
+                  pointerEvents: "none",
+                }}
+              >
+                {/* Direction arrow - Fixed pointing up */}
                 <div
                   style={{
                     position: "absolute",
-                    left: `${
-                      minimapData.minimapRadius + currentRoom.minimapX - 2
-                    }px`,
-                    top: `${
-                      minimapData.minimapRadius + currentRoom.minimapZ - 2
-                    }px`,
-                    width: "4px",
-                    height: "4px",
-                    backgroundColor: "#ff0000",
-                    borderRadius: "50%",
+                    left: "1px",
+                    top: "-8px",
+                    width: "0",
+                    height: "0",
+                    borderLeft: "1px solid transparent",
+                    borderRight: "1px solid transparent",
+                    borderBottom: "8px solid #ff0000",
+                    transform: "translateX(-50%)",
                   }}
-                >
-                  {/* Direction arrow - Fixed pointing up */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: "1px",
-                      top: "-8px",
-                      width: "0",
-                      height: "0",
-                      borderLeft: "1px solid transparent",
-                      borderRight: "1px solid transparent",
-                      borderBottom: "8px solid #ff0000",
-                      transform: "translateX(-50%)",
-                    }}
-                  />
-                </div>
-              )}
-            </div>
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -786,15 +837,16 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
                 boxShadow: "0 0 30px rgba(0, 0, 0, 0.3)",
               }}
             >
-              {/* Map Content Container - Rotates with camera */}
+              {/* Map Content Container - Rotates with camera (transform is
+                  written imperatively, see applyCameraRotation) */}
               <div
+                ref={fullscreenRotorRef}
                 style={{
                   position: "absolute",
                   top: "50%",
                   left: "50%",
                   width: "100%",
                   height: "100%",
-                  transform: `translate(-50%, -50%) rotate(${cameraRotation.y}rad)`,
                   transformOrigin: "center center",
                 }}
               >
@@ -1031,15 +1083,19 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
                   );
                 })}
 
-                {/* Player Direction Indicator - Enhanced */}
-                {currentRoom && (
+              </div>
+
+                {/* Player Direction Indicator - Enhanced.
+                  Outside the rotating container: the arrow marks where the
+                  player is facing, so it must not spin with the map. */}
+                {fullscreenCurrentRoom && (
                   <div
                     style={{
                       position: "absolute",
                       left: `50%`,
                       top: `50%`,
-                      transform: `translate(${currentRoom.minimapX - 8}px, ${
-                        currentRoom.minimapZ - 8
+                      transform: `translate(${fullscreenCurrentRoom.minimapX - 8}px, ${
+                        fullscreenCurrentRoom.minimapZ - 8
                       }px)`,
                       width: "16px",
                       height: "16px",
@@ -1080,7 +1136,6 @@ const Minimap: React.FC<MinimapProps> = ({ isVisible = true, onToggle }) => {
                     />
                   </div>
                 )}
-              </div>
             </div>
           </div>
 
