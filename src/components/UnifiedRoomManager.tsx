@@ -15,6 +15,7 @@ import DoorDebugger from "./DoorDebugger";
 import DebugSign from "./DebugSign";
 import RoomInstanceRenderer from "./RoomInstanceRenderer";
 import Gem from "./Gem";
+import DoorTrigger from "./DoorTrigger";
 import RoomTransitionEffect from "./RoomTransitionEffect";
 
 // Data and utils
@@ -377,21 +378,30 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
           const doorType = getDoorType(doorId);
 
           return (
-            <Door
-              key={doorId}
-              position={doorPosition.position}
-              rotation={doorPosition.rotation}
-              targetRoomId={room.id}
-              showLabel={true}
-              state={doorState}
-              type={doorType}
-              isLocked={!isUnlocked}
-              glowEffect={doorType === "secret"}
-              onDoorClick={() => handleDoorClickCallback(room, doorId)}
-              onStateChange={(newState) =>
-                handleDoorStateChange(doorId, newState)
-              }
-            />
+            <group key={doorId}>
+              <Door
+                position={doorPosition.position}
+                rotation={doorPosition.rotation}
+                targetRoomId={room.id}
+                showLabel={true}
+                state={doorState}
+                type={doorType}
+                isLocked={!isUnlocked}
+                glowEffect={doorType === "secret"}
+                onDoorClick={() => handleDoorClickCallback(room, doorId)}
+                onStateChange={(newState) =>
+                  handleDoorStateChange(doorId, newState)
+                }
+              />
+
+              {/* Walking into the doorway travels. Clicking still works, but a
+                  first-person player should never have to discover that. */}
+              <DoorTrigger
+                position={doorPosition.position}
+                enabled={isUnlocked}
+                onEnter={() => handleDoorClickCallback(room, doorId)}
+              />
+            </group>
           );
         })}
 

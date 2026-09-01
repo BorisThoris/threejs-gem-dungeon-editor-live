@@ -32,6 +32,23 @@ export interface ConcreteFoundationProps {
   hoverColor?: string;
 }
 
+interface FoundationComponent {
+  type: string;
+  position: [number, number, number];
+  size: [number, number, number];
+  id: string;
+}
+
+/** Props shared by every material variant used for foundation components. */
+interface FoundationMaterialProps {
+  color: string;
+  map?: THREE.Texture | null;
+  roughness: number;
+  metalness: number;
+  transparent: boolean;
+  opacity?: number;
+}
+
 const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
   position,
   width = 10,
@@ -68,7 +85,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
 
   // Generate foundation components based on type
   const foundationComponents = useMemo(() => {
-    const components = [];
+    const components: FoundationComponent[] = [];
 
     switch (foundationType) {
       case "slab":
@@ -104,7 +121,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const blockWidth = 0.4;
     const blockLength = 0.6;
     const blockHeight = 0.2;
@@ -157,7 +174,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const stripWidth = 0.8;
     const blockHeight = 0.2;
     const jointThickness = 0.01;
@@ -209,7 +226,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const padSize = 2;
     const padSpacing = 4;
     const blockHeight = 0.2;
@@ -256,7 +273,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const pierSize = 0.8;
     const pierSpacing = 3;
     const blockHeight = 0.2;
@@ -303,7 +320,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const rebarSpacing = 0.3;
     const rebarThickness = 0.02;
 
@@ -351,7 +368,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     foundationLength: number,
     foundationHeight: number
   ) => {
-    const components = [];
+    const components: FoundationComponent[] = [];
     const insulationThickness = 0.1;
 
     // Bottom insulation
@@ -387,7 +404,7 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     return "#C0C0C0"; // Default concrete color
   };
 
-  const getConcreteMaterialProps = () => ({
+  const getConcreteMaterialProps = (): FoundationMaterialProps => ({
     color: getMaterialColor(),
     map: concreteTexture,
     roughness: 0.9,
@@ -396,14 +413,14 @@ const ConcreteFoundation: React.FC<ConcreteFoundationProps> = ({
     opacity,
   });
 
-  const getRebarMaterialProps = () => ({
+  const getRebarMaterialProps = (): FoundationMaterialProps => ({
     color: "#8B4513", // Steel color
     roughness: 0.3,
     metalness: 0.8,
     transparent: false,
   });
 
-  const getInsulationMaterialProps = () => ({
+  const getInsulationMaterialProps = (): FoundationMaterialProps => ({
     color: "#FFD700", // Yellow insulation color
     roughness: 0.8,
     metalness: 0.0,

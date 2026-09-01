@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { RigidBody } from "@react-three/rapier";
+import type { RapierRigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
 export interface SpikeTrapProps {
@@ -24,7 +25,7 @@ const SpikeTrap: React.FC<SpikeTrapProps> = ({
 }) => {
   const [triggered, setTriggered] = useState(false);
   const spikeRef = useRef<THREE.Group>(null);
-  const trapRef = useRef<THREE.Group>(null);
+  const trapRef = useRef<RapierRigidBody>(null);
 
   useFrame((state) => {
     if (spikeRef.current && isActive) {

@@ -446,9 +446,12 @@ const UniversalBreakableDemo: React.FC<UniversalBreakableDemoProps> = ({
         item={{
           id: "test-gem",
           name: "Test Gem",
-          type: "gem",
-          value: 100,
-          position: [2, 1, 2],
+          description: "A demo gem used to exercise the breaking system.",
+          type: "trinket",
+          rarity: "rare",
+          cost: 100,
+          effects: [],
+          icon: "💎",
         }}
         position={[2, 1, 2]}
         enabled={breakingEnabled}
@@ -478,6 +481,9 @@ const UniversalBreakableDemo: React.FC<UniversalBreakableDemoProps> = ({
       <BreakableDoor
         key={`door_${resetKey}`}
         position={[0, 1, -3]}
+        rotation={[0, 0, 0]}
+        targetRoomId="breakable-demo"
+        onDoorClick={() => {}}
         enabled={breakingEnabled}
         breakingOptions={{
           fragmentCount: 6,

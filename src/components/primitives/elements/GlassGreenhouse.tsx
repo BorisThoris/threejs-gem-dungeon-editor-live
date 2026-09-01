@@ -34,6 +34,25 @@ export interface GlassGreenhouseProps {
   hoverColor?: string;
 }
 
+interface GreenhouseComponent {
+  type: string;
+  position: [number, number, number];
+  size: [number, number, number];
+  id: string;
+  /** Only the angled roof panels are rotated. */
+  rotation?: [number, number, number];
+}
+
+/** Props shared by every material variant used for greenhouse components. */
+interface GreenhouseMaterialProps {
+  color: string;
+  roughness: number;
+  metalness: number;
+  transparent: boolean;
+  opacity?: number;
+  side?: THREE.Side;
+}
+
 const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
   position,
   width = 8,
@@ -72,7 +91,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
 
   // Generate greenhouse components
   const greenhouseComponents = useMemo(() => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
     const frameThickness = 0.05;
     const glassThickness = 0.02;
     const panelWidth = 1.0;
@@ -138,7 +157,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     greenhouseHeight: number,
     frameThickness: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
 
     // Vertical corner posts
     const cornerPosts = [
@@ -308,7 +327,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     panelHeight: number,
     glassThickness: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
 
     // Front and back walls
     const frontBackPanels = Math.floor(greenhouseWidth / panelWidth);
@@ -407,7 +426,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     panelWidth: number,
     glassThickness: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
     const roofAngle = Math.PI / 6; // 30 degrees
     const roofHeight = (greenhouseWidth * Math.tan(roofAngle)) / 2;
 
@@ -466,7 +485,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     doorCount: number,
     frameThickness: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
     const doorWidth = 1.5;
     const doorHeight = greenhouseHeight * 0.8;
     const doorSpacing = greenhouseLength / (doorCount + 1);
@@ -510,7 +529,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     ventCount: number,
     frameThickness: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
     const ventWidth = 0.8;
     const ventHeight = 0.4;
     const ventSpacing = greenhouseLength / (ventCount + 1);
@@ -552,7 +571,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     greenhouseLength: number,
     greenhouseHeight: number
   ) => {
-    const components = [];
+    const components: GreenhouseComponent[] = [];
     const shelfHeight = 0.05;
     const shelfSpacing = 0.8;
     const shelfWidth = greenhouseWidth * 0.8;
@@ -598,7 +617,7 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     return "#E6F3FF"; // Default glass color
   };
 
-  const getGlassMaterialProps = () => ({
+  const getGlassMaterialProps = (): GreenhouseMaterialProps => ({
     color: getMaterialColor(),
     roughness: 0.0,
     metalness: 0.0,
@@ -607,21 +626,21 @@ const GlassGreenhouse: React.FC<GlassGreenhouseProps> = ({
     side: THREE.DoubleSide,
   });
 
-  const getFrameMaterialProps = () => ({
+  const getFrameMaterialProps = (): GreenhouseMaterialProps => ({
     color: "#2C3E50", // Dark frame color
     roughness: 0.8,
     metalness: 0.2,
     transparent: false,
   });
 
-  const getDoorMaterialProps = () => ({
+  const getDoorMaterialProps = (): GreenhouseMaterialProps => ({
     color: "#8B4513", // Wood door color
     roughness: 0.8,
     metalness: 0.0,
     transparent: false,
   });
 
-  const getShelfMaterialProps = () => ({
+  const getShelfMaterialProps = (): GreenhouseMaterialProps => ({
     color: "#8B4513", // Wood shelf color
     roughness: 0.8,
     metalness: 0.0,

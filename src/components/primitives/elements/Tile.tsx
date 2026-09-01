@@ -15,7 +15,14 @@ export interface TileProps {
   size?: number;
   height?: number;
   color?: string;
-  material?: "stone" | "marble" | "wood" | "metal" | "brick" | "carpet";
+  material?:
+    | "stone"
+    | "marble"
+    | "wood"
+    | "metal"
+    | "brick"
+    | "carpet"
+    | "concrete";
   pattern?: "smooth" | "rough" | "tiled" | "cracked" | "polished";
   rotation?: [number, number, number];
   isCollidable?: boolean;
@@ -86,6 +93,9 @@ const Tile: React.FC<TileProps> = ({
           case "carpet":
             textureId = "grass";
             break;
+          case "concrete":
+            textureId = "cobblestone";
+            break;
           default:
             return;
         }
@@ -149,6 +159,12 @@ const Tile: React.FC<TileProps> = ({
         return {
           ...baseProps,
           roughness: 0.9,
+          metalness: 0.0,
+        };
+      case "concrete":
+        return {
+          ...baseProps,
+          roughness: pattern === "polished" ? 0.4 : 0.85,
           metalness: 0.0,
         };
       default:
