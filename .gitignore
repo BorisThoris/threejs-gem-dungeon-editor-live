@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Packaged desktop builds (electron-builder output; ~150MB per AppImage)
+dist-electron
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
