@@ -13,11 +13,10 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       hardwareAcceleration: true,
       backgroundThrottling: false
     },
-    icon: path.join(__dirname, '../public/favicon.ico'),
     titleBarStyle: 'default',
     show: false, // Don't show until ready
     // Performance window options
@@ -52,94 +51,24 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
-    
-    console.log('=== ELECTRON MAIN PROCESS DEBUG ===');
-    console.log('Window created and shown');
-    console.log('WebPreferences:', mainWindow.webPreferences);
-    
-    // Force open DevTools to see console
-    mainWindow.webContents.openDevTools();
-    
-    // Enhanced GPU debugging
-    mainWindow.webContents.executeJavaScript(`
-      console.log('=== ELECTRON WEBGL DEBUG ===');
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-      const gl2 = canvas.getContext('webgl2');
-      
-      console.log('WebGL Support:', {
-        webgl: !!gl,
-        webgl2: !!gl2,
-        vendor: gl?.getParameter(gl.VENDOR),
-        renderer: gl?.getParameter(gl.RENDERER),
-        version: gl?.getParameter(gl.VERSION),
-        shadingLanguageVersion: gl?.getParameter(gl.SHADING_LANGUAGE_VERSION),
-        maxTextureSize: gl?.getParameter(gl.MAX_TEXTURE_SIZE),
-        maxVertexAttribs: gl?.getParameter(gl.MAX_VERTEX_ATTRIBS),
-        maxVaryingVectors: gl?.getParameter(gl.MAX_VARYING_VECTORS),
-        aliasedLineWidthRange: gl?.getParameter(gl.ALIASED_LINE_WIDTH_RANGE),
-        aliasedPointSizeRange: gl?.getParameter(gl.ALIASED_POINT_SIZE_RANGE)
-      });
-      
-      // Test shader compilation
-      if (gl) {
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        
-        const vertexSource = \`
-          attribute vec3 position;
-          uniform mat4 modelViewMatrix;
-          uniform mat4 projectionMatrix;
-          void main() {
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          }
-        \`;
-        
-        const fragmentSource = \`
-          precision mediump float;
-          void main() {
-            gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
-          }
-        \`;
-        
-        gl.shaderSource(vertexShader, vertexSource);
-        gl.shaderSource(fragmentShader, fragmentSource);
-        gl.compileShader(vertexShader);
-        gl.compileShader(fragmentShader);
-        
-        console.log('Shader Compilation:', {
-          vertexShaderOK: gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS),
-          fragmentShaderOK: gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS),
-          vertexShaderLog: gl.getShaderInfoLog(vertexShader),
-          fragmentShaderLog: gl.getShaderInfoLog(fragmentShader)
-        });
-      }
-      
-      // Test pointer lock support
-      console.log('=== POINTER LOCK DEBUG ===');
-      console.log('Pointer lock supported:', 'requestPointerLock' in document.body);
-      console.log('Pointer lock element:', document.pointerLockElement);
-      
-      // Test mouse events
-      document.addEventListener('mousedown', (e) => {
-        console.log('Mouse down event:', e.button, e.clientX, e.clientY);
-      });
-      
-      document.addEventListener('mousemove', (e) => {
-        console.log('Mouse move event:', e.movementX, e.movementY, e.clientX, e.clientY);
-      });
-    `);
+
+    // DevTools on demand only. This used to open unconditionally on every
+    // launch, including in a packaged build, which is not something a player
+    // should ever see.
+    if (isDev) {
+      mainWindow.webContents.openDevTools();
+    }
   });
 
-  // Optimize loading performance
-  mainWindow.webContents.on('did-finish-load', () => {
-    // Disable image animations for better performance
-    mainWindow.webContents.executeJavaScript(`
-      const style = document.createElement('style');
-      style.textContent = '* { animation-duration: 0.01ms !important; animation-delay: 0.01ms !important; transition-duration: 0.01ms !important; }';
-      document.head.appendChild(style);
-    `);
-  });
+  // The renderer previously had a large block of WebGL/pointer-lock probing
+  // injected into it here, ending with a console.log on every single
+  // mousemove - in a game where the mouse drives the camera, that is thousands
+  // of log lines a second and a real frame-rate cost.
+  //
+  // A stylesheet forcing `animation-duration: 0.01ms !important` on every
+  // element was also injected on did-finish-load, in the name of performance.
+  // It cannot help rendering (the scene is WebGL, not CSS) and it flattens the
+  // game's own menu and HUD transitions, so it is gone too.
 
   // Handle window closed
   mainWindow.on('closed', () => {

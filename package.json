@@ -5,7 +5,7 @@
     "type": "module",
     "description": "React Three Fiber dungeon exploration/editor project with Three.js, TypeScript, Zustand, physics, tooling, and Electron packaging.",
     "author": "Boris Bostandzhiev",
-    "main": "electron/main.js",
+    "main": "electron/main.cjs",
     "homepage": "./",
     "scripts": {
         "start": "vite",
@@ -22,7 +22,8 @@
         "generate-config": "node scripts/generate-config.js",
         "generate-assets": "node scripts/generate-assets.js",
         "scan-components": "yarn ts-node src/utils/componentScanner.ts",
-        "generate-textures": "node scripts/generate-textures.js"
+        "generate-textures": "node scripts/generate-textures.js",
+        "generate-icon": "node scripts/generate-icon.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
@@ -74,7 +75,7 @@
         "files": [
             "dist/**/*",
             "electron/**/*",
-            "node_modules/**/*"
+            "!node_modules/**/*"
         ],
         "win": {
             "target": "nsis"
@@ -87,11 +88,11 @@
         },
         "mac": {
             "target": "dmg",
-            "icon": "public/favicon.ico"
+            "icon": "build/icon.png"
         },
         "linux": {
             "target": "AppImage",
-            "icon": "public/favicon.ico"
+            "icon": "build/icon.png"
         }
     }
 }
