@@ -152,18 +152,23 @@ export const useMouseLook = (editorMode: boolean = false) => {
         isMouseDown.current = true;
 
         if (!isPointerLocked.current) {
-          // Try to request pointer lock
-          const requestPromise = document.body.requestPointerLock();
+          // Try to request pointer lock. Chrome rejects this promise outright
+          // when the lock was exited less than a second ago (pressing Escape,
+          // or a fast right-click-release-right-click), and an uncaught
+          // rejection there used to surface as a page error. Older engines
+          // return undefined instead of a promise.
+          const requestPromise = document.body.requestPointerLock() as
+            | Promise<void>
+            | undefined;
 
-          // Electron-specific handling
-          if (isElectron) {
-            requestPromise.catch((error) => {
+          requestPromise?.catch((error) => {
+            if (isElectron) {
               console.warn("Pointer lock failed in Electron:", error);
               // Fallback: enable mouse look without pointer lock
               isPointerLocked.current = true;
               updateCameraRotation();
-            });
-          }
+            }
+          });
         }
 
         // Emit UI event instead of React state update
@@ -205,8 +210,20 @@ export const useMouseLook = (editorMode: boolean = false) => {
       document.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("playerTeleport", handleTeleport);
       offSetRotation?.();
+
+      // Leaving the game (pause, menu, editor) while the right button is held
+      // used to leave the pointer locked with no listener left to release it:
+      // the mouse stayed captured and invisible over the menu.
+      isMouseDown.current = false;
+      if (document.pointerLockElement) {
+        document.exitPointerLock();
+      }
+      isPointerLocked.current = false;
+      uiEvents.emit(UI_EVENTS.MOUSE_LOOK_END);
     };
-  }, [camera, isElectron]);
+    // editorMode gates the whole effect: without it in the dependency list,
+    // switching from the editor back into the game left mouse look uninstalled.
+  }, [camera, isElectron, editorMode]);
 
   return {
     isPointerLocked: isPointerLocked.current,

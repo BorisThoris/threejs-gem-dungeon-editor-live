@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Text } from "./GameText";
 import { useFrame } from "@react-three/fiber";
@@ -11,58 +11,62 @@ import {
   getDoorBehavior,
 } from "./doorUtils";
 
-// Door animation hook
+/**
+ * Drives the door panel's swing.
+ *
+ * The old version took `(state, delta)` in its useFrame callback, which shadowed
+ * the `state: DoorState` argument of the hook itself - so every
+ * `state === "opening"` test inside the loop compared R3F's RootState object to
+ * a string and was always false. The easing branches were dead code: the panel
+ * snapped between 0 and 90 degrees, `isAnimating` never cleared itself, and the
+ * loop called `setRotation` with an unchanged value on every single frame,
+ * re-rendering the whole door for as long as it was "opening" or "closing".
+ *
+ * The swing now runs on the mesh directly through a ref, so it animates for
+ * real and costs React nothing.
+ */
 const useDoorAnimation = (state: DoorState, speed: number = 1) => {
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const animationRef = useRef<number>(0);
+  const panelRef = useRef<THREE.Mesh>(null);
+  // Degrees, mirrored on the mesh below.
+  const rotationRef = useRef<number>(state === "open" ? 90 : 0);
+
+  const applyRotation = () => {
+    if (panelRef.current) {
+      panelRef.current.rotation.y = (rotationRef.current * Math.PI) / 180;
+    }
+  };
 
   useEffect(() => {
-    if (state === "opening") {
-      setIsAnimating(true);
-      animationRef.current = 0;
-    } else if (state === "closing") {
-      setIsAnimating(true);
-      animationRef.current = 90; // Start from open position
-    } else if (state === "open") {
-      setRotation(90);
-      setIsAnimating(false);
-    } else if (state === "closed") {
-      setRotation(0);
-      setIsAnimating(false);
+    // Settled states jump straight to their resting angle; the two animating
+    // states are handed to the frame loop below.
+    if (state === "open") {
+      rotationRef.current = 90;
+      applyRotation();
+    } else if (state === "closed" || state === "locked" || state === "broken") {
+      rotationRef.current = 0;
+      applyRotation();
     }
   }, [state]);
 
-  useFrame((state, delta) => {
-    if (!isAnimating) return;
+  useFrame((_rootState, delta) => {
+    if (state !== "opening" && state !== "closing") return;
 
-    const deltaTime = delta * speed;
-    const easingFactor = 0.1; // Smooth easing
+    const target = state === "opening" ? 90 : 0;
+    const diff = target - rotationRef.current;
 
-    if (state === "opening") {
-      const targetRotation = 90;
-      const diff = targetRotation - animationRef.current;
-      animationRef.current += diff * easingFactor;
-
-      if (Math.abs(diff) < 0.1) {
-        animationRef.current = targetRotation;
-        setIsAnimating(false);
-      }
-    } else if (state === "closing") {
-      const targetRotation = 0;
-      const diff = targetRotation - animationRef.current;
-      animationRef.current += diff * easingFactor;
-
-      if (Math.abs(diff) < 0.1) {
-        animationRef.current = targetRotation;
-        setIsAnimating(false);
-      }
+    if (Math.abs(diff) < 0.5) {
+      rotationRef.current = target;
+    } else {
+      // Frame-rate independent easing: the old fixed 0.1 factor made the swing
+      // twice as fast at 120Hz as at 60Hz.
+      const t = 1 - Math.exp(-6 * speed * Math.min(delta, 0.1));
+      rotationRef.current += diff * t;
     }
 
-    setRotation(animationRef.current);
+    applyRotation();
   });
 
-  return { rotation, isAnimating };
+  return { panelRef };
 };
 
 interface DoorProps {
@@ -101,7 +105,10 @@ const Door: React.FC<DoorProps> = React.memo(
   }) => {
     // Door state logic with proper validation
     const currentState = isLocked ? "locked" : state;
-    const behavior = getDoorBehavior(type);
+    // getDoorBehavior builds a fresh object on every call, so calling it inline
+    // handed the auto-close effect below a new dependency on every render and
+    // restarted its timer each time.
+    const behavior = useMemo(() => getDoorBehavior(type), [type]);
     const canInteract =
       currentState !== "locked" &&
       currentState !== "broken" &&
@@ -109,10 +116,7 @@ const Door: React.FC<DoorProps> = React.memo(
       currentState !== "closing";
 
     // Animation system
-    const { rotation: doorRotation, isAnimating } = useDoorAnimation(
-      currentState,
-      animationSpeed
-    );
+    const { panelRef } = useDoorAnimation(currentState, animationSpeed);
 
     // Auto-close functionality
     useEffect(() => {
@@ -225,6 +229,15 @@ const Door: React.FC<DoorProps> = React.memo(
       document.body.style.cursor = "default";
     }, []);
 
+    // Walking through a doorway unmounts the door while the pointer is still
+    // over it, so onPointerOut never fires and the cursor stays stuck on
+    // "pointer"/"not-allowed" for the rest of the session.
+    useEffect(() => {
+      return () => {
+        document.body.style.cursor = "default";
+      };
+    }, []);
+
     // Generate enhanced door label with state info
     const doorLabel = showLabel
       ? (() => {
@@ -235,7 +248,9 @@ const Door: React.FC<DoorProps> = React.memo(
           const stateIcon =
             {
               open: "🟢",
+              opening: "🟡",
               closed: "🟤",
+              closing: "🟠",
               locked: "🔒",
               broken: "🔴",
             }[currentState] || "🚪";
@@ -262,11 +277,7 @@ const Door: React.FC<DoorProps> = React.memo(
         </mesh>
 
         {/* Door panel with state-based styling and animation */}
-        <mesh
-          position={[0, 1.5, 0.1]}
-          castShadow
-          rotation={[0, (doorRotation * Math.PI) / 180, 0]}
-        >
+        <mesh ref={panelRef} position={[0, 1.5, 0.1]} castShadow>
           <boxGeometry args={[1.8, 2.8, 0.05]} />
           <meshStandardMaterial {...getDoorMaterial()} />
         </mesh>
