@@ -28,6 +28,16 @@ interface MemoryBlock {
   pattern: number[];
 }
 
+const PARTICLE_POOL_SIZE = 18;
+const PARTICLE_COLORS = [
+  "#FFD700",
+  "#FF6B6B",
+  "#4CAF50",
+  "#2196F3",
+  "#9C27B0",
+  "#FF9800",
+];
+
 const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
   onPuzzleComplete,
   onRoomComplete,
@@ -54,18 +64,35 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
   const [isBreaking, setIsBreaking] = useState(false);
   const [breakCooldown, setBreakCooldown] = useState(0);
 
-  // Animated particles system
-  const [particles, setParticles] = useState<
-    Array<{
-      id: number;
-      position: [number, number, number];
-      velocity: [number, number, number];
-      color: string;
-      size: number;
-      life: number;
-      maxLife: number;
-    }>
-  >([]);
+  /**
+   * Ambient sparkles.
+   *
+   * These used to live in React state, and `updateParticles()` - a
+   * `setParticles` call that rebuilt the whole array - ran from useFrame on
+   * EVERY frame while the game was running. That is a React re-render of this
+   * entire 1,100-line room sixty times a second, and because particles were
+   * keyed by `Math.random()` and expired on their own schedule, each render
+   * also mounted and unmounted meshes, allocating a fresh sphere geometry and
+   * material every time. It was the single largest source of stutter in the
+   * room.
+   *
+   * The sparkles are now a fixed pool: the meshes mount once when the game
+   * starts and every frame after that only mutates their transforms and
+   * materials, so React does no work at all.
+   */
+  const particleMeshes = useRef<(THREE.Mesh | null)[]>([]);
+  const particleState = useRef(
+    Array.from({ length: PARTICLE_POOL_SIZE }, () => ({
+      x: 0,
+      y: 0,
+      z: 0,
+      vx: 0,
+      vy: 0,
+      vz: 0,
+      life: 0,
+      maxLife: 1,
+    }))
+  );
 
   // Debug text animation refs
   const debugTextRefs = useRef<THREE.Group[]>([]);
@@ -185,28 +212,8 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
     // Add cube to broken set
     setBrokenCubes((prev) => new Set([...prev, blockId]));
 
-    // Create explosion particles when cube is broken
-    const explosionParticles = Array.from({ length: 8 }, () => {
-      const colors = ["#FF6B6B", "#FFD700", "#FF9800"];
-      return {
-        id: Math.random(),
-        position: [
-          (Math.random() - 0.5) * 2,
-          Math.random() * 2 + 1,
-          (Math.random() - 0.5) * 2,
-        ] as [number, number, number],
-        velocity: [
-          (Math.random() - 0.5) * 0.1,
-          Math.random() * 0.05 + 0.02,
-          (Math.random() - 0.5) * 0.1,
-        ] as [number, number, number],
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: Math.random() * 0.1 + 0.05,
-        life: 0,
-        maxLife: 100, // Short-lived explosion particles
-      };
-    });
-    setParticles((prev) => [...prev, ...explosionParticles]);
+    // Explosion when a cube is broken: short-lived and fast.
+    burstParticles(2, 2, 0.1, 1.7);
 
     // Deal damage to player (risk/reward)
     const damage = 5; // 5 damage for breaking a cube
@@ -240,7 +247,10 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
     }
 
     // Generate new pattern with remaining cubes
-    const newPattern = generatePattern(remainingBlocks.length);
+    const newPattern = generatePattern(
+      remainingBlocks.length,
+      remainingBlocks.length
+    );
     setCurrentPattern(newPattern);
     setPlayerSequence([]);
     setCurrentStep(0);
@@ -261,87 +271,50 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
     }
   }, [breakCooldown]);
 
-  // Particle system functions
-  const createParticle = () => {
-    const colors = [
-      "#FFD700",
-      "#FF6B6B",
-      "#4CAF50",
-      "#2196F3",
-      "#9C27B0",
-      "#FF9800",
-    ];
-    return {
-      id: Math.random(),
-      position: [
-        (Math.random() - 0.5) * 12,
-        Math.random() * 4 + 0.5,
-        (Math.random() - 0.5) * 12,
-      ] as [number, number, number],
-      velocity: [
-        (Math.random() - 0.5) * 0.02,
-        Math.random() * 0.01 + 0.005,
-        (Math.random() - 0.5) * 0.02,
-      ] as [number, number, number],
-      color: colors[Math.floor(Math.random() * colors.length)],
-      size: Math.random() * 0.08 + 0.02,
-      life: 0,
-      maxLife: Math.random() * 300 + 200, // 200-500 frames
-    };
-  };
+  // Particle system: one pooled slot is re-seeded rather than allocated.
+  const seedAmbientParticle = useCallback((index: number) => {
+    const particle = particleState.current[index];
+    particle.x = (Math.random() - 0.5) * 12;
+    particle.y = Math.random() * 4 + 0.5;
+    particle.z = (Math.random() - 0.5) * 12;
+    particle.vx = (Math.random() - 0.5) * 0.02;
+    particle.vy = Math.random() * 0.01 + 0.005;
+    particle.vz = (Math.random() - 0.5) * 0.02;
+    particle.life = 0;
+    // Seconds, not frames: the old code counted one "life" per frame, which
+    // made particles live half as long on a 120Hz display.
+    particle.maxLife = Math.random() * 5 + 3.3;
+  }, []);
 
-  const updateParticles = useCallback(() => {
-    setParticles((prev) => {
-      return prev
-        .map((particle) => {
-          // Update position
-          const newPosition: [number, number, number] = [
-            particle.position[0] + particle.velocity[0],
-            particle.position[1] + particle.velocity[1],
-            particle.position[2] + particle.velocity[2],
-          ];
-
-          // Add some floating motion
-          const time = Date.now() * 0.001;
-          const floatX = Math.sin(time * 0.5 + particle.id) * 0.001;
-          const floatZ = Math.cos(time * 0.3 + particle.id) * 0.001;
-          const floatY = Math.sin(time * 0.8 + particle.id) * 0.002;
-
-          // Add phase-specific behavior
-          let phaseMultiplier = 1;
-          if (gamePhase === "showing") {
-            phaseMultiplier = 1.5; // More active during pattern showing
-          } else if (gamePhase === "playing") {
-            phaseMultiplier = 0.8; // Calmer during playing
-          }
-
-          return {
-            ...particle,
-            position: [
-              newPosition[0] + floatX * phaseMultiplier,
-              newPosition[1] + floatY * phaseMultiplier,
-              newPosition[2] + floatZ * phaseMultiplier,
-            ] as [number, number, number],
-            life: particle.life + 1,
-          };
-        })
-        .filter((particle) => particle.life < particle.maxLife)
-        .concat(
-          // Add new particles occasionally, more during active phases
-          Math.random() < (gamePhase === "showing" ? 0.2 : 0.1)
-            ? [createParticle()]
-            : []
-        );
-    });
-  }, [gamePhase]);
+  // A burst re-seeds the whole pool around a point instead of appending
+  // throwaway meshes.
+  const burstParticles = useCallback(
+    (spread: number, height: number, speed: number, life: number) => {
+      particleState.current.forEach((particle) => {
+        particle.x = (Math.random() - 0.5) * spread;
+        particle.y = Math.random() * height + 1;
+        particle.z = (Math.random() - 0.5) * spread;
+        particle.vx = (Math.random() - 0.5) * speed;
+        particle.vy = Math.random() * speed * 0.6 + speed * 0.2;
+        particle.vz = (Math.random() - 0.5) * speed;
+        particle.life = 0;
+        particle.maxLife = life;
+      });
+    },
+    []
+  );
 
   // Initialize particles when game starts
   useEffect(() => {
     if (gameStarted) {
-      const initialParticles = Array.from({ length: 15 }, createParticle);
-      setParticles(initialParticles);
+      for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+        seedAmbientParticle(i);
+        // Stagger the pool so they do not all pulse in lockstep.
+        particleState.current[i].life =
+          Math.random() * particleState.current[i].maxLife;
+      }
     }
-  }, [gameStarted]);
+  }, [gameStarted, seedAmbientParticle]);
 
   // Particle animation is now handled in useFrame below
 
@@ -377,9 +350,21 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
     },
   ];
 
-  // Generate random pattern
-  const generatePattern = (length: number): number[] => {
-    const maxIndex = Math.max(2, blocks.length || 4);
+  /**
+   * Generate a random pattern over the cubes that actually exist.
+   *
+   * `blockCount` used to be read from the `blocks` state captured by the
+   * closure. The pattern is generated a second after the cubes are created, but
+   * from the render that created them - where `blocks` was still empty - so the
+   * count fell back to 4. A round that spawned 2 or 3 cubes therefore got a
+   * pattern containing ids 3 or 4 with no cube behind them: showPattern
+   * highlighted nothing for those steps while handleBlockClick wrapped the same
+   * id with `% blocks.length` and demanded a different cube. The sequence the
+   * player was shown was not the sequence the room wanted back, and the round
+   * could only be won by guessing.
+   */
+  const generatePattern = (length: number, blockCount: number): number[] => {
+    const maxIndex = Math.max(1, blockCount);
     const pattern = Array.from({ length }, () =>
       Math.floor(Math.random() * maxIndex)
     );
@@ -445,7 +430,7 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
     resetAllBlocksVisuals();
     addTimeout(() => {
       // Generate pattern after blocks are spawned
-      const properPattern = generatePattern(level + 2);
+      const properPattern = generatePattern(level + 2, count);
       setCurrentPattern(properPattern);
       patternRef.current = properPattern;
       showPattern(properPattern);
@@ -645,28 +630,8 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
           // Game completed successfully!
           setGamePhase("completed");
 
-          // Create celebration particles
-          const celebrationParticles = Array.from({ length: 20 }, () => {
-            const colors = ["#FFD700", "#4CAF50", "#2196F3", "#9C27B0"];
-            return {
-              id: Math.random(),
-              position: [
-                (Math.random() - 0.5) * 6,
-                Math.random() * 3 + 2,
-                (Math.random() - 0.5) * 6,
-              ] as [number, number, number],
-              velocity: [
-                (Math.random() - 0.5) * 0.05,
-                Math.random() * 0.03 + 0.01,
-                (Math.random() - 0.5) * 0.05,
-              ] as [number, number, number],
-              color: colors[Math.floor(Math.random() * colors.length)],
-              size: Math.random() * 0.12 + 0.08,
-              life: 0,
-              maxLife: 200, // Celebration particles last longer
-            };
-          });
-          setParticles((prev) => [...prev, ...celebrationParticles]);
+          // Celebration burst: slower and longer-lived than an explosion.
+          burstParticles(6, 3, 0.05, 3.3);
 
           onRoomComplete?.();
           onDoorsUnlock?.();
@@ -680,7 +645,7 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
         } else {
           // Start next level
           addTimeout(() => {
-            const newPattern = generatePattern(level + 3);
+            const newPattern = generatePattern(level + 3, blocks.length);
             setCurrentPattern(newPattern);
             patternRef.current = newPattern; // Update ref as well
             setGamePhase("showing");
@@ -696,7 +661,7 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
   };
 
   // Animation frame for floating blocks
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const time = state.clock.getElapsedTime();
 
     // Initialize spawn start
@@ -799,9 +764,42 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
       }
     });
 
-    // Update particles animation
+    // Update particles animation. Straight onto the meshes: no React state,
+    // no allocation, no mounting.
     if (gameStarted) {
-      updateParticles();
+      // The original moved particles by a fixed step per frame; scale by the
+      // frame time so they drift at the same speed on any display.
+      const step = Math.min(delta, 0.1) * 60;
+      const phaseMultiplier =
+        gamePhase === "showing" ? 1.5 : gamePhase === "playing" ? 0.8 : 1;
+
+      for (let i = 0; i < PARTICLE_POOL_SIZE; i++) {
+        const particle = particleState.current[i];
+        particle.life += delta;
+        if (particle.life >= particle.maxLife) {
+          seedAmbientParticle(i);
+        }
+
+        particle.x +=
+          particle.vx * step + Math.sin(time * 0.5 + i) * 0.001 * phaseMultiplier;
+        particle.y +=
+          particle.vy * step + Math.sin(time * 0.8 + i) * 0.002 * phaseMultiplier;
+        particle.z +=
+          particle.vz * step + Math.cos(time * 0.3 + i) * 0.001 * phaseMultiplier;
+
+        const mesh = particleMeshes.current[i];
+        if (!mesh) continue;
+
+        const lifeRatio = particle.life / particle.maxLife;
+        const fade = Math.sin(lifeRatio * Math.PI);
+        mesh.position.set(particle.x, particle.y, particle.z);
+        const scale = 0.5 + fade * 0.5;
+        mesh.scale.setScalar(scale);
+        const material = mesh.material as THREE.MeshStandardMaterial;
+        material.opacity = fade * 0.8;
+        material.emissiveIntensity =
+          0.6 + Math.sin(lifeRatio * Math.PI * 2) * 0.3;
+      }
     }
   });
 
@@ -1081,28 +1079,24 @@ const MemoryGamePuzzleBiome: React.FC<MemoryGamePuzzleBiomeProps> = ({
           );
         })}
 
-      {/* Animated Magical Particles */}
+      {/* Animated Magical Particles - a fixed pool, animated in useFrame */}
       {gameStarted &&
-        particles.map((particle) => {
-          const lifeRatio = particle.life / particle.maxLife;
-          const opacity = Math.sin(lifeRatio * Math.PI) * 0.8; // Fade in and out
-          const scale = 0.5 + Math.sin(lifeRatio * Math.PI) * 0.5; // Pulse size
-
+        Array.from({ length: PARTICLE_POOL_SIZE }, (_unused, index) => {
+          const color = PARTICLE_COLORS[index % PARTICLE_COLORS.length];
           return (
             <mesh
-              key={particle.id}
-              position={particle.position}
-              scale={[scale, scale, scale]}
+              key={index}
+              ref={(el) => {
+                particleMeshes.current[index] = el;
+              }}
             >
-              <sphereGeometry args={[particle.size]} />
+              <sphereGeometry args={[0.02 + (index % 5) * 0.015]} />
               <meshStandardMaterial
-                color={particle.color}
-                emissive={particle.color}
-                emissiveIntensity={
-                  0.6 + Math.sin(lifeRatio * Math.PI * 2) * 0.3
-                }
+                color={color}
+                emissive={color}
+                emissiveIntensity={0.6}
                 transparent
-                opacity={opacity}
+                opacity={0}
               />
             </mesh>
           );
