@@ -9,6 +9,7 @@ import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
 import RunManager from "./RunManager";
 import RunSummary from "./RunSummary";
+import GameAudio from "./GameAudio";
 import GameHUD from "./GameHUD";
 import MainMenu from "./MainMenu";
 import MapUI from "./MapUI";
@@ -266,6 +267,9 @@ const StartScreenContent: React.FC<StartScreenContentProps> = ({
       {/* Heads-up display - lives, gems and the current room, straight from
           the consolidated store. */}
       <GameHUD />
+
+      {/* Sound effects, synthesised - no audio files to ship or license. */}
+      <GameAudio />
 
       {/* Event-Driven Action Cards */}
       <EventDrivenActionCards />
