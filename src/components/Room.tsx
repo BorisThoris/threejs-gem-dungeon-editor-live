@@ -508,7 +508,11 @@ const Room: React.FC<RoomProps> = memo(
             In a first-person game it is just an unexplained floating ball. */}
 
         {/* Room Decorations - Add elements to all room types */}
-        <RoomDecorator roomType={room.type} roomSize={roomSize} />
+        <RoomDecorator
+          roomType={room.type}
+          roomSize={roomSize}
+          roomId={room.id}
+        />
 
         {/* Enhanced Room Features - Always render all specialized rooms */}
         <>

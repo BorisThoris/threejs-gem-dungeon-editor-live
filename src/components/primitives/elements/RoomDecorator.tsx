@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   BreakableTorch,
   BreakableCandle,
@@ -10,373 +10,267 @@ import {
   BreakablePotionBottle,
   BreakableCrystal,
   BreakableSkull,
-  BreakableFloatingText,
 } from "./index";
+import Pillar from "./Pillar";
+import Web from "./Web";
 
 interface RoomDecoratorProps {
   roomType: string;
   roomSize?: number;
+  /** Seeds the layout so a room looks the same every time you walk back in. */
+  roomId?: string;
 }
+
+/**
+ * Half-width of the clear lane kept along each axis through the room.
+ *
+ * Doors sit at the middle of each wall, so the straight line from one doorway
+ * to the one opposite runs through the centre of the room. Every layout here
+ * used to put a table at [0, 0, 0] with a solid collider - directly across
+ * that path - and a chest a metre behind it. Nothing may stand in the cross.
+ */
+const DOOR_LANE_HALF_WIDTH = 2.75;
+
+/** Deterministic PRNG, so a room's dressing does not move when it re-renders. */
+const seededRandom = (seed: string) => {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return () => {
+    h += 0x6d2b79f5;
+    let t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+type Spot = [number, number, number];
+
+/**
+ * Anchor points in the four diagonal quadrants.
+ *
+ * Diagonals are the only part of a four-doored room that is never on a path
+ * between two doorways, and they are also where a prop reads as cover rather
+ * than as an obstacle. `spread` is a fraction of the room's half-extent, so a
+ * 27-unit arena is furnished across its whole floor instead of getting the
+ * same two-metre huddle around the origin that a 10-unit room gets - which is
+ * what every layout here used to do, at fixed coordinates.
+ */
+const quadrants = (half: number, spread: number): Spot[] => {
+  const r = half * spread;
+  // Clear of the lane by the lane's half-width plus room for the prop itself,
+  // so a barrel's edge cannot creep into the path even in a small room.
+  const d = Math.max(r / Math.SQRT2, DOOR_LANE_HALF_WIDTH + 0.9);
+  return [
+    [d, 0, d],
+    [-d, 0, d],
+    [d, 0, -d],
+    [-d, 0, -d],
+  ];
+};
+
+/** True when a spot would stand in a doorway's path. */
+const blocksADoor = (spot: Spot) =>
+  Math.abs(spot[0]) < DOOR_LANE_HALF_WIDTH ||
+  Math.abs(spot[2]) < DOOR_LANE_HALF_WIDTH;
 
 const RoomDecorator: React.FC<RoomDecoratorProps> = ({
   roomType,
-  roomSize = 8,
+  roomSize = 16,
+  roomId = roomType,
 }) => {
-  const halfSize = roomSize / 2;
-  const margin = 1.5; // Distance from walls
+  const half = roomSize / 2;
+  // Far enough in that a torch is not buried in the wall.
+  const corner = Math.max(1.5, half - 1.6);
+
+  const layout = useMemo(() => {
+    const rand = seededRandom(`${roomId}:${roomType}`);
+    const near = quadrants(half, 0.5);
+    const far = quadrants(half, 0.78);
+    const corners: Spot[] = [
+      [corner, 0, corner],
+      [-corner, 0, corner],
+      [corner, 0, -corner],
+      [-corner, 0, -corner],
+    ];
+    return { rand, near, far, corners };
+  }, [roomId, roomType, half, corner]);
+
+  const { rand, near, far, corners } = layout;
+
+  // Every room is lit from its corners; the type decides what fills the
+  // quadrants between them.
+  const torches = corners.map((p, i) => (
+    <BreakableTorch key={`torch-${i}`} position={p} />
+  ));
 
   const getRoomElements = () => {
     switch (roomType) {
       case "start":
         return (
           <>
-            {/* Welcome area with table and chairs */}
-            <BreakableTable position={[0, 0, 0]} />
-            <BreakableChair position={[-0.6, 0, 0.4]} />
-            <BreakableChair position={[0.6, 0, 0.4]} />
-
-            {/* Torches for lighting */}
-            <BreakableTorch
-              position={[-halfSize + margin, 0, -halfSize + margin]}
-            />
-            <BreakableTorch
-              position={[halfSize - margin, 0, -halfSize + margin]}
-            />
-            <BreakableTorch
-              position={[-halfSize + margin, 0, halfSize - margin]}
-            />
-            <BreakableTorch
-              position={[halfSize - margin, 0, halfSize - margin]}
-            />
-
-            {/* Welcome chest */}
-            <BreakableChest position={[0, 0, -1.5]} />
+            {/* Nothing in the middle: this is the room that teaches walking,
+                and it used to have a table across the way out. */}
+            <BreakableChest position={near[0]} />
+            <BreakableBarrel position={near[1]} />
+            <BreakableTable position={far[2]} />
+            <BreakableChair position={far[3]} />
           </>
         );
 
       case "end":
         return (
           <>
-            {/* Exit portal area */}
-            <BreakableCrystal position={[0, 1, 0]} color="#ff00ff" />
-            <BreakableCrystal position={[-1, 0.5, 0]} color="#00ffff" />
-            <BreakableCrystal position={[1, 0.5, 0]} color="#ffff00" />
-
-            {/* Altar table */}
-            <BreakableTable position={[0, 0, 0]} />
-
-            {/* Magical candles */}
-            <BreakableCandle position={[-0.8, 0.4, -0.4]} />
-            <BreakableCandle position={[0.8, 0.4, -0.4]} />
-            <BreakableCandle position={[-0.8, 0.4, 0.4]} />
-            <BreakableCandle position={[0.8, 0.4, 0.4]} />
-
-            {/* Victory chest */}
-            <BreakableChest position={[0, 0, -1.5]} />
-          </>
-        );
-
-      case "normal":
-        return (
-          <>
-            {/* Fixed furniture placement */}
-            <BreakableTable position={[0, 0, 0]} />
-            <BreakableChair position={[-1, 0, 0.5]} />
-            <BreakableChair position={[1, 0, 0.5]} />
-
-            {/* Fixed barrels and chests */}
-            <BreakableBarrel position={[-2, 0, -2]} />
-            <BreakableChest position={[2, 0, -2]} />
-
-            {/* Lighting */}
-            <BreakableTorch
-              position={[-halfSize + margin, 0, -halfSize + margin]}
-            />
-            <BreakableTorch
-              position={[halfSize - margin, 0, halfSize - margin]}
-            />
-
-            {/* Potions */}
-            {Math.random() > 0.7 && (
-              <BreakablePotionBottle
-                position={[Math.random() * 4 - 2, 0.2, Math.random() * 4 - 2]}
-                color={
-                  ["#ff0000", "#00ff00", "#0000ff", "#ffff00"][
-                    Math.floor(Math.random() * 4)
-                  ]
-                }
-              />
-            )}
+            <BreakableCrystal position={near[0]} color="#ff00ff" />
+            <BreakableCrystal position={near[1]} color="#00ffff" />
+            <BreakableCrystal position={near[2]} color="#ffff00" />
+            <BreakableCandle position={near[3]} />
+            <Pillar position={far[0]} height={4} />
+            <Pillar position={far[1]} height={4} />
           </>
         );
 
       case "treasure":
         return (
           <>
-            {/* Multiple chests */}
-            <BreakableChest position={[0, 0, 0]} />
-            <BreakableChest position={[-1.5, 0, 0]} />
-            <BreakableChest position={[1.5, 0, 0]} />
-
-            {/* Fixed gold and gems placement */}
-            <BreakableCrystal position={[-1, 0.1, -1]} color="#FFD700" />
-            <BreakableCrystal position={[1, 0.1, -1]} color="#FFD700" />
-            <BreakableCrystal position={[-1, 0.1, 1]} color="#FFD700" />
-            <BreakableCrystal position={[1, 0.1, 1]} color="#FFD700" />
-
-            {/* Magical lighting */}
-            <BreakableCandle position={[-2, 0.4, -2]} />
-            <BreakableCandle position={[2, 0.4, -2]} />
-            <BreakableCandle position={[-2, 0.4, 2]} />
-            <BreakableCandle position={[2, 0.4, 2]} />
-
-            <BreakableFloatingText
-              position={[0, 2, 0]}
-              text="TREASURE ROOM"
-              color="#FFD700"
-            />
+            {/* The loot is spread to the corners so the room is worth
+                crossing rather than read in one glance from the doorway. */}
+            <BreakableChest position={near[0]} />
+            <BreakableChest position={far[1]} />
+            <BreakableChest position={far[2]} />
+            <BreakableBarrel position={near[3]} />
+            <BreakableCrystal position={far[3]} color="#ffd479" />
+            <Pillar position={near[1]} height={3.5} />
+            <Pillar position={near[2]} height={3.5} />
           </>
         );
 
       case "shop":
         return (
           <>
-            {/* Shop counter */}
-            <BreakableTable position={[0, 0, -1]} />
-            <BreakableTable position={[0, 0, 1]} />
-
-            {/* Shopkeeper area */}
-            <BreakableChair position={[0, 0, -2]} />
-
-            {/* Display shelves */}
-            <BreakableBookshelf position={[-2, 0, 0]} />
-            <BreakableBookshelf position={[2, 0, 0]} />
-
-            {/* Potion display */}
-            <BreakablePotionBottle position={[-1, 0.4, -1]} color="#ff0000" />
-            <BreakablePotionBottle position={[0, 0.4, -1]} color="#00ff00" />
-            <BreakablePotionBottle position={[1, 0.4, -1]} color="#0000ff" />
-
-            {/* Shop lighting */}
-            <BreakableTorch position={[-halfSize + margin, 0, 0]} />
-            <BreakableTorch position={[halfSize - margin, 0, 0]} />
-          </>
-        );
-
-      case "puzzle":
-        return (
-          <>
-            {/* Puzzle table */}
-            <BreakableTable position={[0, 0, 0]} />
-
-            {/* Mystical elements */}
-            <BreakableCrystal position={[-1, 0.5, 0]} color="#8000ff" />
-            <BreakableCrystal position={[1, 0.5, 0]} color="#8000ff" />
-            <BreakableCrystal position={[0, 0.5, -1]} color="#8000ff" />
-            <BreakableCrystal position={[0, 0.5, 1]} color="#8000ff" />
-
-            {/* Books for reference */}
-            <BreakableBookshelf position={[-2.5, 0, 0]} />
-
-            {/* Magical candles */}
-            <BreakableCandle position={[-1, 0.4, -1]} />
-            <BreakableCandle position={[1, 0.4, -1]} />
-            <BreakableCandle position={[-1, 0.4, 1]} />
-            <BreakableCandle position={[1, 0.4, 1]} />
+            {/* The counter and its stock sit off to the sides; the shop's
+                InteractTrigger is at the counter, not in the doorway. */}
+            <BreakableBarrel position={near[0]} />
+            <BreakableBarrel position={near[1]} />
+            <BreakableBookshelf position={far[2]} />
+            <BreakablePotionBottle position={far[3]} color="#63d2ff" />
+            <BreakableCandle position={near[2]} />
           </>
         );
 
       case "library":
         return (
           <>
-            {/* Multiple bookshelves */}
-            <BreakableBookshelf position={[-2, 0, -2]} />
-            <BreakableBookshelf position={[0, 0, -2]} />
-            <BreakableBookshelf position={[2, 0, -2]} />
-            <BreakableBookshelf position={[-2, 0, 2]} />
-            <BreakableBookshelf position={[0, 0, 2]} />
-            <BreakableBookshelf position={[2, 0, 2]} />
-
-            {/* Reading area */}
-            <BreakableTable position={[0, 0, 0]} />
-            <BreakableChair position={[-0.6, 0, 0.4]} />
-            <BreakableChair position={[0.6, 0, 0.4]} />
-
-            {/* Magical lighting */}
-            <BreakableCandle position={[-1, 0.4, 0]} />
-            <BreakableCandle position={[1, 0.4, 0]} />
+            <BreakableBookshelf position={far[0]} />
+            <BreakableBookshelf position={far[1]} />
+            <BreakableBookshelf position={far[2]} />
+            <BreakableTable position={near[3]} />
+            <BreakableChair position={near[0]} />
+            <BreakableCandle position={near[1]} />
           </>
         );
 
-      case "devil-room":
+      case "memory-chamber":
+      case "puzzle":
         return (
           <>
-            {/* Altar */}
-            <BreakableTable position={[0, 0, 0]} />
-
-            {/* Skulls and bones */}
-            <BreakableSkull position={[-1, 0.2, -1]} />
-            <BreakableSkull position={[1, 0.2, -1]} />
-            <BreakableSkull position={[-1, 0.2, 1]} />
-            <BreakableSkull position={[1, 0.2, 1]} />
-
-            {/* Dark crystals */}
-            <BreakableCrystal position={[0, 0.5, 0]} color="#8B0000" />
-
-            {/* Red candles */}
-            <BreakableCandle position={[-1, 0.4, 0]} />
-            <BreakableCandle position={[1, 0.4, 0]} />
-            <BreakableCandle position={[0, 0.4, -1]} />
-            <BreakableCandle position={[0, 0.4, 1]} />
-
-            <BreakableFloatingText
-              position={[0, 2, 0]}
-              text="DEVIL ROOM"
-              color="#8B0000"
-            />
+            {/* Pillars for sightlines: the memory puzzle asks you to watch a
+                pattern, and a room with landmarks is easier to orient in. */}
+            <Pillar position={near[0]} height={4} radius={0.35} />
+            <Pillar position={near[1]} height={4} radius={0.35} />
+            <Pillar position={near[2]} height={4} radius={0.35} />
+            <Pillar position={near[3]} height={4} radius={0.35} />
+            <BreakableCandle position={far[0]} />
+            <BreakableCandle position={far[3]} />
           </>
         );
 
-      case "angel-room":
+      case "challenge":
         return (
           <>
-            {/* Altar */}
-            <BreakableTable position={[0, 0, 0]} />
-
-            {/* Golden crystals */}
-            <BreakableCrystal position={[-1, 0.5, 0]} color="#FFD700" />
-            <BreakableCrystal position={[1, 0.5, 0]} color="#FFD700" />
-            <BreakableCrystal position={[0, 0.5, -1]} color="#FFD700" />
-            <BreakableCrystal position={[0, 0.5, 1]} color="#FFD700" />
-
-            {/* Healing potions */}
-            <BreakablePotionBottle position={[-1, 0.4, -1]} color="#00ff00" />
-            <BreakablePotionBottle position={[1, 0.4, -1]} color="#00ff00" />
-            <BreakablePotionBottle position={[-1, 0.4, 1]} color="#00ff00" />
-            <BreakablePotionBottle position={[1, 0.4, 1]} color="#00ff00" />
-
-            {/* White candles */}
-            <BreakableCandle position={[-1, 0.4, 0]} />
-            <BreakableCandle position={[1, 0.4, 0]} />
+            <Pillar position={far[0]} height={4.5} radius={0.4} />
+            <Pillar position={far[1]} height={4.5} radius={0.4} />
+            <BreakableBarrel position={near[2]} />
+            <BreakableSkull position={near[3]} />
+            <Web position={corners[0]} />
           </>
         );
 
-      case "secret":
+      case "arena":
         return (
           <>
-            {/* Hidden treasures */}
-            <BreakableChest position={[0, 0, 0]} />
-            <BreakableBarrel position={[-1.5, 0, 0]} />
-            <BreakableBarrel position={[1.5, 0, 0]} />
-
-            {/* Fixed mysterious crystals */}
-            <BreakableCrystal position={[-1, 0.2, -1]} color="#00ffff" />
-            <BreakableCrystal position={[1, 0.2, -1]} color="#ff00ff" />
-            <BreakableCrystal position={[-1, 0.2, 1]} color="#ffff00" />
-            <BreakableCrystal position={[1, 0.2, 1]} color="#00ffff" />
-            <BreakableCrystal position={[0, 0.2, -1.5]} color="#ff00ff" />
-            <BreakableCrystal position={[0, 0.2, 1.5]} color="#ffff00" />
-
-            {/* Dim lighting */}
-            <BreakableCandle position={[-2, 0.4, -2]} />
-            <BreakableCandle position={[2, 0.4, 2]} />
-          </>
-        );
-
-      case "boss":
-        return (
-          <>
-            {/* Boss arena */}
-            <BreakableTable position={[0, 0, 0]} />
-
-            {/* Boss throne/altar */}
-            <mesh position={[0, 0.5, 0]} castShadow>
-              <boxGeometry args={[1, 1, 0.5]} />
-              <meshStandardMaterial color="#8B0000" />
-            </mesh>
-
-            {/* Boss crystals */}
-            <BreakableCrystal position={[-1.5, 0.5, 0]} color="#ff0000" />
-            <BreakableCrystal position={[1.5, 0.5, 0]} color="#ff0000" />
-            <BreakableCrystal position={[0, 0.5, -1.5]} color="#ff0000" />
-            <BreakableCrystal position={[0, 0.5, 1.5]} color="#ff0000" />
-
-            {/* Skulls and bones */}
-            <BreakableSkull position={[-1, 0.2, -1]} />
-            <BreakableSkull position={[1, 0.2, -1]} />
-            <BreakableSkull position={[-1, 0.2, 1]} />
-            <BreakableSkull position={[1, 0.2, 1]} />
-
-            {/* Red candles */}
-            <BreakableCandle position={[-2, 0.4, -2]} />
-            <BreakableCandle position={[2, 0.4, -2]} />
-            <BreakableCandle position={[-2, 0.4, 2]} />
-            <BreakableCandle position={[2, 0.4, 2]} />
+            {/* An open middle with cover at the edges - the shape the room's
+                name promises, and the one it did not have. */}
+            <Pillar position={far[0]} height={5} radius={0.45} />
+            <Pillar position={far[1]} height={5} radius={0.45} />
+            <Pillar position={far[2]} height={5} radius={0.45} />
+            <Pillar position={far[3]} height={5} radius={0.45} />
+            <BreakableSkull position={near[0]} />
+            <BreakableBarrel position={near[2]} />
           </>
         );
 
       case "trap":
         return (
           <>
-            {/* Trap mechanisms */}
-            <mesh position={[0, 0.1, 0]} castShadow>
-              <boxGeometry args={[2, 0.2, 2]} />
-              <meshStandardMaterial color="#2F4F4F" />
-            </mesh>
-
-            {/* Pressure plates */}
-            <mesh position={[-0.5, 0.15, -0.5]} castShadow>
-              <boxGeometry args={[0.3, 0.1, 0.3]} />
-              <meshStandardMaterial color="#C0C0C0" />
-            </mesh>
-            <mesh position={[0.5, 0.15, 0.5]} castShadow>
-              <boxGeometry args={[0.3, 0.1, 0.3]} />
-              <meshStandardMaterial color="#C0C0C0" />
-            </mesh>
-
-            {/* Trap spikes */}
-            <mesh position={[-1, 0.3, 0]} castShadow>
-              <coneGeometry args={[0.1, 0.4, 6]} />
-              <meshStandardMaterial color="#8B0000" />
-            </mesh>
-            <mesh position={[1, 0.3, 0]} castShadow>
-              <coneGeometry args={[0.1, 0.4, 6]} />
-              <meshStandardMaterial color="#8B0000" />
-            </mesh>
-            <mesh position={[0, 0.3, -1]} castShadow>
-              <coneGeometry args={[0.1, 0.4, 6]} />
-              <meshStandardMaterial color="#8B0000" />
-            </mesh>
-            <mesh position={[0, 0.3, 1]} castShadow>
-              <coneGeometry args={[0.1, 0.4, 6]} />
-              <meshStandardMaterial color="#8B0000" />
-            </mesh>
-
-            {/* Warning candles */}
-            <BreakableCandle position={[-1.5, 0.4, -1.5]} />
-            <BreakableCandle position={[1.5, 0.4, 1.5]} />
+            {/* The spike ring is placed by UnifiedRoomManager; this is the
+                dressing that tells you what kind of room you walked into
+                before you stand on one. */}
+            <BreakableSkull position={near[0]} />
+            <BreakableSkull position={far[2]} />
+            <Web position={corners[1]} />
+            <Web position={corners[2]} />
+            <BreakableBarrel position={near[3]} />
           </>
         );
 
+      case "boss":
+      case "devil-room":
+        return (
+          <>
+            <Pillar position={far[0]} height={5} radius={0.5} />
+            <Pillar position={far[1]} height={5} radius={0.5} />
+            <BreakableSkull position={near[0]} />
+            <BreakableSkull position={near[1]} />
+            <BreakableCrystal position={near[2]} color="#ff4d6d" />
+          </>
+        );
+
+      case "secret":
+      case "angel-room":
+        return (
+          <>
+            <BreakableCrystal position={near[0]} color="#b9f6ff" />
+            <BreakableChest position={far[1]} />
+            <BreakableCandle position={near[2]} />
+          </>
+        );
+
+      case "normal":
       default:
         return (
           <>
-            {/* Basic elements for unknown room types */}
-            <BreakableTorch
-              position={[-halfSize + margin, 0, -halfSize + margin]}
-            />
-            <BreakableTorch
-              position={[halfSize - margin, 0, halfSize - margin]}
-            />
-
-            <BreakableBarrel position={[-1, 0, -1]} />
-            <BreakableChest position={[1, 0, 1]} />
+            <BreakableBarrel position={near[0]} />
+            <BreakableTable position={far[1]} />
+            <BreakableChair position={far[2]} />
+            {rand() > 0.5 && (
+              <BreakablePotionBottle position={near[3]} color="#7ef2a1" />
+            )}
+            <Web position={corners[3]} />
           </>
         );
     }
   };
 
-  return <>{getRoomElements()}</>;
+  return (
+    <group>
+      {torches}
+      {getRoomElements()}
+    </group>
+  );
 };
 
 export default RoomDecorator;
