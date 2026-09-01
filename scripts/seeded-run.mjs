@@ -114,6 +114,21 @@ async function startRun(seed, { collectErrors = false } = {}) {
   await page.waitForFunction(() => window.__roomProbe && window.__playerDebug, null, {
     timeout: 120000,
   });
+
+  // Watch the gem count from inside the page. Sampling it over the wire misses
+  // a gem picked up in the same instant the end door charges its toll - the
+  // pickup radius and a doorway trigger can overlap - and the toll can only be
+  // checked against the most the player ever carried.
+  await page.evaluate(() => {
+    window.__peakGems = window.__gameStore.getState().playerStats.gems;
+    window.__gameStore.subscribe(
+      (state) => state.playerStats.gems,
+      (gems) => {
+        window.__peakGems = Math.max(window.__peakGems, gems);
+      }
+    );
+  });
+
   return page;
 }
 
@@ -151,6 +166,7 @@ const readState = (page) =>
       vy: +player.linvel.y.toFixed(2),
       yaw: player.yaw ?? 0,
       collected: [...store.collectedGemRooms],
+      peakGems: window.__peakGems ?? store.playerStats.gems,
       probe: window.__roomProbe,
     };
   });
@@ -159,15 +175,7 @@ const readState = (page) =>
 
 const page = await startRun(SEED, { collectErrors: true });
 
-// The most gems held at any point in the run. Only the end door takes gems
-// away, so this is what the toll should be measured against - reading the count
-// just before the final doorway misses a gem picked up on the way to it.
-let peakGems = 0;
-const state = async () => {
-  const snapshot = await readState(page);
-  peakGems = Math.max(peakGems, snapshot.gems);
-  return snapshot;
-};
+const state = () => readState(page);
 
 const layout = await layoutOf(page);
 ok('the seed reaches the generator', layout.seed === SEED, SEED);
@@ -560,10 +568,12 @@ const exit = await explore({ goal: layout.end });
 ok('the player walks out through the end door', exit.reachedGoal === true, exit.stuck || `end room ${layout.end}`);
 
 const finished = await state();
+// Only the end door ever takes gems away, so the toll is the drop from the most
+// the player ever carried.
 ok(
   'the end door charges its gems',
-  finished.gems === peakGems - GEMS_REQUIRED,
-  `${finished.gems} left of ${peakGems} carried`
+  finished.gems === finished.peakGems - GEMS_REQUIRED,
+  `${finished.gems} left of ${finished.peakGems} carried`
 );
 ok('the run resolves when the exit is reached', finished.moving === false);
 ok(
