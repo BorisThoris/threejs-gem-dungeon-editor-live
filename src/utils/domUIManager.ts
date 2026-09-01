@@ -10,6 +10,7 @@ class DOMUIManager {
   private isInitialized = false;
   private updateInterval: number | null = null;
   private unsubs: Array<() => void> = [];
+  private lastRoomName: string | null = null;
 
   init() {
     if (this.isInitialized) return;
@@ -164,6 +165,16 @@ class DOMUIManager {
         Room: <span id="current-room">Unknown</span>
       </div>
     `;
+
+    // This rewrites the whole panel once a second, which resets the room span
+    // to its "Unknown" placeholder. Put the known room name back.
+    this.reapplyCurrentRoom();
+  }
+
+  private reapplyCurrentRoom() {
+    if (!this.lastRoomName) return;
+    const el = document.getElementById('current-room');
+    if (el) el.textContent = this.lastRoomName;
   }
 
   private updateInventory(inventory: any[]) {
@@ -185,6 +196,12 @@ class DOMUIManager {
   }
 
   private updateCurrentRoom(roomName: string) {
+    // The player can enter the first room before this panel exists, so remember
+    // the name and re-apply it once the element is there. Otherwise the very
+    // first ROOM_CHANGE is dropped and the readout stays on "Unknown" until the
+    // player happens to change rooms.
+    this.lastRoomName = roomName;
+
     const currentRoomElement = document.getElementById('current-room');
     if (currentRoomElement) {
       currentRoomElement.textContent = roomName;

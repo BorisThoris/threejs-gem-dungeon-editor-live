@@ -278,6 +278,9 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
       const { roomInstances } = get();
       const roomInstance = roomInstances.get(roomId);
       
+      if (import.meta.env.DEV) {
+        console.log('[PROBE setActiveRoom]', roomId, 'found=', !!roomInstance, 'isLoaded=', roomInstance?.isLoaded);
+      }
       if (!roomInstance || !roomInstance.isLoaded) return;
 
       const newInstances = new Map(roomInstances);

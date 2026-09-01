@@ -6,6 +6,7 @@ import { useCameraController } from "../hooks/useCameraController";
 import { Player } from "./Player";
 import { SafeSpawnArea } from "./SafeSpawnArea";
 import UnifiedRoomManager from "./UnifiedRoomManager";
+import RoomDetection from "./RoomDetection";
 import MapUI from "./MapUI";
 import Minimap from "./Minimap";
 import Cursor from "./Cursor";
@@ -88,13 +89,18 @@ const GhostScene: React.FC = () => {
         <Ground />
         <SafetyFloor />
 
+        {/* Must stay outside the Suspense boundaries below: when it lived
+            inside the room subtree, a suspending texture permanently killed the
+            detection loop. */}
+        <RoomDetection />
+
         <Suspense fallback={null}>
           <SafeSpawnArea position={[0, 0, 0]} size={8} />
         </Suspense>
 
         <Suspense fallback={null}>
           {/* Room Instance Manager - Single room at a time */}
-          <UnifiedRoomManager mode="instance" />
+          <UnifiedRoomManager />
         </Suspense>
       </Physics>
     </>
@@ -247,7 +253,7 @@ const StartScreenContent: React.FC = () => {
       <PauseMenu isVisible={isPaused} onUnpause={handleUnpause} />
 
       {/* Shared Navigation */}
-      <SharedNavigation currentPage="game" />
+      {import.meta.env.DEV && <SharedNavigation currentPage="game" />}
 
       {/* UI is now handled by DOM UI Manager - no React re-renders */}
     </div>

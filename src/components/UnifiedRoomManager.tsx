@@ -19,6 +19,7 @@ import RoomTransitionEffect from "./RoomTransitionEffect";
 // Data and utils
 import { playerRoomDetection } from "../utils/playerRoomDetection";
 import { gameEvents, GAME_EVENTS } from "../utils/gameEvents";
+import { uiEvents, UI_EVENTS } from "../utils/uiEvents";
 
 // Types
 interface RoomData {
@@ -210,13 +211,6 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       initializeGame();
     }, [currentMap, activeRoomId, generateMap, loadRoom, setActiveRoom]);
 
-    // Initialize room bounds for player detection
-    useEffect(() => {
-      if (currentMap?.rooms) {
-        playerRoomDetection.initializeRoomBounds(currentMap.rooms);
-      }
-    }, [currentMap]);
-
     // Handle room changes
     useEffect(() => {
       if (onRoomChange && activeRoomId) {
@@ -224,79 +218,8 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
       }
     }, [activeRoomId, onRoomChange]);
 
-    // Room detection - memoized callback
-    const detectRoom = useCallback(
-      (playerPosition: { x: number; y: number; z: number }) => {
-        const now = Date.now();
-        if (now - lastUpdateTime.current < 100) return; // Throttle to 10fps max
-        lastUpdateTime.current = now;
-
-        const detectedRoomId =
-          playerRoomDetection.detectCurrentRoom(playerPosition);
-
-        if (detectedRoomId !== lastDetectedRoomId.current) {
-          const previousRoomId = lastDetectedRoomId.current;
-          lastDetectedRoomId.current = detectedRoomId;
-
-          updateRoom(detectedRoomId);
-
-          // Also update map store to keep it in sync
-          if (detectedRoomId) {
-            mapStore.setCurrentRoom(detectedRoomId);
-            mapStore.markRoomVisited(detectedRoomId);
-          }
-
-          if (detectedRoomId) {
-            const room = currentMap?.rooms.find(
-              (r: RoomData) => r.id === detectedRoomId
-            );
-            if (room) {
-              // Update game phase based on room type
-              const gamePhase =
-                room.type === "boss"
-                  ? "boss"
-                  : room.type === "puzzle"
-                  ? "puzzle"
-                  : "exploration";
-              updateGamePhase(gamePhase);
-
-              gameEvents.emit(GAME_EVENTS.ROOM_ENTER, room);
-              onRoomEnter?.(detectedRoomId);
-            }
-          } else if (previousRoomId) {
-            const previousRoom = currentMap?.rooms.find(
-              (r: RoomData) => r.id === previousRoomId
-            );
-            if (previousRoom) {
-              gameEvents.emit(GAME_EVENTS.ROOM_EXIT, previousRoom);
-              onRoomExit?.(previousRoomId);
-            }
-            updateGamePhase("exploration");
-          }
-        }
-      },
-      [
-        currentMap,
-        updateRoom,
-        updateGamePhase,
-        onRoomEnter,
-        onRoomExit,
-        mapStore,
-      ]
-    );
-
-    // Main detection loop
-    useFrame(() => {
-      // Only run detection when not in transition to avoid mid-flight teleports
-      if (!activeTransitioning && playerRoomDetection.isDetectionEnabled()) {
-        const playerPos = {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z,
-        };
-        detectRoom(playerPos);
-      }
-    });
+    // Room detection now lives in <RoomDetection />, mounted outside every
+    // Suspense boundary - see that component for why.
 
     // Cleanup
     useEffect(() => {

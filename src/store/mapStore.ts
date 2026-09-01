@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { MapState, MapActions, GameMap, MapConfig } from '../types/map';
 import { SimpleMapGenerator, defaultSimpleConfig } from '../algorithms/simpleMapGenerator';
-import { playerRoomDetection } from '../utils/playerRoomDetection';
 
 const defaultConfig: MapConfig = {
   width: 20,
@@ -54,9 +53,10 @@ const useMapStore = create<MapState & MapActions>((set, get) => ({
       if (startRoom) {
       }
 
-      // Initialize room bounds for optimized collision detection
-      playerRoomDetection.initializeRoomBounds(result.rooms);
-      
+      // Room bounds are not seeded from map-grid positions any more: rooms are
+      // rendered one at a time at the origin, so UnifiedRoomManager registers
+      // origin-local bounds for whichever room is active.
+
       set({
         currentMap: map,
         currentRoomId: map.startRoomId,

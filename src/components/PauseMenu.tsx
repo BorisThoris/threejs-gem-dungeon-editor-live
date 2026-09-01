@@ -8,9 +8,11 @@ interface PauseMenuProps {
 const PauseMenu: React.FC<PauseMenuProps> = ({ isVisible, onUnpause }) => {
   if (!isVisible) return null;
 
-  // Check if we're in development mode
-  const isDevMode =
-    import.meta.env.DEV || window.location.hostname === "localhost";
+  // Developer tool shortcuts are dev-only. `import.meta.env.DEV` is statically
+  // replaced with `false` in a production build, so the buttons below (and the
+  // links to the editor / painter / mosaic tools) are stripped from the
+  // shipped demo bundle entirely.
+  const isDevMode = import.meta.env.DEV;
 
   return (
     <div

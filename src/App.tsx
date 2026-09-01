@@ -1,28 +1,46 @@
-import React from "react";
+import React, { Suspense } from "react";
 import StartScreen from "./components/StartScreen";
-import ThreeDEditor from "./components/ThreeDEditor";
-import RoomBuilderPage from "./pages/RoomBuilderPage";
-import TexturePainterLauncher from "./components/TexturePainterLauncher";
-import MosaicCreatorLauncher from "./components/MosaicCreatorLauncher";
-import TexturePainterExample from "./components/TexturePainterExample";
-import URLParamTest from "./components/URLParamTest";
-import URLDebugTest from "./components/URLDebugTest";
-import HandDemo from "./components/HandDemo";
 import { ThemeProvider } from "./themes";
+import type { DevToolId } from "./dev/DevToolRoutes";
 import "./App.css";
 
-function App() {
-  // Check URL parameter to show editor or texture painter
+/**
+ * Developer/authoring tools are gated behind `import.meta.env.DEV`.
+ *
+ * `import.meta.env.DEV` is statically replaced with `false` by Vite in a
+ * production build, so the dynamic import below is unreachable and Rollup
+ * drops the entire dev tooling graph (3D editor, room builder, texture
+ * painter, mosaic creator, demos) from the shipped bundle.
+ */
+const DevToolRoutes = import.meta.env.DEV
+  ? React.lazy(() => import("./dev/DevToolRoutes"))
+  : null;
+
+const DEV_TOOL_PARAMS: DevToolId[] = [
+  "editor",
+  "room-builder",
+  "texture-painter",
+  "mosaic-creator",
+  "texture-painter-example",
+  "url-test",
+  "url-debug",
+  "hand-demo",
+];
+
+function getActiveDevTool(): DevToolId | null {
   const urlParams = new URLSearchParams(window.location.search);
-  const showEditor = urlParams.get("editor") === "true";
-  const showRoomBuilder = urlParams.get("room-builder") === "true";
-  const showTexturePainter = urlParams.get("texture-painter") === "true";
-  const showMosaicCreator = urlParams.get("mosaic-creator") === "true";
-  const showTexturePainterExample =
-    urlParams.get("texture-painter-example") === "true";
-  const showURLParamTest = urlParams.get("url-test") === "true";
-  const showURLDebugTest = urlParams.get("url-debug") === "true";
-  const showHandDemo = urlParams.get("hand-demo") === "true";
+  for (const param of DEV_TOOL_PARAMS) {
+    if (urlParams.get(param) === "true") {
+      return param;
+    }
+  }
+  return null;
+}
+
+function App() {
+  // In production this is always null: the tools are unreachable for players.
+  const activeDevTool = import.meta.env.DEV ? getActiveDevTool() : null;
+  const showEditor = activeDevTool === "editor";
 
   // Add CSS class to root element for editor mode
   React.useEffect(() => {
@@ -41,66 +59,29 @@ function App() {
     }
   }, [showEditor]);
 
-  if (showEditor) {
+  if (import.meta.env.DEV && DevToolRoutes && activeDevTool) {
     return (
       <ThemeProvider>
-        <ThreeDEditor />
-      </ThemeProvider>
-    );
-  }
-
-  if (showRoomBuilder) {
-    return (
-      <ThemeProvider>
-        <RoomBuilderPage />
-      </ThemeProvider>
-    );
-  }
-
-  if (showTexturePainter) {
-    return (
-      <ThemeProvider>
-        <TexturePainterLauncher />
-      </ThemeProvider>
-    );
-  }
-
-  if (showMosaicCreator) {
-    return (
-      <ThemeProvider>
-        <MosaicCreatorLauncher />
-      </ThemeProvider>
-    );
-  }
-
-  if (showTexturePainterExample) {
-    return (
-      <ThemeProvider>
-        <TexturePainterExample />
-      </ThemeProvider>
-    );
-  }
-
-  if (showURLParamTest) {
-    return (
-      <ThemeProvider>
-        <URLParamTest />
-      </ThemeProvider>
-    );
-  }
-
-  if (showURLDebugTest) {
-    return (
-      <ThemeProvider>
-        <URLDebugTest />
-      </ThemeProvider>
-    );
-  }
-
-  if (showHandDemo) {
-    return (
-      <ThemeProvider>
-        <HandDemo />
+        <Suspense
+          fallback={
+            <div
+              style={{
+                width: "100vw",
+                height: "100vh",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#111",
+                color: "#ccc",
+                fontFamily: "sans-serif",
+              }}
+            >
+              Loading developer tool…
+            </div>
+          }
+        >
+          <DevToolRoutes tool={activeDevTool} />
+        </Suspense>
       </ThemeProvider>
     );
   }
