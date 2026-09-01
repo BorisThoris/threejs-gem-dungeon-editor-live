@@ -336,7 +336,12 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
       
       // Emit teleportation event for player to listen to; face toward room center
       if (targetRoom) {
-        const roomSize = targetRoom.size || 10;
+        // Must match the size the room is actually built and its doors are
+        // placed at. Using `size` while doors use `actualSize` put the player
+        // outside the new room - measured arriving at z=9.78 in a room whose
+        // half-extent is 8 - standing on top of a different door, which then
+        // dragged them straight through it.
+        const roomSize = targetRoom.actualSize || targetRoom.size || 10;
         let { position, rotation } = calculatePlayerSpawnPosition(direction, roomSize);
         const roomHalfSize = roomSize / 2;
 

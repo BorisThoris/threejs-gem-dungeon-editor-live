@@ -30,9 +30,15 @@ export function DoorTrigger({
   onEnter,
   enabled = true,
 }: DoorTriggerProps) {
-  // Latches after firing so holding position in the doorway does not retrigger
-  // the transition every frame.
-  const armed = useRef(true);
+  // Starts DISARMED. A room transition drops the player a step inside the new
+  // room, which puts them within range of the door they just came through - and
+  // a freshly mounted trigger that starts armed fires on its first frame,
+  // yanking the player straight back out again. Measured: every arrival was
+  // followed by an unwanted second transition about a second later.
+  //
+  // Arming only once the player has been outside the trigger means a door can
+  // never fire on someone who was already standing in it when it appeared.
+  const armed = useRef(false);
 
   useFrame((state) => {
     const { isTransitioning, isMovementEnabled } =

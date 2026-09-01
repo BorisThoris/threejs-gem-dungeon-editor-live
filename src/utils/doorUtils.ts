@@ -93,29 +93,39 @@ export const calculatePlayerSpawnPosition = (
   let position: THREE.Vector3;
   let rotation: THREE.Euler;
   
+  // `direction` is the direction of TRAVEL, so the player enters the new room
+  // through the OPPOSITE wall and should appear just inside it, facing onwards.
+  //
+  // North and south had this backwards: travelling north put the player at the
+  // new room's north edge - the far side, measured 29 units from the door they
+  // had just walked through - facing back the way they came. East and west were
+  // already correct (their comments describe the wrong wall, but the maths is
+  // right), which is why only half of all transitions felt broken.
+  //
+  // A yaw of 0 looks down -Z, so facing +Z is a yaw of PI.
   switch (direction) {
     case 'north':
-      // Spawn near north edge; face toward center (-Z)
-      position = new THREE.Vector3(0, 0.5, roomHalfSize - entranceDistance);
-      rotation = new THREE.Euler(0, 0, 0);
-      break;
-    case 'south':
-      // Spawn near south edge; face toward center (+Z)
+      // Travelled +Z: enter at the south edge, carry on facing +Z.
       position = new THREE.Vector3(0, 0.5, -roomHalfSize + entranceDistance);
       rotation = new THREE.Euler(0, Math.PI, 0);
       break;
+    case 'south':
+      // Travelled -Z: enter at the north edge, carry on facing -Z.
+      position = new THREE.Vector3(0, 0.5, roomHalfSize - entranceDistance);
+      rotation = new THREE.Euler(0, 0, 0);
+      break;
     case 'east':
-      // Spawn near east edge; face toward center (-X)
+      // Travelled +X: enter at the west edge, carry on facing +X.
       position = new THREE.Vector3(-roomHalfSize + entranceDistance, 0.5, 0);
       rotation = new THREE.Euler(0, -Math.PI / 2, 0);
       break;
     case 'west':
-      // Spawn near west edge; face toward center (+X)
+      // Travelled -X: enter at the east edge, carry on facing -X.
       position = new THREE.Vector3(roomHalfSize - entranceDistance, 0.5, 0);
       rotation = new THREE.Euler(0, Math.PI / 2, 0);
       break;
     default:
-      position = new THREE.Vector3(0, 0.5, roomHalfSize - entranceDistance);
+      position = new THREE.Vector3(0, 0.5, -roomHalfSize + entranceDistance);
       rotation = new THREE.Euler(0, Math.PI, 0);
   }
   
