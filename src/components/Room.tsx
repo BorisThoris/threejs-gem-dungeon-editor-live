@@ -31,11 +31,14 @@ import ArenaBiome from "./primitives/game-rooms/ArenaBiome";
 import BossBiome from "./primitives/game-rooms/BossBiome";
 import StartRoom from "./primitives/game-rooms/StartRoom";
 import EndBiome from "./primitives/game-rooms/EndBiome";
+import MemoryGamePuzzleBiome from "./primitives/game-rooms/MemoryGamePuzzleBiome";
+import PressurePlatePuzzleBiome from "./primitives/game-rooms/PressurePlatePuzzleBiome";
 import RoomInteraction from "./RoomInteraction";
 import Door from "./Door";
 import RoomDecorator from "./primitives/elements/RoomDecorator";
 import RoomSegmentRenderer from "./primitives/elements/RoomSegmentRenderer";
 import { loadTextureFromImage } from "../utils/textureUtils";
+import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
 
 interface RoomProps {
   room: RoomType;
@@ -66,6 +69,10 @@ const Room: React.FC<RoomProps> = memo(
     disableDoors = false,
   }) => {
     const roomSize = room.size || 10;
+
+    // Solving a room's puzzle hands over that room's gem. Both of these
+    // biomes already tracked completion; nothing was listening.
+    const awardRoomGem = useConsolidatedGameStore((state) => state.collectGem);
 
     // Debug logging removed for performance
 
@@ -534,6 +541,24 @@ const Room: React.FC<RoomProps> = memo(
           {room.type === RoomTypeValues.START && <StartRoom />}
 
           {room.type === RoomTypeValues.END && <EndBiome />}
+
+          {/* The two rooms with the most actual gameplay in the project. They
+              were registered only in the editor's biome registry, so in the
+              real game they were unreachable - 1,400 lines of finished puzzle
+              content that no player could ever see. */}
+          {room.type === RoomTypeValues.MEMORY_CHAMBER && (
+            <MemoryGamePuzzleBiome
+              size={room.actualSize || room.size}
+              onPuzzleComplete={() => awardRoomGem(room.id)}
+            />
+          )}
+
+          {room.type === RoomTypeValues.CHALLENGE && (
+            <PressurePlatePuzzleBiome
+              size={room.actualSize || room.size}
+              onPuzzleComplete={() => awardRoomGem(room.id)}
+            />
+          )}
 
           {/* Fallback for other room types */}
           {![

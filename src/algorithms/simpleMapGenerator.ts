@@ -32,6 +32,10 @@ export interface SimpleMapConfig extends MapConfig {
   culDeSacChance?: number; // chance to terminate a branch in a dead end
   useThemes?: boolean;
   enabledBiomeCategories?: string[]; // New: categories to use for generation
+  // Hard allow-list of room types. When set, the generator emits only these,
+  // regardless of biome categories - this is how the demo ships a small set of
+  // finished rooms instead of every biome in the project.
+  allowedRoomTypes?: string[];
 }
 
 export const defaultSimpleConfig: SimpleMapConfig = {
@@ -669,6 +673,12 @@ export class SimpleMapGenerator {
   }
 
   private getRandomRoomType(): string {
+    // An explicit allow-list wins over everything else.
+    const allowed = this.config.allowedRoomTypes;
+    if (allowed && allowed.length > 0) {
+      return allowed[Math.floor(Math.random() * allowed.length)];
+    }
+
     // Use biome categories if enabled, otherwise fall back to old system
     if (this.config.enabledBiomeCategories && this.config.enabledBiomeCategories.length > 0) {
       const weightedBiomes = getWeightedBiomes(this.config.enabledBiomeCategories);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { MapState, MapActions, GameMap, MapConfig } from '../types/map';
 import { SimpleMapGenerator, defaultSimpleConfig } from '../algorithms/simpleMapGenerator';
+import { DEMO_ROOM_TYPES } from '../configs/mapGeneration';
 
 const defaultConfig: MapConfig = {
   width: 20,
@@ -43,6 +44,13 @@ const useMapStore = create<MapState & MapActions>((set, get) => ({
         maxRooms: finalConfig.maxRooms,
         specialRoomChance: finalConfig.specialRoomChance,
         enabledBiomeCategories: enabledBiomeCategories,
+        // The demo ships a curated set of finished rooms rather than every
+        // biome the generator knows how to emit.
+        allowedRoomTypes: DEMO_ROOM_TYPES,
+        // Portal rooms are placed by their own path, outside the allow-list,
+        // and PortalBiome's destination is not wired to the run - a portal
+        // that goes nowhere reads as a bug. Off for the demo.
+        usePortals: false,
       });
       
       const result = generator.generateMap();
