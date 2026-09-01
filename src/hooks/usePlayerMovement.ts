@@ -15,6 +15,26 @@ interface UsePlayerMovementProps {
 // well inside the thickness of the floor slabs.
 const MAX_FALL_SPEED = 25;
 
+/**
+ * How fast the player is ever allowed to travel upward.
+ *
+ * The player cannot jump and the world is flat, so upward motion is never
+ * something they asked for - it is the solver pushing the capsule out of a
+ * collider it overlaps. Left unbounded, a corner caught at the wrong angle
+ * flings the player into the air and drops them somewhere else entirely.
+ *
+ * The cap is not zero, because de-penetration is exactly how the player gets
+ * out of geometry they have ended up inside; pinning y to <= 0 every frame
+ * would cancel that correction and sink them through the floor instead. This
+ * is fast enough to climb out of anything they can realistically overlap, and
+ * far too slow to look like a launch.
+ */
+const MAX_RISE_SPEED = 2;
+
+/** Clamp vertical motion to "falling, or quietly recovering". */
+const clampVertical = (y: number) =>
+  Math.min(MAX_RISE_SPEED, Math.max(y, -MAX_FALL_SPEED));
+
 const UP = new Vector3(0, 1, 0);
 
 const clampUnit = (value: number) => Math.max(-1, Math.min(1, value));
@@ -42,10 +62,10 @@ export const usePlayerMovement = ({ isSpawned, editorMode }: UsePlayerMovementPr
 
     const velocity = rigidBody.linvel();
 
-    // Clamp downward speed before anything else, so it applies during
+    // Clamp vertical speed before anything else, so it applies during
     // transitions and cutscenes too - that is exactly when the player used to
     // accelerate off the bottom of the world.
-    const yVelocity = Math.max(velocity.y, -MAX_FALL_SPEED);
+    const yVelocity = clampVertical(velocity.y);
 
     // Check if movement is enabled (frozen during transitions)
     if (!isMovementEnabled) {

@@ -3,6 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Physics, RigidBody } from "@react-three/rapier";
 import { useCameraController } from "../hooks/useCameraController";
 import { Player } from "./Player";
+import { PLAYER_SPAWN_Y } from "../configs/worldGeometry";
 import { SafeSpawnArea } from "./SafeSpawnArea";
 import UnifiedRoomManager from "./UnifiedRoomManager";
 import RoomDetection from "./RoomDetection";
@@ -104,7 +105,7 @@ const GhostScene: React.FC = () => {
             that loads an asset goes inside its own Suspense boundary below, so
             a slow font or texture can never leave the player standing in an
             empty world - or, as it did, stop the scene mounting at all. */}
-        <Player initialSpawnPosition={[0, 1.5, 0]} showDebugInfo={false} />
+        <Player initialSpawnPosition={[0, PLAYER_SPAWN_Y, 0]} showDebugInfo={false} />
         <Ground />
         <SafetyFloor />
 

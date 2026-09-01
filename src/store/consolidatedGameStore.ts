@@ -4,6 +4,7 @@ import type { RoomInstance, RoomTransition } from '../types/roomInstance';
 import type { Room } from '../types/map';
 import useMapStore from './mapStore';
 import { calculatePlayerSpawnPosition } from '../utils/doorUtils';
+import { PLAYER_SPAWN_Y } from '../configs/worldGeometry';
 import { gameEvents, GAME_EVENTS } from '../utils/gameEvents';
 import * as THREE from 'three';
 
@@ -352,7 +353,7 @@ export const useConsolidatedGameStore = create<GameState & GameActions>()(
         
         if (!isWithinBounds) {
           console.warn('[Transition] Spawn out of bounds, falling back to center:', position.toArray());
-          position = new THREE.Vector3(0, 0.5, 0);
+          position = new THREE.Vector3(0, PLAYER_SPAWN_Y, 0);
           rotation = new THREE.Euler(0, 0, 0);
         }
 

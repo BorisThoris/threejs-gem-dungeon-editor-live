@@ -12,6 +12,11 @@ import { usePlayerSpawn } from "../hooks/usePlayerSpawn";
 import { usePlayerTeleportation } from "../hooks/usePlayerTeleportation";
 import { usePlayerDebugInfo } from "../hooks/usePlayerDebugInfo";
 import { useHandsOut } from "../store/consolidatedGameStore";
+import {
+  PLAYER_CAPSULE_HALF_HEIGHT,
+  PLAYER_CAPSULE_RADIUS,
+  PLAYER_SPAWN_Y,
+} from "../configs/worldGeometry";
 
 interface PlayerProps {
   initialSpawnPosition?: [number, number, number];
@@ -22,7 +27,7 @@ interface PlayerProps {
 }
 
 export function Player({
-  initialSpawnPosition = [0, 1.5, 0],
+  initialSpawnPosition = [0, PLAYER_SPAWN_Y, 0],
   showDebugInfo = false,
   showHand = true,
   handGesture = "idle",
@@ -136,7 +141,9 @@ export function Player({
           }
         }}
       >
-        <CapsuleCollider args={[0.8, 0.3]} />
+        <CapsuleCollider
+          args={[PLAYER_CAPSULE_HALF_HEIGHT, PLAYER_CAPSULE_RADIUS]}
+        />
       </RigidBody>
 
       {/* Floating Hand - Mouse Driven */}

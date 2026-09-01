@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PLAYER_SPAWN_Y } from '../configs/worldGeometry';
 
 /** How close the player must stand for a door to offer itself. */
 export const DOOR_INTERACT_RADIUS = 3;
@@ -121,26 +122,26 @@ export const calculatePlayerSpawnPosition = (
   switch (direction) {
     case 'north':
       // Travelled +Z: enter at the south edge, carry on facing +Z.
-      position = new THREE.Vector3(0, 0.5, -roomHalfSize + entranceDistance);
+      position = new THREE.Vector3(0, PLAYER_SPAWN_Y, -roomHalfSize + entranceDistance);
       rotation = new THREE.Euler(0, Math.PI, 0);
       break;
     case 'south':
       // Travelled -Z: enter at the north edge, carry on facing -Z.
-      position = new THREE.Vector3(0, 0.5, roomHalfSize - entranceDistance);
+      position = new THREE.Vector3(0, PLAYER_SPAWN_Y, roomHalfSize - entranceDistance);
       rotation = new THREE.Euler(0, 0, 0);
       break;
     case 'east':
       // Travelled +X: enter at the west edge, carry on facing +X.
-      position = new THREE.Vector3(-roomHalfSize + entranceDistance, 0.5, 0);
+      position = new THREE.Vector3(-roomHalfSize + entranceDistance, PLAYER_SPAWN_Y, 0);
       rotation = new THREE.Euler(0, -Math.PI / 2, 0);
       break;
     case 'west':
       // Travelled -X: enter at the east edge, carry on facing -X.
-      position = new THREE.Vector3(roomHalfSize - entranceDistance, 0.5, 0);
+      position = new THREE.Vector3(roomHalfSize - entranceDistance, PLAYER_SPAWN_Y, 0);
       rotation = new THREE.Euler(0, Math.PI / 2, 0);
       break;
     default:
-      position = new THREE.Vector3(0, 0.5, -roomHalfSize + entranceDistance);
+      position = new THREE.Vector3(0, PLAYER_SPAWN_Y, -roomHalfSize + entranceDistance);
       rotation = new THREE.Euler(0, Math.PI, 0);
   }
   

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSimpleSafeSpawn } from "./useSimpleSafeSpawn";
+import { PLAYER_SPAWN_Y } from "../configs/worldGeometry";
 
 interface UsePlayerSpawnProps {
   initialSpawnPosition: [number, number, number];
@@ -30,12 +31,13 @@ export const usePlayerSpawn = ({
 
   // Find safe spawn position on mount
   useEffect(() => {
-    // Use a fixed safe height that should work for most rooms
-    // This places the player 1.5 units above the floor (which is typically at Y=-0.5)
+    // Spawn at the height the player actually rests at. The old fixed 1.5 was
+    // guessed against a floor "typically at Y=-0.5", which stopped being true
+    // once every room shared one ground plane.
     const safeSpawnPosition: [number, number, number] = [
-      initialSpawnPosition[0], // Keep X position
-      1.5, // Safe height above floor
-      initialSpawnPosition[2], // Keep Z position
+      initialSpawnPosition[0],
+      PLAYER_SPAWN_Y,
+      initialSpawnPosition[2],
     ];
 
     setSpawnPosition(safeSpawnPosition);
@@ -48,12 +50,6 @@ export const usePlayerSpawn = ({
 
     if (showDebugInfo) {
       console.log("Player: Safe spawning at", safeSpawnPosition);
-      console.log(
-        "Player: Player capsule will be from Y=",
-        1.5 - 0.3,
-        "to Y=",
-        1.5 + 0.3
-      );
     }
   }, [initialSpawnPosition, showDebugInfo]);
 

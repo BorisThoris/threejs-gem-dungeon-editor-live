@@ -12,7 +12,7 @@ import { RoomType as RoomTypeValues } from "../types/map";
 
 // Floor slabs are solid boxes rather than plane trimeshes so that a body
 // moving fast cannot tunnel through them between physics steps.
-const FLOOR_THICKNESS = 1;
+
 import BiomeWallRenderer from "./BiomeWallRenderer";
 import { getBiomeWallConfig } from "../types/biomeWalls";
 import ItemSprite from "./primitives/objects/ItemSprite";
@@ -39,6 +39,7 @@ import RoomDecorator from "./primitives/elements/RoomDecorator";
 import RoomSegmentRenderer from "./primitives/elements/RoomSegmentRenderer";
 import { loadTextureFromImage } from "../utils/textureUtils";
 import { useConsolidatedGameStore } from "../store/consolidatedGameStore";
+import { FLOOR_THICKNESS, GROUND_Y } from "../configs/worldGeometry";
 
 interface RoomProps {
   room: RoomType;
@@ -258,22 +259,13 @@ const Room: React.FC<RoomProps> = memo(
       }
     };
 
-    const getRoomHeight = (type: string): number => {
-      switch (type) {
-        case RoomTypeValues.START:
-        case RoomTypeValues.END:
-          return 0.5;
-        case RoomTypeValues.BOSS:
-          return 0.6;
-        default:
-          return 0.4;
-      }
-    };
 
     const roomColor = getRoomColor(room.type);
-    const roomHeight = getRoomHeight(room.type);
     const opacity = isVisited ? 1 : 0.3;
-    const scale = isCurrent ? 1.1 : 1;
+    // The room is played at its true size. `isCurrent ? 1.1 : 1` was a map-view
+    // emphasis, but this component only ever renders the room the player is
+    // standing in - so every played room was silently 10% larger than the size
+    // that doors, spawns, gems and hazards were all positioned from.
 
     // Check if this room uses biome-based walls
     const biomeConfig =
@@ -363,7 +355,6 @@ const Room: React.FC<RoomProps> = memo(
     return (
       <group
         position={[room.position.x, 0, room.position.z]}
-        scale={scale}
         rotation={[0, room.rotation || 0, 0]}
       >
         {/* Physical Floor with Collision - always a full solid slab for reliable
@@ -371,7 +362,7 @@ const Room: React.FC<RoomProps> = memo(
             straight through, which is how the player fell out of the world. */}
         <RigidBody type="fixed" colliders="cuboid">
           <mesh
-            position={[0, -roomHeight / 2 - FLOOR_THICKNESS / 2, 0]}
+            position={[0, GROUND_Y - FLOOR_THICKNESS / 2, 0]}
             receiveShadow
           >
             <boxGeometry
@@ -392,7 +383,7 @@ const Room: React.FC<RoomProps> = memo(
         {/* Visual Floor Overlay - shaped for variety */}
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, -roomHeight / 2 + 0.01, 0]}
+          position={[0, GROUND_Y + 0.01, 0]}
           receiveShadow
           onClick={onClick}
         >
@@ -482,7 +473,7 @@ const Room: React.FC<RoomProps> = memo(
             it only works as a backstop if it has volume. */}
         <RigidBody type="fixed" colliders="cuboid">
           <mesh
-            position={[0, -roomHeight / 2 - 1 - FLOOR_THICKNESS / 2, 0]}
+            position={[0, GROUND_Y - 3 - FLOOR_THICKNESS / 2, 0]}
             receiveShadow
           >
             <boxGeometry
@@ -492,15 +483,9 @@ const Room: React.FC<RoomProps> = memo(
           </mesh>
         </RigidBody>
 
-        {/* Current Room Indicator */}
-        <mesh position={[0, roomHeight + 0.5, 0]}>
-          <sphereGeometry args={[0.3, 8, 8]} />
-          <meshLambertMaterial
-            color={isCurrent ? "#FFEB3B" : roomColor}
-            transparent
-            opacity={isCurrent ? 1 : 0.7}
-          />
-        </mesh>
+        {/* The map view's "you are here" pin used to be rendered here too, a
+            yellow sphere hanging at chest height in the middle of every room.
+            In a first-person game it is just an unexplained floating ball. */}
 
         {/* Room Decorations - Add elements to all room types */}
         <RoomDecorator roomType={room.type} roomSize={roomSize} />
@@ -614,7 +599,7 @@ const Room: React.FC<RoomProps> = memo(
                   position={
                     [
                       ((index % 3) - 1) * 2,
-                      roomHeight + 0.5,
+                      GROUND_Y + 1,
                       Math.floor(index / 3) * 2 - 1,
                     ] as [number, number, number]
                   }
@@ -640,7 +625,7 @@ const Room: React.FC<RoomProps> = memo(
 
               {/* Special room effects */}
               {(room as any).specialProperties && (
-                <group position={[0, roomHeight + 2, 0]}>
+                <group position={[0, GROUND_Y + 2.5, 0]}>
                   {/* Special room indicator */}
                   <mesh>
                     <sphereGeometry args={[0.2, 8, 8]} />
