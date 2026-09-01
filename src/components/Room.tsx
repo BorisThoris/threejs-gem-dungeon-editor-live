@@ -444,6 +444,21 @@ const Room: React.FC<RoomProps> = memo(
           />
         )}
 
+        {/* The room's own light.
+            Rooms had none: the scene's ambient was 0.2 and the only real light
+            in a room was the point light attached to its gem, so collecting the
+            gem dropped the floor's mean luminance by 84%. A room is lit because
+            it is a room now, not because it happens to contain a collectible.
+            Range follows the room so a large room is not lit only in the
+            middle. */}
+        <pointLight
+          position={[0, wallHeight - 0.6, 0]}
+          color="#ffd9a8"
+          intensity={2.1}
+          distance={roomSize * 2}
+          decay={1.1}
+        />
+
         {/* Roof */}
         <RigidBody type="fixed" colliders="cuboid">
           <mesh

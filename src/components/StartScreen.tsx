@@ -1,7 +1,6 @@
 import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics, RigidBody } from "@react-three/rapier";
-import { Environment } from "@react-three/drei";
 import { useCameraController } from "../hooks/useCameraController";
 import { Player } from "./Player";
 import { SafeSpawnArea } from "./SafeSpawnArea";
@@ -61,14 +60,28 @@ const GhostScene: React.FC = () => {
   useCameraController();
   return (
     <>
-      {/* Environment. Isolated: if the HDR is slow or missing it must not stop
-          the player and floors from mounting. */}
-      <Suspense fallback={null}>
-        <Environment files="./night.hdr" ground={{ scale: 100 }} />
-      </Suspense>
+      {/* No image-based environment.
+          This used to load a 1.7MB outdoor NIGHT hdr and apply it as the
+          scene environment. The game is played inside a dungeon, so an
+          outdoor night sky was lighting every interior surface - and because
+          it arrives seconds after the room does, the scene visibly changed
+          brightness partway through play. Players read that as "the floor
+          went black", and blamed whatever they happened to be doing at the
+          time. Rooms are lit by their own lights now, which is both correct
+          for an interior and one less large asset to load.
+      */}
 
-      {/* Lighting */}
-      <ambientLight intensity={0.2} />
+      {/* Lighting.
+          Ambient used to be 0.2, which left rooms almost black: the only thing
+          really lighting a room was the point light attached to its gem, so
+          collecting the gem dropped the floor's mean luminance by 84% and took
+          near-black pixels from 11% to 83%. Rooms are lit in their own right
+          now (see the room light in Room.tsx) and the gem is a highlight
+          rather than the light source. */}
+      <ambientLight intensity={0.55} />
+      {/* Sky/ground fill, so floors and ceilings do not read as the same flat
+          tone and a room has some sense of up. */}
+      <hemisphereLight args={["#9fb4d8", "#3a3126", 0.45]} />
       <directionalLight
         intensity={0.7}
         castShadow

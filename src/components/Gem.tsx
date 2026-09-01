@@ -72,7 +72,10 @@ export function Gem({ roomId, position = [0, 0.9, 0] }: GemProps) {
           />
         </mesh>
       </RigidBody>
-      <pointLight color="#7fe3ff" intensity={2.2} distance={4.5} />
+      {/* A highlight on the gem, not the room's lighting. It used to be
+          intensity 2.2 over 4.5 units, which made it the dominant light in the
+          room - so picking the gem up plunged the floor into darkness. */}
+      <pointLight color="#7fe3ff" intensity={0.45} distance={2.2} />
     </group>
   );
 }
