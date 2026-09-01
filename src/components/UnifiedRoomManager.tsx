@@ -1,5 +1,4 @@
 import React, { memo, useEffect, useCallback, useMemo } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
@@ -167,34 +166,33 @@ const UnifiedRoomManager: React.FC<UnifiedRoomManagerProps> = memo(
     onInteraction,
     showDebugInfo = false,
   }) => {
-    // Store hooks - consolidated
-    const consolidatedStore = useConsolidatedGameStore();
-    const doorStore = useDoorProgressionStore();
-    const mapStore = useMapStore();
-    const gameState = useGameState();
-    const { camera } = useThree();
+    // One selector per value, deliberately.
+    //
+    // This component used to call useConsolidatedGameStore(), useMapStore() and
+    // useDoorProgressionStore() with no selector at all, subscribing to every
+    // one of those stores in full. It renders the room - hundreds of meshes -
+    // so picking up a gem, losing a life or marking a room visited re-rendered
+    // and reconciled the entire dungeon room, none of which depends on any of
+    // those values.
+    const currentRoomId = useConsolidatedGameStore((s) => s.currentRoomId);
+    const isTransitioning = useConsolidatedGameStore((s) => s.isTransitioning);
+    const transitionProgress = useConsolidatedGameStore(
+      (s) => s.transitionProgress
+    );
+    const roomInstances = useConsolidatedGameStore((s) => s.roomInstances);
+    const fromRoomId = useConsolidatedGameStore((s) => s.fromRoomId);
+    const toRoomId = useConsolidatedGameStore((s) => s.toRoomId);
+    const gemCount = useConsolidatedGameStore((s) => s.playerStats.gems);
 
-    // Extract only the values we need
-    const {
-      currentRoomId,
-      isTransitioning,
-      transitionProgress,
-      roomInstances,
-      startTransition,
-      loadRoom,
-      setActiveRoom,
-      fromRoomId,
-      toRoomId,
-    } = consolidatedStore;
-    const { isDoorUnlocked, getDoorState, getDoorType, unlockDoor } = doorStore;
-    const gemCount = consolidatedStore.playerStats.gems;
-    const spendGems = consolidatedStore.spendGems;
-    const { currentMap } = mapStore;
-    const { updateRoom, updateGamePhase } = gameState;
+    // Actions are stable for the life of the store, so they never need to be
+    // part of a subscription.
+    const { startTransition, loadRoom, setActiveRoom, spendGems } =
+      useConsolidatedGameStore.getState();
+    const { isDoorUnlocked, getDoorState, getDoorType } =
+      useDoorProgressionStore.getState();
 
-    // Refs for room detection
-    const lastDetectedRoomId = React.useRef<string | null>(null);
-    const lastUpdateTime = React.useRef(0);
+    const currentMap = useMapStore((s) => s.currentMap);
+    const { updateGamePhase } = useGameState();
 
     // Computed values
     const activeRoomId = currentRoomId;
