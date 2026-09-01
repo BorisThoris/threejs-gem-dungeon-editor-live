@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useRef, useState } from "react";
 import { RigidBody } from "@react-three/rapier";
 import { Text } from "../../GameText";
 import * as THREE from "three";
@@ -9,90 +9,97 @@ export interface EnhancedPressurePlateProps {
   position?: [number, number, number];
   color?: string;
   scale?: number;
-  isPressed?: boolean;
   onPress?: () => void;
   onRelease?: () => void;
   onItemGrabbed?: () => void;
-  onPlateFullyRaised?: () => void; // New callback for when plate reaches 100%
   label?: string;
-  weight?: number;
   hasAward?: boolean;
   awardType?: "bag" | "coin" | "gem" | "scroll";
   canGrabAward?: boolean;
   showAward?: boolean;
 }
 
+/** How far the plate sinks when something is resting on it. */
+const PLATE_TRAVEL = 0.06;
+/** Seconds for the plate to travel its full depth. */
+const PLATE_TRAVEL_TIME = 0.25;
+
+/**
+ * A plate that knows whether anything is actually standing on it.
+ *
+ * It previously listened only to `onCollisionEnter`, and decided between
+ * "something arrived" and "everything left" by testing
+ * `other.rigidBodyObject` - a field that is always set on a collision *enter*
+ * with a real body. So the release branch could never run: `onRelease` was
+ * unreachable, and the plate crept up by 2% per collision event and stayed
+ * there. Reaching 100% - the condition the puzzle's trap was hung on - needed
+ * fifty separate collisions and no way back down.
+ *
+ * Enter and exit are now both handled, and the occupant count is what decides.
+ * The travel itself is animated on the mesh through a ref: the old version
+ * called setState from inside a physics callback, re-rendering the whole plate
+ * and its treasure for every contact event.
+ */
 const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
   position = [0, 0, 0],
   color = "#8B4513",
   scale = 1,
-  isPressed = false,
   onPress,
   onRelease,
   onItemGrabbed,
-  onPlateFullyRaised,
   label = "Pressure Plate",
-  weight = 1,
   hasAward = false,
   awardType = "bag",
   canGrabAward = true,
   showAward = true,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
   const [isGrabbing, setIsGrabbing] = useState(false);
-  const [plateHeight, setPlateHeight] = useState(0); // 0 = fully down, 1 = fully up
-  const [hasTriggeredFullyRaised, setHasTriggeredFullyRaised] = useState(false);
-  const plateRef = useRef<THREE.Group>(null);
+  // Pressed is the one piece of genuine UI state: it changes when the player
+  // acts, not sixty times a second.
+  const [isPressed, setIsPressed] = useState(false);
 
-  const handleCollision = (other: any) => {
-    // Any object triggers the pressure plate, regardless of weight
-    if (other.rigidBodyObject) {
-      if (!isPressed && onPress) {
-        onPress();
-      }
-      // Gradually raise the plate when something is on it
-      setPlateHeight((prev) => {
-        const newHeight = Math.min(prev + 0.02, 1); // Gradually raise to max 1
-        if (newHeight >= 1 && !hasTriggeredFullyRaised) {
-          setHasTriggeredFullyRaised(true);
-          onPlateFullyRaised?.();
-        }
-        return newHeight;
-      });
-    } else {
-      if (isPressed && onRelease) {
-        onRelease();
-      }
-      // Gradually lower the plate when nothing is on it
-      setPlateHeight((prev) => {
-        const newHeight = Math.max(prev - 0.02, 0); // Gradually lower to min 0
-        if (newHeight <= 0) {
-          setHasTriggeredFullyRaised(false); // Reset trigger when plate is down
-        }
-        return newHeight;
-      });
+  const plateRef = useRef<THREE.Group>(null);
+  // How many bodies are resting on the plate. Counted rather than flagged,
+  // because two candles on one plate must both come off before it releases.
+  const occupants = useRef(0);
+  // Current travel, 0 = at rest, 1 = fully depressed.
+  const depression = useRef(0);
+
+  const handleEnter = () => {
+    occupants.current += 1;
+    if (occupants.current === 1) {
+      setIsPressed(true);
+      onPress?.();
+    }
+  };
+
+  const handleExit = () => {
+    // Exit events can outnumber enters if a body is removed mid-contact, so
+    // the count is floored rather than trusted.
+    occupants.current = Math.max(0, occupants.current - 1);
+    if (occupants.current === 0) {
+      setIsPressed(false);
+      onRelease?.();
     }
   };
 
   const handleTreasureGrabbed = () => {
     if (!canGrabAward || !hasAward) return;
-
     setIsGrabbing(true);
     onItemGrabbed?.();
-
-    // Reset grabbing state after animation
-    setTimeout(() => {
-      setIsGrabbing(false);
-    }, 1000);
+    setTimeout(() => setIsGrabbing(false), 1000);
   };
 
-  // Animate plate movement
-  useFrame((state) => {
-    // Update plate position based on height
+  useFrame((_state, delta) => {
+    const target = occupants.current > 0 ? 1 : 0;
+    const step = delta / PLATE_TRAVEL_TIME;
+    depression.current =
+      target > depression.current
+        ? Math.min(target, depression.current + step)
+        : Math.max(target, depression.current - step);
+
     if (plateRef.current) {
-      const maxPlateHeight = 0.15; // Maximum height the plate can raise
-      const currentPlateY = plateHeight * maxPlateHeight;
-      plateRef.current.position.y = currentPlateY;
+      plateRef.current.position.y = -depression.current * PLATE_TRAVEL;
     }
   });
 
@@ -102,7 +109,8 @@ const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
       <RigidBody
         type="fixed"
         colliders="hull"
-        onCollisionEnter={handleCollision}
+        onCollisionEnter={handleEnter}
+        onCollisionExit={handleExit}
       >
         <group>
           {/* Plate base */}
@@ -121,23 +129,14 @@ const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
           <meshLambertMaterial color={color} />
         </mesh>
 
-        {/* Pressure indicator */}
+        {/* Pressure indicator - green once the plate is actually holding
+            something, which is the state the puzzle asks the player for. */}
         <mesh position={[0, 0.085, 0]}>
           <cylinderGeometry args={[0.7, 0.7, 0.02, 12]} />
           <meshLambertMaterial
-            color={plateHeight > 0.5 ? "#00FF00" : "#FF0000"}
-            emissive={plateHeight > 0.5 ? "#00FF00" : "#FF0000"}
-            emissiveIntensity={0.3}
-          />
-        </mesh>
-
-        {/* Plate height indicator */}
-        <mesh position={[0, 0.1, 0]}>
-          <cylinderGeometry args={[0.6, 0.6, 0.01, 12]} />
-          <meshLambertMaterial
-            color={plateHeight >= 1 ? "#FF0000" : "#FFFF00"}
-            emissive={plateHeight >= 1 ? "#FF0000" : "#FFFF00"}
-            emissiveIntensity={plateHeight >= 1 ? 0.8 : 0.3}
+            color={isPressed ? "#00FF00" : "#FF0000"}
+            emissive={isPressed ? "#00FF00" : "#FF0000"}
+            emissiveIntensity={0.35}
           />
         </mesh>
       </group>
@@ -145,7 +144,7 @@ const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
       {/* Physical Treasure */}
       {hasAward && showAward && (
         <MovableTreasure
-          position={[0, 0.2 + plateHeight * 0.15, 0]}
+          position={[0, 0.2, 0]}
           awardType={awardType}
           weight={1.5}
           canGrab={canGrabAward}
@@ -154,35 +153,17 @@ const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
         />
       )}
 
-      {/* Hover text */}
-      {isHovered && (
-        <Text
-          position={[0, 0.8, 0]}
-          fontSize={0.15}
-          color="white"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="#000000"
-        >
-          {`${label} - Plate: ${Math.round(plateHeight * 100)}%`}
-        </Text>
-      )}
-
-      {/* Plate fully raised warning */}
-      {plateHeight >= 1 && (
-        <Text
-          position={[0, 1.2, 0]}
-          fontSize={0.2}
-          color="#FF0000"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.02}
-          outlineColor="#000000"
-        >
-          ⚠️ PLATE FULLY RAISED - DANGER! ⚠️
-        </Text>
-      )}
+      <Text
+        position={[0, 0.8, 0]}
+        fontSize={0.15}
+        color={isPressed ? "#8BC34A" : "#FFFFFF"}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+      >
+        {isPressed ? `${label} - held down` : `${label} - empty`}
+      </Text>
 
       {/* Grabbing animation */}
       {isGrabbing && (
@@ -195,7 +176,7 @@ const EnhancedPressurePlate: React.FC<EnhancedPressurePlateProps> = ({
           outlineWidth={0.02}
           outlineColor="#000000"
         >
-          ⚠️ TREASURE GRABBED! ⚠️
+          Treasure taken!
         </Text>
       )}
     </group>

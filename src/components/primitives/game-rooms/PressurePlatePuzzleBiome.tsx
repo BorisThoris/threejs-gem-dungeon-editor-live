@@ -58,26 +58,15 @@ const PressurePlatePuzzleBiome: React.FC<PressurePlatePuzzleBiomeProps> = ({
   const debugTextRefs = useRef<THREE.Group[]>([]);
 
   // Pressure plate puzzle functions
-  const handlePressurePlatePress = () => {
-    setPressurePlatePressed(true);
-    console.log("Pressure plate pressed!");
-  };
-
-  const handlePressurePlateRelease = () => {
-    setPressurePlatePressed(false);
-    console.log("Pressure plate released!");
-  };
+  const handlePressurePlatePress = () => setPressurePlatePressed(true);
+  const handlePressurePlateRelease = () => setPressurePlatePressed(false);
 
   const handleAwardGrabbed = () => {
     if (!pressurePlatePressed) {
       // Player grabbed award without pressing plate - take damage!
-      console.log(
-        "Player grabbed award without pressing plate - taking damage!"
-      );
       loseLife();
     } else {
       // Player grabbed award safely
-      console.log("Player grabbed award safely!");
       setHasAward(false);
       addPoints(100);
       addExperience(50);
@@ -85,11 +74,9 @@ const PressurePlatePuzzleBiome: React.FC<PressurePlatePuzzleBiomeProps> = ({
     }
   };
 
-  const handlePlateFullyRaised = () => {
-    // Plate reached 100% - damage the player!
-    console.log("Plate fully raised - player takes damage!");
-    loseLife();
-  };
+  // `onPlateFullyRaised` is gone. It was a second, unexplained source of
+  // damage on top of handleAwardGrabbed's, and it was unreachable anyway - the
+  // plate could only reach 100% after fifty separate collision events.
 
   // Interaction mode is now controlled by the global dragMode prop
 
@@ -139,17 +126,14 @@ const PressurePlatePuzzleBiome: React.FC<PressurePlatePuzzleBiomeProps> = ({
       <EnhancedPressurePlate
         position={[0, 1.0, 0]}
         scale={0.8}
-        isPressed={pressurePlatePressed}
         onPress={handlePressurePlatePress}
         onRelease={handlePressurePlateRelease}
         onItemGrabbed={handleAwardGrabbed}
-        onPlateFullyRaised={handlePlateFullyRaised}
         hasAward={hasAward}
         awardType="bag"
         canGrabAward={true}
         showAward={hasAward}
         label="Treasure Plate"
-        weight={0.5}
       />
 
       {/* Movable Candles around the table */}
