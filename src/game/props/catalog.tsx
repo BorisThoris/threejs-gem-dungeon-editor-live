@@ -35,6 +35,13 @@ const DARK_WOOD = "#4a3320";
 const IRON = "#8d939c";
 const BONE = "#d9d2c0";
 
+/**
+ * Point light intensity is in candela since three r155: a torch at 1 lit
+ * nothing and every room read as black. Rooms are lit from their corners,
+ * so this is most of the light a player sees by.
+ */
+const TORCH_INTENSITY = 14;
+
 function Barrel(p: PropProps) {
   return (
     <RigidBody type="fixed" colliders={false} {...frame(p)}>
@@ -90,7 +97,7 @@ function Candle(p: PropProps) {
         <coneGeometry args={[0.035, 0.11, 8]} />
         <meshStandardMaterial color="#ffb24d" emissive="#ff9a2e" emissiveIntensity={2} />
       </mesh>
-      <pointLight ref={light} position={[0, 0.5, 0]} color="#ffb86c" intensity={0.4} distance={3} />
+      <pointLight ref={light} position={[0, 0.5, 0]} color="#ffb86c" intensity={2.5} distance={4} />
     </group>
   );
 }
@@ -144,7 +151,7 @@ function Crystal(p: PropProps) {
         <octahedronGeometry args={[0.32, 0]} />
         <meshStandardMaterial color="#b9f6ff" emissive="#4fd3e8" emissiveIntensity={0.9} roughness={0.2} />
       </mesh>
-      <pointLight position={[0, 0.6, 0]} color="#7fe3ff" intensity={0.5} distance={3} />
+      <pointLight position={[0, 0.6, 0]} color="#7fe3ff" intensity={4} distance={5} />
     </group>
   );
 }
@@ -229,7 +236,7 @@ function Torch(p: PropProps) {
   useFrame((state) => {
     if (light.current) {
       const t = state.clock.elapsedTime * 11 + p.position[0] * 3 + p.position[2];
-      light.current.intensity = 0.9 + Math.sin(t) * 0.12 + Math.sin(t * 2.7) * 0.06;
+      light.current.intensity = TORCH_INTENSITY * (1 + Math.sin(t) * 0.13 + Math.sin(t * 2.7) * 0.07);
     }
   });
   return (
@@ -242,7 +249,7 @@ function Torch(p: PropProps) {
         <coneGeometry args={[0.13, 0.36, 8]} />
         <meshStandardMaterial color="#ffb24d" emissive="#ff7a1a" emissiveIntensity={2.4} />
       </mesh>
-      <pointLight ref={light} position={[0, 2.1, 0]} color="#ffb86c" intensity={1} distance={7} decay={1.4} />
+      <pointLight ref={light} position={[0, 2.1, 0]} color="#ffb86c" intensity={TORCH_INTENSITY} distance={11} decay={1.6} />
     </group>
   );
 }

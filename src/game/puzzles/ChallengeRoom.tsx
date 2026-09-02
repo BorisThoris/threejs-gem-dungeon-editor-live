@@ -49,7 +49,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
   useFrame(() => {
     if (!plateMat.current) return;
     const held = carry.restingWithin(plate[0], plate[2], PLATE_RADIUS).length > 0;
-    plateMat.current.emissive.set(held ? "#2fbf5a" : "#bf2f3f");
+    plateMat.current.emissive.set(held ? "#2f8f4a" : "#8f2f38");
   });
 
   const onIdolLifted = () => {
@@ -92,7 +92,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
         </RigidBody>
         <mesh position={[0, 0.36, 0]}>
           <cylinderGeometry args={[PLATE_RADIUS, PLATE_RADIUS, 0.05, 20]} />
-          <meshStandardMaterial ref={plateMat} color="#7a6a4a" emissive="#bf2f3f" emissiveIntensity={0.5} />
+          <meshStandardMaterial ref={plateMat} color="#6a5a3a" emissive="#8f2f38" emissiveIntensity={0.45} metalness={0.4} roughness={0.5} />
         </mesh>
       </group>
 
@@ -119,7 +119,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
             <coneGeometry args={[0.04, 0.12, 8]} />
             <meshStandardMaterial color="#ffb24d" emissive="#ff9a2e" emissiveIntensity={2} />
           </mesh>
-          <pointLight position={[0, 0.5, 0]} color="#ffb86c" intensity={0.35} distance={2.5} />
+          <pointLight position={[0, 0.5, 0]} color="#ffb86c" intensity={2} distance={3.5} />
         </Carryable>
       ))}
     </>

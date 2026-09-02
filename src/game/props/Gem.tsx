@@ -54,7 +54,7 @@ export function Gem({ roomId, position }: GemProps) {
       </mesh>
       {/* A highlight on the gem, not the room's lighting: keep it small so
           picking the gem up does not visibly darken the floor. */}
-      <pointLight color="#7fe3ff" intensity={0.45} distance={2.2} />
+      <pointLight color="#7fe3ff" intensity={3} distance={4} />
     </group>
   );
 }

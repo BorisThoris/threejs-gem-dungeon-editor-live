@@ -91,12 +91,13 @@ export function Room({ room, seed }: RoomProps) {
         <meshStandardMaterial color="#1a191d" roughness={1} />
       </mesh>
 
+      {/* A dim overhead fill so no corner is ever fully black; the torches do the rest. */}
       <pointLight
         position={[0, GROUND_Y + WALL_HEIGHT - 0.6, 0]}
         color="#ffd9a8"
-        intensity={2.2}
-        distance={room.size * 2}
-        decay={1.1}
+        intensity={18}
+        distance={room.size * 1.6}
+        decay={1.5}
       />
 
       {DIRS.map((dir) =>

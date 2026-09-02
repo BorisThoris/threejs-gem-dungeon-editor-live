@@ -31,6 +31,7 @@ function CurrentRoom() {
  * above it hide the Canvas and force-lose its WebGL context.
  */
 export function Scene() {
+  const paused = useRun((s) => s.paused);
   return (
     <Canvas
       shadows
@@ -39,10 +40,12 @@ export function Scene() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ position: "absolute", inset: 0, background: "#050608" }}
     >
-      <ambientLight intensity={0.55} />
-      <hemisphereLight args={["#9fb4d8", "#3a3126", 0.45]} />
+      {/* Depth cue only: the far wall of the largest room is still visible. */}
+      <fog attach="fog" args={["#050608", 10, 46]} />
+      <ambientLight intensity={0.7} />
+      <hemisphereLight args={["#9fb4d8", "#3a3126", 0.6]} />
       <Suspense fallback={null}>
-        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
+        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused}>
           <GroundPlane />
           <Player />
           <CurrentRoom />

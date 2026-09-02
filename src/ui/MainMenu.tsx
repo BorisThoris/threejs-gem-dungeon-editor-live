@@ -38,7 +38,7 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Move</dt>
               <dd style={{ margin: 0 }}>W A S D, or the left stick</dd>
               <dt style={{ color: colors.accent }}>Look</dt>
-              <dd style={{ margin: 0 }}>Hold the right mouse button, or the right stick</dd>
+              <dd style={{ margin: 0 }}>Click the game to take the mouse, Esc gives it back; or the right stick</dd>
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>

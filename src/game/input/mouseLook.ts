@@ -3,30 +3,40 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { PerspectiveCamera } from "three";
 
 import { bus } from "../events";
-import { canControl, useRun } from "../state/run";
+import { canControl, useRun, type RunState } from "../state/run";
 import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MOUSE_SENSITIVITY } from "../world";
 import { readGamepad } from "./gamepad";
 
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
 
 /**
- * First-person look.
+ * When a lost pointer lock last opened the pause menu. Some browsers hand the
+ * page the Esc that ended the lock as well; the pause toggle consults this
+ * so that one keypress does not pause and immediately resume.
+ */
+export const lockLossPause = { at: -Infinity };
+
+/** The run is at a point where the pointer belongs to the menus, not the game. */
+const wantsCursor = (s: RunState): boolean =>
+  s.phase !== "playing" || s.paused || s.inputLocks > 0;
+
+/**
+ * First-person look, the way every first-person game does it.
  *
- * Hold the right mouse button to look; the pointer is locked for the hold so
- * the cursor stays free the rest of the time for menus. The right stick looks
- * too. Yaw and pitch live in refs and are written straight onto the camera:
- * nothing here ever re-renders anything.
+ * Click the game and the pointer is captured; from then on the mouse is the
+ * view. Esc gives the pointer back - the browser does that itself and eats
+ * the key, so a lock lost during play is taken as the player asking for the
+ * menu and opens it. Menus and puzzles release the pointer so their buttons
+ * can be clicked, and closing them asks for it back; that request is only
+ * honoured on a user gesture, and closing a menu is one.
  *
- * Only the decision to START a look consults whether the player is in
- * control; a look already in progress keeps working across a room
- * transition, which briefly clears the flag.
+ * Yaw and pitch live in refs and are written straight onto the camera:
+ * nothing here ever re-renders anything. The right stick looks too.
  */
 export function useMouseLook() {
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
   const yaw = useRef(0);
   const pitch = useRef(0);
-  const holding = useRef(false);
-  const locked = useRef(false);
 
   useEffect(() => {
     if (camera instanceof PerspectiveCamera) {
@@ -34,11 +44,33 @@ export function useMouseLook() {
       camera.updateProjectionMatrix();
     }
     camera.rotation.order = "YXZ";
+    const canvas = gl.domElement;
+    // Set while we let go of the pointer ourselves, so the lock-change
+    // handler can tell our release from the player's Esc.
+    let releasing = false;
 
     const apply = () => {
       camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
     };
     apply();
+
+    const requestLock = () => {
+      if (document.pointerLockElement === canvas) return;
+      try {
+        const request = canvas.requestPointerLock() as Promise<void> | undefined;
+        request?.catch(() => {
+          // Refused (no user gesture, or an embedder that forbids it): the
+          // next click will ask again.
+        });
+      } catch {
+        // Same, thrown synchronously by older engines.
+      }
+    };
+    const releaseLock = () => {
+      if (document.pointerLockElement !== canvas) return;
+      releasing = true;
+      document.exitPointerLock();
+    };
 
     const offLook = bus.on("lookSet", ({ yaw: y, pitch: p }) => {
       yaw.current = y;
@@ -47,48 +79,49 @@ export function useMouseLook() {
     });
 
     const onMouseMove = (event: MouseEvent) => {
-      if (!holding.current || !locked.current) return;
+      if (document.pointerLockElement !== canvas) return;
       yaw.current -= (event.movementX || 0) * MOUSE_SENSITIVITY;
       pitch.current -= (event.movementY || 0) * MOUSE_SENSITIVITY;
       pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
       apply();
     };
-    const onMouseDown = (event: MouseEvent) => {
-      if (event.button !== 2 || !canControl(useRun.getState())) return;
-      holding.current = true;
-      if (!locked.current) {
-        const request = document.body.requestPointerLock() as Promise<void> | undefined;
-        request?.catch(() => {
-          // Some embedders refuse pointer lock; looking still works from raw deltas.
-          locked.current = true;
-        });
-      }
-    };
-    const onMouseUp = (event: MouseEvent) => {
-      if (event.button !== 2) return;
-      holding.current = false;
-      if (document.pointerLockElement) document.exitPointerLock();
+    const onMouseDown = () => {
+      if (canControl(useRun.getState())) requestLock();
     };
     const onLockChange = () => {
-      locked.current = document.pointerLockElement !== null;
+      if (document.pointerLockElement === canvas) return;
+      if (releasing) {
+        releasing = false;
+        return;
+      }
+      const run = useRun.getState();
+      if (run.phase === "playing" && !run.paused && run.inputLocks === 0) {
+        lockLossPause.at = performance.now();
+        run.pause();
+      }
     };
     const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
+    // Menus and puzzles take the pointer; closing them hands it back.
+    const unsubscribe = useRun.subscribe(wantsCursor, (cursor) => {
+      if (cursor) releaseLock();
+      else requestLock();
+    });
+
     document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mousedown", onMouseDown);
-    document.addEventListener("mouseup", onMouseUp);
+    canvas.addEventListener("mousedown", onMouseDown);
     document.addEventListener("pointerlockchange", onLockChange);
     document.addEventListener("contextmenu", onContextMenu);
     return () => {
       offLook();
+      unsubscribe();
       document.removeEventListener("mousemove", onMouseMove);
-      document.removeEventListener("mousedown", onMouseDown);
-      document.removeEventListener("mouseup", onMouseUp);
+      canvas.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("pointerlockchange", onLockChange);
       document.removeEventListener("contextmenu", onContextMenu);
-      if (document.pointerLockElement) document.exitPointerLock();
+      releaseLock();
     };
-  }, [camera]);
+  }, [camera, gl]);
 
   // Stick look, applied per frame so it is frame-rate independent.
   useFrame((_, delta) => {

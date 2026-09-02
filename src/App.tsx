@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
 import { readGamepad } from "./game/input/gamepad";
+import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
 import { useRun } from "./game/state/run";
 import { Audio } from "./game/systems/Audio";
@@ -14,6 +15,7 @@ import { PauseMenu } from "./ui/PauseMenu";
 import { Prompt } from "./ui/Prompt";
 import { PuzzleOverlay } from "./ui/PuzzleOverlay";
 import { RunSummary } from "./ui/RunSummary";
+import { Transitions } from "./ui/Transitions";
 
 /**
  * Esc / Start toggles pause while a run is on. Polled on a short interval
@@ -26,6 +28,8 @@ function usePauseKeys() {
       if (event.code !== "Escape" || event.repeat) return;
       const run = useRun.getState();
       if (run.phase !== "playing") return;
+      // The Esc that released the pointer already paused; do not undo it.
+      if (run.paused && performance.now() - lockLossPause.at < 400) return;
       if (run.paused) run.resume();
       else run.pause();
     };
@@ -85,6 +89,7 @@ export default function App() {
   return (
     <>
       <Scene />
+      <Transitions />
       <Audio />
       <Hud />
       <Minimap />
