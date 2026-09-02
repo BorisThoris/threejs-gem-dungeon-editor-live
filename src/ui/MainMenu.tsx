@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useRun } from "../game/state/run";
-import { FLOORS, GEMS_FOR_EXIT, STARTING_LIVES } from "../game/world";
+import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
 import { body, button, colors, fullscreen, panel, secondaryButton, title } from "./overlay";
 
 const isElectron = () =>
@@ -18,7 +18,13 @@ export function MainMenu() {
         {page === "menu" ? (
           <>
             <p style={body}>
-              {FLOORS} floors down. On each, find {GEMS_FOR_EXIT} gems to open the way. You have {STARTING_LIVES} lives.
+              {FLOORS} floors down. Each door out costs gems, and costs more the deeper you
+              are: {Array.from({ length: FLOORS }, (_, i) => tollForFloor(i + 1)).join(", ")}. Whatever you
+              still carry when you climb out is what you got away with.
+              <br />
+              <br />
+              Every gem you take wakes the thing that walks the floor. You cannot fight it.
+              You have {STARTING_LIVES} lives.
             </p>
             <button style={button} data-testid="menu-start" onClick={() => startRun()}>
               Start
@@ -42,7 +48,7 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
-              <dd style={{ margin: 0 }}>Hold Shift</dd>
+              <dd style={{ margin: 0 }}>Hold Shift, or L3. The Warden is slower than you are.</dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>

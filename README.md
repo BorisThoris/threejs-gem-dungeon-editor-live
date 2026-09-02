@@ -3,10 +3,21 @@
 A first-person dungeon run built on React Three Fiber, Rapier and Zustand,
 packaged for the desktop with Electron.
 
-Each run is a fresh dungeon. Find gems - one in most rooms, more for solving
-a puzzle - and hand three of them over at the exit. Traps cost lives, the
-shop sells them back, and losing the last one ends the run. Either way you
-get a summary and a new dungeon.
+Three floors down. Each floor is a fresh dungeon holding about eight gems,
+and the door out charges a toll that rises as you descend: three, then five,
+then seven. Whatever you are still carrying when you climb out is what you
+got away with.
+
+The catch is that every gem you take wakes the thing that walks the floor.
+The Warden cannot be fought and cannot be blocked - it drifts through
+barrels and pillars - but it is slower than you are, so the question is
+never whether you can escape it. It is whether one more room is worth
+having it between you and the door.
+
+Gems also buy relics at the shop, which change a run's rules: a lantern
+that shows you where the Warden is, boots that make you quicker, a charm
+that eats a hit, a ledger that makes every exit cheaper. Every gem spent
+there is a gem you do not carry out.
 
 **[ARCHITECTURE.md](ARCHITECTURE.md)** explains how the code is laid out and
 the rule it follows. **[STEAM_DEMO_PLAN.md](STEAM_DEMO_PLAN.md)** is the
@@ -20,7 +31,7 @@ between here and a Steam demo.
 | `W A S D` / arrows, or left stick | Move |
 | Mouse (click the game to take it, Esc gives it back), or right stick | Look |
 | `E`, or `A` on a pad | Use what you are standing at: a door, the shop counter, a lectern, an idol |
-| `Shift` | Run |
+| `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause |
 
 There is one interaction verb. Anything you can act on tells you so when
@@ -78,7 +89,14 @@ production build does not contain it.
 `yarn test:smoke` starts a browser against a dev server on port 5199 and
 plays: menu, start, stand on the floor, explore by pressing E, collect gems,
 walk to the exit's neighbour, be refused without the toll and admitted with
-it, win, restart, die. It fails on any uncaught page error.
+it, descend a floor, win from the last one, restart, die, then check the
+economy and the Warden - the toll rising per floor, a relic changing a rule,
+a charm eating a hit, the Warden walking into the room. It fails on any
+uncaught page error.
+
+`yarn test:layout` needs no browser: it checks the room geometry over every
+room size and 500 seeds - anchors clear of the door lanes and of each other,
+spikes in every trap room, the gem reachable, the generator connected.
 
 ```bash
 yarn dev --port 5199   # one terminal

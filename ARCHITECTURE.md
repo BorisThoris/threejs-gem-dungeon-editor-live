@@ -23,7 +23,16 @@ Two stores that both claimed the player's stats. So:
   reserved)`), and the dressing and the gem keep clear of what it claimed.
   Every function takes a `Room` and reads `room.size`; nothing else does the
   arithmetic. `yarn test:layout` checks all of this over every size.
-- Run state lives in `src/game/state/run.ts`. One Zustand store.
+- Run state lives in `src/game/state/run.ts`. One Zustand store. The floor,
+  the gems, the alarm, the relics held and which room the Warden is in are
+  all here; nothing keeps a second copy.
+- What a relic does is decided in `src/game/relics/catalog.ts`, by
+  `modifiers(relics)`. Nothing else asks whether the player holds the boots -
+  it asks the modifiers what the walk speed is.
+- How roused the Warden is comes from `src/game/warden/tuning.ts`. The
+  driver, the figure itself, the audio and the HUD all read the same
+  function, so "Hunting" in the corner and the thing in the doorway can
+  never disagree.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus.
 - Textures come from `src/game/textures/registry.ts`, by id.
 - Templates come from `src/game/rooms/templates.ts`, by id.
@@ -79,11 +88,19 @@ src/
    inside the wall they came through, and waits for `roomReady` again.
 4. Gems are picked up by proximity. Traps damage on entry with a cooldown in
    the store. The shop sells a life for a gem. Puzzles pay a gem when solved.
-5. The exit door charges `GEMS_FOR_EXIT`. Entering the exit room descends
-   to a fresh floor, lives and gems carried; the exit of floor `FLOORS`
-   wins. Losing the last life loses. Both show the summary; both offer a
-   new run. A puzzle failed for good is remembered in `failed`, as a
-   solved one is in `cleared`, so leaving and returning changes nothing.
+5. Every gem taken raises the floor's `alarm`. The alarm decides how often
+   the Warden steps from room to room, whether it wanders or walks towards
+   the player, and how fast it crosses a room. It cannot be fought and is
+   slower than a walk at every level: it wins by being between the player
+   and the door. Touching the player costs a life and throws it three
+   doorways away.
+6. The exit door charges `tollForFloor(floor)`, which rises on every floor.
+   Entering the exit room descends to a fresh dungeon - lives, gems and
+   relics carried, alarm and Warden reset - and the exit of floor `FLOORS`
+   wins. The gems still held at that point are the run's score. Losing the
+   last life loses everything. A puzzle failed for good is remembered in
+   `failed`, as a solved one is in `cleared`, so leaving and returning
+   changes nothing.
 
 ## Content pipeline
 

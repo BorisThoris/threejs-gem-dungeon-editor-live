@@ -85,7 +85,12 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800) {
 
 const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
 
-let bed: { gain: GainNode; stop: () => void } | null = null;
+let bed: {
+  gain: GainNode;
+  filter: BiquadFilterNode;
+  fifth: OscillatorNode;
+  stop: () => void;
+} | null = null;
 
 /**
  * The dungeon's air: a low drone and a breath of filtered noise, far below
@@ -93,6 +98,18 @@ let bed: { gain: GainNode; stop: () => void } | null = null;
  * Fades in over a couple of seconds and out over one.
  */
 export const ambience = {
+  /**
+   * How roused the floor is, 0 to 1. The bed tightens with it: the drone
+   * comes up and the air moves faster, so a floor being emptied of gems is
+   * audibly a worse place to be standing.
+   */
+  setTension(rouse: number) {
+    if (!bed || !context) return;
+    const at = context.currentTime + 0.6;
+    bed.gain.gain.linearRampToValueAtTime(0.11 + rouse * 0.1, at);
+    bed.filter.frequency.linearRampToValueAtTime(320 + rouse * 420, at);
+    bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6, at);
+  },
   start() {
     const ctx = ensureContext();
     if (!ctx || !master || bed) return;
@@ -145,6 +162,8 @@ export const ambience = {
     wobble.start();
     bed = {
       gain,
+      filter,
+      fifth,
       stop: () => {
         const at = ctx.currentTime + 1.1;
         drone.stop(at);
@@ -213,6 +232,26 @@ export const sfx = {
   /** A wrong answer. */
   wrong() {
     tone(196, 0.22, "square", 0.3, 150);
+  },
+  /** A relic taken off its pedestal. */
+  relic() {
+    [440, 660, 880, 1320].forEach((f, i) => later(i * 70, () => tone(f, 0.5, "sine", 0.3)));
+  },
+  /** The charm eating a hit: a hit that stops short. */
+  charm() {
+    tone(660, 0.1, "sine", 0.4);
+    later(60, () => tone(330, 0.4, "sine", 0.3));
+  },
+  /** The Warden heard through a wall: a slow knock, no pitch to speak of. */
+  wardenNear() {
+    tone(58, 0.5, "sine", 0.45, 42);
+    noiseBurst(0.3, 0.1, 260);
+  },
+  /** The Warden walking into your room. */
+  wardenHere() {
+    tone(88, 0.9, "sawtooth", 0.35, 44);
+    later(120, () => tone(132, 0.7, "sine", 0.25, 66));
+    noiseBurst(0.6, 0.2, 500);
   },
   setMuted(next: boolean) {
     muted = next;

@@ -23,6 +23,25 @@ export interface PuzzleRequest {
 export interface BusEvents {
   runStarted: undefined;
   runWon: undefined;
+  /** The floor's Warden has woken, in this room. */
+  wardenWoke: { roomId: string };
+  /** It has walked into the room the player is standing in. */
+  wardenEntered: { roomId: string };
+  /** It has stepped into a room next door: heard, not seen. */
+  wardenNearby: { roomId: string };
+  /** It reached the player. */
+  wardenStruck: undefined;
+  /** The Bone Charm ate a hit. */
+  charmSpent: undefined;
+  /** A gem was taken and the floor is that much more awake. */
+  alarmRaised: { alarm: number };
+  /** A relic was taken. */
+  relicTaken: { id: string };
+  /**
+   * How near the Warden is, 0 (not in the room) to 3 (on top of you).
+   * Quantised and emitted only on change, so the DOM can draw from it.
+   */
+  wardenProximity: { level: number };
   /** The exit was taken and a deeper floor begins. */
   floorDescended: { floor: number };
   runLost: undefined;

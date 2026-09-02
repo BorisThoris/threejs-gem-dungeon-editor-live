@@ -2,17 +2,22 @@ import { useEffect } from "react";
 
 import { bus } from "../events";
 import { useRun } from "../state/run";
+import { behaviourFor } from "../warden/tuning";
 import { ambience, sfx } from "./audio";
 
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
   // The bed runs while a run is on and fades out when it ends or is quit.
+  const rouse = useRun((s) => behaviourFor(s.alarm).rouse);
   useEffect(() => {
     if (!playing) return;
     ambience.start();
     return () => ambience.stop();
   }, [playing]);
+  useEffect(() => {
+    if (playing) ambience.setTension(rouse);
+  }, [playing, rouse]);
 
   useEffect(() => {
     const offs = [
@@ -24,6 +29,11 @@ export function Audio() {
       bus.on("floorDescended", () => sfx.unlock()),
       bus.on("runLost", () => sfx.lose()),
       bus.on("puzzleResult", ({ completed }) => (completed ? sfx.solved() : sfx.wrong())),
+      bus.on("relicTaken", () => sfx.relic()),
+      bus.on("charmSpent", () => sfx.charm()),
+      bus.on("wardenNearby", () => sfx.wardenNear()),
+      bus.on("wardenWoke", () => sfx.wardenNear()),
+      bus.on("wardenEntered", () => sfx.wardenHere()),
     ];
     return () => offs.forEach((off) => off());
   }, []);

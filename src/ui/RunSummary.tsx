@@ -8,6 +8,8 @@ const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2,
 export function RunSummary() {
   const phase = useRun((s) => s.phase);
   const gemsTotal = useRun((s) => s.gemsTotal);
+  const carried = useRun((s) => s.gems);
+  const relics = useRun((s) => s.relics.length);
   const roomsSeen = useRun((s) => s.roomsSeen);
   const floor = useRun((s) => s.floor);
   const seconds = useRun((s) => Math.max(0, Math.round((s.endedAt - s.startedAt) / 1000)));
@@ -21,8 +23,20 @@ export function RunSummary() {
         <h2 style={{ ...title, color: won ? colors.gold : colors.danger }}>
           {won ? "You made it out" : "You died down here"}
         </h2>
+        {won ? (
+          <p style={{ ...body, marginBottom: 8 }}>
+            You got out with{" "}
+            <span style={{ color: colors.gold, fontSize: "1.4em" }}>{carried}</span> gem
+            {carried === 1 ? "" : "s"}.
+          </p>
+        ) : (
+          <p style={{ ...body, marginBottom: 8 }}>
+            You were carrying {carried} gem{carried === 1 ? "" : "s"} on floor {floor} of {FLOORS}.
+            None of it comes back up.
+          </p>
+        )}
         <p style={body}>
-          {won ? `${FLOORS} floors` : `Floor ${floor} of ${FLOORS}`} · {gemsTotal} gem{gemsTotal === 1 ? "" : "s"} found · {roomsSeen} rooms seen · {clock(seconds)}
+          {gemsTotal} found · {relics} relic{relics === 1 ? "" : "s"} · {roomsSeen} rooms · {clock(seconds)}
         </p>
         <button style={button} data-testid="summary-again" onClick={() => startRun()}>
           Run again

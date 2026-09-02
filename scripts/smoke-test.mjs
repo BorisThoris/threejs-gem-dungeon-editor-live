@@ -183,13 +183,27 @@ if (exitDoor) {
     await page.waitForTimeout(2500);
     const refused = (await snap()).room === exitDoor.neighbour;
     ok("exit door names its toll and refuses E unpaid", !!prompt && refused, prompt ?? "no prompt");
-    await page.evaluate(() => { const s = window.__run.getState(); ["a", "b", "c"].forEach((id) => s.collectGem("toll-" + id)); });
+    // Pay the toll and one over, so the spare gem can be seen to survive.
+    const toll = await page.evaluate(() => window.__run.getState().gems + 0 || 0);
+    void toll;
+    const owed = await page.evaluate(() => {
+      const s = window.__run.getState();
+      // tollNow is not exported to the page; the prompt above named it.
+      return Number(document.body.innerText.match(/exit needs (\d+) gems/i)?.[1] ?? 3) - s.gems;
+    });
+    await page.evaluate((n) => {
+      const s = window.__run.getState();
+      for (let i = 0; i < n; i++) s.collectGem("toll-" + i);
+    }, owed + 1);
     await page.waitForTimeout(600);
+    const alarmAfterGems = await page.evaluate(() => window.__run.getState().alarm);
+    ok("taking gems rouses the floor", alarmAfterGems >= owed, `alarm ${alarmAfterGems} after ${owed + 1} gems`);
     await page.keyboard.press("KeyE");
     await page.waitForTimeout(4000);
     const after = await snap();
     const floor = await page.evaluate(() => window.__run.getState().floor);
-    ok("exit opens once paid and leads down a floor", after.phase === "playing" && after.gems === 0 && floor === 2 && after.room === "start", `${after.phase}, floor ${floor}, room ${after.room}, ${after.gems} gems left`);
+    ok("exit opens once paid and leads down a floor", after.phase === "playing" && after.gems === 1 && floor === 2 && after.room === "start", `${after.phase}, floor ${floor}, room ${after.room}, ${after.gems} gems left`);
+    ok("the spare gem carries down and the new floor is calm", await page.evaluate(() => window.__run.getState().alarm === 0 && window.__run.getState().wardenRoomId === null));
     ok("control returned on the new floor", !after.transitioning && after.y > 0.5, JSON.stringify(after));
     // The last floor's exit ends the run: taken at the store level, since
     // walking two more floors is the same code path as the one just walked.
@@ -202,6 +216,7 @@ if (exitDoor) {
     await page.waitForTimeout(800);
     const won = await snap();
     ok("the last floor's exit wins the run", won.phase === "won", won.phase);
+    ok("the run is scored by what was carried out", await page.evaluate(() => /got out with/i.test(document.body.innerText)));
     ok("victory summary appears", await page.evaluate(() => /made it out/i.test(document.body.innerText)));
     exitChecked = true;
   }
@@ -223,6 +238,55 @@ for (let i = 0; i < 4; i++) {
 const dead = await snap();
 ok("run ends at zero lives", dead.lives === 0 && dead.phase === "lost", `${dead.lives} lives, ${dead.phase}`);
 ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(document.body.innerText)));
+
+// The economy and the Warden, driven through the store: the toll rises with
+// the floor, a relic is bought and changes a rule, and the Warden wakes and
+// can reach the player.
+{
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForTimeout(2500);
+  const tolls = await page.evaluate(() => {
+    const run = window.__run;
+    const out = [];
+    for (const floor of [1, 2, 3]) {
+      run.setState({ floor });
+      out.push(window.__derived.toll());
+    }
+    run.setState({ floor: 1 });
+    return out;
+  });
+  ok("the toll rises with every floor", tolls[0] < tolls[1] && tolls[1] < tolls[2], tolls.join(" then "));
+
+  const relic = await page.evaluate(() => {
+    const run = window.__run;
+    run.setState({ gems: 20 });
+    const before = run.getState().lives;
+    run.getState().addRelic("ledger");
+    const withLedger = window.__derived.toll();
+    run.getState().addRelic("charm");
+    run.getState().damage();
+    return { before, after: run.getState().lives, withLedger, held: run.getState().relics.length };
+  });
+  ok("a relic makes the exit cheaper", relic.withLedger === tolls[0] - 1, `toll ${relic.withLedger} with the ledger, ${tolls[0]} without`);
+  ok("the charm eats a hit instead of a life", relic.after === relic.before, `${relic.before} then ${relic.after} lives`);
+  await page.waitForTimeout(400);
+  ok("relics are held and shown", relic.held === 2 && /Ledger/i.test(await page.evaluate(() => document.body.innerText)));
+
+  const warden = await page.evaluate(async () => {
+    const run = window.__run;
+    const s = run.getState();
+    // Wake it in the player's own room and let it walk in.
+    run.setState({ floorRooms: 9 });
+    const here = s.currentRoomId;
+    const other = s.dungeon.rooms.find((r) => r.id !== here);
+    run.setState({ wardenRoomId: other.id });
+    run.getState().moveWarden(here);
+    await new Promise((r) => setTimeout(r, 2500));
+    return { room: run.getState().wardenRoomId, lives: run.getState().lives, met: run.getState().wardenMet };
+  });
+  ok("the Warden walks into the room and is dangerous", warden.met === true, JSON.stringify(warden));
+}
+
 
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();

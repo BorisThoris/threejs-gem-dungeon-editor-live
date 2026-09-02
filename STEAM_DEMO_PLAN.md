@@ -59,6 +59,18 @@ depot scripts and upload steps, overlay text scales for a Steam Deck, and
 The macOS zip builds on Linux; the Windows package needs a Windows host or
 Wine.
 
+Then the loop itself was reworked, because the automated playtest showed
+the run had no decision in it: about eleven gems on a floor against a toll
+of three, and nothing in the dungeon that moved. Now the toll rises with
+every floor (3, 5, 7), the gems still carried when the last exit opens are
+the run's score, and every gem taken rouses a Warden that walks the floor
+room to room. It cannot be fought or blocked and is slower than a walk, so
+it never simply catches anyone - it wins by being in the doorway. Gems also
+buy six relics at the shop, each of which changes a rule of the run, so
+every gem spent there is a gem not carried out. The decision the game now
+asks, once a room, is whether the four gems still on this floor are worth
+what taking them will wake.
+
 What is still ahead: a human playtest, Windows and signed macOS builds on
 their own hosts, and the Steamworks account side (app ID, depots, store
 page, capsule art).

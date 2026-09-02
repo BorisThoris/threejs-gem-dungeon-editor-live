@@ -1,7 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- this module exports
    nothing on purpose: importing it registers the room kinds. */
-import { quadrantSpots } from "../dungeon/layout";
+import { useMemo } from "react";
+
+import { quadrantSpots, type Vec3 } from "../dungeon/layout";
 import type { Room } from "../dungeon/types";
+import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
+import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { useRun } from "../state/run";
@@ -19,7 +23,12 @@ import "./shipped";
  * the room shell never depends on puzzle code.
  */
 
-const shopCounter = (room: Room) => quadrantSpots(room, "near")[2];
+/** The counter on near[2], and a relic pedestal on each of two far anchors. */
+const shopAnchors = (room: Room): Vec3[] => [
+  quadrantSpots(room, "near")[2],
+  quadrantSpots(room, "far")[0],
+  quadrantSpots(room, "far")[1],
+];
 const libraryLectern = (room: Room) => quadrantSpots(room, "near")[3];
 
 function Dressed({ room }: RoomKindProps) {
@@ -28,17 +37,37 @@ function Dressed({ room }: RoomKindProps) {
 }
 
 /**
- * The shop: where the run's two currencies meet. Gems are only otherwise
- * spent at the exit and lives can only otherwise be lost, so the counter is
- * the one place a careless run can pay for itself.
+ * The shop: the only place a gem buys something other than a door.
+ *
+ * It sells one life and two relics, and the relics are the point. A life
+ * puts a run back where it was; a relic changes what the rest of the run
+ * is, so the decision at the counter is whether to spend the gems that
+ * were going to be your score on getting more of them.
+ *
+ * What is on offer is fixed by the floor and the run's seed, so a shop is
+ * the same shop every time you walk back into it.
  */
 function Shop({ room }: RoomKindProps) {
   const gems = useRun((s) => s.gems);
   const lives = useRun((s) => s.lives);
   const maxLives = useRun((s) => s.maxLives);
-  const counter = shopCounter(room);
+  const floor = useRun((s) => s.floor);
+  const seed = useRun((s) => s.dungeon?.seed ?? 0);
+  const held = useRun((s) => s.relics);
+  const [counter, ...shelves] = shopAnchors(room);
+
+  // Two relics the player does not already hold, the same two every visit.
+  const offer = useMemo(() => {
+    const rng = createRng(`${seed}:${room.id}:${floor}:shop`);
+    return shuffle(rng, RELIC_IDS.filter((id) => !held.includes(id))).slice(0, 2);
+    // `held` is deliberately not a dependency: buying the left-hand relic
+    // must not reshuffle the right-hand one under the player's hand.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed, room.id, floor]);
+
   const needsLife = lives < maxLives;
-  const canAfford = gems >= GEMS_PER_LIFE;
+  const canAffordLife = gems >= GEMS_PER_LIFE;
+
   return (
     <>
       <Dressed room={room} />
@@ -50,7 +79,7 @@ function Shop({ room }: RoomKindProps) {
       <InteractTrigger
         position={[counter[0], 0, counter[2]]}
         label={`Buy a life (${GEMS_PER_LIFE} gem)`}
-        enabled={needsLife && canAfford}
+        enabled={needsLife && canAffordLife}
         blockedReason={
           !needsLife ? "Already at full health" : `Needs ${GEMS_PER_LIFE} gem (${gems}/${GEMS_PER_LIFE})`
         }
@@ -60,7 +89,53 @@ function Shop({ room }: RoomKindProps) {
           if (run.spendGems(GEMS_PER_LIFE)) run.gainLife();
         }}
       />
+      {offer.map((id, i) => (
+        <RelicStand key={id} id={id} position={shelves[i]} floor={floor} />
+      ))}
     </>
+  );
+}
+
+/** One relic on a pedestal, with its price and what it does in the prompt. */
+function RelicStand({ id, position, floor }: { id: RelicId; position: Vec3; floor: number }) {
+  const gems = useRun((s) => s.gems);
+  const taken = useRun((s) => s.relics.includes(id));
+  const relic = RELICS[id];
+  const price = priceOn(relic, floor);
+
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <cylinderGeometry args={[0.34, 0.42, 0.9, 10]} />
+        <meshStandardMaterial color="#4c4a52" roughness={0.9} />
+      </mesh>
+      {!taken && (
+        <>
+          <mesh position={[0, 1.15, 0]} castShadow>
+            <icosahedronGeometry args={[0.24, 0]} />
+            <meshStandardMaterial
+              color="#e6c76a"
+              emissive="#8a6a12"
+              emissiveIntensity={0.8}
+              metalness={0.6}
+              roughness={0.3}
+            />
+          </mesh>
+          <pointLight position={[0, 1.3, 0]} color="#ffd479" intensity={3} distance={4} />
+        </>
+      )}
+      <InteractTrigger
+        position={[0, 0, 0]}
+        label={`${relic.name}, ${price} gems - ${relic.blurb}`}
+        enabled={!taken && gems >= price}
+        blockedReason={taken ? "Already yours" : `Needs ${price} gems (${gems}/${price})`}
+        onInteract={() => {
+          const run = useRun.getState();
+          if (run.relics.includes(id)) return;
+          if (run.spendGems(price)) run.addRelic(id);
+        }}
+      />
+    </group>
   );
 }
 
@@ -98,5 +173,5 @@ registerRoomKind("normal", Dressed);
 registerRoomKind("treasure", Dressed);
 registerRoomKind("trap", Dressed);
 registerRoomKind("arena", Dressed);
-registerRoomKind("shop", Shop, (room) => [shopCounter(room)]);
+registerRoomKind("shop", Shop, shopAnchors);
 registerRoomKind("library", Library, (room) => [libraryLectern(room)]);

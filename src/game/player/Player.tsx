@@ -12,16 +12,15 @@ import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
+import { modifiers } from "../relics/catalog";
 import { canControl, useRun } from "../state/run";
 import {
-  DASH_SPEED,
   EYE_OFFSET,
   GRAVITY_SCALE,
   MAX_FALL_SPEED,
   MAX_RISE_SPEED,
   PLAYER_CAPSULE_HALF_HEIGHT,
   PLAYER_CAPSULE_RADIUS,
-  WALK_SPEED,
 } from "../world";
 
 const UP = new Vector3(0, 1, 0);
@@ -84,10 +83,14 @@ export function Player() {
     const vel = rb.linvel();
     const vy = clampVertical(vel.y);
 
-    if (!canControl(useRun.getState())) {
+    const run = useRun.getState();
+    if (!canControl(run)) {
       rb.setLinvel({ x: 0, y: vy, z: 0 }, true);
       return;
     }
+    // Speeds come from the relics, not from the constants: Soft Boots are
+    // the one thing that may change how fast the player moves.
+    const { walkSpeed, dashSpeed } = modifiers(run.relics);
 
     const pad = readGamepad();
     const forward = keyboard.isDown("KeyW") || keyboard.isDown("ArrowUp");
@@ -107,7 +110,7 @@ export function Player() {
 
     euler.setFromQuaternion(camera.quaternion, "YXZ");
     yawQ.setFromAxisAngle(UP, euler.y);
-    dir.multiplyScalar(dash ? DASH_SPEED : WALK_SPEED).applyQuaternion(yawQ);
+    dir.multiplyScalar(dash ? dashSpeed : walkSpeed).applyQuaternion(yawQ);
 
     rb.setLinvel({ x: dir.x, y: vy, z: dir.z }, true);
   });

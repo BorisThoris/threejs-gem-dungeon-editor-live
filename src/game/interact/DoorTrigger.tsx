@@ -1,7 +1,7 @@
 import { doorPosition } from "../dungeon/layout";
 import { roomById, type Dir, type Room } from "../dungeon/types";
-import { useRun } from "../state/run";
-import { DOOR_HEIGHT, DOOR_WIDTH, GEMS_FOR_EXIT, WALL_THICKNESS } from "../world";
+import { tollNow, useRun } from "../state/run";
+import { DOOR_HEIGHT, DOOR_WIDTH, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
 
 const KIND_LABEL: Record<string, string> = {
@@ -17,8 +17,13 @@ const KIND_LABEL: Record<string, string> = {
   challenge: "the challenge room",
 };
 
-/** The frame's glow: cool for any door, gold for an exit you can afford, red for one you cannot. */
-const FRAME_COLOR = { door: "#4f9fd8", exitOpen: "#e6b64a", exitLocked: "#c23c3c" };
+/**
+ * The frame's glow: cool for any door, gold for an exit you can afford, red
+ * for one you cannot. Unlit, so it reads the same from any angle, but well
+ * short of full brightness - at full it was a neon strip stapled to a stone
+ * dungeon, and it was the brightest thing on the screen.
+ */
+const FRAME_COLOR = { door: "#2a556e", exitOpen: "#8a6520", exitLocked: "#7a2530" };
 
 interface DoorTriggerProps {
   room: Room;
@@ -36,13 +41,14 @@ interface DoorTriggerProps {
  */
 export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const gems = useRun((s) => s.gems);
+  const toll = useRun(tollNow);
   const dungeon = useRun((s) => s.dungeon);
   const toId = room.links[dir];
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
   const isExit = target.kind === "end";
-  const enabled = !isExit || gems >= GEMS_FOR_EXIT;
+  const enabled = !isExit || gems >= toll;
   const color = isExit ? (enabled ? FRAME_COLOR.exitOpen : FRAME_COLOR.exitLocked) : FRAME_COLOR.door;
   const position = doorPosition(room, dir);
   // The frame's own x runs along the wall the door is in.
@@ -52,16 +58,16 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
     <>
       <group position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
         <DoorFrame color={color} />
-        <pointLight position={[0, DOOR_HEIGHT - 0.6, 0]} color={color} intensity={5} distance={7} decay={1.8} />
+        <pointLight position={[0, DOOR_HEIGHT - 0.6, 0]} color={color} intensity={7} distance={8} decay={1.8} />
       </group>
       <InteractTrigger
         position={position}
         label={`Open ${KIND_LABEL[target.kind] ?? "the door"}`}
         enabled={enabled}
-        blockedReason={`The exit needs ${GEMS_FOR_EXIT} gems (${gems}/${GEMS_FOR_EXIT})`}
+        blockedReason={`The exit needs ${toll} gems (${gems}/${toll})`}
         onInteract={() => {
           const run = useRun.getState();
-          if (isExit && !run.spendGems(GEMS_FOR_EXIT)) return;
+          if (isExit && !run.spendGems(tollNow(run))) return;
           run.travel(dir);
         }}
       />
@@ -69,7 +75,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   );
 }
 
-const JAMB = 0.12;
+const JAMB = 0.1;
 const DEPTH = WALL_THICKNESS + 0.06;
 
 /** Two jambs and a lintel strip, unlit so they glow the same from any angle. */

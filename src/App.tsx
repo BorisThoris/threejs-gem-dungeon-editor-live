@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
+import { useWardenWarning } from "./game/warden/warning";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
 import { useRun } from "./game/state/run";
@@ -50,6 +51,7 @@ export default function App() {
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
   usePauseKeys();
+  useWardenWarning();
 
   useEffect(() => installKeyboard(), []);
 

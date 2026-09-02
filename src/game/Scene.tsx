@@ -10,6 +10,7 @@ import "./puzzles/register";
 import { GroundPlane } from "./rooms/GroundPlane";
 import { Room } from "./rooms/Room";
 import { useCurrentRoom, useRun } from "./state/run";
+import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y } from "./world";
 
 /**
@@ -63,6 +64,8 @@ export function Scene() {
       <ambientLight intensity={0.7} />
       <hemisphereLight args={["#9fb4d8", "#3a3126", 0.6]} />
       <PadPause />
+      {/* The Warden walks the floor whether or not its room is mounted. */}
+      <WardenDriver />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused}>
           <GroundPlane />

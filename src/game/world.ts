@@ -70,8 +70,19 @@ export const ROOM_SIZES = [ROOM_SIZE_SMALL, ROOM_SIZE_DEFAULT, ROOM_SIZE_LARGE] 
 // --- Run rules --------------------------------------------------------------
 
 export const STARTING_LIVES = 3;
-/** Gems handed over to open the door into the end room. */
-export const GEMS_FOR_EXIT = 3;
+/**
+ * What the exit charges on the first floor, and how much more it charges on
+ * each floor after. A floor holds about eight gems, so a toll of three was
+ * something you tripped over: you took the first three and left, and the
+ * rest of the floor may as well not have existed. Rising to seven by the
+ * last floor means the deeper floors have to be worked, and the gems you
+ * hold over the toll are the ones you get to keep.
+ */
+export const TOLL_BASE = 3;
+export const TOLL_STEP = 2;
+/** What the exit charges on a floor, before relics. */
+export const tollForFloor = (floor: number): number =>
+  TOLL_BASE + TOLL_STEP * (floor - 1);
 /**
  * Floors in a run. One floor's shortest path is twenty seconds of walking;
  * three floors, each a fresh dungeon with its toll, is a demo's worth. Lives
@@ -85,5 +96,35 @@ export const FLOORS = 3;
 export const GEMS_PER_LIFE = 1;
 /** Seconds of invulnerability after a hit, so one trap cannot chain. */
 export const DAMAGE_COOLDOWN_S = 1.5;
+
+// --- The Warden -------------------------------------------------------------
+
+/**
+ * One presence walks each floor. It is not fought: it is heard, avoided and
+ * outrun. Everything about it scales with the floor's alarm, and alarm is
+ * raised by taking gems - so the floor gets more dangerous exactly as far as
+ * you have chosen to rob it.
+ *
+ * Its chase speed stays under WALK_SPEED at every level, so a player who
+ * keeps moving is never simply caught; it wins by cornering, by surprise,
+ * and by being between you and the door.
+ */
+export const ALARM_PER_GEM = 1;
+/** Alarm at which it stops wandering and starts walking towards you. */
+export const ALARM_HUNTS_AT = 3;
+/** Seconds between room-to-room moves, from calm to fully roused. */
+export const WARDEN_STEP_CALM_S = 9;
+export const WARDEN_STEP_ROUSED_S = 4;
+/** How fast it crosses a room, from calm to fully roused. */
+export const WARDEN_SPEED_CALM = 2.2;
+export const WARDEN_SPEED_ROUSED = 4.4;
+/** Alarm at which the scaling has topped out. */
+export const ALARM_MAX = 6;
+/** How close it has to be to take a life. */
+export const WARDEN_TOUCH_RADIUS = 1.05;
+/** Doorways it is thrown back when it lands a hit. */
+export const WARDEN_BANISH_DISTANCE = 3;
+/** It will not appear on a floor until this many rooms have been entered. */
+export const WARDEN_GRACE_ROOMS = 2;
 /** If a room never reports itself mounted, hand control back anyway. */
 export const TRANSITION_FALLBACK_MS = 1500;

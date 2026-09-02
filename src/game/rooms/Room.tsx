@@ -9,6 +9,7 @@ import { Gem } from "../props/Gem";
 import { Hazard } from "../props/Hazard";
 import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
+import { Warden } from "../warden/Warden";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT } from "../world";
 import { gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
@@ -61,6 +62,7 @@ export function Room({ room, seed }: RoomProps) {
   }, [room.id]);
 
   const gem = gemFor(room, seed);
+  const wardenHere = useRun((s) => s.wardenRoomId === room.id);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
   return (
@@ -105,6 +107,7 @@ export function Room({ room, seed }: RoomProps) {
       )}
 
       {gem && <Gem roomId={room.id} position={gem} />}
+      {wardenHere && <Warden room={room} />}
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}
