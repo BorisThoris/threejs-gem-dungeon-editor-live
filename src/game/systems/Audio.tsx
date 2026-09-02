@@ -21,6 +21,7 @@ export function Audio() {
       bus.on("damaged", () => sfx.hurt()),
       bus.on("lifeBought", () => sfx.heal()),
       bus.on("runWon", () => sfx.win()),
+      bus.on("floorDescended", () => sfx.unlock()),
       bus.on("runLost", () => sfx.lose()),
       bus.on("puzzleResult", ({ completed }) => (completed ? sfx.solved() : sfx.wrong())),
     ];

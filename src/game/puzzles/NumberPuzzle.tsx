@@ -96,6 +96,10 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onExit }: NumberPuz
       if (m >= rules.misses) setPhase("failed");
     };
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onExit();
+        return;
+      }
       if (event.key >= "0" && event.key <= "9") {
         if (current.length < 2) setCurrent(current + event.key);
         event.preventDefault();
@@ -106,8 +110,6 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onExit }: NumberPuz
         if (current) setCurrent(current.slice(0, -1));
         else if (entries.length) setEntries(entries.slice(0, -1));
         event.preventDefault();
-      } else if (event.key === "Escape") {
-        onExit();
       }
     };
     window.addEventListener("keydown", onKey);

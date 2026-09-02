@@ -7,6 +7,7 @@ import { spawnAfterTravel, spawnAtStart } from "../dungeon/layout";
 import { roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   DAMAGE_COOLDOWN_S,
+  FLOORS,
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
 } from "../world";
@@ -17,6 +18,10 @@ export interface RunState {
   phase: Phase;
   paused: boolean;
   dungeon: Dungeon | null;
+  /** 1-based; the run is won on leaving floor FLOORS. */
+  floor: number;
+  /** Rooms first entered over the whole run, for the summary. */
+  roomsSeen: number;
   currentRoomId: string | null;
   /** Room ids in the order first entered. */
   visited: string[];
@@ -30,6 +35,8 @@ export interface RunState {
   gemRooms: string[];
   /** Rooms whose puzzle or challenge has been completed. */
   cleared: string[];
+  /** Rooms whose puzzle or challenge has been failed for good. */
+  failed: string[];
   /** True from leaving one room until the next has mounted. */
   transitioning: boolean;
   /** Counted, not flagged: a puzzle overlay and a menu may both hold it. */
@@ -54,6 +61,7 @@ export interface RunState {
   damage: () => boolean;
   gainLife: () => boolean;
   clearRoom: (roomId: string) => void;
+  failRoom: (roomId: string) => void;
   lockInput: () => void;
   unlockInput: () => void;
 }
@@ -80,6 +88,8 @@ export const useRun = create<RunState>()(
     phase: "menu",
     paused: false,
     dungeon: null,
+    floor: 1,
+    roomsSeen: 0,
     currentRoomId: null,
     visited: [],
     lives: STARTING_LIVES,
@@ -88,6 +98,7 @@ export const useRun = create<RunState>()(
     gemsTotal: 0,
     gemRooms: [],
     cleared: [],
+    failed: [],
     transitioning: false,
     inputLocks: 0,
     lastDamageAt: -Infinity,
@@ -101,6 +112,8 @@ export const useRun = create<RunState>()(
         phase: "playing",
         paused: false,
         dungeon,
+        floor: 1,
+        roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
         lives: STARTING_LIVES,
@@ -109,6 +122,7 @@ export const useRun = create<RunState>()(
         gemsTotal: 0,
         gemRooms: [],
         cleared: [],
+        failed: [],
         // The start room has to mount before the player is let go.
         transitioning: true,
         inputLocks: 0,
@@ -144,10 +158,12 @@ export const useRun = create<RunState>()(
       const to = roomById(s.dungeon, toId);
       if (!to) return;
 
+      const seen = s.visited.includes(toId);
       set({
         transitioning: true,
         currentRoomId: toId,
-        visited: s.visited.includes(toId) ? s.visited : [...s.visited, toId],
+        visited: seen ? s.visited : [...s.visited, toId],
+        roomsSeen: seen ? s.roomsSeen : s.roomsSeen + 1,
       });
       const spawn = spawnAfterTravel(to, dir);
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
@@ -170,12 +186,40 @@ export const useRun = create<RunState>()(
         window.clearTimeout(transitionFallback);
         transitionFallback = null;
       }
+      if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
+        if (s.floor >= FLOORS) {
+          set({ transitioning: false, phase: "won", endedAt: performance.now() });
+          bus.emit("runWon");
+          return;
+        }
+        // Down a floor: a fresh dungeon, the same player. The screen is
+        // still dark from the door, and stays so until the new start room
+        // reports in.
+        const floor = s.floor + 1;
+        const dungeon = generateDungeon({ seed: (s.dungeon.seed * 7919 + floor) >>> 0 });
+        set({
+          floor,
+          dungeon,
+          currentRoomId: dungeon.startId,
+          visited: [dungeon.startId],
+          roomsSeen: s.roomsSeen + 1,
+          gemRooms: [],
+          cleared: [],
+          failed: [],
+          transitioning: true,
+        });
+        const spawn = spawnAtStart();
+        bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
+        bus.emit("lookSet", { yaw: spawn.yaw, pitch: 0 });
+        bus.emit("floorDescended", { floor });
+        transitionFallback = window.setTimeout(
+          () => get().roomReady(dungeon.startId),
+          TRANSITION_FALLBACK_MS
+        );
+        return;
+      }
       set({ transitioning: false });
       bus.emit("roomEntered", { roomId });
-      if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
-        set({ phase: "won", endedAt: performance.now() });
-        bus.emit("runWon");
-      }
     },
 
     collectGem: (roomId) => {
@@ -223,6 +267,10 @@ export const useRun = create<RunState>()(
     clearRoom: (roomId) => {
       const s = get();
       if (!s.cleared.includes(roomId)) set({ cleared: [...s.cleared, roomId] });
+    },
+    failRoom: (roomId) => {
+      const s = get();
+      if (!s.failed.includes(roomId)) set({ failed: [...s.failed, roomId] });
     },
 
     lockInput: () => set((s) => ({ inputLocks: s.inputLocks + 1 })),

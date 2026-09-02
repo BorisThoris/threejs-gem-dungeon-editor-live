@@ -7,6 +7,19 @@ import type { CSSProperties } from "react";
  */
 export const FONT = "'Press Start 2P', 'Courier New', monospace";
 
+/**
+ * Text sizes scale with the viewport width between a floor and a cap: a
+ * fixed 11px was unreadable on a Steam Deck's 7-inch 1280x800 panel and
+ * needlessly small on a 4K desktop. At 1280 wide these come out around
+ * 14-15px; at 1920 they hit their caps.
+ */
+export const text = {
+  small: "clamp(11px, 1.05vw, 15px)",
+  body: "clamp(12px, 1.15vw, 16px)",
+  title: "clamp(18px, 1.9vw, 26px)",
+  chip: "clamp(12px, 1.2vw, 16px)",
+};
+
 export const colors = {
   ink: "#f2f4f8",
   dim: "#aab0bd",
@@ -39,13 +52,13 @@ export const panel: CSSProperties = {
 };
 
 export const title: CSSProperties = {
-  fontSize: 18,
+  fontSize: text.title,
   letterSpacing: "0.06em",
   margin: "0 0 18px",
 };
 
 export const body: CSSProperties = {
-  fontSize: 11,
+  fontSize: text.body,
   lineHeight: 1.8,
   color: colors.dim,
   margin: "0 0 22px",
@@ -57,7 +70,7 @@ export const button: CSSProperties = {
   margin: "0 0 10px",
   padding: "12px 16px",
   fontFamily: FONT,
-  fontSize: 11,
+  fontSize: text.body,
   letterSpacing: "0.05em",
   color: "#0a0c12",
   background: colors.accent,
@@ -77,9 +90,9 @@ export const chip: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  minWidth: 26,
-  height: 26,
+  minWidth: "2.2em",
+  height: "2.2em",
   borderRadius: 4,
-  fontSize: 12,
+  fontSize: text.chip,
   color: "#0a0c12",
 };

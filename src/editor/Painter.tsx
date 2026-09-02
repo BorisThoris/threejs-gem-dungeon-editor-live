@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 
-import { getSurface, hasSurfaceOverride, listSurfaces, setSurfaceImage } from "../game/textures/registry";
+import { getSurface,
+  getSurfaceOverride, hasSurfaceOverride, listSurfaces, setSurfaceImage } from "../game/textures/registry";
 import { colors } from "../ui/overlay";
 import { button, field, label, panel, secondaryButton, small } from "./styles";
 
@@ -49,14 +50,25 @@ export function Painter() {
   };
 
   const loadSurface = (id: string) => {
-    const tex = getSurface(id);
-    const image = tex.image as HTMLCanvasElement;
-    const g = ctx();
-    g.clearRect(0, 0, SIZE, SIZE);
-    g.drawImage(image, 0, 0, SIZE, SIZE);
-    undo.current = [];
-    refreshPreview();
-    bump((n) => n + 1);
+    const draw = (image: CanvasImageSource) => {
+      const g = ctx();
+      g.clearRect(0, 0, SIZE, SIZE);
+      g.drawImage(image, 0, 0, SIZE, SIZE);
+      undo.current = [];
+      refreshPreview();
+      bump((n) => n + 1);
+    };
+    // An authored surface is decoded from its stored image, not read off
+    // the registry canvas, which still shows the default until that image
+    // has loaded; opening on the default and saving would overwrite it.
+    const url = getSurfaceOverride(id);
+    if (url) {
+      const image = new Image();
+      image.onload = () => draw(image);
+      image.src = url;
+      return;
+    }
+    draw(getSurface(id).image as HTMLCanvasElement);
   };
 
   useEffect(() => {

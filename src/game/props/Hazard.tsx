@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
+import { HAZARD_RADIUS } from "../dungeon/layout";
 import { canControl, useRun } from "../state/run";
 
 interface HazardProps {
@@ -16,7 +17,7 @@ interface HazardProps {
  * re-entering always can. Drawn small enough to read as a floor hazard, not
  * as something to climb.
  */
-export function Hazard({ position, radius = 1.2 }: HazardProps) {
+export function Hazard({ position, radius = HAZARD_RADIUS }: HazardProps) {
   const inside = useRef(false);
 
   useFrame((state) => {
@@ -25,8 +26,10 @@ export function Hazard({ position, radius = 1.2 }: HazardProps) {
     const dx = cam.x - position[0];
     const dz = cam.z - position[2];
     const within = dx * dx + dz * dz <= radius * radius;
-    if (within && !inside.current) useRun.getState().damage();
-    inside.current = within;
+    // A hit refused by the cooldown does not count as having been taken:
+    // standing on the spikes keeps trying, and hurts again when it ends.
+    if (!within) inside.current = false;
+    else if (!inside.current && useRun.getState().damage()) inside.current = true;
   });
 
   return (

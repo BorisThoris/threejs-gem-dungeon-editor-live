@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { useRun } from "../game/state/run";
-import { GEMS_FOR_EXIT, STARTING_LIVES } from "../game/world";
+import { FLOORS, GEMS_FOR_EXIT, STARTING_LIVES } from "../game/world";
 import { body, button, colors, fullscreen, panel, secondaryButton, title } from "./overlay";
 
 const isElectron = () =>
@@ -18,7 +18,7 @@ export function MainMenu() {
         {page === "menu" ? (
           <>
             <p style={body}>
-              Find {GEMS_FOR_EXIT} gems and buy your way out. You have {STARTING_LIVES} lives.
+              {FLOORS} floors down. On each, find {GEMS_FOR_EXIT} gems to open the way. You have {STARTING_LIVES} lives.
             </p>
             <button style={button} data-testid="menu-start" onClick={() => startRun()}>
               Start

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
-import { bus, type Prompt } from "../events";
+import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { canControl, useRun } from "../state/run";
@@ -30,13 +30,15 @@ export interface InteractTriggerProps {
  * wins, and it alone draws the prompt and answers the key.
  */
 const contenders = new Map<object, number>();
-let lastPublished: string | null = null;
+let lastText: string | null = null;
+let lastEnabled = true;
 
-const publish = (prompt: Prompt | null) => {
-  const key = prompt ? JSON.stringify(prompt) : null;
-  if (key === lastPublished) return;
-  lastPublished = key;
-  bus.emit("prompt", prompt);
+/** Emits only on change, so the frame loop allocates nothing while a prompt is steady. */
+const publish = (text: string | null, enabled = true) => {
+  if (text === lastText && (text === null || enabled === lastEnabled)) return;
+  lastText = text;
+  lastEnabled = enabled;
+  bus.emit("prompt", text === null ? null : { key: "E", text, enabled });
 };
 
 /**
@@ -104,11 +106,7 @@ export function InteractTrigger({
     }
     if (nearest !== id) return;
 
-    publish({
-      key: "E",
-      text: enabled ? label : blockedReason ?? "Locked",
-      enabled,
-    });
+    publish(enabled ? label : blockedReason ?? "Locked", enabled);
 
     // Only the nearest consumes the press, so a tap is never eaten by a
     // trigger that then declines to act on it.

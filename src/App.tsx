@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect } from "react";
 
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
-import { readGamepad } from "./game/input/gamepad";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
 import { useRun } from "./game/state/run";
@@ -18,34 +17,23 @@ import { RunSummary } from "./ui/RunSummary";
 import { Transitions } from "./ui/Transitions";
 
 /**
- * Esc / Start toggles pause while a run is on. Polled on a short interval
- * rather than in the render loop: the pad's rising edge is memoised per
- * frame, and the pause menu has no frame loop of its own to read it from.
+ * Esc toggles pause while a run is on and no puzzle is up: a puzzle owns
+ * Esc while it is open. The pad's Start button is read in the frame loop,
+ * where the rest of the pad is read (see PadPause in the scene).
  */
 function usePauseKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.code !== "Escape" || event.repeat) return;
       const run = useRun.getState();
-      if (run.phase !== "playing") return;
+      if (run.phase !== "playing" || run.inputLocks > 0) return;
       // The Esc that released the pointer already paused; do not undo it.
       if (run.paused && performance.now() - lockLossPause.at < 400) return;
       if (run.paused) run.resume();
       else run.pause();
     };
-    const poll = window.setInterval(() => {
-      if (readGamepad().pausePressed) {
-        const run = useRun.getState();
-        if (run.phase !== "playing") return;
-        if (run.paused) run.resume();
-        else run.pause();
-      }
-    }, 50);
     window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.clearInterval(poll);
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 }
 

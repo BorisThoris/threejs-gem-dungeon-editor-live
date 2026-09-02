@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 
+import { gemPosition, type Vec3 } from "../dungeon/layout";
 import type { Room, RoomKind } from "../dungeon/types";
 
 export interface RoomKindProps {
@@ -37,11 +38,31 @@ export const KIND_TITLE: Record<RoomKind, string> = {
 };
 
 /**
- * What each kind puts inside the shell. Filled in by the rooms phase; a kind
- * with no entry is an empty room, which is a legitimate (if dull) room.
+ * What each kind puts inside the shell, and which anchors that content
+ * stands on. Filled in by the rooms and puzzles modules; a kind with no
+ * entry is an empty room, which is a legitimate (if dull) room.
+ *
+ * The reserved anchors are how a kind's content, the seeded dressing and
+ * the gem share a room without standing inside each other: the content
+ * declares what it takes, and the other two keep clear of it.
  */
 export const KIND_CONTENT: Partial<Record<RoomKind, ComponentType<RoomKindProps>>> = {};
+const KIND_RESERVED: Partial<Record<RoomKind, (room: Room) => Vec3[]>> = {};
 
-export function registerRoomKind(kind: RoomKind, component: ComponentType<RoomKindProps>) {
+export function registerRoomKind(
+  kind: RoomKind,
+  component: ComponentType<RoomKindProps>,
+  reserved?: (room: Room) => Vec3[]
+) {
   KIND_CONTENT[kind] = component;
+  if (reserved) KIND_RESERVED[kind] = reserved;
+}
+
+/** The anchors a room's kind has claimed for its own content. */
+export const reservedAnchors = (room: Room): Vec3[] => KIND_RESERVED[room.kind]?.(room) ?? [];
+
+/** Where this room's gem is, if it has one: start and end rooms do not. */
+export function gemFor(room: Room, seed: number): Vec3 | null {
+  if (room.kind === "start" || room.kind === "end") return null;
+  return gemPosition(room, seed, reservedAnchors(room));
 }

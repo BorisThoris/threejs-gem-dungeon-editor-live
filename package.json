@@ -20,7 +20,8 @@
         "electron-pack": "yarn build && electron-builder",
         "electron-dist": "yarn build && electron-builder --publish=never",
         "generate-icon": "node scripts/generate-icon.mjs",
-        "test:smoke": "node scripts/smoke-test.mjs"
+        "test:smoke": "node scripts/smoke-test.mjs",
+        "test:layout": "node scripts/layout-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
@@ -54,8 +55,8 @@
         "wait-on": "^9.0.1"
     },
     "build": {
-        "appId": "com.threejs.gem.game",
-        "productName": "ThreeJS Gem Game",
+        "appId": "com.gemdungeon.demo",
+        "productName": "Gem Dungeon",
         "directories": {
             "output": "dist-electron"
         },
@@ -65,7 +66,8 @@
             "!node_modules/**/*"
         ],
         "win": {
-            "target": "nsis"
+            "target": ["nsis", "zip"],
+            "icon": "build/icon.png"
         },
         "nsis": {
             "oneClick": false,
@@ -74,12 +76,14 @@
             "createStartMenuShortcut": true
         },
         "mac": {
-            "target": "dmg",
-            "icon": "build/icon.png"
+            "target": ["dmg", "zip"],
+            "icon": "build/icon.png",
+            "category": "public.app-category.games"
         },
         "linux": {
             "target": "AppImage",
-            "icon": "build/icon.png"
+            "icon": "build/icon.png",
+            "category": "Game"
         }
     }
 }

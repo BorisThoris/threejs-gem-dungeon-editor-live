@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
-import { gemPosition, hazardRing } from "../dungeon/layout";
+import { trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, type Room as RoomData, type Shape } from "../dungeon/types";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -10,7 +10,7 @@ import { Hazard } from "../props/Hazard";
 import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT } from "../world";
-import { KIND_CONTENT, KIND_TINT } from "./kinds";
+import { gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -60,8 +60,8 @@ export function Room({ room, seed }: RoomProps) {
     useRun.getState().roomReady(room.id);
   }, [room.id]);
 
-  const gem = room.kind === "start" || room.kind === "end" ? null : gemPosition(room, seed);
-  const hazards = room.kind === "trap" ? hazardRing(room) : [];
+  const gem = gemFor(room, seed);
+  const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
   return (
     <group>

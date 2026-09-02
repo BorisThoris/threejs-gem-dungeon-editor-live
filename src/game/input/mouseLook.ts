@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { PerspectiveCamera } from "three";
 
+import { spawnAtStart } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, useRun, type RunState } from "../state/run";
 import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MOUSE_SENSITIVITY } from "../world";
@@ -35,7 +36,7 @@ const wantsCursor = (s: RunState): boolean =>
  */
 export function useMouseLook() {
   const { camera, gl } = useThree();
-  const yaw = useRef(0);
+  const yaw = useRef(spawnAtStart().yaw);
   const pitch = useRef(0);
 
   useEffect(() => {

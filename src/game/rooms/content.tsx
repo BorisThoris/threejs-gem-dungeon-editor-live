@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- this module exports
    nothing on purpose: importing it registers the room kinds. */
 import { quadrantSpots } from "../dungeon/layout";
+import type { Room } from "../dungeon/types";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { useRun } from "../state/run";
@@ -18,6 +19,9 @@ import "./shipped";
  * the room shell never depends on puzzle code.
  */
 
+const shopCounter = (room: Room) => quadrantSpots(room, "near")[2];
+const libraryLectern = (room: Room) => quadrantSpots(room, "near")[3];
+
 function Dressed({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   return <Dressing room={room} seed={seed} />;
@@ -32,7 +36,7 @@ function Shop({ room }: RoomKindProps) {
   const gems = useRun((s) => s.gems);
   const lives = useRun((s) => s.lives);
   const maxLives = useRun((s) => s.maxLives);
-  const counter = quadrantSpots(room, 0.5)[2];
+  const counter = shopCounter(room);
   const needsLife = lives < maxLives;
   const canAfford = gems >= GEMS_PER_LIFE;
   return (
@@ -63,7 +67,7 @@ function Shop({ room }: RoomKindProps) {
 /** The library: a lectern that opens the number puzzle. Solving it clears the room. */
 function Library({ room }: RoomKindProps) {
   const cleared = useRun((s) => s.cleared.includes(room.id));
-  const lectern = quadrantSpots(room, 0.5)[3];
+  const lectern = libraryLectern(room);
   return (
     <>
       <Dressed room={room} />
@@ -94,5 +98,5 @@ registerRoomKind("normal", Dressed);
 registerRoomKind("treasure", Dressed);
 registerRoomKind("trap", Dressed);
 registerRoomKind("arena", Dressed);
-registerRoomKind("shop", Shop);
-registerRoomKind("library", Library);
+registerRoomKind("shop", Shop, (room) => [shopCounter(room)]);
+registerRoomKind("library", Library, (room) => [libraryLectern(room)]);

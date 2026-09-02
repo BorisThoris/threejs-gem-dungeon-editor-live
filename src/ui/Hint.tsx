@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
 import { canControl, useRun } from "../game/state/run";
-import { colors, FONT } from "./overlay";
+import { colors, FONT, text as textSize } from "./overlay";
 
 /** One line of guidance for the room the player is in, when it has any. */
 export function Hint() {
@@ -25,7 +25,7 @@ export function Hint() {
         background: colors.panel,
         border: `1px solid ${colors.line}`,
         fontFamily: FONT,
-        fontSize: 10,
+        fontSize: textSize.small,
         lineHeight: 1.7,
         letterSpacing: "0.03em",
         color: colors.dim,

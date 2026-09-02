@@ -7,6 +7,7 @@ import {
 } from "@react-three/rapier";
 import { Euler, Quaternion, Vector3 } from "three";
 
+import { spawnAtStart } from "../dungeon/layout";
 import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
@@ -20,7 +21,6 @@ import {
   MAX_RISE_SPEED,
   PLAYER_CAPSULE_HALF_HEIGHT,
   PLAYER_CAPSULE_RADIUS,
-  PLAYER_SPAWN_Y,
   WALK_SPEED,
 } from "../world";
 
@@ -117,7 +117,7 @@ export function Player() {
       ref={body}
       type="dynamic"
       colliders={false}
-      position={[0, PLAYER_SPAWN_Y, 0]}
+      position={spawnAtStart().position}
       mass={50}
       gravityScale={GRAVITY_SCALE}
       ccd

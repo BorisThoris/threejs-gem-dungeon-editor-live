@@ -64,12 +64,20 @@ export const CAMERA_FOV = 90;
 export const ROOM_SIZE_DEFAULT = 16;
 export const ROOM_SIZE_SMALL = 14;
 export const ROOM_SIZE_LARGE = 24;
+/** Every size a room may be; the editor offers exactly these. */
+export const ROOM_SIZES = [ROOM_SIZE_SMALL, ROOM_SIZE_DEFAULT, ROOM_SIZE_LARGE] as const;
 
 // --- Run rules --------------------------------------------------------------
 
 export const STARTING_LIVES = 3;
 /** Gems handed over to open the door into the end room. */
 export const GEMS_FOR_EXIT = 3;
+/**
+ * Floors in a run. One floor's shortest path is twenty seconds of walking;
+ * three floors, each a fresh dungeon with its toll, is a demo's worth. Lives
+ * and gems carry down; the rooms do not.
+ */
+export const FLOORS = 3;
 /**
  * What the shopkeeper charges for a life. A third of the exit toll, so a
  * careless run keeps paying for itself and a careful one gets out sooner.

@@ -37,6 +37,8 @@ const SIZE_FOR: Partial<Record<RoomKind, number>> = {
   start: ROOM_SIZE_DEFAULT,
   end: ROOM_SIZE_LARGE,
   arena: ROOM_SIZE_LARGE,
+  // Spikes need room between the gem and the lanes.
+  trap: ROOM_SIZE_DEFAULT,
   shop: ROOM_SIZE_SMALL,
   library: ROOM_SIZE_SMALL,
 };
@@ -157,6 +159,8 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   } else {
     farthest.kind = "end";
     farthest.size = SIZE_FOR.end ?? ROOM_SIZE_LARGE;
+    farthest.shape = pick(rng, SHAPES_FOR.end ?? ["square"]);
+    delete farthest.template;
     endId = farthest.id;
   }
 

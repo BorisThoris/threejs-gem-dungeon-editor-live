@@ -23,6 +23,8 @@ export interface PuzzleRequest {
 export interface BusEvents {
   runStarted: undefined;
   runWon: undefined;
+  /** The exit was taken and a deeper floor begins. */
+  floorDescended: { floor: number };
   runLost: undefined;
   gemCollected: { roomId: string };
   damaged: undefined;

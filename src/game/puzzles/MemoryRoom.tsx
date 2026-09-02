@@ -3,15 +3,13 @@ import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
 import type { Mesh, MeshStandardMaterial } from "three";
 
-import { inDoorLane, quadrantSpots } from "../dungeon/layout";
-import { halfSize } from "../dungeon/types";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
+import { memoryAnchors } from "./anchors";
 import { createRng } from "../rng";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { useRun } from "../state/run";
-import { GROUND_Y } from "../world";
 
 const COLORS = [
   { base: "#ff6b6b", glow: "#ff4444" },
@@ -40,7 +38,8 @@ type Phase = "idle" | "showing" | "playing" | "solved" | "burned";
 export function MemoryRoom({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   const cleared = useRun((s) => s.cleared.includes(room.id));
-  const [phase, setPhase] = useState<Phase>(cleared ? "solved" : "idle");
+  const burnedBefore = useRun((s) => s.failed.includes(room.id));
+  const [phase, setPhase] = useState<Phase>(cleared ? "solved" : burnedBefore ? "burned" : "idle");
   const [attempts, setAttempts] = useState(0);
   const [misses, setMisses] = useState(0);
   const progress = useRef(0);
@@ -48,18 +47,10 @@ export function MemoryRoom({ room }: RoomKindProps) {
   const timers = useRef<number[]>([]);
   const meshes = useRef<(Mesh | null)[]>([]);
 
-  const pedestals = useMemo(() => {
-    const radius = Math.max(3, halfSize(room) * 0.42);
-    const out: [number, number, number][] = [];
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-      const x = Math.cos(a) * radius;
-      const z = Math.sin(a) * radius;
-      if (!inDoorLane(x, z)) out.push([x, GROUND_Y, z]);
-    }
-    return out.slice(0, 5);
-  }, [room]);
-  const lectern = quadrantSpots(room, 0.78)[3];
+  const anchors = useMemo(() => memoryAnchors(room), [room]);
+  const pedestals = anchors.slice(0, 4);
+  const lectern = anchors[4];
+  const flaring = useRef(false);
 
   const later = (ms: number, fn: () => void) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -105,8 +96,13 @@ export function MemoryRoom({ room }: RoomKindProps) {
   };
 
   const begin = () => {
+    if (pedestals.length < 2) return;
     const rng = createRng(`${seed}:${room.id}:memory:${attempts}`);
     pattern.current = Array.from({ length: PATTERN_LENGTH }, () => Math.floor(rng() * pedestals.length));
+    if (import.meta.env.DEV) {
+      // For the browser probes, which cannot watch a material glow.
+      (window as unknown as Record<string, unknown>).__memoryPattern = pattern.current;
+    }
     setMisses(0);
     clearTimers();
     show();
@@ -126,26 +122,39 @@ export function MemoryRoom({ room }: RoomKindProps) {
       }
       return;
     }
-    // Wrong: every crystal flares red, then the pattern replays.
-    meshes.current.forEach((m) => {
-      if (!m) return;
-      const mat = m.material as MeshStandardMaterial;
-      const was = mat.emissive.getHex();
-      mat.emissive.set("#ff2020");
-      mat.emissiveIntensity = 1.6;
-      later(500, () => {
-        mat.emissive.setHex(was);
-        mat.emissiveIntensity = 0.35;
+    // Wrong: input closes at once, every crystal flares red, then the
+    // pattern replays. Closing input first is what stops a second press in
+    // the flare from counting as a second miss.
+    setPhase("showing");
+    if (!flaring.current) {
+      flaring.current = true;
+      meshes.current.forEach((m) => {
+        if (!m) return;
+        const mat = m.material as MeshStandardMaterial;
+        const was = mat.emissive.getHex();
+        mat.emissive.set("#ff2020");
+        mat.emissiveIntensity = 1.6;
+        later(500, () => {
+          mat.emissive.setHex(was);
+          mat.emissiveIntensity = 0.35;
+          flaring.current = false;
+        });
       });
-    });
+    }
     const m = misses + 1;
     setMisses(m);
     bus.emit("puzzleResult", { roomId: room.id, completed: false });
     if (m >= MISSES_ALLOWED) {
-      useRun.getState().damage();
+      const run = useRun.getState();
+      run.damage();
       const a = attempts + 1;
       setAttempts(a);
-      setPhase(a >= ATTEMPTS_ALLOWED ? "burned" : "idle");
+      if (a >= ATTEMPTS_ALLOWED) {
+        run.failRoom(room.id);
+        later(600, () => setPhase("burned"));
+      } else {
+        later(600, () => setPhase("idle"));
+      }
       return;
     }
     later(900, show);

@@ -85,7 +85,7 @@ function Bookshelf(p: PropProps) {
 function Candle(p: PropProps) {
   const light = useRef<PointLight>(null);
   useFrame((state) => {
-    if (light.current) light.current.intensity = 0.35 + Math.sin(state.clock.elapsedTime * 9 + p.position[0]) * 0.08;
+    if (light.current) light.current.intensity = 2.5 + Math.sin(state.clock.elapsedTime * 9 + p.position[0]) * 0.4;
   });
   return (
     <group {...frame(p)}>
@@ -224,7 +224,7 @@ function Table(p: PropProps) {
 
 function Tile(p: PropProps) {
   return (
-    <mesh {...frame(p)} rotation={[-Math.PI / 2, p.rotation ?? 0, 0]} position={[p.position[0], p.position[1] + 0.015, p.position[2]]}>
+    <mesh {...frame(p)} rotation={[-Math.PI / 2, 0, p.rotation ?? 0]} position={[p.position[0], p.position[1] + 0.015, p.position[2]]}>
       <planeGeometry args={[2, 2]} />
       <meshStandardMaterial color="#7d9179" roughness={0.6} />
     </mesh>

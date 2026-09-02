@@ -1,13 +1,14 @@
 import { useCurrentRoom, useRun } from "../game/state/run";
 import { KIND_TITLE } from "../game/rooms/kinds";
-import { GEMS_FOR_EXIT } from "../game/world";
-import { FONT, colors } from "./overlay";
+import { FLOORS, GEMS_FOR_EXIT } from "../game/world";
+import { FONT, colors, text } from "./overlay";
 
 /** Lives, gems and where you are - read straight from the run store. */
 export function Hud() {
   const lives = useRun((s) => s.lives);
   const maxLives = useRun((s) => s.maxLives);
   const gems = useRun((s) => s.gems);
+  const floor = useRun((s) => s.floor);
   const room = useCurrentRoom();
   const needed = Math.max(0, GEMS_FOR_EXIT - gems);
 
@@ -22,7 +23,7 @@ export function Hud() {
         border: `1px solid ${colors.line}`,
         borderRadius: 6,
         fontFamily: FONT,
-        fontSize: 11,
+        fontSize: text.body,
         lineHeight: 2,
         color: colors.ink,
         pointerEvents: "none",
@@ -46,7 +47,9 @@ export function Hud() {
       </div>
       {room && (
         <div>
-          <span style={{ color: colors.dim }}>ROOM </span>
+          <span style={{ color: colors.dim }}>FLOOR </span>
+          {floor}
+          <span style={{ color: colors.dim }}>/{FLOORS} · </span>
           {KIND_TITLE[room.kind]}
         </div>
       )}

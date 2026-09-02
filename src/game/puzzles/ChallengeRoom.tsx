@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
-import { Vector3, type MeshStandardMaterial } from "three";
+import { Color, Vector3, type MeshStandardMaterial } from "three";
 
-import { quadrantSpots } from "../dungeon/layout";
 import { bus } from "../events";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { useRun } from "../state/run";
 import { GROUND_Y } from "../world";
+import { challengeAnchors } from "./anchors";
 import { Carryable, carry } from "./Carryable";
 
 const PLATE_RADIUS = 0.9;
 const IDOL = "idol";
+const PLATE_SAFE = new Color("#2f8f4a");
+const PLATE_ARMED = new Color("#8f2f38");
+
 
 /**
  * The idol on the plate.
@@ -25,11 +28,13 @@ const IDOL = "idol";
 export function ChallengeRoom({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   const cleared = useRun((s) => s.cleared.includes(room.id));
-  const [outcome, setOutcome] = useState<"pending" | "solved" | "sprung">(cleared ? "solved" : "pending");
+  const sprungBefore = useRun((s) => s.failed.includes(room.id));
+  const [outcome, setOutcome] = useState<"pending" | "solved" | "sprung">(
+    cleared ? "solved" : sprungBefore ? "sprung" : "pending"
+  );
   const plateMat = useRef<MeshStandardMaterial>(null);
-  const spots = quadrantSpots(room, 0.5);
-  const plate = spots[0];
-  const candleSpots = [spots[1], spots[2]];
+  const plateWeighted = useRef<boolean | null>(null);
+  const [plate, ...candleSpots] = challengeAnchors(room);
 
   useEffect(() => {
     bus.emit(
@@ -43,13 +48,18 @@ export function ChallengeRoom({ room }: RoomKindProps) {
     return () => bus.emit("hint", null);
   }, [outcome]);
 
-  const weighted = () =>
-    carry.restingWithin(plate[0], plate[2], PLATE_RADIUS).filter((id) => id !== IDOL).length > 0;
+  /** Something other than the idol is holding the plate down. */
+  const weighted = () => carry.countResting(plate[0], plate[2], PLATE_RADIUS, IDOL) > 0;
 
+  // The plate shows whether lifting the idol is safe: green when weighted
+  // by something else, red when the idol alone holds it. Written only on
+  // change, so the frame loop allocates nothing.
   useFrame(() => {
     if (!plateMat.current) return;
-    const held = carry.restingWithin(plate[0], plate[2], PLATE_RADIUS).length > 0;
-    plateMat.current.emissive.set(held ? "#2f8f4a" : "#8f2f38");
+    const safe = weighted();
+    if (safe === plateWeighted.current) return;
+    plateWeighted.current = safe;
+    plateMat.current.emissive.copy(safe ? PLATE_SAFE : PLATE_ARMED);
   });
 
   const onIdolLifted = () => {
@@ -62,6 +72,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
       bus.emit("puzzleResult", { roomId: room.id, completed: true });
     } else {
       setOutcome("sprung");
+      run.failRoom(room.id);
       run.damage();
       bus.emit("puzzleResult", { roomId: room.id, completed: false });
     }

@@ -21,6 +21,17 @@ export const carry = {
   carriedId: (): string | null => carriedId,
   isCarried: (id: string): boolean => carriedId === id,
   positionOf: (id: string): Vector3 | undefined => positions.get(id),
+  /** How many carryables rest (not carried) within `radius` of a point, `except` one. */
+  countResting(x: number, z: number, radius: number, except?: string): number {
+    let n = 0;
+    for (const [id, p] of positions) {
+      if (id === carriedId || id === except) continue;
+      const dx = p.x - x;
+      const dz = p.z - z;
+      if (dx * dx + dz * dz <= radius * radius) n++;
+    }
+    return n;
+  },
   /** Ids of carryables resting (not carried) within `radius` of a point. */
   restingWithin(x: number, z: number, radius: number): string[] {
     const out: string[] = [];

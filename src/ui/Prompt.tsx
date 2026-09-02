@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { bus, type Prompt as PromptData } from "../game/events";
-import { FONT, chip, colors } from "./overlay";
+import { FONT, chip, colors, text } from "./overlay";
 
 /**
  * "E · Open the shop" while something is in reach.
@@ -29,7 +29,7 @@ export function Prompt() {
         background: colors.panel,
         border: `1px solid ${prompt.enabled ? colors.accent : colors.danger}`,
         fontFamily: FONT,
-        fontSize: 11,
+        fontSize: text.body,
         letterSpacing: "0.04em",
         color: colors.ink,
         pointerEvents: "none",

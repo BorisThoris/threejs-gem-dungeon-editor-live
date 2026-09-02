@@ -2,10 +2,11 @@
    pure half of this component and the editor previews with it directly. */
 import { useMemo } from "react";
 
-import { cornerSpots, inDoorLane, quadrantSpots } from "../dungeon/layout";
+import { cornerSpots, HAZARD_RADIUS, inDoorLane, quadrantSpots, trapHazards, type Vec3 } from "../dungeon/layout";
 import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { CATALOG, Prop } from "../props/catalog";
+import { gemFor, reservedAnchors } from "./kinds";
 import { getTemplate } from "./templates";
 
 interface DressingProps {
@@ -66,20 +67,22 @@ const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
     at("pillar", near[1]),
     at("pillar", near[2]),
   ],
+  // The counter holds near[2].
   shop: ({ near, far }) => [
     at("barrel", near[0]),
     at("barrel", near[1]),
     at("bookshelf", far[2]),
     at("potion", far[3]),
-    at("candle", near[2]),
+    at("candle", near[3]),
   ],
+  // The lectern holds near[3].
   library: ({ near, far }) => [
     at("bookshelf", far[0], Math.PI / 4),
     at("bookshelf", far[1], -Math.PI / 4),
     at("bookshelf", far[2], -Math.PI / 4),
-    at("table", near[3]),
-    at("chair", near[0]),
-    at("candle", near[1]),
+    at("table", near[0]),
+    at("chair", near[1]),
+    at("candle", near[2]),
   ],
   trap: ({ near, far, corners }) => [
     at("skull", near[0]),
@@ -96,40 +99,59 @@ const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
     at("skull", near[0]),
     at("barrel", near[2]),
   ],
-  memory: ({ near, far }) => [
+  // The pedestals hold the far anchors and the lectern near[3].
+  memory: ({ near }) => [
     at("pillar", near[0]),
     at("pillar", near[1]),
     at("pillar", near[2]),
-    at("pillar", near[3]),
-    at("candle", far[0]),
-    at("candle", far[3]),
   ],
+  // The plate holds near[0] and the candles near[1] and near[2].
   challenge: ({ near, far, corners }) => [
     at("pillar", far[0]),
     at("pillar", far[1]),
-    at("barrel", near[2]),
     at("skull", near[3]),
     at("web", corners[0]),
   ],
 };
 
-/** The placements a room gets: its template if it has one, else its kind's layout. */
+/** How close a prop may stand to the gem or to the kind's own content. */
+const CLEAR_OF_GEM = 1.0;
+const SOLID_CLEAR_OF_GEM = 1.6;
+const CLEAR_OF_CONTENT = 1.2;
+const CLEAR_OF_SPIKES = HAZARD_RADIUS + 0.5;
+
+const near2 = (p: PropPlacement, a: Vec3, r: number) =>
+  (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
+
+/**
+ * The placements a room gets: its template if it has one, else its kind's
+ * layout. Whoever placed them, three rules apply: nothing solid stands in
+ * a doorway's path, nothing stands where the kind's content stands, and
+ * nothing hides the gem or the spikes guarding it.
+ */
 export function placementsFor(room: Room, seed: number): PropPlacement[] {
   const template = room.template ? getTemplate(room.template) : undefined;
   const authored = template?.props ?? [];
   const rng = createRng(`${seed}:${room.id}:dressing`);
   const spots: Spots = {
-    near: quadrantSpots(room, 0.5),
-    far: quadrantSpots(room, 0.78),
+    near: quadrantSpots(room, "near"),
+    far: quadrantSpots(room, "far"),
     corners: cornerSpots(room),
     rng,
   };
   const torches = spots.corners.map((c) => at("torch", c));
   const layout = template ? authored : LAYOUTS[room.kind](spots);
-  // Nothing solid may stand in a doorway's path, whoever placed it.
-  return [...torches, ...layout].filter(
-    (p) => !CATALOG[p.kind].solid || !inDoorLane(p.x, p.z)
-  );
+  const reserved = reservedAnchors(room);
+  const gem = gemFor(room, seed);
+  const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
+  return [...torches, ...layout].filter((p) => {
+    const solid = CATALOG[p.kind].solid;
+    if (solid && inDoorLane(p.x, p.z)) return false;
+    if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
+    if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
+    if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;
+    return true;
+  });
 }
 
 /** Seeded per room, so it is the same every time you walk back in. */

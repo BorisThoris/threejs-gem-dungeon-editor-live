@@ -25,12 +25,15 @@ interface Slab {
  *
  * A doorway is a gap DOOR_WIDTH wide with a lintel above it, so the opening
  * reads as a door and not a missing wall. Colliders are declared explicitly
- * and match the meshes exactly.
+ * and match the meshes exactly. The gap itself is closed by an invisible
+ * collider: rooms are left by pressing E at the door, and without it the
+ * player could walk out through the opening onto the ground plane.
  */
 export function Walls({ room, color }: WallsProps) {
   const half = halfSize(room);
   const surface = useSurface("stone", room.size / 4, WALL_HEIGHT / 4);
   const slabs: Slab[] = [];
+  const gaps: Slab[] = [];
 
   for (const dir of DIRS) {
     const along: "x" | "z" = dir === "north" || dir === "south" ? "x" : "z";
@@ -53,6 +56,10 @@ export function Walls({ room, color }: WallsProps) {
       place(DOOR_WIDTH / 2 + side / 2, side, midY, WALL_HEIGHT);
       const lintel = WALL_HEIGHT - DOOR_HEIGHT;
       place(0, DOOR_WIDTH, GROUND_Y + DOOR_HEIGHT + lintel / 2, lintel);
+      gaps.push({
+        position: along === "x" ? [0, GROUND_Y + DOOR_HEIGHT / 2, offset] : [offset, GROUND_Y + DOOR_HEIGHT / 2, 0],
+        size: along === "x" ? [DOOR_WIDTH, DOOR_HEIGHT, WALL_THICKNESS] : [WALL_THICKNESS, DOOR_HEIGHT, DOOR_WIDTH],
+      });
     } else {
       place(0, room.size + WALL_THICKNESS, midY, WALL_HEIGHT);
     }
@@ -71,6 +78,13 @@ export function Walls({ room, color }: WallsProps) {
             position={slab.position}
           />
         </group>
+      ))}
+      {gaps.map((gap, i) => (
+        <CuboidCollider
+          key={`gap-${i}`}
+          args={[gap.size[0] / 2, gap.size[1] / 2, gap.size[2] / 2]}
+          position={gap.position}
+        />
       ))}
     </RigidBody>
   );

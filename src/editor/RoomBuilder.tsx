@@ -15,9 +15,9 @@ import {
 } from "../game/dungeon/types";
 import { CATALOG } from "../game/props/catalog";
 import { KIND_TITLE } from "../game/rooms/kinds";
-import { ROOM_SIZE_DEFAULT } from "../game/world";
+import { ROOM_SIZE_DEFAULT, ROOM_SIZES } from "../game/world";
 import { colors } from "../ui/overlay";
-import { download, draftStore, newDraftId, useDrafts } from "./drafts";
+import { download, draftStore, isRoomTemplate, newDraftId, useDrafts } from "./drafts";
 import { Preview } from "./Preview";
 import { button, field, label, panel, secondaryButton, small } from "./styles";
 
@@ -62,9 +62,12 @@ export function RoomBuilder() {
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      const parsed = JSON.parse(await file.text()) as RoomTemplate | RoomTemplate[];
-      for (const t of Array.isArray(parsed) ? parsed : [parsed]) {
-        if (t && typeof t.id === "string" && Array.isArray(t.props)) draftStore.put(t, false);
+      const parsed: unknown = JSON.parse(await file.text());
+      const list = Array.isArray(parsed) ? parsed : [parsed];
+      const valid = list.filter(isRoomTemplate);
+      for (const t of valid) draftStore.put(t, false);
+      if (valid.length < list.length) {
+        window.alert(`${list.length - valid.length} of ${list.length} entries were not room templates and were skipped.`);
       }
     } catch {
       window.alert("That file is not a room template.");
@@ -165,16 +168,14 @@ export function RoomBuilder() {
                 </select>
               </div>
               <div>
-                <div style={label}>SIZE {template.size}</div>
-                <input
-                  type="range"
-                  min={12}
-                  max={28}
-                  step={2}
-                  value={template.size}
-                  onChange={(e) => update({ size: Number(e.target.value) })}
-                  style={{ width: "100%" }}
-                />
+                <div style={label}>SIZE</div>
+                <select style={field} value={template.size} onChange={(e) => update({ size: Number(e.target.value) })}>
+                  {ROOM_SIZES.map((s) => (
+                    <option key={s} value={s}>
+                      {s} x {s}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <div style={label}>SHAPE</div>

@@ -188,6 +188,8 @@ export function setSurfaceImage(id: string, dataUrl: string | null): void {
 }
 
 export const hasSurfaceOverride = (id: string): boolean => overrides.has(id);
+/** The stored image for an authored surface, as a data URL. */
+export const getSurfaceOverride = (id: string): string | undefined => overrides.get(id);
 
 export const listSurfaces = (): { id: string; custom: boolean }[] => {
   const ids = new Set<string>([...BUILTIN_SURFACES, ...overrides.keys()]);
@@ -211,6 +213,8 @@ export function getSurface(id: string): Texture {
       ctx.clearRect(0, 0, SIZE, SIZE);
       ctx.drawImage(image, 0, 0, SIZE, SIZE);
       texture.needsUpdate = true;
+      // Consumers hold clones with their own upload version; tell them.
+      notify();
     };
     image.src = url;
   }

@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 
+import { readGamepad } from "./input/gamepad";
 import { Player } from "./player/Player";
 // Registers what each room kind puts inside its shell.
 import "./rooms/content";
@@ -11,12 +12,29 @@ import { Room } from "./rooms/Room";
 import { useCurrentRoom, useRun } from "./state/run";
 import { CAMERA_FOV, PLAYER_SPAWN_Y } from "./world";
 
+/**
+ * Start on a pad toggles pause. Read here, in the frame loop, because the
+ * pad's rising edges are computed once per poll: reading it from a timer
+ * as well would consume edges the player and the triggers never saw.
+ */
+function PadPause() {
+  useFrame(() => {
+    if (!readGamepad().pausePressed) return;
+    const run = useRun.getState();
+    if (run.phase !== "playing" || run.inputLocks > 0) return;
+    if (run.paused) run.resume();
+    else run.pause();
+  });
+  return null;
+}
+
 function CurrentRoom() {
   const room = useCurrentRoom();
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   if (!room) return null;
-  // Keyed by id so a new room is a fresh mount, never a patched old one.
-  return <Room key={room.id} room={room} seed={seed} />;
+  // Keyed by floor and id so a new room is a fresh mount, never a patched
+  // old one - every floor has a room called "start".
+  return <Room key={`${seed}:${room.id}`} room={room} seed={seed} />;
 }
 
 /**
@@ -44,6 +62,7 @@ export function Scene() {
       <fog attach="fog" args={["#050608", 10, 46]} />
       <ambientLight intensity={0.7} />
       <hemisphereLight args={["#9fb4d8", "#3a3126", 0.6]} />
+      <PadPause />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused}>
           <GroundPlane />

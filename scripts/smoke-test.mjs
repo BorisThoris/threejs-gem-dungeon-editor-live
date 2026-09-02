@@ -91,7 +91,7 @@ ok("dungeon has a sensible number of rooms", s0.rooms >= 6 && s0.rooms <= 14, `$
 ok("player is resting on the room floor", s0.vy === 0 && Math.abs(s0.y - REST_Y) < 0.2, `y=${s0.y} vy=${s0.vy}`);
 ok("HUD shows lives and gems", await page.evaluate(() => /LIVES/.test(document.body.innerText) && /GEMS/.test(document.body.innerText)));
 
-// Explore: in each room, sweep the diagonals (where the gem lives) then stand
+// Explore: in each room, sweep the diagonal anchors (where the gem lives) then stand
 // at each doorway and press E, the way a player does. Never take the exit.
 let minY = s0.y;
 const seen = new Set([s0.room]);
@@ -100,11 +100,17 @@ for (let hop = 0; hop < 6; hop++) {
     const s = window.__run.getState();
     return s.dungeon.rooms.find((r) => r.id === s.currentRoomId).size / 2;
   });
-  for (const [fx, fz] of [[0.55, 0.55], [-0.55, 0.55], [0.55, -0.55], [-0.55, -0.55]]) {
-    await teleport(fx * half * 0.72, fz * half * 0.72);
-    await page.waitForTimeout(700);
-    const s = await snap();
-    if (s.y !== null) minY = Math.min(minY, s.y);
+  // The gem sits on a near or a far diagonal anchor (see layout.ts); step
+  // onto each of the eight.
+  const near = Math.max(3.65, (half * 0.5) / Math.SQRT2);
+  const far = Math.max(4.55, half - 2.4);
+  for (const d of [near, far]) {
+    for (const [fx, fz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      await teleport(fx * d, fz * d);
+      await page.waitForTimeout(500);
+      const s = await snap();
+      if (s.y !== null) minY = Math.min(minY, s.y);
+    }
   }
   let moved = false;
   // Prefer doors to rooms not yet seen: the first door listed is usually the
@@ -182,7 +188,20 @@ if (exitDoor) {
     await page.keyboard.press("KeyE");
     await page.waitForTimeout(4000);
     const after = await snap();
-    ok("exit opens once paid and the run is won", after.phase === "won" && after.gems === 0, `${after.phase}, ${after.gems} gems left`);
+    const floor = await page.evaluate(() => window.__run.getState().floor);
+    ok("exit opens once paid and leads down a floor", after.phase === "playing" && after.gems === 0 && floor === 2 && after.room === "start", `${after.phase}, floor ${floor}, room ${after.room}, ${after.gems} gems left`);
+    ok("control returned on the new floor", !after.transitioning && after.y > 0.5, JSON.stringify(after));
+    // The last floor's exit ends the run: taken at the store level, since
+    // walking two more floors is the same code path as the one just walked.
+    await page.evaluate(() => {
+      const run = window.__run;
+      const s = run.getState();
+      run.setState({ floor: 3, currentRoomId: s.dungeon.endId, transitioning: true });
+      run.getState().roomReady(s.dungeon.endId);
+    });
+    await page.waitForTimeout(800);
+    const won = await snap();
+    ok("the last floor's exit wins the run", won.phase === "won", won.phase);
     ok("victory summary appears", await page.evaluate(() => /made it out/i.test(document.body.innerText)));
     exitChecked = true;
   }
