@@ -1,0 +1,15 @@
+"AppBuild"
+{
+	"AppID" "REPLACE_APP_ID"
+	"Desc" "Gem Dungeon demo"
+	"BuildOutput" "./output/"
+	"ContentRoot" "../dist-electron/"
+	"SetLive" "internal"
+
+	"Depots"
+	{
+		"REPLACE_DEPOT_LINUX" "depot_linux.vdf"
+		"REPLACE_DEPOT_WINDOWS" "depot_windows.vdf"
+		"REPLACE_DEPOT_MACOS" "depot_macos.vdf"
+	}
+}

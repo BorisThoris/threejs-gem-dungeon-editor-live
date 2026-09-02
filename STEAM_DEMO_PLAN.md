@@ -46,8 +46,22 @@ now pauses physics. Doors fade through black, damage flashes the screen
 edges, a quiet ambient bed plays under a run, and the summary shows the
 run's time.
 
-What is still ahead is unchanged in kind from section 4: a human playtest,
-and everything Steam-side.
+Then the gaps were closed as far as this machine allows. Two independent
+reviews of the tree found that trap rooms had never had spikes and the
+memory trial had never had crystals - both ring layouts fell entirely in
+the door lanes - along with a dozen smaller confirmed defects; all are
+fixed, and `yarn test:layout` guards the geometry. A run is now three
+floors, because one floor's shortest path was twenty seconds of walking.
+The desktop shell is a game window (no menu bar, fullscreen when
+packaged, F11), the product is named Gem Dungeon, `steam/` holds the
+depot scripts and upload steps, overlay text scales for a Steam Deck, and
+[PLAYTEST.md](PLAYTEST.md) records what an automated playtest can say.
+The macOS zip builds on Linux; the Windows package needs a Windows host or
+Wine.
+
+What is still ahead: a human playtest, Windows and signed macOS builds on
+their own hosts, and the Steamworks account side (app ID, depots, store
+page, capsule art).
 
 This document records why the game was not playable, what was changed to make it
 playable, how each change was verified, and what still stands between here and a
