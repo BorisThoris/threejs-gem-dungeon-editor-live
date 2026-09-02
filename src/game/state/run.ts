@@ -35,6 +35,10 @@ export interface RunState {
   /** Counted, not flagged: a puzzle overlay and a menu may both hold it. */
   inputLocks: number;
   lastDamageAt: number;
+  /** performance.now() when the run began, for the summary. */
+  startedAt: number;
+  /** Set when the run is won or lost. */
+  endedAt: number;
 
   startRun: (seed?: number) => void;
   quitToMenu: () => void;
@@ -87,6 +91,8 @@ export const useRun = create<RunState>()(
     transitioning: false,
     inputLocks: 0,
     lastDamageAt: -Infinity,
+    startedAt: 0,
+    endedAt: 0,
 
     startRun: (seed) => {
       const dungeon = generateDungeon({ seed });
@@ -107,6 +113,8 @@ export const useRun = create<RunState>()(
         transitioning: true,
         inputLocks: 0,
         lastDamageAt: -Infinity,
+        startedAt: performance.now(),
+        endedAt: 0,
       });
       const spawn = spawnAtStart();
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
@@ -165,7 +173,7 @@ export const useRun = create<RunState>()(
       set({ transitioning: false });
       bus.emit("roomEntered", { roomId });
       if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
-        set({ phase: "won" });
+        set({ phase: "won", endedAt: performance.now() });
         bus.emit("runWon");
       }
     },
@@ -198,7 +206,7 @@ export const useRun = create<RunState>()(
       set({ lives, lastDamageAt: now });
       bus.emit("damaged");
       if (lives === 0) {
-        set({ phase: "lost" });
+        set({ phase: "lost", endedAt: performance.now() });
         bus.emit("runLost");
       }
       return true;

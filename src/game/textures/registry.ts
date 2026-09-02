@@ -41,16 +41,34 @@ const speckle = (ctx: CanvasRenderingContext2D, rng: () => number, count: number
 
 const PAINTERS: Record<BuiltinSurface, Painter> = {
   stone: (ctx, rng) => {
-    ctx.fillStyle = "#8a8a92";
+    // Dressed blocks in offset courses: mortar, then each block a slightly
+    // different grey with a lit top edge and a shadowed bottom one.
+    ctx.fillStyle = "#4a484e";
     ctx.fillRect(0, 0, SIZE, SIZE);
-    for (let i = 0; i < 26; i++) {
-      ctx.fillStyle = `rgba(${40 + rng() * 40},${40 + rng() * 40},${48 + rng() * 40},0.35)`;
-      ctx.beginPath();
-      ctx.ellipse(rng() * SIZE, rng() * SIZE, 6 + rng() * 18, 4 + rng() * 12, rng() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
+    const bh = 32;
+    const bw = 64;
+    for (let row = 0; row < SIZE / bh; row++) {
+      const offset = row % 2 ? bw / 2 : 0;
+      for (let x = -bw; x < SIZE + bw; x += bw) {
+        const g = 122 + rng() * 26;
+        const x0 = x + offset + 2;
+        const y0 = row * bh + 2;
+        ctx.fillStyle = `rgb(${g},${g},${g + 6})`;
+        ctx.fillRect(x0, y0, bw - 4, bh - 4);
+        ctx.fillStyle = "rgba(255,255,255,0.13)";
+        ctx.fillRect(x0, y0, bw - 4, 2);
+        ctx.fillStyle = "rgba(0,0,0,0.28)";
+        ctx.fillRect(x0, y0 + bh - 6, bw - 4, 2);
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = `rgba(0,0,0,${0.08 + rng() * 0.1})`;
+          ctx.beginPath();
+          ctx.ellipse(x0 + rng() * (bw - 4), y0 + rng() * (bh - 4), 3 + rng() * 9, 2 + rng() * 5, rng() * Math.PI, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
-    speckle(ctx, rng, 400, 0.25, false);
-    speckle(ctx, rng, 200, 0.18, true);
+    speckle(ctx, rng, 350, 0.22, false);
+    speckle(ctx, rng, 160, 0.14, true);
   },
   wood: (ctx, rng) => {
     ctx.fillStyle = "#7a5230";

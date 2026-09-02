@@ -85,6 +85,86 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800) {
 
 const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
 
+let bed: { gain: GainNode; stop: () => void } | null = null;
+
+/**
+ * The dungeon's air: a low drone and a breath of filtered noise, far below
+ * the cues, so silence between rooms never sounds like the game has hung.
+ * Fades in over a couple of seconds and out over one.
+ */
+export const ambience = {
+  start() {
+    const ctx = ensureContext();
+    if (!ctx || !master || bed) return;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.11, ctx.currentTime + 2.5);
+    gain.connect(master);
+
+    const drone = ctx.createOscillator();
+    drone.type = "sine";
+    drone.frequency.value = 55;
+    const droneGain = ctx.createGain();
+    droneGain.gain.value = 0.5;
+    drone.connect(droneGain).connect(gain);
+
+    const fifth = ctx.createOscillator();
+    fifth.type = "triangle";
+    fifth.frequency.value = 82.4;
+    const fifthGain = ctx.createGain();
+    fifthGain.gain.value = 0.12;
+    fifth.connect(fifthGain).connect(gain);
+
+    // Looping noise through a slow-wobbling low-pass: air moving somewhere.
+    const seconds = 4;
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < data.length; i++) {
+      last = last * 0.985 + (Math.random() * 2 - 1) * 0.05;
+      data[i] = last;
+    }
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    noise.loop = true;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 320;
+    const wobble = ctx.createOscillator();
+    wobble.frequency.value = 0.07;
+    const wobbleDepth = ctx.createGain();
+    wobbleDepth.gain.value = 140;
+    wobble.connect(wobbleDepth).connect(filter.frequency);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.9;
+    noise.connect(filter).connect(noiseGain).connect(gain);
+
+    drone.start();
+    fifth.start();
+    noise.start();
+    wobble.start();
+    bed = {
+      gain,
+      stop: () => {
+        const at = ctx.currentTime + 1.1;
+        drone.stop(at);
+        fifth.stop(at);
+        noise.stop(at);
+        wobble.stop(at);
+      },
+    };
+  },
+  stop() {
+    if (!bed || !context) return;
+    const { gain, stop } = bed;
+    bed = null;
+    gain.gain.cancelScheduledValues(context.currentTime);
+    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), context.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1);
+    stop();
+  },
+};
+
 export const sfx = {
   /** Picking up a gem: a bright two-note chime. */
   gem() {

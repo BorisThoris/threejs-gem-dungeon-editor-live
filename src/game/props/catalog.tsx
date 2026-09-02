@@ -241,15 +241,38 @@ function Torch(p: PropProps) {
   });
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.9, 0]}>
-        <cylinderGeometry args={[0.05, 0.07, 1.8, 8]} />
-        <meshStandardMaterial color={DARK_WOOD} />
+      {/* Three iron legs meeting under the bowl. */}
+      {[0, 1, 2].map((i) => {
+        const a = (i / 3) * Math.PI * 2;
+        return (
+          <mesh
+            key={i}
+            position={[Math.cos(a) * 0.22, 0.55, Math.sin(a) * 0.22]}
+            rotation={[Math.sin(a) * 0.32, 0, -Math.cos(a) * 0.32]}
+          >
+            <cylinderGeometry args={[0.025, 0.035, 1.15, 6]} />
+            <meshStandardMaterial color="#3a3d44" metalness={0.8} roughness={0.5} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 1.18, 0]}>
+        <cylinderGeometry args={[0.34, 0.18, 0.3, 12, 1, true]} />
+        <meshStandardMaterial color="#3a3d44" metalness={0.8} roughness={0.5} side={2} />
       </mesh>
-      <mesh position={[0, 1.92, 0]}>
-        <coneGeometry args={[0.13, 0.36, 8]} />
-        <meshStandardMaterial color="#ffb24d" emissive="#ff7a1a" emissiveIntensity={2.4} />
+      {/* Coals: a glowing disc just inside the bowl's lip. */}
+      <mesh position={[0, 1.26, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.3, 12]} />
+        <meshStandardMaterial color="#ff6a1a" emissive="#ff4d00" emissiveIntensity={3} />
       </mesh>
-      <pointLight ref={light} position={[0, 2.1, 0]} color="#ffb86c" intensity={TORCH_INTENSITY} distance={11} decay={1.6} />
+      <mesh position={[0, 1.55, 0]}>
+        <coneGeometry args={[0.2, 0.6, 8]} />
+        <meshStandardMaterial color="#ffb24d" emissive="#ff7a1a" emissiveIntensity={2.4} transparent opacity={0.9} />
+      </mesh>
+      <mesh position={[0, 1.7, 0]}>
+        <coneGeometry args={[0.09, 0.42, 6]} />
+        <meshStandardMaterial color="#fff1b0" emissive="#ffd060" emissiveIntensity={3} />
+      </mesh>
+      <pointLight ref={light} position={[0, 1.8, 0]} color="#ffb86c" intensity={TORCH_INTENSITY} distance={11} decay={1.6} />
     </group>
   );
 }
@@ -301,7 +324,7 @@ export const CATALOG: Record<PropKind, PropInfo> = {
   skull: { component: Skull, title: "Skull", radius: 0.2, solid: false },
   table: { component: Table, title: "Table", radius: 1, solid: true },
   tile: { component: Tile, title: "Floor inlay", radius: 1, solid: false },
-  torch: { component: Torch, title: "Torch", radius: 0.1, solid: false },
+  torch: { component: Torch, title: "Brazier", radius: 0.4, solid: false },
   wall: { component: Wall, title: "Wall segment", radius: 1.5, solid: true },
   web: { component: Web, title: "Cobweb", radius: 0.7, solid: false },
   spikes: { component: Spikes, title: "Spikes", radius: 1.2, solid: false },
