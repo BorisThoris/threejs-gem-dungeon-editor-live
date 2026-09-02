@@ -1,0 +1,77 @@
+import { CuboidCollider, RigidBody } from "@react-three/rapier";
+
+import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
+import { useSurface } from "../textures/registry";
+import {
+  DOOR_HEIGHT,
+  DOOR_WIDTH,
+  GROUND_Y,
+  WALL_HEIGHT,
+  WALL_THICKNESS,
+} from "../world";
+
+interface WallsProps {
+  room: Room;
+  color: string;
+}
+
+interface Slab {
+  position: [number, number, number];
+  size: [number, number, number];
+}
+
+/**
+ * Four walls, with a doorway cut wherever the room has a link.
+ *
+ * A doorway is a gap DOOR_WIDTH wide with a lintel above it, so the opening
+ * reads as a door and not a missing wall. Colliders are declared explicitly
+ * and match the meshes exactly.
+ */
+export function Walls({ room, color }: WallsProps) {
+  const half = halfSize(room);
+  const surface = useSurface("stone", room.size / 4, WALL_HEIGHT / 4);
+  const slabs: Slab[] = [];
+
+  for (const dir of DIRS) {
+    const along: "x" | "z" = dir === "north" || dir === "south" ? "x" : "z";
+    const offset = dir === "north" || dir === "west" ? -half : half;
+    const midY = GROUND_Y + WALL_HEIGHT / 2;
+
+    const place = (centreAlong: number, length: number, y: number, height: number) => {
+      slabs.push({
+        position: along === "x" ? [centreAlong, y, offset] : [offset, y, centreAlong],
+        size:
+          along === "x"
+            ? [length, height, WALL_THICKNESS]
+            : [WALL_THICKNESS, height, length],
+      });
+    };
+
+    if (room.links[dir as Dir]) {
+      const side = half - DOOR_WIDTH / 2;
+      place(-(DOOR_WIDTH / 2 + side / 2), side, midY, WALL_HEIGHT);
+      place(DOOR_WIDTH / 2 + side / 2, side, midY, WALL_HEIGHT);
+      const lintel = WALL_HEIGHT - DOOR_HEIGHT;
+      place(0, DOOR_WIDTH, GROUND_Y + DOOR_HEIGHT + lintel / 2, lintel);
+    } else {
+      place(0, room.size + WALL_THICKNESS, midY, WALL_HEIGHT);
+    }
+  }
+
+  return (
+    <RigidBody type="fixed" colliders={false}>
+      {slabs.map((slab, i) => (
+        <group key={i}>
+          <mesh position={slab.position} castShadow receiveShadow>
+            <boxGeometry args={slab.size} />
+            <meshStandardMaterial color={color} map={surface} roughness={0.9} />
+          </mesh>
+          <CuboidCollider
+            args={[slab.size[0] / 2, slab.size[1] / 2, slab.size[2] / 2]}
+            position={slab.position}
+          />
+        </group>
+      ))}
+    </RigidBody>
+  );
+}
