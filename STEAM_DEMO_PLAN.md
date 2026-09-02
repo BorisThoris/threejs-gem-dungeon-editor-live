@@ -35,6 +35,17 @@ of 18; browser probes confirmed the memory trial, the number tome, the
 plate trap and the carry mechanic, and the editor authoring a room that the
 generator then placed.
 
+A polish round followed, driven by a screenshot tour of every room kind.
+Rooms had read as black: point light intensity is in candela since three
+r155, so the torches lit nothing. Torches are now braziers with real light,
+doorways have glowing frames and their own light (the exit's frame is gold
+when the toll can be paid, red when it cannot), the stone surface is
+masonry, and there is fog for depth. Mouse look became the usual click to
+capture, Esc to release, with a lost pointer opening the pause menu. Pause
+now pauses physics. Doors fade through black, damage flashes the screen
+edges, a quiet ambient bed plays under a run, and the summary shows the
+run's time.
+
 What is still ahead is unchanged in kind from section 4: a human playtest,
 and everything Steam-side.
 

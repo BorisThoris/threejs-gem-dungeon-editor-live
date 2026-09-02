@@ -18,7 +18,7 @@ between here and a Steam demo.
 | Input | Action |
 | --- | --- |
 | `W A S D` / arrows, or left stick | Move |
-| Hold right mouse button, or right stick | Look |
+| Mouse (click the game to take it, Esc gives it back), or right stick | Look |
 | `E`, or `A` on a pad | Use what you are standing at: a door, the shop counter, a lectern, an idol |
 | `Shift` | Run |
 | `Esc`, or Start on a pad | Pause |
