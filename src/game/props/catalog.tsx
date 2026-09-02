@@ -3,10 +3,24 @@
 import { useRef, type ComponentType } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
+
+import type { PropPlacement } from "../dungeon/types";
 import type { PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
+
+/**
+ * A prop's collision shape, in the prop's own space.
+ *
+ * Kept as data rather than as a `<RigidBody>` inside each prop, because a
+ * room's fifteen props were fifteen rigid bodies, and rapier walks every
+ * body in the world on every physics step. None of them ever move. They are
+ * now one static body per room, built from these.
+ */
+export type ColliderSpec =
+  | { shape: "cuboid"; args: [number, number, number]; y: number }
+  | { shape: "cylinder"; args: [number, number]; y: number };
 
 export interface PropProps {
   position: [number, number, number];
@@ -44,7 +58,7 @@ const TORCH_INTENSITY = 14;
 
 function Barrel(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 0.55, 0]} castShadow>
         <cylinderGeometry args={[0.42, 0.38, 1.1, 14]} />
         <meshStandardMaterial color={WOOD} roughness={0.85} />
@@ -55,14 +69,13 @@ function Barrel(p: PropProps) {
           <meshStandardMaterial color={IRON} metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
-      <CylinderCollider args={[0.55, 0.42]} position={[0, 0.55, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
 function Bookshelf(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 1.1, 0]} castShadow>
         <boxGeometry args={[1.6, 2.2, 0.45]} />
         <meshStandardMaterial color={DARK_WOOD} roughness={0.9} />
@@ -77,8 +90,7 @@ function Bookshelf(p: PropProps) {
           ))}
         </group>
       ))}
-      <CuboidCollider args={[0.8, 1.1, 0.225]} position={[0, 1.1, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
@@ -104,7 +116,7 @@ function Candle(p: PropProps) {
 
 function Chair(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 0.45, 0]} castShadow>
         <boxGeometry args={[0.5, 0.06, 0.5]} />
         <meshStandardMaterial color={WOOD} />
@@ -119,14 +131,13 @@ function Chair(p: PropProps) {
           <meshStandardMaterial color={DARK_WOOD} />
         </mesh>
       ))}
-      <CuboidCollider args={[0.25, 0.55, 0.25]} position={[0, 0.55, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
 function Chest(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 0.3, 0]} castShadow>
         <boxGeometry args={[0.9, 0.6, 0.55]} />
         <meshStandardMaterial color={WOOD} roughness={0.8} />
@@ -139,8 +150,7 @@ function Chest(p: PropProps) {
         <boxGeometry args={[0.12, 0.16, 0.04]} />
         <meshStandardMaterial color="#c8a34a" metalness={0.8} roughness={0.3} />
       </mesh>
-      <CuboidCollider args={[0.46, 0.37, 0.29]} position={[0, 0.37, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
@@ -158,7 +168,7 @@ function Crystal(p: PropProps) {
 
 function Pillar(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 2.1, 0]} castShadow>
         <cylinderGeometry args={[0.34, 0.4, 4.2, 12]} />
         <meshStandardMaterial color="#7d7c84" roughness={0.9} />
@@ -167,8 +177,7 @@ function Pillar(p: PropProps) {
         <cylinderGeometry args={[0.55, 0.6, 0.24, 12]} />
         <meshStandardMaterial color="#66656d" />
       </mesh>
-      <CylinderCollider args={[2.1, 0.4]} position={[0, 2.1, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
@@ -206,7 +215,7 @@ function Skull(p: PropProps) {
 
 function Table(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 0.78, 0]} castShadow>
         <boxGeometry args={[1.8, 0.08, 1]} />
         <meshStandardMaterial color={WOOD} roughness={0.8} />
@@ -217,8 +226,7 @@ function Table(p: PropProps) {
           <meshStandardMaterial color={DARK_WOOD} />
         </mesh>
       ))}
-      <CuboidCollider args={[0.9, 0.41, 0.5]} position={[0, 0.41, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
@@ -280,13 +288,12 @@ function Torch(p: PropProps) {
 /** An interior wall segment, 3 units long, for authored layouts. */
 function Wall(p: PropProps) {
   return (
-    <RigidBody type="fixed" colliders={false} {...frame(p)}>
+    <group {...frame(p)}>
       <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
         <boxGeometry args={[3, 3, 0.4]} />
         <meshStandardMaterial color="#55545c" roughness={0.95} />
       </mesh>
-      <CuboidCollider args={[1.5, 1.5, 0.2]} position={[0, 1.5, 0]} />
-    </RigidBody>
+    </group>
   );
 }
 
@@ -310,22 +317,24 @@ export interface PropInfo {
   radius: number;
   /** Whether it blocks the player. */
   solid: boolean;
+  /** Where it blocks, if it blocks. Built into the room's one static body. */
+  collider?: ColliderSpec;
 }
 
 export const CATALOG: Record<PropKind, PropInfo> = {
-  barrel: { component: Barrel, title: "Barrel", radius: 0.45, solid: true },
-  bookshelf: { component: Bookshelf, title: "Bookshelf", radius: 0.8, solid: true },
+  barrel: { component: Barrel, title: "Barrel", radius: 0.45, solid: true, collider: { shape: "cylinder", args: [0.55, 0.42], y: 0.55 } },
+  bookshelf: { component: Bookshelf, title: "Bookshelf", radius: 0.8, solid: true, collider: { shape: "cuboid", args: [0.8, 1.1, 0.225], y: 1.1 } },
   candle: { component: Candle, title: "Candle", radius: 0.1, solid: false },
-  chair: { component: Chair, title: "Chair", radius: 0.3, solid: true },
-  chest: { component: Chest, title: "Chest", radius: 0.5, solid: true },
+  chair: { component: Chair, title: "Chair", radius: 0.3, solid: true, collider: { shape: "cuboid", args: [0.25, 0.55, 0.25], y: 0.55 } },
+  chest: { component: Chest, title: "Chest", radius: 0.5, solid: true, collider: { shape: "cuboid", args: [0.46, 0.37, 0.29], y: 0.37 } },
   crystal: { component: Crystal, title: "Crystal", radius: 0.35, solid: false },
-  pillar: { component: Pillar, title: "Pillar", radius: 0.6, solid: true },
+  pillar: { component: Pillar, title: "Pillar", radius: 0.6, solid: true, collider: { shape: "cylinder", args: [2.1, 0.4], y: 2.1 } },
   potion: { component: Potion, title: "Potion", radius: 0.15, solid: false },
   skull: { component: Skull, title: "Skull", radius: 0.2, solid: false },
-  table: { component: Table, title: "Table", radius: 1, solid: true },
+  table: { component: Table, title: "Table", radius: 1, solid: true, collider: { shape: "cuboid", args: [0.9, 0.41, 0.5], y: 0.41 } },
   tile: { component: Tile, title: "Floor inlay", radius: 1, solid: false },
   torch: { component: Torch, title: "Brazier", radius: 0.4, solid: false },
-  wall: { component: Wall, title: "Wall segment", radius: 1.5, solid: true },
+  wall: { component: Wall, title: "Wall segment", radius: 1.5, solid: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
   web: { component: Web, title: "Cobweb", radius: 0.7, solid: false },
   spikes: { component: Spikes, title: "Spikes", radius: 1.2, solid: false },
 };
@@ -333,4 +342,40 @@ export const CATALOG: Record<PropKind, PropInfo> = {
 export function Prop({ kind, ...rest }: PropProps & { kind: PropKind }) {
   const Component = CATALOG[kind].component;
   return <Component {...rest} />;
+}
+
+/**
+ * Every solid prop in a room, as one static rigid body.
+ *
+ * Rapier walks its whole body list on every step and react-three-rapier
+ * syncs a transform for each one every frame, so fifteen barrels used to
+ * cost fifteen of both, every frame, for scenery that never moves. One body
+ * with fifteen colliders costs one.
+ */
+export function PropColliders({ placements }: { placements: PropPlacement[] }) {
+  return (
+    <RigidBody type="fixed" colliders={false}>
+      {placements.map((p, i) => {
+        const spec = CATALOG[p.kind].collider;
+        if (!spec) return null;
+        const scale = p.scale ?? 1;
+        const at: [number, number, number] = [p.x, spec.y * scale, p.z];
+        const spin: [number, number, number] = [0, p.rotation ?? 0, 0];
+        return spec.shape === "cylinder" ? (
+          <CylinderCollider
+            key={i}
+            args={[spec.args[0] * scale, spec.args[1] * scale]}
+            position={at}
+          />
+        ) : (
+          <CuboidCollider
+            key={i}
+            args={[spec.args[0] * scale, spec.args[1] * scale, spec.args[2] * scale]}
+            position={at}
+            rotation={spin}
+          />
+        );
+      })}
+    </RigidBody>
+  );
 }

@@ -64,23 +64,40 @@ function tone(
   osc.stop(ctx.currentTime + duration + 0.05);
 }
 
+/**
+ * One second of white noise, made once and reused by every burst.
+ *
+ * Each burst used to allocate a buffer and fill it sample by sample - about
+ * fifteen thousand writes for a short hit. The Warden knocks on a wall
+ * every few seconds, so that was a synchronous stall on a timer, which is
+ * what an intermittent stutter usually turns out to be. The envelope does
+ * the fade now, so one flat buffer serves every length.
+ */
+let noise: AudioBuffer | null = null;
+
+function noiseBuffer(ctx: AudioContext): AudioBuffer {
+  if (noise) return noise;
+  const frames = ctx.sampleRate;
+  noise = ctx.createBuffer(1, frames, ctx.sampleRate);
+  const data = noise.getChannelData(0);
+  for (let i = 0; i < frames; i++) data[i] = Math.random() * 2 - 1;
+  return noise;
+}
+
 function noiseBurst(duration: number, peak = 0.4, filterHz = 1800) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
-  const frames = Math.floor(ctx.sampleRate * duration);
-  const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < frames; i++) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
-  }
   const source = ctx.createBufferSource();
-  source.buffer = buffer;
+  source.buffer = noiseBuffer(ctx);
+  // Start somewhere random so repeated hits are not the same sound.
+  const offset = Math.random() * 0.5;
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
   filter.frequency.value = filterHz;
   source.connect(filter);
   envelope(ctx, filter, 0.005, duration, peak);
-  source.start();
+  source.start(ctx.currentTime, offset, duration + 0.1);
+  source.stop(ctx.currentTime + duration + 0.1);
 }
 
 const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
@@ -133,17 +150,12 @@ export const ambience = {
     fifth.connect(fifthGain).connect(gain);
 
     // Looping noise through a slow-wobbling low-pass: air moving somewhere.
-    const seconds = 4;
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    let last = 0;
-    for (let i = 0; i < data.length; i++) {
-      last = last * 0.985 + (Math.random() * 2 - 1) * 0.05;
-      data[i] = last;
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-    noise.loop = true;
+    // The shared buffer again, looped: a run starting used to fill a
+    // four-second buffer by hand, which is a visible hitch on the first frame
+    // of a run.
+    const noiseSource = ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer(ctx);
+    noiseSource.loop = true;
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
     filter.frequency.value = 320;
@@ -154,11 +166,11 @@ export const ambience = {
     wobble.connect(wobbleDepth).connect(filter.frequency);
     const noiseGain = ctx.createGain();
     noiseGain.gain.value = 0.9;
-    noise.connect(filter).connect(noiseGain).connect(gain);
+    noiseSource.connect(filter).connect(noiseGain).connect(gain);
 
     drone.start();
     fifth.start();
-    noise.start();
+    noiseSource.start();
     wobble.start();
     bed = {
       gain,
@@ -168,7 +180,7 @@ export const ambience = {
         const at = ctx.currentTime + 1.1;
         drone.stop(at);
         fifth.stop(at);
-        noise.stop(at);
+        noiseSource.stop(at);
         wobble.stop(at);
       },
     };

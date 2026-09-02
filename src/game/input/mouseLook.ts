@@ -7,6 +7,7 @@ import { bus } from "../events";
 import { canControl, useRun, type RunState } from "../state/run";
 import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MOUSE_SENSITIVITY } from "../world";
 import { readGamepad } from "./gamepad";
+import { look } from "./look";
 
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
 
@@ -52,6 +53,8 @@ export function useMouseLook() {
 
     const apply = () => {
       camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
+      look.yaw = yaw.current;
+      look.pitch = pitch.current;
     };
     apply();
 
@@ -133,5 +136,7 @@ export function useMouseLook() {
     pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * delta;
     pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
     camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
+    look.yaw = yaw.current;
+    look.pitch = pitch.current;
   });
 }

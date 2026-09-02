@@ -38,6 +38,19 @@ const SEGMENTS: Record<Shape, number> = {
  * doors. Everything in here is plain geometry, so mounting can never be
  * held up by an asset.
  */
+/**
+ * The Warden, if this is the room it is in.
+ *
+ * Its own component on purpose. Subscribing to the Warden's room from
+ * `Room` re-rendered every prop, trigger and light in the room each time it
+ * stepped through a doorway - every four to nine seconds, for a subtree of
+ * a hundred elements. Here the subscription costs one component.
+ */
+function RoomWarden({ room }: { room: RoomData }) {
+  const here = useRun((s) => s.wardenRoomId === room.id);
+  return here ? <Warden room={room} /> : null;
+}
+
 export function Room({ room, seed }: RoomProps) {
   const half = halfSize(room);
   const tint = KIND_TINT[room.kind];
@@ -62,7 +75,6 @@ export function Room({ room, seed }: RoomProps) {
   }, [room.id]);
 
   const gem = gemFor(room, seed);
-  const wardenHere = useRun((s) => s.wardenRoomId === room.id);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
   return (
@@ -107,7 +119,7 @@ export function Room({ room, seed }: RoomProps) {
       )}
 
       {gem && <Gem roomId={room.id} position={gem} />}
-      {wardenHere && <Warden room={room} />}
+      <RoomWarden room={room} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

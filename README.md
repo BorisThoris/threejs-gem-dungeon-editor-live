@@ -84,6 +84,29 @@ in them can fail to reach a run:
 The editor is behind `import.meta.env.DEV` and a dynamic import; a
 production build does not contain it.
 
+## Keeping the frame time steady
+
+Three things were found to allocate on a timer, which is what an
+intermittent stutter usually is, and all three are fixed. Rapier's
+interpolation snapshotted a position and rotation object for every body on
+every physics step, and a fixed timestep runs several steps on a late frame,
+so the frames that were already slow allocated the most - interpolation is
+off, and nothing here needs it. A room's fifteen props were fifteen rigid
+bodies that never move; they are one static body now. Every noise-based
+sound effect built and filled its own buffer, so the Warden knocking on a
+wall was a synchronous stall every few seconds; there is one shared buffer.
+Surface textures are cached per tiling rather than cloned and disposed on
+every walk through a doorway.
+
+If you are chasing a new one, measure allocation rather than frame time -
+frame time on a software renderer tells you nothing:
+
+```js
+// In the console, with a run going.
+const h = () => performance.memory.usedJSHeapSize;
+let a = h(); setTimeout(() => console.log((h() - a) / 1024, "KB/s"), 1000);
+```
+
 ## Testing
 
 `yarn test:smoke` starts a browser against a dev server on port 5199 and

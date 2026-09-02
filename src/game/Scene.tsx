@@ -48,6 +48,14 @@ function CurrentRoom() {
  * The Suspense boundary is inside the Canvas: Physics suspends while Rapier
  * loads, and a suspension that escapes the Canvas would let a boundary
  * above it hide the Canvas and force-lose its WebGL context.
+ *
+ * Interpolation is off, and that is the single biggest thing keeping the
+ * frame time steady. To interpolate, rapier snapshots a fresh position and
+ * rotation object for every body in the world on every physics step, and a
+ * fixed timestep runs several steps on a slow frame - so the frames that
+ * were already late allocated the most, which is how a hitch becomes a
+ * stutter. Nothing here is interpolated anyway: the camera reads the
+ * player's body directly in Player.tsx, and every other body is fixed.
  */
 export function Scene() {
   const paused = useRun((s) => s.paused);
@@ -67,7 +75,7 @@ export function Scene() {
       {/* The Warden walks the floor whether or not its room is mounted. */}
       <WardenDriver />
       <Suspense fallback={null}>
-        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused}>
+        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />
           <Player />
           <CurrentRoom />

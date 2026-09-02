@@ -29,6 +29,10 @@ Two stores that both claimed the player's stats. So:
 - What a relic does is decided in `src/game/relics/catalog.ts`, by
   `modifiers(relics)`. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.
+- Where the camera is pointing is `src/game/input/look.ts`, written once a
+  frame by the look controls. The minimap turns with it. It is deliberately
+  not store state: it changes every frame a mouse moves, and the HUD would
+  re-render at that rate.
 - How roused the Warden is comes from `src/game/warden/tuning.ts`. The
   driver, the figure itself, the audio and the HUD all read the same
   function, so "Hunting" in the corner and the thing in the doorway can

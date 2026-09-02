@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { cornerSpots, HAZARD_RADIUS, inDoorLane, quadrantSpots, trapHazards, type Vec3 } from "../dungeon/layout";
 import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
-import { CATALOG, Prop } from "../props/catalog";
+import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { gemFor, reservedAnchors } from "./kinds";
 import { getTemplate } from "./templates";
 
@@ -162,6 +162,7 @@ export function Dressing({ room, seed }: DressingProps) {
       {placements.map((p, i) => (
         <Prop key={i} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
       ))}
+      <PropColliders placements={placements} />
     </group>
   );
 }

@@ -51,6 +51,9 @@ export function Player() {
       dir: new Vector3(),
       euler: new Euler(0, 0, 0, "YXZ"),
       yawQ: new Quaternion(),
+      // Rapier takes a plain vector object; handing it a fresh literal every
+      // frame is steady garbage for no reason.
+      vel: { x: 0, y: 0, z: 0 },
     }),
     []
   );
@@ -85,7 +88,10 @@ export function Player() {
 
     const run = useRun.getState();
     if (!canControl(run)) {
-      rb.setLinvel({ x: 0, y: vy, z: 0 }, true);
+      scratch.vel.x = 0;
+      scratch.vel.y = vy;
+      scratch.vel.z = 0;
+      rb.setLinvel(scratch.vel, true);
       return;
     }
     // Speeds come from the relics, not from the constants: Soft Boots are
@@ -112,7 +118,10 @@ export function Player() {
     yawQ.setFromAxisAngle(UP, euler.y);
     dir.multiplyScalar(dash ? dashSpeed : walkSpeed).applyQuaternion(yawQ);
 
-    rb.setLinvel({ x: dir.x, y: vy, z: dir.z }, true);
+    scratch.vel.x = dir.x;
+    scratch.vel.y = vy;
+    scratch.vel.z = dir.z;
+    rb.setLinvel(scratch.vel, true);
   });
 
   return (

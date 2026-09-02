@@ -165,15 +165,19 @@ export function MemoryRoom({ room }: RoomKindProps) {
   return (
     <>
       <Dressing room={room} seed={seed} />
+      {/* All four pedestals in one static body: rapier walks its body list
+          every step, and these never move. */}
+      <RigidBody type="fixed" colliders={false}>
+        {pedestals.map((p, i) => (
+          <CylinderCollider key={i} args={[0.5, 0.4]} position={[p[0], 0.5, p[2]]} />
+        ))}
+      </RigidBody>
       {pedestals.map((p, i) => (
         <group key={i} position={p}>
-          <RigidBody type="fixed" colliders={false}>
-            <mesh position={[0, 0.5, 0]} castShadow>
-              <cylinderGeometry args={[0.32, 0.4, 1, 10]} />
-              <meshStandardMaterial color="#6f6e78" roughness={0.9} />
-            </mesh>
-            <CylinderCollider args={[0.5, 0.4]} position={[0, 0.5, 0]} />
-          </RigidBody>
+          <mesh position={[0, 0.5, 0]} castShadow>
+            <cylinderGeometry args={[0.32, 0.4, 1, 10]} />
+            <meshStandardMaterial color="#6f6e78" roughness={0.9} />
+          </mesh>
           <Crystal index={i} meshes={meshes} solved={phase === "solved"} />
           <InteractTrigger
             position={[0, 0, 0]}

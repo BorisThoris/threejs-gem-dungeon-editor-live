@@ -49,6 +49,13 @@ const publish = (text: string | null, enabled = true) => {
  * callers nest triggers inside room groups and a group-local offset compared
  * against the camera's world position would put the trigger elsewhere.
  */
+interface TriggerDebug {
+  x: number;
+  z: number;
+  dist: number;
+  enabled: boolean;
+}
+
 export function InteractTrigger({
   position,
   label,
@@ -79,13 +86,15 @@ export function InteractTrigger({
     const distSq = dx * dx + dz * dz;
 
     if (import.meta.env.DEV) {
-      const w = window as unknown as { __triggers?: Record<string, unknown> };
-      (w.__triggers ??= {})[label] = {
-        x: +world.x.toFixed(2),
-        z: +world.z.toFixed(2),
-        dist: +Math.sqrt(distSq).toFixed(2),
-        enabled,
-      };
+      // Written into one object per trigger, not a fresh one every frame:
+      // this ran ~500 times a second and its toFixed calls made strings.
+      const w = window as unknown as { __triggers?: Record<string, TriggerDebug> };
+      const table = (w.__triggers ??= {});
+      const row = (table[label] ??= { x: 0, z: 0, dist: 0, enabled: true });
+      row.x = world.x;
+      row.z = world.z;
+      row.dist = Math.sqrt(distSq);
+      row.enabled = enabled;
     }
 
     const offering = distSq <= radius * radius && canControl(useRun.getState());
@@ -96,14 +105,16 @@ export function InteractTrigger({
     }
     if (!offering) return;
 
+    // forEach rather than for-of: iterating a Map's entries builds a
+    // throwaway [key, value] array per entry, per trigger, every frame.
     let nearest: object | null = null;
     let nearestDist = Infinity;
-    for (const [other, d] of contenders) {
+    contenders.forEach((d, other) => {
       if (d < nearestDist) {
         nearestDist = d;
         nearest = other;
       }
-    }
+    });
     if (nearest !== id) return;
 
     publish(enabled ? label : blockedReason ?? "Locked", enabled);

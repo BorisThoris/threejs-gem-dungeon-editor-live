@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from "three";
 
 import { createRng } from "../rng";
@@ -231,16 +231,36 @@ const subscribe = (listener: () => void) => {
  * setting repeat does not change every other user of the same surface, and
  * disposes it when the caller goes away.
  */
+/**
+ * Clones, kept for the life of the page and shared by every room that asks
+ * for the same surface at the same tiling.
+ *
+ * A clone is a separate GPU upload. Cloning per caller and disposing on
+ * unmount meant every walk through a doorway re-uploaded the floor and the
+ * walls, which is a hitch exactly when the player is moving. There are only
+ * a couple of dozen combinations in the whole game, so they are simply kept.
+ * A repainted surface bumps the version and the old generation is dropped.
+ */
+const tiled = new Map<string, Texture>();
+let tiledVersion = 0;
+
+function tile(id: string, repeatX: number, repeatY: number, v: number): Texture {
+  if (v !== tiledVersion) {
+    for (const texture of tiled.values()) texture.dispose();
+    tiled.clear();
+    tiledVersion = v;
+  }
+  const key = `${id}:${repeatX}:${repeatY}`;
+  const hit = tiled.get(key);
+  if (hit) return hit;
+  const clone = getSurface(id).clone();
+  clone.repeat.set(repeatX, repeatY);
+  clone.needsUpdate = true;
+  tiled.set(key, clone);
+  return clone;
+}
+
 export function useSurface(id: string, repeatX = 1, repeatY = repeatX): Texture {
   const v = useSyncExternalStore(subscribe, () => version);
-  const texture = useMemo(() => {
-    const clone = getSurface(id).clone();
-    clone.repeat.set(repeatX, repeatY);
-    clone.needsUpdate = true;
-    return clone;
-    // `v` is the registry version: a new override means a new clone.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, repeatX, repeatY, v]);
-  useEffect(() => () => texture.dispose(), [texture]);
-  return texture;
+  return useMemo(() => tile(id, repeatX, repeatY, v), [id, repeatX, repeatY, v]);
 }
