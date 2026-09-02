@@ -30,6 +30,8 @@ export function Audio() {
       bus.on("runLost", () => sfx.lose()),
       bus.on("puzzleResult", ({ completed }) => (completed ? sfx.solved() : sfx.wrong())),
       bus.on("relicTaken", () => sfx.relic()),
+      bus.on("itemTaken", () => sfx.take()),
+      bus.on("itemUsed", ({ cruel }) => (cruel ? sfx.bitter() : sfx.drink())),
       bus.on("charmSpent", () => sfx.charm()),
       bus.on("wardenNearby", () => sfx.wardenNear()),
       bus.on("wardenWoke", () => sfx.wardenNear()),

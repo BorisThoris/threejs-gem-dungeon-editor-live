@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
-import { useRun } from "../game/state/run";
-import { colors, FONT } from "./overlay";
+import { mapIsDark, useRun } from "../game/state/run";
+import { colors, FONT, text } from "./overlay";
 
 const SIZE = 190;
 const CELL = 26;
@@ -36,6 +36,15 @@ export function Minimap() {
   const gemRooms = useRun((s) => s.gemRooms);
   const wardenRoomId = useRun((s) => s.wardenRoomId);
   const shows = useRun((s) => modifiers(s.relics));
+  const mapped = useRun((s) => s.mapped);
+  const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
+
+  // Gloom runs out on a clock, not on a state change, so the map has to
+  // check rather than wait to be told.
+  useEffect(() => {
+    const t = window.setInterval(() => setDark(mapIsDark(useRun.getState())), 400);
+    return () => window.clearInterval(t);
+  }, []);
   const dial = useRef<SVGGElement>(null);
 
   // The map turns to put the player's heading at the top. Smoothed, so a
@@ -64,6 +73,8 @@ export function Minimap() {
     if (!here) return null;
     const seen = new Set(visited);
     const known = new Set<string>();
+    // A Scroll of Mapping shows the floor; walking it is the usual way.
+    if (mapped) for (const room of dungeon.rooms) known.add(room.id);
     for (const id of visited) {
       known.add(id);
       const room = dungeon.rooms.find((r) => r.id === id);
@@ -89,7 +100,7 @@ export function Minimap() {
           .filter(([, to]) => to && known.has(to))
           .map(([dir]) => dir),
       }));
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows]);
+  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped]);
 
   if (!cells) return null;
 
@@ -121,6 +132,8 @@ export function Minimap() {
           display: "block",
           maskImage: FADE,
           WebkitMaskImage: FADE,
+          opacity: dark ? 0 : 1,
+          transition: "opacity 500ms ease",
         }}
       >
         <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
@@ -166,6 +179,22 @@ export function Minimap() {
           <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
         </g>
       </svg>
+      {dark && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: text.small,
+            color: colors.dim,
+            letterSpacing: "0.08em",
+          }}
+        >
+          GLOOM
+        </div>
+      )}
     </div>
   );
 }

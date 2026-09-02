@@ -37,6 +37,10 @@ export interface BusEvents {
   alarmRaised: { alarm: number };
   /** A relic was taken. */
   relicTaken: { id: string };
+  /** Something went into the satchel. */
+  itemTaken: { id: string };
+  /** Something came out of it, and is now known for what it was. */
+  itemUsed: { id: string; cruel: boolean };
   /**
    * How near the Warden is, 0 (not in the room) to 3 (on top of you).
    * Quantised and emitted only on change, so the DOM can draw from it.

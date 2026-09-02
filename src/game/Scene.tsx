@@ -20,8 +20,11 @@ import { CAMERA_FOV, PLAYER_SPAWN_Y } from "./world";
  */
 function PadPause() {
   useFrame(() => {
-    if (!readGamepad().pausePressed) return;
+    const pad = readGamepad();
     const run = useRun.getState();
+    if (pad.slot1Pressed) run.useItem(0);
+    if (pad.slot2Pressed) run.useItem(1);
+    if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;
     if (run.paused) run.resume();
     else run.pause();

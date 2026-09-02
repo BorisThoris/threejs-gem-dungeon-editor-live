@@ -26,6 +26,10 @@ Two stores that both claimed the player's stats. So:
 - Run state lives in `src/game/state/run.ts`. One Zustand store. The floor,
   the gems, the alarm, the relics held and which room the Warden is in are
   all here; nothing keeps a second copy.
+- What an item is, what it looks like this run, and what it does are in
+  `src/game/items/catalog.ts`; the effect itself is applied in one place,
+  `useItem` in the run store. How fast the player moves after drinking one
+  is `speedNow(state)`, and it is the only answer to that question.
 - What a relic does is decided in `src/game/relics/catalog.ts`, by
   `modifiers(relics)`. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.

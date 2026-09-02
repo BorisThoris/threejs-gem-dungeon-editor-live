@@ -245,6 +245,21 @@ export const sfx = {
   wrong() {
     tone(196, 0.22, "square", 0.3, 150);
   },
+  /** Something dropped into the satchel. */
+  take() {
+    tone(520, 0.09, "triangle", 0.3);
+    later(55, () => tone(700, 0.13, "triangle", 0.25));
+  },
+  /** A cork, then whatever it was. */
+  drink() {
+    tone(300, 0.07, "sine", 0.35, 520);
+    later(90, () => tone(660, 0.3, "sine", 0.25));
+  },
+  /** Something you should not have drunk. */
+  bitter() {
+    tone(150, 0.4, "sawtooth", 0.35, 84);
+    noiseBurst(0.3, 0.22, 900);
+  },
   /** A relic taken off its pedestal. */
   relic() {
     [440, 660, 880, 1320].forEach((f, i) => later(i * 70, () => tone(f, 0.5, "sine", 0.3)));

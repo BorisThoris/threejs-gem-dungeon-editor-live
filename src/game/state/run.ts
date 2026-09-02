@@ -5,6 +5,22 @@ import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
 import { spawnAfterTravel, spawnAtStart } from "../dungeon/layout";
 import { roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
+import {
+  AVARICE_ALARM,
+  AVARICE_GEMS,
+  BANISH_CALM,
+  DREAD_ALARM,
+  GLOOM_S,
+  ITEMS,
+  MIRE_S,
+  MIRE_MULTIPLIER,
+  SATCHEL_SLOTS,
+  SWIFTNESS_S,
+  SWIFTNESS_MULTIPLIER,
+  appearancesFor,
+  type Appearances,
+  type ItemId,
+} from "../items/catalog";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { banishTo, wakingRoom } from "../warden/roam";
 import {
@@ -45,6 +61,18 @@ export interface RunState {
   failed: string[];
   /** Relics held. What they do is decided in relics/catalog.ts. */
   relics: RelicId[];
+  /** What is in the satchel, oldest first. Four slots, used with 1-4. */
+  satchel: ItemId[];
+  /** Items whose appearance the player has worked out, this run. */
+  identified: ItemId[];
+  /** Which look means which item, this run. Fixed when the run starts. */
+  appearances: Appearances;
+  /** Timed effects, as the wall-clock second each one runs out. */
+  effects: { swift: number; mire: number; gloom: number };
+  /** Whether a Scroll of Mapping has shown this floor. */
+  mapped: boolean;
+  /** Chests already emptied, as `roomId:index`. */
+  looted: string[];
   /**
    * How roused this floor's Warden is. Raised by taking gems, reset on
    * every new floor. This is the whole risk side of the run: the more of a
@@ -83,6 +111,10 @@ export interface RunState {
   spendGems: (amount: number) => boolean;
   /** Take a relic. Does not charge for it; the shop does that. */
   addRelic: (id: RelicId) => void;
+  /** Put an item in the satchel. False when there is no room for it. */
+  takeItem: (id: ItemId, from?: string) => boolean;
+  /** Drink or read what is in a slot, and learn what it was. */
+  useItem: (slot: number) => void;
   /** The Warden walks to another room. */
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
@@ -130,6 +162,12 @@ export const useRun = create<RunState>()(
     cleared: [],
     failed: [],
     relics: [],
+    satchel: [],
+    identified: [],
+    appearances: appearancesFor(0),
+    effects: { swift: 0, mire: 0, gloom: 0 },
+    mapped: false,
+    looted: [],
     alarm: 0,
     floorRooms: 1,
     wardenRoomId: null,
@@ -161,6 +199,12 @@ export const useRun = create<RunState>()(
         cleared: [],
         failed: [],
         relics: [],
+        satchel: [],
+        identified: [],
+        appearances: appearancesFor(dungeon.seed),
+        effects: { swift: 0, mire: 0, gloom: 0 },
+        mapped: false,
+        looted: [],
         alarm: 0,
         floorRooms: 1,
         wardenRoomId: null,
@@ -252,7 +296,11 @@ export const useRun = create<RunState>()(
           cleared: [],
           failed: [],
           // A new floor is a new Warden, asleep, and a floor that has not
-          // been robbed yet. Relics and gems are what carry down.
+          // been robbed yet. Relics, gems and the satchel carry down; what
+          // was drunk on the last floor does not.
+          effects: { swift: 0, mire: 0, gloom: 0 },
+          mapped: false,
+          looted: [],
           alarm: 0,
           floorRooms: 1,
           wardenRoomId: null,
@@ -346,6 +394,74 @@ export const useRun = create<RunState>()(
       bus.emit("relicTaken", { id });
     },
 
+    takeItem: (id, from) => {
+      const s = get();
+      if (s.satchel.length >= SATCHEL_SLOTS) {
+        bus.emit("hint", "Your satchel is full. Use something first.");
+        return false;
+      }
+      set({
+        satchel: [...s.satchel, id],
+        looted: from && !s.looted.includes(from) ? [...s.looted, from] : s.looted,
+      });
+      bus.emit("itemTaken", { id });
+      return true;
+    },
+
+    useItem: (slot) => {
+      const s = get();
+      const id = s.satchel[slot];
+      if (!id || s.phase !== "playing" || s.paused || s.inputLocks > 0) return;
+      const now = performance.now() / 1000;
+      const until = (seconds: number) => now + seconds;
+
+      // Whatever it does, it is spent and it is now known.
+      set({
+        satchel: s.satchel.filter((_, i) => i !== slot),
+        identified: s.identified.includes(id) ? s.identified : [...s.identified, id],
+      });
+
+      switch (id) {
+        case "healing":
+          get().gainLife();
+          break;
+        case "swiftness":
+          set({ effects: { ...get().effects, swift: until(SWIFTNESS_S), mire: 0 } });
+          break;
+        case "mire":
+          set({ effects: { ...get().effects, mire: until(MIRE_S), swift: 0 } });
+          break;
+        case "gloom":
+          set({ effects: { ...get().effects, gloom: until(GLOOM_S) } });
+          break;
+        case "mapping":
+          set({ mapped: true });
+          break;
+        case "dread":
+          set({ alarm: get().alarm + DREAD_ALARM });
+          bus.emit("alarmRaised", { alarm: get().alarm });
+          break;
+        case "avarice":
+          set({
+            gems: get().gems + AVARICE_GEMS,
+            gemsTotal: get().gemsTotal + AVARICE_GEMS,
+            alarm: get().alarm + AVARICE_ALARM,
+          });
+          bus.emit("alarmRaised", { alarm: get().alarm });
+          break;
+        case "banish": {
+          const after = get();
+          if (after.dungeon && after.currentRoomId && after.wardenRoomId) {
+            const away = banishTo(after.dungeon, after.currentRoomId, WARDEN_BANISH_DISTANCE);
+            if (away) set({ wardenRoomId: away, wardenCameFrom: null });
+          }
+          set({ alarm: Math.max(0, get().alarm - BANISH_CALM) });
+          break;
+        }
+      }
+      bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
+    },
+
     moveWarden: (roomId) => {
       const s = get();
       if (!s.wardenRoomId || s.wardenRoomId === roomId) return;
@@ -381,6 +497,27 @@ export const useRun = create<RunState>()(
   }))
 );
 
+/** True while a timed effect is still running. */
+const running = (until: number): boolean => until > performance.now() / 1000;
+
+/**
+ * How fast the player moves right now: their relics, then whatever they
+ * last drank. One owner for the answer, so the player, the HUD and anything
+ * else that cares cannot disagree about it.
+ */
+export function speedNow(s: RunState): { walk: number; dash: number } {
+  const { walkSpeed, dashSpeed } = modifiers(s.relics);
+  const factor = running(s.effects.swift)
+    ? SWIFTNESS_MULTIPLIER
+    : running(s.effects.mire)
+      ? MIRE_MULTIPLIER
+      : 1;
+  return { walk: walkSpeed * factor, dash: dashSpeed * factor };
+}
+
+/** Whether a Scroll of Gloom is still blacking out the map. */
+export const mapIsDark = (s: RunState): boolean => running(s.effects.gloom);
+
 /** What the exit charges on this floor, after relics. Never below one. */
 export const tollNow = (s: RunState): number =>
   Math.max(1, tollForFloor(s.floor) - modifiers(s.relics).tollDiscount);
@@ -400,5 +537,6 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
   w.__derived = {
     toll: () => tollNow(useRun.getState()),
     spare: () => spareGems(useRun.getState()),
+    walk: () => speedNow(useRun.getState()).walk,
   };
 }

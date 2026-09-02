@@ -19,6 +19,13 @@ that shows you where the Warden is, boots that make you quicker, a charm
 that eats a hit, a ledger that makes every exit cheaper. Every gem spent
 there is a gem you do not carry out.
 
+Chests hold potions and scrolls, and which look means which item is
+shuffled at the start of every run. A cloudy potion is a different thing
+each game, and the only way to learn is to drink one. Most of them help;
+two of them wake the floor. You carry four at a time and use them with the
+number keys, which means the real question is whether now - with something
+walking towards you - is the moment to find out what you picked up.
+
 **[ARCHITECTURE.md](ARCHITECTURE.md)** explains how the code is laid out and
 the rule it follows. **[STEAM_DEMO_PLAN.md](STEAM_DEMO_PLAN.md)** is the
 history: what was wrong, what was done about it, and what still stands
@@ -30,7 +37,8 @@ between here and a Steam demo.
 | --- | --- |
 | `W A S D` / arrows, or left stick | Move |
 | Mouse (click the game to take it, Esc gives it back), or right stick | Look |
-| `E`, or `A` on a pad | Use what you are standing at: a door, the shop counter, a lectern, an idol |
+| `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
+| `1` to `4`, or X and Y on a pad | Drink or read that satchel slot |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause |
 

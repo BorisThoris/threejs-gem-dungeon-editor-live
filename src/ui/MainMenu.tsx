@@ -47,6 +47,8 @@ export function MainMenu() {
               <dd style={{ margin: 0 }}>Click the game to take the mouse, Esc gives it back; or the right stick</dd>
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
+              <dt style={{ color: colors.accent }}>Satchel</dt>
+              <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X and Y on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
               <dd style={{ margin: 0 }}>Hold Shift, or L3. The Warden is slower than you are.</dd>
               <dt style={{ color: colors.accent }}>Pause</dt>

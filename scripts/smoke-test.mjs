@@ -288,6 +288,83 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 
+// The satchel: chests hold something, its look is a lie until you use it,
+// and using it does what the item says.
+{
+  await page.evaluate(() => window.__run.getState().startRun(21));
+  await page.waitForTimeout(2500);
+
+  const looks = await page.evaluate(() => {
+    const a = window.__run.getState().appearances;
+    return Object.values(a).map((v) => v.unknown);
+  });
+  ok("every item has its own look this run", new Set(looks).size === looks.length && looks.length === 8, looks.length + " looks");
+
+  const shuffled = await page.evaluate(() => {
+    const one = window.__run.getState().appearances.healing.unknown;
+    window.__run.getState().startRun(22);
+    const two = window.__run.getState().appearances.healing.unknown;
+    window.__run.getState().startRun(21);
+    const again = window.__run.getState().appearances.healing.unknown;
+    return { one, two, again };
+  });
+  await page.waitForTimeout(2000);
+  ok("the same seed is the same bottles", shuffled.one === shuffled.again, `${shuffled.one} then ${shuffled.again}`);
+
+  // Chests carry loot and empty once taken.
+  const chest = await page.evaluate(() => {
+    const run = window.__run;
+    const s = run.getState();
+    run.setState({ satchel: [] });
+    s.takeItem("healing", "room_x:0");
+    const after = run.getState();
+    const twice = after.takeItem("healing", "room_x:0");
+    return { held: after.satchel.length, looted: after.looted.includes("room_x:0"), twice };
+  });
+  ok("a chest fills the satchel and is remembered", chest.held === 1 && chest.looted, JSON.stringify(chest));
+
+  const full = await page.evaluate(() => {
+    const run = window.__run;
+    run.setState({ satchel: ["healing", "healing", "healing", "healing"] });
+    const room = run.getState().takeItem("mapping");
+    return { room, held: run.getState().satchel.length };
+  });
+  ok("four slots is the limit", full.room === false && full.held === 4, JSON.stringify(full));
+
+  // Using an item identifies it and does what it says.
+  const used = await page.evaluate(async () => {
+    const run = window.__run;
+    run.setState({ satchel: ["dread", "avarice", "mapping", "swiftness"], identified: [], alarm: 0, gems: 0, mapped: false });
+    run.getState().useItem(0);
+    const afterDread = { alarm: run.getState().alarm, known: run.getState().identified.includes("dread") };
+    run.getState().useItem(0);
+    const afterAvarice = { gems: run.getState().gems, alarm: run.getState().alarm };
+    run.getState().useItem(0);
+    const afterMapping = run.getState().mapped;
+    const before = run.getState().satchel.length;
+    run.getState().useItem(0);
+    const swift = run.getState().effects.swift > performance.now() / 1000;
+    return { afterDread, afterAvarice, afterMapping, swift, emptied: before === 1 && run.getState().satchel.length === 0 };
+  });
+  ok("a bad potion wakes the floor and is learned", used.afterDread.alarm >= 3 && used.afterDread.known, JSON.stringify(used.afterDread));
+  ok("avarice pays in gems and in alarm", used.afterAvarice.gems === 2 && used.afterAvarice.alarm > used.afterDread.alarm, JSON.stringify(used.afterAvarice));
+  ok("a scroll of mapping shows the floor", used.afterMapping === true);
+  ok("swiftness runs on a clock and the slot empties", used.swift && used.emptied, JSON.stringify(used));
+
+  const faster = await page.evaluate(() => {
+    const run = window.__run;
+    run.setState({ effects: { swift: 0, mire: 0, gloom: 0 } });
+    const plain = window.__derived.walk();
+    run.setState({ effects: { swift: performance.now() / 1000 + 30, mire: 0, gloom: 0 } });
+    const quick = window.__derived.walk();
+    run.setState({ effects: { swift: 0, mire: performance.now() / 1000 + 30, gloom: 0 } });
+    const slow = window.__derived.walk();
+    run.setState({ effects: { swift: 0, mire: 0, gloom: 0 } });
+    return { plain, quick, slow };
+  });
+  ok("what you drink changes how fast you move", faster.quick > faster.plain && faster.slow < faster.plain, JSON.stringify(faster));
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

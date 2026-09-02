@@ -5,7 +5,10 @@ import { useMemo } from "react";
 import { cornerSpots, HAZARD_RADIUS, inDoorLane, quadrantSpots, trapHazards, type Vec3 } from "../dungeon/layout";
 import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
+import { InteractTrigger } from "../interact/InteractTrigger";
+import { nameOf, rollItem } from "../items/catalog";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
+import { useRun } from "../state/run";
 import { gemFor, reservedAnchors } from "./kinds";
 import { getTemplate } from "./templates";
 
@@ -52,6 +55,7 @@ const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
     at("pillar", far[1]),
   ],
   normal: ({ near, far, corners, rng }) => [
+    at("chest", near[1], rng() * 0.8 - 0.4),
     at("barrel", near[0]),
     at("table", far[1]),
     at("chair", far[2], rng() * Math.PI * 2),
@@ -85,6 +89,7 @@ const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
     at("candle", near[2]),
   ],
   trap: ({ near, far, corners }) => [
+    at("chest", near[1], -0.3),
     at("skull", near[0]),
     at("skull", far[2]),
     at("web", corners[1]),
@@ -92,6 +97,7 @@ const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
     at("barrel", near[3]),
   ],
   arena: ({ near, far }) => [
+    at("chest", near[3], 0.5),
     at("pillar", far[0]),
     at("pillar", far[1]),
     at("pillar", far[2]),
@@ -163,6 +169,45 @@ export function Dressing({ room, seed }: DressingProps) {
         <Prop key={i} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
       ))}
       <PropColliders placements={placements} />
+      <Chests room={room} placements={placements} />
     </group>
+  );
+}
+
+/**
+ * The chests in a room, and what is in them.
+ *
+ * A chest was scenery until now. Each one holds one consumable, decided by
+ * the run's seed and the floor, and stays empty once taken - so a room is
+ * worth walking into for something other than its gem, and the vault, with
+ * three of them, is finally worth its name.
+ */
+function Chests({ room, placements }: { room: Room; placements: PropPlacement[] }) {
+  const seed = useRun((s) => s.dungeon?.seed ?? 0);
+  const floor = useRun((s) => s.floor);
+  const looted = useRun((s) => s.looted);
+  const appearances = useRun((s) => s.appearances);
+  const identified = useRun((s) => s.identified);
+
+  return (
+    <>
+      {placements.map((p, i) => {
+        if (p.kind !== "chest") return null;
+        const key = `${room.id}:${i}`;
+        if (looted.includes(key)) return null;
+        const id = rollItem(seed, key, floor);
+        const known = identified.includes(id);
+        const what = nameOf(id, appearances, known);
+        return (
+          <InteractTrigger
+            key={key}
+            position={[p.x, 0, p.z]}
+            label={`Open the chest - ${what}`}
+            radius={2.2}
+            onInteract={() => useRun.getState().takeItem(id, key)}
+          />
+        );
+      })}
+    </>
   );
 }

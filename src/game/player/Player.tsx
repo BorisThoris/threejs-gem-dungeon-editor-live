@@ -12,8 +12,7 @@ import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
-import { modifiers } from "../relics/catalog";
-import { canControl, useRun } from "../state/run";
+import { canControl, speedNow, useRun } from "../state/run";
 import {
   EYE_OFFSET,
   GRAVITY_SCALE,
@@ -94,9 +93,8 @@ export function Player() {
       rb.setLinvel(scratch.vel, true);
       return;
     }
-    // Speeds come from the relics, not from the constants: Soft Boots are
-    // the one thing that may change how fast the player moves.
-    const { walkSpeed, dashSpeed } = modifiers(run.relics);
+    // Relics, then whatever was last drunk. run.ts owns the sum of those.
+    const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
     const forward = keyboard.isDown("KeyW") || keyboard.isDown("ArrowUp");
@@ -116,7 +114,7 @@ export function Player() {
 
     euler.setFromQuaternion(camera.quaternion, "YXZ");
     yawQ.setFromAxisAngle(UP, euler.y);
-    dir.multiplyScalar(dash ? dashSpeed : walkSpeed).applyQuaternion(yawQ);
+    dir.multiplyScalar(dash ? dashSpeed : walk).applyQuaternion(yawQ);
 
     scratch.vel.x = dir.x;
     scratch.vel.y = vy;

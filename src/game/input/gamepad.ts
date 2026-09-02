@@ -20,6 +20,9 @@ export interface GamepadState {
   /** Rising edge only. */
   interactPressed: boolean;
   pausePressed: boolean;
+  /** Rising edges for the first two satchel slots, on X and Y. */
+  slot1Pressed: boolean;
+  slot2Pressed: boolean;
 }
 
 const DEADZONE = 0.18;
@@ -27,6 +30,9 @@ const DEADZONE = 0.18;
 const BUTTON_INTERACT = 0;
 const BUTTON_PAUSE = 9;
 const BUTTON_DASH = 10;
+// 2 = X / Square, 3 = Y / Triangle.
+const BUTTON_SLOT1 = 2;
+const BUTTON_SLOT2 = 3;
 
 const previous = new Map<number, boolean>();
 
@@ -52,12 +58,15 @@ const state: GamepadState = {
   dash: false,
   interactPressed: false,
   pausePressed: false,
+  slot1Pressed: false,
+  slot2Pressed: false,
 };
 
 function clear(): GamepadState {
   state.connected = false;
   state.moveX = state.moveY = state.lookX = state.lookY = 0;
   state.dash = state.interactPressed = state.pausePressed = false;
+  state.slot1Pressed = state.slot2Pressed = false;
   return state;
 }
 
@@ -86,5 +95,7 @@ export function readGamepad(): GamepadState {
   state.dash = pad.buttons[BUTTON_DASH]?.pressed ?? false;
   state.interactPressed = risingEdge(pad, BUTTON_INTERACT);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
+  state.slot1Pressed = risingEdge(pad, BUTTON_SLOT1);
+  state.slot2Pressed = risingEdge(pad, BUTTON_SLOT2);
   return state;
 }

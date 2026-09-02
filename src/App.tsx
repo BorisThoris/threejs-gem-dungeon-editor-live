@@ -15,6 +15,7 @@ import { PauseMenu } from "./ui/PauseMenu";
 import { Prompt } from "./ui/Prompt";
 import { PuzzleOverlay } from "./ui/PuzzleOverlay";
 import { RunSummary } from "./ui/RunSummary";
+import { ItemLog, Satchel } from "./ui/Satchel";
 import { Transitions } from "./ui/Transitions";
 
 /**
@@ -39,6 +40,23 @@ function usePauseKeys() {
 }
 
 /**
+ * 1 to 4 drink or read what is in that slot. The store refuses while a
+ * puzzle or a menu is up, so there is no guard here.
+ */
+function useSatchelKeys() {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+      const slot = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(event.code);
+      if (slot < 0) return;
+      useRun.getState().useItem(slot);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+}
+
+/**
  * The authoring tools, in development only. `import.meta.env.DEV` is
  * statically false in a production build, so the dynamic import below is
  * unreachable there and the whole editor tree is dropped from the bundle.
@@ -51,6 +69,7 @@ export default function App() {
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
   usePauseKeys();
+  useSatchelKeys();
   useWardenWarning();
 
   useEffect(() => installKeyboard(), []);
@@ -85,6 +104,8 @@ export default function App() {
       <Minimap />
       <Hint />
       <Prompt />
+      <Satchel />
+      <ItemLog />
       <PuzzleOverlay />
       {paused && phase === "playing" && <PauseMenu />}
       {(phase === "won" || phase === "lost") && <RunSummary />}

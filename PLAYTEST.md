@@ -45,6 +45,7 @@ go back for them?
 | --- | --- | --- |
 | Exit, floor 1 / 2 / 3 | 3 / 5 / 7 gems | The way down, and the way out |
 | A life | 1 gem | One more mistake |
+| A chest | free | One potion or scroll, contents unknown |
 | Warden's Lantern | 2 gems | Always knowing which room it is in |
 | Robber's Chart | 2 gems | Rooms that still hold a gem, on the map |
 | Soft Boots | 3 gems | A quarter more speed |
@@ -147,6 +148,14 @@ nobody has held a Deck with this on it.
   running works, that line is not doing its job.
 - **Three floors of the same ten room kinds.** Watch for the point where a
   player recognises a room and stops looking at it.
+- **Does anyone drink the unknown potion?** Four slots, eight items, two of
+  which wake the floor. If players hoard and never use them, the good ones
+  are not good enough or the bad ones are too frightening. If they drink
+  everything the moment they find it, there is no decision there either.
+- **Is identification worth anything over one run?** Learning that the inky
+  bottle is healing only pays if you find a second one. Watch whether
+  anyone gets to use that knowledge, and if not, chests need to be commoner
+  or the run longer.
 
 ## 7. Tuning knobs
 
