@@ -66,6 +66,10 @@ export default function App() {
     const w = window as unknown as Record<string, unknown>;
     w.__bus = bus;
     w.__keyboard = keyboard;
+    // Room drafts marked live in the editor register themselves when the
+    // drafts module loads. The game at "/" never loads the editor, so load
+    // just that module here - development only, dropped from production.
+    void import("./editor/drafts");
   }, []);
 
   if (Editor && wantsEditor()) {

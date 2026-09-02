@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
@@ -23,6 +23,13 @@ interface PreviewProps {
  * so what the designer saw was not what the player got. This mounts the
  * real Room shell - floor, walls, doorways, lights, dressing, the kind's
  * own content - with physics paused and an orbit camera.
+ *
+ * The Suspense boundary sits inside the Canvas on purpose. Physics suspends
+ * while Rapier's WebAssembly loads, and a Canvas whose children suspend
+ * past it throws to the nearest boundary above - the editor's lazy-load
+ * boundary. React then hides the whole editor and tears down the Canvas's
+ * effects, which force-loses the WebGL context; the context never comes
+ * back when the tree is shown again, and the preview stays blank.
  */
 export function Preview({ template, doors }: PreviewProps) {
   const room = useMemo<RoomData>(() => {
@@ -49,10 +56,12 @@ export function Preview({ template, doors }: PreviewProps) {
     >
       <ambientLight intensity={0.6} />
       <hemisphereLight args={["#9fb4d8", "#3a3126", 0.5]} />
-      <Physics paused timeStep={1 / 60}>
-        {/* Keyed so a change of size or shape is a fresh mount, as in the game. */}
-        <Room key={`${template.id}:${template.size}:${template.shape}:${doors.join()}`} room={room} seed={1} />
-      </Physics>
+      <Suspense fallback={null}>
+        <Physics paused timeStep={1 / 60}>
+          {/* Keyed so a change of size or shape is a fresh mount, as in the game. */}
+          <Room key={`${template.id}:${template.size}:${template.shape}:${doors.join()}`} room={room} seed={1} />
+        </Physics>
+      </Suspense>
       <OrbitControls target={[0, 1, 0]} maxPolarAngle={Math.PI / 2.05} />
     </Canvas>
   );

@@ -7,6 +7,8 @@ import { useRun } from "../state/run";
 import { GEMS_PER_LIFE } from "../world";
 import { Dressing } from "./Dressing";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
+// Room layouts that ship with the game register themselves.
+import "./shipped";
 
 /**
  * What each room kind puts inside the shell.

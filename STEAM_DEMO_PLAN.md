@@ -1,5 +1,43 @@
 # Steam Demo: findings, plan, and current state
 
+> **Update: the game was rebuilt from scratch.** Everything below section 0
+> describes the original tree and the work done inside it. That tree is
+> preserved at the `pre-greenfield` tag and branch. The rebuild is
+> described in section 0 and in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## 0. The rebuild
+
+After the fixes below, the tree was 63,000 lines in 303 files. An import
+walk from the game's entry point showed that the game reached 168 of them;
+54 were the editors and 83 were reachable from nothing at all. Of what the
+game did reach: six state stores, 99 room kinds of which eight were played,
+a `Room` type with forty optional fields including `humidity`, and a floor
+positioned from a number that came from the 2D map view. Every bug fixed in
+the last week was the same bug - two modules holding different values for
+one fact - and the architecture invited it because nothing owned anything.
+
+Three decisions were taken: keep the editors and port them onto the new
+architecture; replace the mouse-driven hand with the game's one interaction
+verb; and build in a fresh `src/` rather than refactor in place.
+
+What exists now is about 5,300 lines. One store, one bus, one owner for
+every constant, one place that computes positions inside a room, one
+catalogue of props, one registry of surfaces, one registry of room
+templates. The generator is connected by construction and stressed over
+300 seeds. The editor writes into the registries the game reads, so a room
+laid out in the builder is placed by the generator the next run, and a
+surface painted in the painter is on the walls at once.
+
+Verified: `yarn typecheck` and `yarn lint` are clean with no error budget;
+the smoke test drives the real game through menu, floor, exploration by E,
+gems, the exit toll refused and admitted, a win, a restart and a death - 18
+of 18; browser probes confirmed the memory trial, the number tome, the
+plate trap and the carry mechanic, and the editor authoring a room that the
+generator then placed.
+
+What is still ahead is unchanged in kind from section 4: a human playtest,
+and everything Steam-side.
+
 This document records why the game was not playable, what was changed to make it
 playable, how each change was verified, and what still stands between here and a
 Steam demo. It covers the 14 commits from `5c928fc` to `fc6340d`.

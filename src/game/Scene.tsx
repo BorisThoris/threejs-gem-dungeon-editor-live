@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 
@@ -24,6 +25,10 @@ function CurrentRoom() {
  * Fixed physics timestep, not "vary": a variable step hands Rapier the whole
  * wall-clock delta after a hitch, which integrates a huge amount of gravity
  * in one step and tunnels the player through the floor.
+ *
+ * The Suspense boundary is inside the Canvas: Physics suspends while Rapier
+ * loads, and a suspension that escapes the Canvas would let a boundary
+ * above it hide the Canvas and force-lose its WebGL context.
  */
 export function Scene() {
   return (
@@ -36,11 +41,13 @@ export function Scene() {
     >
       <ambientLight intensity={0.55} />
       <hemisphereLight args={["#9fb4d8", "#3a3126", 0.45]} />
-      <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
-        <GroundPlane />
-        <Player />
-        <CurrentRoom />
-      </Physics>
+      <Suspense fallback={null}>
+        <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]}>
+          <GroundPlane />
+          <Player />
+          <CurrentRoom />
+        </Physics>
+      </Suspense>
     </Canvas>
   );
 }

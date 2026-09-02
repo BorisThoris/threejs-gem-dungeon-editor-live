@@ -1,0 +1,16 @@
+[
+  {
+    "id": "vault-a",
+    "kind": "treasure",
+    "size": 16,
+    "shape": "square",
+    "props": [
+      { "kind": "chest", "x": -4.5, "z": -4.5, "rotation": 0.6 },
+      { "kind": "chest", "x": 4.5, "z": 4.5, "rotation": -0.6 },
+      { "kind": "pillar", "x": -4.5, "z": 4.5, "rotation": 0 },
+      { "kind": "crystal", "x": 4.5, "z": -4.5, "rotation": 0 },
+      { "kind": "barrel", "x": -5.5, "z": 3.5, "rotation": 0 },
+      { "kind": "skull", "x": 5.5, "z": -3.5, "rotation": 0 }
+    ]
+  }
+]
