@@ -72,10 +72,10 @@ export const ROOM_SIZES = [ROOM_SIZE_SMALL, ROOM_SIZE_DEFAULT, ROOM_SIZE_LARGE] 
 export const STARTING_LIVES = 3;
 /**
  * What the exit charges on the first floor, and how much more it charges on
- * each floor after. A floor holds about eight gems, so a toll of three was
- * something you tripped over: you took the first three and left, and the
- * rest of the floor may as well not have existed. Rising to seven by the
- * last floor means the deeper floors have to be worked, and the gems you
+ * each floor after. The shallowest floor holds about ten gems, so a toll of
+ * three was something you tripped over: you took the first three and left,
+ * and the rest of the floor may as well not have existed. Rising to seven by
+ * the last floor means the deeper floors have to be worked, and the gems you
  * hold over the toll are the ones you get to keep.
  */
 export const TOLL_BASE = 3;
@@ -124,8 +124,8 @@ export const ALARM_MAX = 6;
 export const WARDEN_TOUCH_RADIUS = 1.05;
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
-/** It will not appear on a floor until this many rooms have been entered. */
-export const WARDEN_GRACE_ROOMS = 2;
+// How long a floor is left alone before it wakes scales with depth, and so
+// lives with the rest of the descent in `floorRules` below.
 
 // --- The Sentry -------------------------------------------------------------
 
@@ -137,13 +137,11 @@ export const WARDEN_GRACE_ROOMS = 2;
  * takes a life - being seen rouses the floor and tells the Warden where you
  * are, which is worse than a life and is felt later rather than at once.
  *
- * They start on the second floor. The first is where a player learns the
- * dungeon, and a room that punishes walking through it is not the place to
- * do that.
+ * How many of a floor's plain rooms get one is a per-floor matter and lives
+ * in `floorRules` below; the first floor gets none, because that is where a
+ * player learns the dungeon and a room that punishes walking through it is
+ * not the place to do that.
  */
-export const SENTRY_FIRST_FLOOR = 2;
-/** How much of a floor's plain rooms get one. */
-export const SENTRY_CHANCE = 0.45;
 /** Radians a second, and how wide the beam is either side of centre. */
 export const SENTRY_SPIN = 0.55;
 export const SENTRY_HALF_ANGLE = 0.42;
@@ -153,6 +151,78 @@ export const SENTRY_PATIENCE = 0.9;
 /** How much being seen rouses the floor, and how long before it can again. */
 export const SENTRY_ALARM = 1;
 export const SENTRY_COOLDOWN_S = 6;
+
+// --- The descent ------------------------------------------------------------
+
+/**
+ * What changes on the way down.
+ *
+ * The floors used to differ only in what the exit charged, which made the
+ * descent an arithmetic problem rather than a journey: the third floor was
+ * the first floor with a bigger bill. This is the one table that says how a
+ * floor is worse than the one above it, and everything that scales with
+ * depth reads it - the generator, the Warden's grace, the alarm a floor
+ * starts at, and how many rooms are watched.
+ *
+ * The arc is deliberate. Floor one is small, unwatched and slow to wake: it
+ * is where the dungeon is learned. Floor two is bigger, has watchers, and is
+ * already stirring when you arrive. Floor three is the bottom of something -
+ * large enough to get lost in, watched almost everywhere, and one gem away
+ * from being hunted the moment you step off the stair.
+ */
+export interface FloorRules {
+  /** Rooms the floor is generated with, including start and end. */
+  minRooms: number;
+  maxRooms: number;
+  /** Rooms entered before the Warden wakes on this floor. */
+  wardenGrace: number;
+  /** How roused the floor already is when you arrive. */
+  startingAlarm: number;
+  /** Share of the floor's plain rooms that get a Sentry. */
+  sentryChance: number;
+  /**
+   * The one line the player is shown on arriving. It says what the row above
+   * it does, in words, so the numbers and what the player is told cannot
+   * drift apart.
+   */
+  blurb: string;
+}
+
+const DESCENT: readonly FloorRules[] = [
+  {
+    minRooms: 8,
+    maxRooms: 10,
+    wardenGrace: 3,
+    startingAlarm: 0,
+    sentryChance: 0,
+    blurb: "The upper vaults. Quiet, unwatched, and slow to notice you.",
+  },
+  {
+    minRooms: 10,
+    maxRooms: 13,
+    wardenGrace: 2,
+    startingAlarm: 1,
+    sentryChance: 0.45,
+    blurb: "Deeper. The halls are wider, watchers stand in them, and something is already stirring.",
+  },
+  {
+    minRooms: 12,
+    maxRooms: 16,
+    wardenGrace: 1,
+    startingAlarm: 2,
+    sentryChance: 0.65,
+    blurb: "The bottom. Watched almost everywhere, and one gem from being hunted. Take what you can and climb.",
+  },
+];
+
+/**
+ * The rules for a floor, 1-based. Floors past the last described one keep
+ * the last row, so adding a floor to FLOORS is playable before it is tuned.
+ */
+export function floorRules(floor: number): FloorRules {
+  const i = Math.max(0, Math.min(DESCENT.length - 1, Math.round(floor) - 1));
+  return DESCENT[i];
+}
 
 // --- The arena --------------------------------------------------------------
 

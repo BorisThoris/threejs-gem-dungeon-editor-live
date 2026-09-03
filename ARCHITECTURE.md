@@ -14,6 +14,13 @@ Two stores that both claimed the player's stats. So:
 - Geometry lives in `src/game/world.ts`. The ground plane, the capsule, the
   spawn height, the door width, the interact radius. Nothing else defines a
   height.
+- Everything that changes with depth is one table in the same file,
+  `floorRules(floor)`: how big a floor is generated, how long it leaves you
+  alone before the Warden wakes, how roused it already is when you arrive,
+  how many of its rooms are watched, and the line the player is shown on
+  reaching it. The generator, the run store, the Sentry placement and the
+  arrival hint all read that row rather than each keeping a number of their
+  own, which is what made the floors differ only in price before.
 - Positions inside a room come from `src/game/dungeon/layout.ts`. Doors,
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by
@@ -118,8 +125,8 @@ src/
    doorways away.
 6. The exit door charges `tollForFloor(floor)`, which rises on every floor.
    Entering the exit room descends to a fresh dungeon - lives, gems and
-   relics carried, alarm and Warden reset - and the exit of floor `FLOORS`
-   wins. The gems still held at that point are the run's score. Losing the
+   relics carried, alarm and Warden reset to what the new floor's own rules
+   say - and the exit of floor `FLOORS` wins. The gems still held at that point are the run's score. Losing the
    last life loses everything. A puzzle failed for good is remembered in
    `failed`, as a solved one is in `cleared`, so leaving and returning
    changes nothing.

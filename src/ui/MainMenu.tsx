@@ -27,7 +27,8 @@ export function MainMenu() {
               <br />
               <br />
               Every gem you take wakes the thing that walks the floor. You cannot fight it.
-              You have {STARTING_LIVES} lives.
+              You have {STARTING_LIVES} lives. Each floor down is larger, more closely
+              watched, and wakes sooner than the one above it.
             </p>
             <button style={button} data-testid="menu-start" onClick={() => startRun()}>
               Start

@@ -31,7 +31,7 @@ import {
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
-  WARDEN_GRACE_ROOMS,
+  floorRules,
   tollForFloor,
 } from "../world";
 
@@ -244,7 +244,12 @@ export const useRun = create<RunState>()(
     endedAt: 0,
 
     startRun: (seed) => {
-      const dungeon = generateDungeon({ seed });
+      const rules = floorRules(1);
+      const dungeon = generateDungeon({
+        seed,
+        minRooms: rules.minRooms,
+        maxRooms: rules.maxRooms,
+      });
       if (transitionFallback) window.clearTimeout(transitionFallback);
       set({
         phase: "playing",
@@ -273,7 +278,7 @@ export const useRun = create<RunState>()(
         keys: 0,
         unlocked: [],
         keyTakenIn: null,
-        alarm: 0,
+        alarm: rules.startingAlarm,
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
@@ -362,7 +367,12 @@ export const useRun = create<RunState>()(
         // still dark from the door, and stays so until the new start room
         // reports in.
         const floor = s.floor + 1;
-        const dungeon = generateDungeon({ seed: (s.dungeon.seed * 7919 + floor) >>> 0 });
+        const rules = floorRules(floor);
+        const dungeon = generateDungeon({
+          seed: (s.dungeon.seed * 7919 + floor) >>> 0,
+          minRooms: rules.minRooms,
+          maxRooms: rules.maxRooms,
+        });
         set({
           floor,
           dungeon,
@@ -372,8 +382,9 @@ export const useRun = create<RunState>()(
           gemRooms: [],
           cleared: [],
           failed: [],
-          // A new floor is a new Warden, asleep, and a floor that has not
-          // been robbed yet. Relics, gems and the satchel carry down; what
+          // A new floor is a new Warden, asleep, and a floor nobody has
+          // robbed yet - though a deep one is already stirring before you
+          // touch anything. Relics, gems and the satchel carry down; what
           // was drunk on the last floor does not.
           effects: { swift: 0, mire: 0, gloom: 0 },
           mapped: false,
@@ -383,7 +394,7 @@ export const useRun = create<RunState>()(
           keys: 0,
           unlocked: [],
           keyTakenIn: null,
-          alarm: 0,
+          alarm: rules.startingAlarm,
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
@@ -406,7 +417,11 @@ export const useRun = create<RunState>()(
       // The Warden wakes once the floor has been walked a little, and wakes
       // as far from the player as the floor allows.
       const after = get();
-      if (!after.wardenRoomId && after.dungeon && after.floorRooms >= WARDEN_GRACE_ROOMS) {
+      if (
+        !after.wardenRoomId &&
+        after.dungeon &&
+        after.floorRooms >= floorRules(after.floor).wardenGrace
+      ) {
         const wake = wakingRoom(after.dungeon, roomId);
         if (wake) {
           set({ wardenRoomId: wake, wardenCameFrom: null });
@@ -659,5 +674,6 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     toll: () => tollNow(useRun.getState()),
     spare: () => spareGems(useRun.getState()),
     walk: () => speedNow(useRun.getState()).walk,
+    rules: () => floorRules(useRun.getState().floor),
   };
 }

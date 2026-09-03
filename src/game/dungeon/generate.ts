@@ -5,6 +5,7 @@ import {
   ROOM_SIZE_DEFAULT,
   ROOM_SIZE_LARGE,
   ROOM_SIZE_SMALL,
+  floorRules,
 } from "../world";
 import {
   DIRS,
@@ -19,7 +20,11 @@ import {
 
 export interface GenerateOptions {
   seed?: number;
-  /** Rooms including start and end. */
+  /**
+   * Rooms including start and end. How big a floor is belongs to the floor,
+   * so callers pass `floorRules(floor)`; the default is the first floor's,
+   * for the editor and for anything asking for "a dungeon".
+   */
   minRooms?: number;
   maxRooms?: number;
   /** Chance that two adjacent rooms not already linked get a second doorway. */
@@ -70,8 +75,8 @@ const key = (x: number, z: number) => `${x},${z}`;
 export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   const seed = options.seed ?? (Math.random() * 0xffffffff) >>> 0;
   const rng = createRng(seed);
-  const minRooms = options.minRooms ?? 8;
-  const maxRooms = options.maxRooms ?? 12;
+  const minRooms = options.minRooms ?? floorRules(1).minRooms;
+  const maxRooms = options.maxRooms ?? floorRules(1).maxRooms;
   const loopChance = options.loopChance ?? 0.3;
 
   const target =

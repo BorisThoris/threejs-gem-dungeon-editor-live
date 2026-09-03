@@ -17,7 +17,12 @@ const dir = mkdtempSync(join(tmpdir(), "layout-check-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(
   entry,
-  `export * from "${root}src/game/dungeon/layout";
+  // The shipped templates are registered for their side effect: the
+  // generator asks for them by kind, and asking with an empty registry
+  // draws different random numbers, so a check that skips this is
+  // validating dungeons the game never builds.
+  `import "${root}src/game/rooms/shipped";
+   export * from "${root}src/game/dungeon/layout";
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/world";`
@@ -110,10 +115,56 @@ for (const size of L.ROOM_SIZES) {
   check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
 }
 
+// The descent: each floor down has to be worse than the one above it in
+// every way the table claims, or the arc is only in the prose.
+{
+  const rows = Array.from({ length: L.FLOORS }, (_, i) => L.floorRules(i + 1));
+  const rises = (pick) => rows.every((r, i) => i === 0 || pick(r) >= pick(rows[i - 1]));
+  const falls = (pick) => rows.every((r, i) => i === 0 || pick(r) <= pick(rows[i - 1]));
+  check("the descent never gets smaller", rises((r) => r.minRooms) && rises((r) => r.maxRooms));
+  check("the Warden's grace never grows on the way down", falls((r) => r.wardenGrace));
+  check("a deeper floor is never calmer on arrival", rises((r) => r.startingAlarm));
+  check("a deeper floor is never less watched", rises((r) => r.sentryChance));
+  check("the first floor is unwatched", rows[0].sentryChance === 0 && rows[0].startingAlarm === 0);
+  check("the last floor is bigger than the first", rows[rows.length - 1].minRooms > rows[0].maxRooms);
+  check("every floor's rules are sane", rows.every((r) => r.minRooms <= r.maxRooms && r.wardenGrace >= 1 && r.blurb.length > 0));
+  // Past the last described floor the table holds rather than falling off.
+  check("floors past the last described one keep its rules", L.floorRules(L.FLOORS + 5) === rows[rows.length - 1]);
+  check("floor zero and below read as the first floor", L.floorRules(0) === rows[0] && L.floorRules(-3) === rows[0]);
+}
+
+// The same seed is the same dungeon, room for room. Everything downstream -
+// a replayed run, a bug report, the watchers on a floor - rests on this.
+{
+  const shape = (d) =>
+    JSON.stringify([
+      d.seed,
+      d.startId,
+      d.endId,
+      d.vaultId,
+      d.keyRoomId,
+      d.rooms.map((r) => [r.id, r.kind, r.size, r.shape, r.template ?? null, r.grid.x, r.grid.z, Object.entries(r.links).sort()]),
+    ]);
+  let drift = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    for (let floor = 1; floor <= L.FLOORS; floor++) {
+      const rules = L.floorRules(floor);
+      const opts = { seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms };
+      if (shape(L.generateDungeon(opts)) !== shape(L.generateDungeon(opts))) drift++;
+    }
+  }
+  check("a seed generates the same dungeon every time, on every floor", drift === 0, `${drift} drifted`);
+}
+
 // The generator: connected, the exit reachable, every kind once, sizes legal.
+// Checked at every floor's size, because the deep floors ask the grid walk
+// for more rooms than the shallow ones and it is the deep ones that fail.
 let bad = 0;
+let authored = 0;
 for (let seed = 1; seed <= 500; seed++) {
-  const d = L.generateDungeon({ seed });
+  const rules = L.floorRules((seed % L.FLOORS) + 1);
+  const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+  if (d.rooms.length < rules.minRooms || d.rooms.length > rules.maxRooms) bad++;
   const depth = L.bfsDepth(d.rooms, d.startId);
   if (!depth.has(d.endId) || depth.size !== d.rooms.length) bad++;
   if (d.rooms.some((r) => !L.ROOM_SIZES.includes(r.size))) bad++;
@@ -135,8 +186,12 @@ for (let seed = 1; seed <= 500; seed++) {
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
   if (d.rooms.find((r) => r.id === d.endId).template) bad++;
+  if (d.rooms.some((r) => r.template)) authored++;
 }
-check("500 dungeons: connected, legal shapes, and a vault that never blocks the exit", bad === 0, `${bad} bad`);
+check("500 dungeons across every floor size: connected, legal, and a vault that never blocks the exit", bad === 0, `${bad} bad`);
+// If this ever reads zero the shipped templates are not registered, and
+// every dungeon checked above is one the game would never build.
+check("the shipped room templates reach the floors the game generates", authored > 0, `${authored} of 500`);
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

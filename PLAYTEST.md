@@ -13,30 +13,35 @@ it is now.
 
 ## 1. The run, by the numbers
 
-Measured over 400 generated floors.
+Measured over 400 generated floors at each depth, with the shipped room
+templates registered, so these are the floors the game actually builds.
 
-| Measure | Min | Mean | Max |
+| Measure (min / mean / max) | Floor 1 | Floor 2 | Floor 3 |
 | --- | --- | --- | --- |
-| Rooms on a floor | 8 | 10.0 | 12 |
-| Doorways from start to exit | 3 | 4.6 | 8 |
-| Gems available on a floor | 9 | 11.0 | 13 |
-| Chests on a floor | 3 | 7.3 | 15 |
-| Watchers on a floor (second down) | 0 | 1.3 | 5 |
-| Floors with a locked vault | | 400 of 400 | |
-| Walking time along the shortest path, no stops | 14 s | 20 s | 32 s |
+| Rooms on a floor | 8 / 9.0 / 10 | 10 / 11.6 / 13 | 12 / 13.8 / 16 |
+| Doorways from start to exit | 3 / 4.3 / 8 | 3 / 4.9 / 8 | 4 / 5.4 / 9 |
+| Gems available | 9 / 10.0 / 11 | 11 / 12.6 / 14 | 13 / 14.8 / 17 |
+| Chests | 3 / 4.7 / 8 | 5 / 8.6 / 13 | 7 / 11.4 / 19 |
+| Watchers | none | 0 / 2.1 / 6 | 0 / 4.5 / 9 |
+| Locked vaults | 400 of 400 | 400 of 400 | 400 of 400 |
+| Walking the shortest path, no stops | 14 / 19 / 31 s | 14 / 21 / 32 s | 17 / 22 / 33 s |
+| Alarm on arrival | 0 | 1 | 2 |
+| Rooms before the Warden wakes | 3 | 2 | 1 |
 
-A run is three floors. The exit charges 3 gems, then 5, then 7: fifteen in
-tolls against about thirty-three on the ground, so a run that took
-everything and paid every toll would climb out with eighteen. That number
-is the score, and nothing else is.
+A run is three floors, and each is larger and worse than the one above it.
+The exit charges 3 gems, then 5, then 7: fifteen in tolls against about
+thirty-seven on the ground, so a run that took everything and paid every
+toll would climb out with twenty-two. That number is the score, and nothing
+else is.
 
 **The bargain.** Every gem taken raises the floor's alarm, and the alarm is
-the only thing the Warden reads. Six gems fully rouse it, and a floor holds
-eleven, so the back half of any floor is worked against a Warden that hunts
-rather than wanders, steps between rooms every four seconds instead of
-nine, and crosses a room at 4.4 units a second. The player walks at 5 and
-runs at 8, so it can never simply catch someone who keeps moving. It wins
-by being in the doorway you wanted.
+the only thing the Warden reads. Six gems fully rouse it, and the shallowest
+floor holds ten, so the back half of any floor is worked against a Warden
+that hunts rather than wanders, steps between rooms every four seconds
+instead of nine, and crosses a room at 4.4 units a second. Deeper floors
+start part-roused, so the third needs only one gem to set it hunting. The
+player walks at 5 and runs at 8, so it can never simply catch someone who
+keeps moving. It wins by being in the doorway you wanted.
 
 That is the whole decision the game asks, once a room: the toll is paid,
 the exit is open, and there are four more gems on this floor. Do you go
@@ -222,11 +227,17 @@ nobody has held a Deck with this on it.
 - **Does anyone work out the inner line?** Keeping ahead of the arms near
   the middle is a walk and near the wall is a dash. That is the whole skill
   of the room, and it is never explained.
-- **Is the first meeting readable?** The Warden wakes after two rooms and
-  the game says one line about it, once. If players do not understand that
-  running works, that line is not doing its job.
+- **Is the first meeting readable?** The Warden wakes after three rooms on
+  the first floor, and the game says one line about it, once. If players do
+  not understand that running works, that line is not doing its job.
 - **Three floors of the same ten room kinds.** Watch for the point where a
-  player recognises a room and stops looking at it.
+  player recognises a room and stops looking at it. The deeper floors are
+  bigger, which buys variety and spends patience; the third is around half
+  again the size of the first.
+- **Is the bottom floor too much?** It arrives at alarm 2 with one room of
+  grace and two thirds of its plain rooms watched. That is meant to read as
+  the bottom of something. If players stop taking gems there rather than
+  hurrying, it has tipped from tense to hopeless.
 - **Does anyone drink the unknown potion?** Four slots, eight items, two of
   which wake the floor. If players hoard and never use them, the good ones
   are not good enough or the bad ones are too frightening. If they drink
@@ -252,10 +263,21 @@ All in `src/game/world.ts`:
 | `ALARM_HUNTS_AT` / `ALARM_MAX` | 3 / 6 | When it starts hunting, and when it stops getting worse |
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |
 | `WARDEN_STEP_CALM_S` / `_ROUSED_S` | 9 / 4 | Seconds between rooms |
-| `WARDEN_GRACE_ROOMS` | 2 | Rooms entered before it wakes |
-| `SENTRY_CHANCE` / `SENTRY_SPIN` | 0.45 / 0.55 | How many plain rooms have a watcher, and how fast it turns |
+| `SENTRY_SPIN` | 0.55 | Radians a second the beam turns |
 | `SENTRY_PATIENCE` / `SENTRY_ALARM` | 0.9 s / 1 | How long in the light before it calls, and what that costs |
 | `ARENA_DURATION_S` / `ARENA_SPIN` | 14 / 0.75 | How long the arms turn, and how fast |
 
-Room counts per floor: `minRooms` / `maxRooms` in `generateDungeon`, in
-`src/game/dungeon/generate.ts`.
+Everything that changes with depth is one table, `floorRules(floor)` in the
+same file - the generator, the Warden's grace, the alarm a floor starts at,
+how many rooms are watched, and the line the player is shown on arriving:
+
+| Floor | Rooms | Warden grace | Alarm on arrival | Rooms watched |
+| --- | --- | --- | --- | --- |
+| 1 | 8-10 | 3 rooms | 0 | none |
+| 2 | 10-13 | 2 rooms | 1 | 45% |
+| 3 | 12-16 | 1 room | 2 | 65% |
+
+Floor three therefore arrives one gem short of `ALARM_HUNTS_AT`: the first
+thing taken down there sets the Warden hunting. `yarn test:layout` checks
+that no row is gentler than the one above it, and `yarn test:smoke` walks a
+seed down all three floors twice and compares them room for room.

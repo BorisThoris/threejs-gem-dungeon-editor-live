@@ -1,14 +1,17 @@
 import { useEffect } from "react";
 
 import { bus } from "../events";
+import { floorRules } from "../world";
 
 /**
- * The one line of teaching the Warden gets.
+ * The few lines of teaching the run gets.
  *
- * It is never explained in a menu nobody reads: the first time it wakes,
- * the player is told what woke it and that running works, and the first
- * time it walks into their room they are told to leave. After that the
- * game says nothing and lets the sound do the work.
+ * It is never explained in a menu nobody reads: the first time the Warden
+ * wakes, the player is told what woke it and that running works, and the
+ * first time it walks into their room they are told to leave. After that the
+ * game says nothing and lets the sound do the work. Arriving on a floor is
+ * the exception that repeats, because each one down is a different place and
+ * a player who is not told that only finds out by being caught by it.
  */
 const WOKE = "Something woke below. It walks the floor now, and every gem you take makes it worse.";
 const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
@@ -40,6 +43,7 @@ export function useWardenWarning() {
         told.seen = true;
         say(SEEN);
       }),
+      bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
         told = { woke: false, here: false, seen: false };
       }),

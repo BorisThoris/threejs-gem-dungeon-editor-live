@@ -3,10 +3,15 @@
 A first-person dungeon run built on React Three Fiber, Rapier and Zustand,
 packaged for the desktop with Electron.
 
-Three floors down. Each floor is a fresh dungeon holding about eight gems,
-and the door out charges a toll that rises as you descend: three, then five,
-then seven. Whatever you are still carrying when you climb out is what you
-got away with.
+Three floors down. Each floor is a fresh dungeon, and the door out charges a
+toll that rises as you descend: three, then five, then seven. Whatever you
+are still carrying when you climb out is what you got away with.
+
+Each floor down is also worse than the one above it. The upper vaults are
+small, unwatched, and slow to notice you. Below that the halls widen,
+watchers stand in them, and the floor is stirring before you touch anything.
+The bottom is large enough to get lost in, watched almost everywhere, and one
+gem short of being hunted the moment you step off the stair.
 
 The catch is that every gem you take wakes the thing that walks the floor.
 The Warden cannot be fought and cannot be blocked - it drifts through

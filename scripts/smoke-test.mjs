@@ -214,7 +214,18 @@ if (exitDoor) {
     const after = await snap();
     const floor = await page.evaluate(() => window.__run.getState().floor);
     ok("exit opens once paid and leads down a floor", after.phase === "playing" && after.gems === 1 && floor === 2 && after.room === "start", `${after.phase}, floor ${floor}, room ${after.room}, ${after.gems} gems left`);
-    ok("the spare gem carries down and the new floor is calm", await page.evaluate(() => window.__run.getState().alarm === 0 && window.__run.getState().wardenRoomId === null));
+    // The alarm does not follow you down: the new floor starts at whatever
+    // its own rules say, which is quieter than the floor you just robbed and
+    // no longer zero once you are deep enough.
+    const arrival = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { alarm: s.alarm, starts: window.__derived.rules().startingAlarm, warden: s.wardenRoomId };
+    });
+    ok(
+      "the spare gem carries down and the floor's alarm is its own, not the last one's",
+      arrival.alarm === arrival.starts && arrival.alarm < alarmAfterGems && arrival.warden === null,
+      JSON.stringify({ ...arrival, cameFrom: alarmAfterGems })
+    );
     ok("control returned on the new floor", !after.transitioning && after.y > 0.5, JSON.stringify(after));
     // The last floor's exit ends the run: taken at the store level, since
     // walking two more floors is the same code path as the one just walked.
@@ -633,6 +644,74 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     return { quickBefore, quickAfter };
   });
   ok("a potion is not spent by the pause menu", paused.quickAfter === paused.quickBefore && paused.quickAfter > 5, JSON.stringify(paused));
+}
+
+// The descent, driven through the real store: a seed replays floor for
+// floor, and each floor down is worse than the one above it. The generator
+// being deterministic is checked offline; this checks the thing built on top
+// of it - the seed each floor is derived from, the alarm it starts at, and
+// the watchers standing in it.
+{
+  const descent = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const readRun = async (seed) => {
+      run.getState().startRun(seed);
+      await wait(1000);
+      const floors = [];
+      for (let guard = 0; guard < 8; guard++) {
+        const s = run.getState();
+        const d = s.dungeon;
+        floors.push({
+          floor: s.floor,
+          alarm: s.alarm,
+          seed: d.seed,
+          runSeed: s.runSeed,
+          ends: [d.startId, d.endId, d.vaultId ?? null, d.keyRoomId ?? null],
+          rooms: d.rooms.map((r) => [r.id, r.kind, r.size, r.shape, r.grid.x, r.grid.z, Object.entries(r.links).sort()]),
+          watchers: d.rooms.map((r) => {
+            const p = window.__sentryFor(r, d.seed, s.floor);
+            return p ? [+p.at[0].toFixed(4), +p.at[2].toFixed(4), +p.phase.toFixed(6)] : null;
+          }),
+        });
+        // Stand in the exit and report in: the store's own way down.
+        run.setState({ transitioning: true, currentRoomId: d.endId });
+        run.getState().roomReady(d.endId);
+        await wait(800);
+        if (run.getState().phase !== "playing") break;
+      }
+      return floors;
+    };
+    const one = await readRun(4243);
+    const two = await readRun(4243);
+    return {
+      same: JSON.stringify(one) === JSON.stringify(two),
+      count: one.length,
+      seeds: one.map((f) => f.seed),
+      runSeeds: one.map((f) => f.runSeed),
+      rooms: one.map((f) => f.rooms.length),
+      alarms: one.map((f) => f.alarm),
+      watched: one.map((f) => f.watchers.filter(Boolean).length),
+    };
+  });
+  ok("a seed replays the whole run, floor for floor", descent.same && descent.count > 1, JSON.stringify(descent));
+  ok("every floor of a run is a different dungeon", new Set(descent.seeds).size === descent.count, JSON.stringify(descent.seeds));
+  ok("the run's own seed survives every descent", descent.runSeeds.every((s) => s === 4243), JSON.stringify(descent.runSeeds));
+  ok(
+    "each floor down is larger than the one above it",
+    descent.rooms.every((n, i) => i === 0 || n > descent.rooms[i - 1]),
+    JSON.stringify(descent.rooms)
+  );
+  ok(
+    "the first floor arrives still and the last arrives stirring",
+    descent.alarms[0] === 0 && descent.alarms[descent.alarms.length - 1] > 0,
+    JSON.stringify(descent.alarms)
+  );
+  ok(
+    "nothing watches the first floor and something watches the last",
+    descent.watched[0] === 0 && descent.watched[descent.watched.length - 1] > 0,
+    JSON.stringify(descent.watched)
+  );
 }
 
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
