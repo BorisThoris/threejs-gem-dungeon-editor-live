@@ -15,6 +15,7 @@ import { createRng } from "../rng";
 import type { PropPlacement, Room } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { nameOf, rollItem } from "../items/catalog";
+import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
@@ -84,9 +85,21 @@ export function Dressing({ room, seed }: DressingProps) {
     const gem = gemFor(room, seed);
     return [...reservedAnchors(room), ...(gem ? [gem] : [])];
   }, [room, seed]);
+  // The braziers are drawn as one instanced set rather than one at a time:
+  // four of them in every room, seven identical meshes each, and nothing
+  // about them ever moves. Split by kind here rather than in the layouts,
+  // so an authored template that places a brazier joins the same set.
+  const [braziers, rest] = useMemo(() => {
+    const lit: PropPlacement[] = [];
+    const other: PropPlacement[] = [];
+    for (const p of placements) (p.kind === "torch" ? lit : other).push(p);
+    return [lit, other];
+  }, [placements]);
+
   return (
     <group>
-      {placements.map((p, i) => (
+      <Braziers places={braziers} />
+      {rest.map((p, i) => (
         <Prop key={i} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
       ))}
       <ContactShadows placements={placements} extra={grounded} />

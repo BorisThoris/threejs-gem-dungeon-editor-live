@@ -74,6 +74,18 @@ Two stores that both claimed the player's stats. So:
   24 of 34.6 rooms looking different to 32, and the game from 98 distinct
   room appearances to 555. The doors, the spawns and the middle pair do not turn:
   they are fixed by which walls the room has.
+- A prop's shapes and materials are shared for the life of the program,
+  from `src/game/props/shared.ts`. Written as plain JSX every mesh built its
+  own: 85 geometry objects and 85 material objects in one room, for 32
+  distinct shapes, rebuilt on every room mount. Nothing in there is ever
+  disposed, deliberately - it is a small fixed set every room needs - so
+  nothing may mutate one, and the props that animate do it to a light.
+- The braziers are one instanced set per room, in
+  `src/game/props/Braziers.tsx`. Four per room, seven identical meshes each,
+  in every room in the game: the largest group of draw calls there was, and
+  the same argument the colliders already won. The lights are not instanced
+  and cannot be - a light is not drawn - so there is still one per brazier,
+  flickering out of step.
 - The anchor rings are spaced from `PROP_SPECS`, not from magic numbers: the
   widest furnishing an arrangement can place decides how far `near` stands
   from the lanes, how far `far` stands from `near`, and how far the corner

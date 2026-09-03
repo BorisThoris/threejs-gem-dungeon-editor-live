@@ -22,11 +22,24 @@ const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM =
   process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
-/** Measured max over 108 rooms: 54 calls, 2214 triangles, 52 geometries, 6 textures. */
+/**
+ * Measured max over 142 rooms: 51 calls, 2184 triangles, 63 geometries, 6
+ * textures.
+ *
+ * `geometries` measures something different since the props started sharing
+ * their shapes. It used to be a per-room cost - a room built a fresh
+ * geometry for every mesh in it, 85 of them for 32 distinct shapes, and
+ * threw them all away on the way out - so a rising number meant a room was
+ * getting heavier. Now the program holds one geometry per shape for its
+ * whole life and the number is close to constant: what it catches is a new
+ * shape being added, not a room leaking. The check below, which walks a
+ * floor four times and compares, is what catches a leak, and it is the one
+ * that matters now.
+ */
 const BUDGET = {
   calls: 72,
   triangles: 3400,
-  geometries: 72,
+  geometries: 88,
   textures: 12,
   /**
    * Megabytes of heap still held after a collection, over ten seconds of
@@ -145,9 +158,19 @@ const drift = await page.evaluate(async () => {
   for (let lap = 0; lap < 3; lap++) await walk();
   return { first, last: { ...window.__perf }, laps: 4, rooms: ids.length };
 });
+/**
+ * The real leak guard, and it can be strict now.
+ *
+ * It allowed twelve geometries of drift over four laps, because every room
+ * built its own and the count genuinely moved about as rooms of different
+ * sizes came and went - which meant a room that leaked eleven would have
+ * passed. The shapes are shared for the life of the program now, so after
+ * the first lap has visited every room the number should not move at all.
+ * Measured over four laps of nine rooms: 56 then 56.
+ */
 ok(
   "walking the floor four times over does not pile up geometries",
-  drift.last.geometries <= drift.first.geometries + 12,
+  drift.last.geometries <= drift.first.geometries + 2,
   JSON.stringify(drift)
 );
 

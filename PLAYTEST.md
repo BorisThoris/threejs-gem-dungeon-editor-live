@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Twenty more turned up on the next passes, all of them things nobody had
+Twenty-one more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -276,6 +276,25 @@ looked at because the tests were green:
   of 34.6 rooms looked different before the turn, 32.1 after it, and the
   first repeat moved from room 11.7 to room 18.1. The direction was right
   and the numbers were not.
+- **A room built eighty-five geometries and eighty-five materials, for
+  thirty-two shapes, and threw them all away on the way out.** The perf
+  budget had been named as the thing now limiting content - the worst room
+  was at 60 draw calls of 72 - so the room was measured before anything was
+  done about it. 85 visible meshes, 85 distinct geometry objects, 85
+  distinct material objects, 32 distinct shapes, all of it allocated when
+  the room mounted and discarded when the player walked out, and allocated
+  again in the next room. The same cost this project has already paid twice:
+  once for procedural textures regenerated per room, once for the fifteen
+  rigid bodies that are now one static body. The props share their shapes
+  and their materials now - 43 geometries and 38 materials for the whole
+  program - and the count stopped moving: walking a floor four times over
+  read 56 then 56, where the leak guard had been written to tolerate twelve
+  of drift because the number genuinely wandered. It is strict now.
+  Sharing did almost nothing for draw calls, which is what the budget
+  actually measures, and saying so is the point: the draw calls were the
+  braziers. Four per room, seven identical meshes each, in every room in the
+  game, before any furniture - 28 of them. They are one instanced set now,
+  five draws, and the worst room went from 60 to 51.
 - **Five more props moved the tail and not the number.** The last thing this
   document kept naming was the fifteen props, so five more were added - a
   crate, a statue, an urn, rubble and a banner - along with a fourth
@@ -467,9 +486,10 @@ nobody has held a Deck with this on it.
   their corners; and every room is furnished in one of eight orientations,
   so 31 of the 34 rooms in a run look different and the first repeat is at
   room 21, with twenty props rather than fifteen and every kind furnished
-  more than one way. What is left to run out is not the room list any more:
-  it is the perf budget, which the worst room now uses 60 draw calls of 72
-  of, and the ten room kinds themselves.
+  more than one way. The perf budget is no longer the thing in the way: the
+  worst room is 51 draw calls of 72 rather than 60, and the props share
+  their shapes for the life of the program instead of rebuilding them per
+  room. What is left to run out is the ten room kinds themselves.
 - **Is the bottom floor too much?** It arrives at alarm 2 with one room of
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than

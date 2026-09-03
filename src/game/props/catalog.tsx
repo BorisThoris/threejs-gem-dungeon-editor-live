@@ -7,6 +7,8 @@ import type { PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
+import { Braziers } from "./Braziers";
+import { geo, mat } from "./shared";
 import { PROP_SPECS, type PropSpec } from "./specs";
 
 // The numbers live in specs.ts, which has no React in it: the collider
@@ -42,25 +44,12 @@ const DARK_WOOD = "#4a3320";
 const IRON = "#8d939c";
 const BONE = "#d9d2c0";
 
-/**
- * Point light intensity is in candela since three r155: a torch at 1 lit
- * nothing and every room read as black. Rooms are lit from their corners,
- * so this is most of the light a player sees by.
- */
-const TORCH_INTENSITY = 14;
-
 function Barrel(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <cylinderGeometry args={[0.42, 0.38, 1.1, 14]} />
-        <meshStandardMaterial color={WOOD} roughness={0.85} />
-      </mesh>
+      <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD, roughness: 0.85 })} />
       {[0.25, 0.85].map((y) => (
-        <mesh key={y} position={[0, y, 0]}>
-          <torusGeometry args={[0.43, 0.03, 6, 20]} />
-          <meshStandardMaterial color={IRON} metalness={0.7} roughness={0.4} />
-        </mesh>
+        <mesh key={y} position={[0, y, 0]} geometry={geo("torus", 0.43, 0.03, 6, 20)} material={mat({ color: IRON, metalness: 0.7, roughness: 0.4 })} />
       ))}
     </group>
   );
@@ -79,17 +68,11 @@ function Barrel(p: PropProps) {
 function Bookshelf(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.1, 0]} castShadow>
-        <boxGeometry args={[1.6, 2.2, 0.45]} />
-        <meshStandardMaterial color={DARK_WOOD} roughness={0.9} />
-      </mesh>
+      <mesh position={[0, 1.1, 0]} castShadow geometry={geo("box", 1.6, 2.2, 0.45)} material={mat({ color: DARK_WOOD, roughness: 0.9 })} />
       {[0.45, 1.05, 1.65].map((y) => (
         <group key={y}>
           {[-0.5, -0.2, 0.1, 0.4].map((x, i) => (
-            <mesh key={i} position={[x, y + 0.18, 0.16]} castShadow>
-              <boxGeometry args={[0.22, 0.34, 0.28]} />
-              <meshStandardMaterial color={["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i]} />
-            </mesh>
+            <mesh key={i} position={[x, y + 0.18, 0.16]} castShadow geometry={geo("box", 0.22, 0.34, 0.28)} material={mat({ color: ["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i] })} />
           ))}
         </group>
       ))}
@@ -104,14 +87,8 @@ function Candle(p: PropProps) {
   });
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.32, 10]} />
-        <meshStandardMaterial color="#efe6c8" />
-      </mesh>
-      <mesh position={[0, 0.38, 0]}>
-        <coneGeometry args={[0.035, 0.11, 8]} />
-        <meshStandardMaterial color="#ffb24d" emissive="#ff9a2e" emissiveIntensity={2} />
-      </mesh>
+      <mesh position={[0, 0.16, 0]} geometry={geo("cylinder", 0.06, 0.07, 0.32, 10)} material={mat({ color: "#efe6c8" })} />
+      <mesh position={[0, 0.38, 0]} geometry={geo("cone", 0.035, 0.11, 8)} material={mat({ color: "#ffb24d", emissive: "#ff9a2e", emissiveIntensity: 2 })} />
       <pointLight ref={light} position={[0, 0.5, 0]} color="#ffb86c" intensity={2.5} distance={4} />
     </group>
   );
@@ -120,19 +97,10 @@ function Candle(p: PropProps) {
 function Chair(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.45, 0]} castShadow>
-        <boxGeometry args={[0.5, 0.06, 0.5]} />
-        <meshStandardMaterial color={WOOD} />
-      </mesh>
-      <mesh position={[0, 0.8, -0.22]} castShadow>
-        <boxGeometry args={[0.5, 0.7, 0.06]} />
-        <meshStandardMaterial color={WOOD} />
-      </mesh>
+      <mesh position={[0, 0.45, 0]} castShadow geometry={geo("box", 0.5, 0.06, 0.5)} material={mat({ color: WOOD })} />
+      <mesh position={[0, 0.8, -0.22]} castShadow geometry={geo("box", 0.5, 0.7, 0.06)} material={mat({ color: WOOD })} />
       {[[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.22, z]}>
-          <boxGeometry args={[0.05, 0.44, 0.05]} />
-          <meshStandardMaterial color={DARK_WOOD} />
-        </mesh>
+        <mesh key={i} position={[x, 0.22, z]} geometry={geo("box", 0.05, 0.44, 0.05)} material={mat({ color: DARK_WOOD })} />
       ))}
     </group>
   );
@@ -141,18 +109,9 @@ function Chair(p: PropProps) {
 function Chest(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.3, 0]} castShadow>
-        <boxGeometry args={[0.9, 0.6, 0.55]} />
-        <meshStandardMaterial color={WOOD} roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.66, 0]} castShadow>
-        <boxGeometry args={[0.92, 0.14, 0.57]} />
-        <meshStandardMaterial color={DARK_WOOD} />
-      </mesh>
-      <mesh position={[0, 0.45, 0.29]}>
-        <boxGeometry args={[0.12, 0.16, 0.04]} />
-        <meshStandardMaterial color="#c8a34a" metalness={0.8} roughness={0.3} />
-      </mesh>
+      <mesh position={[0, 0.3, 0]} castShadow geometry={geo("box", 0.9, 0.6, 0.55)} material={mat({ color: WOOD, roughness: 0.8 })} />
+      <mesh position={[0, 0.66, 0]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD })} />
+      <mesh position={[0, 0.45, 0.29]} geometry={geo("box", 0.12, 0.16, 0.04)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
     </group>
   );
 }
@@ -160,10 +119,7 @@ function Chest(p: PropProps) {
 function Crystal(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <octahedronGeometry args={[0.32, 0]} />
-        <meshStandardMaterial color="#b9f6ff" emissive="#4fd3e8" emissiveIntensity={0.9} roughness={0.2} />
-      </mesh>
+      <mesh position={[0, 0.5, 0]} castShadow geometry={geo("octahedron", 0.32, 0)} material={mat({ color: "#b9f6ff", emissive: "#4fd3e8", emissiveIntensity: 0.9, roughness: 0.2 })} />
       <pointLight position={[0, 0.6, 0]} color="#7fe3ff" intensity={4} distance={5} />
     </group>
   );
@@ -172,14 +128,8 @@ function Crystal(p: PropProps) {
 function Pillar(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 2.1, 0]} castShadow>
-        <cylinderGeometry args={[0.34, 0.4, 4.2, 12]} />
-        <meshStandardMaterial color="#7d7c84" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.55, 0.6, 0.24, 12]} />
-        <meshStandardMaterial color="#66656d" />
-      </mesh>
+      <mesh position={[0, 2.1, 0]} castShadow geometry={geo("cylinder", 0.34, 0.4, 4.2, 12)} material={mat({ color: "#7d7c84", roughness: 0.9 })} />
+      <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.55, 0.6, 0.24, 12)} material={mat({ color: "#66656d" })} />
     </group>
   );
 }
@@ -187,14 +137,8 @@ function Pillar(p: PropProps) {
 function Potion(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]}>
-        <sphereGeometry args={[0.14, 12, 10]} />
-        <meshStandardMaterial color="#63d2ff" emissive="#2c8fb8" emissiveIntensity={0.6} transparent opacity={0.85} />
-      </mesh>
-      <mesh position={[0, 0.34, 0]}>
-        <cylinderGeometry args={[0.04, 0.05, 0.14, 8]} />
-        <meshStandardMaterial color="#c8b58a" />
-      </mesh>
+      <mesh position={[0, 0.16, 0]} geometry={geo("sphere", 0.14, 12, 10)} material={mat({ color: "#63d2ff", emissive: "#2c8fb8", emissiveIntensity: 0.6, transparent: true, opacity: 0.85 })} />
+      <mesh position={[0, 0.34, 0]} geometry={geo("cylinder", 0.04, 0.05, 0.14, 8)} material={mat({ color: "#c8b58a" })} />
     </group>
   );
 }
@@ -202,15 +146,9 @@ function Potion(p: PropProps) {
 function Skull(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.2, 0]} castShadow>
-        <sphereGeometry args={[0.2, 12, 10]} />
-        <meshStandardMaterial color={BONE} roughness={0.9} />
-      </mesh>
+      <mesh position={[0, 0.2, 0]} castShadow geometry={geo("sphere", 0.2, 12, 10)} material={mat({ color: BONE, roughness: 0.9 })} />
       {[-0.07, 0.07].map((x) => (
-        <mesh key={x} position={[x, 0.22, 0.17]}>
-          <sphereGeometry args={[0.045, 8, 6]} />
-          <meshStandardMaterial color="#1a1417" />
-        </mesh>
+        <mesh key={x} position={[x, 0.22, 0.17]} geometry={geo("sphere", 0.045, 8, 6)} material={mat({ color: "#1a1417" })} />
       ))}
     </group>
   );
@@ -219,15 +157,9 @@ function Skull(p: PropProps) {
 function Table(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.78, 0]} castShadow>
-        <boxGeometry args={[1.8, 0.08, 1]} />
-        <meshStandardMaterial color={WOOD} roughness={0.8} />
-      </mesh>
+      <mesh position={[0, 0.78, 0]} castShadow geometry={geo("box", 1.8, 0.08, 1)} material={mat({ color: WOOD, roughness: 0.8 })} />
       {[[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.37, z]}>
-          <boxGeometry args={[0.08, 0.74, 0.08]} />
-          <meshStandardMaterial color={DARK_WOOD} />
-        </mesh>
+        <mesh key={i} position={[x, 0.37, z]} geometry={geo("box", 0.08, 0.74, 0.08)} material={mat({ color: DARK_WOOD })} />
       ))}
     </group>
   );
@@ -235,77 +167,35 @@ function Table(p: PropProps) {
 
 function Tile(p: PropProps) {
   return (
-    <mesh {...frame(p)} rotation={[-Math.PI / 2, 0, p.rotation ?? 0]} position={[p.position[0], p.position[1] + 0.015, p.position[2]]}>
-      <planeGeometry args={[2, 2]} />
-      <meshStandardMaterial color="#7d9179" roughness={0.6} />
-    </mesh>
+    <mesh {...frame(p)} rotation={[-Math.PI / 2, 0, p.rotation ?? 0]} position={[p.position[0], p.position[1] + 0.015, p.position[2]]} geometry={geo("plane", 2, 2)} material={mat({ color: "#7d9179", roughness: 0.6 })} />
   );
 }
 
+/**
+ * One brazier on its own, for the editor's catalogue of props.
+ *
+ * What a brazier is made of lives in Braziers.tsx, because a room draws all
+ * four of its own as one instanced set - four identical seven-mesh props in
+ * every room in the game was the largest group of draw calls there was.
+ * This is that same set with one brazier in it, so there is still only one
+ * description of what a brazier looks like.
+ */
 function Torch(p: PropProps) {
-  const light = useRef<PointLight>(null);
-  useFrame((state) => {
-    if (light.current) {
-      const t = state.clock.elapsedTime * 11 + p.position[0] * 3 + p.position[2];
-      light.current.intensity = TORCH_INTENSITY * (1 + Math.sin(t) * 0.13 + Math.sin(t * 2.7) * 0.07);
-    }
-  });
-  return (
-    <group {...frame(p)}>
-      {/* Three iron legs meeting under the bowl. */}
-      {[0, 1, 2].map((i) => {
-        const a = (i / 3) * Math.PI * 2;
-        return (
-          <mesh
-            key={i}
-            position={[Math.cos(a) * 0.22, 0.55, Math.sin(a) * 0.22]}
-            rotation={[Math.sin(a) * 0.32, 0, -Math.cos(a) * 0.32]}
-          >
-            <cylinderGeometry args={[0.025, 0.035, 1.15, 6]} />
-            <meshStandardMaterial color="#3a3d44" metalness={0.8} roughness={0.5} />
-          </mesh>
-        );
-      })}
-      <mesh position={[0, 1.18, 0]}>
-        <cylinderGeometry args={[0.34, 0.18, 0.3, 12, 1, true]} />
-        <meshStandardMaterial color="#3a3d44" metalness={0.8} roughness={0.5} side={2} />
-      </mesh>
-      {/* Coals: a glowing disc just inside the bowl's lip. */}
-      <mesh position={[0, 1.26, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.3, 12]} />
-        <meshStandardMaterial color="#ff6a1a" emissive="#ff4d00" emissiveIntensity={3} />
-      </mesh>
-      <mesh position={[0, 1.55, 0]}>
-        <coneGeometry args={[0.2, 0.6, 8]} />
-        <meshStandardMaterial color="#ffb24d" emissive="#ff7a1a" emissiveIntensity={2.4} transparent opacity={0.9} />
-      </mesh>
-      <mesh position={[0, 1.7, 0]}>
-        <coneGeometry args={[0.09, 0.42, 6]} />
-        <meshStandardMaterial color="#fff1b0" emissive="#ffd060" emissiveIntensity={3} />
-      </mesh>
-      <pointLight ref={light} position={[0, 1.8, 0]} color="#ffb86c" intensity={TORCH_INTENSITY} distance={11} decay={1.6} />
-    </group>
-  );
+  return <Braziers places={[{ kind: "torch", x: p.position[0], z: p.position[2] }]} />;
 }
 
 /** An interior wall segment, 3 units long, for authored layouts. */
 function Wall(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
-        <boxGeometry args={[3, 3, 0.4]} />
-        <meshStandardMaterial color="#55545c" roughness={0.95} />
-      </mesh>
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow geometry={geo("box", 3, 3, 0.4)} material={mat({ color: "#55545c", roughness: 0.95 })} />
     </group>
   );
 }
 
 function Web(p: PropProps) {
   return (
-    <mesh {...frame(p)} position={[p.position[0], p.position[1] + 1.6, p.position[2]]}>
-      <planeGeometry args={[1.4, 1.4]} />
-      <meshBasicMaterial color="#dfe3ea" transparent opacity={0.22} side={2} depthWrite={false} />
-    </mesh>
+    <mesh {...frame(p)} position={[p.position[0], p.position[1] + 1.6, p.position[2]]} geometry={geo("plane", 1.4, 1.4)} material={mat({ basic: true, color: "#dfe3ea", transparent: true, opacity: 0.22, side: 2, depthWrite: false })} />
   );
 }
 
@@ -319,16 +209,10 @@ function Web(p: PropProps) {
 function Crate(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.4, 0]} castShadow>
-        <boxGeometry args={[0.84, 0.8, 0.84]} />
-        <meshStandardMaterial color={WOOD} roughness={0.85} />
-      </mesh>
+      <mesh position={[0, 0.4, 0]} castShadow geometry={geo("box", 0.84, 0.8, 0.84)} material={mat({ color: WOOD, roughness: 0.85 })} />
       {/* Slats, so it is not a plain cube at close range. */}
       {[0.12, 0.68].map((y) => (
-        <mesh key={y} position={[0, y, 0]}>
-          <boxGeometry args={[0.88, 0.1, 0.88]} />
-          <meshStandardMaterial color={DARK_WOOD} roughness={0.9} />
-        </mesh>
+        <mesh key={y} position={[0, y, 0]} geometry={geo("box", 0.88, 0.1, 0.88)} material={mat({ color: DARK_WOOD, roughness: 0.9 })} />
       ))}
     </group>
   );
@@ -345,23 +229,11 @@ function Crate(p: PropProps) {
 function Statue(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]} castShadow>
-        <boxGeometry args={[0.9, 0.32, 0.9]} />
-        <meshStandardMaterial color="#5d5c64" roughness={0.95} />
-      </mesh>
-      <mesh position={[0, 1.05, 0]} castShadow>
-        <cylinderGeometry args={[0.22, 0.34, 1.5, 10]} />
-        <meshStandardMaterial color="#8c8a92" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 1.95, 0]} castShadow>
-        <sphereGeometry args={[0.21, 12, 10]} />
-        <meshStandardMaterial color="#8c8a92" roughness={0.9} />
-      </mesh>
+      <mesh position={[0, 0.16, 0]} castShadow geometry={geo("box", 0.9, 0.32, 0.9)} material={mat({ color: "#5d5c64", roughness: 0.95 })} />
+      <mesh position={[0, 1.05, 0]} castShadow geometry={geo("cylinder", 0.22, 0.34, 1.5, 10)} material={mat({ color: "#8c8a92", roughness: 0.9 })} />
+      <mesh position={[0, 1.95, 0]} castShadow geometry={geo("sphere", 0.21, 12, 10)} material={mat({ color: "#8c8a92", roughness: 0.9 })} />
       {/* Arms folded across it, which is what makes it read as a figure. */}
-      <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]}>
-        <boxGeometry args={[0.52, 0.14, 0.16]} />
-        <meshStandardMaterial color="#7e7c85" roughness={0.9} />
-      </mesh>
+      <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]} geometry={geo("box", 0.52, 0.14, 0.16)} material={mat({ color: "#7e7c85", roughness: 0.9 })} />
     </group>
   );
 }
@@ -370,18 +242,9 @@ function Statue(p: PropProps) {
 function Urn(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.6, 0]} castShadow>
-        <sphereGeometry args={[0.36, 12, 10]} />
-        <meshStandardMaterial color="#8a5a44" roughness={0.7} />
-      </mesh>
-      <mesh position={[0, 1.02, 0]}>
-        <cylinderGeometry args={[0.16, 0.12, 0.26, 10]} />
-        <meshStandardMaterial color="#7a4e3a" roughness={0.7} />
-      </mesh>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.2, 0.24, 0.24, 10]} />
-        <meshStandardMaterial color="#7a4e3a" roughness={0.75} />
-      </mesh>
+      <mesh position={[0, 0.6, 0]} castShadow geometry={geo("sphere", 0.36, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
+      <mesh position={[0, 1.02, 0]} geometry={geo("cylinder", 0.16, 0.12, 0.26, 10)} material={mat({ color: "#7a4e3a", roughness: 0.7 })} />
+      <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.2, 0.24, 0.24, 10)} material={mat({ color: "#7a4e3a", roughness: 0.75 })} />
     </group>
   );
 }
@@ -405,10 +268,7 @@ function Rubble(p: PropProps) {
   return (
     <group {...frame(p)}>
       {stones.map(([x, y, z, r], i) => (
-        <mesh key={i} position={[x, y, z]} rotation={[i * 0.7, i * 1.1, i * 0.4]} castShadow>
-          <dodecahedronGeometry args={[r, 0]} />
-          <meshStandardMaterial color={i % 2 ? "#6f6e76" : "#5c5b63"} roughness={0.95} />
-        </mesh>
+        <mesh key={i} position={[x, y, z]} rotation={[i * 0.7, i * 1.1, i * 0.4]} castShadow geometry={geo("dodecahedron", r, 0)} material={mat({ color: i % 2 ? "#6f6e76" : "#5c5b63", roughness: 0.95 })} />
       ))}
     </group>
   );
@@ -425,21 +285,12 @@ function Rubble(p: PropProps) {
 function Banner(p: PropProps) {
   return (
     <group {...frame(p)} position={[p.position[0], p.position[1] + 2.05, p.position[2]]}>
-      <mesh castShadow>
-        <boxGeometry args={[0.9, 1.7, 0.04]} />
-        <meshStandardMaterial color="#7a2f3c" roughness={0.85} />
-      </mesh>
+      <mesh castShadow geometry={geo("box", 0.9, 1.7, 0.04)} material={mat({ color: "#7a2f3c", roughness: 0.85 })} />
       {/* The rail it hangs from: the rotation belongs on the mesh, not on
           the geometry, which silently does nothing there. */}
-      <mesh position={[0, 0.9, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.04, 0.04, 1.05, 6]} />
-        <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
-      </mesh>
+      <mesh position={[0, 0.9, 0]} rotation={[0, 0, Math.PI / 2]} geometry={geo("cylinder", 0.04, 0.04, 1.05, 6)} material={mat({ color: IRON, metalness: 0.6, roughness: 0.5 })} />
       {/* A device on it, so it is not a rectangle of flat colour. */}
-      <mesh position={[0, 0.15, 0.03]}>
-        <circleGeometry args={[0.22, 12]} />
-        <meshStandardMaterial color="#d8b45c" roughness={0.6} />
-      </mesh>
+      <mesh position={[0, 0.15, 0.03]} geometry={geo("circle", 0.22, 12)} material={mat({ color: "#d8b45c", roughness: 0.6 })} />
     </group>
   );
 }

@@ -16,9 +16,14 @@ import { useFrame, useThree } from "@react-three/fiber";
  */
 export function Perf() {
   const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   useFrame(() => {
     if (!import.meta.env.DEV) return;
-    const w = window as unknown as { __perf?: Record<string, number> };
+    const w = window as unknown as { __perf?: Record<string, number>; __scene?: object };
+    // The scene itself, so a check can ask not just how many draw calls a
+    // room costs but which parts of the room are spending them. A number
+    // with no breakdown behind it is a number you can only stare at.
+    w.__scene = scene;
     const p = (w.__perf ??= { calls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0, frames: 0 });
     p.calls = gl.info.render.calls;
     p.triangles = gl.info.render.triangles;
