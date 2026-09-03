@@ -215,6 +215,11 @@ second model for it to be written in.
   good; the memory trial is begun and repeated; the challenge room's trap is
   sprung. Each exposes what a probe cannot see - the number sequence and the
   pattern - behind `import.meta.env.DEV`.
+- `yarn test:prod` is the only check that touches what ships. Every other
+  one drives the dev server, where the DEV blocks still exist; the
+  production bundle has no probe handles and no editor, so that one is
+  played through the menu and the keyboard alone and the rest is read off
+  the built files.
 - `yarn test:perf` reads three's own counters - draw calls, triangles, live
   geometries and textures - for every room of every floor, and the heap
   while the player sprints. Frame time is not measured, because the machine

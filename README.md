@@ -132,6 +132,7 @@ yarn typecheck      # must be clean; there is no error budget
 yarn lint
 yarn test:smoke     # drives the real game in a browser (see below)
 yarn test:perf      # what a room costs, against a written-down budget
+yarn test:prod      # builds dist and plays it, the way it actually ships
 yarn electron-dev   # the desktop shell against the dev server
 yarn electron-dist  # a packaged desktop build in dist-electron/
 yarn generate-icon  # redraw build/icon.png
@@ -224,6 +225,17 @@ findable with a look nothing else has.
 `yarn test:perf` walks every room of every floor and holds what it costs to
 the budget above. It also walks one floor four times over to catch a room
 that forgets to dispose what it made.
+
+`yarn test:prod` is the only one that touches the build that actually
+ships. Everything else drives the dev server, and the production bundle is
+a different program: `import.meta.env.DEV` is statically false, so every
+probe the other checks lean on is gone and the editor is dropped entirely.
+So this one builds `dist`, serves it, and plays it the way a stranger
+would - through the menu, the keyboard and what is on the screen - and
+reads the rest off the built files: no probe handles shipped, no editor
+strings in the bundle, `?editor` giving the game, nothing 404ing, and a
+first visit under 1.35 MB over the wire (1.05 MB today, almost all of it
+rapier and three).
 
 ```bash
 yarn dev --port 5199   # one terminal
