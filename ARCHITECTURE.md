@@ -171,6 +171,11 @@ second model for it to be written in.
 
 - `yarn typecheck` must be clean. There is no error budget.
 - `yarn lint` must be clean.
+- `yarn test:perf` reads three's own counters - draw calls, triangles, live
+  geometries and textures - for every room of every floor, and the heap
+  while the player sprints. Frame time is not measured, because the machine
+  this runs on has no GPU and a millisecond here says nothing about a Steam
+  Deck; those counters are CPU-side and mean the same thing everywhere.
 - `yarn test:layout` checks the room geometry over every size and 500
   seeds: anchors clear of the lanes and of each other, spikes in every trap
   room and never in a lane, the gem reachable, the generator connected.

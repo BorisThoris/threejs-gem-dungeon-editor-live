@@ -21,7 +21,8 @@
         "electron-dist": "yarn build && electron-builder --publish=never",
         "generate-icon": "node scripts/generate-icon.mjs",
         "test:smoke": "node scripts/smoke-test.mjs",
-        "test:layout": "node scripts/layout-check.mjs"
+        "test:layout": "node scripts/layout-check.mjs",
+        "test:perf": "node scripts/perf-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

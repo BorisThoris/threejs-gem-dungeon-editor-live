@@ -8,6 +8,7 @@ import { Player } from "./player/Player";
 import "./rooms/content";
 import "./puzzles/register";
 import { GroundPlane } from "./rooms/GroundPlane";
+import { Perf } from "./systems/Perf";
 import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { useCurrentRoom, useRun } from "./state/run";
@@ -91,6 +92,7 @@ export function Scene() {
       style={{ position: "absolute", inset: 0, background: "#050608" }}
     >
       <Anisotropy />
+      <Perf />
       <FloorLight />
       <PadPause />
       {/* The Warden walks the floor whether or not its room is mounted. */}

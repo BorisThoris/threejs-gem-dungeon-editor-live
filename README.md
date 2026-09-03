@@ -118,6 +118,7 @@ yarn build          # dist/, what Cloudflare Pages and Electron ship
 yarn typecheck      # must be clean; there is no error budget
 yarn lint
 yarn test:smoke     # drives the real game in a browser (see below)
+yarn test:perf      # what a room costs, against a written-down budget
 yarn electron-dev   # the desktop shell against the dev server
 yarn electron-dist  # a packaged desktop build in dist-electron/
 yarn generate-icon  # redraw build/icon.png
@@ -163,6 +164,23 @@ const h = () => performance.memory.usedJSHeapSize;
 let a = h(); setTimeout(() => console.log((h() - a) / 1024, "KB/s"), 1000);
 ```
 
+`yarn test:perf` does that measuring on every room of every floor and holds
+the result to a budget. What a room costs today, measured over a hundred of
+them across three floors and several seeds:
+
+| | Worst room | Budget |
+| --- | --- | --- |
+| Draw calls | 54 | 72 |
+| Triangles | 2,214 | 3,400 |
+| Live geometries | 52 | 72 |
+| Live textures | 6 | 12 |
+| Heap while sprinting | below zero - the collector keeps up | 1.5 KB/frame |
+
+The budgets are the measured worst case with about a third on top. They are
+not aspirations; they are a tripwire for the day a cycle adds a mesh per
+prop or an allocation per frame, which has happened twice here and was
+caught by nothing.
+
 ## Testing
 
 `yarn test:smoke` starts a browser against a dev server on port 5199 and
@@ -175,7 +193,13 @@ uncaught page error.
 
 `yarn test:layout` needs no browser: it checks the room geometry over every
 room size and 500 seeds - anchors clear of the door lanes and of each other,
-spikes in every trap room, the gem reachable, the generator connected.
+spikes in every trap room, the gem reachable, the generator connected, every
+arrangement standing each prop on an anchor of its own, and every item
+findable with a look nothing else has.
+
+`yarn test:perf` walks every room of every floor and holds what it costs to
+the budget above. It also walks one floor four times over to catch a room
+that forgets to dispose what it made.
 
 ```bash
 yarn dev --port 5199   # one terminal
