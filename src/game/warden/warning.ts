@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { bus } from "../events";
+import { useRun } from "../state/run";
 import { floorRules } from "../world";
 
 /**
@@ -16,11 +17,12 @@ import { floorRules } from "../world";
 const WOKE = "Something woke below. It walks the floor now, and every gem you take makes it worse.";
 const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
 const SEEN = "The watcher called out. Stay out of the light - it tells the Warden where you are.";
+const LOUD = "It heard that. Running carries down here; walking does not.";
 const HOLD_MS = 6500;
 
 export function useWardenWarning() {
   useEffect(() => {
-    let told = { woke: false, here: false, seen: false };
+    let told = { woke: false, here: false, seen: false, loud: false };
     let timer: number | null = null;
     const say = (text: string) => {
       bus.emit("hint", text);
@@ -43,9 +45,16 @@ export function useWardenWarning() {
         told.seen = true;
         say(SEEN);
       }),
+      bus.on("wardenHeard", () => {
+        // Only worth saying once there is something to hear it: told before
+        // the Warden wakes, the line is a warning about nothing.
+        if (told.loud || !useRun.getState().wardenRoomId) return;
+        told.loud = true;
+        say(LOUD);
+      }),
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
-        told = { woke: false, here: false, seen: false };
+        told = { woke: false, here: false, seen: false, loud: false };
         say(floorRules(1).blurb);
       }),
     ];

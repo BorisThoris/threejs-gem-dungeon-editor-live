@@ -31,6 +31,8 @@ export interface BusEvents {
   wardenNearby: { roomId: string };
   /** It reached the player. */
   wardenStruck: undefined;
+  /** A sprint gave the player away: it knows which room they are in. */
+  wardenHeard: undefined;
   /** The Bone Charm ate a hit. */
   charmSpent: undefined;
   /** A gem was taken and the floor is that much more awake. */

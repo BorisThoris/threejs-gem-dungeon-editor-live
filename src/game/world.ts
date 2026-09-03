@@ -124,6 +124,18 @@ export const ALARM_MAX = 6;
 export const WARDEN_TOUCH_RADIUS = 1.05;
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
+/**
+ * How long a sprint keeps the Warden pointed at you after you stop.
+ *
+ * A dash is half again a walk and used to cost nothing, so the whole game
+ * was played holding shift and the speed was not a choice. It is loud
+ * instead: while you run, and for a few seconds after, the Warden knows
+ * which room you are in and walks towards it whatever the alarm says.
+ * Walking is quiet. Long enough that crossing a room at a run is a
+ * commitment; short enough that stopping is a real answer.
+ */
+export const NOISE_HOLD_S = 4;
+
 // How long a floor is left alone before it wakes scales with depth, and so
 // lives with the rest of the descent in `floorRules` below.
 

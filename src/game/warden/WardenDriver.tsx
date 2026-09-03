@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { canControl, useRun } from "../state/run";
+import { canControl, useRun, wardenHears } from "../state/run";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
 
@@ -11,7 +11,8 @@ import { behaviourFor } from "./tuning";
  *
  * Mounted once for the whole run, not per room: the Warden exists on the
  * whole floor, and only the frame loop is guaranteed to be running whatever
- * room is mounted. It steps on a timer set by the floor's alarm, and the
+ * room is mounted. It steps on a timer set by the floor's alarm, walks
+ * towards the player when the alarm or a sprint has given them away, and the
  * player hears it whenever it steps into a room next door.
  */
 export function WardenDriver() {
@@ -22,7 +23,7 @@ export function WardenDriver() {
     if (!run.wardenRoomId || !run.dungeon || !run.currentRoomId) return;
     if (!canControl(run)) return;
 
-    const behaviour = behaviourFor(run.alarm);
+    const behaviour = behaviourFor(run.alarm, wardenHears(run));
     since.current += delta;
     if (since.current < behaviour.stepSeconds) return;
     since.current = 0;

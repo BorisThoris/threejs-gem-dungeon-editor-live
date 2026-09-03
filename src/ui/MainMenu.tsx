@@ -26,7 +26,8 @@ export function MainMenu() {
               still carry when you climb out is what you got away with.
               <br />
               <br />
-              Every gem you take wakes the thing that walks the floor. You cannot fight it.
+              Every gem you take wakes the thing that walks the floor. You cannot fight it,
+              and you cannot outrun it quietly: it hears a sprint.
               You have {STARTING_LIVES} lives. Each floor down is larger, more closely
               watched, and wakes sooner than the one above it.
             </p>
@@ -59,7 +60,10 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Satchel</dt>
               <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X and Y on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
-              <dd style={{ margin: 0 }}>Hold Shift, or L3. The Warden is slower than you are.</dd>
+              <dd style={{ margin: 0 }}>
+                Hold Shift, or L3. The Warden is slower than you are - but running is
+                loud, and while it can hear you it walks straight for you.
+              </dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>

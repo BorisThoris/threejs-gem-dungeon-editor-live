@@ -163,13 +163,18 @@ export function Player() {
     // they stay in step with the legs at any speed and stop dead when the
     // player does.
     const moved = Math.hypot(dir.x, dir.z) * delta;
+    const running = dash && moved > 0.001;
+    // Running is the only thing in the game that gives the player's room
+    // away without costing them anything permanent. The store throttles the
+    // write; this just says it is happening.
+    if (running) run.makeNoise();
     const gait = bob.current;
     gait.distance += moved;
     gait.strength += ((moved > 0.001 ? 1 : 0) - gait.strength) * Math.min(1, delta * 9);
     if (gait.distance >= gait.nextStep) {
       gait.nextStep = gait.distance + STRIDE;
       gait.strong = !gait.strong;
-      sfx.step(gait.strong);
+      sfx.step(gait.strong, running);
     }
   });
 

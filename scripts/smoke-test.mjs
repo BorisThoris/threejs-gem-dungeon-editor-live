@@ -714,6 +714,35 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+// Running is the price of speed: it tells the Warden which room you are in
+// for as long as you keep it up and a few seconds after. Driven through the
+// real keys, because the point is that holding Shift does it.
+{
+  await page.evaluate(async () => {
+    window.__run.getState().startRun(31337);
+    await new Promise((r) => setTimeout(r, 1200));
+    // A woken Warden that is not already hunting: the alarm alone must not
+    // be what makes it walk towards the player in this check.
+    const s = window.__run.getState();
+    const far = s.dungeon.rooms.find((r) => r.id !== s.currentRoomId && r.id !== s.dungeon.endId);
+    window.__run.setState({ alarm: 0, wardenRoomId: far.id });
+  });
+  const quiet = await page.evaluate(() => ({ hears: window.__derived.hears(), hunts: window.__derived.hunts() }));
+  await page.mouse.click(640, 400);
+  await page.keyboard.down("ShiftLeft");
+  await page.keyboard.down("KeyW");
+  await page.waitForTimeout(900);
+  const loud = await page.evaluate(() => ({ hears: window.__derived.hears(), hunts: window.__derived.hunts() }));
+  await page.keyboard.up("KeyW");
+  await page.keyboard.up("ShiftLeft");
+  // Walking is quiet, so what it heard has to run out on its own.
+  await page.waitForTimeout(5200);
+  const after = await page.evaluate(() => ({ hears: window.__derived.hears(), hunts: window.__derived.hunts() }));
+  ok("a calm floor is not hunting anyone", !quiet.hears && !quiet.hunts, JSON.stringify(quiet));
+  ok("running gives the player away", loud.hears && loud.hunts, JSON.stringify(loud));
+  ok("and stopping lets it lose them again", !after.hears && !after.hunts, JSON.stringify(after));
+}
+
 // A floor's starting alarm is its baseline, not just its opening value: a
 // scroll may calm the bottom floor, but never past what it arrived at.
 {

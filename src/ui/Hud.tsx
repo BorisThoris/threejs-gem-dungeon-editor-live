@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
+
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
-import { spareGems, tollNow, useCurrentRoom, useRun } from "../game/state/run";
+import { spareGems, tollNow, useCurrentRoom, useRun, wardenHears } from "../game/state/run";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
@@ -30,9 +32,11 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
+  const heard = useHeard();
+
   const owed = Math.max(0, toll - gems);
-  const rouse = behaviourFor(alarm).rouse;
-  const alarmColour = ALARM_COLOUR[Math.min(3, Math.floor(rouse * 3.99))];
+  const rouse = behaviourFor(alarm, heard).rouse;
+  const alarmColour = heard ? colors.danger : ALARM_COLOUR[Math.min(3, Math.floor(rouse * 3.99))];
 
   return (
     <div
@@ -80,7 +84,7 @@ export function Hud() {
       {wardenAwake && (
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>
-          <span style={{ color: alarmColour }}>{alarmLabel(alarm)}</span>
+          <span style={{ color: alarmColour }}>{alarmLabel(alarm, heard)}</span>
         </div>
       )}
       {relics.length > 0 && (
@@ -91,4 +95,21 @@ export function Hud() {
       )}
     </div>
   );
+}
+
+/**
+ * Whether the Warden can still hear the player, polled.
+ *
+ * Noise runs out on a clock rather than on a state change, so like the
+ * minimap's gloom this has to look rather than wait to be told - otherwise
+ * the HUD would keep saying "Heard you" until something else happened to
+ * change the store.
+ */
+function useHeard(): boolean {
+  const [heard, setHeard] = useState(() => wardenHears(useRun.getState()));
+  useEffect(() => {
+    const t = window.setInterval(() => setHeard(wardenHears(useRun.getState())), 250);
+    return () => window.clearInterval(t);
+  }, []);
+  return heard;
 }

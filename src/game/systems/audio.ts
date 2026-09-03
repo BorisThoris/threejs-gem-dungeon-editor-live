@@ -251,10 +251,13 @@ export const sfx = {
    * a synthesised footstep that tries to be a real one lands in the uncanny
    * valley, and a soft scuff does not.
    */
-  step(strong: boolean) {
+  step(strong: boolean, running = false) {
     const wobble = 0.85 + Math.random() * 0.4;
-    noiseBurst(strong ? 0.085 : 0.07, strong ? 0.16 : 0.11, 420 * wobble);
-    tone(70 * wobble, 0.06, "sine", strong ? 0.14 : 0.09, 48 * wobble);
+    // A run is heard by the Warden, so it had better be heard by the player
+    // too: the same footstep, harder and with more body under it.
+    const loud = running ? 1.7 : 1;
+    noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.16 : 0.11) * loud, 420 * wobble);
+    tone(70 * wobble, 0.06, "sine", (strong ? 0.14 : 0.09) * loud, 48 * wobble);
   },
   /** Something dropped into the satchel. */
   take() {

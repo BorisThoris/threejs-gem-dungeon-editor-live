@@ -35,6 +35,13 @@ thirty-seven on the ground, so a run that took everything and paid every
 toll would climb out with twenty-two. That number is the score, and nothing
 else is.
 
+**The other bargain.** A dash is 8 units a second against a walk of 5 and
+used to cost nothing, so the whole game was played holding shift. It is loud
+now: while the player runs, and for four seconds after, the Warden walks
+straight for the room they are in whatever the alarm says. Nothing about it
+is permanent - stop, and it loses you - which is what makes it a different
+cost from a gem.
+
 **The bargain.** Every gem taken raises the floor's alarm, and the alarm is
 the only thing the Warden reads. Six gems fully rouse it, and the shallowest
 floor holds ten, so the back half of any floor is worked against a Warden
@@ -245,6 +252,11 @@ nobody has held a Deck with this on it.
 - **Does anyone work out the inner line?** Keeping ahead of the arms near
   the middle is a walk and near the wall is a dash. That is the whole skill
   of the room, and it is never explained.
+- **Does anyone stop running?** A sprint is 60% faster and tells the Warden
+  which room you are in for four seconds. If players sprint everywhere
+  anyway, the noise costs too little; if they never sprint, it costs too
+  much. The interesting answer is that they sprint between rooms and walk
+  inside them.
 - **Is the first meeting readable?** The Warden wakes after three rooms on
   the first floor, and the game says one line about it, once. If players do
   not understand that running works, that line is not doing its job.
@@ -277,6 +289,7 @@ All in `src/game/world.ts`:
 | `STARTING_LIVES` | 3 | Lives at the start; carried between floors |
 | `DAMAGE_COOLDOWN_S` | 1.5 | Invulnerability after a hit |
 | `WALK_SPEED` / `DASH_SPEED` | 5 / 8 | Units per second |
+| `NOISE_HOLD_S` | 4 | Seconds a sprint keeps the Warden pointed at you |
 | `ALARM_PER_GEM` | 1 | How much a gem rouses the floor |
 | `ALARM_HUNTS_AT` / `ALARM_MAX` | 3 / 6 | When it starts hunting, and when it stops getting worse |
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |

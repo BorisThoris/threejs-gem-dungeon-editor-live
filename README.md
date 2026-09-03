@@ -20,6 +20,11 @@ barrels and pillars - but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
 
+Speed is not free either. A sprint is loud, and while it can hear you the
+Warden stops wandering and walks straight for the room you are in. Walking
+is quiet. So every corridor is the same small question as the floor itself:
+fast, or unnoticed.
+
 Gems also buy relics at the shop, which change a run's rules: a lantern
 that shows you where the Warden is, boots that make you quicker, a charm
 that eats a hit, a ledger that makes every exit cheaper. Every gem spent

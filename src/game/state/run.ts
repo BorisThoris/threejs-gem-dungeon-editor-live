@@ -24,10 +24,12 @@ import {
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { banishTo, wakingRoom } from "../warden/roam";
+import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
   DAMAGE_COOLDOWN_S,
   FLOORS,
+  NOISE_HOLD_S,
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
@@ -78,6 +80,13 @@ export interface RunState {
   appearances: Appearances;
   /** Timed effects, as the wall-clock second each one runs out. */
   effects: { swift: number; mire: number; gloom: number };
+  /**
+   * Run-clock time until which the player is still being heard. Running is
+   * loud: while this is in the future the Warden knows which room they are
+   * in. Held here rather than in the player so the HUD, the driver and the
+   * tests all read the same fact.
+   */
+  noisyUntil: number;
   /** Whether a Scroll of Mapping has shown this floor. */
   mapped: boolean;
   /** Chests already emptied, as `roomId:index`. */
@@ -151,6 +160,8 @@ export interface RunState {
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
   raiseAlarm: (amount: number) => void;
+  /** The player made a noise loud enough to be placed. Sprinting does this. */
+  makeNoise: () => void;
   /** Pick up the floor's key. */
   takeKey: (roomId: string) => void;
   /** Spend a key on a vault. Returns false without one. */
@@ -223,6 +234,7 @@ export const useRun = create<RunState>()(
     identified: [],
     appearances: appearancesFor(0),
     effects: { swift: 0, mire: 0, gloom: 0 },
+    noisyUntil: 0,
     mapped: false,
     looted: [],
     sealedRoomId: null,
@@ -273,6 +285,7 @@ export const useRun = create<RunState>()(
         identified: [],
         appearances: appearancesFor(dungeon.seed),
         effects: { swift: 0, mire: 0, gloom: 0 },
+        noisyUntil: 0,
         mapped: false,
         looted: [],
         sealedRoomId: null,
@@ -388,6 +401,7 @@ export const useRun = create<RunState>()(
           // touch anything. Relics, gems and the satchel carry down; what
           // was drunk on the last floor does not.
           effects: { swift: 0, mire: 0, gloom: 0 },
+          noisyUntil: 0,
           mapped: false,
           looted: [],
           sealedRoomId: null,
@@ -582,6 +596,19 @@ export const useRun = create<RunState>()(
       bus.emit("alarmRaised", { alarm });
     },
 
+    makeNoise: () => {
+      const s = get();
+      const until = runClock(s) + NOISE_HOLD_S;
+      // Called from the frame loop while a sprint is held, so it must be
+      // cheap and must not write on every frame: extending a noise that is
+      // already running by less than a tenth of a second changes nothing
+      // anyone can see and re-renders everything that watches it.
+      if (until - s.noisyUntil < 0.1) return;
+      const heard = wardenHears(s);
+      set({ noisyUntil: until });
+      if (!heard) bus.emit("wardenHeard");
+    },
+
     takeKey: (roomId) => {
       const s = get();
       if (s.keyTakenIn !== null) return;
@@ -658,6 +685,13 @@ export function speedNow(s: RunState): { walk: number; dash: number } {
   return { walk: walkSpeed * factor, dash: dashSpeed * factor };
 }
 
+/**
+ * Whether the Warden currently knows where the player is by sound. A gem
+ * taken rouses the floor for good; a sprint only gives you away while it
+ * lasts, which is what makes the two different costs.
+ */
+export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
+
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
 
@@ -682,5 +716,10 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     spare: () => spareGems(useRun.getState()),
     walk: () => speedNow(useRun.getState()).walk,
     rules: () => floorRules(useRun.getState().floor),
+    hears: () => wardenHears(useRun.getState()),
+    hunts: () => {
+      const s = useRun.getState();
+      return behaviourFor(s.alarm, wardenHears(s)).hunts;
+    },
   };
 }

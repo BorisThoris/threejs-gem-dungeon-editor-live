@@ -120,7 +120,10 @@ src/
    the store. The shop sells a life for a gem. Puzzles pay a gem when solved.
 5. Every gem taken raises the floor's `alarm`. The alarm decides how often
    the Warden steps from room to room, whether it wanders or walks towards
-   the player, and how fast it crosses a room. It cannot be fought and is
+   the player, and how fast it crosses a room. Sprinting gives the player's
+   room away for as long as it lasts and a few seconds after - the same
+   "walks towards you", bought for nothing permanent, which is what makes
+   the dash a decision rather than a free upgrade. It cannot be fought and is
    slower than a walk at every level: it wins by being between the player
    and the door. Touching the player costs a life and throws it three
    doorways away.
