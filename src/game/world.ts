@@ -127,6 +127,33 @@ export const WARDEN_BANISH_DISTANCE = 3;
 /** It will not appear on a floor until this many rooms have been entered. */
 export const WARDEN_GRACE_ROOMS = 2;
 
+// --- The Sentry -------------------------------------------------------------
+
+/**
+ * A watcher on a post, turning a beam around an otherwise ordinary room.
+ *
+ * The Warden roams and this does not, which is the point of having both:
+ * one makes you leave, the other makes you time your crossing. It never
+ * takes a life - being seen rouses the floor and tells the Warden where you
+ * are, which is worse than a life and is felt later rather than at once.
+ *
+ * They start on the second floor. The first is where a player learns the
+ * dungeon, and a room that punishes walking through it is not the place to
+ * do that.
+ */
+export const SENTRY_FIRST_FLOOR = 2;
+/** How much of a floor's plain rooms get one. */
+export const SENTRY_CHANCE = 0.45;
+/** Radians a second, and how wide the beam is either side of centre. */
+export const SENTRY_SPIN = 0.55;
+export const SENTRY_HALF_ANGLE = 0.42;
+export const SENTRY_RANGE = 11;
+/** Seconds held in the light before it calls out. */
+export const SENTRY_PATIENCE = 0.9;
+/** How much being seen rouses the floor, and how long before it can again. */
+export const SENTRY_ALARM = 1;
+export const SENTRY_COOLDOWN_S = 6;
+
 // --- The arena --------------------------------------------------------------
 
 /**

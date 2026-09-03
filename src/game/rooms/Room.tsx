@@ -10,6 +10,8 @@ import { IronKey } from "../props/IronKey";
 import { Hazard } from "../props/Hazard";
 import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
+import { sentryFor } from "../sentry/placement";
+import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT } from "../world";
 import { gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
@@ -68,6 +70,8 @@ export function Room({ room, seed }: RoomProps) {
 
   const gem = gemFor(room, seed);
   const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
+  const floor = useRun((s) => s.floor);
+  const sentry = sentryFor(room, seed, floor);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
   return (
@@ -112,6 +116,7 @@ export function Room({ room, seed }: RoomProps) {
       )}
 
       {gem && <Gem roomId={room.id} position={gem} />}
+      {sentry && <Sentry position={sentry} />}
       {holdsKey && (
         <IronKey roomId={room.id} position={keyPosition(room, seed, gem ? [gem] : [])} />
       )}

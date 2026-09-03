@@ -271,6 +271,12 @@ export const sfx = {
     tone(150, 0.4, "sawtooth", 0.35, 84);
     noiseBurst(0.3, 0.22, 900);
   },
+  /** A Sentry calling out: two notes climbing, and something hears it. */
+  spotted() {
+    tone(440, 0.16, "square", 0.3);
+    later(120, () => tone(660, 0.3, "square", 0.28));
+    later(260, () => tone(880, 0.45, "sawtooth", 0.2));
+  },
   /** Iron on stone: the key coming off the floor. */
   key() {
     tone(880, 0.08, "triangle", 0.28);

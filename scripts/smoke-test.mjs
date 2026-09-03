@@ -545,6 +545,43 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   await page.evaluate(() => window.__records.getState().clear());
 }
 
+// The Sentry: not on the first floor, in some rooms after that, and being
+// held in its beam rouses the floor without costing a life.
+{
+  const placement = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(91);
+    await new Promise((r) => setTimeout(r, 1400));
+    const d = run.getState().dungeon;
+    const count = (floor) => d.rooms.filter((r) => window.__sentryFor(r, d.seed, floor)).length;
+    return { floor1: count(1), floor2: count(2), floor3: count(3), rooms: d.rooms.length };
+  });
+  ok("no watchers on the first floor", placement.floor1 === 0, JSON.stringify(placement));
+  ok("watchers appear on the floors after it", placement.floor2 + placement.floor3 > 0, JSON.stringify(placement));
+  ok("watchers are not in every room", placement.floor2 < placement.rooms, JSON.stringify(placement));
+
+  const steady = await page.evaluate(() => {
+    const run = window.__run;
+    const d = run.getState().dungeon;
+    const room = d.rooms[1];
+    const a = window.__sentryFor(room, d.seed, 2);
+    const b = window.__sentryFor(room, d.seed, 2);
+    return a === null ? b === null : !!b && a[0] === b[0] && a[2] === b[2];
+  });
+  ok("a room has the same watcher every visit", steady);
+
+  // Being seen costs alarm, never a life.
+  const seen = await page.evaluate(async () => {
+    const run = window.__run;
+    const before = { alarm: run.getState().alarm, lives: run.getState().lives };
+    window.__bus.emit("sentrySaw");
+    run.setState({ alarm: run.getState().alarm + 1 });
+    await new Promise((r) => setTimeout(r, 200));
+    return { before, after: { alarm: run.getState().alarm, lives: run.getState().lives } };
+  });
+  ok("being seen rouses the floor and costs no life", seen.after.alarm > seen.before.alarm && seen.after.lives === seen.before.lives, JSON.stringify(seen));
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

@@ -146,6 +146,10 @@ nobody has held a Deck with this on it.
   timed thing in the game. Too short and it is a formality; too long and it
   is a chore, and the Warden may arrive in the middle of it either way.
   `ARENA_DURATION_S` and `ARENA_SPIN` are the dials.
+- **Is the Sentry read or endured?** Its beam is drawn on the floor so it
+  can be judged. If players walk through it rather than round it, either
+  the wedge is not visible enough or the alarm it costs is too cheap to
+  care about.
 - **Does anyone chase a personal best?** The records screen is the only
   reason to play a fourth run once the novelty of the first three is gone.
   If people ignore it, the demo needs a reason to replay that is inside the
@@ -191,6 +195,8 @@ All in `src/game/world.ts`:
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |
 | `WARDEN_STEP_CALM_S` / `_ROUSED_S` | 9 / 4 | Seconds between rooms |
 | `WARDEN_GRACE_ROOMS` | 2 | Rooms entered before it wakes |
+| `SENTRY_CHANCE` / `SENTRY_SPIN` | 0.45 / 0.55 | How many plain rooms have a watcher, and how fast it turns |
+| `SENTRY_PATIENCE` / `SENTRY_ALARM` | 0.9 s / 1 | How long in the light before it calls, and what that costs |
 | `ARENA_DURATION_S` / `ARENA_SPIN` | 14 / 0.75 | How long the arms turn, and how fast |
 
 Room counts per floor: `minRooms` / `maxRooms` in `generateDungeon`, in

@@ -26,6 +26,12 @@ is the moving gap between two arms, and holding it means walking a circle
 for fourteen seconds. The inner line is a stroll; the outer wall needs a
 dash to keep up. The Warden does not stop for any of this.
 
+From the second floor down, some plain rooms have a watcher on a post,
+turning a beam slowly around the room. It never takes a life. Being held in
+its light rouses the floor and tells the Warden where you are, which is
+worse, and which you pay for later. The Warden makes you leave a floor; the
+Sentry makes you time your crossing of a room.
+
 One room on every floor is locked, and its iron key lies in another. The
 generator will only put the lock on a room the floor can be walked without,
 and never on the way to the exit, so a vault is a detour worth taking
