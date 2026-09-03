@@ -88,6 +88,11 @@ export default function App() {
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.
     void import("./game/rooms/anchors").then((m) => (w.__anchorsFor = m.reservedAnchorsFor));
+    // Where a room's gem is, for the walker that plays a run to the end.
+    // Without it a probe has to sweep the eight diagonal anchors hoping to
+    // cross one, which is how the old gem check came to fail one run in
+    // five: it was testing its own luck.
+    void import("./game/rooms/kinds").then((m) => (w.__gemFor = m.gemFor));
     // The audio module, from the same instance the game plays through.
     //
     // A check that reaches for it with its own `import()` gets a different

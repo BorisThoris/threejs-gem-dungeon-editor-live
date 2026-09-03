@@ -560,6 +560,54 @@ had looked at because the tests were green:
   arbitrary seed. That is a convenience rather than a room they cannot
   finish, and on a Deck Steam's own on-screen keyboard covers it.
 
+- **Nobody had ever finished the game.** Every check in this project drives
+  a piece of it - a room, a puzzle, a purchase, a sound, a gamepad - and the
+  one thing a player actually does, start at the top and come out of the
+  bottom, was the one thing nothing did. The evidence that the demo could be
+  completed was this line, in the smoke test:
+
+  ```
+  run.setState({ gems: 9, floor: 3, currentRoomId: d.endId })
+  ```
+
+  which is not finishing the game. It is telling the game it has been
+  finished, and it would have gone on passing if the third floor's toll had
+  been set past what the floor holds, if a door had stopped charging, or if
+  the exit had stopped noticing the last floor.
+
+  `yarn test:run` walks it instead. It reads the dungeon the way a player
+  reads the map, plans a route to a room that still holds a gem, goes and
+  takes it, and when it can afford the door it goes and pays - three floors,
+  ending on the victory screen. Doors are taken by standing in them and
+  pressing E. Nothing is set on the run except lives.
+
+  It comes out the far side on all three seeds. **A finished run is 21 to 24
+  rooms entered, 26 to 41 doors taken, and exactly 15 gems** - which is 3
+  plus 5 plus 7, the three tolls to the gem. A player who takes only what
+  the doors ask for banks nothing at all; every point of score in the game
+  is something taken beyond the price of leaving, which is the decision the
+  whole design is built on and is now a measured fact rather than an
+  intention. Run against a third floor whose toll is raised past what it
+  holds, the check reports the walker taking every gem on the floor and
+  never reaching the exit.
+
+  What it does not say is that you can *survive* it. Lives are topped up,
+  because the walker makes no attempt to evade the Warden and a check that
+  fails at random is worse than no check - it reports how often it had to,
+  which is one to five times a run. Nor is the two and a half minutes it
+  takes a run length: this machine has no GPU, and the walker steps between
+  doorways rather than crossing rooms on foot. Rooms, doors and gems are
+  what it measured.
+
+  The bug in it was mine and worth recording. The walker runs inside the
+  page - fifty teleports and waits a floor, each one a round trip if driven
+  from node - and asks node for the one thing it cannot do, a real key
+  press. The first version had node listening for that request on a fixed
+  budget rather than until the walk finished, so a floor crossed in twenty
+  seconds still cost a hundred and fifty and the whole check took twenty
+  minutes. It was waiting on a clock instead of on the thing it was waiting
+  for.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it

@@ -283,6 +283,15 @@ second model for it to be written in.
   drives the desktop one. It also holds the build config and the Steam
   instructions to each other: the name of the executable is one fact
   written in two places, and they had drifted.
+- `yarn test:run` is the only check that finishes the game. It plays a
+  whole run - route to a room that still has a gem, take it, and when the
+  toll is affordable go and pay it, three floors to the victory screen -
+  pressing E at every door and setting nothing on the run but lives. It
+  says the dungeon can be finished, not that you can survive it: the walker
+  does not evade the Warden and reports how often it had to be picked up.
+  Before it, the only evidence a run could be completed was a `setState`
+  that put the player in the last room of the last floor with the gems
+  already in hand.
 - `yarn test:prod` is the only check that touches what ships. Every other
   one drives the dev server, where the DEV blocks still exist; the
   production bundle has no probe handles and no editor, so that one is
