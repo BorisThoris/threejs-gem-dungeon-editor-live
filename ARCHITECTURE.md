@@ -123,7 +123,10 @@ src/
    the player, and how fast it crosses a room. Sprinting gives the player's
    room away for as long as it lasts and a few seconds after - the same
    "walks towards you", bought for nothing permanent, which is what makes
-   the dash a decision rather than a free upgrade. It cannot be fought and is
+   the dash a decision rather than a free upgrade. A Scroll of Echoes sets a
+   lure room instead: the Warden walks there rather than towards the player
+   and stops listening for footsteps until it arrives or the sound goes
+   cold, which is the one thing in the run that buys the right to sprint. It cannot be fought and is
    slower than a walk at every level: it wins by being between the player
    and the door. Touching the player costs a life and throws it three
    doorways away.

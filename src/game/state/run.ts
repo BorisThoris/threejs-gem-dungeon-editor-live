@@ -10,10 +10,12 @@ import {
   AVARICE_GEMS,
   BANISH_CALM,
   DREAD_ALARM,
+  ECHOES_S,
   GLOOM_S,
   ITEMS,
   MIRE_S,
   MIRE_MULTIPLIER,
+  ITEM_IDS,
   SATCHEL_SLOTS,
   SWIFTNESS_S,
   SWIFTNESS_MULTIPLIER,
@@ -80,6 +82,14 @@ export interface RunState {
   appearances: Appearances;
   /** Timed effects, as the wall-clock second each one runs out. */
   effects: { swift: number; mire: number; gloom: number };
+  /**
+   * The room a thrown sound has sent the Warden to, and when it stops
+   * caring. It walks there rather than towards the player, and while it is
+   * doing that it is not listening for footsteps - which is what makes a
+   * Scroll of Echoes the one thing that buys the right to run.
+   */
+  wardenLure: string | null;
+  lureUntil: number;
   /**
    * Run-clock time until which the player is still being heard. Running is
    * loud: while this is in the future the Warden knows which room they are
@@ -235,6 +245,8 @@ export const useRun = create<RunState>()(
     appearances: appearancesFor(0),
     effects: { swift: 0, mire: 0, gloom: 0 },
     noisyUntil: 0,
+    wardenLure: null,
+    lureUntil: 0,
     mapped: false,
     looted: [],
     sealedRoomId: null,
@@ -296,6 +308,8 @@ export const useRun = create<RunState>()(
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
+        wardenLure: null,
+        lureUntil: 0,
         freeHitUsed: false,
         wardenMet: false,
         // The start room has to mount before the player is let go.
@@ -413,6 +427,8 @@ export const useRun = create<RunState>()(
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
+          wardenLure: null,
+          lureUntil: 0,
           freeHitUsed: false,
           transitioning: true,
         });
@@ -525,6 +541,13 @@ export const useRun = create<RunState>()(
       const s = get();
       const id = s.satchel[slot];
       if (!id || s.phase !== "playing" || s.paused || s.inputLocks > 0) return;
+      // Checked before the scroll is spent, not after: throwing a noise
+      // down a floor with nothing awake on it would consume the one card
+      // that buys a window, and the player could not have known.
+      if (id === "echoes" && !s.wardenRoomId) {
+        bus.emit("hint", "You could throw it, but nothing down here is listening yet.");
+        return;
+      }
       const now = runClock(s);
       const until = (seconds: number) => now + seconds;
 
@@ -550,6 +573,21 @@ export const useRun = create<RunState>()(
         case "mapping":
           set({ mapped: true });
           break;
+        case "echoes": {
+          // Thrown as far as the floor goes: the room the Warden would have
+          // woken in, which is the one farthest from where the player is
+          // standing.
+          const after = get();
+          const to =
+            after.dungeon && after.currentRoomId
+              ? wakingRoom(after.dungeon, after.currentRoomId)
+              : null;
+          if (to) {
+            set({ wardenLure: to, lureUntil: until(ECHOES_S) });
+            bus.emit("wardenLured", { roomId: to });
+          }
+          break;
+        }
         case "dread":
           get().raiseAlarm(DREAD_ALARM);
           break;
@@ -686,6 +724,16 @@ export function speedNow(s: RunState): { walk: number; dash: number } {
 }
 
 /**
+ * The room the Warden is currently walking to instead of the player's, or
+ * null. It stops caring when the sound goes cold or when it gets there and
+ * finds nothing.
+ */
+export function lureNow(s: RunState): string | null {
+  if (!s.wardenLure || !running(s, s.lureUntil)) return null;
+  return s.wardenRoomId === s.wardenLure ? null : s.wardenLure;
+}
+
+/**
  * Whether the Warden currently knows where the player is by sound. A gem
  * taken rouses the floor for good; a sprint only gives you away while it
  * lasts, which is what makes the two different costs.
@@ -717,9 +765,11 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     walk: () => speedNow(useRun.getState()).walk,
     rules: () => floorRules(useRun.getState().floor),
     hears: () => wardenHears(useRun.getState()),
+    lure: () => lureNow(useRun.getState()),
+    items: () => ITEM_IDS.slice(),
     hunts: () => {
       const s = useRun.getState();
-      return behaviourFor(s.alarm, wardenHears(s)).hunts;
+      return behaviourFor(s.alarm, !lureNow(s) && wardenHears(s)).hunts;
     },
   };
 }

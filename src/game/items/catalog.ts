@@ -3,7 +3,7 @@ import { createRng, shuffle } from "../rng";
 /**
  * What a dungeon holds besides gems.
  *
- * Eight consumables in two families. Which appearance means which item is
+ * Nine consumables in two families. Which appearance means which item is
  * shuffled at the start of every run, so a cloudy potion is a different
  * thing each game and the only way to learn is to drink one. That is the
  * whole point of them: the game already asks whether one more room is worth
@@ -24,6 +24,7 @@ export const ITEM_IDS = [
   "banish",
   "avarice",
   "gloom",
+  "echoes",
 ] as const;
 export type ItemId = (typeof ITEM_IDS)[number];
 
@@ -97,6 +98,13 @@ export const ITEMS: Record<ItemId, Item> = {
     blurb: "Your map goes dark for a while.",
     cruel: true,
   },
+  echoes: {
+    id: "echoes",
+    family: "scroll",
+    name: "Scroll of Echoes",
+    blurb: "Something clatters at the far end of the floor, and the Warden goes to find it.",
+    cruel: false,
+  },
 };
 
 /**
@@ -115,6 +123,7 @@ const SCROLL_LOOKS = [
   { label: "ASHEN MARK", colour: "#cbb9a4" },
   { label: "TWO CROWS", colour: "#dcd4bd" },
   { label: "NINE NAILS", colour: "#c9bda6" },
+  { label: "HOLLOW BELL", colour: "#d2c4ad" },
 ];
 
 export interface Appearance {
@@ -175,5 +184,16 @@ export const AVARICE_ALARM = 2;
 export const AVARICE_GEMS = 2;
 /** How much a banishment calms it. */
 export const BANISH_CALM = 3;
+/**
+ * How long a thrown sound holds the Warden's attention.
+ *
+ * Banishment moves it at once and calms the floor, and is the stronger
+ * card. This one moves nothing: it walks, which takes it several steps at
+ * four to nine seconds each, and the floor stays as roused as you left it.
+ * What it buys is a window and the knowledge of exactly where the Warden is
+ * going - including the right to run, because it is listening to the noise
+ * it has already heard rather than to you.
+ */
+export const ECHOES_S = 14;
 /** Slots in the satchel. */
 export const SATCHEL_SLOTS = 4;

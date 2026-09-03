@@ -18,6 +18,7 @@ const WOKE = "Something woke below. It walks the floor now, and every gem you ta
 const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
 const SEEN = "The watcher called out. Stay out of the light - it tells the Warden where you are.";
 const LOUD = "It heard that. Running carries down here; walking does not.";
+const THROWN = "Something clatters a long way off. It has gone to look, and it is not listening for you.";
 const HOLD_MS = 6500;
 
 export function useWardenWarning() {
@@ -52,6 +53,9 @@ export function useWardenWarning() {
         told.loud = true;
         say(LOUD);
       }),
+      // Not a one-off: this one is feedback for an action the player just
+      // took, and it says what the scroll bought them.
+      bus.on("wardenLured", () => say(THROWN)),
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
         told = { woke: false, here: false, seen: false, loud: false };

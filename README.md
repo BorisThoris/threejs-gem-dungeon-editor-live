@@ -56,6 +56,13 @@ two of them wake the floor. You carry four at a time and use them with the
 number keys, which means the real question is whether now - with something
 walking towards you - is the moment to find out what you picked up.
 
+One of them is the answer to the noise. A Scroll of Echoes throws a clatter
+to the far end of the floor, and the Warden goes to find it: it does not
+move it, it makes it walk, which takes a while and tells you exactly where
+it will be. While it is chasing a sound it already heard, it is not
+listening for you - so the scroll is also the one thing that buys you the
+right to run.
+
 Every dungeon is a seed, and the summary shows it. A run worth telling
 someone about is a run they can walk themselves, and the one you just lost
 is usually the one you want another go at, so the summary offers the same

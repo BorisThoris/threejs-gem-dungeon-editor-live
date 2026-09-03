@@ -318,9 +318,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
   const looks = await page.evaluate(() => {
     const a = window.__run.getState().appearances;
-    return Object.values(a).map((v) => v.unknown);
+    // Counted against the catalogue, not a number written here: adding an
+    // item and forgetting its look is exactly what this is for.
+    return { seen: Object.values(a).map((v) => v.unknown), items: window.__derived.items().length };
   });
-  ok("every item has its own look this run", new Set(looks).size === looks.length && looks.length === 8, looks.length + " looks");
+  ok(
+    "every item has its own look this run",
+    new Set(looks.seen).size === looks.seen.length && looks.seen.length === looks.items,
+    `${looks.seen.length} looks for ${looks.items} items`
+  );
 
   const shuffled = await page.evaluate(() => {
     const one = window.__run.getState().appearances.healing.unknown;
@@ -741,6 +747,59 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a calm floor is not hunting anyone", !quiet.hears && !quiet.hunts, JSON.stringify(quiet));
   ok("running gives the player away", loud.hears && loud.hunts, JSON.stringify(loud));
   ok("and stopping lets it lose them again", !after.hears && !after.hunts, JSON.stringify(after));
+}
+
+// Something to throw: the one thing that sends the Warden somewhere the
+// player is not, and the only thing that buys the right to run.
+{
+  const thrown = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(2468);
+    await wait(1200);
+    const s = run.getState();
+    const near = Object.values(s.dungeon.rooms.find((r) => r.id === s.currentRoomId).links).find(Boolean);
+    // Awake and right next door, so a lure has somewhere much worse to go.
+    run.setState({ wardenRoomId: near, satchel: ["echoes"], identified: ["echoes"] });
+    const before = { lure: window.__derived.lure(), warden: run.getState().wardenRoomId };
+    run.getState().useItem(0);
+    const after = run.getState();
+    const lure = window.__derived.lure();
+    // A sprint while it is chasing a noise must not pull it back: the
+    // player is still making noise, but the Warden is not listening.
+    run.getState().makeNoise();
+    const noisy = window.__derived.hears();
+    const stillLured = window.__derived.lure();
+    return {
+      before,
+      lure,
+      spent: after.satchel.length,
+      known: after.identified.includes("echoes"),
+      far: lure !== null && lure !== after.currentRoomId && lure !== near,
+      noisy,
+      stillLured,
+    };
+  });
+  ok("a thrown scroll sends it somewhere else", thrown.before.lure === null && thrown.lure !== null, JSON.stringify(thrown));
+  ok("and somewhere that is not where the player is", thrown.far, JSON.stringify(thrown));
+  ok("the scroll is spent and named by using it", thrown.spent === 0 && thrown.known, JSON.stringify(thrown));
+  ok(
+    "and keeps chasing it even while the player runs",
+    thrown.noisy && thrown.stillLured === thrown.lure,
+    JSON.stringify(thrown)
+  );
+
+  // Thrown on a floor with nothing awake, it is not spent.
+  const wasted = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(2469);
+    await new Promise((r) => setTimeout(r, 1000));
+    run.setState({ wardenRoomId: null, satchel: ["echoes"], identified: [] });
+    run.getState().useItem(0);
+    const s = run.getState();
+    return { held: s.satchel.length, known: s.identified.length, lure: window.__derived.lure() };
+  });
+  ok("and is not spent on a floor with nothing to hear it", wasted.held === 1 && wasted.known === 0 && wasted.lure === null, JSON.stringify(wasted));
 }
 
 // A floor's starting alarm is its baseline, not just its opening value: a

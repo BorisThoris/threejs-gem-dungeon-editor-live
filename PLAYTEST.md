@@ -268,7 +268,12 @@ nobody has held a Deck with this on it.
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than
   hurrying, it has tipped from tense to hopeless.
-- **Does anyone drink the unknown potion?** Four slots, eight items, two of
+- **Is the Scroll of Echoes read too late?** It is the only counter to the
+  noise the player makes and the only way to move the Warden without a
+  Banishment. Watch whether anyone throws it before they are cornered - if
+  it is only ever read in a panic, it is doing the Banishment's job and not
+  its own.
+- **Does anyone drink the unknown potion?** Four slots, nine items, two of
   which wake the floor. If players hoard and never use them, the good ones
   are not good enough or the bad ones are too frightening. If they drink
   everything the moment they find it, there is no decision there either.
@@ -290,6 +295,7 @@ All in `src/game/world.ts`:
 | `DAMAGE_COOLDOWN_S` | 1.5 | Invulnerability after a hit |
 | `WALK_SPEED` / `DASH_SPEED` | 5 / 8 | Units per second |
 | `NOISE_HOLD_S` | 4 | Seconds a sprint keeps the Warden pointed at you |
+| `ECHOES_S` | 14 | Seconds a thrown noise holds its attention |
 | `ALARM_PER_GEM` | 1 | How much a gem rouses the floor |
 | `ALARM_HUNTS_AT` / `ALARM_MAX` | 3 / 6 | When it starts hunting, and when it stops getting worse |
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |

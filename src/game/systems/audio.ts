@@ -274,6 +274,12 @@ export const sfx = {
     tone(150, 0.4, "sawtooth", 0.35, 84);
     noiseBurst(0.3, 0.22, 900);
   },
+  /** Something thrown, landing a long way off in the dark. */
+  clatter() {
+    noiseBurst(0.12, 0.13, 2400);
+    later(140, () => noiseBurst(0.16, 0.09, 1500));
+    later(300, () => tone(120, 0.5, "sine", 0.12, 70));
+  },
   /** A Sentry calling out: two notes climbing, and something hears it. */
   spotted() {
     tone(440, 0.16, "square", 0.3);

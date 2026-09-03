@@ -44,6 +44,7 @@ export function Audio() {
       bus.on("wardenNearby", () => sfx.wardenNear()),
       bus.on("wardenWoke", () => sfx.wardenNear()),
       bus.on("wardenEntered", () => sfx.wardenHere()),
+      bus.on("wardenLured", () => sfx.clatter()),
     ];
     return () => offs.forEach((off) => off());
   }, []);

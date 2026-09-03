@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
-import { spareGems, tollNow, useCurrentRoom, useRun, wardenHears } from "../game/state/run";
+import { lureNow, spareGems, tollNow, useCurrentRoom, useRun, wardenHears } from "../game/state/run";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
@@ -32,11 +32,15 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
-  const heard = useHeard();
+  const { heard, lured } = useWardenSense();
 
   const owed = Math.max(0, toll - gems);
   const rouse = behaviourFor(alarm, heard).rouse;
-  const alarmColour = heard ? colors.danger : ALARM_COLOUR[Math.min(3, Math.floor(rouse * 3.99))];
+  const alarmColour = lured
+    ? colors.accent
+    : heard
+      ? colors.danger
+      : ALARM_COLOUR[Math.min(3, Math.floor(rouse * 3.99))];
 
   return (
     <div
@@ -84,7 +88,7 @@ export function Hud() {
       {wardenAwake && (
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>
-          <span style={{ color: alarmColour }}>{alarmLabel(alarm, heard)}</span>
+          <span style={{ color: alarmColour }}>{alarmLabel(alarm, heard, lured)}</span>
         </div>
       )}
       {relics.length > 0 && (
@@ -98,18 +102,30 @@ export function Hud() {
 }
 
 /**
- * Whether the Warden can still hear the player, polled.
+ * What the Warden is currently going on: the player's footsteps, a thrown
+ * noise, or the alarm alone. Polled.
  *
- * Noise runs out on a clock rather than on a state change, so like the
- * minimap's gloom this has to look rather than wait to be told - otherwise
- * the HUD would keep saying "Heard you" until something else happened to
- * change the store.
+ * Both of the first two run out on a clock rather than on a state change,
+ * so like the minimap's gloom this has to look rather than wait to be told -
+ * otherwise the HUD would keep saying "Heard you" until something else
+ * happened to change the store.
  */
-function useHeard(): boolean {
-  const [heard, setHeard] = useState(() => wardenHears(useRun.getState()));
+function useWardenSense(): { heard: boolean; lured: boolean } {
+  const read = () => {
+    const s = useRun.getState();
+    const lured = lureNow(s) !== null;
+    return { heard: !lured && wardenHears(s), lured };
+  };
+  const [sense, setSense] = useState(read);
   useEffect(() => {
-    const t = window.setInterval(() => setHeard(wardenHears(useRun.getState())), 250);
+    const t = window.setInterval(
+      () => setSense((was) => {
+        const now = read();
+        return was.heard === now.heard && was.lured === now.lured ? was : now;
+      }),
+      250
+    );
     return () => window.clearInterval(t);
   }, []);
-  return heard;
+  return sense;
 }
