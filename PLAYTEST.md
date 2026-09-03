@@ -285,6 +285,11 @@ nobody has held a Deck with this on it.
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than
   hurrying, it has tipped from tense to hopeless.
+- **Is the Warden in the room too much, or not enough?** It is heard the
+  whole time it is in there now, swelling as it closes. That is meant to
+  turn the last few seconds from a surprise into a decision. If players
+  freeze rather than move, the sound has become a jump scare with a longer
+  fuse rather than information.
 - **Does the panning read as a direction?** The Warden's footfall through a
   wall and a watcher's call are both panned by where they are relative to
   where the player is looking. On speakers in a room it may read as nothing

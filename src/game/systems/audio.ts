@@ -124,6 +124,68 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
 
 const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
 
+/**
+ * The Warden crossing the room you are standing in.
+ *
+ * Every other cue is a one-shot, which was fine while the Warden was a
+ * thing that arrived: one knock through a wall, one note when it came in,
+ * and then it closed the distance in silence behind a vignette that said
+ * "close" without saying where. That is the one moment a player most needs
+ * to hear it - around which pillar, on which side - so this is a held
+ * sound rather than an event, and its side and weight are written every
+ * frame from where the thing actually is.
+ *
+ * Built once and updated in place. A cue restarted sixty times a second
+ * would allocate an oscillator, a gain and a panner per frame, which is
+ * precisely the shape of the stutters this project has already had; three
+ * AudioParam writes cost nothing and the performance check watches for the
+ * difference.
+ */
+let stalking: {
+  gain: GainNode;
+  panner: StereoPannerNode;
+  filter: BiquadFilterNode;
+  sub: OscillatorNode;
+  noise: AudioBufferSourceNode;
+  lfo: OscillatorNode;
+} | null = null;
+
+function startStalk(ctx: AudioContext): typeof stalking {
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  const panner = ctx.createStereoPanner();
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 300;
+
+  // A sub that is felt more than heard, and a breath of noise over it.
+  const sub = ctx.createOscillator();
+  sub.type = "sine";
+  sub.frequency.value = 46;
+  const noiseSource = ctx.createBufferSource();
+  noiseSource.buffer = noiseBuffer(ctx);
+  noiseSource.loop = true;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.value = 0.35;
+  noiseSource.connect(noiseGain).connect(filter);
+  sub.connect(filter);
+
+  // A slow swell, so it reads as something breathing rather than a tone
+  // somebody left on. Set once: the oscillator does the work, not the loop.
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 0.85;
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 0.4;
+  lfo.connect(lfoDepth).connect(gain.gain);
+
+  filter.connect(gain).connect(panner);
+  panner.connect(master!);
+  sub.start();
+  noiseSource.start();
+  lfo.start();
+  return { gain, panner, filter, sub, noise: noiseSource, lfo };
+}
+
 let bed: {
   gain: GainNode;
   filter: BiquadFilterNode;
@@ -361,9 +423,44 @@ export const sfx = {
     later(120, () => tone(132, 0.7, "sine", 0.25, 66));
     noiseBurst(0.6, 0.2, 500);
   },
+  /**
+   * How close it is (0 far, 1 on top of you) and which side it is on.
+   * Called every frame while it is in the room; silent at zero.
+   */
+  stalk(closeness: number, pan: number) {
+    const ctx = ensureContext();
+    if (!ctx || !master) return;
+    if (closeness <= 0) {
+      sfx.stalkStop();
+      return;
+    }
+    if (!stalking) stalking = startStalk(ctx);
+    if (!stalking) return;
+    const level = Math.min(1, closeness);
+    // The LFO swings around this, so the ceiling leaves room for it.
+    stalking.gain.gain.value = 0.06 + level * 0.5;
+    stalking.filter.frequency.value = 220 + level * 520;
+    stalking.panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
+  },
+  stalkStop() {
+    if (!stalking) return;
+    const s = stalking;
+    stalking = null;
+    s.gain.gain.value = 0;
+    try {
+      s.sub.stop();
+      s.noise.stop();
+      s.lfo.stop();
+    } catch {
+      // Already stopped: nothing to undo.
+    }
+    s.panner.disconnect();
+  },
   setMuted(next: boolean) {
     muted = next;
     if (master) master.gain.value = next ? 0 : 0.35;
   },
   isMuted: () => muted,
+  /** Whether the held Warden sound is running. For the smoke test. */
+  isStalking: () => stalking !== null,
 };

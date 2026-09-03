@@ -22,6 +22,12 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
+- Every sound is a one-shot except the Warden crossing your room, which is
+  built once and then written to every frame - three AudioParam values, no
+  new nodes. A cue rebuilt per frame would allocate an oscillator, a gain
+  and a panner sixty times a second, which is the shape of every stutter
+  this project has had; `yarn test:perf` drives it twenty thousand times and
+  checks that one sound came out rather than twenty thousand.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way

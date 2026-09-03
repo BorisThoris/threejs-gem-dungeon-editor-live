@@ -760,6 +760,31 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("and stopping lets it lose them again", !after.hears && !after.hunts, JSON.stringify(after));
 }
 
+// It is heard while it is in the room with you, and it stops being heard
+// when it is not. A held sound that outlives what it belongs to is worse
+// than no sound at all.
+{
+  const heard = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(8181);
+    await wait(1200);
+    const s = run.getState();
+    const before = window.__stalking();
+    // In the room with the player, which is where the Warden component mounts.
+    run.setState({ wardenRoomId: s.currentRoomId });
+    await wait(900);
+    const inRoom = window.__stalking();
+    // And out of it again.
+    const away = s.dungeon.rooms.find((r) => r.id !== s.currentRoomId).id;
+    run.setState({ wardenRoomId: away });
+    await wait(600);
+    return { before, inRoom, after: window.__stalking() };
+  });
+  ok("the Warden is heard once it is in the room", !heard.before && heard.inRoom, JSON.stringify(heard));
+  ok("and stops being heard when it leaves", !heard.after, JSON.stringify(heard));
+}
+
 // Something to throw: the one thing that sends the Warden somewhere the
 // player is not, and the only thing that buys the right to run.
 {

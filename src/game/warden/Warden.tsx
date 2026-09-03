@@ -6,6 +6,8 @@ import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
 import { canControl, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { GROUND_Y, WARDEN_TOUCH_RADIUS } from "../world";
 import { behaviourFor } from "./tuning";
 
@@ -59,7 +61,11 @@ export function Warden({ room }: WardenProps) {
 
   useEffect(() => {
     bus.emit("wardenProximity", { level: 0 });
-    return () => bus.emit("wardenProximity", { level: 0 });
+    return () => {
+      bus.emit("wardenProximity", { level: 0 });
+      // It left the room, or the run ended: the held sound goes with it.
+      sfx.stalkStop();
+    };
   }, []);
 
   useFrame((state, delta) => {
@@ -83,7 +89,17 @@ export function Warden({ room }: WardenProps) {
       bus.emit("wardenProximity", { level });
     }
 
-    if (!canControl(useRun.getState())) return;
+    // Heard as well as seen, from the moment it is in the room. The bearing
+    // is to it rather than from it, and it is written every frame so the
+    // sound moves as the player turns.
+    const reach = halfSize(room) * 1.4;
+    const closeness = Math.max(0, Math.min(1, 1 - (distance - WARDEN_TOUCH_RADIUS) / reach));
+    if (canControl(useRun.getState())) {
+      sfx.stalk(closeness, sideOf(-dx, -dz));
+    } else {
+      sfx.stalkStop();
+      return;
+    }
 
     if (distance <= WARDEN_TOUCH_RADIUS) {
       useRun.getState().wardenStrike();

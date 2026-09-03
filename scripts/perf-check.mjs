@@ -28,9 +28,19 @@ const BUDGET = {
   triangles: 3400,
   geometries: 72,
   textures: 12,
-  /** Kilobytes of heap per frame while sprinting. Measured: negative - the
-   *  collector keeps up because the frame loop allocates almost nothing. */
-  heapPerFrame: 1.5,
+  /**
+   * Megabytes of heap still held after a collection, over ten seconds of
+   * sprinting.
+   *
+   * Not allocation per frame: that was the first thing measured here and it
+   * is not a measurement at all. Whether a collection happens inside a ten
+   * second window is luck, so the same unchanged build read -94, -42, +0.04
+   * and +23 KB a frame on four runs - a check that fails at random, which
+   * is worse than no check because it teaches everyone to ignore it. What
+   * survives a forced collection is a leak; what the collector keeps up
+   * with is not, and the frame loop is allowed to allocate.
+   */
+  retainedMB: 8,
 };
 const SEEDS = [4242, 77];
 
@@ -48,6 +58,9 @@ const browser = await chromium.launch({
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
     "--disable-background-timer-throttling",
+    // So the check can ask for a collection and measure what survives one,
+    // rather than measuring whether one happened to run.
+    "--js-flags=--expose-gc",
   ],
 });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
@@ -147,31 +160,69 @@ await page.mouse.click(640, 400);
 await page.keyboard.down("ShiftLeft");
 await page.keyboard.down("KeyW");
 await page.waitForTimeout(1500);
-const before = await page.evaluate(() => ({
-  heap: performance.memory?.usedJSHeapSize ?? 0,
-  frames: window.__perf.frames,
-  t: performance.now(),
-}));
+const settled = () =>
+  page.evaluate(async () => {
+    window.gc?.();
+    // A collection is asynchronous at the edges; give it a beat to finish
+    // before reading what is left.
+    await new Promise((r) => setTimeout(r, 400));
+    return {
+      heap: performance.memory?.usedJSHeapSize ?? 0,
+      frames: window.__perf.frames,
+      t: performance.now(),
+    };
+  });
+const before = await settled();
 await page.waitForTimeout(10000);
-const after = await page.evaluate(() => ({
-  heap: performance.memory?.usedJSHeapSize ?? 0,
-  frames: window.__perf.frames,
-  t: performance.now(),
-}));
+const after = await settled();
 await page.keyboard.up("KeyW");
 await page.keyboard.up("ShiftLeft");
 
 const frames = after.frames - before.frames;
 const seconds = (after.t - before.t) / 1000;
-const perFrame = (after.heap - before.heap) / 1024 / Math.max(1, frames);
+const retained = (after.heap - before.heap) / (1024 * 1024);
 // A liveness floor, not a speed claim: this machine has no GPU, so the only
 // thing worth asserting is that the loop ran at all while a key was held.
 ok("the frame loop keeps running while the player sprints", frames > 120, `${frames} frames in ${seconds.toFixed(1)}s`);
 ok(
-  `the frame loop allocates under ${BUDGET.heapPerFrame} KB a frame`,
-  before.heap === 0 || perFrame <= BUDGET.heapPerFrame,
-  `${perFrame.toFixed(2)} KB/frame over ${frames} frames`
+  `ten seconds of sprinting leaves under ${BUDGET.retainedMB} MB behind`,
+  before.heap === 0 || retained <= BUDGET.retainedMB,
+  `${retained.toFixed(2)} MB retained over ${frames} frames`
 );
+
+// The Warden in the room is the only sound that is held rather than fired
+// once, and it is written to every frame while it closes. Rebuilt each
+// frame instead of updated in place it would allocate an oscillator, a
+// gain and a panner sixty times a second, which is the exact shape of this
+// project's old stutters.
+//
+// Driven directly rather than by standing in front of the Warden: left to
+// walk, it reaches the player in a couple of seconds and ends the run, so
+// the measurement window closed before it opened. Twenty thousand calls is
+// five minutes of frames, and it isolates the one claim being made.
+{
+  const held = await page.evaluate(() => {
+    const sfx = window.__sfx;
+    if (!sfx) return null;
+    sfx.stalk(0.5, 0);
+    const started = window.__stalking();
+    window.gc?.();
+    const from = performance.memory?.usedJSHeapSize ?? 0;
+    const calls = 20000;
+    for (let i = 0; i < calls; i++) sfx.stalk(0.2 + (i % 40) / 50, ((i % 21) - 10) / 10);
+    window.gc?.();
+    const to = performance.memory?.usedJSHeapSize ?? 0;
+    const stillOne = window.__stalking();
+    sfx.stalkStop();
+    return { started, stillOne, stopped: window.__stalking(), bytes: to - from, calls, measured: from > 0 };
+  });
+  ok("the held sound can be driven at all", held !== null && held.started, JSON.stringify(held));
+  ok(
+    "driving it twenty thousand times builds one sound, not twenty thousand",
+    held !== null && held.stillOne && !held.stopped && (!held.measured || held.bytes / held.calls < 64),
+    held && `${(held.bytes / held.calls).toFixed(1)} bytes per call`
+  );
+}
 
 console.log(
   `\nWorst room: ${byCalls.calls} calls, ${byTris.triangles} triangles, ` +

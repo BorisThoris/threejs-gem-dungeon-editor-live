@@ -44,6 +44,12 @@ you turn - and a watcher calling out is heard from its post. It is the
 difference between knowing something is close and knowing which door not to
 take.
 
+Once it is in the room with you it is heard continuously rather than
+announced: a low presence that swells as it closes and moves across the
+stereo field as it comes round a pillar. You can shut your eyes and still
+know which way to go, which is the point of a threat you are only ever
+allowed to run from.
+
 From the second floor down, some plain rooms have a watcher on a post,
 turning a beam slowly around the room. It never takes a life. Being held in
 its light rouses the floor and tells the Warden where you are, which is
@@ -181,12 +187,19 @@ them across three floors and several seeds:
 | Triangles | 2,214 | 3,400 |
 | Live geometries | 52 | 72 |
 | Live textures | 6 | 12 |
-| Heap while sprinting | below zero - the collector keeps up | 1.5 KB/frame |
+| Held after a collection, sprinting 10 s | below zero | 8 MB |
 
 The budgets are the measured worst case with about a third on top. They are
 not aspirations; they are a tripwire for the day a cycle adds a mesh per
 prop or an allocation per frame, which has happened twice here and was
 caught by nothing.
+
+The memory figure is what survives a forced collection, not allocation per
+frame. Allocation rate was the first thing measured here and it turned out
+not to be a measurement: whether a collection lands inside a ten second
+window is luck, and the same unchanged build read -94, -42, +0.04 and +23
+KB a frame across four runs. What a collector keeps up with is not a
+problem; what outlives one is.
 
 ## Testing
 
