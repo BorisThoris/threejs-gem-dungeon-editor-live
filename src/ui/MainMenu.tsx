@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
+import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
-import { body, button, colors, fullscreen, panel, secondaryButton, title } from "./overlay";
+import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 
 const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
 export function MainMenu() {
-  const [page, setPage] = useState<"menu" | "controls">("menu");
+  const [page, setPage] = useState<"menu" | "controls" | "records">("menu");
+  const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
 
   return (
@@ -33,12 +35,17 @@ export function MainMenu() {
             <button style={secondaryButton} onClick={() => setPage("controls")}>
               Controls
             </button>
+            <button style={secondaryButton} data-testid="menu-records" onClick={() => setPage("records")}>
+              Records
+            </button>
             {isElectron() && (
               <button style={secondaryButton} onClick={() => window.close()}>
                 Quit
               </button>
             )}
           </>
+        ) : page === "records" ? (
+          <Records seed={seed} setSeed={setSeed} onBack={() => setPage("menu")} />
         ) : (
           <>
             <dl style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}>
@@ -63,5 +70,90 @@ export function MainMenu() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * What has happened across every run on this machine, and a box to walk a
+ * dungeon again by its seed.
+ *
+ * Nothing here changes what a run is - it is a record, not a progression
+ * system. A demo with no personal best is a demo nobody comes back to.
+ */
+function Records({
+  seed,
+  setSeed,
+  onBack,
+}: {
+  seed: string;
+  setSeed: (v: string) => void;
+  onBack: () => void;
+}) {
+  const records = useRecords();
+  const startRun = useRun((s) => s.startRun);
+  const typed = Number.parseInt(seed, 10);
+  const usable = Number.isFinite(typed) && typed >= 0;
+
+  const rows: [string, string][] = [
+    ["Runs", String(records.runs)],
+    ["Escaped", `${records.escapes} of ${records.runs}`],
+    ["Best haul", records.bestHaul > 0 ? `${records.bestHaul} gems` : "-"],
+    ["Deepest floor", records.deepestFloor > 0 ? String(records.deepestFloor) : "-"],
+    ["Fastest escape", records.fastestEscape > 0 ? clock(records.fastestEscape) : "-"],
+    ["Gems ever found", String(records.gemsEverFound)],
+  ];
+
+  return (
+    <>
+      <dl
+        style={{
+          ...body,
+          textAlign: "left",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "4px 18px",
+          marginBottom: 18,
+        }}
+      >
+        {rows.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt style={{ color: colors.dim }}>{label}</dt>
+            <dd style={{ margin: 0, textAlign: "right" }}>{value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <input
+          value={seed}
+          onChange={(e) => setSeed(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+          placeholder={records.bestSeed !== null ? `best was ${records.bestSeed}` : "seed"}
+          data-testid="records-seed"
+          style={{
+            flex: 1,
+            padding: "12px 14px",
+            fontFamily: FONT,
+            fontSize: text.body,
+            color: colors.ink,
+            background: "rgba(255,255,255,0.05)",
+            border: `1px solid ${colors.line}`,
+            borderRadius: 4,
+          }}
+        />
+        <button
+          style={{ ...button, width: "auto", margin: 0, opacity: usable ? 1 : 0.4 }}
+          disabled={!usable}
+          data-testid="records-run-seed"
+          onClick={() => startRun(typed)}
+        >
+          Run it
+        </button>
+      </div>
+      <button style={secondaryButton} data-testid="records-clear" onClick={records.clear}>
+        Forget everything
+      </button>
+      <button style={secondaryButton} onClick={onBack}>
+        Back
+      </button>
+    </>
   );
 }

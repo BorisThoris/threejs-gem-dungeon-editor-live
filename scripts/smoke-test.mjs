@@ -491,6 +491,60 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Runs leave a record behind, and a seed can be walked again.
+{
+  await page.evaluate(() => window.__records.getState().clear());
+  await page.evaluate(() => window.__run.getState().startRun(77));
+  await page.waitForTimeout(2200);
+
+  // A death banks the depth but no haul: gems carried underground are lost.
+  const died = await page.evaluate(async () => {
+    const run = window.__run;
+    run.setState({ gems: 6, floor: 2 });
+    for (let i = 0; i < 4; i++) {
+      run.setState({ lastDamageAt: -Infinity });
+      run.getState().damage();
+    }
+    await new Promise((r) => setTimeout(r, 200));
+    const rec = window.__records.getState();
+    return { phase: run.getState().phase, runs: rec.runs, escapes: rec.escapes, haul: rec.bestHaul, deepest: rec.deepestFloor };
+  });
+  ok("a death is recorded, and its gems are not a haul", died.phase === "lost" && died.runs === 1 && died.escapes === 0 && died.haul === 0 && died.deepest === 2, JSON.stringify(died));
+
+  // An escape banks the haul.
+  const escaped = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(78);
+    await new Promise((r) => setTimeout(r, 1200));
+    const d = run.getState().dungeon;
+    run.setState({ gems: 9, floor: 3, transitioning: true, currentRoomId: d.endId });
+    run.getState().roomReady(d.endId);
+    await new Promise((r) => setTimeout(r, 300));
+    const rec = window.__records.getState();
+    return { phase: run.getState().phase, runs: rec.runs, escapes: rec.escapes, haul: rec.bestHaul, seed: rec.bestSeed, bests: rec.lastBests };
+  });
+  ok("an escape is recorded with its haul and its seed", escaped.phase === "won" && escaped.runs === 2 && escaped.escapes === 1 && escaped.haul === 9 && escaped.seed === 78, JSON.stringify(escaped));
+  ok("the summary says what the run beat", escaped.bests && escaped.bests.haul === true, JSON.stringify(escaped.bests));
+  ok("the summary offers the seed again", await page.evaluate(() => !!document.querySelector('[data-testid="summary-same-seed"]')));
+
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("gem-dungeon.records")).bestHaul);
+  ok("records outlive the page", kept === 9, String(kept));
+
+  // Running the same seed builds the same dungeon.
+  const same = await page.evaluate(async () => {
+    const run = window.__run;
+    const shape = () => run.getState().dungeon.rooms.map((r) => `${r.id}:${r.kind}:${r.size}:${r.shape}`).join("|");
+    run.getState().startRun(1234);
+    await new Promise((r) => setTimeout(r, 900));
+    const one = shape();
+    run.getState().startRun(1234);
+    await new Promise((r) => setTimeout(r, 900));
+    return { same: one === shape(), rooms: run.getState().dungeon.rooms.length };
+  });
+  ok("the same seed builds the same dungeon", same.same, JSON.stringify(same));
+  await page.evaluate(() => window.__records.getState().clear());
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

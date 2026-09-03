@@ -21,6 +21,7 @@ import {
   type Appearances,
   type ItemId,
 } from "../items/catalog";
+import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { banishTo, wakingRoom } from "../warden/roam";
 import {
@@ -147,6 +148,22 @@ export const canControl = (s: RunState): boolean =>
   s.phase === "playing" && !s.paused && !s.transitioning && s.inputLocks === 0;
 
 let transitionFallback: number | null = null;
+
+/**
+ * Fold a finished run into the records. Called from the two places a run
+ * can end and nowhere else, so a run is never counted twice.
+ */
+function rememberRun(s: RunState) {
+  if (!s.dungeon) return;
+  useRecords.getState().record({
+    won: s.phase === "won",
+    seed: s.dungeon.seed,
+    carried: s.gems,
+    gemsFound: s.gemsTotal,
+    floor: s.floor,
+    seconds: Math.max(0, Math.round((s.endedAt - s.startedAt) / 1000)),
+  });
+}
 
 const currentRoom = (s: RunState): Room | undefined =>
   s.dungeon && s.currentRoomId ? roomById(s.dungeon, s.currentRoomId) : undefined;
@@ -298,6 +315,7 @@ export const useRun = create<RunState>()(
       if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
         if (s.floor >= FLOORS) {
           set({ transitioning: false, phase: "won", endedAt: performance.now() });
+          rememberRun(get());
           bus.emit("runWon");
           return;
         }
@@ -398,6 +416,7 @@ export const useRun = create<RunState>()(
       bus.emit("damaged");
       if (lives === 0) {
         set({ phase: "lost", endedAt: performance.now() });
+        rememberRun(get());
         bus.emit("runLost");
       }
       return true;

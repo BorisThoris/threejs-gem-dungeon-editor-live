@@ -7,6 +7,10 @@ import type { CSSProperties } from "react";
  */
 export const FONT = "'Press Start 2P', 'Courier New', monospace";
 
+/** Seconds as m:ss, for run times. */
+export const clock = (s: number): string =>
+  `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
 /**
  * Text sizes scale with the viewport width between a floor and a cap: a
  * fixed 11px was unreadable on a Steam Deck's 7-inch 1280x800 panel and

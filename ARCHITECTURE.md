@@ -26,6 +26,11 @@ Two stores that both claimed the player's stats. So:
 - Run state lives in `src/game/state/run.ts`. One Zustand store. The floor,
   the gems, the alarm, the relics held and which room the Warden is in are
   all here; nothing keeps a second copy.
+- What survives a run is `src/game/state/records.ts`, folded in from the
+  two places a run can end and nowhere else, so a run is never counted
+  twice. It holds no progression: nothing it remembers changes what a run
+  is. Settings live beside it in `settings.ts`, separately, because a run
+  is a thing you lose and a preference is not.
 - Whether a room can be locked is `reachableWithout` in `generate.ts`: a
   vault only goes on a room that every other room can be reached without.
   Being off the shortest path is not enough - a room can be off the route

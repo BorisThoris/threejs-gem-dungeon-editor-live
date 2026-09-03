@@ -146,6 +146,10 @@ nobody has held a Deck with this on it.
   timed thing in the game. Too short and it is a formality; too long and it
   is a chore, and the Warden may arrive in the middle of it either way.
   `ARENA_DURATION_S` and `ARENA_SPIN` are the dials.
+- **Does anyone chase a personal best?** The records screen is the only
+  reason to play a fourth run once the novelty of the first three is gone.
+  If people ignore it, the demo needs a reason to replay that is inside the
+  dungeon rather than beside it.
 - **Does the vault get opened?** The key is somewhere on the floor and the
   vault is never on the way out, so finding it is entirely optional. If
   nobody bothers, three chests is not enough of a prize; if everybody

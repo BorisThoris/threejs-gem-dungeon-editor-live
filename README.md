@@ -39,6 +39,13 @@ two of them wake the floor. You carry four at a time and use them with the
 number keys, which means the real question is whether now - with something
 walking towards you - is the moment to find out what you picked up.
 
+Every dungeon is a seed, and the summary shows it. A run worth telling
+someone about is a run they can walk themselves, and the one you just lost
+is usually the one you want another go at, so the summary offers the same
+dungeon again and the main menu takes a seed you type in. What a machine
+remembers between runs is a best haul, a deepest floor, a fastest escape
+and a count of how runs ended - a record, not a progression system.
+
 **[ARCHITECTURE.md](ARCHITECTURE.md)** explains how the code is laid out and
 the rule it follows. **[STEAM_DEMO_PLAN.md](STEAM_DEMO_PLAN.md)** is the
 history: what was wrong, what was done about it, and what still stands
