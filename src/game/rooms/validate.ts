@@ -80,7 +80,11 @@ export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] 
     } else if (t.shape !== "square" && Math.hypot(p.x, p.z) > reach) {
       say("is off the drawn floor of this shape");
     }
-    if (spec.solid && inDoorLane(p.x, p.z)) say("stands in a doorway's path and will be dropped");
+    // The worst case on purpose: `roomForTemplate` doors every wall, and a
+    // template has to survive being placed in any room the generator makes.
+    // A one-axis room would keep a prop across its middle; a four-doored
+    // one would drop it, and the author would never know which they got.
+    if (spec.solid && inDoorLane(p.x, p.z, room)) say("stands in a doorway's path and will be dropped");
     if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
       say("stands where this room's own content stands and will be dropped");
     }

@@ -69,6 +69,25 @@ const snap = () =>
 const teleport = (x, z) =>
   page.evaluate(([x, z]) => window.__bus.emit("teleport", { position: [x, 1.5, z] }), [x, z]);
 
+/**
+ * A fixture, not a test: the walker stands still for seconds at a time to
+ * sample the floor and to read a prompt, and standing still is how you die
+ * here - on spikes, in the arena, or to a Warden that the walker's own
+ * gem-taking has roused. Every phase that stands still is testing something
+ * other than survival, and dying has its own checks further down, so those
+ * phases keep it on its feet.
+ *
+ * It covered only the exploration loop until a run lost all three lives
+ * during the walk to the exit and reported the exit door as having no
+ * prompt - a check that had nothing to do with what actually went wrong,
+ * failing about one run in ten.
+ */
+const keepOnItsFeet = () =>
+  page.evaluate(() => {
+    const run = window.__run;
+    if (run.getState().lives < 3) run.setState({ lives: 3, phase: "playing" });
+  });
+
 /** Doorways of the current room, from the dungeon data alone. */
 const doors = () =>
   page.evaluate(() => {
@@ -136,14 +155,7 @@ for (let hop = 0; hop < 8; hop++) {
     }
   }
   if (!moved) break;
-  // The walker stands still to sample the floor, which on spikes or in the
-  // arena is a way to die. This phase is testing that rooms can be walked
-  // and gems taken, not that standing in a trap is survivable - dying has
-  // its own checks further down - so it is kept on its feet.
-  await page.evaluate(() => {
-    const run = window.__run;
-    if (run.getState().lives < 3) run.setState({ lives: 3, phase: "playing" });
-  });
+  await keepOnItsFeet();
 }
 for (let i = 0; i < 20 && (await snap()).transitioning; i++) await page.waitForTimeout(250);
 const explored = await snap();
@@ -192,12 +204,14 @@ if (exitDoor) {
     await page.waitForTimeout(1500);
     await page.keyboard.press("KeyE");
     await page.waitForTimeout(3500);
+    await keepOnItsFeet();
   }
   const here = await snap();
   if (here.room === exitDoor.neighbour) {
     const door = (await doors()).find((d) => d.isExit);
     // Re-read the store each time: a getState() snapshot never changes.
     await page.evaluate(() => { const run = window.__run; while (run.getState().gems > 0) run.getState().spendGems(1); });
+    await keepOnItsFeet();
     await teleport(door.x * 0.8, door.z * 0.8);
     await page.waitForTimeout(1500);
     const prompt = await page.evaluate(() => document.body.innerText.match(/exit needs \d+ gems/i)?.[0] ?? null);
@@ -220,6 +234,9 @@ if (exitDoor) {
     await page.waitForTimeout(600);
     const alarmAfterGems = await page.evaluate(() => window.__run.getState().alarm);
     ok("taking gems rouses the floor", alarmAfterGems >= owed, `alarm ${alarmAfterGems} after ${owed + 1} gems`);
+    // Those gems just roused the floor, and the walker is about to stand
+    // still at the door again.
+    await keepOnItsFeet();
     await page.keyboard.press("KeyE");
     await page.waitForTimeout(4000);
     const after = await snap();

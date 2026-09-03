@@ -2,7 +2,15 @@
    pure half of this component and the editor previews with it directly. */
 import { useMemo } from "react";
 
-import { cornerSpots, HAZARD_RADIUS, inDoorLane, quadrantSpots, trapHazards, type Vec3 } from "../dungeon/layout";
+import {
+  centreSpots,
+  cornerSpots,
+  HAZARD_RADIUS,
+  inDoorLane,
+  quadrantSpots,
+  trapHazards,
+  type Vec3,
+} from "../dungeon/layout";
 import { createRng } from "../rng";
 import type { PropPlacement, Room } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -33,6 +41,10 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
  * layout. Whoever placed them, three rules apply: nothing solid stands in
  * a doorway's path, nothing stands where the kind's content stands, and
  * nothing hides the gem or the spikes guarding it.
+ *
+ * The first of those reads the room's own doors, so a room with doors on
+ * one axis only keeps what an author or an arrangement put across its
+ * middle instead of dropping it.
  */
 export function placementsFor(room: Room, seed: number): PropPlacement[] {
   const template = room.template ? getTemplate(room.template) : undefined;
@@ -42,6 +54,9 @@ export function placementsFor(room: Room, seed: number): PropPlacement[] {
     near: quadrantSpots(room, "near"),
     far: quadrantSpots(room, "far"),
     corners: cornerSpots(room),
+    // Empty in a room whose doors cross its middle, which is why every
+    // arrangement has to place these by spreading rather than by index.
+    centre: centreSpots(room),
     rng,
   };
   const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
@@ -53,7 +68,7 @@ export function placementsFor(room: Room, seed: number): PropPlacement[] {
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
   return [...torches, ...layout].filter((p) => {
     const solid = CATALOG[p.kind].solid;
-    if (solid && inDoorLane(p.x, p.z)) return false;
+    if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
     if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;

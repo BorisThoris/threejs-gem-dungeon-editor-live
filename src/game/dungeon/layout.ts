@@ -27,12 +27,16 @@ export type Vec3 = [number, number, number];
  * disagreeing. Every position now comes from here, from `room.size` alone,
  * in room-local coordinates with the room centred at the origin.
  *
- * The room is four door lanes in a cross and four diagonal quadrants
- * between them. Everything that is not a door lives in a quadrant, on one
- * of three anchor families that are guaranteed distinct: `near` (just off
- * the lanes), `far` (deep in the quadrant) and the corners (the braziers,
- * against the walls). The gem takes a `far` or `near` spot that nothing
- * else has claimed; a trap's spikes sit between the gem and the lanes.
+ * A room is a cross of door lanes with four diagonal quadrants between
+ * them. Three anchor families sit in the quadrants and are guaranteed
+ * distinct: `near` (just off the lanes), `far` (deep in the quadrant) and
+ * the corners (the braziers, against the walls). The gem takes a `far` or
+ * `near` spot that nothing else has claimed; a trap's spikes sit between
+ * the gem and the lanes.
+ *
+ * The cross is only as wide as the room's own doors, which is what makes a
+ * fourth family possible: `centre`, a pair either side of the middle, in
+ * the rooms whose doors are all on one axis. Two in five of them are.
  */
 
 /** Centre of the doorway in a wall. */
@@ -75,9 +79,39 @@ export const spawnAtStart = (): Spawn => ({
  */
 export const LANE_HALF_WIDTH = DOOR_WIDTH / 2 + 1.25;
 
-/** True when a room-local point would stand in a doorway's path. */
-export const inDoorLane = (x: number, z: number): boolean =>
-  Math.abs(x) < LANE_HALF_WIDTH || Math.abs(z) < LANE_HALF_WIDTH;
+/**
+ * Which of the two bands across a room its doorways actually claim.
+ *
+ * A door in the north or south wall opens a path straight down x = 0, so it
+ * claims the band `|x| < LANE_HALF_WIDTH`; a door east or west claims
+ * `|z| < LANE_HALF_WIDTH`. For a long time the lane rule claimed both in
+ * every room, whether or not the room had the doors - and since everything
+ * a room holds has to stand clear of the lanes, that pushed all of it into
+ * the four diagonal quadrants and left the middle of every room empty.
+ *
+ * Nearly half the rooms the generator makes have doors on one axis only:
+ * over three floors and two hundred seeds, 47% of them. Each of those has a
+ * whole band across its middle that no player ever walks along, next to the
+ * band that every player walks along and looks down.
+ */
+export function laneAxes(room: Room): { x: boolean; z: boolean } {
+  return {
+    x: !!(room.links.north || room.links.south),
+    z: !!(room.links.east || room.links.west),
+  };
+}
+
+/**
+ * True when a room-local point would stand in a doorway's path.
+ *
+ * Called without a room this answers for the worst case - every wall doored
+ * - which is the question an authored template has to survive, because the
+ * generator may place a template in any room it makes.
+ */
+export const inDoorLane = (x: number, z: number, room?: Room): boolean => {
+  const lanes = room ? laneAxes(room) : { x: true, z: true };
+  return (lanes.x && Math.abs(x) < LANE_HALF_WIDTH) || (lanes.z && Math.abs(z) < LANE_HALF_WIDTH);
+};
 
 /** The four quadrants, as the signs of x and z. */
 const QUADRANTS: [number, number][] = [
@@ -129,6 +163,50 @@ function reach(room: Room, inset: number): number {
 export function quadrantSpots(room: Room, which: Anchor): Vec3[] {
   const d = quadrantDistance(room, which);
   return QUADRANTS.map(([sx, sz]) => [sx * d, GROUND_Y, sz * d]);
+}
+
+/**
+ * How far from the middle the pair either side of it stands.
+ *
+ * Deliberately not the far ring, which in a large room would put them
+ * against the side walls - where things already are. Close enough that the
+ * player walks between them and far enough that the widest solid prop in
+ * the game, the wall segment at 1.5, still clears the lane.
+ */
+const MIDDLE_DISTANCE = LANE_HALF_WIDTH + 1.8;
+
+/**
+ * The two spots either side of the middle, in a room whose doors leave the
+ * middle usable - or nothing, in a room whose doors do not.
+ *
+ * The dead centre of a room is never one of them: any door at all puts a
+ * lane through the exact middle. What a one-axis room has spare is the band
+ * at right angles to its doors, so a north/south room gets a pair east and
+ * west of the walk and an east/west room gets a pair north and south of it.
+ * They stand a fixed distance out, close enough to the walk that a player
+ * going straight through passes between them.
+ *
+ * They cannot collide with a quadrant anchor: an anchor at (±d, ±d) is at
+ * least d away from either axis, and these sit on an axis.
+ */
+export function centreSpots(room: Room): Vec3[] {
+  const lanes = laneAxes(room);
+  // Doors on both axes leave the cross covering the whole middle; doors on
+  // neither is not a room the generator makes.
+  if (lanes.x === lanes.z) return [];
+  // A shaped room's floor is narrowest on the axes, which is exactly where
+  // these stand, so a room too pointy to hold them holds none.
+  if (MIDDLE_DISTANCE > inscribedRadius(room) - 1) return [];
+  const d = MIDDLE_DISTANCE;
+  return lanes.z
+    ? [
+        [0, GROUND_Y, d],
+        [0, GROUND_Y, -d],
+      ]
+    : [
+        [d, GROUND_Y, 0],
+        [-d, GROUND_Y, 0],
+      ];
 }
 
 /** The four corners, pulled in far enough that a brazier is not in the wall. */

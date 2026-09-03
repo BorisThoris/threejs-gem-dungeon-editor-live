@@ -46,6 +46,22 @@ const check = (name, ok, detail = "") => {
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
+/**
+ * Every set of doors a room can have: all fifteen non-empty combinations.
+ *
+ * What a room offers to stand things on now depends on which doors it has,
+ * so anything checked in one room has to be checked in all of them. The
+ * generator makes rooms with one, two, three and four doors, and only the
+ * one- and two-door ones on a single axis have a middle.
+ */
+const DOOR_SETS = [];
+for (let mask = 1; mask < 16; mask++) {
+  const links = {};
+  L.DIRS.forEach((dir, i) => {
+    if (mask & (1 << i)) links[dir] = "n";
+  });
+  DOOR_SETS.push(links);
+}
 
 for (const size of L.ROOM_SIZES) {
   const r = room(size);
@@ -83,6 +99,73 @@ for (const size of L.ROOM_SIZES) {
   check(`size ${size}: spikes never touch a lane`, hazardsInLane === 0, `${hazardsInLane} of 200 did`);
   check(`size ${size}: the gem avoids reserved anchors`, gemOnReserved === 0, `${gemOnReserved} of 200 collided`);
   check(`size ${size}: the gem can be taken without touching spikes`, gemUnreachable === 0, `${gemUnreachable} of 200 unreachable`);
+}
+
+// The middle of a room, which for most of this project's life was empty in
+// every room the generator made: the lane rule reserved all four doorways
+// whether or not the room had them, and everything a room holds has to
+// stand clear of the lanes. Nearly half of them have doors on one axis
+// only, and those have a band across the middle nobody ever walks down.
+{
+  let wrongCount = 0;
+  let inLane = 0;
+  let onTopOfAnchor = 0;
+  let offFloor = 0;
+  let tooCloseToLane = 0;
+  const withMiddle = [];
+  for (const size of L.ROOM_SIZES) {
+    for (const shape of L.SHAPES) {
+      if (!L.shapeFits(shape, size)) continue;
+      for (const links of DOOR_SETS) {
+        const r = { ...room(size, "normal", shape), links };
+        const axes = L.laneAxes(r);
+        const oneAxis = axes.x !== axes.z;
+        const centre = L.centreSpots(r);
+        // Two spots or none, and never in a room whose doors cross the middle.
+        if (!oneAxis && centre.length !== 0) wrongCount++;
+        if (oneAxis && centre.length !== 2) wrongCount++;
+        if (centre.length) withMiddle.push(`${shape}${size}`);
+        const anchors = [...L.quadrantSpots(r, "near"), ...L.quadrantSpots(r, "far"), ...L.cornerSpots(r)];
+        for (const c of centre) {
+          if (L.inDoorLane(c[0], c[2], r)) inLane++;
+          // Clear of every other anchor, or two things stand in one place.
+          if (anchors.some((a) => dist(a, c) < 1.2)) onTopOfAnchor++;
+          if (Math.hypot(c[0], c[2]) > L.inscribedRadius(r) + 0.6) offFloor++;
+          // The widest solid prop in the game is the wall segment; a middle
+          // prop has to clear the lane it stands beside by its own radius,
+          // or the room drops it and the middle is empty again.
+          const widest = Math.max(...Object.values(L.PROP_SPECS).filter((x) => x.solid).map((x) => x.radius));
+          const fromLane = Math.max(Math.abs(c[0]), Math.abs(c[2]));
+          if (fromLane - widest < L.LANE_HALF_WIDTH) tooCloseToLane++;
+        }
+      }
+    }
+  }
+  check("a room has two middle spots or none, never one", wrongCount === 0, `${wrongCount} wrong`);
+  check("a middle spot is never in a lane its own room has", inLane === 0, `${inLane} in one`);
+  check("a middle spot never lands on another anchor", onTopOfAnchor === 0, `${onTopOfAnchor} collided`);
+  check("a middle spot stays on the drawn floor", offFloor === 0, `${offFloor} off it`);
+  check("the widest solid prop still clears the lane from a middle spot", tooCloseToLane === 0, `${tooCloseToLane} too close`);
+  check("rooms of every shape and size can have a middle", new Set(withMiddle).size >= L.ROOM_SIZES.length, `${new Set(withMiddle).size} shape-size pairs`);
+}
+
+// And how much of a real dungeon this is worth: a rule that fires on two
+// rooms in a hundred is not worth the code it takes to read.
+{
+  let rooms = 0;
+  let withMiddle = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      for (const r of L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms }).rooms) {
+        rooms++;
+        if (L.centreSpots(r).length) withMiddle++;
+      }
+    }
+  }
+  const share = withMiddle / rooms;
+  check("a good share of the rooms a run walks through have a middle to fill", share > 0.25,
+    `${(share * 100).toFixed(0)}% of ${rooms}`);
 }
 
 // Shaped rooms draw a polygon inside their box, so anchors have to sit on
@@ -200,28 +283,40 @@ for (const size of L.ROOM_SIZES) {
   const kinds = Object.keys(L.LAYOUTS);
   let stacked = 0;
   let offAnchor = 0;
+  let inRealLane = 0;
   let arrangements = 0;
+  let withMiddle = 0;
   for (const kind of kinds) {
     for (let variant = 0; variant < L.LAYOUTS[kind].length; variant++) {
       for (const size of L.ROOM_SIZES) {
-        const r = room(size, kind);
-        const spots = {
-          near: L.quadrantSpots(r, "near"),
-          far: L.quadrantSpots(r, "far"),
-          corners: L.cornerSpots(r),
-          // Both branches of anything the arrangement decides get walked.
-          rng: () => 0.99,
-        };
-        for (const roll of [0.01, 0.99]) {
-          const placed = L.LAYOUTS[kind][variant]({ ...spots, rng: () => roll });
-          arrangements++;
-          const anchors = [...spots.near, ...spots.far, ...spots.corners];
-          const seenAt = new Set();
-          for (const p of placed) {
-            const key = `${p.x.toFixed(4)},${p.z.toFixed(4)}`;
-            if (seenAt.has(key)) stacked++;
-            seenAt.add(key);
-            if (!anchors.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < 1e-6)) offAnchor++;
+        // Every door combination, because the anchors a room offers now
+        // depend on which doors it has and an arrangement is written once
+        // for all of them.
+        for (const links of DOOR_SETS) {
+          const r = { ...room(size, kind), links };
+          const spots = {
+            near: L.quadrantSpots(r, "near"),
+            far: L.quadrantSpots(r, "far"),
+            corners: L.cornerSpots(r),
+            centre: L.centreSpots(r),
+            // Both branches of anything the arrangement decides get walked.
+            rng: () => 0.99,
+          };
+          for (const roll of [0.01, 0.99]) {
+            const placed = L.LAYOUTS[kind][variant]({ ...spots, rng: () => roll });
+            arrangements++;
+            if (spots.centre.length) withMiddle++;
+            const anchors = [...spots.near, ...spots.far, ...spots.corners, ...spots.centre];
+            const seenAt = new Set();
+            for (const p of placed) {
+              const key = `${p.x.toFixed(4)},${p.z.toFixed(4)}`;
+              if (seenAt.has(key)) stacked++;
+              seenAt.add(key);
+              if (!anchors.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < 1e-6)) offAnchor++;
+              // The filter in Dressing would drop it, so the room would
+              // silently lose the prop rather than show it in a doorway.
+              if (L.PROP_SPECS[p.kind].solid && L.inDoorLane(p.x, p.z, r)) inRealLane++;
+            }
           }
         }
       }
@@ -229,6 +324,8 @@ for (const size of L.ROOM_SIZES) {
   }
   check("no arrangement stands two props in the same place", stacked === 0, `${stacked} stacked in ${arrangements}`);
   check("every prop stands on an anchor, so it is clear of the lanes by construction", offAnchor === 0, `${offAnchor} loose`);
+  check("no prop stands in a lane the room it is in actually has", inRealLane === 0, `${inRealLane} would be dropped`);
+  check("the arrangements were walked in rooms that have a middle", withMiddle > 0, `${withMiddle} of ${arrangements}`);
   check("the kinds a player walks through most have more than one arrangement",
     ["normal", "treasure", "trap", "start", "end"].every((k) => L.LAYOUTS[k].length > 1),
     kinds.map((k) => `${k}:${L.LAYOUTS[k].length}`).join(" "));

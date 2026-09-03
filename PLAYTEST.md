@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Nine more turned up on the next passes, all of them things nobody had
+Eleven more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -219,6 +219,27 @@ looked at because the tests were green:
   produced a different dungeon for the same seed. Every dungeon those 500
   seeds validated was one the game would never build. It registers them now
   and fails if none of the 500 contains an authored room.
+- **The middle of every room was empty, in every room, always.** Nothing may
+  stand in the path between two doorways, and the rule that enforced it
+  reserved all four doorways in every room regardless of which doors the
+  room actually had. Everything a room holds has to stand clear of the
+  lanes, so everything a room holds stood in one of four diagonal quadrants
+  and the band across the middle - the part a player walks down and looks
+  along - was bare floor in all 2,054 rooms measured. Two in five of them
+  have doors on one axis only and never needed the other lane at all. The
+  rule reads the room's doors now, and those rooms get a pair of anchors
+  either side of the way through.
+- **No bookshelf in the game has ever shown a book.** Its four rows of
+  colour were modelled at z = 0.05 inside a carcass 0.45 deep, so every one
+  of them was buried in the box: from any angle a bookshelf was a plain
+  brown slab, including the three standing in a row in the library. Worse,
+  once the books were pushed out to the front face it was clear the
+  library's three had been turned to face their own corners since the day
+  they were written - which nobody could see while both sides looked
+  identical. There is one rule now for which way a thing with a front
+  faces, and the library, the shop and the new middle pair all use it. Found
+  by standing in the middle of a room and looking at what this cycle had
+  just put there.
 
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
@@ -240,18 +261,24 @@ not seen, picks up gems by walking into them, tries the exit unpaid and
 paid, descends, wins from the last floor, restarts, and dies. It then
 drives the systems that a random walk would not reliably reach - the toll
 curve, relics, the satchel, the arena's doors barring and letting go, the
-vault and its key, the records, and where the Sentries are. Sixty-one
-checks pass on the current build.
+vault and its key, the records, and where the Sentries are. A hundred and
+four checks pass on the current build.
 
 One thing in it is a fixture rather than a test: the walker stands still to
-sample the floor, which on spikes is a way to die, so it is kept on its
-feet through the exploration phase. Dying has its own checks further down.
+sample the floor and to read a prompt, and standing still is how you die
+here - on spikes, in the arena, or to a Warden its own gem-taking roused -
+so it is kept on its feet through every phase that stands still. That used
+to cover the exploration loop only, until a run lost all three lives on the
+walk to the exit and reported the exit door as having no prompt: a check
+failing for a reason it was not about, roughly one run in ten. Dying has
+its own checks further down.
 
 `yarn test:layout` needs no browser and guards the geometry over every room
-size and 500 seeds: anchors clear of the door lanes and on the floor a
-shaped room actually draws, spikes in every trap room, the gem reachable
-without touching one, the generator connected, and a vault that never
-blocks the way to the exit.
+size, every shape, all fifteen combinations of doors and 500 seeds: anchors
+clear of the door lanes and on the floor a shaped room actually draws,
+nothing standing in a lane the room it is in actually has, spikes in every
+trap room, the gem reachable without touching one, the generator connected,
+and a vault that never blocks the way to the exit.
 
 ## 4. What every room looks like
 
@@ -326,8 +353,10 @@ nobody has held a Deck with this on it.
   bigger, which buys variety and spends patience; the third is around half
   again the size of the first. The kinds walked through most now have two or
   three arrangements each, drawn from the room's seed, so the fourth chamber
-  on a floor is no longer the first chamber again - but they are still the
-  same props in the same quadrants, and that is the next thing to run out.
+  on a floor is no longer the first chamber again, and two in five rooms now
+  have something standing either side of the way through rather than only in
+  their corners. The next thing to run out is the props themselves: fifteen
+  of them, and a chamber is still recognisably built from the same fifteen.
 - **Is the bottom floor too much?** It arrives at alarm 2 with one room of
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than

@@ -62,7 +62,16 @@ Two stores that both claimed the player's stats. So:
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by
   construction. The gem takes an anchor nothing else has claimed; a trap's
-  spikes sit between the gem and the lanes. A room kind that puts content
+  spikes sit between the gem and the lanes.
+- The door lanes are only as wide as the room's own doors. `inDoorLane`
+  reads `room.links`, so a room with doors on one axis only - two in five of
+  them - keeps the band across its middle, and `centreSpots` offers a pair
+  either side of it. For years that rule reserved all four doorways in every
+  room whether or not the room had them, which is why everything a room held
+  stood in a diagonal quadrant and the middle of every room was empty.
+  Called without a room, `inDoorLane` still answers for every wall doored:
+  that is the case an authored template has to survive, because the
+  generator can place a template anywhere. A room kind that puts content
   on anchors says so when it registers (`registerRoomKind(kind, component,
   reserved)`), and the dressing and the gem keep clear of what it claimed.
   Every function takes a `Room` and reads `room.size`; nothing else does the
@@ -231,9 +240,11 @@ second model for it to be written in.
   while the player sprints. Frame time is not measured, because the machine
   this runs on has no GPU and a millisecond here says nothing about a Steam
   Deck; those counters are CPU-side and mean the same thing everywhere.
-- `yarn test:layout` checks the room geometry over every size and 500
-  seeds: anchors clear of the lanes and of each other, spikes in every trap
-  room and never in a lane, the gem reachable, the generator connected.
+- `yarn test:layout` checks the room geometry over every size, every shape,
+  all fifteen door combinations and 500 seeds: anchors clear of the lanes
+  and of each other, nothing in a lane the room it stands in actually has,
+  spikes in every trap room and never in a lane, the gem reachable, the
+  generator connected.
 - `yarn test:smoke` drives the real game in a browser: start, stand on the
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this

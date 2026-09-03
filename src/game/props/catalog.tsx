@@ -66,6 +66,16 @@ function Barrel(p: PropProps) {
   );
 }
 
+/**
+ * A bookshelf, with its books on the outside of it.
+ *
+ * They were at z = 0.05 in a carcass 0.45 deep, which put every one of them
+ * inside the box: three shelves of colour that nothing could see from any
+ * angle, in a game whose library stands three of these in a row. It read as
+ * a plain brown slab for as long as it has existed. They sit proud of the
+ * front face now, which is local +z - the side `facing` in the layouts
+ * turns towards the room.
+ */
 function Bookshelf(p: PropProps) {
   return (
     <group {...frame(p)}>
@@ -76,8 +86,8 @@ function Bookshelf(p: PropProps) {
       {[0.45, 1.05, 1.65].map((y) => (
         <group key={y}>
           {[-0.5, -0.2, 0.1, 0.4].map((x, i) => (
-            <mesh key={i} position={[x, y + 0.18, 0.05]}>
-              <boxGeometry args={[0.22, 0.34, 0.3]} />
+            <mesh key={i} position={[x, y + 0.18, 0.16]} castShadow>
+              <boxGeometry args={[0.22, 0.34, 0.28]} />
               <meshStandardMaterial color={["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i]} />
             </mesh>
           ))}

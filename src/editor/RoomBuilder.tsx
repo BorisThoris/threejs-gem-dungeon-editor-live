@@ -29,10 +29,12 @@ const CELL_PX = 22;
  *
  * A top-down grid of the room, one cell per unit. Pick a prop, click a cell,
  * and it is placed; click a placed prop to select it, then rotate or delete
- * it. The door lanes are shaded: a solid prop inside one is drawn red and
- * the game will refuse to place it, because nothing may stand between two
- * doorways. The right-hand pane is the real Room shell, so what you see is
- * what the player gets.
+ * it. All four door lanes are shaded, and a solid prop inside one is drawn
+ * red: the generator may put a template in any room it makes, so a template
+ * is held to the room that has every wall doored, even though a room with
+ * doors on one axis only would keep a prop across its middle. The
+ * right-hand pane is the real Room shell, so what you see is what the
+ * player gets.
  *
  * Every change is saved as a draft. An enabled draft is live in the next
  * run you start; export it to ship it.
@@ -220,7 +222,19 @@ export function RoomBuilder() {
               style={{ display: "block", background: "#14161d", borderRadius: 4, maxWidth: "100%", height: "auto" }}
               viewBox={`0 0 ${gridPx} ${gridPx}`}
             >
-              {/* Door lanes */}
+              {/* Both bands, faintly: a template is held to the room with
+                  every wall doored, because the generator can place it in
+                  any room it makes. */}
+              {DIRS.map((d) => {
+                const w = LANE_HALF_WIDTH * 2 * CELL_PX;
+                const mid = gridPx / 2 - w / 2;
+                const horizontal = d === "east" || d === "west";
+                const props = horizontal
+                  ? { x: d === "west" ? 0 : gridPx / 2, y: mid, width: gridPx / 2, height: w }
+                  : { x: mid, y: d === "north" ? 0 : gridPx / 2, width: w, height: gridPx / 2 };
+                return <rect key={`all-${d}`} {...props} fill="rgba(127,227,255,0.04)" />;
+              })}
+              {/* And brighter, the lanes this preview's doors actually make. */}
               {doors.map((d) => {
                 const w = LANE_HALF_WIDTH * 2 * CELL_PX;
                 const mid = gridPx / 2 - w / 2;
