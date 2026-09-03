@@ -175,9 +175,17 @@ export function rollItem(seed: number, key: string, floor: number): ItemId {
 export const SWIFTNESS_S = 18;
 export const MIRE_S = 12;
 export const GLOOM_S = 25;
-/** How much faster or slower those make you. */
+/**
+ * How much faster or slower those make you.
+ *
+ * Mire was 0.55, which put a mired player's sprint at 4.40 against a fully
+ * roused Warden at 4.40: level, and a sprint is what tells it where you
+ * are. See systems/pace.ts - a sprint always gets away, a walk does not,
+ * and layout-check walks every relic set, potion and alarm level to keep
+ * both halves of that true.
+ */
 export const SWIFTNESS_MULTIPLIER = 1.5;
-export const MIRE_MULTIPLIER = 0.55;
+export const MIRE_MULTIPLIER = 0.65;
 /** How much the two rousing items wake the floor. */
 export const DREAD_ALARM = 3;
 export const AVARICE_ALARM = 2;

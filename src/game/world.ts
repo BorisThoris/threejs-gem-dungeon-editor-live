@@ -105,9 +105,17 @@ export const DAMAGE_COOLDOWN_S = 1.5;
  * raised by taking gems - so the floor gets more dangerous exactly as far as
  * you have chosen to rob it.
  *
- * Its chase speed stays under WALK_SPEED at every level, so a player who
- * keeps moving is never simply caught; it wins by cornering, by surprise,
- * and by being between you and the door.
+ * What it promises the player is one line, and systems/pace.ts holds it
+ * to that line across every relic, potion and alarm level: a sprint always
+ * gets away, a walk does not. There is always an answer to the Warden and
+ * it costs you the noise of making it - the sprint that outpaces it is the
+ * sprint it hears. It wins by cornering, by surprise, and by being between
+ * you and the door.
+ *
+ * The comment here used to say its chase speed stays under WALK_SPEED at
+ * every level, so a player who keeps moving is never simply caught. That
+ * was true of the two numbers below and false of the game: a potion could
+ * halve the walk it was measured against.
  */
 export const ALARM_PER_GEM = 1;
 /** Alarm at which it stops wandering and starts walking towards you. */

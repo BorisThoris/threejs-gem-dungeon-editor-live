@@ -128,6 +128,16 @@ Two stores that both claimed the player's stats. So:
   `src/game/items/catalog.ts`; the effect itself is applied in one place,
   `useItem` in the run store. How fast the player moves after drinking one
   is `speedNow(state)`, and it is the only answer to that question.
+- Whether the player can get away from the Warden is
+  `src/game/systems/pace.ts`, and it owns both halves of that: `paceFor`
+  turns relics and a potion into a walk and a sprint, `wardenSpeedAt` asks
+  the Warden's own curve, and `ESCAPE_MARGIN` says how much faster than it
+  the slowest sprint in the game has to be. The invariant is one line - a
+  sprint always gets away, a walk does not - and `yarn test:layout` walks
+  all 2,496 combinations of relic set, potion and alarm level to hold the
+  three files that feed it to that line. It exists because they disagreed:
+  the potion of mire once left a sprint level with a roused Warden, in a
+  game whose only verb against it is running.
 - What a relic does is decided in `src/game/relics/catalog.ts`, by
   `modifiers(relics)`. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.
@@ -282,7 +292,12 @@ second model for it to be written in.
   no two solid props standing inside each other and no footprint reaching
   into a lane or through a wall, spikes in every trap room and never in a
   lane, the gem reachable, the generator connected, and every floor payable
-  from the gems a player is guaranteed with at least one to spare.
+  from the gems a player is guaranteed with at least one to spare. It also
+  checks the one promise the Warden makes, over every relic set the shop can
+  sell, every potion and every alarm level: a sprint always gets away, a
+  walk does not. The numbers behind that live in three files and were tuned
+  separately, which is how the potion of mire came to leave a sprint level
+  with a roused Warden.
 - `yarn test:audio` listens to the game. It wraps
   `AudioNode.prototype.connect` before the app loads, so anything that
   reaches the speakers also reaches an analyser the check owns, and measures

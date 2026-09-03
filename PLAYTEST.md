@@ -431,6 +431,31 @@ had looked at because the tests were green:
   faces, and the library, the shop and the new middle pair all use it. Found
   by standing in the middle of a room and looking at what this cycle had
   just put there.
+- **An unidentified potion broke the game's own promise.** The Warden's
+  comment in `world.ts` said its chase speed stays under a walk at every
+  alarm level, so a player who keeps moving is never simply caught. That was
+  written when the game had two speeds in it. A Potion of Mire at 0.55 left
+  a player walking at 2.75 and sprinting at 4.40 against a fully roused
+  Warden at 4.40 - slower on foot, and exactly level at a sprint, which is
+  also the thing that keeps the Warden pointed at you. In a game whose only
+  verb against the Warden is running, on a floor that arrives at alarm 2,
+  from a bottle you cannot identify without drinking it, there was no play
+  to make. 0.55 was the precise breaking point: anything above it gets away.
+
+  The multiplier is 0.65 now - a mired sprint of 5.20 against 4.40, and a
+  mired walk of 3.25 that still loses to a hunting floor, so the potion
+  keeps its teeth. But the number was never the problem; three files tuned
+  separately were. The relics scale the walk, the potions scale it again,
+  and the Warden's curve is a third file, and nothing had ever compared
+  them. `systems/pace.ts` owns the comparison, `yarn test:layout` walks all
+  2,496 combinations of 64 relic sets, 3 potions and 13 alarm levels, and
+  the promise is now one line that can be checked rather than a paragraph
+  that could quietly stop being true: **a sprint always gets away, a walk
+  does not.** Both halves are asserted - the first because there must always
+  be an answer to the Warden, the second because a Warden that cannot catch
+  a walking player is furniture. Run against the old 0.55 the check reports
+  32 of 2,496 combinations caught at a sprint; run against a mire of 0.9 it
+  reports the potion costing nothing.
 
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
@@ -596,6 +621,7 @@ All in `src/game/world.ts`:
 | `ALARM_PER_GEM` | 1 | How much a gem rouses the floor |
 | `ALARM_HUNTS_AT` / `ALARM_MAX` | 3 / 6 | When it starts hunting, and when it stops getting worse |
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |
+| `ESCAPE_MARGIN` | 1.15 | How much faster than a roused Warden the slowest sprint must be (`systems/pace.ts`) |
 | `WARDEN_STEP_CALM_S` / `_ROUSED_S` | 9 / 4 | Seconds between rooms |
 | `SENTRY_SPIN` | 0.55 | Radians a second the beam turns |
 | `SENTRY_PATIENCE` / `SENTRY_ALARM` | 0.9 s / 1 | How long in the light before it calls, and what that costs |

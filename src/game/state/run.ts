@@ -14,17 +14,16 @@ import {
   GLOOM_S,
   ITEMS,
   MIRE_S,
-  MIRE_MULTIPLIER,
   ITEM_IDS,
   SATCHEL_SLOTS,
   SWIFTNESS_S,
-  SWIFTNESS_MULTIPLIER,
   appearancesFor,
   type Appearances,
   type ItemId,
 } from "../items/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
+import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -727,20 +726,21 @@ export const runClock = (s: RunState): number =>
 /** True while a timed effect is still running. */
 const running = (s: RunState, until: number): boolean => until > runClock(s);
 
+/** Which timed potion is running, if either. */
+export const paceEffect = (s: RunState): PaceEffect =>
+  running(s, s.effects.swift) ? "swift" : running(s, s.effects.mire) ? "mire" : "none";
+
 /**
  * How fast the player moves right now: their relics, then whatever they
  * last drank. One owner for the answer, so the player, the HUD and anything
  * else that cares cannot disagree about it.
+ *
+ * The arithmetic itself lives in pace.ts, with the Warden's side of it, so
+ * that the promise the two of them make together - a sprint always gets
+ * away, a walk does not - can be checked over the whole matrix of relics,
+ * potions and alarm levels rather than trusted.
  */
-export function speedNow(s: RunState): { walk: number; dash: number } {
-  const { walkSpeed, dashSpeed } = modifiers(s.relics);
-  const factor = running(s, s.effects.swift)
-    ? SWIFTNESS_MULTIPLIER
-    : running(s, s.effects.mire)
-      ? MIRE_MULTIPLIER
-      : 1;
-  return { walk: walkSpeed * factor, dash: dashSpeed * factor };
-}
+export const speedNow = (s: RunState): Pace => paceFor(s.relics, paceEffect(s));
 
 /**
  * The room the Warden is currently walking to instead of the player's, or

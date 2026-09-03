@@ -33,6 +33,9 @@ writeFileSync(
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
+   export * from "${root}src/game/systems/pace";
+   export * from "${root}src/game/relics/catalog";
+   export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -602,6 +605,88 @@ check("500 dungeons across every floor size: connected, legal, and a vault that 
 // If this ever reads zero the shipped templates are not registered, and
 // every dungeon checked above is one the game would never build.
 check("the shipped room templates reach the floors the game generates", authored > 0, `${authored} of 500`);
+
+// --- Can you get away from it -----------------------------------------------
+//
+// The Warden is evaded or it is nothing: the game gives the player no verb
+// against it. So the one thing that must be true of every speed in the game
+// is that there is always a way out, and the one thing that makes it
+// frightening is that walking is not it.
+//
+// This was false and shipped. Mire at 0.55 left a player sprinting at 4.40
+// against a fully roused Warden at 4.40 - a dead heat, and sprinting is
+// what tells it where you are. The potion is unidentified when you drink
+// it. Every number in the chain is tuned by hand in three different files -
+// the relics, the potions, the Warden's curve - so this walks all of them
+// together rather than trusting that whoever changes one remembers the
+// other two.
+{
+  // Every set of relics a player can end a run holding: all 64 of them.
+  const RELIC_SETS = [];
+  for (let mask = 0; mask < 1 << L.RELIC_IDS.length; mask++) {
+    RELIC_SETS.push(L.RELIC_IDS.filter((_, i) => mask & (1 << i)));
+  }
+  // Alarm in half steps, because the censer halves what a gem adds.
+  const ALARMS = [];
+  for (let a = 0; a <= L.ALARM_MAX; a += 0.5) ALARMS.push(a);
+
+  const top = L.wardenSpeedAt(L.ALARM_MAX);
+  const rows = [];
+  for (const relics of RELIC_SETS)
+    for (const effect of L.PACE_EFFECTS)
+      for (const alarm of ALARMS)
+        rows.push({ relics, effect, alarm, warden: L.wardenSpeedAt(alarm), ...L.paceFor(relics, effect) });
+
+  const say = (r) =>
+    `${r.relics.length ? r.relics.join("+") : "no relics"}, ${r.effect}, alarm ${r.alarm}: ` +
+    `walk ${r.walk.toFixed(2)} dash ${r.dash.toFixed(2)} v warden ${r.warden.toFixed(2)}`;
+
+  // The Warden is fastest at full alarm, so clearing its top speed clears
+  // every level below it.
+  const slowest = rows.reduce((a, b) => (b.dash < a.dash ? b : a));
+  check(
+    `every sprint in the game outruns the Warden by ${Math.round((L.ESCAPE_MARGIN - 1) * 100)}%`,
+    slowest.dash >= top * L.ESCAPE_MARGIN,
+    `slowest sprint is ${say(slowest)}, needs ${(top * L.ESCAPE_MARGIN).toFixed(2)}`
+  );
+  check(
+    "no combination of relics and potions is ever caught at a sprint",
+    rows.every((r) => r.dash > r.warden),
+    `${rows.filter((r) => r.dash <= r.warden).length} of ${rows.length} combinations`
+  );
+
+  // The other half. A potion that costs you nothing is not a cruel potion,
+  // and the Warden that can never catch a walking player is furniture.
+  const mired = rows.filter((r) => r.effect === "mire" && r.alarm === L.ALARM_MAX);
+  const fastest = mired.reduce((a, b) => (b.walk > a.walk ? b : a));
+  check(
+    "a mired player cannot outwalk a fully roused Warden, whatever they are carrying",
+    fastest.walk < top,
+    `fastest mired walk is ${say(fastest)}`
+  );
+  // And it has to bite from the moment the Warden starts hunting, not only
+  // at the very top - otherwise the potion is free for most of a run.
+  const hunting = rows.filter((r) => r.effect === "mire" && r.alarm >= L.ALARM_HUNTS_AT && r.relics.length === 0);
+  check(
+    "mire is a real cost from the moment the floor starts hunting",
+    hunting.every((r) => r.walk < r.warden),
+    `${hunting.filter((r) => r.walk >= r.warden).length} of ${hunting.length} levels survivable on foot`
+  );
+
+  // The promise the Warden's own comment used to make, which is still true
+  // of a player who has not drunk anything: keep moving and it never simply
+  // walks you down.
+  const sober = rows.filter((r) => r.effect !== "mire");
+  check(
+    "a player who has drunk nothing bad always outwalks the Warden",
+    sober.every((r) => r.walk > r.warden),
+    `${sober.filter((r) => r.walk <= r.warden).length} of ${sober.length} combinations`
+  );
+  console.log(
+    `      ${rows.length} combinations of ${RELIC_SETS.length} relic sets, ` +
+      `${L.PACE_EFFECTS.length} potions and ${ALARMS.length} alarm levels.`
+  );
+}
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
