@@ -46,6 +46,7 @@ export function useWardenWarning() {
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
         told = { woke: false, here: false, seen: false };
+        say(floorRules(1).blurb);
       }),
     ];
     return () => {

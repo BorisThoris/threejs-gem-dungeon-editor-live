@@ -128,6 +128,19 @@ for (const size of L.ROOM_SIZES) {
   check("the first floor is unwatched", rows[0].sentryChance === 0 && rows[0].startingAlarm === 0);
   check("the last floor is bigger than the first", rows[rows.length - 1].minRooms > rows[0].maxRooms);
   check("every floor's rules are sane", rows.every((r) => r.minRooms <= r.maxRooms && r.wardenGrace >= 1 && r.blurb.length > 0));
+  // The light is part of the same arc: a deeper floor is never brighter, and
+  // you can never see further down it than the floor above.
+  const hex = /^#[0-9a-f]{6}$/i;
+  check("a deeper floor is never brighter", falls((r) => r.light.ambient) && falls((r) => r.light.fillIntensity));
+  check("you never see further down a deeper floor", falls((r) => r.light.fogFar));
+  check(
+    "every floor is lit at all, in colours three.js can read",
+    rows.every((r) => r.light.ambient > 0.2 && r.light.fillIntensity > 0 && hex.test(r.light.sky) && hex.test(r.light.fill))
+  );
+  // The largest room is 24 across, and its far corner has to stay visible on
+  // the darkest floor or the arena stops being a room you can read.
+  const corner = Math.hypot(L.ROOM_SIZE_LARGE, L.ROOM_SIZE_LARGE) / 2 + 2;
+  check("the biggest room's far corner is inside the fog on every floor", rows.every((r) => r.light.fogFar >= corner), `corner ${corner.toFixed(1)}`);
   // Past the last described floor the table holds rather than falling off.
   check("floors past the last described one keep its rules", L.floorRules(L.FLOORS + 5) === rows[rows.length - 1]);
   check("floor zero and below read as the first floor", L.floorRules(0) === rows[0] && L.floorRules(-3) === rows[0]);

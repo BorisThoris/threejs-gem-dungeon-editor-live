@@ -27,6 +27,7 @@ templates registered, so these are the floors the game actually builds.
 | Walking the shortest path, no stops | 14 / 19 / 31 s | 14 / 21 / 32 s | 17 / 22 / 33 s |
 | Alarm on arrival | 0 | 1 | 2 |
 | Rooms before the Warden wakes | 3 | 2 | 1 |
+| Light: ambient / overhead / fog | 0.70 / 18 / 46 | 0.50 / 14 / 41 | 0.34 / 11 / 36 |
 
 A run is three floors, and each is larger and worse than the one above it.
 The exit charges 3 gems, then 5, then 7: fifteen in tolls against about
@@ -145,6 +146,23 @@ All ten are fixed, and the tests grew to match: the arena's arms must reach
 the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
+
+Two more turned up on the next pass, both of them things nobody had looked
+at because the tests were green:
+
+- **Every floor in the game was a smeared barcode.** Surfaces were filtered
+  at a fixed anisotropy of 4, which is not enough for a plane seen almost
+  edge-on - which is how a first-person player sees the floor for the entire
+  game. It collapsed into wide bands running to the horizon. The filtering
+  is now taken from the renderer's own maximum, and the floor reads as
+  flagstones. It was only found by taking a screenshot at eye level; every
+  earlier screenshot had been from above.
+- **The layout check was not checking the game's dungeons.** It never
+  registered the shipped room templates, and the generator draws a random
+  number when it asks for templates by kind - so with an empty registry it
+  produced a different dungeon for the same seed. Every dungeon those 500
+  seeds validated was one the game would never build. It registers them now
+  and fails if none of the 500 contains an authored room.
 
 ## 3. What the automated walkthrough does
 
@@ -269,7 +287,8 @@ All in `src/game/world.ts`:
 
 Everything that changes with depth is one table, `floorRules(floor)` in the
 same file - the generator, the Warden's grace, the alarm a floor starts at,
-how many rooms are watched, and the line the player is shown on arriving:
+how many rooms are watched, how the floor is lit, and the line the player is
+shown on arriving:
 
 | Floor | Rooms | Warden grace | Alarm on arrival | Rooms watched |
 | --- | --- | --- | --- | --- |
@@ -278,6 +297,9 @@ how many rooms are watched, and the line the player is shown on arriving:
 | 3 | 12-16 | 1 room | 2 | 65% |
 
 Floor three therefore arrives one gem short of `ALARM_HUNTS_AT`: the first
-thing taken down there sets the Warden hunting. `yarn test:layout` checks
-that no row is gentler than the one above it, and `yarn test:smoke` walks a
-seed down all three floors twice and compares them room for room.
+thing taken down there sets the Warden hunting, and it is dark enough that
+the braziers are the only reason a corner has anything in it. A floor's
+arrival alarm is a baseline as well as a starting value - a Scroll of
+Banishment calms the floor but never past it. `yarn test:layout` checks that
+no row is gentler or brighter than the one above it, and `yarn test:smoke`
+walks a seed down all three floors twice and compares them room for room.

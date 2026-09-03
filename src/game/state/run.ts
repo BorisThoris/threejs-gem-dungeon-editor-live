@@ -244,7 +244,8 @@ export const useRun = create<RunState>()(
     endedAt: 0,
 
     startRun: (seed) => {
-      const rules = floorRules(1);
+      const floor = 1;
+      const rules = floorRules(floor);
       const dungeon = generateDungeon({
         seed,
         minRooms: rules.minRooms,
@@ -255,7 +256,7 @@ export const useRun = create<RunState>()(
         phase: "playing",
         paused: false,
         dungeon,
-        floor: 1,
+        floor,
         runSeed: dungeon.seed,
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
@@ -551,7 +552,13 @@ export const useRun = create<RunState>()(
             const away = banishTo(after.dungeon, after.currentRoomId, WARDEN_BANISH_DISTANCE);
             if (away) set({ wardenRoomId: away, wardenCameFrom: null });
           }
-          set({ alarm: Math.max(0, get().alarm - BANISH_CALM) });
+          // Never below what the floor itself starts at. A floor's baseline
+          // is its character, not just its opening value: letting a scroll
+          // take the bottom floor to "Still" made it calmer than the first
+          // one, which is the opposite of what the descent claims.
+          set({
+            alarm: Math.max(floorRules(after.floor).startingAlarm, get().alarm - BANISH_CALM),
+          });
           break;
         }
       }

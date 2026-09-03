@@ -714,6 +714,82 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+// A floor's starting alarm is its baseline, not just its opening value: a
+// scroll may calm the bottom floor, but never past what it arrived at.
+{
+  const calm = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(7734);
+    await wait(1000);
+    for (let i = 0; i < 2; i++) {
+      const d = run.getState().dungeon;
+      run.setState({ transitioning: true, currentRoomId: d.endId });
+      run.getState().roomReady(d.endId);
+      await wait(900);
+    }
+    const floorStarts = window.__derived.rules().startingAlarm;
+    run.getState().raiseAlarm(4);
+    const roused = run.getState().alarm;
+    run.setState({ satchel: ["banish"], identified: ["banish"] });
+    run.getState().useItem(0);
+    const once = run.getState().alarm;
+    run.setState({ satchel: ["banish"], identified: ["banish"] });
+    run.getState().useItem(0);
+    return { floorStarts, roused, once, twice: run.getState().alarm };
+  });
+  ok("a scroll calms the floor", calm.once < calm.roused, JSON.stringify(calm));
+  ok(
+    "but never below what the floor itself starts at",
+    calm.floorStarts > 0 && calm.twice >= calm.floorStarts,
+    JSON.stringify(calm)
+  );
+}
+
+// The floor is seen almost edge-on for the whole game, which is the one
+// angle a non-anisotropic filter cannot draw: it collapsed into smeared
+// bands. The fix is a renderer capability, so what is worth checking is
+// that the capability was read at all.
+{
+  const aniso = await page.evaluate(() => window.__anisotropy?.() ?? 0);
+  ok("the surfaces are filtered at what the renderer can do", aniso > 1, `anisotropy ${aniso}`);
+}
+
+// The dial pulls back to hold a floor the size of the bottom one. Bought
+// with a relic, a map that ran off the rim showed least where it mattered
+// most.
+{
+  const dial = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(9111);
+    await wait(1000);
+    for (let i = 0; i < 2; i++) {
+      const d = run.getState().dungeon;
+      run.setState({ transitioning: true, currentRoomId: d.endId });
+      run.getState().roomReady(d.endId);
+      await wait(900);
+    }
+    const s = run.getState();
+    run.setState({ mapped: true, visited: s.dungeon.rooms.map((r) => r.id) });
+    await wait(500);
+    const svg = document.querySelector("svg");
+    const spots = [...svg.querySelectorAll("g > g > g[transform]")].map((g) => {
+      const m = g.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/);
+      return m ? [Math.abs(+m[1]), Math.abs(+m[2])] : [0, 0];
+    });
+    const box = svg.getBoundingClientRect();
+    return {
+      rooms: s.dungeon.rooms.length,
+      drawn: spots.length,
+      far: Math.max(0, ...spots.flat()),
+      radius: box.width / 2,
+    };
+  });
+  ok("the whole floor is drawn once the map is known", dial.drawn === dial.rooms, JSON.stringify(dial));
+  ok("and all of it fits inside the dial", dial.far <= dial.radius, JSON.stringify(dial));
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

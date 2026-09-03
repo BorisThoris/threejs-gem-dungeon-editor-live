@@ -17,10 +17,11 @@ Two stores that both claimed the player's stats. So:
 - Everything that changes with depth is one table in the same file,
   `floorRules(floor)`: how big a floor is generated, how long it leaves you
   alone before the Warden wakes, how roused it already is when you arrive,
-  how many of its rooms are watched, and the line the player is shown on
-  reaching it. The generator, the run store, the Sentry placement and the
-  arrival hint all read that row rather than each keeping a number of their
-  own, which is what made the floors differ only in price before.
+  how many of its rooms are watched, how it is lit, and the line the player
+  is shown on reaching it. The generator, the run store, the Sentry
+  placement, the scene's lights and the arrival hint all read that row
+  rather than each keeping a number of their own, which is what made the
+  floors differ only in price before.
 - Positions inside a room come from `src/game/dungeon/layout.ts`. Doors,
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by

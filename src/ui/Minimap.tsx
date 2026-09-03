@@ -9,6 +9,18 @@ const SIZE = 190;
 const CELL = 26;
 const GAP = 9;
 const SPACING = CELL + GAP;
+/**
+ * The dial pulls back rather than clipping when a floor is too big for it.
+ *
+ * Floors are 8 rooms at the top of the dungeon and up to 16 at the bottom,
+ * and at a fixed spacing the deep ones ran off the rim - so the Robber's
+ * Chart, which is bought to see where the gems are, showed less the deeper
+ * you went and it mattered most. The spacing shrinks to fit what the player
+ * knows, down to a floor where a room is still a readable square.
+ */
+const MIN_SPACING = 19;
+/** How far from the middle a room may sit and still be drawn whole. */
+const RIM = SIZE / 2 - CELL / 2 - 4;
 const FADE = "radial-gradient(circle at 50% 50%, #000 58%, transparent 92%)";
 
 /**
@@ -74,7 +86,7 @@ export function Minimap() {
     return () => cancelAnimationFrame(raf);
   }, []);
 
-  const cells = useMemo(() => {
+  const dialled = useMemo(() => {
     if (!dungeon || !currentRoomId) return null;
     const here = dungeon.rooms.find((r) => r.id === currentRoomId);
     if (!here) return null;
@@ -87,30 +99,38 @@ export function Minimap() {
       const room = dungeon.rooms.find((r) => r.id === id);
       for (const link of Object.values(room?.links ?? {})) if (link) known.add(link);
     }
-    return dungeon.rooms
-      .filter((r) => known.has(r.id))
-      .map((r) => ({
-        id: r.id,
-        // Room-grid offsets from the room the player is standing in.
-        x: (r.grid.x - here.grid.x) * SPACING,
-        y: (r.grid.z - here.grid.z) * SPACING,
-        state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
-        isExit: r.id === dungeon.endId,
-        isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
-        hasWarden: shows.showsWarden && r.id === wardenRoomId,
-        hasGem:
-          shows.showsGems &&
-          r.id !== currentRoomId &&
-          !gemRooms.includes(r.id) &&
-          r.kind !== "start" &&
-          r.kind !== "end",
-        links: Object.entries(r.links)
-          .filter(([, to]) => to && known.has(to))
-          .map(([dir]) => dir),
-      }));
+    const shown = dungeon.rooms.filter((r) => known.has(r.id));
+    // Room-grid offsets from the room the player is standing in, and the
+    // spacing that keeps the farthest of them on the dial.
+    const reach = Math.max(
+      1,
+      ...shown.map((r) => Math.max(Math.abs(r.grid.x - here.grid.x), Math.abs(r.grid.z - here.grid.z)))
+    );
+    const spacing = Math.max(MIN_SPACING, Math.min(SPACING, RIM / reach));
+    const cell = CELL * (spacing / SPACING);
+    const cells = shown.map((r) => ({
+      id: r.id,
+      x: (r.grid.x - here.grid.x) * spacing,
+      y: (r.grid.z - here.grid.z) * spacing,
+      state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
+      isExit: r.id === dungeon.endId,
+      isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
+      hasWarden: shows.showsWarden && r.id === wardenRoomId,
+      hasGem:
+        shows.showsGems &&
+        r.id !== currentRoomId &&
+        !gemRooms.includes(r.id) &&
+        r.kind !== "start" &&
+        r.kind !== "end",
+      links: Object.entries(r.links)
+        .filter(([, to]) => to && known.has(to))
+        .map(([dir]) => dir),
+    }));
+    return { cells, spacing, cell };
   }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked]);
 
-  if (!cells) return null;
+  if (!dialled) return null;
+  const { cells, spacing, cell } = dialled;
 
   return (
     <div
@@ -154,20 +174,20 @@ export function Minimap() {
                   return (
                     <line
                       key={dir}
-                      x1={dx * (CELL / 2)}
-                      y1={dy * (CELL / 2)}
-                      x2={dx * (SPACING / 2)}
-                      y2={dy * (SPACING / 2)}
+                      x1={dx * (cell / 2)}
+                      y1={dy * (cell / 2)}
+                      x2={dx * (spacing / 2)}
+                      y2={dy * (spacing / 2)}
                       stroke="rgba(255,255,255,0.3)"
                       strokeWidth={3.5}
                     />
                   );
                 })}
                 <rect
-                  x={-CELL / 2}
-                  y={-CELL / 2}
-                  width={CELL}
-                  height={CELL}
+                  x={-cell / 2}
+                  y={-cell / 2}
+                  width={cell}
+                  height={cell}
                   rx={4}
                   fill={c.state === "here" ? colors.accent : c.state === "seen" ? "#3a3f4b" : "#191d25"}
                   stroke={
@@ -178,7 +198,7 @@ export function Minimap() {
                 />
                 {c.hasGem && <circle r={3.4} fill={colors.accent} opacity={0.95} />}
                 {c.hasWarden && (
-                  <circle r={CELL / 2 + 2} fill="none" stroke={colors.danger} strokeWidth={2.5} />
+                  <circle r={cell / 2 + 2} fill="none" stroke={colors.danger} strokeWidth={2.5} />
                 )}
               </g>
             ))}

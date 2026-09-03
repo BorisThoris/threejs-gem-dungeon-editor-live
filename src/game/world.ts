@@ -164,11 +164,13 @@ export const SENTRY_COOLDOWN_S = 6;
  * depth reads it - the generator, the Warden's grace, the alarm a floor
  * starts at, and how many rooms are watched.
  *
- * The arc is deliberate. Floor one is small, unwatched and slow to wake: it
- * is where the dungeon is learned. Floor two is bigger, has watchers, and is
- * already stirring when you arrive. Floor three is the bottom of something -
- * large enough to get lost in, watched almost everywhere, and one gem away
- * from being hunted the moment you step off the stair.
+ * The arc is deliberate. Floor one is small, unwatched, slow to wake and lit
+ * like somewhere people still work: it is where the dungeon is learned.
+ * Floor two is bigger, colder, has watchers, and is already stirring when
+ * you arrive. Floor three is the bottom of something - large enough to get
+ * lost in, watched almost everywhere, one gem away from being hunted the
+ * moment you step off the stair, and dark enough that the braziers are the
+ * only reason a corner has anything in it.
  */
 export interface FloorRules {
   /** Rooms the floor is generated with, including start and end. */
@@ -186,6 +188,24 @@ export interface FloorRules {
    * drift apart.
    */
   blurb: string;
+  /**
+   * How the floor is lit. Difficulty a player has to infer from being
+   * caught; light they read the moment they arrive, which is why it belongs
+   * in this row and not in a theme file of its own. Deeper means dimmer and
+   * colder-cast, so the braziers stop being decoration and start being the
+   * only reason a corner is visible.
+   */
+  light: {
+    /** Ambient and hemisphere intensity for the whole scene. */
+    ambient: number;
+    /** The colour the hemisphere light casts from above. */
+    sky: string;
+    /** The room's overhead fill, in colour and candela. */
+    fill: string;
+    fillIntensity: number;
+    /** How far down a room you can see before the dark takes it. */
+    fogFar: number;
+  };
 }
 
 const DESCENT: readonly FloorRules[] = [
@@ -196,6 +216,7 @@ const DESCENT: readonly FloorRules[] = [
     startingAlarm: 0,
     sentryChance: 0,
     blurb: "The upper vaults. Quiet, unwatched, and slow to notice you.",
+    light: { ambient: 0.7, sky: "#9fb4d8", fill: "#ffd9a8", fillIntensity: 18, fogFar: 46 },
   },
   {
     minRooms: 10,
@@ -204,6 +225,7 @@ const DESCENT: readonly FloorRules[] = [
     startingAlarm: 1,
     sentryChance: 0.45,
     blurb: "Deeper. The halls are wider, watchers stand in them, and something is already stirring.",
+    light: { ambient: 0.5, sky: "#7f96bd", fill: "#cfe0dc", fillIntensity: 14, fogFar: 41 },
   },
   {
     minRooms: 12,
@@ -212,6 +234,7 @@ const DESCENT: readonly FloorRules[] = [
     startingAlarm: 2,
     sentryChance: 0.65,
     blurb: "The bottom. Watched almost everywhere, and one gem from being hunted. Take what you can and climb.",
+    light: { ambient: 0.34, sky: "#9c6a72", fill: "#ffae96", fillIntensity: 11, fogFar: 36 },
   },
 ];
 

@@ -8,10 +8,11 @@ import { Player } from "./player/Player";
 import "./rooms/content";
 import "./puzzles/register";
 import { GroundPlane } from "./rooms/GroundPlane";
+import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { useCurrentRoom, useRun } from "./state/run";
 import { WardenDriver } from "./warden/WardenDriver";
-import { CAMERA_FOV, PLAYER_SPAWN_Y } from "./world";
+import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
 /**
  * Start on a pad toggles pause. Read here, in the frame loop, because the
@@ -30,6 +31,25 @@ function PadPause() {
     else run.pause();
   });
   return null;
+}
+
+/**
+ * The light the whole floor is seen by, from the floor's own rules.
+ *
+ * Its own component for the same reason RoomWarden is: subscribing Scene to
+ * the floor would re-render the Canvas's children on every descent, and the
+ * only things that need the new numbers are three lights and the fog.
+ */
+function FloorLight() {
+  const light = useRun((s) => floorRules(s.floor).light);
+  return (
+    <>
+      {/* Depth cue only: the far wall of the largest room is still visible. */}
+      <fog attach="fog" args={["#050608", 10, light.fogFar]} />
+      <ambientLight intensity={light.ambient} />
+      <hemisphereLight args={[light.sky, "#3a3126", light.ambient * 0.86]} />
+    </>
+  );
 }
 
 function CurrentRoom() {
@@ -70,10 +90,8 @@ export function Scene() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
       style={{ position: "absolute", inset: 0, background: "#050608" }}
     >
-      {/* Depth cue only: the far wall of the largest room is still visible. */}
-      <fog attach="fog" args={["#050608", 10, 46]} />
-      <ambientLight intensity={0.7} />
-      <hemisphereLight args={["#9fb4d8", "#3a3126", 0.6]} />
+      <Anisotropy />
+      <FloorLight />
       <PadPause />
       {/* The Warden walks the floor whether or not its room is mounted. */}
       <WardenDriver />

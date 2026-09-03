@@ -84,6 +84,7 @@ export default function App() {
     w.__settings = useSettings;
     w.__records = useRecords;
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
+    void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Room drafts marked live in the editor register themselves when the
     // drafts module loads. The game at "/" never loads the editor, so load
     // just that module here - development only, dropped from production.

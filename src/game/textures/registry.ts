@@ -141,10 +141,43 @@ function paintDefault(id: string): HTMLCanvasElement {
   return canvas;
 }
 
+/**
+ * Anisotropic filtering, which is not a nicety here.
+ *
+ * A first-person player sees the floor almost edge-on for the whole game.
+ * At that angle a tile covers many texels across the screen and almost none
+ * down it, and a filter that picks one mip level for both directions has to
+ * pick the coarse one - so the floor collapsed into wide smeared bands that
+ * ran away to the horizon, every room, all the time. Anisotropic filtering
+ * samples along the long axis instead, which is what makes a floor read as a
+ * floor. Set from the renderer's own maximum once a canvas exists, because
+ * asking for more than the hardware has is silently ignored.
+ */
+let maxAnisotropy = 8;
+
+export function setMaxAnisotropy(n: number) {
+  const want = Math.max(1, Math.floor(n));
+  if (want === maxAnisotropy) return;
+  maxAnisotropy = want;
+  // Textures already handed out keep their sampler state until told; the
+  // room the player is standing in was built before the canvas existed.
+  for (const texture of cache.values()) {
+    texture.anisotropy = want;
+    texture.needsUpdate = true;
+  }
+  for (const texture of tiled.values()) {
+    texture.anisotropy = want;
+    texture.needsUpdate = true;
+  }
+}
+
+/** What the surfaces are currently filtered at; for the smoke test. */
+export const currentAnisotropy = () => maxAnisotropy;
+
 function finish(texture: Texture): Texture {
   texture.wrapS = texture.wrapT = RepeatWrapping;
   texture.colorSpace = SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = maxAnisotropy;
   texture.needsUpdate = true;
   return texture;
 }

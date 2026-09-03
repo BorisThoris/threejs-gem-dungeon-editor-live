@@ -5,6 +5,7 @@ import { Physics } from "@react-three/rapier";
 
 import type { Dir, Room as RoomData, RoomTemplate } from "../game/dungeon/types";
 import { Room } from "../game/rooms/Room";
+import { Anisotropy } from "../game/textures/Anisotropy";
 import { registerTemplate } from "../game/rooms/templates";
 // The kinds must be registered for the preview to show their content.
 import "../game/rooms/content";
@@ -54,6 +55,7 @@ export function Preview({ template, doors }: PreviewProps) {
       camera={{ fov: 50, near: 0.1, far: 200, position: [template.size * 0.9, template.size * 0.8, template.size * 0.9] }}
       style={{ background: "#0a0c12", borderRadius: 6 }}
     >
+      <Anisotropy />
       <ambientLight intensity={0.6} />
       <hemisphereLight args={["#9fb4d8", "#3a3126", 0.5]} />
       <Suspense fallback={null}>

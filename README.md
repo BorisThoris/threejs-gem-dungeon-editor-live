@@ -10,8 +10,9 @@ are still carrying when you climb out is what you got away with.
 Each floor down is also worse than the one above it. The upper vaults are
 small, unwatched, and slow to notice you. Below that the halls widen,
 watchers stand in them, and the floor is stirring before you touch anything.
-The bottom is large enough to get lost in, watched almost everywhere, and one
-gem short of being hunted the moment you step off the stair.
+The bottom is large enough to get lost in, watched almost everywhere, one gem
+short of being hunted the moment you step off the stair, and dark enough that
+the braziers are the only reason a corner has anything in it.
 
 The catch is that every gem you take wakes the thing that walks the floor.
 The Warden cannot be fought and cannot be blocked - it drifts through

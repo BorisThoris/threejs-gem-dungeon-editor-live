@@ -13,7 +13,7 @@ import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
-import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT } from "../world";
+import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
 import { gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
 
@@ -71,6 +71,7 @@ export function Room({ room, seed }: RoomProps) {
   const gem = gemFor(room, seed);
   const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
   const floor = useRun((s) => s.floor);
+  const light = floorRules(floor).light;
   const sentry = sentryFor(room, seed, floor);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
@@ -102,11 +103,12 @@ export function Room({ room, seed }: RoomProps) {
         <meshStandardMaterial color="#1a191d" roughness={1} />
       </mesh>
 
-      {/* A dim overhead fill so no corner is ever fully black; the torches do the rest. */}
+      {/* A dim overhead fill so no corner is ever fully black; the torches do
+          the rest, and do more of it the deeper the floor is. */}
       <pointLight
         position={[0, GROUND_Y + WALL_HEIGHT - 0.6, 0]}
-        color="#ffd9a8"
-        intensity={18}
+        color={light.fill}
+        intensity={light.fillIntensity}
         distance={room.size * 1.6}
         decay={1.5}
       />
