@@ -21,6 +21,8 @@
  * are true for exactly one frame, and `readGamepad` is a read. Any number
  * of systems can call it, in any order, and they all see the same frame.
  */
+import { SATCHEL_SLOTS } from "../items/catalog";
+
 
 export interface GamepadState {
   connected: boolean;
@@ -34,9 +36,13 @@ export interface GamepadState {
   /** Rising edge only, true for one frame. */
   interactPressed: boolean;
   pausePressed: boolean;
-  /** Rising edges for the first two satchel slots, on X and Y. */
-  slot1Pressed: boolean;
-  slot2Pressed: boolean;
+  /**
+   * A rising edge per satchel slot, one button each: X, Y, then the two
+   * shoulders. There were two of these, for a satchel of four, so the back
+   * half of what a player was carrying could not be reached with the only
+   * input a Steam Deck has.
+   */
+  slotPressed: boolean[];
   /** B / Circle: back out of a menu. Rising edge. */
   backPressed: boolean;
   /**
@@ -55,9 +61,9 @@ const BUTTON_INTERACT = 0;
 const BUTTON_BACK = 1;
 const BUTTON_PAUSE = 9;
 const BUTTON_DASH = 10;
-// 2 = X / Square, 3 = Y / Triangle.
-const BUTTON_SLOT1 = 2;
-const BUTTON_SLOT2 = 3;
+// 2 = X / Square, 3 = Y / Triangle, 4 = LB / L1, 5 = RB / R1. One per
+// satchel slot, in that order, so the list is as long as the satchel is.
+const BUTTON_SLOTS = [2, 3, 4, 5].slice(0, SATCHEL_SLOTS);
 // 12..15 = d-pad up, down, left, right.
 const DPAD = { up: 12, down: 13, left: 14, right: 15 };
 
@@ -89,8 +95,7 @@ const state: GamepadState = {
   dash: false,
   interactPressed: false,
   pausePressed: false,
-  slot1Pressed: false,
-  slot2Pressed: false,
+  slotPressed: BUTTON_SLOTS.map(() => false),
   backPressed: false,
   menuX: 0,
   menuY: 0,
@@ -99,8 +104,8 @@ const state: GamepadState = {
 function clear(): void {
   state.connected = false;
   state.moveX = state.moveY = state.lookX = state.lookY = 0;
-  state.dash = state.interactPressed = state.pausePressed = false;
-  state.slot1Pressed = state.slot2Pressed = state.backPressed = false;
+  state.dash = state.interactPressed = state.pausePressed = state.backPressed = false;
+  state.slotPressed.fill(false);
   state.menuX = state.menuY = 0;
   held.x = held.y = 0;
 }
@@ -153,8 +158,7 @@ function poll(now: number): void {
   state.interactPressed = risingEdge(pad, BUTTON_INTERACT);
   state.backPressed = risingEdge(pad, BUTTON_BACK);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
-  state.slot1Pressed = risingEdge(pad, BUTTON_SLOT1);
-  state.slot2Pressed = risingEdge(pad, BUTTON_SLOT2);
+  for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 
   // The d-pad and the left stick drive a menu the same way, so a player who
   // reaches for either gets what they expected.

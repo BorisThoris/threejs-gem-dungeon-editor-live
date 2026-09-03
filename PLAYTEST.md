@@ -503,6 +503,63 @@ had looked at because the tests were green:
   room went after are genuinely covered: at every size, the last ring lands
   within a patch's reach of the furthest standable corner and no further.
 
+- **A controller could open the tome, read the numbers, and then sit
+  there.** The library's tome - one of the ten kinds of room the game
+  builds, and the only one that pays a gem for a puzzle - listened for
+  digits on the window and drew nothing to press. There was no way to
+  answer it without a keyboard, in a demo aimed at a machine that has none.
+  It is the same hole, in the same shape, as the title screen a controller
+  could not start, and it survived that cycle because the check written
+  then plays the menus and the run and never opens a book.
+
+  Next to it, a smaller one of the same kind: the satchel holds four and
+  the pad was bound to two of them, X and Y. A player on a Deck who filled
+  their satchel could drink the first two things they found and nothing
+  else, for the rest of the run. Four slots, four buttons now - X, Y and
+  the two shoulders - and the list of buttons is as long as `SATCHEL_SLOTS`
+  says the satchel is, rather than a pair of fields that happened to be
+  written twice.
+
+  The tome has an on-screen keypad that the d-pad drives, and `usePadMenu`
+  learned what a grid is: left and right move one key, up and down move a
+  row. `yarn test:pad` now plays the whole thing on the pad alone - A at
+  the lectern to open it, the d-pad and A across the keys - and the run
+  reports the room cleared and a gem paid. Run against the code as shipped,
+  it reports no keypad and no gem, and the satchel check reports the third
+  and fourth slots consuming nothing.
+
+  Three things this turned up on the way, all of them mine to begin with.
+  The commit key was `disabled` while no digit was pending, and a disabled
+  button is not focusable - so the grid was eleven keys one moment and
+  twelve the next and the d-pad landed somewhere different depending on
+  what had been typed. It is dimmed and reachable now, which is also the
+  right answer for a player. The first version of the satchel check pressed
+  X before RB, and using a slot closes the gap, so the fourth was empty by
+  the time it was tested and the check reported the bug whether or not the
+  bug was there. And the keypad's keys refuse focus from a mouse click, so
+  a player who clicks one and then presses Space does not press it a second
+  time as well as committing.
+
+  One real change came out of it. The tome's clock ran from the moment it
+  opened, so five to seven seconds of the limit were spent looking at
+  numbers that could not yet be answered, with the countdown visibly
+  ticking. That was merely ungenerous while typing was the only way in;
+  with keys on screen it takes several presses to enter what a keyboard
+  enters in one, so the head start came out of the slower input's time and
+  not the faster one's. The clock starts when the answering does.
+
+  What it is *not*: the check measures 24 seconds to enter five numbers on
+  this machine, which renders through a software rasteriser at a few frames
+  a second. That is the harness, not the game - at a Deck's frame rate the
+  same walk is a few seconds - and the clock was not touched to
+  accommodate it. The harness renders at 800x600 instead of 1280x800
+  instead, which is its own business: nothing in it reads a layout.
+
+  Still keyboard-only: the seed box on the Records page. A pad player can
+  start a run, and replay the last one from the summary, but cannot type an
+  arbitrary seed. That is a convenience rather than a room they cannot
+  finish, and on a Deck Steam's own on-screen keyboard covers it.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it

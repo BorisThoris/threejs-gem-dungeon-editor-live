@@ -24,8 +24,7 @@ function PadPause() {
   useFrame(() => {
     const pad = readGamepad();
     const run = useRun.getState();
-    if (pad.slot1Pressed) run.useItem(0);
-    if (pad.slot2Pressed) run.useItem(1);
+    for (let i = 0; i < pad.slotPressed.length; i++) if (pad.slotPressed[i]) run.useItem(i);
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;
     if (run.paused) run.resume();

@@ -64,7 +64,7 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
-              <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X and Y on a pad</dd>
+              <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X, Y and the shoulders on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
               <dd style={{ margin: 0 }}>
                 Hold Shift, or L3. The Warden is slower than you are - but running is

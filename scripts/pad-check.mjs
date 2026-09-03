@@ -103,7 +103,9 @@ const tap = async (page, index, hold = 4) => {
 };
 const stick = (page, axis, value) => page.evaluate(([a, v]) => window.__pad.axis(a, v), [axis, value]);
 
-const BUTTON = { a: 0, b: 1, x: 2, y: 3, start: 9, l3: 10, up: 12, down: 13, left: 14, right: 15 };
+const BUTTON = { a: 0, b: 1, x: 2, y: 3, lb: 4, rb: 5, start: 9, l3: 10, up: 12, down: 13, left: 14, right: 15 };
+/** One button per satchel slot, in the order the slots are drawn. */
+const SLOT_BUTTONS = [BUTTON.x, BUTTON.y, BUTTON.lb, BUTTON.rb];
 
 /**
  * Walk the focus down a menu until it lands on what you asked for.
@@ -192,7 +194,15 @@ if (DESKTOP) {
     args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader",
            "--enable-unsafe-swiftshader", "--disable-background-timer-throttling"],
   });
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  /**
+   * Smaller than a Deck's panel on purpose. Nothing here reads a layout -
+   * it reads button text and what the run did - and this machine renders
+   * through a software rasteriser where the cost is all fill rate. At
+   * 1280x800 the tome's 45-second clock ran out while the d-pad was still
+   * walking the keypad, at about four frames a second; the game is not the
+   * slow part and must not be tuned to this.
+   */
+  const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
   // Before any of the game's modules run: the pad module starts polling at
   // import time, and a pad that appears later is a different test.
   await context.addInitScript(INSTALL_PAD);
@@ -376,6 +386,156 @@ ok("the focus can be walked to Quit to menu", await focusOn(page, /quit/i), awai
 await tap(page, BUTTON.a);
 await page.waitForTimeout(2500);
 ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await buttons()).join(", "));
+
+// --- The satchel, all of it ------------------------------------------------
+//
+// The satchel holds four and the pad reached two of them. A Deck player who
+// filled it could drink the first two things they found and nothing else,
+// for the whole run - and every check passed, because they all type. Four
+// slots, four buttons: X, Y and the two shoulders.
+{
+  const filled = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(9);
+    await new Promise((r) => setTimeout(r, 1800));
+    const ids = ["healing", "swiftness", "mapping", "gloom"];
+    run.setState({ satchel: [...ids], lives: 1, phase: "playing" });
+    return run.getState().satchel.length;
+  });
+  ok("a satchel can be filled to check every slot", filled === 4, `${filled} carried`);
+  // Last slot first: using one closes the gap, so pressing X before RB
+  // would leave the fourth slot empty and the check would report the bug it
+  // is looking for whether or not the bug is there. It did, first time.
+  const used = [];
+  for (const button of [...SLOT_BUTTONS].reverse()) {
+    const before = await page.evaluate(() => window.__run.getState().satchel.length);
+    await tap(page, button);
+    await page.waitForTimeout(400);
+    const after = await page.evaluate(() => window.__run.getState().satchel.length);
+    used.push(before - after);
+  }
+  ok(
+    "every satchel slot can be used with a pad, not just the first two",
+    used.every((d) => d === 1),
+    `slots consumed: ${used.join(", ")} (RB, LB, Y, X)`
+  );
+}
+
+// --- Answering the tome with a controller ----------------------------------
+//
+// The library's tome listened for digits on the window and drew nothing to
+// press: a controller could open the book, watch the numbers, and then sit
+// there. One of the ten kinds of room the game builds, unfinishable on the
+// only input a Steam Deck has. It is played here entirely on the pad - A to
+// open it, the d-pad and A over the on-screen keys, and the sequence read
+// off the DEV probe because a probe cannot remember numbers off a screen
+// that has already hidden them.
+{
+  const library = await page.evaluate(async () => {
+    const run = window.__run;
+    for (let seed = 1; seed < 80; seed++) {
+      run.getState().startRun(seed);
+      await new Promise((r) => setTimeout(r, 700));
+      const room = run.getState().dungeon.rooms.find((r) => r.kind === "library");
+      if (!room) continue;
+      run.setState({ transitioning: true, currentRoomId: room.id, lives: 3 });
+      run.getState().roomReady(room.id);
+      await new Promise((r) => setTimeout(r, 1400));
+      const at = window.__anchorsFor("library", room)[0];
+      // Sideways rather than straight in, and looking at it: the same
+      // approach the smoke test had to work out, for the same reasons.
+      const d = Math.hypot(at[0], at[2]) || 1;
+      const x = at[0] + (-at[2] / d) * 1.9;
+      const z = at[2] + (at[0] / d) * 1.9;
+      window.__bus.emit("teleport", { position: [x, 1.5, z], yaw: Math.atan2(-(at[0] - x), -(at[2] - z)) });
+      return { id: room.id, seed };
+    }
+    return null;
+  });
+  ok("a floor has a library to open with a pad", library !== null, JSON.stringify(library));
+  if (library) {
+    await page.waitForTimeout(600);
+    await tap(page, BUTTON.a);
+    await page.waitForTimeout(500);
+    const sequence = await page.evaluate(() => window.__numberSequence ?? null);
+    ok("A at the lectern opens the tome", Array.isArray(sequence), JSON.stringify(sequence));
+    if (sequence) {
+      // The numbers are hidden first - five to seven seconds by difficulty -
+      // and nothing entered before that counts.
+      await page.waitForTimeout(7600);
+      ok(
+        "the tome draws keys a pad can reach",
+        await page.evaluate(() => !!document.querySelector('[data-testid="keypad"]')),
+      );
+      /**
+       * Walk the keypad's focus onto a labelled key and press A.
+       *
+       * By the shortest route: rows with up and down, then columns with
+       * left and right, which is what a player does and is at most five
+       * presses on a keypad three wide. Walking it in one direction was
+       * the first version and cost up to eleven, which mattered because
+       * the tome is on a clock.
+       */
+      const COLUMNS = 3;
+      const where = () =>
+        page.evaluate(() => {
+          const keys = [...document.querySelectorAll('[data-testid="keypad"] button')];
+          return { labels: keys.map((k) => (k.textContent ?? "").trim()), at: keys.indexOf(document.activeElement) };
+        });
+      /**
+       * The tome is on a clock, and this machine renders through a software
+       * rasteriser at about a tenth of a Deck's frame rate. A frame-based
+       * hold is right - a wall-clock one is what made this harness report
+       * "Start pauses on alternate presses" - but every round trip to the
+       * page costs a frame too, so the focus is tracked here and the page
+       * is asked only once a key, to confirm it landed where it was sent.
+       */
+      const layout = await where();
+      let at = layout.at;
+      const pressKey = async (label) => {
+        const target = layout.labels.indexOf(label);
+        if (target < 0) return false;
+        // Nothing focused yet: one press of a direction lands on the first
+        // key, which is where padMenu starts a menu it has not been in.
+        if (at < 0) {
+          await tap(page, BUTTON.right, 2);
+          at = 0;
+        }
+        const rows = Math.floor(target / COLUMNS) - Math.floor(at / COLUMNS);
+        const cols = (target % COLUMNS) - (at % COLUMNS);
+        for (let i = 0; i < Math.abs(rows); i++) await tap(page, rows > 0 ? BUTTON.down : BUTTON.up, 2);
+        for (let i = 0; i < Math.abs(cols); i++) await tap(page, cols > 0 ? BUTTON.right : BUTTON.left, 2);
+        at = target;
+        if ((await where()).at !== target) return false;
+        await tap(page, BUTTON.a, 2);
+        return true;
+      };
+      let reached = true;
+      let presses = 0;
+      const startedAt = Date.now();
+      for (const n of sequence) {
+        for (const digit of String(n)) {
+          reached = (await pressKey(digit)) && reached;
+          presses++;
+        }
+        reached = (await pressKey("OK")) && reached;
+        presses++;
+      }
+      const took = (Date.now() - startedAt) / 1000;
+      ok("every key the answer needs can be reached with the d-pad", reached, `${presses} keys in ${took.toFixed(1)}s`);
+      await page.waitForTimeout(2200);
+      const solved = await page.evaluate(() => {
+        const s = window.__run.getState();
+        return { cleared: s.cleared.includes(s.currentRoomId), gems: s.gems, failed: s.failed.length };
+      });
+      ok(
+        "the tome can be answered, and pays its gem, on a pad alone",
+        solved.cleared && solved.gems >= 1 && solved.failed === 0,
+        JSON.stringify(solved)
+      );
+    }
+  }
+}
 
 // --- What happens when the pad is put down ---------------------------------
 

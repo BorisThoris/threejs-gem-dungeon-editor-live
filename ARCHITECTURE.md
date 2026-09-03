@@ -155,6 +155,12 @@ Two stores that both claimed the player's stats. So:
   driver, the figure itself, the audio and the HUD all read the same
   function, so "Hunting" in the corner and the thing in the doorway can
   never disagree.
+- Menus a pad can use are `src/ui/padMenu.ts`, and numbers a pad can enter
+  are `src/ui/Keypad.tsx`. One owner each, because the reason the tome
+  could not be answered with a controller is that it had its own idea of
+  what a key press was. Which buttons the satchel's slots sit on is
+  `src/game/input/gamepad.ts`, as a list as long as `SATCHEL_SLOTS` - it
+  was two fields for a satchel of four.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus.
 - Textures come from `src/game/textures/registry.ts`, by id.
 - Templates come from `src/game/rooms/templates.ts`, by id.

@@ -319,8 +319,10 @@ that ships, and the desktop package that would go on Steam.
 
 | | What it does | Needs |
 | --- | --- | --- |
-| `yarn test:layout` | 38 checks over every room size, shape and hundreds of seeds: anchors clear of the door lanes and of each other, every arrangement legal, every shipped template one the game will draw whole, the descent's rules never gentler with depth, every item findable with a look nothing else has, the pan of a sound correct from all 360 headings | nothing |
-| `yarn test:smoke` | 102 checks driving the real game: the whole loop from menu to victory and to death, the economy, the Warden and the noise it hears, the locked vault, the three puzzles won and lost, the records, the editor and the content pipeline | a dev server on 5199, Chromium |
+| `yarn test:layout` | 118 checks over every room size, shape and hundreds of seeds: anchors clear of the door lanes and of each other, every arrangement legal, every shipped template one the game will draw whole, the descent's rules never gentler with depth, the pan of a sound correct from all 360 headings, the Warden outrun by every sprint in the game and no ground in the arena its arms do not reach | nothing |
+| `yarn test:smoke` | 107 checks driving the real game: the whole loop from menu to victory and to death, the economy, the Warden and the noise it hears, the locked vault, the three puzzles won and lost, the arena's arms, the records, the editor and the content pipeline | a dev server on 5199, Chromium |
+| `yarn test:pad` | 29 checks played on a synthetic gamepad and nothing else: the title screen, the pause menu, quitting, walking and looking, every satchel slot, and the library's tome opened and answered on the d-pad alone. Runs against the dev build and, with `--desktop`, the packaged one | as above |
+| `yarn test:audio` | 14 checks that listen: it taps whatever connects to the speakers before the app loads and measures samples - every cue heard over the room tone, the loud ones well clear of it, muting silent, the ambient bed opening up when the floor is roused | as above |
 | `yarn test:perf` | Draw calls, triangles, live geometries and textures for every room of every floor against a written budget, plus what survives a forced collection while sprinting | as above |
 | `yarn test:prod` | Builds `dist`, serves it and plays it through the menu and the keyboard alone - the shipped bundle has no probe handles - and reads the rest off the built files: no editor in the bundle, nothing 404ing, under 1.35 MB over the wire | Chromium |
 | `yarn test:desktop` | Packages the Linux build, reads what is inside it, then starts it under a virtual display and plays it. Holds the build config and the Steam instructions to each other | Xvfb, Chromium |
@@ -330,9 +332,14 @@ that ships, and the desktop package that would go on Steam.
 Chromium binary, which are not project dependencies, so they are what you
 run before shipping a build rather than a commit gate.
 
-What the numbers say today: the worst room costs 54 draw calls and 2,214
+What the numbers say today: the worst room costs 51 draw calls and 1,950
 triangles; a first visit downloads 1.05 MB gzipped; a floor is 8 to 16
 rooms depending on depth and takes 19 to 22 seconds to cross at a walk.
+
+Every screen and every room can now be played with a controller alone,
+which is what the Deck needs: the one thing still wanting a keyboard is the
+box on the Records page for typing an arbitrary seed, and Steam's own
+on-screen keyboard covers that.
 PLAYTEST.md has the rest.
 
 ---

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createRng } from "../rng";
 import { colors, FONT } from "../../ui/overlay";
+import { Keypad } from "../../ui/Keypad";
 
 export interface NumberPuzzleProps {
   difficulty: "easy" | "medium" | "hard";
@@ -29,6 +30,13 @@ const RULES = {
  * solve. Digits fill the current slot, Space or Enter commits it, Backspace
  * steps back. Miss the allowed number of times or run out the clock and the
  * tome closes on you.
+ *
+ * The keys are also on screen, because for as long as this room has existed
+ * there was no way to answer it without a keyboard: a controller could open
+ * the tome and read the sequence and then do nothing at all, in a demo
+ * aimed at the Steam Deck. The three handlers below are what both a key
+ * press and a pressed key call, so there is one description of what a digit
+ * does.
  */
 export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: NumberPuzzleProps) {
   const rules = RULES[difficulty];
@@ -50,11 +58,30 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
   const [misses, setMisses] = useState(0);
   const [timeLeft, setTimeLeft] = useState<number>(rules.timeLimit);
   const [shake, setShake] = useState(false);
+  /**
+   * The clock starts when the answering does, not when the tome opens.
+   *
+   * It used to run from the moment it was opened, so five to seven seconds
+   * of the limit were spent looking at numbers that could not yet be typed
+   * back - and the countdown in the corner ticked down while the player
+   * could do nothing about it. That was merely ungenerous while the only
+   * way to answer was a keyboard. With keys on screen it is worse than
+   * that: entering a number with a d-pad is several presses where typing
+   * is one, so the fixed head start came out of the slower input's time
+   * and not the faster one's. What the limit is for is how long you can
+   * hold five numbers in your head while you enter them.
+   */
   const startedAt = useRef(performance.now());
 
-  // Show, then hide.
+  // Show, then hide, and start the clock at the moment they go.
   useEffect(() => {
-    const t = window.setTimeout(() => setPhase((p) => (p === "showing" ? "typing" : p)), rules.showFor * 1000);
+    const t = window.setTimeout(() => {
+      setPhase((p) => {
+        if (p !== "showing") return p;
+        startedAt.current = performance.now();
+        return "typing";
+      });
+    }, rules.showFor * 1000);
     return () => window.clearTimeout(t);
   }, [rules.showFor]);
 
@@ -85,50 +112,61 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
     }
   }, [phase, onComplete, onFail]);
 
+  // What a digit, a commit and a backspace do. One description each, so a
+  // key on the keyboard and a key on the screen cannot come to disagree.
+  const digit = useCallback((d: string) => {
+    setCurrent((c) => (c.length < 2 ? c + d : c));
+  }, []);
+
+  const commit = useCallback(() => {
+    if (!current) return;
+    const next = [...entries, current];
+    setCurrent("");
+    if (next.length < sequence.length) {
+      setEntries(next);
+      return;
+    }
+    const correct = next.every((v, i) => Number(v) === sequence[i]);
+    if (correct) {
+      setEntries(next);
+      setPhase("solved");
+      return;
+    }
+    setShake(true);
+    window.setTimeout(() => setShake(false), 500);
+    setEntries([]);
+    const m = misses + 1;
+    setMisses(m);
+    if (m >= rules.misses) setPhase("failed");
+  }, [current, entries, sequence, misses, rules.misses]);
+
+  const backspace = useCallback(() => {
+    if (current) setCurrent(current.slice(0, -1));
+    else if (entries.length) setEntries(entries.slice(0, -1));
+  }, [current, entries]);
+
   // Typing. Attached to the window so no input element needs focus.
   useEffect(() => {
     if (phase !== "typing") return;
-    const commit = () => {
-      if (!current) return;
-      const next = [...entries, current];
-      setCurrent("");
-      if (next.length < sequence.length) {
-        setEntries(next);
-        return;
-      }
-      const correct = next.every((v, i) => Number(v) === sequence[i]);
-      if (correct) {
-        setEntries(next);
-        setPhase("solved");
-        return;
-      }
-      setShake(true);
-      window.setTimeout(() => setShake(false), 500);
-      setEntries([]);
-      const m = misses + 1;
-      setMisses(m);
-      if (m >= rules.misses) setPhase("failed");
-    };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onExit();
         return;
       }
       if (event.key >= "0" && event.key <= "9") {
-        if (current.length < 2) setCurrent(current + event.key);
+        digit(event.key);
         event.preventDefault();
       } else if (event.key === "Enter" || event.key === " ") {
         commit();
         event.preventDefault();
       } else if (event.key === "Backspace") {
-        if (current) setCurrent(current.slice(0, -1));
-        else if (entries.length) setEntries(entries.slice(0, -1));
+        backspace();
         event.preventDefault();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, current, entries, sequence, misses, rules.misses, onExit]);
+  }, [phase, digit, commit, backspace, onExit]);
 
   const slot = (text: string, state: "shown" | "done" | "active" | "empty", i: number) => (
     <div
@@ -155,7 +193,7 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
       <div style={{ fontSize: 12, letterSpacing: "0.06em", marginBottom: 6 }}>THE TOME OF NUMBERS</div>
       <div style={{ fontSize: 10, color: colors.dim, marginBottom: 22 }}>
         {phase === "showing" && "Remember these."}
-        {phase === "typing" && "Type them back. Space commits a number."}
+        {phase === "typing" && "Type them back, or use the keys. Space or OK commits a number."}
         {phase === "solved" && <span style={{ color: colors.gold }}>Correct. The tome yields a gem.</span>}
         {phase === "failed" && <span style={{ color: colors.danger }}>The tome closes.</span>}
       </div>
@@ -176,12 +214,22 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
           return slot("", "empty", i);
         })}
       </div>
+      {phase === "typing" && (
+        <div style={{ marginBottom: 18 }}>
+          <Keypad
+            onDigit={digit}
+            onBackspace={backspace}
+            action={{ label: "OK", onPress: commit, disabled: !current }}
+            onBack={onExit}
+          />
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: colors.dim }}>
         <span>
           Misses {misses}/{rules.misses}
         </span>
         <span style={{ color: timeLeft < 10 ? colors.danger : colors.dim }}>{Math.ceil(timeLeft)}s</span>
-        <span>Esc leaves</span>
+        <span>Esc or B leaves</span>
       </div>
     </div>
   );

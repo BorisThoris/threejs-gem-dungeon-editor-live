@@ -42,9 +42,17 @@ export interface PadMenuOptions {
   onBack?: () => void;
   /** False while the menu is not on screen. */
   active?: boolean;
+  /**
+   * How wide the menu is, if it is a grid rather than a list. Left and
+   * right then move one place and up and down move a row, which is what
+   * anyone pointing a d-pad at a keypad expects. Left at 1 - a column of
+   * buttons - both axes move one place, which is what every menu in the
+   * game was before there was a keypad in it.
+   */
+  columns?: number;
 }
 
-export function usePadMenu({ container, onBack, active = true }: PadMenuOptions): void {
+export function usePadMenu({ container, onBack, active = true, columns = 1 }: PadMenuOptions): void {
   useEffect(() => {
     if (!active) return;
     const id = Symbol("padMenu");
@@ -87,10 +95,18 @@ export function usePadMenu({ container, onBack, active = true }: PadMenuOptions)
       const list = items();
       if (list.length === 0) return;
 
-      const step = pad.menuY || pad.menuX;
+      // A row is worth `columns` places, a column one. Both wrap through
+      // the whole list, so a grid whose last row is short is still every
+      // button in it and nothing can be focused that is not there.
+      const step = pad.menuX + pad.menuY * columns;
       if (step !== 0) {
         const here = at(list);
-        const next = here < 0 ? (step > 0 ? 0 : list.length - 1) : (here + step + list.length) % list.length;
+        const next =
+          here < 0
+            ? step > 0
+              ? 0
+              : list.length - 1
+            : (((here + step) % list.length) + list.length) % list.length;
         list[next].focus();
         ring(list[next]);
       }
@@ -112,5 +128,5 @@ export function usePadMenu({ container, onBack, active = true }: PadMenuOptions)
       const i = stack.indexOf(id);
       if (i >= 0) stack.splice(i, 1);
     };
-  }, [container, onBack, active]);
+  }, [container, onBack, active, columns]);
 }
