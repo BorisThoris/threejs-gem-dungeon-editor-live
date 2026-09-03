@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Eight more turned up on the next passes, all of them things nobody had
+Nine more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -206,6 +206,13 @@ looked at because the tests were green:
   that renders half empty. That is why the templates before this were
   written by editing JSON by hand, and it is the same silence that hid the
   missing chest. The rules have one owner now, and the builder shows them.
+- **A Steam launch configured from our own instructions would not have
+  started the game.** The Linux executable was named after the npm package -
+  `threejs-gem-dungeon-editor` - because nothing told the builder otherwise,
+  while `steam/README.md` told whoever set up the store page to launch
+  `gem-dungeon`. Nobody had ever looked inside the package. The build config
+  names it deliberately now, and `yarn test:desktop` holds the document and
+  the artifact to each other.
 - **The layout check was not checking the game's dungeons.** It never
   registered the shipped room templates, and the generator draws a random
   number when it asks for templates by kind - so with an empty registry it

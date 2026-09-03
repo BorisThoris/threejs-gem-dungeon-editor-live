@@ -215,6 +215,12 @@ second model for it to be written in.
   good; the memory trial is begun and repeated; the challenge room's trap is
   sprung. Each exposes what a probe cannot see - the number sequence and the
   pattern - behind `import.meta.env.DEV`.
+- `yarn test:desktop` packages the Linux build, reads what is in it, then
+  starts it under a virtual display and plays it. Electron is Chromium, so
+  it opens a debugging port and the same tooling that drives the web build
+  drives the desktop one. It also holds the build config and the Steam
+  instructions to each other: the name of the executable is one fact
+  written in two places, and they had drifted.
 - `yarn test:prod` is the only check that touches what ships. Every other
   one drives the dev server, where the DEV blocks still exist; the
   production bundle has no probe handles and no editor, so that one is

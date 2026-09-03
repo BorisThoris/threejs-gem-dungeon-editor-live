@@ -23,7 +23,8 @@
         "test:smoke": "node scripts/smoke-test.mjs",
         "test:layout": "node scripts/layout-check.mjs",
         "test:perf": "node scripts/perf-check.mjs",
-        "test:prod": "yarn build && node scripts/prod-check.mjs"
+        "test:prod": "yarn build && node scripts/prod-check.mjs",
+        "test:desktop": "node scripts/desktop-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
@@ -83,6 +84,7 @@
             "category": "public.app-category.games"
         },
         "linux": {
+            "executableName": "gem-dungeon",
             "target": "AppImage",
             "icon": "build/icon.png",
             "category": "Game"

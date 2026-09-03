@@ -133,6 +133,7 @@ yarn lint
 yarn test:smoke     # drives the real game in a browser (see below)
 yarn test:perf      # what a room costs, against a written-down budget
 yarn test:prod      # builds dist and plays it, the way it actually ships
+yarn test:desktop   # packages the desktop build, opens it, and plays that
 yarn electron-dev   # the desktop shell against the dev server
 yarn electron-dist  # a packaged desktop build in dist-electron/
 yarn generate-icon  # redraw build/icon.png
