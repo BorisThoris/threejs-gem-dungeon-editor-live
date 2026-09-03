@@ -245,6 +245,17 @@ export const sfx = {
   wrong() {
     tone(196, 0.22, "square", 0.3, 150);
   },
+  /**
+   * A footstep. Pitch and filter wander a little so a corridor does not
+   * sound like a metronome, and the whole thing is one short noise burst -
+   * a synthesised footstep that tries to be a real one lands in the uncanny
+   * valley, and a soft scuff does not.
+   */
+  step(strong: boolean) {
+    const wobble = 0.85 + Math.random() * 0.4;
+    noiseBurst(strong ? 0.085 : 0.07, strong ? 0.16 : 0.11, 420 * wobble);
+    tone(70 * wobble, 0.06, "sine", strong ? 0.14 : 0.09, 48 * wobble);
+  },
   /** Something dropped into the satchel. */
   take() {
     tone(520, 0.09, "triangle", 0.3);

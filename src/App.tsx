@@ -6,6 +6,7 @@ import { useWardenWarning } from "./game/warden/warning";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
 import { useRun } from "./game/state/run";
+import { useSettings } from "./game/state/settings";
 import { Audio } from "./game/systems/Audio";
 import { Hint } from "./ui/Hint";
 import { Hud } from "./ui/Hud";
@@ -79,6 +80,7 @@ export default function App() {
     const w = window as unknown as Record<string, unknown>;
     w.__bus = bus;
     w.__keyboard = keyboard;
+    w.__settings = useSettings;
     // Room drafts marked live in the editor register themselves when the
     // drafts module loads. The game at "/" never loads the editor, so load
     // just that module here - development only, dropped from production.

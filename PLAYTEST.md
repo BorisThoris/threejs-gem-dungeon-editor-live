@@ -145,6 +145,9 @@ nobody has held a Deck with this on it.
   timed thing in the game. Too short and it is a formality; too long and it
   is a chore, and the Warden may arrive in the middle of it either way.
   `ARENA_DURATION_S` and `ARENA_SPIN` are the dials.
+- **Is the head bob too much, or not enough?** It is small on purpose and
+  can be switched off in the pause menu, because it makes some people ill.
+  Watch whether anyone reaches for that.
 - **Does anyone work out the inner line?** Keeping ahead of the arms near
   the middle is a walk and near the wall is a dash. That is the whole skill
   of the room, and it is never explained.

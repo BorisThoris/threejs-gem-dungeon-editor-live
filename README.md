@@ -47,7 +47,7 @@ between here and a Steam demo.
 | `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
 | `1` to `4`, or X and Y on a pad | Drink or read that satchel slot |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
-| `Esc`, or Start on a pad | Pause |
+| `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
 
 There is one interaction verb. Anything you can act on tells you so when
 you are close enough, and E does it.

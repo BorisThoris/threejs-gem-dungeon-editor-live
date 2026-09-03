@@ -95,7 +95,10 @@ ok("HUD shows lives and gems", await page.evaluate(() => /LIVES/.test(document.b
 // at each doorway and press E, the way a player does. Never take the exit.
 let minY = s0.y;
 const seen = new Set([s0.room]);
-for (let hop = 0; hop < 6; hop++) {
+// Eight hops, not six: the walker takes doors at random and six was
+// sometimes not enough to reach the exit's neighbour, which failed the toll
+// checks for want of patience rather than for a real fault.
+for (let hop = 0; hop < 8; hop++) {
   const half = await page.evaluate(() => {
     const s = window.__run.getState();
     return s.dungeon.rooms.find((r) => r.id === s.currentRoomId).size / 2;
@@ -133,12 +136,20 @@ for (let hop = 0; hop < 6; hop++) {
     }
   }
   if (!moved) break;
+  // The walker stands still to sample the floor, which on spikes or in the
+  // arena is a way to die. This phase is testing that rooms can be walked
+  // and gems taken, not that standing in a trap is survivable - dying has
+  // its own checks further down - so it is kept on its feet.
+  await page.evaluate(() => {
+    const run = window.__run;
+    if (run.getState().lives < 3) run.setState({ lives: 3, phase: "playing" });
+  });
 }
 for (let i = 0; i < 20 && (await snap()).transitioning; i++) await page.waitForTimeout(250);
 const explored = await snap();
 ok("travelled to other rooms by pressing E", seen.size >= 3, `${seen.size} rooms visited`);
 ok("never left the floor", minY >= REST_Y - 0.2, `lowest y seen ${minY.toFixed(2)}`);
-ok("control returned after every transition", !explored.transitioning && explored.phase === "playing");
+ok("control returned after every transition", !explored.transitioning && explored.phase === "playing", JSON.stringify(explored));
 ok("collected gems while exploring", explored.gems > 0, `${explored.gems} gems`);
 
 // The exit refuses E without the toll, and takes it once paid.
@@ -409,6 +420,36 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a gem buys a name, and the item is still there", named.paid && named.known && named.held === 1 && named.gems === 2, JSON.stringify(named));
   const again = await page.evaluate(() => window.__run.getState().identifySlot(0));
   ok("naming something already known is refused", again === false);
+}
+
+// Settings are remembered, and turning head bob off actually stops the head
+// moving - the one setting somebody might need in order to play at all.
+{
+  await page.evaluate(() => window.__run.getState().startRun(41));
+  await page.waitForTimeout(2500);
+  const sampleY = async () => {
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(1200);
+    const ys = await page.evaluate(async () => {
+      const out = [];
+      for (let i = 0; i < 22; i++) {
+        out.push(window.__playerDebug.camY);
+        await new Promise((r) => requestAnimationFrame(r));
+      }
+      return out;
+    });
+    await page.keyboard.up("KeyW");
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  await page.evaluate(() => window.__settings.getState().setCameraBob(true));
+  const withBob = await sampleY();
+  await page.evaluate(() => window.__settings.getState().setCameraBob(false));
+  await page.waitForTimeout(400);
+  const without = await sampleY();
+  ok("head bob moves the camera, and turning it off stops it", withBob > without, `${withBob.toFixed(4)} with, ${without.toFixed(4)} without`);
+  const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("gem-dungeon.settings")).cameraBob);
+  ok("the choice is remembered", kept === false, String(kept));
+  await page.evaluate(() => window.__settings.getState().setCameraBob(true));
 }
 
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useRun } from "../game/state/run";
 import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
+import { Options } from "./PauseMenu";
 import { body, button, colors, fullscreen, panel, secondaryButton, title } from "./overlay";
 
 const isElectron = () =>
@@ -54,6 +55,7 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>
+            <Options />
             <button style={secondaryButton} onClick={() => setPage("menu")}>
               Back
             </button>

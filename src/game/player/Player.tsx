@@ -13,6 +13,8 @@ import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
 import { canControl, speedNow, useRun } from "../state/run";
+import { useSettings } from "../state/settings";
+import { sfx } from "../systems/audio";
 import {
   EYE_OFFSET,
   GRAVITY_SCALE,
@@ -23,6 +25,19 @@ import {
 } from "../world";
 
 const UP = new Vector3(0, 1, 0);
+
+/**
+ * How far the player walks between footfalls, and how far the head dips on
+ * each one. Paced by distance rather than by time, so walking and running
+ * sound and feel like the same legs going faster instead of a metronome
+ * that has been turned up.
+ */
+const STRIDE = 1.85;
+const BOB_HEIGHT = 0.045;
+const BOB_SWAY = 0.028;
+/** How hard and how long the view is knocked about by a hit. */
+const SHAKE_AMOUNT = 0.11;
+const SHAKE_S = 0.32;
 const clampUnit = (v: number) => Math.max(-1, Math.min(1, v));
 const clampVertical = (y: number) =>
   Math.min(MAX_RISE_SPEED, Math.max(y, -MAX_FALL_SPEED));
@@ -45,6 +60,10 @@ export function Player() {
 
   // Reused every frame: allocating vectors per frame is steady garbage, and
   // GC pauses are exactly what "random stutters" feels like.
+  const bob = useRef({ distance: 0, strength: 0, nextStep: STRIDE, strong: true });
+  const shake = useRef(0);
+  const cameraBob = useSettings((s) => s.cameraBob);
+
   const scratch = useMemo(
     () => ({
       dir: new Vector3(),
@@ -57,6 +76,10 @@ export function Player() {
     []
   );
 
+  // A hit knocks the view about for a third of a second. It is the only
+  // feedback the player gets that is not in a corner of the screen.
+  useEffect(() => bus.on("damaged", () => (shake.current = SHAKE_S)), []);
+
   useEffect(() => {
     return bus.on("teleport", ({ position }) => {
       const rb = body.current;
@@ -68,18 +91,33 @@ export function Player() {
     });
   }, [camera]);
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const rb = body.current;
     if (!rb) return;
 
     const p = rb.translation();
-    camera.position.set(p.x, p.y + EYE_OFFSET, p.z);
+    const b = bob.current;
+    // The head dips on each footfall and sways on the stride, at a size
+    // meant to be felt rather than seen. Anyone it bothers can switch it off.
+    const phase = (b.distance / STRIDE) * Math.PI;
+    const dip = cameraBob ? -Math.abs(Math.sin(phase)) * BOB_HEIGHT * b.strength : 0;
+    const sway = cameraBob ? Math.sin(phase * 0.5) * BOB_SWAY * b.strength : 0;
+    let knock = 0;
+    let knockX = 0;
+    if (shake.current > 0) {
+      shake.current = Math.max(0, shake.current - delta);
+      const falling = (shake.current / SHAKE_S) ** 2;
+      knock = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
+      knockX = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
+    }
+    camera.position.set(p.x + sway + knockX, p.y + EYE_OFFSET + dip + knock, p.z);
 
     if (import.meta.env.DEV) {
       const v = rb.linvel();
       const w = window as unknown as { __playerDebug?: Record<string, number> };
-      const d = (w.__playerDebug ??= { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 });
+      const d = (w.__playerDebug ??= { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, camY: 0 });
       d.x = p.x; d.y = p.y; d.z = p.z; d.vx = v.x; d.vy = v.y; d.vz = v.z;
+      d.camY = camera.position.y;
     }
 
     const vel = rb.linvel();
@@ -120,6 +158,19 @@ export function Player() {
     scratch.vel.y = vy;
     scratch.vel.z = dir.z;
     rb.setLinvel(scratch.vel, true);
+
+    // Footsteps and bob are driven by ground covered, not by the clock, so
+    // they stay in step with the legs at any speed and stop dead when the
+    // player does.
+    const moved = Math.hypot(dir.x, dir.z) * delta;
+    const gait = bob.current;
+    gait.distance += moved;
+    gait.strength += ((moved > 0.001 ? 1 : 0) - gait.strength) * Math.min(1, delta * 9);
+    if (gait.distance >= gait.nextStep) {
+      gait.nextStep = gait.distance + STRIDE;
+      gait.strong = !gait.strong;
+      sfx.step(gait.strong);
+    }
   });
 
   return (
