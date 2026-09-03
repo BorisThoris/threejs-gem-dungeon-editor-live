@@ -61,7 +61,14 @@ Two stores that both claimed the player's stats. So:
 - Positions inside a room come from `src/game/dungeon/layout.ts`. Doors,
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by
-  construction. The gem takes an anchor nothing else has claimed; a trap's
+  construction.
+- The anchor rings are spaced from `PROP_SPECS`, not from magic numbers: the
+  widest furnishing an arrangement can place decides how far `near` stands
+  from the lanes, how far `far` stands from `near`, and how far the corner
+  braziers stand from both. Every placement rule in this project used to
+  test a centre point while every prop had a footprint the specs already
+  carried, so a table stood in a door lane, inside a bookshelf, and through
+  a brazier, and every check passed. The gem takes an anchor nothing else has claimed; a trap's
   spikes sit between the gem and the lanes.
 - The door lanes are only as wide as the room's own doors. `inDoorLane`
   reads `room.links`, so a room with doors on one axis only - two in five of
@@ -243,8 +250,9 @@ second model for it to be written in.
 - `yarn test:layout` checks the room geometry over every size, every shape,
   all fifteen door combinations and 500 seeds: anchors clear of the lanes
   and of each other, nothing in a lane the room it stands in actually has,
-  spikes in every trap room and never in a lane, the gem reachable, the
-  generator connected.
+  no two solid props standing inside each other and no footprint reaching
+  into a lane or through a wall, spikes in every trap room and never in a
+  lane, the gem reachable, the generator connected.
 - `yarn test:smoke` drives the real game in a browser: start, stand on the
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this

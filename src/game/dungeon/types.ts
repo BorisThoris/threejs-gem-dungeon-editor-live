@@ -170,3 +170,37 @@ export function inscribedRadius(room: Room): number {
   if (room.shape === "square") return half;
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
+
+/**
+ * How far the drawn floor reaches in one particular direction.
+ *
+ * `inscribedRadius` answers for the worst direction, which is the right
+ * answer when you do not know which way you are looking - and the wrong one
+ * for the anchors, every single one of which is on a diagonal. Holding them
+ * to the worst direction cost the game its hexagons: a hexagonal room at
+ * sixteen units missed the test by five centimetres, so the generator
+ * stopped making one, while the floor under those anchors was a quarter of
+ * a unit wider than the test believed.
+ *
+ * The floor is `CircleGeometry(half, sides)` laid flat, which puts a vertex
+ * on the +x axis and one every `2 pi / sides` after it. Between two
+ * vertices the edge is a straight line, so the radius runs from the
+ * circumradius at a vertex down to the apothem at the middle of an edge -
+ * which is what `inscribedRadius` returns.
+ */
+export function floorReach(room: Room, angle: number): number {
+  const half = halfSize(room);
+  if (room.shape === "square") {
+    // A square room's floor is its own box, not a polygon inscribed in it.
+    return Math.min(
+      Math.abs(half / Math.cos(angle)),
+      Math.abs(half / Math.sin(angle))
+    );
+  }
+  const step = (2 * Math.PI) / SHAPE_SIDES[room.shape];
+  const off = ((angle % step) + step) % step;
+  return (half * Math.cos(Math.PI / SHAPE_SIDES[room.shape])) / Math.cos(off - step / 2);
+}
+
+/** How far the floor reaches along the diagonals, where every anchor is. */
+export const diagonalReach = (room: Room): number => floorReach(room, Math.PI / 4);

@@ -174,21 +174,60 @@ for (const size of L.ROOM_SIZES) {
 for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   let off = 0;
   let inLane = 0;
+  let brazierInWall = 0;
+  let brazierInFurniture = 0;
   for (const size of L.ROOM_SIZES) {
     // A shape the generator would never use at this size proves nothing.
     if (!L.shapeFits(shape, size)) continue;
     const r = room(size, "normal", shape);
-    const inside = L.inscribedRadius(r);
-    for (const spot of [...L.quadrantSpots(r, "near"), ...L.quadrantSpots(r, "far"), ...L.cornerSpots(r)]) {
+    // The floor's reach along the diagonals, which is where every one of
+    // these stands - not its reach in the worst direction, which is what
+    // this used to measure and what cost the game its hexagonal rooms.
+    const inside = L.diagonalReach(r);
+    const furniture = [...L.quadrantSpots(r, "near"), ...L.quadrantSpots(r, "far")];
+    for (const spot of furniture) {
       const radius = Math.hypot(spot[0], spot[2]);
       // Allowed to sit proud only when pulling it in would put it in a lane.
       // Half a unit of overhang is invisible; three, as it was, is not.
       if (radius > inside + 0.6) off++;
       if (L.inDoorLane(spot[0], spot[2])) inLane++;
     }
+    /**
+     * The braziers are held to a different rule, and deliberately.
+     *
+     * A shaped room's floor is cut off at the diagonals, which is where
+     * they stand, so holding them to the drawn polygon pulled them inside
+     * the furniture: a table went through a brazier in every sixteen-unit
+     * circle. They may stand on the slab between the drawn floor and the
+     * wall - which reads as the corner of the room, because the walls are
+     * the room's box - but never in the wall, and never in the furniture.
+     */
+    const half = size / 2;
+    for (const c of L.cornerSpots(r)) {
+      if (Math.abs(c[0]) >= half || Math.abs(c[2]) >= half) brazierInWall++;
+      for (const f of furniture) {
+        if (dist(c, f) < L.PROP_SPECS.torch.radius + L.widestFurnishing()) brazierInFurniture++;
+      }
+    }
   }
-  check(`${shape}: anchors stay on the drawn floor where the shape fits`, off === 0, `${off} off it`);
-  check(`${shape}: anchors stay clear of the lanes`, inLane === 0, `${inLane} in a lane`);
+  check(`${shape}: the furniture stays on the drawn floor where the shape fits`, off === 0, `${off} off it`);
+  check(`${shape}: the furniture stays clear of the lanes`, inLane === 0, `${inLane} in a lane`);
+  check(`${shape}: the braziers stay inside the walls`, brazierInWall === 0, `${brazierInWall} in a wall`);
+  check(`${shape}: nothing can be furnished into a brazier`, brazierInFurniture === 0, `${brazierInFurniture} collided`);
+  // The exact reach has to agree with what it replaced: never less than the
+  // worst direction, never more than the box the room is drawn in.
+  {
+    let wrong = 0;
+    for (const size of L.ROOM_SIZES) {
+      const r = room(size, "normal", shape);
+      for (let a = 0; a < 64; a++) {
+        const angle = (a / 64) * Math.PI * 2;
+        const reach = L.floorReach(r, angle);
+        if (reach < L.inscribedRadius(r) - 1e-9 || reach > size / 2 + 1e-9) wrong++;
+      }
+    }
+    check(`${shape}: the floor's reach is between its narrowest and its box`, wrong === 0, `${wrong} of 192`);
+  }
 }
 
 // The arena's arms must cover everywhere the player can stand, which is the
@@ -284,6 +323,9 @@ for (const size of L.ROOM_SIZES) {
   let stacked = 0;
   let offAnchor = 0;
   let inRealLane = 0;
+  let intersecting = 0;
+  let overhangsLane = 0;
+  let throughWall = 0;
   let arrangements = 0;
   let withMiddle = 0;
   for (const kind of kinds) {
@@ -304,6 +346,14 @@ for (const size of L.ROOM_SIZES) {
           };
           for (const roll of [0.01, 0.99]) {
             const placed = L.LAYOUTS[kind][variant]({ ...spots, rng: () => roll });
+            // The braziers stand in every room, so the footprint pass below
+            // - unlike the anchor pass - has to see them. A cobweb shares a
+            // brazier's corner on purpose, hanging at head height above it,
+            // so the anchor pass would call that a collision.
+            const withBraziers = [
+              ...spots.corners.map((c) => ({ kind: "torch", x: c[0], z: c[2] })),
+              ...placed,
+            ];
             arrangements++;
             if (spots.centre.length) withMiddle++;
             const anchors = [...spots.near, ...spots.far, ...spots.corners, ...spots.centre];
@@ -317,6 +367,37 @@ for (const size of L.ROOM_SIZES) {
               // silently lose the prop rather than show it in a doorway.
               if (L.PROP_SPECS[p.kind].solid && L.inDoorLane(p.x, p.z, r)) inRealLane++;
             }
+            /**
+             * And the same three rules again, this time about the prop
+             * rather than the point it stands on.
+             *
+             * Every placement rule in this game tested a centre point, and
+             * every prop has a footprint that PROP_SPECS has carried all
+             * along and nothing read. A table is a metre across its
+             * half-width: on a `near` anchor it reached into the door lane,
+             * on a `far` anchor in a fourteen-unit room it stood inside a
+             * bookshelf on `near`, and in a sixteen-unit circle it stood
+             * inside a brazier. All three passed every check there was.
+             */
+            const solid = withBraziers.filter((p) => L.PROP_SPECS[p.kind].solid);
+            const half = size / 2;
+            for (let i = 0; i < solid.length; i++) {
+              const a = solid[i];
+              const ra = L.PROP_SPECS[a.kind].radius;
+              if (Math.abs(a.x) + ra > half || Math.abs(a.z) + ra > half) throughWall++;
+              const lanes = L.laneAxes(r);
+              if ((lanes.x && Math.abs(a.x) - ra < L.LANE_HALF_WIDTH) ||
+                  (lanes.z && Math.abs(a.z) - ra < L.LANE_HALF_WIDTH)) overhangsLane++;
+              for (let j = i + 1; j < solid.length; j++) {
+                const b = solid[j];
+                if (Math.hypot(a.x - b.x, a.z - b.z) < ra + L.PROP_SPECS[b.kind].radius) intersecting++;
+              }
+              // A brazier is not solid - you can walk through one - but a
+              // table standing in one is still a table standing in one.
+              for (const c of spots.corners) {
+                if (Math.hypot(a.x - c[0], a.z - c[2]) < ra + L.PROP_SPECS.torch.radius) intersecting++;
+              }
+            }
           }
         }
       }
@@ -325,6 +406,9 @@ for (const size of L.ROOM_SIZES) {
   check("no arrangement stands two props in the same place", stacked === 0, `${stacked} stacked in ${arrangements}`);
   check("every prop stands on an anchor, so it is clear of the lanes by construction", offAnchor === 0, `${offAnchor} loose`);
   check("no prop stands in a lane the room it is in actually has", inRealLane === 0, `${inRealLane} would be dropped`);
+  check("no two solid props stand inside each other", intersecting === 0, `${intersecting} of ${arrangements} arrangements`);
+  check("no solid prop's footprint overhangs a lane the room has", overhangsLane === 0, `${overhangsLane} overhang`);
+  check("no solid prop's footprint reaches through a wall", throughWall === 0, `${throughWall} through`);
   check("the arrangements were walked in rooms that have a middle", withMiddle > 0, `${withMiddle} of ${arrangements}`);
   check("the kinds a player walks through most have more than one arrangement",
     ["normal", "treasure", "trap", "start", "end"].every((k) => L.LAYOUTS[k].length > 1),

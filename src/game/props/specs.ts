@@ -29,12 +29,35 @@ export interface PropSpec {
   /** Whether it blocks the player. */
   solid: boolean;
   /**
+   * Architecture rather than furniture: a piece an author builds a room out
+   * of, which no seeded arrangement ever stands on an anchor.
+   *
+   * The distinction earns its place because the room's anchor rings are
+   * sized from the widest thing that can stand on them, and a wall segment
+   * is three units across - wide enough that no room the generator makes
+   * could fit two rings of them. It is still held to every placement rule
+   * where an author does use it.
+   */
+  authored?: true;
+  /**
    * Where it blocks, if it blocks. Built into the room's one static body -
    * a room's fifteen props were fifteen rigid bodies, and rapier walks every
    * body in the world on every physics step. None of them ever move.
    */
   collider?: ColliderSpec;
 }
+
+/**
+ * How wide the widest thing an arrangement can stand on an anchor is.
+ *
+ * The room's anchor rings are spaced from this, so that two props in one
+ * quadrant cannot stand inside each other and one against the lane cannot
+ * overhang it. Both were happening in every fourteen-unit room the
+ * generator made: a table on `near` reached 0.1 into the door lane, and a
+ * table on `far` overlapped a bookshelf on `near` by 0.46.
+ */
+export const widestFurnishing = (): number =>
+  Math.max(...Object.values(PROP_SPECS).filter((s) => s.solid && !s.authored).map((s) => s.radius));
 
 export const PROP_SPECS: Record<PropKind, PropSpec> = {
   barrel: { title: "Barrel", radius: 0.45, solid: true, collider: { shape: "cylinder", args: [0.55, 0.42], y: 0.55 } },
@@ -49,7 +72,7 @@ export const PROP_SPECS: Record<PropKind, PropSpec> = {
   table: { title: "Table", radius: 1, solid: true, collider: { shape: "cuboid", args: [0.9, 0.41, 0.5], y: 0.41 } },
   tile: { title: "Floor inlay", radius: 1, solid: false },
   torch: { title: "Brazier", radius: 0.4, solid: false },
-  wall: { title: "Wall segment", radius: 1.5, solid: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
+  wall: { title: "Wall segment", radius: 1.5, solid: true, authored: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
   web: { title: "Cobweb", radius: 0.7, solid: false },
   spikes: { title: "Spikes", radius: 1.2, solid: false },
 };

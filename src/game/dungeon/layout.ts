@@ -5,12 +5,14 @@ import {
   PLAYER_SPAWN_Y,
   entranceDepth,
 } from "../world";
+import { PROP_SPECS, widestFurnishing } from "../props/specs";
 import {
   DIR_STEP,
   DIR_YAW,
   OPPOSITE,
   halfSize,
-  inscribedRadius,
+  diagonalReach,
+  floorReach,
   type Dir,
   type Room,
   type Shape,
@@ -113,6 +115,24 @@ export const inDoorLane = (x: number, z: number, room?: Room): boolean => {
   return (lanes.x && Math.abs(x) < LANE_HALF_WIDTH) || (lanes.z && Math.abs(z) < LANE_HALF_WIDTH);
 };
 
+/**
+ * True when a prop of this footprint would reach into a doorway's path,
+ * even though the point it stands on is clear of one.
+ *
+ * `inDoorLane` answers about a point, because that is what an anchor is.
+ * What actually blocks a doorway is the prop, and the widest furnishing in
+ * the game is a metre from its centre to its edge - so for most of this
+ * project a table could stand a hand's width outside a lane and still have
+ * its near metre inside it.
+ */
+export const overhangsLane = (x: number, z: number, radius: number, room?: Room): boolean => {
+  const lanes = room ? laneAxes(room) : { x: true, z: true };
+  return (
+    (lanes.x && Math.abs(x) - radius < LANE_HALF_WIDTH) ||
+    (lanes.z && Math.abs(z) - radius < LANE_HALF_WIDTH)
+  );
+};
+
 /** The four quadrants, as the signs of x and z. */
 const QUADRANTS: [number, number][] = [
   [1, 1],
@@ -121,26 +141,56 @@ const QUADRANTS: [number, number][] = [
   [-1, -1],
 ];
 
-/** Innermost diagonal a prop can stand on without its edge in a lane. */
-const INNER = LANE_HALF_WIDTH + 0.9;
+/**
+ * How big the things standing on these anchors are, and therefore how far
+ * apart the anchors have to be.
+ *
+ * These were four magic numbers - a lane clearance of 0.9, a ring gap of
+ * 0.9, a wall inset of 2.4, a corner inset of 0.8 - and none of them was
+ * the size of anything. The widest furnishing in the game is a metre across
+ * its half-width, so 0.9 was not enough for any of them: in every
+ * fourteen-unit room the generator makes, `near` and `far` were 1.34 apart
+ * along the diagonal where a table and a bookshelf need 1.8, and a table on
+ * `near` reached 0.1 into the door lane. `PROP_SPECS` has carried the
+ * footprint of every prop since the specs were split out, and nothing that
+ * placed a prop had ever read it.
+ *
+ * A ring is a diagonal coordinate, so a gap of `g` between two rings is
+ * `g * sqrt(2)` of real distance between the props on them.
+ */
+const WIDEST = widestFurnishing();
+const BRAZIER = PROP_SPECS.torch.radius;
+/** Breathing room, so nothing is decided by the last centimetre. */
+const MARGIN = 0.2;
+
+/** Innermost ring: the widest furnishing on it still clears the lane. */
+const INNER = LANE_HALF_WIDTH + WIDEST + MARGIN;
+/** Ring gap: two of the widest furnishings, side by side across a quadrant. */
+const RING_GAP = (2 * WIDEST) / Math.SQRT2;
+/** Corner gap: the widest furnishing beside a brazier. */
+const CORNER_GAP = (WIDEST + BRAZIER) / Math.SQRT2;
 /** How far the braziers stand from the walls. */
-const CORNER_INSET = 0.8;
+const CORNER_INSET = BRAZIER + MARGIN;
 
 export type Anchor = "near" | "far";
 
 /**
- * The anchor of each family on a room's diagonals. `near` sits just clear of
- * the lanes; `far` sits deep in the quadrant, clear of the corner brazier;
- * the two are at least 0.9 apart in every room the generator makes, so a
- * prop on one is never inside a prop on the other.
+ * The anchor of each family on a room's diagonals. `near` sits far enough
+ * out that the widest thing on it clears the door lanes; `far` sits a
+ * whole furnishing beyond it and a furnishing-and-a-brazier inside the
+ * corners, and spreads outward with the room. Nothing on one ring can stand
+ * inside anything on another, at any size the generator makes.
  */
 export function quadrantDistance(room: Room, which: Anchor): number {
   const half = halfSize(room);
-  const far = Math.max(INNER + 0.9, Math.min(half - 2.4, reach(room, 1.2)));
+  // As far out as the room allows, but never further than leaves the widest
+  // furnishing clear of the wall and of the braziers in the corners.
+  const roof = Math.min(half - WIDEST - MARGIN, half - CORNER_INSET - CORNER_GAP);
+  const far = Math.max(INNER + RING_GAP, Math.min(roof, reach(room, WIDEST + MARGIN)));
   if (which === "far") return far;
   // Near follows far in a room too tight for both, so the two rings never
   // collapse onto each other however small or oddly shaped the room is.
-  return Math.max(INNER, Math.min((half * 0.5) / Math.SQRT2, far - 0.9));
+  return Math.max(INNER, Math.min((half * 0.5) / Math.SQRT2, far - RING_GAP));
 }
 
 /**
@@ -156,7 +206,7 @@ export function quadrantDistance(room: Room, which: Anchor): number {
  */
 function reach(room: Room, inset: number): number {
   if (room.shape === "square") return Infinity;
-  return Math.max(INNER + 0.9, (inscribedRadius(room) - inset) / Math.SQRT2);
+  return Math.max(INNER + RING_GAP, (diagonalReach(room) - inset) / Math.SQRT2);
 }
 
 /** The four anchors of a family, one per quadrant, in QUADRANTS order. */
@@ -169,11 +219,11 @@ export function quadrantSpots(room: Room, which: Anchor): Vec3[] {
  * How far from the middle the pair either side of it stands.
  *
  * Deliberately not the far ring, which in a large room would put them
- * against the side walls - where things already are. Close enough that the
- * player walks between them and far enough that the widest solid prop in
- * the game, the wall segment at 1.5, still clears the lane.
+ * against the side walls - where things already are. A little beyond the
+ * inner ring, so a player going straight through passes between them and
+ * the widest furnishing on one still clears the lane it stands beside.
  */
-const MIDDLE_DISTANCE = LANE_HALF_WIDTH + 1.8;
+const MIDDLE_DISTANCE = INNER + 0.6;
 
 /**
  * The two spots either side of the middle, in a room whose doors leave the
@@ -196,7 +246,10 @@ export function centreSpots(room: Room): Vec3[] {
   if (lanes.x === lanes.z) return [];
   // A shaped room's floor is narrowest on the axes, which is exactly where
   // these stand, so a room too pointy to hold them holds none.
-  if (MIDDLE_DISTANCE > inscribedRadius(room) - 1) return [];
+  const along = lanes.z ? Math.PI / 2 : 0;
+  if (MIDDLE_DISTANCE > Math.min(floorReach(room, along), floorReach(room, along + Math.PI)) - 1) {
+    return [];
+  }
   const d = MIDDLE_DISTANCE;
   return lanes.z
     ? [
@@ -209,13 +262,28 @@ export function centreSpots(room: Room): Vec3[] {
       ];
 }
 
-/** The four corners, pulled in far enough that a brazier is not in the wall. */
+/**
+ * The four corners, where the braziers stand: pulled in far enough not to be
+ * in the wall, and always outside the furniture.
+ *
+ * A shaped room's floor is cut off at the diagonals, which is exactly where
+ * these are, so pulling them onto the drawn polygon pulled them inside the
+ * far ring - and the room's lights ended up standing in front of its
+ * furniture rather than behind it. A table went straight through a brazier
+ * in every sixteen-unit circle the generator made.
+ *
+ * So the polygon is a preference here, not a limit: a brazier sits on the
+ * drawn floor when the furniture leaves room for it and on the slab between
+ * the floor and the wall when it does not. Which is where a brazier belongs
+ * anyway - the walls are the room's box, so that slab reads as the corner
+ * of the room. Only the walls are a hard limit.
+ */
 export function cornerSpots(room: Room): Vec3[] {
   const box = halfSize(room) - CORNER_INSET;
-  const c =
-    room.shape === "square"
-      ? box
-      : Math.max(INNER, Math.min(box, (inscribedRadius(room) - CORNER_INSET) / Math.SQRT2));
+  const onFloor =
+    room.shape === "square" ? box : (diagonalReach(room) - CORNER_INSET) / Math.SQRT2;
+  const clearOfFurniture = quadrantDistance(room, "far") + CORNER_GAP;
+  const c = Math.min(box, Math.max(onFloor, clearOfFurniture));
   return QUADRANTS.map(([sx, sz]) => [sx * c, GROUND_Y, sz * c]);
 }
 
@@ -233,7 +301,7 @@ export function shapeFits(shape: Shape, size: number): boolean {
   if (shape === "square") return true;
   const room = { id: "fit", kind: "normal", grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
   const radius = quadrantDistance(room, "far") * Math.SQRT2;
-  return radius <= inscribedRadius(room) + 0.6;
+  return radius <= diagonalReach(room) + 0.6;
 }
 
 const GEM_HEIGHT = 0.9;

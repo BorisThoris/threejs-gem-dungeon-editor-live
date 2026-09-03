@@ -1,4 +1,4 @@
-import { cornerSpots, inDoorLane, keyPosition } from "../dungeon/layout";
+import { cornerSpots, inDoorLane, keyPosition, overhangsLane } from "../dungeon/layout";
 import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
@@ -33,8 +33,6 @@ export interface TemplateProblem {
 /** How much clearance a prop needs from the gem, the key and the content. */
 const clearOf = (solid: boolean) => (solid ? 1.6 : 1.0);
 const CLEAR_OF_CONTENT = 1.2;
-/** Beyond this from the middle of a wall, a prop is through it. */
-const WALL_MARGIN = 0.2;
 
 /** The room a template describes, with every wall doored: the hard case. */
 export function roomForTemplate(t: RoomTemplate): Room {
@@ -75,16 +73,24 @@ export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] 
     const clear = clearOf(spec.solid);
     const say = (reason: string) => problems.push({ index, reason: `${spec.title}: ${reason}` });
 
-    if (Math.abs(p.x) > half - WALL_MARGIN || Math.abs(p.z) > half - WALL_MARGIN) {
-      say("is through a wall");
-    } else if (t.shape !== "square" && Math.hypot(p.x, p.z) > reach) {
-      say("is off the drawn floor of this shape");
+    // Measured from the prop's edge, not its centre. Every placement rule
+    // in this game used to test the centre point, which let a template put
+    // a table's near metre through a wall or into a doorway and call it
+    // legal - the same blind spot that had the seeded arrangements standing
+    // props inside each other.
+    if (Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half) {
+      say("reaches through a wall");
+    } else if (t.shape !== "square" && Math.hypot(p.x, p.z) + spec.radius > reach) {
+      say("reaches off the drawn floor of this shape");
     }
     // The worst case on purpose: `roomForTemplate` doors every wall, and a
     // template has to survive being placed in any room the generator makes.
     // A one-axis room would keep a prop across its middle; a four-doored
     // one would drop it, and the author would never know which they got.
     if (spec.solid && inDoorLane(p.x, p.z, room)) say("stands in a doorway's path and will be dropped");
+    if (spec.solid && overhangsLane(p.x, p.z, spec.radius, room)) {
+      say("reaches into a doorway's path");
+    }
     if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
       say("stands where this room's own content stands and will be dropped");
     }
@@ -103,12 +109,19 @@ export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] 
         break;
       }
     }
-    // Two props in one place is one prop inside another, and nothing
-    // downstream compares a prop to another prop.
-    const twin = t.props.findIndex(
-      (q, j) => j < index && Math.abs(q.x - p.x) < 1e-3 && Math.abs(q.z - p.z) < 1e-3
-    );
-    if (twin >= 0) say(`stands in the same place as the ${PROP_SPECS[t.props[twin].kind]?.title ?? "prop"}`);
+    // Two solid props whose footprints meet is one prop inside another, and
+    // nothing downstream compares a prop to another prop. This used to
+    // compare their centres to within a millimetre, which caught only the
+    // case of clicking the same cell twice.
+    const twin = t.props.findIndex((q, j) => {
+      if (j >= index) return false;
+      const other = PROP_SPECS[q.kind];
+      if (!other) return false;
+      const apart = Math.hypot(q.x - p.x, q.z - p.z);
+      if (apart < 1e-3) return true;
+      return spec.solid && other.solid && apart < spec.radius + other.radius;
+    });
+    if (twin >= 0) say(`stands inside the ${PROP_SPECS[t.props[twin].kind]?.title ?? "prop"}`);
   });
 
   return problems;

@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Eleven more turned up on the next passes, all of them things nobody had
+Fourteen more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -229,6 +229,37 @@ looked at because the tests were green:
   have doors on one axis only and never needed the other lane at all. The
   rule reads the room's doors now, and those rooms get a pair of anchors
   either side of the way through.
+- **Props stood inside each other, and every check said they did not.**
+  `PROP_SPECS` has carried a footprint radius for every prop since the specs
+  were split out, and nothing that placed a prop had ever read one: the
+  anchor rings were spaced by four magic numbers, none of which was the size
+  of anything. The widest furnishing is a metre from its centre to its edge,
+  and the numbers assumed 0.9 - so in every fourteen-unit room the generator
+  made, a table on the outer ring stood inside a bookshelf on the inner one;
+  a table on the inner ring reached a hand's width into a door lane; and in
+  every sixteen-unit circle a table went clean through a brazier, because a
+  shaped room's floor is cut off exactly where the braziers stand and they
+  had been pulled inside the furniture to sit on it. Solid props are merged
+  into the room's one collider body, so two of them overlapping is a
+  collision shape as well as a picture. The rings are derived from the props
+  now, the braziers are outermost by construction, and the check walks every
+  arrangement in every room the generator can make: 360 of 1,440 of them had
+  a pair standing inside each other.
+- **The shipped hall lost its wall.** The same footprint rule, applied to
+  the authoring path, found a wall segment and a table in `hall-a` reaching
+  into a doorway - the wall by 0.85 of its three-unit width. In a room with
+  east and west doors the game would have dropped both, silently, which is
+  the third time this project has found content going missing that way. The
+  Room Builder measures from a prop's edge now, and both moved by less than
+  a unit.
+- **Hexagonal rooms had been costed out by five centimetres.** `shapeFits`
+  asked whether the outer ring of props fitted inside the floor a shape
+  draws, and measured that floor in its narrowest direction - while every
+  anchor stands on a diagonal, where the floor is wider. Widening the rings
+  tipped hexagons at sixteen units just over the line and they vanished from
+  the game, 8% of every dungeon. The floor's reach is computed for the
+  direction actually being asked about now, and the shape mix came back
+  exactly as it was: 56% square, 25% circle, 11% octagon, 8% hexagon.
 - **No bookshelf in the game has ever shown a book.** Its four rows of
   colour were modelled at z = 0.05 inside a carcass 0.45 deep, so every one
   of them was buried in the box: from any angle a bookshelf was a plain
