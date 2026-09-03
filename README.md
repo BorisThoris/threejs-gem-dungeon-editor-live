@@ -230,8 +230,9 @@ anchors clear of the door lanes and of each other, nothing standing in a
 lane the room it is in actually has, no two solid props standing inside each
 other and no prop's footprint reaching into a lane or through a wall, spikes
 in every trap room, the gem reachable, the generator connected, every
-arrangement standing each prop on an anchor of its own, and every item
-findable with a look nothing else has.
+arrangement standing each prop on an anchor of its own, every shipped
+template legal in all eight ways round a room can be furnished, and every
+item findable with a look nothing else has.
 
 `yarn test:perf` walks every room of every floor and holds what it costs to
 the budget above. It also walks one floor four times over to catch a room

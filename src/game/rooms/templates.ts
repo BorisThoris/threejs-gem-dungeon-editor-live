@@ -1,4 +1,5 @@
-import type { RoomTemplate } from "../dungeon/types";
+import { orient, orientationOf, type Orientation } from "../dungeon/layout";
+import type { PropPlacement, Room, RoomTemplate } from "../dungeon/types";
 
 /**
  * Authored room layouts, by id.
@@ -22,3 +23,42 @@ export const allTemplates = (): RoomTemplate[] => [...TEMPLATES.values()];
 
 export const templatesForKind = (kind: RoomTemplate["kind"]): RoomTemplate[] =>
   [...TEMPLATES.values()].filter((t) => t.kind === kind);
+
+/**
+ * An authored room's props, turned the way the room they are in is turned.
+ *
+ * A template is a composition, and a composition a quarter turn round is
+ * still that composition - so it turns with the anchors rather than staying
+ * put while the gem, the braziers and everything else move around it. One
+ * shipped hall was one room in every eleven the game drew; there are eight
+ * of it now.
+ *
+ * The one owner of that: the dressing renders these and the gem avoids
+ * them, and the two disagreeing about where an authored chest is is exactly
+ * how a treasure room came to ship three chests and show two.
+ */
+export function authoredProps(room: Room): PropPlacement[] {
+  const template = room.template ? getTemplate(room.template) : undefined;
+  if (!template) return [];
+  return orientProps(template.props, orientationOf(room));
+}
+
+/**
+ * The same turn applied to props that are not registered yet.
+ *
+ * The editor validates a draft nobody has shipped, and the check that holds
+ * the shipped templates walks all eight turns of each - so the turn has to
+ * be available without a room to look the template up from. It is the one
+ * place the transform is written: a validator that measured an unturned
+ * prop against a turned gem would be answering about a room that does not
+ * exist.
+ */
+export function orientProps(props: PropPlacement[], o: Orientation): PropPlacement[] {
+  return props.map((p) => {
+    const [x, z] = orient(p.x, p.z, o);
+    // The prop turns with the room, so its own facing turns too. A mirror
+    // reverses which way round it reads.
+    const turn = (o.mirror ? -1 : 1) * ((p.rotation ?? 0) + o.turns * (Math.PI / 2));
+    return { ...p, x, z, rotation: turn };
+  });
+}

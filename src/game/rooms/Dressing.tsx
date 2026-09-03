@@ -20,7 +20,7 @@ import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, reservedAnchors } from "./kinds";
 import { arrangementFor, type Spots } from "./layouts";
-import { getTemplate } from "./templates";
+import { authoredProps } from "./templates";
 
 interface DressingProps {
   room: Room;
@@ -47,8 +47,7 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
  * middle instead of dropping it.
  */
 export function placementsFor(room: Room, seed: number): PropPlacement[] {
-  const template = room.template ? getTemplate(room.template) : undefined;
-  const authored = template?.props ?? [];
+  const authored = authoredProps(room);
   const rng = createRng(`${seed}:${room.id}:dressing`);
   const spots: Spots = {
     near: quadrantSpots(room, "near"),
@@ -62,7 +61,7 @@ export function placementsFor(room: Room, seed: number): PropPlacement[] {
   const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
   // The arrangement is drawn before it is run, so a kind with several of
   // them spends one number choosing and the rest furnishing.
-  const layout = template ? authored : arrangementFor(room.kind, rng)(spots);
+  const layout = room.template ? authored : arrangementFor(room.kind, rng)(spots);
   const reserved = reservedAnchors(room);
   const gem = gemFor(room, seed);
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];

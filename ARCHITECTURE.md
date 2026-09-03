@@ -62,6 +62,14 @@ Two stores that both claimed the player's stats. So:
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by
   construction.
+- Which way round a room is furnished is a seeded property of the room:
+  four quarter turns and a mirror, applied to the quadrant and corner
+  anchors and to an authored template's props. Everything a room holds comes
+  off those anchors, so the whole frame turns together and a turned room is
+  still a laid-out room rather than a scramble. It is what took a run from
+  23 of 34 rooms looking different to 31, and the game from 97 distinct room
+  appearances to 553. The doors, the spawns and the middle pair do not turn:
+  they are fixed by which walls the room has.
 - The anchor rings are spaced from `PROP_SPECS`, not from magic numbers: the
   widest furnishing an arrangement can place decides how far `near` stands
   from the lanes, how far `far` stands from `near`, and how far the corner

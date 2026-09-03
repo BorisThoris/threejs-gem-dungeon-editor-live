@@ -142,6 +142,59 @@ const QUADRANTS: [number, number][] = [
 ];
 
 /**
+ * Which way round a room is furnished.
+ *
+ * Everything a room holds stands on an anchor, and the anchors were the
+ * same four points in every room - so two chambers of the same size, drawn
+ * from the same arrangement, were the same room down to the centimetre. A
+ * run is 34 rooms and only 23 of them looked different; the first room that
+ * looked like one already seen arrived at room 11, in 120 runs out of 120;
+ * and the single most common look was one room in every eleven in the game.
+ *
+ * A composition turned a quarter turn is still that composition, so the
+ * room's quadrants are read in a seeded order instead of always the same
+ * one: four turns and a mirror, eight ways round. It costs nothing, it
+ * multiplies every arrangement and every authored template by eight, and
+ * because the whole frame turns together - the gem, the key, the shop's
+ * counter, the trial's pedestals and the dressing all come off these same
+ * anchors - a turned room is still a room somebody laid out.
+ *
+ * Only the diagonals turn. The doors, the spawns and the middle pair are
+ * fixed by which walls the room has and stay where they are.
+ *
+ * Safe for every shape the generator makes: each is a regular polygon with
+ * a vertex on the +x axis, and for four, six, eight and forty-eight sides
+ * the floor reaches equally far along all four diagonals, so a turn cannot
+ * push an anchor off the floor. (A triangle is the exception, and does not
+ * fit a room at any size the game uses.)
+ */
+export interface Orientation {
+  /** Quarter turns anticlockwise. */
+  turns: 0 | 1 | 2 | 3;
+  /** Whether x is flipped afterwards. */
+  mirror: boolean;
+}
+
+export function orientationOf(room: Room): Orientation {
+  // From the room itself, not from the run's seed: `quadrantSpots` takes a
+  // Room and nothing else, and every caller depends on that.
+  const rng = createRng(`orient:${room.id}:${room.grid.x},${room.grid.z}`);
+  return { turns: Math.floor(rng() * 4) as 0 | 1 | 2 | 3, mirror: rng() < 0.5 };
+}
+
+/** A room-local point, turned and mirrored the way this room is. */
+export function orient(x: number, z: number, o: Orientation): [number, number] {
+  let px = x;
+  let pz = z;
+  for (let i = 0; i < o.turns; i++) {
+    const nx = pz;
+    pz = -px;
+    px = nx;
+  }
+  return [o.mirror ? -px : px, pz];
+}
+
+/**
  * How big the things standing on these anchors are, and therefore how far
  * apart the anchors have to be.
  *
@@ -209,10 +262,14 @@ function reach(room: Room, inset: number): number {
   return Math.max(INNER + RING_GAP, (diagonalReach(room) - inset) / Math.SQRT2);
 }
 
-/** The four anchors of a family, one per quadrant, in QUADRANTS order. */
+/** The four anchors of a family, one per quadrant, the way this room is turned. */
 export function quadrantSpots(room: Room, which: Anchor): Vec3[] {
   const d = quadrantDistance(room, which);
-  return QUADRANTS.map(([sx, sz]) => [sx * d, GROUND_Y, sz * d]);
+  const o = orientationOf(room);
+  return QUADRANTS.map(([sx, sz]) => {
+    const [x, z] = orient(sx * d, sz * d, o);
+    return [x, GROUND_Y, z];
+  });
 }
 
 /**
@@ -284,7 +341,11 @@ export function cornerSpots(room: Room): Vec3[] {
     room.shape === "square" ? box : (diagonalReach(room) - CORNER_INSET) / Math.SQRT2;
   const clearOfFurniture = quadrantDistance(room, "far") + CORNER_GAP;
   const c = Math.min(box, Math.max(onFloor, clearOfFurniture));
-  return QUADRANTS.map(([sx, sz]) => [sx * c, GROUND_Y, sz * c]);
+  const o = orientationOf(room);
+  return QUADRANTS.map(([sx, sz]) => {
+    const [x, z] = orient(sx * c, sz * c, o);
+    return [x, GROUND_Y, z];
+  });
 }
 
 /**

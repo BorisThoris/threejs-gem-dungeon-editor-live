@@ -197,7 +197,17 @@ if (DESKTOP) {
   // import time, and a pad that appears later is a different test.
   await context.addInitScript(INSTALL_PAD);
   page = await context.newPage();
-  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 60000 });
+  const reached = await page
+    .goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 60000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!reached) {
+    // A stack trace is not a test result. The dev server is somewhere else,
+    // or not running, and saying which port was tried is the whole answer.
+    console.log(`FAIL  a dev server is running on ${PORT}  - start one with \`yarn dev --port ${PORT}\`, or set PORT`);
+    await browser.close();
+    process.exit(1);
+  }
   await page.waitForTimeout(3000);
 }
 

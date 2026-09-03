@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 import { gemPosition, type Vec3 } from "../dungeon/layout";
 import { reservedAnchorsFor } from "./anchors";
-import { getTemplate } from "./templates";
+import { authoredProps } from "./templates";
 import type { Room, RoomKind } from "../dungeon/types";
 
 export interface RoomKindProps {
@@ -74,8 +74,7 @@ export const reservedAnchors = (room: Room): Vec3[] => reservedAnchorsFor(room.k
  * way for content to go missing.
  */
 export function claimedSpots(room: Room): Vec3[] {
-  const template = room.template ? getTemplate(room.template) : undefined;
-  const authored = (template?.props ?? []).map<Vec3>((p) => [p.x, 0, p.z]);
+  const authored = authoredProps(room).map<Vec3>((p) => [p.x, 0, p.z]);
   return [...reservedAnchors(room), ...authored];
 }
 

@@ -312,6 +312,28 @@ for (const size of L.ROOM_SIZES) {
     L.templateProblems(t, 60).map((p) => `${t.id} prop ${p.index}: ${p.reason}`)
   );
   check("every shipped template is one the game will draw whole", problems.length === 0, problems.join("; ") || "none");
+
+  /**
+   * And in every way round a room can be furnished.
+   *
+   * The anchors are read in a seeded order now - four turns and a mirror -
+   * and an authored room turns with them, so a template is placed in one of
+   * eight orientations and has to survive all of them. Validating the one
+   * it happens to get in a room at the origin would leave seven untested.
+   */
+  const orientations = new Set();
+  const turned = [];
+  for (let g = 0; g < 40; g++) {
+    const grid = { x: g % 7, z: Math.floor(g / 7) };
+    for (const t of L.allTemplates()) {
+      const o = L.orientationOf(L.roomForTemplate(t, grid));
+      orientations.add(`${o.turns}${o.mirror}`);
+      turned.push(...L.templateProblems(t, 20, grid).map((p) => `${t.id} @${grid.x},${grid.z} prop ${p.index}: ${p.reason}`));
+    }
+  }
+  check("all eight ways round a room were tried", orientations.size === 8, `${orientations.size} of 8`);
+  check("a shipped template is one the game will draw whole in every one of them", turned.length === 0,
+    turned.slice(0, 2).join("; ") || "none");
 }
 
 // The dressing: every arrangement of every kind, at every size, must stand

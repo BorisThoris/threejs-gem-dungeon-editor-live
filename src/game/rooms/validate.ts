@@ -1,8 +1,9 @@
-import { cornerSpots, inDoorLane, keyPosition, overhangsLane } from "../dungeon/layout";
+import { cornerSpots, inDoorLane, keyPosition, orientationOf, overhangsLane } from "../dungeon/layout";
 import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
 import { claimedSpots, gemFor } from "./kinds";
+import { orientProps } from "./templates";
 
 /**
  * Whether an authored room is one the game will actually draw.
@@ -34,12 +35,18 @@ export interface TemplateProblem {
 const clearOf = (solid: boolean) => (solid ? 1.6 : 1.0);
 const CLEAR_OF_CONTENT = 1.2;
 
-/** The room a template describes, with every wall doored: the hard case. */
-export function roomForTemplate(t: RoomTemplate): Room {
+/**
+ * The room a template describes, with every wall doored: the hard case.
+ *
+ * `grid` picks which way round the room is furnished. A template has to be
+ * legal in all eight, because the room it lands in could be any of them,
+ * and the check that holds what ships walks every one.
+ */
+export function roomForTemplate(t: RoomTemplate, grid = { x: 0, z: 0 }): Room {
   return {
     id: "authored",
     kind: t.kind,
-    grid: { x: 0, z: 0 },
+    grid,
     size: t.size,
     shape: t.shape,
     links: { north: "a", south: "b", east: "c", west: "d" },
@@ -56,15 +63,23 @@ export function roomForTemplate(t: RoomTemplate): Room {
  *   enough for a live warning in the editor; the check that holds shipped
  *   content uses many.
  */
-export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] {
+export function templateProblems(
+  t: RoomTemplate,
+  seeds = 1,
+  grid = { x: 0, z: 0 }
+): TemplateProblem[] {
   const problems: TemplateProblem[] = [];
-  const room = roomForTemplate(t);
+  const room = roomForTemplate(t, grid);
   const reserved = reservedAnchorsFor(t.kind, room);
   const corners = cornerSpots(room);
   const reach = inscribedRadius(room);
   const half = t.size / 2;
 
-  t.props.forEach((p, index) => {
+  // Turned the way this room is, because everything it is measured against
+  // - the gem, the key, the braziers, the kind's own content - is turned
+  // too. Comparing an unturned prop to a turned gem is a measurement of a
+  // room that does not exist.
+  orientProps(t.props, orientationOf(room)).forEach((p, index) => {
     const spec = PROP_SPECS[p.kind];
     if (!spec) {
       problems.push({ index, reason: `${p.kind} is not a prop the game has` });
@@ -113,7 +128,7 @@ export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] 
     // nothing downstream compares a prop to another prop. This used to
     // compare their centres to within a millimetre, which caught only the
     // case of clicking the same cell twice.
-    const twin = t.props.findIndex((q, j) => {
+    const twin = orientProps(t.props, orientationOf(room)).findIndex((q, j) => {
       if (j >= index) return false;
       const other = PROP_SPECS[q.kind];
       if (!other) return false;

@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Seventeen more turned up on the next passes, all of them things nobody had
+Eighteen more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -252,6 +252,22 @@ looked at because the tests were green:
   rather than fixing it. One animation frame, one poll, edges true for
   exactly one frame, and `readGamepad` is a read: four readers spread
   across a frame now see one press four times out of four.
+- **A run is 34 rooms and 23 of them looked different.** Named twice in this
+  document as "the same props in the same quadrants" without anyone
+  measuring it, which is how a hunch becomes received wisdom. Measured: over
+  120 runs a player walks through 34.4 rooms of which 23.0 look different,
+  the first room that looks like one already seen arrives at room 11 - in
+  120 runs out of 120 - and only 97 distinct room appearances exist in the
+  whole game, the most common of them, the authored hall, being one room in
+  every eleven. The cause was not the fifteen props. Every room of a kind at
+  a given size rendered in exactly the same corners, because the anchors
+  were the same four points in every room. They are read in a seeded order
+  now - four quarter turns and a mirror, and the whole frame turns together,
+  so the gem, the braziers, the shop's counter and an authored template all
+  turn with the dressing and a turned room is still a room somebody laid
+  out. 31.4 of 34.4 rooms look different, the first repeat moves to room 16,
+  the game has 553 distinct room appearances instead of 97, and the most
+  common one is down from 8.8% to 2.4%.
 - **A harness that said the built site does not load, on one run in five.**
   The production check retried its first page load forty times with nothing
   in between, and a connection to a port nothing is listening on is refused
@@ -415,11 +431,13 @@ nobody has held a Deck with this on it.
   player recognises a room and stops looking at it. The deeper floors are
   bigger, which buys variety and spends patience; the third is around half
   again the size of the first. The kinds walked through most now have two or
-  three arrangements each, drawn from the room's seed, so the fourth chamber
-  on a floor is no longer the first chamber again, and two in five rooms now
-  have something standing either side of the way through rather than only in
-  their corners. The next thing to run out is the props themselves: fifteen
-  of them, and a chamber is still recognisably built from the same fifteen.
+  three arrangements each, drawn from the room's seed; two in five rooms have
+  something standing either side of the way through rather than only in
+  their corners; and every room is furnished in one of eight orientations,
+  so 31 of the 34 rooms in a run look different and the first repeat is at
+  room 16. What is left to run out is the props themselves: fifteen of them,
+  and a chamber is still recognisably built from the same fifteen, however
+  they are turned.
 - **Is the bottom floor too much?** It arrives at alarm 2 with one room of
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than
