@@ -52,11 +52,41 @@ ok(`the package has an executable called ${EXECUTABLE}`, existsSync(join(OUT, EX
  * and the only way to know is to compare it with what the builder made.
  */
 const steamDoc = readFileSync(join(root, "steam/README.md"), "utf8");
-ok(
-  "the Steam instructions name the executable the builder actually makes",
-  steamDoc.includes(`\`${EXECUTABLE}\``),
-  `built ${EXECUTABLE}`
-);
+const product = pkg.build.productName;
+/**
+ * What each platform's launch executable is called, derived from the build
+ * config rather than typed out again. electron-builder names the Windows
+ * binary and the macOS bundle after the product; Linux takes whatever
+ * executableName says, and said the npm package's name until this cycle.
+ *
+ * Only the Linux one can be built and started here - Windows packaging
+ * needs Wine for the icon step and macOS needs Xcode's tooling to sign -
+ * so for the other two this is the whole check, and it is still the one
+ * that would have caught the bug.
+ */
+const launches = [
+  ["Linux", EXECUTABLE],
+  ["Windows", `${product}.exe`],
+  ["macOS", `${product}.app`],
+];
+for (const [platform, name] of launches) {
+  ok(
+    `the Steam instructions name what the builder makes on ${platform}`,
+    steamDoc.includes(`\`${name}\``),
+    name
+  );
+}
+// And where a package can actually be built here, the artifact itself.
+for (const [platform, name, where] of [
+  ["Windows", `${product}.exe`, "dist-electron/win-unpacked"],
+  ["macOS", `${product}.app`, "dist-electron/mac"],
+]) {
+  if (existsSync(join(root, where, name))) {
+    ok(`the ${platform} package that is here is named ${name}`, true);
+  } else {
+    console.log(`  no ${platform} package on this machine to check - it needs its own host`);
+  }
+}
 
 const asar = join(OUT, "resources/app.asar");
 ok("the game is packed into an asar", existsSync(asar), asar);
@@ -78,13 +108,44 @@ console.log(`  package: ${(size / (1024 * 1024)).toFixed(0)} MB of files beside 
 
 // --- Whether it starts -----------------------------------------------------
 
+/**
+ * Refuse to run against something already there.
+ *
+ * The first version of this leaked: it spawned xvfb-run without a process
+ * group and then tried to kill one, so every run left an Electron behind
+ * and the next run connected to the previous run's game rather than
+ * starting its own - which read as the menu check passing on a screen that
+ * was already mid-run. A harness that gives a different answer the second
+ * time is worse than none, and this project has now learned that three
+ * times.
+ */
+const stale = await fetch(`http://127.0.0.1:${PORT}/json/version`).then(
+  () => true,
+  () => false
+);
+if (stale) {
+  console.log(`FAIL  nothing is already listening on ${PORT}  - a previous run leaked; kill it first`);
+  process.exit(1);
+}
+
+/**
+ * The display and the app are started separately and owned outright.
+ *
+ * xvfb-run is a shell that launches what you give it, so killing it leaves
+ * the app running under a display that is also still running - which is how
+ * the first version of this leaked eight processes a run. Two processes we
+ * spawned ourselves, each in its own group, can actually be killed.
+ */
+const DISPLAY = `:${90 + (Number(PORT) % 8)}`;
+const xvfb = spawn("Xvfb", [DISPLAY, "-screen", "0", "1280x800x24", "-nolisten", "tcp"], {
+  stdio: "ignore",
+  detached: true,
+});
+await new Promise((r) => setTimeout(r, 1500));
+
 const app = spawn(
-  "xvfb-run",
+  join(OUT, EXECUTABLE),
   [
-    "-a",
-    "-s",
-    "-screen 0 1280x800x24",
-    join(OUT, EXECUTABLE),
     "--no-sandbox",
     "--windowed",
     `--remote-debugging-port=${PORT}`,
@@ -92,19 +153,31 @@ const app = spawn(
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
   ],
-  { cwd: OUT, stdio: ["ignore", "pipe", "pipe"] }
+  // Its own process group, so the whole tree can be killed: xvfb-run is a
+  // shell that launches the app, and killing the shell leaves the app.
+  { cwd: OUT, stdio: ["ignore", "pipe", "pipe"], detached: true, env: { ...process.env, DISPLAY } }
 );
 let appOutput = "";
 app.stdout.on("data", (d) => (appOutput += d));
 app.stderr.on("data", (d) => (appOutput += d));
+let stopped = false;
 const stop = () => {
-  try {
-    process.kill(-app.pid, "SIGKILL");
-  } catch {
-    app.kill("SIGKILL");
+  if (stopped) return;
+  stopped = true;
+  for (const child of [app, xvfb]) {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {
+      try {
+        child.kill("SIGKILL");
+      } catch {
+        // Already gone.
+      }
+    }
   }
 };
 process.on("exit", stop);
+for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => (stop(), process.exit(1)));
 
 let browser = null;
 for (let i = 0; i < 30 && !browser; i++) {

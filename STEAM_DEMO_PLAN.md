@@ -1,9 +1,10 @@
 # Steam Demo: findings, plan, and current state
 
-> **Update: the game was rebuilt from scratch.** Everything below section 0
-> describes the original tree and the work done inside it. That tree is
-> preserved at the `pre-greenfield` tag and branch. The rebuild is
-> described in section 0 and in [ARCHITECTURE.md](ARCHITECTURE.md).
+> **The game was rebuilt from scratch.** Sections 1 and 2 are history: they
+> describe the original tree and the work done inside it, and the files and
+> numbers they name mostly no longer exist. That tree is preserved at the
+> `pre-greenfield` tag and branch. Section 0 explains the rebuild, and
+> sections 3 onwards describe the game as it stands now.
 
 ## 0. The rebuild
 
@@ -312,83 +313,75 @@ Fourteen commits, `5c928fc..fc6340d`.
 
 ## 3. How it is verified
 
-`scripts/smoke-test.mjs` drives the real game in Chromium: start from the menu,
-walk the rooms, step on the gems, walk through the doorways, die, restart. It
-asserts the player is on a floor, that traversal changed rooms, that gems were
-collected, that the run ends and that restarting is clean — and fails on any
-uncaught page error.
+Five commands. Between them they cover the geometry and the content with no
+browser, the game as it is played, what a room costs to run, the web bundle
+that ships, and the desktop package that would go on Steam.
 
-```bash
-yarn dev --port 5199        # one terminal
-node scripts/smoke-test.mjs # another
-```
+| | What it does | Needs |
+| --- | --- | --- |
+| `yarn test:layout` | 38 checks over every room size, shape and hundreds of seeds: anchors clear of the door lanes and of each other, every arrangement legal, every shipped template one the game will draw whole, the descent's rules never gentler with depth, every item findable with a look nothing else has, the pan of a sound correct from all 360 headings | nothing |
+| `yarn test:smoke` | 102 checks driving the real game: the whole loop from menu to victory and to death, the economy, the Warden and the noise it hears, the locked vault, the three puzzles won and lost, the records, the editor and the content pipeline | a dev server on 5199, Chromium |
+| `yarn test:perf` | Draw calls, triangles, live geometries and textures for every room of every floor against a written budget, plus what survives a forced collection while sprinting | as above |
+| `yarn test:prod` | Builds `dist`, serves it and plays it through the menu and the keyboard alone - the shipped bundle has no probe handles - and reads the rest off the built files: no editor in the bundle, nothing 404ing, under 1.35 MB over the wire | Chromium |
+| `yarn test:desktop` | Packages the Linux build, reads what is inside it, then starts it under a virtual display and plays it. Holds the build config and the Steam instructions to each other | Xvfb, Chromium |
 
-Currently **13/13 passing**. It needs `playwright-core` and a Chromium binary,
-which are not project dependencies, so it is deliberately not a commit gate —
-it is what you run before shipping a build.
+`yarn typecheck` must be clean; there is no error budget and no ratchet.
+`yarn lint` likewise. The browser checks need `playwright-core` and a
+Chromium binary, which are not project dependencies, so they are what you
+run before shipping a build rather than a commit gate.
 
-Other measurements taken during this work:
-
-- Dropped from y=200, the player falls at the clamped terminal velocity, lands,
-  and stays. Five consecutive room transitions with no fall.
-- Pause/resume leaves the canvas count at 1 and the room, room instances,
-  visited set and player position byte-identical.
-- Three generated dungeons contained only curated room types.
-- The unpacked desktop build runs for 40 seconds with **every DNS lookup
-  blackholed** and logs no errors — the game is genuinely playable offline.
-- A legacy-store `addPoints(250)` / `loseLife()` moves the consolidated store and
-  visibly updates the HUD.
+What the numbers say today: the worst room costs 54 draw calls and 2,214
+triangles; a first visit downloads 1.05 MB gzipped; a floor is 8 to 16
+rooms depending on depth and takes 19 to 22 seconds to cross at a walk.
+PLAYTEST.md has the rest.
 
 ---
 
 ## 4. What is still ahead
 
-Nothing below is started. This is the honest gap between "playable" and
-"shipped".
+### Needs someone with the Steamworks account
 
-### Blocking a Steam release
+- **Nothing Steam-side exists.** No app ID, no store page, no capsule art,
+  no depots configured, no build uploaded. `steam/` holds the app and depot
+  vdf files and a README with the `steamcmd` steps, launch options and Deck
+  notes - they need the real app ID filling in and nothing else.
+- **Windows and macOS packages need their own hosts.** Both are configured
+  and both name their executables correctly, and the checks hold those names
+  against the Steam instructions. But Windows packaging needs Wine or
+  Windows for the icon step, and macOS needs Xcode's tooling to sign and
+  notarise. Only the Linux package can be built and started here.
 
-- **Nothing Steam-side exists.** No appid, no store page, no capsule art, no
-  Steamworks integration, no build uploaded.
-- **Only the Linux AppImage is verified.** Windows NSIS and macOS dmg have never
-  been built; they need their own hosts.
-- **Nobody has played it.** The smoke test proves the loop *functions*. It says
-  nothing about whether the demo is *fun*, whether three gems is the right gate,
-  whether the puzzle rooms are enjoyable, or whether 15–20 minutes of content is
-  actually there. Only playing it answers that.
-- **No Steam Deck testing.** Gamepad support exists and was verified with a
-  synthetic pad; nobody has run this on a Deck or audited UI legibility at
-  1280×800.
+### Needs a person, not a machine
 
-### Known, deliberately deferred
+- **Nobody has played it.** Everything above proves the game *functions*.
+  None of it says whether it is *fun*: whether the toll is set right,
+  whether the Warden is frightening or tedious, whether the bottom floor
+  has tipped from tense into hopeless. PLAYTEST.md ends with the specific
+  questions worth watching for.
+- **No Steam Deck has run it.** Gamepad support exists and was driven with a
+  synthetic pad; the overlay was scaled for 1280x800 by eye. Neither has met
+  a Deck.
 
-- 138 type errors behind the ratchet, plus 53 more in a test file — there is no
-  test runner installed at all, so someone must decide whether to add one or
-  exclude tests from `tsconfig.app.json`.
-- `useRoomActions` silently ignores callbacks for four room types, so those
-  rooms' completion handlers never fire.
-- ~37 orphaned components remain in the tree (`TutorialSystem`,
-  `InteractionManager`, `GameManager`, …).
-- `usePhysicalKeyboard` re-renders the player on every keypress.
-- Two `colliders="trimesh"` floors remain, in `SpecialBiome` and the orphaned
-  `SecretRoom`. Both are box geometry rather than planes, so they have volume
-  and are not the tunnelling bug, and neither is in `DEMO_ROOM_TYPES` — but at
-  0.2 units thick they should become cuboids before either ships.
-- The dynamic-body character controller works, but Rapier's own answer is
-  `KinematicCharacterController`, which react-three-rapier 2.1 does not wrap.
-  A post-demo consideration, not a now one.
+### Known and deliberately left
+
+- The challenge room's solved path - weight the plate, then take the idol -
+  is verified by hand rather than automatically. A carried thing is put down
+  where the camera aims, and no approach the harness tried reproduced a
+  player's aim reliably enough to trust. PLAYTEST.md says so.
+- The demo is three floors of ten room kinds. The kinds walked through most
+  have two or three arrangements each and two rooms are authored, but it is
+  still the same props in the same quadrants, and that is what runs out
+  next.
 
 ---
 
 ## 5. Tuning
 
-Run rules live in `src/configs/runRules.ts`:
+Every number the world is built from lives in `src/game/world.ts`, and
+everything that changes with depth is one table in it, `floorRules(floor)`:
+how big a floor is generated, how long it leaves you alone before the Warden
+wakes, how roused it already is when you arrive, how many of its rooms are
+watched, how it is lit, and the line the player is shown on reaching it.
 
-| Constant | Value | Meaning |
-| --- | --- | --- |
-| `GEMS_REQUIRED_FOR_END` | 3 | Gems the end door costs |
-| `STARTING_LIVES` | 3 | Lives a run begins with |
-| `DAMAGE_COOLDOWN_SECONDS` | 1.5 | Invulnerability after a hit |
-
-Which rooms the demo generates: `DEMO_ROOM_TYPES` in
-`src/configs/mapGeneration.ts`.
+PLAYTEST.md section 7 lists the knobs with their current values and what
+each one does.

@@ -79,12 +79,42 @@ const editorTells = ["Live in runs", "THE GAME WILL NOT DRAW", "gem-dungeon.draf
 const shipped = editorTells.filter((tell) => bundle.includes(tell));
 ok("the editor is not in the bundle at all", shipped.length === 0, shipped.join(", ") || "none of its strings");
 
+/**
+ * Refuse to run against a server that is already there.
+ *
+ * The first version of this killed npx rather than the group it started,
+ * so vite kept the port - and the next run bound nothing, connected to the
+ * leftover, and reported the previous build as passing. Being able to
+ * connect is not the same as having served what is in dist right now.
+ */
+const taken = await fetch(`http://127.0.0.1:${PORT}/`).then(
+  () => true,
+  () => false
+);
+if (taken) {
+  console.log(`FAIL  nothing is already serving ${PORT}  - a previous run leaked; kill it first`);
+  process.exit(1);
+}
+
+// Its own process group, and killed as one: npx launches vite, so killing
+// npx leaves the server holding the port.
 const started = spawn("npx", ["vite", "preview", "--port", PORT, "--strictPort"], {
   cwd: new URL("..", import.meta.url).pathname,
   stdio: "ignore",
+  detached: true,
 });
-const stop = () => started.kill();
+let stopped = false;
+const stop = () => {
+  if (stopped) return;
+  stopped = true;
+  try {
+    process.kill(-started.pid, "SIGKILL");
+  } catch {
+    started.kill("SIGKILL");
+  }
+};
 process.on("exit", stop);
+for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => (stop(), process.exit(1)));
 
 const browser = await chromium.launch({
   executablePath: CHROMIUM,
