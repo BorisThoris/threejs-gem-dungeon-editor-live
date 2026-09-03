@@ -23,7 +23,12 @@ const KIND_LABEL: Record<string, string> = {
  * short of full brightness - at full it was a neon strip stapled to a stone
  * dungeon, and it was the brightest thing on the screen.
  */
-const FRAME_COLOR = { door: "#2a556e", exitOpen: "#8a6520", exitLocked: "#7a2530" };
+const FRAME_COLOR = {
+  door: "#2a556e",
+  exitOpen: "#8a6520",
+  exitLocked: "#7a2530",
+  vault: "#7a5a1a",
+};
 
 interface DoorTriggerProps {
   room: Room;
@@ -41,16 +46,27 @@ interface DoorTriggerProps {
  */
 export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const gems = useRun((s) => s.gems);
+  const toId = room.links[dir];
   const toll = useRun(tollNow);
   const sealed = useRun((s) => s.sealedRoomId === room.id);
+  const vaultId = useRun((s) => s.dungeon?.vaultId ?? null);
+  const keys = useRun((s) => s.keys);
+  const unlocked = useRun((s) => (toId ? s.unlocked.includes(toId) : false));
   const dungeon = useRun((s) => s.dungeon);
-  const toId = room.links[dir];
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
   const isExit = target.kind === "end";
-  const enabled = (!isExit || gems >= toll) && !sealed;
-  const color = isExit ? (enabled ? FRAME_COLOR.exitOpen : FRAME_COLOR.exitLocked) : FRAME_COLOR.door;
+  // A vault stays locked until a key is spent on it, and then stays open.
+  const locked = target.id === vaultId && !unlocked;
+  const enabled = (!isExit || gems >= toll) && !sealed && (!locked || keys > 0);
+  const color = locked
+    ? FRAME_COLOR.vault
+    : isExit
+      ? enabled
+        ? FRAME_COLOR.exitOpen
+        : FRAME_COLOR.exitLocked
+      : FRAME_COLOR.door;
   const position = doorPosition(room, dir);
   // The frame's own x runs along the wall the door is in.
   const alongZ = dir === "east" || dir === "west";
@@ -63,13 +79,22 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
       </group>
       <InteractTrigger
         position={position}
-        label={`Open ${KIND_LABEL[target.kind] ?? "the door"}`}
+        label={
+          locked
+            ? `Unlock the vault (1 iron key)`
+            : `Open ${KIND_LABEL[target.kind] ?? "the door"}`
+        }
         enabled={enabled}
         blockedReason={
-          sealed ? "The door will not move" : `The exit needs ${toll} gems (${gems}/${toll})`
+          sealed
+            ? "The door will not move"
+            : locked
+              ? "The vault is locked. Its key is somewhere on this floor."
+              : `The exit needs ${toll} gems (${gems}/${toll})`
         }
         onInteract={() => {
           const run = useRun.getState();
+          if (locked && !run.unlockRoom(target.id)) return;
           if (isExit && !run.spendGems(tollNow(run))) return;
           run.travel(dir);
         }}

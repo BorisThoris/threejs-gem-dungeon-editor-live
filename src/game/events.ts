@@ -45,6 +45,10 @@ export interface BusEvents {
   itemNamed: { id: string };
   /** The arena's arms have started or stopped. */
   arenaRun: { running: boolean };
+  /** The floor's key has been picked up. */
+  keyTaken: undefined;
+  /** A vault has been unlocked. */
+  vaultOpened: { roomId: string };
   /**
    * How near the Warden is, 0 (not in the room) to 3 (on top of you).
    * Quantised and emitted only on change, so the DOM can draw from it.

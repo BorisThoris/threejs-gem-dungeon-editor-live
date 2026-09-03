@@ -35,6 +35,8 @@ export function Audio() {
       bus.on("relicTaken", () => sfx.relic()),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
+      bus.on("keyTaken", () => sfx.key()),
+      bus.on("vaultOpened", () => sfx.unlock2()),
       bus.on("arenaRun", ({ running }) => (running ? sfx.grind() : sfx.release())),
       bus.on("itemUsed", ({ cruel }) => (cruel ? sfx.bitter() : sfx.drink())),
       bus.on("charmSpent", () => sfx.charm()),

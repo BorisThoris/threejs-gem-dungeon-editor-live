@@ -173,7 +173,69 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     endId = farthest.id;
   }
 
-  return { seed, rooms, startId: "start", endId };
+  // One vault, locked, and a key somewhere else on the floor.
+  //
+  // The vault is only ever a treasure room off the shortest path to the
+  // exit, so a player who never finds the key can still finish the floor,
+  // and the key is only ever in a room that is not the vault - which is
+  // enough, because the vault is the only locked door on the floor and
+  // every other room is therefore freely reachable.
+  const critical = new Set(shortestPath(rooms, "start", endId) ?? []);
+  // Off the critical path is not enough: a room can be off the shortest
+  // route and still be the only way through to the far side of the floor.
+  // The lock only goes on a room the floor can be walked without.
+  const canSpare = (room: Room) => {
+    const seen = reachableWithout(rooms, "start", room.id);
+    return seen.has(endId) && seen.size === rooms.length - 1;
+  };
+  const eligible = rooms.filter(
+    (room) =>
+      room.id !== "start" &&
+      room.id !== endId &&
+      !critical.has(room.id) &&
+      canSpare(room)
+  );
+  // A vault reads best as a treasure room; a plain chamber will do rather
+  // than have no lock on the floor at all.
+  const vaults = eligible.filter((room) => room.kind === "treasure");
+  const vault = vaults.length ? pick(rng, vaults) : eligible.length ? pick(rng, eligible) : null;
+  const keyRoom = vault
+    ? pick(
+        rng,
+        rooms.filter((room) => room.id !== vault.id && room.id !== endId)
+      )
+    : null;
+
+  return {
+    seed,
+    rooms,
+    startId: "start",
+    endId,
+    vaultId: vault?.id ?? null,
+    keyRoomId: keyRoom?.id ?? null,
+  };
+}
+
+/**
+ * Every room reachable from `startId` with `skipId` shut.
+ *
+ * Not `bfsDepth` with the room filtered out: that records a room the moment
+ * a neighbour points at it, so a shut door still counted as walked through.
+ * This is what decides whether a room is safe to lock.
+ */
+export function reachableWithout(rooms: Room[], startId: string, skipId: string): Set<string> {
+  const byId = new Map(rooms.map((room) => [room.id, room]));
+  const seen = new Set<string>([startId]);
+  const queue = [startId];
+  while (queue.length) {
+    const id = queue.shift()!;
+    for (const next of Object.values(byId.get(id)?.links ?? {})) {
+      if (!next || next === skipId || seen.has(next)) continue;
+      seen.add(next);
+      queue.push(next);
+    }
+  }
+  return seen;
 }
 
 /** Doorways walked from `startId` to every reachable room. */

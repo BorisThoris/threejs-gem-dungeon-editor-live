@@ -35,6 +35,7 @@ export function Minimap() {
   const visited = useRun((s) => s.visited);
   const gemRooms = useRun((s) => s.gemRooms);
   const wardenRoomId = useRun((s) => s.wardenRoomId);
+  const unlocked = useRun((s) => s.unlocked);
   const shows = useRun((s) => modifiers(s.relics));
   const mapped = useRun((s) => s.mapped);
   const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
@@ -89,6 +90,7 @@ export function Minimap() {
         y: (r.grid.z - here.grid.z) * SPACING,
         state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
         isExit: r.id === dungeon.endId,
+        isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
         hasWarden: shows.showsWarden && r.id === wardenRoomId,
         hasGem:
           shows.showsGems &&
@@ -100,7 +102,7 @@ export function Minimap() {
           .filter(([, to]) => to && known.has(to))
           .map(([dir]) => dir),
       }));
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped]);
+  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked]);
 
   if (!cells) return null;
 
@@ -162,8 +164,11 @@ export function Minimap() {
                   height={CELL}
                   rx={4}
                   fill={c.state === "here" ? colors.accent : c.state === "seen" ? "#3a3f4b" : "#191d25"}
-                  stroke={c.isExit ? colors.gold : c.state === "known" ? colors.line : "none"}
-                  strokeWidth={c.isExit ? 2.5 : 1}
+                  stroke={
+                    c.isExit || c.isVault ? colors.gold : c.state === "known" ? colors.line : "none"
+                  }
+                  strokeWidth={c.isExit || c.isVault ? 2.5 : 1}
+                  strokeDasharray={c.isVault ? "4 3" : undefined}
                 />
                 {c.hasGem && <circle r={3.4} fill={colors.accent} opacity={0.95} />}
                 {c.hasWarden && (

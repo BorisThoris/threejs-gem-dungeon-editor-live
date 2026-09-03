@@ -175,7 +175,21 @@ const dist2 = (a: Vec3, b: Vec3): number => (a[0] - b[0]) ** 2 + (a[2] - b[2]) *
  * its gem in the same place every visit.
  */
 export function gemPosition(room: Room, seed: number, reserved: Vec3[] = []): Vec3 {
-  const rng = createRng(`${seed}:${room.id}:gem`);
+  return freeAnchor(room, `${seed}:${room.id}:gem`, reserved, GEM_HEIGHT);
+}
+
+/** Where a floor's key lies: a free anchor, never the one the gem is on. */
+export function keyPosition(room: Room, seed: number, reserved: Vec3[] = []): Vec3 {
+  return freeAnchor(room, `${seed}:${room.id}:key`, reserved, 0.55);
+}
+
+/**
+ * The anchor farthest from everything already claimed, at a height of your
+ * choosing. Among equally free anchors the seed decides, so the same room
+ * puts the same thing in the same corner every visit.
+ */
+function freeAnchor(room: Room, seedKey: string, reserved: Vec3[], height: number): Vec3 {
+  const rng = createRng(seedKey);
   const candidates = [...quadrantSpots(room, "far"), ...quadrantSpots(room, "near")];
   const start = Math.floor(rng() * 4);
   let best: Vec3 = candidates[start];
@@ -194,7 +208,7 @@ export function gemPosition(room: Room, seed: number, reserved: Vec3[] = []): Ve
       best = c;
     }
   }
-  return [best[0], GROUND_Y + GEM_HEIGHT, best[2]];
+  return [best[0], GROUND_Y + height, best[2]];
 }
 
 /** Radius of one spike patch, shared with the Hazard prop. */

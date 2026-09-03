@@ -136,6 +136,16 @@ export interface Room {
 }
 
 export interface Dungeon {
+  /**
+   * The room whose doors are locked, and the room its key lies in.
+   *
+   * The generator guarantees the locked room is never on the shortest path
+   * to the exit and its key is never inside it, so a floor can always be
+   * finished without ever opening it - the vault is a detour worth taking,
+   * not a wall across the run.
+   */
+  vaultId: string | null;
+  keyRoomId: string | null;
   seed: number;
   rooms: Room[];
   startId: string;

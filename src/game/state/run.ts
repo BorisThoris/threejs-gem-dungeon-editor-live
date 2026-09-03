@@ -75,6 +75,10 @@ export interface RunState {
   looted: string[];
   /** A room whose doors are barred while something in it is happening. */
   sealedRoomId: string | null;
+  /** Iron keys in hand. One opens one vault. */
+  keys: number;
+  /** Vaults already opened, so a door stays open once it has been. */
+  unlocked: string[];
   /**
    * How roused this floor's Warden is. Raised by taking gems, reset on
    * every new floor. This is the whole risk side of the run: the more of a
@@ -121,6 +125,10 @@ export interface RunState {
   identifySlot: (slot: number) => boolean;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
+  /** Pick up the floor's key. */
+  takeKey: (roomId: string) => void;
+  /** Spend a key on a vault. Returns false without one. */
+  unlockRoom: (roomId: string) => boolean;
   /** The Warden walks to another room. */
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
@@ -175,6 +183,8 @@ export const useRun = create<RunState>()(
     mapped: false,
     looted: [],
     sealedRoomId: null,
+    keys: 0,
+    unlocked: [],
     alarm: 0,
     floorRooms: 1,
     wardenRoomId: null,
@@ -213,6 +223,8 @@ export const useRun = create<RunState>()(
         mapped: false,
         looted: [],
         sealedRoomId: null,
+        keys: 0,
+        unlocked: [],
         alarm: 0,
         floorRooms: 1,
         wardenRoomId: null,
@@ -310,6 +322,9 @@ export const useRun = create<RunState>()(
           mapped: false,
           looted: [],
           sealedRoomId: null,
+          // A key is cut for one floor's lock and is no use on the next.
+          keys: 0,
+          unlocked: [],
           alarm: 0,
           floorRooms: 1,
           wardenRoomId: null,
@@ -481,6 +496,22 @@ export const useRun = create<RunState>()(
     },
 
     sealRoom: (roomId) => set({ sealedRoomId: roomId }),
+
+    takeKey: (roomId) => {
+      const s = get();
+      if (s.keys > 0 || s.unlocked.includes(roomId)) return;
+      // The key room is remembered as unlocked so the key cannot be taken twice.
+      set({ keys: s.keys + 1, unlocked: [...s.unlocked, roomId] });
+      bus.emit("keyTaken");
+    },
+
+    unlockRoom: (roomId) => {
+      const s = get();
+      if (s.keys < 1 || s.unlocked.includes(roomId)) return false;
+      set({ keys: s.keys - 1, unlocked: [...s.unlocked, roomId] });
+      bus.emit("vaultOpened", { roomId });
+      return true;
+    },
 
     moveWarden: (roomId) => {
       const s = get();

@@ -46,6 +46,7 @@ go back for them?
 | Exit, floor 1 / 2 / 3 | 3 / 5 / 7 gems | The way down, and the way out |
 | A life | 1 gem | One more mistake |
 | A chest | free | One potion or scroll, contents unknown |
+| A vault | one iron key, found on the floor | A room with three chests and a gem |
 | Warden's Lantern | 2 gems | Always knowing which room it is in |
 | Robber's Chart | 2 gems | Rooms that still hold a gem, on the map |
 | Soft Boots | 3 gems | A quarter more speed |
@@ -145,6 +146,10 @@ nobody has held a Deck with this on it.
   timed thing in the game. Too short and it is a formality; too long and it
   is a chore, and the Warden may arrive in the middle of it either way.
   `ARENA_DURATION_S` and `ARENA_SPIN` are the dials.
+- **Does the vault get opened?** The key is somewhere on the floor and the
+  vault is never on the way out, so finding it is entirely optional. If
+  nobody bothers, three chests is not enough of a prize; if everybody
+  detours for it, the alarm cost of the extra walking is too cheap.
 - **Is the head bob too much, or not enough?** It is small on purpose and
   can be switched off in the pause menu, because it makes some people ill.
   Watch whether anyone reaches for that.

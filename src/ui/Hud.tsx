@@ -26,6 +26,7 @@ export function Hud() {
   const alarm = useRun((s) => s.alarm);
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
+  const keys = useRun((s) => s.keys);
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
@@ -58,6 +59,7 @@ export function Hud() {
           <span style={{ color: colors.line }}>{"♥".repeat(Math.max(0, maxLives - lives))}</span>
         </span>
         {freeHit && <span style={{ color: colors.gold }}> +charm</span>}
+        {keys > 0 && <span style={{ color: colors.gold }}> · iron key</span>}
       </div>
       <div>
         <span style={{ color: colors.dim }}>GEMS </span>

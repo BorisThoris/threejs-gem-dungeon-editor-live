@@ -26,6 +26,10 @@ Two stores that both claimed the player's stats. So:
 - Run state lives in `src/game/state/run.ts`. One Zustand store. The floor,
   the gems, the alarm, the relics held and which room the Warden is in are
   all here; nothing keeps a second copy.
+- Whether a room can be locked is `reachableWithout` in `generate.ts`: a
+  vault only goes on a room that every other room can be reached without.
+  Being off the shortest path is not enough - a room can be off the route
+  and still be the only way through to the far side of a floor.
 - Which shapes a room may take at a given size is `shapeFits` in
   `layout.ts`. A shaped room is a polygon inscribed in its box, so it has
   less floor than its size suggests, and a shape that cannot hold its own

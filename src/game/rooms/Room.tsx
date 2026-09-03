@@ -2,10 +2,11 @@ import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
-import { trapHazards } from "../dungeon/layout";
+import { keyPosition, trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
+import { IronKey } from "../props/IronKey";
 import { Hazard } from "../props/Hazard";
 import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
@@ -66,6 +67,7 @@ export function Room({ room, seed }: RoomProps) {
   }, [room.id]);
 
   const gem = gemFor(room, seed);
+  const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
   return (
@@ -110,6 +112,9 @@ export function Room({ room, seed }: RoomProps) {
       )}
 
       {gem && <Gem roomId={room.id} position={gem} />}
+      {holdsKey && (
+        <IronKey roomId={room.id} position={keyPosition(room, seed, gem ? [gem] : [])} />
+      )}
       <RoomWarden room={room} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />

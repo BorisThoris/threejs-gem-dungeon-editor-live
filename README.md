@@ -26,6 +26,12 @@ is the moving gap between two arms, and holding it means walking a circle
 for fourteen seconds. The inner line is a stroll; the outer wall needs a
 dash to keep up. The Warden does not stop for any of this.
 
+One room on every floor is locked, and its iron key lies in another. The
+generator will only put the lock on a room the floor can be walked without,
+and never on the way to the exit, so a vault is a detour worth taking
+rather than a wall across the run - you can always leave without it, and
+you will always wonder what was in it.
+
 Chests hold potions and scrolls, and which look means which item is
 shuffled at the start of every run. A cloudy potion is a different thing
 each game, and the only way to learn is to drink one. Most of them help;

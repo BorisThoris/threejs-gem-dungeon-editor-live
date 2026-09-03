@@ -452,6 +452,45 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   await page.evaluate(() => window.__settings.getState().setCameraBob(true));
 }
 
+// A locked vault, and the key that opens it.
+{
+  let seed = 3;
+  let vault = null;
+  for (; seed < 30 && !vault; seed++) {
+    await page.evaluate((n) => window.__run.getState().startRun(n), seed);
+    await page.waitForTimeout(1400);
+    vault = await page.evaluate(() => {
+      const d = window.__run.getState().dungeon;
+      return d.vaultId ? { vault: d.vaultId, key: d.keyRoomId } : null;
+    });
+  }
+  ok("floors are generated with a locked vault", !!vault, vault ? JSON.stringify(vault) : "none in 27 seeds");
+  if (vault) {
+    const flow = await page.evaluate(() => {
+      const run = window.__run;
+      const d = run.getState().dungeon;
+      const withoutKey = run.getState().unlockRoom(d.vaultId);
+      run.getState().takeKey(d.keyRoomId);
+      const held = run.getState().keys;
+      const twiceTaken = (run.getState().takeKey(d.keyRoomId), run.getState().keys);
+      const opened = run.getState().unlockRoom(d.vaultId);
+      const again = run.getState().unlockRoom(d.vaultId);
+      return { withoutKey, held, twiceTaken, opened, again, left: run.getState().keys };
+    });
+    ok("a vault will not open without its key", flow.withoutKey === false, JSON.stringify(flow));
+    ok("the key is taken once and only once", flow.held === 1 && flow.twiceTaken === 1, JSON.stringify(flow));
+    ok("the key opens the vault and is spent", flow.opened === true && flow.left === 0, JSON.stringify(flow));
+    ok("an opened vault stays open rather than eating another key", flow.again === false);
+    const carried = await page.evaluate(() => {
+      const run = window.__run;
+      run.setState({ keys: 1 });
+      run.getState().travel(Object.keys(run.getState().dungeon.rooms.find((r) => r.id === run.getState().currentRoomId).links)[0]);
+      return run.getState().keys;
+    });
+    ok("a key is carried around the floor it belongs to", carried === 1, String(carried));
+  }
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

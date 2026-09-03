@@ -271,6 +271,18 @@ export const sfx = {
     tone(150, 0.4, "sawtooth", 0.35, 84);
     noiseBurst(0.3, 0.22, 900);
   },
+  /** Iron on stone: the key coming off the floor. */
+  key() {
+    tone(880, 0.08, "triangle", 0.28);
+    later(50, () => tone(1174.7, 0.16, "triangle", 0.24));
+    noiseBurst(0.09, 0.1, 3200);
+  },
+  /** A lock giving way. */
+  unlock2() {
+    noiseBurst(0.14, 0.24, 1400);
+    later(120, () => tone(196, 0.5, "sawtooth", 0.3, 110));
+    later(200, () => tone(392, 0.4, "triangle", 0.24));
+  },
   /** The shopkeeper puts a name to something. */
   named() {
     tone(587.3, 0.12, "triangle", 0.32);

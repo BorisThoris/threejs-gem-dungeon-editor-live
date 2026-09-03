@@ -103,11 +103,25 @@ for (let seed = 1; seed <= 500; seed++) {
   if (!depth.has(d.endId) || depth.size !== d.rooms.length) bad++;
   if (d.rooms.some((r) => !L.ROOM_SIZES.includes(r.size))) bad++;
   if (d.rooms.some((r) => !L.shapeFits(r.shape, r.size))) bad++;
+  // The vault must never be the only way onward, and its key must never be
+  // inside it, or the floor could not be finished.
+  if (d.vaultId) {
+    const path = L.shortestPath(d.rooms, d.startId, d.endId) ?? [];
+    if (path.includes(d.vaultId)) bad++;
+    if (d.keyRoomId === d.vaultId) bad++;
+    if (!d.keyRoomId) bad++;
+    // With the vault shut, every other room - the exit and the key room
+    // among them - is still reachable.
+    const open = L.reachableWithout(d.rooms, d.startId, d.vaultId);
+    if (!open.has(d.endId)) bad++;
+    if (d.keyRoomId && !open.has(d.keyRoomId)) bad++;
+    if (open.size !== d.rooms.length - 1) bad++;
+  }
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
   if (d.rooms.find((r) => r.id === d.endId).template) bad++;
 }
-check("500 dungeons: connected, one start, one end, legal sizes and shapes, no template on the end", bad === 0, `${bad} bad`);
+check("500 dungeons: connected, legal shapes, and a vault that never blocks the exit", bad === 0, `${bad} bad`);
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
