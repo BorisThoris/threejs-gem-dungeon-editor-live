@@ -14,7 +14,7 @@ import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
-import { gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
+import { claimedSpots, gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -120,7 +120,13 @@ export function Room({ room, seed }: RoomProps) {
       {gem && <Gem roomId={room.id} position={gem} />}
       {sentry && <Sentry position={sentry.at} phase={sentry.phase} />}
       {holdsKey && (
-        <IronKey roomId={room.id} position={keyPosition(room, seed, gem ? [gem] : [])} />
+        <IronKey
+          roomId={room.id}
+          // Everything already in the room, the gem included: the key was
+          // only avoiding the gem, so on an authored floor it could land on
+          // a chest and take the chest with it.
+          position={keyPosition(room, seed, [...claimedSpots(room), ...(gem ? [gem] : [])])}
+        />
       )}
       <RoomWarden room={room} />
       {hazards.map((p, i) => (

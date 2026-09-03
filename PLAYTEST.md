@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Four more turned up on the next passes, all of them things nobody had
+Six more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -178,6 +178,20 @@ looked at because the tests were green:
   told where the player is now outranks a noise: the store has one action
   for "something gave the player away", and the watcher and the Potion of
   Dread both go through it.
+- **A treasure room shipped three chests and showed two.** An authored
+  template's props are filtered by the same rules as the seeded dressing,
+  and the gem takes a seeded anchor - so on some floors the gem landed
+  1.56 units from the template's first chest, inside the 1.6 a solid prop
+  must keep clear, and the chest was dropped. Silently, on some seeds only,
+  in the one room kind whose whole point is chests. The gem and the key now
+  keep clear of what an author placed, the template is re-authored off the
+  anchor diagonals, and `yarn test:layout` validates every shipped template
+  over sixty seeds.
+- **A single authored room replaced a whole kind.** The generator preferred
+  a template whenever one existed for the kind, so every treasure room in
+  the game was the same authored room and the two seeded treasure
+  arrangements were unreachable. The seeded arrangement is one of the
+  options now.
 - **The layout check was not checking the game's dungeons.** It never
   registered the shipped room templates, and the generator draws a random
   number when it asks for templates by kind - so with an empty registry it

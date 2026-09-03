@@ -14,6 +14,7 @@ import { GEMS_PER_LIFE } from "../world";
 /** What the shopkeeper charges to put a name to something. */
 const NAMING_PRICE = 1;
 import { Dressing } from "./Dressing";
+import { libraryLectern, shopAnchors } from "./anchors";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 // Room layouts that ship with the game register themselves.
 import "./shipped";
@@ -27,12 +28,6 @@ import "./shipped";
  */
 
 /** The counter on near[2], and a relic pedestal on each of two far anchors. */
-const shopAnchors = (room: Room): Vec3[] => [
-  quadrantSpots(room, "near")[2],
-  quadrantSpots(room, "far")[0],
-  quadrantSpots(room, "far")[1],
-];
-const libraryLectern = (room: Room) => quadrantSpots(room, "near")[3];
 
 function Dressed({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
@@ -215,5 +210,5 @@ registerRoomKind("end", Dressed);
 registerRoomKind("normal", Dressed);
 registerRoomKind("treasure", Dressed);
 registerRoomKind("trap", Dressed);
-registerRoomKind("shop", Shop, shopAnchors);
-registerRoomKind("library", Library, (room) => [libraryLectern(room)]);
+registerRoomKind("shop", Shop);
+registerRoomKind("library", Library);

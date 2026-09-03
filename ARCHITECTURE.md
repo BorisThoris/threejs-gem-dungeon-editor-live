@@ -40,6 +40,17 @@ Two stores that both claimed the player's stats. So:
   `src/game/props/ContactShadows.tsx` does the cheap half instead: one soft
   blob under everything that stands on the floor, all of them in a single
   geometry, so a room's grounding costs one draw call and nothing per frame.
+- What a prop is - footprint, solidity, collider - is data in
+  `src/game/props/specs.ts`, apart from the components that draw it. Four
+  things need those numbers and none of them wants a React tree: the room's
+  single collider body, the placement filters, the editor's outlines, and
+  the layout check, which runs in node.
+- Which anchors a kind's own content stands on is one table in
+  `src/game/rooms/anchors.ts`. It used to be a third argument to
+  `registerRoomKind`, which put the answer wherever the component happened
+  to be written and out of reach of anything that cannot mount one - so an
+  authored template could be placed on the shop counter and nothing would
+  say so.
 - How a room of each kind is furnished lives in `src/game/rooms/layouts.ts`,
   as arrangements that only ever name an anchor - so an arrangement is clear
   of the door lanes by construction rather than by being checked. The kinds
@@ -170,8 +181,19 @@ registries the game reads:
 
 - **Rooms**: a `RoomTemplate` is a kind, a size, a shape and a list of props
   at positions. Drafts live in localStorage; an enabled draft is registered
-  and the generator picks templates by kind when it places a room. Export
-  the JSON to ship it.
+  and the generator may pick a template when it places a room of that kind -
+  *may*, because the seeded arrangement is one of the options rather than a
+  fallback. Preferring a template whenever one existed meant a single
+  authored treasure room made every treasure room that room, and the seeded
+  treasure arrangements became code nothing could reach. Export the JSON to
+  ship it.
+
+  An authored room's props go through the same filters the seeded dressing
+  does, and anything that fails is dropped without a word - so a template
+  that breaks a rule renders as a sparse room rather than as an error.
+  `yarn test:layout` validates every shipped template against those rules,
+  over sixty seeds, because the gem and the key take a seeded anchor and the
+  first thing it found only bit on some of them.
 - **Surfaces**: the painter and the mosaic tool save a 128x128 image under a
   surface id. `useSurface(id)` in any room picks it up at once.
 - **Props**: the inspector shows one catalogue entry at a time; the

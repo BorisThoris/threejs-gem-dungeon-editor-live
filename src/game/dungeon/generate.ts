@@ -86,11 +86,17 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   const occupied = new Map<string, Room>();
 
   const place = (x: number, z: number, kind: RoomKind): Room => {
-    // An authored layout for this kind, when one exists: the template then
-    // decides the room's size and shape, and its props replace the seeded
-    // dressing. This is how the Room Builder's work reaches a run.
+    // An authored layout for this kind, when one exists and the room's own
+    // number picks it: the template then decides the room's size and shape,
+    // and its props replace the seeded dressing. This is how the Room
+    // Builder's work reaches a run.
+    //
+    // The seeded arrangement is one of the options rather than a fallback.
+    // Preferring a template whenever one existed meant a single authored
+    // treasure room made every treasure room that room - and the two
+    // seeded treasure arrangements became code nothing could reach.
     const authored = templatesForKind(kind);
-    const template = authored.length ? pick(rng, authored) : undefined;
+    const template = authored.length ? pick(rng, [undefined, ...authored]) : undefined;
     const size = template?.size ?? SIZE_FOR[kind] ?? ROOM_SIZE_DEFAULT;
     // Only shapes with the floor to hold their props at this size.
     const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>

@@ -17,5 +17,8 @@ export function registerTemplate(template: RoomTemplate): void {
 
 export const getTemplate = (id: string): RoomTemplate | undefined => TEMPLATES.get(id);
 
+/** Everything registered, for the check that validates what ships. */
+export const allTemplates = (): RoomTemplate[] => [...TEMPLATES.values()];
+
 export const templatesForKind = (kind: RoomTemplate["kind"]): RoomTemplate[] =>
   [...TEMPLATES.values()].filter((t) => t.kind === kind);

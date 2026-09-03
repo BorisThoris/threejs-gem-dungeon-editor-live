@@ -1,5 +1,3 @@
-/* eslint-disable react-refresh/only-export-components -- the catalogue table
-   and the components it lists belong together; the editor iterates the table. */
 import { useRef, type ComponentType } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
@@ -9,18 +7,13 @@ import type { PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
+import { PROP_SPECS, type PropSpec } from "./specs";
 
-/**
- * A prop's collision shape, in the prop's own space.
- *
- * Kept as data rather than as a `<RigidBody>` inside each prop, because a
- * room's fifteen props were fifteen rigid bodies, and rapier walks every
- * body in the world on every physics step. None of them ever move. They are
- * now one static body per room, built from these.
- */
-export type ColliderSpec =
-  | { shape: "cuboid"; args: [number, number, number]; y: number }
-  | { shape: "cylinder"; args: [number, number]; y: number };
+// The numbers live in specs.ts, which has no React in it: the collider
+// body, the lane filters, the editor and the node-side layout check all
+// need them and none of them wants a component tree. Re-exported so the
+// old import site keeps working.
+export type { ColliderSpec, PropSpec } from "./specs";
 
 export interface PropProps {
   position: [number, number, number];
@@ -310,34 +303,36 @@ function Spikes(p: PropProps) {
   return <Hazard position={p.position} />;
 }
 
-export interface PropInfo {
-  component: ComponentType<PropProps>;
-  title: string;
-  /** Footprint radius in room units, for the editor and for lane checks. */
-  radius: number;
-  /** Whether it blocks the player. */
-  solid: boolean;
-  /** Where it blocks, if it blocks. Built into the room's one static body. */
-  collider?: ColliderSpec;
-}
+export type PropInfo = PropSpec & { component: ComponentType<PropProps> };
 
-export const CATALOG: Record<PropKind, PropInfo> = {
-  barrel: { component: Barrel, title: "Barrel", radius: 0.45, solid: true, collider: { shape: "cylinder", args: [0.55, 0.42], y: 0.55 } },
-  bookshelf: { component: Bookshelf, title: "Bookshelf", radius: 0.8, solid: true, collider: { shape: "cuboid", args: [0.8, 1.1, 0.225], y: 1.1 } },
-  candle: { component: Candle, title: "Candle", radius: 0.1, solid: false },
-  chair: { component: Chair, title: "Chair", radius: 0.3, solid: true, collider: { shape: "cuboid", args: [0.25, 0.55, 0.25], y: 0.55 } },
-  chest: { component: Chest, title: "Chest", radius: 0.5, solid: true, collider: { shape: "cuboid", args: [0.46, 0.37, 0.29], y: 0.37 } },
-  crystal: { component: Crystal, title: "Crystal", radius: 0.35, solid: false },
-  pillar: { component: Pillar, title: "Pillar", radius: 0.6, solid: true, collider: { shape: "cylinder", args: [2.1, 0.4], y: 2.1 } },
-  potion: { component: Potion, title: "Potion", radius: 0.15, solid: false },
-  skull: { component: Skull, title: "Skull", radius: 0.2, solid: false },
-  table: { component: Table, title: "Table", radius: 1, solid: true, collider: { shape: "cuboid", args: [0.9, 0.41, 0.5], y: 0.41 } },
-  tile: { component: Tile, title: "Floor inlay", radius: 1, solid: false },
-  torch: { component: Torch, title: "Brazier", radius: 0.4, solid: false },
-  wall: { component: Wall, title: "Wall segment", radius: 1.5, solid: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
-  web: { component: Web, title: "Cobweb", radius: 0.7, solid: false },
-  spikes: { component: Spikes, title: "Spikes", radius: 1.2, solid: false },
+const COMPONENTS: Record<PropKind, ComponentType<PropProps>> = {
+  barrel: Barrel,
+  bookshelf: Bookshelf,
+  candle: Candle,
+  chair: Chair,
+  chest: Chest,
+  crystal: Crystal,
+  pillar: Pillar,
+  potion: Potion,
+  skull: Skull,
+  table: Table,
+  tile: Tile,
+  torch: Torch,
+  wall: Wall,
+  web: Web,
+  spikes: Spikes,
 };
+
+/**
+ * What each prop is and what draws it, joined. One entry per kind, and the
+ * numbers come from exactly one place.
+ */
+export const CATALOG = Object.fromEntries(
+  (Object.keys(PROP_SPECS) as PropKind[]).map((kind) => [
+    kind,
+    { ...PROP_SPECS[kind], component: COMPONENTS[kind] },
+  ])
+) as Record<PropKind, PropInfo>;
 
 export function Prop({ kind, ...rest }: PropProps & { kind: PropKind }) {
   const Component = CATALOG[kind].component;

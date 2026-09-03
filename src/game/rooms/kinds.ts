@@ -1,6 +1,8 @@
 import type { ComponentType } from "react";
 
 import { gemPosition, type Vec3 } from "../dungeon/layout";
+import { reservedAnchorsFor } from "./anchors";
+import { getTemplate } from "./templates";
 import type { Room, RoomKind } from "../dungeon/types";
 
 export interface RoomKindProps {
@@ -47,19 +49,35 @@ export const KIND_TITLE: Record<RoomKind, string> = {
  * declares what it takes, and the other two keep clear of it.
  */
 export const KIND_CONTENT: Partial<Record<RoomKind, ComponentType<RoomKindProps>>> = {};
-const KIND_RESERVED: Partial<Record<RoomKind, (room: Room) => Vec3[]>> = {};
-
-export function registerRoomKind(
-  kind: RoomKind,
-  component: ComponentType<RoomKindProps>,
-  reserved?: (room: Room) => Vec3[]
-) {
+export function registerRoomKind(kind: RoomKind, component: ComponentType<RoomKindProps>) {
   KIND_CONTENT[kind] = component;
-  if (reserved) KIND_RESERVED[kind] = reserved;
 }
 
-/** The anchors a room's kind has claimed for its own content. */
-export const reservedAnchors = (room: Room): Vec3[] => KIND_RESERVED[room.kind]?.(room) ?? [];
+/**
+ * The anchors a room's kind has claimed for its own content.
+ *
+ * Read from the anchors table rather than from whatever was passed in
+ * alongside the component: the same fact was being declared next to each
+ * component, which put it out of reach of anything that cannot mount one -
+ * including the check that validates authored templates.
+ */
+export const reservedAnchors = (room: Room): Vec3[] => reservedAnchorsFor(room.kind, room);
+
+/**
+ * Everything already standing in this room that the gem must not land on:
+ * what the kind's content has claimed, and whatever an author placed.
+ *
+ * An authored template used to be invisible to the gem, and the gem is
+ * placed by seed - so on some floors it landed close enough to a template's
+ * chest that the chest was filtered out, and a treasure room shipped with
+ * three chests showed two. Silently, on some seeds only, which is the worst
+ * way for content to go missing.
+ */
+export function claimedSpots(room: Room): Vec3[] {
+  const template = room.template ? getTemplate(room.template) : undefined;
+  const authored = (template?.props ?? []).map<Vec3>((p) => [p.x, 0, p.z]);
+  return [...reservedAnchors(room), ...authored];
+}
 
 /**
  * Where this room's gem is, if the room shell places one.
@@ -69,5 +87,5 @@ export const reservedAnchors = (room: Room): Vec3[] => KIND_RESERVED[room.kind]?
  */
 export function gemFor(room: Room, seed: number): Vec3 | null {
   if (room.kind === "start" || room.kind === "end" || room.kind === "arena") return null;
-  return gemPosition(room, seed, reservedAnchors(room));
+  return gemPosition(room, seed, claimedSpots(room));
 }
