@@ -206,6 +206,11 @@ second model for it to be written in.
 
 - `yarn typecheck` must be clean. There is no error budget.
 - `yarn lint` must be clean.
+- The three puzzles are played by `yarn test:smoke`, not merely mounted: the
+  tome is opened, read and typed back, and typed wrong until it closes for
+  good; the memory trial is begun and repeated; the challenge room's trap is
+  sprung. Each exposes what a probe cannot see - the number sequence and the
+  pattern - behind `import.meta.env.DEV`.
 - `yarn test:perf` reads three's own counters - draw calls, triangles, live
   geometries and textures - for every room of every floor, and the heap
   while the player sprints. Frame time is not measured, because the machine

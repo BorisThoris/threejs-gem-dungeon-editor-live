@@ -8,6 +8,9 @@ export interface NumberPuzzleProps {
   /** Seeds the sequence, so a room's puzzle is the same one every visit. */
   seed: string;
   onComplete: () => void;
+  /** Out of misses or out of clock: the book is lost. */
+  onFail: () => void;
+  /** Escape: the player closed it and can come back. */
   onExit: () => void;
 }
 
@@ -27,12 +30,19 @@ const RULES = {
  * steps back. Miss the allowed number of times or run out the clock and the
  * tome closes on you.
  */
-export function NumberPuzzle({ difficulty, seed, onComplete, onExit }: NumberPuzzleProps) {
+export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: NumberPuzzleProps) {
   const rules = RULES[difficulty];
   const sequence = useMemo(() => {
     const rng = createRng(`${seed}:numbers`);
     return Array.from({ length: rules.length }, () => 1 + Math.floor(rng() * rules.range));
   }, [seed, rules.length, rules.range]);
+
+  if (import.meta.env.DEV) {
+    // For the browser probes, which cannot read numbers off a screen that
+    // has already hidden them. The memory trial exposes its pattern the
+    // same way and for the same reason.
+    (window as unknown as Record<string, unknown>).__numberSequence = sequence;
+  }
 
   const [phase, setPhase] = useState<"showing" | "typing" | "solved" | "failed">("showing");
   const [entries, setEntries] = useState<string[]>([]);
@@ -66,10 +76,14 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onExit }: NumberPuz
       return () => window.clearTimeout(t);
     }
     if (phase === "failed") {
-      const t = window.setTimeout(onExit, 1400);
+      // onFail, not onExit: running out of misses or out of clock is losing
+      // the book, and walking away from it is not. They were the same
+      // callback, so the run could not tell them apart and treated both as
+      // "left" - which meant a burned book could be read again and again.
+      const t = window.setTimeout(onFail, 1400);
       return () => window.clearTimeout(t);
     }
-  }, [phase, onComplete, onExit]);
+  }, [phase, onComplete, onFail]);
 
   // Typing. Attached to the window so no input element needs focus.
   useEffect(() => {

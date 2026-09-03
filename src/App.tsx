@@ -85,6 +85,9 @@ export default function App() {
     w.__records = useRecords;
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
+    // Where each kind's own content stands, so a probe can walk up to a
+    // lectern or a pressure plate without a copy of the geometry.
+    void import("./game/rooms/anchors").then((m) => (w.__anchorsFor = m.reservedAnchorsFor));
     void import("./game/systems/audio").then((m) => {
       w.__stalking = m.sfx.isStalking;
       w.__sfx = m.sfx;

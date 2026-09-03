@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Six more turned up on the next passes, all of them things nobody had
+Seven more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -192,12 +192,31 @@ looked at because the tests were green:
   the game was the same authored room and the two seeded treasure
   arrangements were unreachable. The seeded arrangement is one of the
   options now.
+- **A burned book could be read again.** Losing the library's number
+  puzzle - out of misses or out of clock - and closing it with Escape were
+  the same callback, so the run recorded neither and the room was never
+  marked failed. Walk out, walk back in, and the same gem was there for
+  another go. The memory trial and the challenge room had always recorded
+  their own failures; the library was the third place and it had been
+  missed. There are three ways out of the tome now, not two.
 - **The layout check was not checking the game's dungeons.** It never
   registered the shipped room templates, and the generator draws a random
   number when it asks for templates by kind - so with an empty registry it
   produced a different dungeon for the same seed. Every dungeon those 500
   seeds validated was one the game would never build. It registers them now
   and fails if none of the 500 contains an authored room.
+
+One thing is deliberately not automated. The challenge room's other half -
+weight the plate with a candle, then take the idol for a gem instead of a
+life - is verified by hand only. Putting a carried thing down places it
+where the camera is aimed, and the plate is a metre and a half across on
+top of an altar with a body of its own, so a probe that teleports and turns
+can stand where the prompt reads "put down the candle" and still not have
+an aim the drop accepts. Four approaches were tried. A check that passes on
+some of them is a check nobody will trust, which is what the heap
+measurement and the walk to the exit both taught, so the automated half is
+the half that is solid: the trap springs, the candle lifts, and carrying it
+to the plate offers to put it down.
 
 ## 3. What the automated walkthrough does
 

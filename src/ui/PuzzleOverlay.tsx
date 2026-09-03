@@ -29,15 +29,28 @@ export function PuzzleOverlay() {
 
   if (!request) return null;
 
-  const finish = (completed: boolean) => {
+  /**
+   * Three ways out, not two.
+   *
+   * Solving pays; losing the puzzle has to be remembered, or the room can
+   * be walked out of and back into for another go at the same gem; and
+   * closing it with Escape is neither - the player looked and thought
+   * better of it. Failing and leaving used to be the same callback, so the
+   * run recorded neither and a burned book could be read again. The memory
+   * trial and the challenge room had always recorded their own failures;
+   * this was the third place and it had been missed.
+   */
+  const finish = (outcome: "solved" | "failed" | "left") => {
     const { roomId } = request;
     setRequest(null);
-    if (completed) {
-      const run = useRun.getState();
+    const run = useRun.getState();
+    if (outcome === "solved") {
       run.clearRoom(roomId);
       run.collectGem(`${roomId}:puzzle`);
+    } else if (outcome === "failed") {
+      run.failRoom(roomId);
     }
-    bus.emit("puzzleResult", { roomId, completed });
+    if (outcome !== "left") bus.emit("puzzleResult", { roomId, completed: outcome === "solved" });
   };
 
   return (
@@ -47,8 +60,9 @@ export function PuzzleOverlay() {
           <NumberPuzzle
             difficulty={request.difficulty}
             seed={`${seed}:${request.roomId}`}
-            onComplete={() => finish(true)}
-            onExit={() => finish(false)}
+            onComplete={() => finish("solved")}
+            onFail={() => finish("failed")}
+            onExit={() => finish("left")}
           />
         )}
       </div>
