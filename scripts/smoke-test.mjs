@@ -789,6 +789,44 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     JSON.stringify(thrown)
   );
 
+  // Reaching the noise ends it. Left set, the lure came back the moment the
+  // Warden stepped away from the empty room and it walked in circles there
+  // until the timer ran out - and the HUD flickered between two labels.
+  const arrived = await page.evaluate(() => {
+    const run = window.__run;
+    const lure = window.__derived.lure();
+    run.getState().moveWarden(lure);
+    const onArrival = { lure: window.__derived.lure(), stored: run.getState().wardenLure };
+    // Step away again: nothing may call it back.
+    const elsewhere = Object.values(
+      run.getState().dungeon.rooms.find((r) => r.id === lure).links
+    ).find(Boolean);
+    run.getState().moveWarden(elsewhere);
+    return { onArrival, after: window.__derived.lure() };
+  });
+  ok(
+    "it stops caring once it gets to the noise",
+    arrived.onArrival.lure === null && arrived.onArrival.stored === null && arrived.after === null,
+    JSON.stringify(arrived)
+  );
+
+  // A watcher calling out outranks a noise the Warden was off chasing:
+  // being told where the player is beats being distracted.
+  const called = await page.evaluate(async () => {
+    const run = window.__run;
+    run.setState({ satchel: ["echoes"], identified: ["echoes"] });
+    run.getState().useItem(0);
+    const lured = window.__derived.lure();
+    const before = run.getState().alarm;
+    run.getState().giveAway(1);
+    return { lured, before, after: run.getState().alarm, lure: window.__derived.lure() };
+  });
+  ok(
+    "being seen cancels a noise it was chasing",
+    called.lured !== null && called.lure === null && called.after === called.before + 1,
+    JSON.stringify(called)
+  );
+
   // Thrown on a floor with nothing awake, it is not spent.
   const wasted = await page.evaluate(async () => {
     const run = window.__run;

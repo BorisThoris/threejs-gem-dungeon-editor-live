@@ -170,6 +170,12 @@ export interface RunState {
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
   raiseAlarm: (amount: number) => void;
+  /**
+   * Something told the Warden where the player is - a watcher calling out,
+   * a Potion of Dread. It rouses the floor and, unlike a gem, it ends any
+   * noise the Warden was off chasing: being told beats being distracted.
+   */
+  giveAway: (amount: number) => void;
   /** The player made a noise loud enough to be placed. Sprinting does this. */
   makeNoise: () => void;
   /** Pick up the floor's key. */
@@ -589,7 +595,9 @@ export const useRun = create<RunState>()(
           break;
         }
         case "dread":
-          get().raiseAlarm(DREAD_ALARM);
+          // It says on the label that the Warden knows where you are, so a
+          // noise it was off chasing stops mattering.
+          get().giveAway(DREAD_ALARM);
           break;
         case "avarice":
           set({
@@ -602,7 +610,8 @@ export const useRun = create<RunState>()(
           const after = get();
           if (after.dungeon && after.currentRoomId && after.wardenRoomId) {
             const away = banishTo(after.dungeon, after.currentRoomId, WARDEN_BANISH_DISTANCE);
-            if (away) set({ wardenRoomId: away, wardenCameFrom: null });
+            // Thrown across the floor, it is no longer walking to anything.
+            if (away) set({ wardenRoomId: away, wardenCameFrom: null, wardenLure: null, lureUntil: 0 });
           }
           // Never below what the floor itself starts at. A floor's baseline
           // is its character, not just its opening value: letting a scroll
@@ -634,14 +643,20 @@ export const useRun = create<RunState>()(
       bus.emit("alarmRaised", { alarm });
     },
 
+    giveAway: (amount) => {
+      set({ wardenLure: null, lureUntil: 0 });
+      get().raiseAlarm(amount);
+    },
+
     makeNoise: () => {
       const s = get();
       const until = runClock(s) + NOISE_HOLD_S;
       // Called from the frame loop while a sprint is held, so it must be
-      // cheap and must not write on every frame: extending a noise that is
-      // already running by less than a tenth of a second changes nothing
-      // anyone can see and re-renders everything that watches it.
-      if (until - s.noisyUntil < 0.1) return;
+      // cheap and must not write on every frame: every write re-runs every
+      // selector in the store. The deadline is seconds long, so refreshing
+      // it twice a second costs at most half a second of accuracy on when
+      // the Warden stops listening and nothing anyone can see.
+      if (until - s.noisyUntil < 0.5) return;
       const heard = wardenHears(s);
       set({ noisyUntil: until });
       if (!heard) bus.emit("wardenHeard");
@@ -666,6 +681,10 @@ export const useRun = create<RunState>()(
       const s = get();
       if (!s.wardenRoomId || s.wardenRoomId === roomId) return;
       set({ wardenRoomId: roomId, wardenCameFrom: s.wardenRoomId });
+      // It got to the noise and found nothing, so the noise is over. Left
+      // set, the lure came back the moment it stepped away again and it
+      // walked in circles around an empty room until the timer ran out.
+      if (roomId === s.wardenLure) set({ wardenLure: null, lureUntil: 0 });
       if (roomId === s.currentRoomId) {
         if (!s.wardenMet) set({ wardenMet: true });
         bus.emit("wardenEntered", { roomId });
@@ -679,7 +698,7 @@ export const useRun = create<RunState>()(
       // cooldown and the death check all stay in one place.
       if (!get().damage()) return;
       const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
-      if (away) set({ wardenRoomId: away, wardenCameFrom: null });
+      if (away) set({ wardenRoomId: away, wardenCameFrom: null, wardenLure: null, lureUntil: 0 });
       bus.emit("wardenStruck");
     },
 

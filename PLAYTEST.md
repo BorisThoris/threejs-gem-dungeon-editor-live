@@ -154,8 +154,8 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Two more turned up on the next pass, both of them things nobody had looked
-at because the tests were green:
+Four more turned up on the next passes, all of them things nobody had
+looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
   at a fixed anisotropy of 4, which is not enough for a plane seen almost
@@ -164,6 +164,20 @@ at because the tests were green:
   is now taken from the renderer's own maximum, and the floor reads as
   flagstones. It was only found by taking a screenshot at eye level; every
   earlier screenshot had been from above.
+- **A thrown noise never stopped being thrown.** The Scroll of Echoes sends
+  the Warden to a room and the rule is that it stops caring when it gets
+  there and finds nothing - but the lure was only masked while it stood in
+  that room, not cleared. The step after it arrived, the lure came back, and
+  it walked in circles around an empty room until the timer ran out, with
+  the HUD flickering between two labels every step. It is cleared on
+  arrival now, and on anything else that repositions the Warden.
+- **Two systems both claimed the Warden's attention, and the weaker one
+  won.** A Sentry's whole stated purpose is to tell the Warden where the
+  player is, but a lure kept it walking the other way - so standing in the
+  light after throwing a scroll cost the alarm and bought nothing. Being
+  told where the player is now outranks a noise: the store has one action
+  for "something gave the player away", and the watcher and the Potion of
+  Dread both go through it.
 - **The layout check was not checking the game's dungeons.** It never
   registered the shipped room templates, and the generator draws a random
   number when it asks for templates by kind - so with an empty registry it

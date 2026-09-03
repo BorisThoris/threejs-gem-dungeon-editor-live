@@ -73,8 +73,11 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
       lastCall.current = now;
       lit.current = 0;
       // Through the store's action, not setState: the alarm has one owner
-      // and anything that ever damps or caps it must apply here too.
-      run.raiseAlarm(SENTRY_ALARM);
+      // and anything that ever damps or caps it must apply here too. And
+      // giveAway rather than raiseAlarm, because being called out is the
+      // Warden being told where the player is - it outranks a noise it was
+      // off chasing, which is the whole difference between the two.
+      run.giveAway(SENTRY_ALARM);
       bus.emit("sentrySaw");
     }
 

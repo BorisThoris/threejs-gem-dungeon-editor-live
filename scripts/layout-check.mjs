@@ -25,6 +25,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/layout";
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
+   export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -113,6 +114,39 @@ for (const size of L.ROOM_SIZES) {
   const corner = Math.hypot(half - 0.3, half - 0.3);
   check(`arena ${size}: the arms reach the corners of the box`, reach >= corner, `arms ${reach.toFixed(1)}, corner ${corner.toFixed(1)}`);
   check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
+}
+
+// The loot: every item has to be findable and has to have a look of its
+// own. Adding an item and forgetting to add an appearance for it leaves a
+// silent collision - two things that look identical, so identifying one
+// teaches you a lie about the other.
+{
+  const byFamily = {};
+  for (const id of L.ITEM_IDS) (byFamily[L.ITEMS[id].family] ??= []).push(id);
+  let bijective = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const a = L.appearancesFor(seed);
+    const looks = L.ITEM_IDS.map((id) => a[id].unknown);
+    if (new Set(looks).size === L.ITEM_IDS.length && looks.every(Boolean)) bijective++;
+  }
+  check("every item looks like itself and nothing else, on every seed", bijective === 200, `${bijective} of 200`);
+  check(
+    "every family has a look for every item in it",
+    Object.entries(byFamily).every(([family, ids]) => {
+      const a = L.appearancesFor(7);
+      return new Set(ids.map((id) => a[id].unknown)).size === ids.length && family.length > 0;
+    })
+  );
+  // Every item must be reachable from a chest, or it is content nobody sees.
+  const rolled = new Set();
+  for (let seed = 1; seed <= 400; seed++) {
+    for (let floor = 1; floor <= L.FLOORS; floor++) rolled.add(L.rollItem(seed, `chest${seed}`, floor));
+  }
+  check(
+    "every item can actually come out of a chest",
+    L.ITEM_IDS.every((id) => rolled.has(id)),
+    L.ITEM_IDS.filter((id) => !rolled.has(id)).join(", ") || "all reachable"
+  );
 }
 
 // The descent: each floor down has to be worse than the one above it in
