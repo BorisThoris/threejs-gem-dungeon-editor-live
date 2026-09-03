@@ -1,0 +1,111 @@
+import { cornerSpots, inDoorLane, keyPosition } from "../dungeon/layout";
+import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
+import { PROP_SPECS } from "../props/specs";
+import { reservedAnchorsFor } from "./anchors";
+import { claimedSpots, gemFor } from "./kinds";
+
+/**
+ * Whether an authored room is one the game will actually draw.
+ *
+ * `isRoomTemplate` in the editor answers a different and much weaker
+ * question - is this well-formed JSON with kinds the game knows - and a
+ * template can pass it and still lose half its props. Everything placed in
+ * a room goes through the same filters the seeded dressing does, and
+ * anything that fails is dropped without a word, so a template that breaks
+ * a rule renders as a sparse room rather than as an error. A treasure room
+ * shipped with three chests and showed two for weeks.
+ *
+ * One owner for those rules, because two very different things need them:
+ * the layout check, which holds what ships to them, and the Room Builder,
+ * which had no way to tell an author that the chest they just placed would
+ * never appear. That gap is why the last set of templates was written by
+ * editing JSON by hand instead.
+ *
+ * Pure, so the check can bundle it for node.
+ */
+
+export interface TemplateProblem {
+  /** Index into the template's props, or -1 for the template itself. */
+  index: number;
+  reason: string;
+}
+
+/** How much clearance a prop needs from the gem, the key and the content. */
+const clearOf = (solid: boolean) => (solid ? 1.6 : 1.0);
+const CLEAR_OF_CONTENT = 1.2;
+/** Beyond this from the middle of a wall, a prop is through it. */
+const WALL_MARGIN = 0.2;
+
+/** The room a template describes, with every wall doored: the hard case. */
+export function roomForTemplate(t: RoomTemplate): Room {
+  return {
+    id: "authored",
+    kind: t.kind,
+    grid: { x: 0, z: 0 },
+    size: t.size,
+    shape: t.shape,
+    links: { north: "a", south: "b", east: "c", west: "d" },
+    template: t.id,
+  };
+}
+
+/**
+ * Everything wrong with a template, or an empty list.
+ *
+ * @param seeds How many seeds to try. The gem and the key take a seeded
+ *   anchor, so a prop can be safe on one floor and dropped on the next -
+ *   which is how the shipped treasure room's missing chest hid. One seed is
+ *   enough for a live warning in the editor; the check that holds shipped
+ *   content uses many.
+ */
+export function templateProblems(t: RoomTemplate, seeds = 1): TemplateProblem[] {
+  const problems: TemplateProblem[] = [];
+  const room = roomForTemplate(t);
+  const reserved = reservedAnchorsFor(t.kind, room);
+  const corners = cornerSpots(room);
+  const reach = inscribedRadius(room);
+  const half = t.size / 2;
+
+  t.props.forEach((p, index) => {
+    const spec = PROP_SPECS[p.kind];
+    if (!spec) {
+      problems.push({ index, reason: `${p.kind} is not a prop the game has` });
+      return;
+    }
+    const clear = clearOf(spec.solid);
+    const say = (reason: string) => problems.push({ index, reason: `${spec.title}: ${reason}` });
+
+    if (Math.abs(p.x) > half - WALL_MARGIN || Math.abs(p.z) > half - WALL_MARGIN) {
+      say("is through a wall");
+    } else if (t.shape !== "square" && Math.hypot(p.x, p.z) > reach) {
+      say("is off the drawn floor of this shape");
+    }
+    if (spec.solid && inDoorLane(p.x, p.z)) say("stands in a doorway's path and will be dropped");
+    if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
+      say("stands where this room's own content stands and will be dropped");
+    }
+    if (corners.some((c) => Math.hypot(c[0] - p.x, c[2] - p.z) < spec.radius + 0.4)) {
+      say("stands inside one of the room's braziers");
+    }
+    for (let seed = 1; seed <= seeds; seed++) {
+      const gem = gemFor(room, seed);
+      if (gem && Math.hypot(gem[0] - p.x, gem[2] - p.z) < clear) {
+        say("is too close to where the gem can land and will be dropped");
+        break;
+      }
+      const key = keyPosition(room, seed, [...claimedSpots(room), ...(gem ? [gem] : [])]);
+      if (Math.hypot(key[0] - p.x, key[2] - p.z) < clear) {
+        say("is too close to where the floor's key can land and will be dropped");
+        break;
+      }
+    }
+    // Two props in one place is one prop inside another, and nothing
+    // downstream compares a prop to another prop.
+    const twin = t.props.findIndex(
+      (q, j) => j < index && Math.abs(q.x - p.x) < 1e-3 && Math.abs(q.z - p.z) < 1e-3
+    );
+    if (twin >= 0) say(`stands in the same place as the ${PROP_SPECS[t.props[twin].kind]?.title ?? "prop"}`);
+  });
+
+  return problems;
+}

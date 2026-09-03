@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Seven more turned up on the next passes, all of them things nobody had
+Eight more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -199,6 +199,13 @@ looked at because the tests were green:
   another go. The memory trial and the challenge room had always recorded
   their own failures; the library was the third place and it had been
   missed. There are three ways out of the tome now, not two.
+- **The tool could not tell an author what the game would throw away.** The
+  Room Builder validated a template as JSON - right kinds, right size - and
+  said nothing about the placement rules, which are what actually decide
+  whether a prop appears. So the tool would happily let you build a room
+  that renders half empty. That is why the templates before this were
+  written by editing JSON by hand, and it is the same silence that hid the
+  missing chest. The rules have one owner now, and the builder shows them.
 - **The layout check was not checking the game's dungeons.** It never
   registered the shipped room templates, and the generator draws a random
   number when it asks for templates by kind - so with an empty registry it

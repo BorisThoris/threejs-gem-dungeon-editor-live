@@ -1164,6 +1164,95 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   // to put it down.
 }
 
+// The editor, which nothing had ever opened. It is the content pipeline:
+// author a room, mark it live, and the generator places it. Untested, all
+// three of those were claims rather than facts - and the last templates to
+// ship were written by editing JSON by hand, which is what people do when
+// they do not trust a tool.
+{
+  const editor = await page.goto(`http://127.0.0.1:${PORT}/?editor`, { waitUntil: "load", timeout: 60000 }).catch(() => null);
+  await page.waitForTimeout(4000);
+  const opened = await page.evaluate(() => ({
+    text: document.body.innerText.slice(0, 400),
+    canvases: document.querySelectorAll("canvas").length,
+  }));
+  ok("the editor opens", !!editor && /room|prop|surface/i.test(opened.text), JSON.stringify(opened.text.slice(0, 80)));
+
+  // Author one through the store the tool writes to, then hold it to the
+  // rules the tool now shows and the layout check enforces.
+  const authored = await page.evaluate(async () => {
+    const m = await import("/src/editor/drafts.ts");
+    const v = await import("/src/game/rooms/validate.ts");
+    const good = {
+      id: "probe-good",
+      kind: "normal",
+      size: 16,
+      shape: "square",
+      props: [{ kind: "chest", x: -5.5, z: -3.4, rotation: 0 }],
+    };
+    // A chest squarely in the north doorway's path: the game would drop it.
+    const bad = { ...good, id: "probe-bad", props: [{ kind: "chest", x: 0, z: -6, rotation: 0 }] };
+    m.draftStore.put(good, true);
+    m.draftStore.put(bad, false);
+    return {
+      accepted: m.isRoomTemplate(good) && m.isRoomTemplate(bad),
+      goodProblems: v.templateProblems(good, 60).map((p) => p.reason),
+      badProblems: v.templateProblems(bad, 1).map((p) => p.reason),
+      live: m.draftStore.all().filter((d) => d.enabled).map((d) => d.template.id),
+    };
+  });
+  // Reloaded, because that is the mechanism: drafts persist to storage and
+  // are read back when the module loads. Reading the store instance the
+  // probe just wrote to would prove nothing.
+  await page.reload({ waitUntil: "load" });
+  await page.waitForTimeout(4000);
+  const listed = await page.evaluate(() => document.body.innerText);
+  ok(
+    "a draft survives a reload and is listed in the tool",
+    authored.accepted && /probe-good/.test(listed),
+    JSON.stringify(authored.live)
+  );
+  const warned = await page.evaluate(async () => {
+    const nodes = [...document.querySelectorAll("*")].filter((n) => n.textContent?.trim() === "probe-bad");
+    const card = nodes[nodes.length - 1]?.closest("div");
+    card?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 600));
+    const panel = document.querySelector('[data-testid="builder-problems"]');
+    return panel ? panel.textContent : null;
+  });
+  ok(
+    "and the tool says what the game would refuse to draw",
+    warned !== null && /doorway/i.test(warned),
+    JSON.stringify(warned)
+  );
+  ok("a good draft has nothing the game would refuse", authored.goodProblems.length === 0, JSON.stringify(authored.goodProblems));
+  ok(
+    "a prop in a doorway is called out rather than silently dropped",
+    authored.badProblems.some((r) => /doorway/i.test(r)),
+    JSON.stringify(authored.badProblems)
+  );
+
+  // And the point of all of it: a live draft reaches a run.
+  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 60000 }).catch(() => {});
+  await page.waitForTimeout(5000);
+  const placed = await page.evaluate(async () => {
+    const run = window.__run;
+    for (let seed = 1; seed < 60; seed++) {
+      run.getState().startRun(seed);
+      await new Promise((r) => setTimeout(r, 400));
+      const rooms = run.getState().dungeon.rooms;
+      if (rooms.some((r) => r.template === "probe-good")) return { seed, found: true };
+    }
+    return { found: false };
+  });
+  ok("a draft marked live is placed in real runs", placed.found, JSON.stringify(placed));
+  await page.evaluate(async () => {
+    const m = await import("/src/editor/drafts.ts");
+    m.draftStore.remove("probe-good");
+    m.draftStore.remove("probe-bad");
+  });
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

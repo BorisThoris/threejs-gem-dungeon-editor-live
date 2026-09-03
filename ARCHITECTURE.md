@@ -191,9 +191,13 @@ registries the game reads:
   An authored room's props go through the same filters the seeded dressing
   does, and anything that fails is dropped without a word - so a template
   that breaks a rule renders as a sparse room rather than as an error.
-  `yarn test:layout` validates every shipped template against those rules,
-  over sixty seeds, because the gem and the key take a seeded anchor and the
-  first thing it found only bit on some of them.
+  Those rules live in `src/game/rooms/validate.ts` and nowhere else, because
+  two very different things need them: `yarn test:layout` holds every
+  shipped template to them over sixty seeds, and the Room Builder shows the
+  author the same list live, under the grid, as they place things. The
+  editor's own `isRoomTemplate` answers a much weaker question - is this
+  well-formed JSON with kinds the game knows - and a template can pass it
+  and still lose half its props.
 - **Surfaces**: the painter and the mosaic tool save a 128x128 image under a
   surface id. `useSurface(id)` in any room picks it up at once.
 - **Props**: the inspector shows one catalogue entry at a time; the

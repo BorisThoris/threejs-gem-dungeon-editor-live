@@ -15,6 +15,7 @@ import {
 } from "../game/dungeon/types";
 import { CATALOG } from "../game/props/catalog";
 import { KIND_TITLE } from "../game/rooms/kinds";
+import { templateProblems } from "../game/rooms/validate";
 import { ROOM_SIZE_DEFAULT, ROOM_SIZES } from "../game/world";
 import { colors } from "../ui/overlay";
 import { download, draftStore, isRoomTemplate, newDraftId, useDrafts } from "./drafts";
@@ -45,6 +46,9 @@ export function RoomBuilder() {
 
   const draft = drafts.find((d) => d.template.id === activeId) ?? drafts[0];
   const template = draft?.template;
+  // The game's own rules, not a copy of them: the layout check holds what
+  // ships to exactly this list.
+  const problems = useMemo(() => (template ? templateProblems(template) : []), [template]);
 
   const update = (patch: Partial<RoomTemplate>) => {
     if (!template) return;
@@ -283,6 +287,31 @@ export function RoomBuilder() {
                   Delete
                 </button>
               </div>
+            )}
+
+            {/* What the game will refuse to draw, said here rather than
+                discovered later. A prop that breaks a placement rule is
+                dropped silently at runtime, so without this the tool lets
+                you author a room that renders half empty and never tells
+                you - which is why the last shipped templates were written
+                by editing JSON by hand. The same rules hold what ships. */}
+            {problems.length > 0 && (
+              <>
+                <div style={{ ...label, marginTop: 14, color: colors.danger }}>
+                  THE GAME WILL NOT DRAW {problems.length === 1 ? "THIS" : "THESE"}
+                </div>
+                <div data-testid="builder-problems">
+                  {problems.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{ ...small, color: colors.danger, cursor: "pointer" }}
+                      onClick={() => p.index >= 0 && setSelected(p.index)}
+                    >
+                      {p.reason}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             <div style={{ ...label, marginTop: 14 }}>PREVIEW DOORS</div>

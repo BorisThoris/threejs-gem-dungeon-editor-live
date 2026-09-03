@@ -31,6 +31,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/anchors";
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
+   export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/world";`
 );
@@ -181,56 +182,14 @@ for (const size of L.ROOM_SIZES) {
 {
   const templates = L.allTemplates();
   check("the game ships room templates at all", templates.length > 0, `${templates.length} templates`);
-  let lost = 0;
-  let offFloor = 0;
-  let stacked = 0;
-  let unknown = 0;
-  let inBrazier = 0;
-  for (const t of templates) {
-    if (!L.ROOM_SIZES.includes(t.size)) offFloor++;
-    if (!L.shapeFits(t.shape, t.size)) offFloor++;
-    // A doored room is the hard case: every wall that can have a doorway does.
-    const r = { id: "t", kind: t.kind, grid: { x: 0, z: 0 }, size: t.size, shape: t.shape,
-      links: { north: "a", south: "b", east: "c", west: "d" }, template: t.id };
-    const reserved = L.reservedAnchorsFor(t.kind, r);
-    // The game's own gem placement, not a copy of it: the whole failure
-    // being guarded against is these two disagreeing.
-    const seen = new Set();
-    // Over many seeds, because the gem's anchor is chosen by seed and the
-    // bug this found only bit on some of them.
-    for (let seed = 1; seed <= 60; seed++) {
-    const gem = L.gemFor(r, seed);
-    // The key lands on a free anchor too, and it was only avoiding the gem.
-    const keySpot = L.keyPosition(r, seed, [...L.claimedSpots(r), ...(gem ? [gem] : [])]);
-    for (const p of t.props) {
-      const spec = L.PROP_SPECS[p.kind];
-      if (!spec) { unknown++; continue; }
-      // The rules placementsFor applies, in the same order.
-      if (spec.solid && L.inDoorLane(p.x, p.z)) lost++;
-      if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < 1.2)) lost++;
-      // Every room is lit from its corners and the placement filters say
-      // nothing about the braziers, so a prop authored into a corner would
-      // simply stand inside one.
-      if (L.cornerSpots(r).some((c) => Math.hypot(c[0] - p.x, c[2] - p.z) < spec.radius + 0.4)) inBrazier++;
-      const clear = spec.solid ? 1.6 : 1.0;
-      if (gem && Math.hypot(gem[0] - p.x, gem[2] - p.z) < clear) lost++;
-      if (Math.hypot(keySpot[0] - p.x, keySpot[2] - p.z) < clear) lost++;
-      // And two rules of its own: on the floor, and not inside each other.
-      if (Math.hypot(p.x, p.z) > L.inscribedRadius(r) + 0.001 && t.shape !== "square") offFloor++;
-      if (Math.abs(p.x) > t.size / 2 - 0.2 || Math.abs(p.z) > t.size / 2 - 0.2) offFloor++;
-      const key = `${p.x.toFixed(3)},${p.z.toFixed(3)}`;
-      if (seed === 1) {
-        if (seen.has(key)) stacked++;
-        seen.add(key);
-      }
-    }
-    }
-  }
-  check("every shipped template names props the game has", unknown === 0, `${unknown} unknown`);
-  check("no shipped prop stands inside a brazier", inBrazier === 0, `${inBrazier} clipping`);
-  check("no shipped template loses a prop to the placement rules", lost === 0, `${lost} would be dropped`);
-  check("every shipped prop is inside its room", offFloor === 0, `${offFloor} outside`);
-  check("no shipped template stands two props in one place", stacked === 0, `${stacked} stacked`);
+  // The rules themselves live in the game, in one place, so that the Room
+  // Builder can warn an author with exactly what this holds shipped content
+  // to. Sixty seeds because the gem and the key take a seeded anchor, and
+  // the missing chest this first found was only missing on some of them.
+  const problems = templates.flatMap((t) =>
+    L.templateProblems(t, 60).map((p) => `${t.id} prop ${p.index}: ${p.reason}`)
+  );
+  check("every shipped template is one the game will draw whole", problems.length === 0, problems.join("; ") || "none");
 }
 
 // The dressing: every arrangement of every kind, at every size, must stand

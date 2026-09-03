@@ -144,8 +144,12 @@ tools. They write into the same registries the game reads, so nothing made
 in them can fail to reach a run:
 
 - **Rooms** - lay out a room on a grid, see it in the real room shell, and
-  mark it live. The generator then places it whenever it needs a room of that
-  kind. Export the JSON to ship it.
+  mark it live. The generator then places it whenever it needs a room of
+  that kind, alongside the seeded arrangements rather than instead of them.
+  Anything the game would refuse to draw - a prop in a doorway's path, one
+  standing in a brazier, one where the gem or the floor's key can land - is
+  listed in red under the grid as you place it, by the same rules that hold
+  what ships. Export the JSON to ship it.
 - **Props** - inspect one of the fifteen props: footprint, solidity, rotation.
 - **Surfaces** - paint a 128x128 tile and save it under a surface id. Every
   floor and wall using that surface changes at once, in a running game too.
