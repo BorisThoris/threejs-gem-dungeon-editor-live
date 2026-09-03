@@ -22,6 +22,11 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
+- Nothing in the game casts a real shadow. A point light's shadow is a cube
+  map - six renders a frame, per room, for scenery that never moves - so
+  `src/game/props/ContactShadows.tsx` does the cheap half instead: one soft
+  blob under everything that stands on the floor, all of them in a single
+  geometry, so a room's grounding costs one draw call and nothing per frame.
 - How a room of each kind is furnished lives in `src/game/rooms/layouts.ts`,
   as arrangements that only ever name an anchor - so an arrangement is clear
   of the door lanes by construction rather than by being checked. The kinds

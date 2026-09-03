@@ -7,6 +7,7 @@ import { createRng } from "../rng";
 import type { PropPlacement, Room } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { nameOf, rollItem } from "../items/catalog";
+import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, reservedAnchors } from "./kinds";
@@ -63,11 +64,18 @@ export function placementsFor(room: Room, seed: number): PropPlacement[] {
 /** Seeded per room, so it is the same every time you walk back in. */
 export function Dressing({ room, seed }: DressingProps) {
   const placements = useMemo(() => placementsFor(room, seed), [room, seed]);
+  // The gem and the room's own content stand on the same floor the props
+  // do, so they are grounded the same way.
+  const grounded = useMemo(() => {
+    const gem = gemFor(room, seed);
+    return [...reservedAnchors(room), ...(gem ? [gem] : [])];
+  }, [room, seed]);
   return (
     <group>
       {placements.map((p, i) => (
         <Prop key={i} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
       ))}
+      <ContactShadows placements={placements} extra={grounded} />
       <PropColliders placements={placements} />
       <Chests room={room} placements={placements} />
     </group>
