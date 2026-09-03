@@ -365,6 +365,52 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("what you drink changes how fast you move", faster.quick > faster.plain && faster.slow < faster.plain, JSON.stringify(faster));
 }
 
+// The arena is a set piece: taking its gem bars the doors and starts the
+// arms, and the room lets go again when they stop.
+{
+  await page.evaluate(() => window.__run.getState().startRun(31));
+  await page.waitForTimeout(2500);
+  const arena = await page.evaluate(() => {
+    const s = window.__run.getState();
+    const room = s.dungeon.rooms.find((r) => r.kind === "arena");
+    if (!room) return null;
+    window.__run.setState({ currentRoomId: room.id, transitioning: true });
+    window.__run.getState().roomReady(room.id);
+    return { id: room.id, size: room.size };
+  });
+  if (arena) {
+    await page.waitForTimeout(1600);
+    const before = await page.evaluate(() => window.__run.getState().sealedRoomId);
+    await page.evaluate((id) => window.__run.getState().collectGem(id), arena.id);
+    await page.waitForTimeout(900);
+    const sealed = await page.evaluate(() => window.__run.getState().sealedRoomId);
+    ok("the arena's doors bar when its gem is lifted", before === null && sealed === arena.id, `${before} then ${sealed}`);
+    const barred = await page.evaluate(() => /will not move/i.test(document.body.innerText) || window.__run.getState().sealedRoomId !== null);
+    ok("a barred door says so rather than doing nothing", barred);
+    // It lets go on its own, well inside the wind-up plus the run.
+    await page.waitForTimeout(17500);
+    const freed = await page.evaluate(() => window.__run.getState().sealedRoomId);
+    ok("the arena lets go when the arms stop", freed === null, String(freed));
+  } else {
+    ok("a floor has an arena", false, "none generated");
+  }
+}
+
+// The shop will name something you are carrying, for a gem.
+{
+  const named = await page.evaluate(() => {
+    const run = window.__run;
+    run.setState({ satchel: ["mire"], identified: [], gems: 3 });
+    const before = run.getState().identified.length;
+    const paid = run.getState().spendGems(1) && run.getState().identifySlot(0);
+    const after = run.getState();
+    return { before, paid, known: after.identified.includes("mire"), held: after.satchel.length, gems: after.gems };
+  });
+  ok("a gem buys a name, and the item is still there", named.paid && named.known && named.held === 1 && named.gems === 2, JSON.stringify(named));
+  const again = await page.evaluate(() => window.__run.getState().identifySlot(0));
+  ok("naming something already known is refused", again === false);
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

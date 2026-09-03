@@ -2,11 +2,18 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 
+import { InteractTrigger } from "../interact/InteractTrigger";
 import { useRun } from "../state/run";
 
 interface GemProps {
   roomId: string;
   position: [number, number, number];
+  /**
+   * When given, the gem is taken with E under this label rather than by
+   * walking into it. The arena's sits on a plinth and lifting it starts the
+   * room, so it has to be an act rather than an accident.
+   */
+  takeLabel?: string;
 }
 
 const PICKUP_RADIUS = 1.1;
@@ -19,7 +26,7 @@ const PICKUP_RADIUS = 1.1;
  * immune to a missed contact between steps. Plain geometry, no loaders, so
  * it can never suspend the room it sits in.
  */
-export function Gem({ roomId, position }: GemProps) {
+export function Gem({ roomId, position, takeLabel }: GemProps) {
   const group = useRef<Group>(null);
   const taken = useRun((s) => s.gemRooms.includes(roomId));
 
@@ -29,7 +36,7 @@ export function Gem({ roomId, position }: GemProps) {
     const t = state.clock.getElapsedTime();
     g.rotation.y = t * 1.4;
     g.position.y = position[1] + Math.sin(t * 2) * 0.18;
-    if (taken) return;
+    if (taken || takeLabel) return;
     const cam = state.camera.position;
     const dx = cam.x - position[0];
     const dz = cam.z - position[2];
@@ -55,6 +62,14 @@ export function Gem({ roomId, position }: GemProps) {
       {/* A highlight on the gem, not the room's lighting: keep it small so
           picking the gem up does not visibly darken the floor. */}
       <pointLight color="#7fe3ff" intensity={3} distance={4} />
+      {takeLabel && (
+        <InteractTrigger
+          position={[0, 0, 0]}
+          label={takeLabel}
+          radius={2.4}
+          onInteract={() => useRun.getState().collectGem(roomId)}
+        />
+      )}
     </group>
   );
 }

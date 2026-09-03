@@ -126,5 +126,27 @@ export const WARDEN_TOUCH_RADIUS = 1.05;
 export const WARDEN_BANISH_DISTANCE = 3;
 /** It will not appear on a floor until this many rooms have been entered. */
 export const WARDEN_GRACE_ROOMS = 2;
+
+// --- The arena --------------------------------------------------------------
+
+/**
+ * The arena's gem sits on a plinth in the middle, and lifting it bars the
+ * doors and starts the arms turning.
+ *
+ * Three arms of spikes sweep the whole floor, so there is no corner to wait
+ * in: the only safe ground is the turning gap between two arms, and staying
+ * in it means walking a circle for as long as it lasts. The maths of that
+ * is the design. At the inner ring, keeping pace needs about 1.8 units a
+ * second and a walk does 5; out at the wall it needs 8, which is exactly a
+ * dash. So the room teaches you to run its inside line, a Potion of
+ * Swiftness is worth drinking here, and a Potion of Mire is very nearly
+ * fatal.
+ */
+export const ARENA_WIND_UP_S = 2;
+export const ARENA_DURATION_S = 14;
+export const ARENA_ARMS = 3;
+export const ARENA_RADII = [2.4, 4.4, 6.4, 8.4, 10.4];
+/** Radians a second. One turn takes about eight seconds. */
+export const ARENA_SPIN = 0.75;
 /** If a room never reports itself mounted, hand control back anyway. */
 export const TRANSITION_FALLBACK_MS = 1500;

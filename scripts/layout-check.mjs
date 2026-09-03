@@ -32,7 +32,7 @@ const check = (name, ok, detail = "") => {
   if (!ok) failures++;
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
-const room = (size, kind = "normal") => ({ id: "r", kind, grid: { x: 0, z: 0 }, size, shape: "square", links: { north: "a" } });
+const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
 
 for (const size of L.ROOM_SIZES) {
   const r = room(size);
@@ -72,6 +72,29 @@ for (const size of L.ROOM_SIZES) {
   check(`size ${size}: the gem can be taken without touching spikes`, gemUnreachable === 0, `${gemUnreachable} of 200 unreachable`);
 }
 
+// Shaped rooms draw a polygon inside their box, so anchors have to sit on
+// the floor that polygon actually covers - or as close as the door lanes
+// allow, which in the smallest odd shapes is not all the way.
+for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
+  let off = 0;
+  let inLane = 0;
+  for (const size of L.ROOM_SIZES) {
+    // A shape the generator would never use at this size proves nothing.
+    if (!L.shapeFits(shape, size)) continue;
+    const r = room(size, "normal", shape);
+    const inside = L.inscribedRadius(r);
+    for (const spot of [...L.quadrantSpots(r, "near"), ...L.quadrantSpots(r, "far"), ...L.cornerSpots(r)]) {
+      const radius = Math.hypot(spot[0], spot[2]);
+      // Allowed to sit proud only when pulling it in would put it in a lane.
+      // Half a unit of overhang is invisible; three, as it was, is not.
+      if (radius > inside + 0.6) off++;
+      if (L.inDoorLane(spot[0], spot[2])) inLane++;
+    }
+  }
+  check(`${shape}: anchors stay on the drawn floor where the shape fits`, off === 0, `${off} off it`);
+  check(`${shape}: anchors stay clear of the lanes`, inLane === 0, `${inLane} in a lane`);
+}
+
 // The generator: connected, the exit reachable, every kind once, sizes legal.
 let bad = 0;
 for (let seed = 1; seed <= 500; seed++) {
@@ -79,11 +102,12 @@ for (let seed = 1; seed <= 500; seed++) {
   const depth = L.bfsDepth(d.rooms, d.startId);
   if (!depth.has(d.endId) || depth.size !== d.rooms.length) bad++;
   if (d.rooms.some((r) => !L.ROOM_SIZES.includes(r.size))) bad++;
+  if (d.rooms.some((r) => !L.shapeFits(r.shape, r.size))) bad++;
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
   if (d.rooms.find((r) => r.id === d.endId).template) bad++;
 }
-check("500 dungeons: connected, one start, one end, legal sizes, no template on the end", bad === 0, `${bad} bad`);
+check("500 dungeons: connected, one start, one end, legal sizes and shapes, no template on the end", bad === 0, `${bad} bad`);
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

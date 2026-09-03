@@ -10,6 +10,9 @@ import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { useRun } from "../state/run";
 import { GEMS_PER_LIFE } from "../world";
+
+/** What the shopkeeper charges to put a name to something. */
+const NAMING_PRICE = 1;
 import { Dressing } from "./Dressing";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 // Room layouts that ship with the game register themselves.
@@ -55,6 +58,9 @@ function Shop({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   const held = useRun((s) => s.relics);
   const [counter, ...shelves] = shopAnchors(room);
+  const satchel = useRun((s) => s.satchel);
+  const identified = useRun((s) => s.identified);
+  const appearances = useRun((s) => s.appearances);
 
   // Two relics the player does not already hold, the same two every visit.
   const offer = useMemo(() => {
@@ -67,6 +73,10 @@ function Shop({ room }: RoomKindProps) {
 
   const needsLife = lives < maxLives;
   const canAffordLife = gems >= GEMS_PER_LIFE;
+
+  // The first thing in the satchel nobody has put a name to yet.
+  const puzzling = satchel.findIndex((id) => !identified.includes(id));
+  const canAffordName = gems >= NAMING_PRICE;
 
   return (
     <>
@@ -87,6 +97,29 @@ function Shop({ room }: RoomKindProps) {
           const run = useRun.getState();
           if (run.lives >= run.maxLives) return;
           if (run.spendGems(GEMS_PER_LIFE)) run.gainLife();
+        }}
+      />
+      {/* Knowing is worth buying: a second copy of anything is rare enough
+          that using one to identify it usually teaches you nothing in time
+          to matter. */}
+      <InteractTrigger
+        position={[counter[0], 0, counter[2] + 1.1]}
+        label={
+          puzzling >= 0
+            ? `Ask about ${appearances[satchel[puzzling]].unknown} (${NAMING_PRICE} gem)`
+            : "Ask about your satchel"
+        }
+        enabled={puzzling >= 0 && canAffordName}
+        blockedReason={
+          puzzling < 0
+            ? "You know what everything you carry is"
+            : `Needs ${NAMING_PRICE} gem (${gems}/${NAMING_PRICE})`
+        }
+        onInteract={() => {
+          const run = useRun.getState();
+          const slot = run.satchel.findIndex((id) => !run.identified.includes(id));
+          if (slot < 0) return;
+          if (run.spendGems(NAMING_PRICE)) run.identifySlot(slot);
         }}
       />
       {offer.map((id, i) => (
@@ -172,6 +205,5 @@ registerRoomKind("end", Dressed);
 registerRoomKind("normal", Dressed);
 registerRoomKind("treasure", Dressed);
 registerRoomKind("trap", Dressed);
-registerRoomKind("arena", Dressed);
 registerRoomKind("shop", Shop, shopAnchors);
 registerRoomKind("library", Library, (room) => [libraryLectern(room)]);

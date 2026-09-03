@@ -12,8 +12,10 @@ import {
   DIR_YAW,
   OPPOSITE,
   halfSize,
+  inscribedRadius,
   type Dir,
   type Room,
+  type Shape,
 } from "./types";
 
 export type Vec3 = [number, number, number];
@@ -105,8 +107,27 @@ export type Anchor = "near" | "far";
  */
 export function quadrantDistance(room: Room, which: Anchor): number {
   const half = halfSize(room);
-  if (which === "near") return Math.max(INNER, (half * 0.5) / Math.SQRT2);
-  return Math.max(INNER + 0.9, half - 2.4);
+  const far = Math.max(INNER + 0.9, Math.min(half - 2.4, reach(room, 1.2)));
+  if (which === "far") return far;
+  // Near follows far in a room too tight for both, so the two rings never
+  // collapse onto each other however small or oddly shaped the room is.
+  return Math.max(INNER, Math.min((half * 0.5) / Math.SQRT2, far - 0.9));
+}
+
+/**
+ * The farthest a prop may stand along a diagonal and still be on the floor
+ * the room draws, less `inset` so it is not standing on the very edge.
+ *
+ * A square room's floor runs into its corners, so there is nothing to clamp
+ * there. Every other shape is a polygon inscribed in the room's box, and
+ * without this its outer props stood on the bare slab outside the coloured
+ * floor - by three units in a large one. The smallest odd shapes still
+ * overhang slightly, because a lane-clear anchor matters more than a tidy
+ * one and they cannot have both.
+ */
+function reach(room: Room, inset: number): number {
+  if (room.shape === "square") return Infinity;
+  return Math.max(INNER + 0.9, (inscribedRadius(room) - inset) / Math.SQRT2);
 }
 
 /** The four anchors of a family, one per quadrant, in QUADRANTS order. */
@@ -117,8 +138,29 @@ export function quadrantSpots(room: Room, which: Anchor): Vec3[] {
 
 /** The four corners, pulled in far enough that a brazier is not in the wall. */
 export function cornerSpots(room: Room): Vec3[] {
-  const c = halfSize(room) - CORNER_INSET;
+  const box = halfSize(room) - CORNER_INSET;
+  const c =
+    room.shape === "square"
+      ? box
+      : Math.max(INNER, Math.min(box, (inscribedRadius(room) - CORNER_INSET) / Math.SQRT2));
   return QUADRANTS.map(([sx, sz]) => [sx * c, GROUND_Y, sz * c]);
+}
+
+/**
+ * Whether a shape can hold a room of this size.
+ *
+ * A shaped room is a polygon inscribed in its box, so it has less floor
+ * than its size suggests - and the smaller and pointier it is, the less. A
+ * shape that cannot fit its own outer ring of props inside the floor it
+ * draws is not used: a diamond at sixteen units across leaves its chests
+ * standing on bare slab, so those rooms are square instead. The generator
+ * asks this before it picks; the room builder offers only what passes.
+ */
+export function shapeFits(shape: Shape, size: number): boolean {
+  if (shape === "square") return true;
+  const room = { id: "fit", kind: "normal", grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
+  const radius = quadrantDistance(room, "far") * Math.SQRT2;
+  return radius <= inscribedRadius(room) + 0.6;
 }
 
 const GEM_HEIGHT = 0.9;

@@ -141,8 +141,13 @@ nobody has held a Deck with this on it.
   score, so a player who never buys one is telling you the relics are weak
   or the score is too precious. Watch whether anyone buys the Ash Censer,
   which is the one that explicitly pays for greed.
-- **The arena is still empty.** It is the largest room and has a gem and
-  nothing else. It is now a good place to be caught, which may be enough.
+- **Is the arena's fourteen seconds the right length?** It is the only
+  timed thing in the game. Too short and it is a formality; too long and it
+  is a chore, and the Warden may arrive in the middle of it either way.
+  `ARENA_DURATION_S` and `ARENA_SPIN` are the dials.
+- **Does anyone work out the inner line?** Keeping ahead of the arms near
+  the middle is a walk and near the wall is a dash. That is the whole skill
+  of the room, and it is never explained.
 - **Is the first meeting readable?** The Warden wakes after two rooms and
   the game says one line about it, once. If players do not understand that
   running works, that line is not doing its job.
@@ -174,6 +179,7 @@ All in `src/game/world.ts`:
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |
 | `WARDEN_STEP_CALM_S` / `_ROUSED_S` | 9 / 4 | Seconds between rooms |
 | `WARDEN_GRACE_ROOMS` | 2 | Rooms entered before it wakes |
+| `ARENA_DURATION_S` / `ARENA_SPIN` | 14 / 0.75 | How long the arms turn, and how fast |
 
 Room counts per floor: `minRooms` / `maxRooms` in `generateDungeon`, in
 `src/game/dungeon/generate.ts`.

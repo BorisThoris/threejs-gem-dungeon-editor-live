@@ -260,6 +260,22 @@ export const sfx = {
     tone(150, 0.4, "sawtooth", 0.35, 84);
     noiseBurst(0.3, 0.22, 900);
   },
+  /** The shopkeeper puts a name to something. */
+  named() {
+    tone(587.3, 0.12, "triangle", 0.32);
+    later(80, () => tone(880, 0.26, "triangle", 0.28));
+  },
+  /** Stone grinding: the arena's doors closing and its arms starting. */
+  grind() {
+    tone(70, 1.1, "sawtooth", 0.32, 46);
+    noiseBurst(0.9, 0.24, 420);
+    later(500, () => noiseBurst(0.7, 0.16, 300));
+  },
+  /** The arms stopping and the doors giving. */
+  release() {
+    tone(96, 0.7, "sine", 0.26, 150);
+    later(160, () => tone(196, 0.5, "triangle", 0.2));
+  },
   /** A relic taken off its pedestal. */
   relic() {
     [440, 660, 880, 1320].forEach((f, i) => later(i * 70, () => tone(f, 0.5, "sine", 0.3)));

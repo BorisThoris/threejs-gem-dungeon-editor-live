@@ -73,6 +73,8 @@ export interface RunState {
   mapped: boolean;
   /** Chests already emptied, as `roomId:index`. */
   looted: string[];
+  /** A room whose doors are barred while something in it is happening. */
+  sealedRoomId: string | null;
   /**
    * How roused this floor's Warden is. Raised by taking gems, reset on
    * every new floor. This is the whole risk side of the run: the more of a
@@ -115,6 +117,10 @@ export interface RunState {
   takeItem: (id: ItemId, from?: string) => boolean;
   /** Drink or read what is in a slot, and learn what it was. */
   useItem: (slot: number) => void;
+  /** Learn what a slot holds without spending it. The shop charges for this. */
+  identifySlot: (slot: number) => boolean;
+  /** Bar or unbar a room's doors. */
+  sealRoom: (roomId: string | null) => void;
   /** The Warden walks to another room. */
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
@@ -168,6 +174,7 @@ export const useRun = create<RunState>()(
     effects: { swift: 0, mire: 0, gloom: 0 },
     mapped: false,
     looted: [],
+    sealedRoomId: null,
     alarm: 0,
     floorRooms: 1,
     wardenRoomId: null,
@@ -205,6 +212,7 @@ export const useRun = create<RunState>()(
         effects: { swift: 0, mire: 0, gloom: 0 },
         mapped: false,
         looted: [],
+        sealedRoomId: null,
         alarm: 0,
         floorRooms: 1,
         wardenRoomId: null,
@@ -301,6 +309,7 @@ export const useRun = create<RunState>()(
           effects: { swift: 0, mire: 0, gloom: 0 },
           mapped: false,
           looted: [],
+          sealedRoomId: null,
           alarm: 0,
           floorRooms: 1,
           wardenRoomId: null,
@@ -461,6 +470,17 @@ export const useRun = create<RunState>()(
       }
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
     },
+
+    identifySlot: (slot) => {
+      const s = get();
+      const id = s.satchel[slot];
+      if (!id || s.identified.includes(id)) return false;
+      set({ identified: [...s.identified, id] });
+      bus.emit("itemNamed", { id });
+      return true;
+    },
+
+    sealRoom: (roomId) => set({ sealedRoomId: roomId }),
 
     moveWarden: (roomId) => {
       const s = get();

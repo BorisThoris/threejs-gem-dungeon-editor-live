@@ -22,6 +22,19 @@ export const ROOM_KINDS = [
 ] as const;
 export type RoomKind = (typeof ROOM_KINDS)[number];
 
+/**
+ * How many sides the floor is drawn with. A square is the room's own box;
+ * everything else is a regular polygon inscribed in it.
+ */
+export const SHAPE_SIDES: Record<Shape, number> = {
+  square: 4,
+  circle: 48,
+  hexagon: 6,
+  octagon: 8,
+  diamond: 4,
+  triangle: 3,
+};
+
 export const SHAPES = [
   "square",
   "circle",
@@ -133,3 +146,17 @@ export const roomById = (dungeon: Dungeon, id: string): Room | undefined =>
   dungeon.rooms.find((room) => room.id === id);
 
 export const halfSize = (room: Room): number => room.size / 2;
+
+/**
+ * How far the drawn floor reaches in the worst direction.
+ *
+ * A square room reaches its half-extent everywhere. Every other shape is a
+ * polygon inscribed in that square, so its edges cut the corners off, and
+ * anything placed by half-extent alone stands off the coloured floor. This
+ * is what anchors are measured against instead.
+ */
+export function inscribedRadius(room: Room): number {
+  const half = halfSize(room);
+  if (room.shape === "square") return half;
+  return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
+}

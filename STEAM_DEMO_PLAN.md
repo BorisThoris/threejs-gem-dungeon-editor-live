@@ -71,6 +71,15 @@ every gem spent there is a gem not carried out. The decision the game now
 asks, once a room, is whether the four gems still on this floor are worth
 what taking them will wake.
 
+Since then the dungeon has grown a loot layer and a set piece. Chests hold
+eight consumables whose appearances are shuffled every run, so the only way
+to learn what a cloudy potion does is to drink one, and the shop will name
+one for a gem. The arena, which had been the largest room in the game with
+nothing in it, now bars its doors and sweeps itself with three turning arms
+of spikes when its gem is lifted. Room shapes are now only used at sizes
+whose floor can actually hold the props, which had been placing them on
+bare slab in every shaped room.
+
 What is still ahead: a human playtest, Windows and signed macOS builds on
 their own hosts, and the Steamworks account side (app ID, depots, store
 page, capsule art).

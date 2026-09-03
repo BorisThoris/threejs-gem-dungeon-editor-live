@@ -1,4 +1,5 @@
 import { registerRoomKind } from "../rooms/kinds";
+import { ArenaRoom } from "../arena/ArenaRoom";
 import { challengeAnchors, memoryAnchors } from "./anchors";
 import { ChallengeRoom } from "./ChallengeRoom";
 import { MemoryRoom } from "./MemoryRoom";
@@ -9,3 +10,5 @@ import { MemoryRoom } from "./MemoryRoom";
  */
 registerRoomKind("memory", MemoryRoom, memoryAnchors);
 registerRoomKind("challenge", ChallengeRoom, challengeAnchors);
+// The arena is a set piece rather than a dressed room, so it registers here too.
+registerRoomKind("arena", ArenaRoom);

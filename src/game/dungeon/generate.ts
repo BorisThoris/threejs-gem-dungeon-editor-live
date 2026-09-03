@@ -1,3 +1,4 @@
+import { shapeFits } from "./layout";
 import { createRng, pick, shuffle, type Rng } from "../rng";
 import { templatesForKind } from "../rooms/templates";
 import {
@@ -85,12 +86,17 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // dressing. This is how the Room Builder's work reaches a run.
     const authored = templatesForKind(kind);
     const template = authored.length ? pick(rng, authored) : undefined;
+    const size = template?.size ?? SIZE_FOR[kind] ?? ROOM_SIZE_DEFAULT;
+    // Only shapes with the floor to hold their props at this size.
+    const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>
+      shapeFits(s, size)
+    );
     const room: Room = {
       id: rooms.length === 0 ? "start" : `room_${rooms.length}`,
       kind,
       grid: { x, z },
-      size: template?.size ?? SIZE_FOR[kind] ?? ROOM_SIZE_DEFAULT,
-      shape: template?.shape ?? pick(rng, SHAPES_FOR[kind] ?? ["square", "square", "circle"]),
+      size,
+      shape: template?.shape ?? (wanted.length ? pick(rng, wanted) : "square"),
       links: {},
       ...(template ? { template: template.id } : {}),
     };
@@ -159,7 +165,10 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   } else {
     farthest.kind = "end";
     farthest.size = SIZE_FOR.end ?? ROOM_SIZE_LARGE;
-    farthest.shape = pick(rng, SHAPES_FOR.end ?? ["square"]);
+    farthest.shape = pick(
+      rng,
+      (SHAPES_FOR.end ?? ["square"]).filter((s) => shapeFits(s, farthest.size)) ?? ["square"]
+    );
     delete farthest.template;
     endId = farthest.id;
   }

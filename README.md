@@ -19,6 +19,13 @@ that shows you where the Warden is, boots that make you quicker, a charm
 that eats a hit, a ledger that makes every exit cheaper. Every gem spent
 there is a gem you do not carry out.
 
+The arena is the one room that fights back. Its gem sits on a plinth in the
+middle, and lifting it bars the doors and sets three arms of spikes turning
+across the whole floor. There is no corner to wait in: the only safe ground
+is the moving gap between two arms, and holding it means walking a circle
+for fourteen seconds. The inner line is a stroll; the outer wall needs a
+dash to keep up. The Warden does not stop for any of this.
+
 Chests hold potions and scrolls, and which look means which item is
 shuffled at the start of every run. A cloudy potion is a different thing
 each game, and the only way to learn is to drink one. Most of them help;

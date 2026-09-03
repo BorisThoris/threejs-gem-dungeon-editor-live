@@ -3,7 +3,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
 import { trapHazards } from "../dungeon/layout";
-import { DIRS, halfSize, type Room as RoomData, type Shape } from "../dungeon/types";
+import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
 import { Hazard } from "../props/Hazard";
@@ -18,15 +18,6 @@ interface RoomProps {
   room: RoomData;
   seed: number;
 }
-
-const SEGMENTS: Record<Shape, number> = {
-  square: 4,
-  circle: 48,
-  hexagon: 6,
-  octagon: 8,
-  diamond: 4,
-  triangle: 3,
-};
 
 /**
  * The shell every room is built on: a solid floor slab at the ground plane,
@@ -64,7 +55,7 @@ export function Room({ room, seed }: RoomProps) {
     () =>
       room.shape === "square"
         ? new PlaneGeometry(room.size, room.size)
-        : new CircleGeometry(half, SEGMENTS[room.shape]),
+        : new CircleGeometry(half, SHAPE_SIDES[room.shape]),
     [room.shape, room.size, half]
   );
   useEffect(() => () => outline.dispose(), [outline]);

@@ -26,6 +26,11 @@ Two stores that both claimed the player's stats. So:
 - Run state lives in `src/game/state/run.ts`. One Zustand store. The floor,
   the gems, the alarm, the relics held and which room the Warden is in are
   all here; nothing keeps a second copy.
+- Which shapes a room may take at a given size is `shapeFits` in
+  `layout.ts`. A shaped room is a polygon inscribed in its box, so it has
+  less floor than its size suggests, and a shape that cannot hold its own
+  outer ring of props is not used - the generator asks before it picks and
+  the room builder offers only what passes.
 - What an item is, what it looks like this run, and what it does are in
   `src/game/items/catalog.ts`; the effect itself is applied in one place,
   `useItem` in the run store. How fast the player moves after drinking one

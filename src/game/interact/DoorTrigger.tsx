@@ -42,13 +42,14 @@ interface DoorTriggerProps {
 export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const gems = useRun((s) => s.gems);
   const toll = useRun(tollNow);
+  const sealed = useRun((s) => s.sealedRoomId === room.id);
   const dungeon = useRun((s) => s.dungeon);
   const toId = room.links[dir];
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
   const isExit = target.kind === "end";
-  const enabled = !isExit || gems >= toll;
+  const enabled = (!isExit || gems >= toll) && !sealed;
   const color = isExit ? (enabled ? FRAME_COLOR.exitOpen : FRAME_COLOR.exitLocked) : FRAME_COLOR.door;
   const position = doorPosition(room, dir);
   // The frame's own x runs along the wall the door is in.
@@ -64,7 +65,9 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
         position={position}
         label={`Open ${KIND_LABEL[target.kind] ?? "the door"}`}
         enabled={enabled}
-        blockedReason={`The exit needs ${toll} gems (${gems}/${toll})`}
+        blockedReason={
+          sealed ? "The door will not move" : `The exit needs ${toll} gems (${gems}/${toll})`
+        }
         onInteract={() => {
           const run = useRun.getState();
           if (isExit && !run.spendGems(tollNow(run))) return;

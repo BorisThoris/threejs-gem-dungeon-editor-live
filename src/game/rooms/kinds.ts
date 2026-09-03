@@ -61,8 +61,13 @@ export function registerRoomKind(
 /** The anchors a room's kind has claimed for its own content. */
 export const reservedAnchors = (room: Room): Vec3[] => KIND_RESERVED[room.kind]?.(room) ?? [];
 
-/** Where this room's gem is, if it has one: start and end rooms do not. */
+/**
+ * Where this room's gem is, if the room shell places one.
+ *
+ * Start and end rooms have none, and the arena places its own on the plinth
+ * at its centre, because taking it is what starts the room.
+ */
 export function gemFor(room: Room, seed: number): Vec3 | null {
-  if (room.kind === "start" || room.kind === "end") return null;
+  if (room.kind === "start" || room.kind === "end" || room.kind === "arena") return null;
   return gemPosition(room, seed, reservedAnchors(room));
 }
