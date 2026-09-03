@@ -154,8 +154,8 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Twenty-six more turned up on the next passes, all of them things nobody had
-looked at because the tests were green:
+Twenty-nine more turned up on the next passes, all of them things nobody
+had looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
   at a fixed anisotropy of 4, which is not enough for a plane seen almost
@@ -276,6 +276,30 @@ looked at because the tests were green:
   of 34.6 rooms looked different before the turn, 32.1 after it, and the
   first repeat moved from room 11.7 to room 18.1. The direction was right
   and the numbers were not.
+- **The check for the core loop was a hope.** "Collected gems while
+  exploring" asserted that the random walker had picked up at least one gem
+  on its way between doorways, which is a matter of luck: it came up empty
+  about one run in five, and a check that says the core loop is broken on a
+  fifth of runs is one people stop reading. It walks to a gem now - in a
+  room that still has one, chosen from the store rather than from wherever
+  the walker stopped - so taking it is the thing being tested rather than a
+  side effect of wandering.
+- **The shop would sell you into a floor you could not leave.** The economy
+  had never been measured. Over 400 seeds a floor, counting only the gems a
+  player is guaranteed - not behind the locked vault, not a reward for
+  solving a puzzle or surviving the arena - every floor could be paid for,
+  but a quarter of seeds on every floor left exactly one spare gem and the
+  third floor could leave none: a seed where paying the exit means taking
+  literally every gem, which is exactly what wakes the Warden, on the floor
+  that starts at alarm 2. The third floor holds one more room now, so its
+  worst seed leaves two, and the invariant is checked rather than hoped for.
+
+  Underneath that, the rule that you may not spend yourself below the toll -
+  which the shop's life purchase enforces, with a refusal written for it -
+  was not applied to the other two things the shop sells. Naming what you
+  are carrying costs a gem and a relic costs several, and neither asked. On
+  a floor with one gem to spare, either would strand a run. The rule has one
+  owner now and all three ask it.
 - **Twenty-five sounds, and nothing had ever listened to one.** The whole
   sound design is synthesised - a few oscillators and an envelope each, no
   audio files - which is a nice property and also means there is no asset

@@ -437,6 +437,48 @@ for (const size of L.ROOM_SIZES) {
     kinds.map((k) => `${k}:${L.LAYOUTS[k].length}`).join(" "));
 }
 
+// The economy: a floor you cannot pay to leave is a floor nobody can
+// finish, and until this was written nothing checked it. What counts is
+// what a player is guaranteed - a gem they can walk up to and take. Not the
+// ones behind the locked vault, whose key they may never find; not the
+// arena's, which is on a plinth in a room that starts a gauntlet when you
+// take it; and not a puzzle's reward, which they may get wrong.
+{
+  const GATED = new Set(["arena"]);
+  let unpayable = 0;
+  let thin = 0;
+  const worst = {};
+  for (const floor of [1, 2, 3]) {
+    const rules = L.floorRules(floor);
+    const toll = L.tollForFloor(floor);
+    let least = Infinity;
+    for (let seed = 1; seed <= 400; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      let free = 0;
+      for (const room of d.rooms) {
+        if (room.kind === "start" || room.kind === "end") continue;
+        if (GATED.has(room.kind)) continue;
+        if (d.vaultId && room.id === d.vaultId) continue;
+        free++;
+      }
+      least = Math.min(least, free);
+      if (free < toll) unpayable++;
+      // At least one to spare. The toll is meant to eat most of a floor's
+      // free gems - what a run scores comes from the vault, the arena and
+      // the puzzles - but a floor that costs every single gem to leave is
+      // one where the choice the whole game is built on, take it or leave
+      // it, is not offered at all.
+      if (free < toll + 1) thin++;
+    }
+    worst[`floor ${floor}`] = `${least} free against a toll of ${toll}`;
+  }
+  check("every floor can be paid for without the vault, the arena or a puzzle",
+    unpayable === 0, `${unpayable} of 1200 could not be`);
+  check("and with something left over, so taking every gem is a choice",
+    thin === 0, `${thin} of 1200 were within one`);
+  console.log(`  worst seed per floor: ${Object.entries(worst).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
+}
+
 // The loot: every item has to be findable and has to have a look of its
 // own. Adding an item and forgetting to add an appearance for it leaves a
 // silent collision - two things that look identical, so identifying one

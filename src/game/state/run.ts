@@ -769,6 +769,21 @@ export const tollNow = (s: RunState): number =>
 /** Gems held over what the exit will cost: what the run is actually earning. */
 export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s));
 
+/**
+ * Whether something on sale can be bought without stranding the player.
+ *
+ * The shop is the only place gems are spent on anything but the exit, and
+ * the exit is the only thing a player must be able to afford: a floor can
+ * hold as few as one gem more than its toll, so a single purchase can leave
+ * a run unable to leave the floor by any route it is guaranteed to have.
+ *
+ * The rule existed and was applied to one of the three things the shop
+ * sells. Buying a life asked; asking the shopkeeper what a potion is, and
+ * buying a relic for several gems, did not.
+ */
+export const canSpend = (s: RunState, price: number): boolean =>
+  s.gems >= price && s.gems - price >= tollNow(s);
+
 export const useCurrentRoom = (): Room | undefined =>
   useRun((s) => (s.dungeon && s.currentRoomId ? roomById(s.dungeon, s.currentRoomId) : undefined));
 

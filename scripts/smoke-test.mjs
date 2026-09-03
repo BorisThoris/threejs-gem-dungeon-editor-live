@@ -162,7 +162,43 @@ const explored = await snap();
 ok("travelled to other rooms by pressing E", seen.size >= 3, `${seen.size} rooms visited`);
 ok("never left the floor", minY >= REST_Y - 0.2, `lowest y seen ${minY.toFixed(2)}`);
 ok("control returned after every transition", !explored.transitioning && explored.phase === "playing", JSON.stringify(explored));
-ok("collected gems while exploring", explored.gems > 0, `${explored.gems} gems`);
+/**
+ * Walking onto a gem takes it.
+ *
+ * This used to read `explored.gems > 0` and hope: the walker moves between
+ * doorways, so whether it ever crossed a gem was luck, and it came up empty
+ * about one run in five. A check that says the core loop is broken on a
+ * fifth of runs is one people stop reading. It walks to the gem now - the
+ * store knows where it is - and the collection is the thing being tested
+ * rather than a side effect of wandering.
+ */
+{
+  const took = await page.evaluate(async () => {
+    const run = window.__run;
+    const { gemFor } = await import("/src/game/rooms/kinds.ts");
+    const s = run.getState();
+    // A room that still has a gem in it, rather than whichever room the
+    // walker happened to stop in: start, end and the arena place none, and
+    // the walker may already have taken the one where it is standing.
+    const room = s.dungeon.rooms.find(
+      (r) => gemFor(r, s.dungeon.seed) && !s.gemRooms.includes(r.id)
+    );
+    if (!room) return { none: true };
+    run.setState({ transitioning: true, currentRoomId: room.id });
+    run.getState().roomReady(room.id);
+    await new Promise((r) => setTimeout(r, 1400));
+    const at = gemFor(room, s.dungeon.seed);
+    const before = run.getState().gems;
+    window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+    await new Promise((r) => setTimeout(r, 1200));
+    return { room: room.id, kind: room.kind, before, after: run.getState().gems };
+  });
+  ok(
+    "gems are taken by walking onto them",
+    !took.none && took.after === took.before + 1,
+    JSON.stringify(took)
+  );
+}
 
 // The exit refuses E without the toll, and takes it once paid.
 const exitDoor = await page.evaluate(() => {
@@ -465,6 +501,43 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a gem buys a name, and the item is still there", named.paid && named.known && named.held === 1 && named.gems === 2, JSON.stringify(named));
   const again = await page.evaluate(() => window.__run.getState().identifySlot(0));
   ok("naming something already known is refused", again === false);
+}
+
+/**
+ * The shop will not sell you into a floor you cannot leave.
+ *
+ * A floor holds as few as one gem more than its toll, so a single purchase
+ * can leave a run unable to pay the exit by any route it is guaranteed to
+ * have. The rule existed and was applied to one of the three things the
+ * shop sells: buying a life asked, and asking the shopkeeper what a potion
+ * is - and buying a relic for several gems - did not.
+ */
+{
+  const guard = await page.evaluate(async () => {
+    const { canSpend } = await import("/src/game/state/run.ts");
+    const run = window.__run;
+    run.setState({ gems: 5, floor: 1, relics: [] });
+    const s = run.getState();
+    // The one owner of the rule, asked directly: a purchase that would
+    // leave less than the toll is refused whatever it costs.
+    return {
+      toll: 3,
+      spendOne: canSpend(s, 1),
+      spendTwo: canSpend(s, 2),
+      spendThree: canSpend(s, 3),
+      spendMore: canSpend(s, 4),
+    };
+  });
+  ok(
+    "with gems to spare the shop will sell",
+    guard.spendOne && guard.spendTwo,
+    JSON.stringify(guard)
+  );
+  ok(
+    "and refuses anything that would leave less than the exit wants",
+    !guard.spendThree && !guard.spendMore,
+    JSON.stringify(guard)
+  );
 }
 
 // Settings are remembered, and turning head bob off actually stops the head

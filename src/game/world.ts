@@ -240,7 +240,19 @@ const DESCENT: readonly FloorRules[] = [
     light: { ambient: 0.5, sky: "#7f96bd", fill: "#cfe0dc", fillIntensity: 14, fogFar: 41 },
   },
   {
-    minRooms: 12,
+    /**
+     * Thirteen, not twelve, and the reason is the toll rather than the size.
+     *
+     * A floor's guaranteed gems - the ones not behind the locked vault and
+     * not a reward for solving a puzzle or surviving the arena - have to
+     * cover the exit and leave at least one, or paying it means taking
+     * literally every gem on the floor: which is exactly what wakes the
+     * Warden, on the floor that already starts at alarm 2, and leaves no
+     * margin for a gem the player judges not worth the risk. At twelve the
+     * worst seed in four hundred was exactly break-even; at thirteen the
+     * worst leaves two.
+     */
+    minRooms: 13,
     maxRooms: 16,
     wardenGrace: 1,
     startingAlarm: 2,

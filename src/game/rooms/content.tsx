@@ -8,7 +8,7 @@ import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { tollNow, useRun } from "../state/run";
+import { canSpend, tollNow, useRun } from "../state/run";
 import { GEMS_PER_LIFE } from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
@@ -72,7 +72,10 @@ function Shop({ room }: RoomKindProps) {
   // Gems never respawn and the exit is the only way off a floor, so a life
   // sold from under the toll is a run the player cannot finish and is not
   // told why. The shop declines rather than let that happen.
-  const wouldStrand = gems - GEMS_PER_LIFE < toll;
+  // Selected as the answer rather than computed from parts, so the counter
+  // re-renders when what it may sell changes and not on every gem.
+  const canBuyLife = useRun((s) => canSpend(s, GEMS_PER_LIFE));
+  const canBuyName = useRun((s) => canSpend(s, NAMING_PRICE));
 
   // The first thing in the satchel nobody has put a name to yet.
   const puzzling = satchel.findIndex((id) => !identified.includes(id));
@@ -89,7 +92,7 @@ function Shop({ room }: RoomKindProps) {
       <InteractTrigger
         position={[counter[0], 0, counter[2]]}
         label={`Buy a life (${GEMS_PER_LIFE} gem)`}
-        enabled={needsLife && canAffordLife && !wouldStrand}
+        enabled={needsLife && canBuyLife}
         blockedReason={
           !needsLife
             ? "Already at full health"
@@ -114,16 +117,19 @@ function Shop({ room }: RoomKindProps) {
             ? `Ask about ${appearances[satchel[puzzling]].unknown} (${NAMING_PRICE} gem)`
             : "Ask about your satchel"
         }
-        enabled={puzzling >= 0 && canAffordName}
+        enabled={puzzling >= 0 && canBuyName}
         blockedReason={
           puzzling < 0
             ? "You know what everything you carry is"
-            : `Needs ${NAMING_PRICE} gem (${gems}/${NAMING_PRICE})`
+            : !canAffordName
+              ? `Needs ${NAMING_PRICE} gem (${gems}/${NAMING_PRICE})`
+              : `That would leave you short of the ${toll} the exit wants`
         }
         onInteract={() => {
           const run = useRun.getState();
           const slot = run.satchel.findIndex((id) => !run.identified.includes(id));
           if (slot < 0) return;
+          if (!canSpend(run, NAMING_PRICE)) return;
           if (run.spendGems(NAMING_PRICE)) run.identifySlot(slot);
         }}
       />
@@ -140,6 +146,8 @@ function RelicStand({ id, position, floor }: { id: RelicId; position: Vec3; floo
   const taken = useRun((s) => s.relics.includes(id));
   const relic = RELICS[id];
   const price = priceOn(relic, floor);
+  const affordable = useRun((s) => canSpend(s, price));
+  const toll = useRun(tollNow);
 
   return (
     <group position={position}>
@@ -165,11 +173,18 @@ function RelicStand({ id, position, floor }: { id: RelicId; position: Vec3; floo
       <InteractTrigger
         position={[0, 0, 0]}
         label={`${relic.name}, ${price} gems - ${relic.blurb}`}
-        enabled={!taken && gems >= price}
-        blockedReason={taken ? "Already yours" : `Needs ${price} gems (${gems}/${price})`}
+        enabled={!taken && affordable}
+        blockedReason={
+          taken
+            ? "Already yours"
+            : gems < price
+              ? `Needs ${price} gems (${gems}/${price})`
+              : `That would leave you short of the ${toll} the exit wants`
+        }
         onInteract={() => {
           const run = useRun.getState();
           if (run.relics.includes(id)) return;
+          if (!canSpend(run, price)) return;
           if (run.spendGems(price)) run.addRelic(id);
         }}
       />

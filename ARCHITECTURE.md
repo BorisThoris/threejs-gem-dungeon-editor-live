@@ -271,12 +271,18 @@ second model for it to be written in.
   while the player sprints. Frame time is not measured, because the machine
   this runs on has no GPU and a millisecond here says nothing about a Steam
   Deck; those counters are CPU-side and mean the same thing everywhere.
+- Whether a purchase may be made is `canSpend` in `src/game/state/run.ts`,
+  and the shop asks it about all three things it sells. The exit is the only
+  thing a run must be able to afford - a floor can hold as few as one gem
+  more than its toll - so anything else that takes gems has to leave enough
+  behind. The rule used to be written into the life purchase alone.
 - `yarn test:layout` checks the room geometry over every size, every shape,
   all fifteen door combinations and 500 seeds: anchors clear of the lanes
   and of each other, nothing in a lane the room it stands in actually has,
   no two solid props standing inside each other and no footprint reaching
   into a lane or through a wall, spikes in every trap room and never in a
-  lane, the gem reachable, the generator connected.
+  lane, the gem reachable, the generator connected, and every floor payable
+  from the gems a player is guaranteed with at least one to spare.
 - `yarn test:audio` listens to the game. It wraps
   `AudioNode.prototype.connect` before the app loads, so anything that
   reaches the speakers also reaches an analyser the check owns, and measures
