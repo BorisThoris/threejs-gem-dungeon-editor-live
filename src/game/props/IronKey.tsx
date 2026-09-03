@@ -19,7 +19,7 @@ interface IronKeyProps {
  */
 export function IronKey({ roomId, position }: IronKeyProps) {
   const group = useRef<Group>(null);
-  const taken = useRun((s) => s.unlocked.includes(roomId));
+  const taken = useRun((s) => s.keyTakenIn !== null);
 
   useFrame((state) => {
     const g = group.current;

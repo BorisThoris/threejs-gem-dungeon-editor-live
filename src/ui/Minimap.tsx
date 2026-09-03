@@ -51,10 +51,16 @@ export function Minimap() {
   // The map turns to put the player's heading at the top. Smoothed, so a
   // flick of the mouse does not snap the whole dial round.
   useEffect(() => {
-    let shown = -look.yaw;
+    // Plus the yaw, not minus it. The camera at yaw t faces world
+    // (-sin t, -cos t), which on a map with world +z drawn downwards is the
+    // same pair in screen coordinates; SVG rotate(a) puts that at the top
+    // only when a is +t. With the sign flipped the map was mirrored east to
+    // west and right exactly when facing north or south, which is why it
+    // survived being looked at.
+    let shown = look.yaw;
     let raf = 0;
     const spin = () => {
-      const want = -look.yaw;
+      const want = look.yaw;
       // Take the short way round, so crossing north does not unwind a circle.
       let delta = ((want - shown + Math.PI) % (Math.PI * 2)) - Math.PI;
       if (delta < -Math.PI) delta += Math.PI * 2;

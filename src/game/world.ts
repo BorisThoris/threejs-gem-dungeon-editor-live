@@ -165,14 +165,22 @@ export const SENTRY_COOLDOWN_S = 6;
  * in it means walking a circle for as long as it lasts. The maths of that
  * is the design. At the inner ring, keeping pace needs about 1.8 units a
  * second and a walk does 5; out at the wall it needs 8, which is exactly a
- * dash. So the room teaches you to run its inside line, a Potion of
- * Swiftness is worth drinking here, and a Potion of Mire is very nearly
- * fatal.
+ * dash, and in the corners it needs more than a dash can give. So the room
+ * teaches you to run its inside line, a Potion of Swiftness is worth
+ * drinking here, and a Potion of Mire is very nearly fatal.
+ *
+ * The rings run out to the corners of the room's box, not to the edge of
+ * the floor it draws. A shaped arena still has square walls, so a player
+ * can stand where the polygon does not reach - and with the rings stopping
+ * at the polygon, those four corners were the safest ground in a room whose
+ * whole promise is that there is nowhere safe to stand.
  */
 export const ARENA_WIND_UP_S = 2;
 export const ARENA_DURATION_S = 14;
 export const ARENA_ARMS = 3;
-export const ARENA_RADII = [2.4, 4.4, 6.4, 8.4, 10.4];
+/** Innermost ring, and the gap between rings. Rings run out to the corners. */
+export const ARENA_INNER_RADIUS = 2.4;
+export const ARENA_RING_GAP = 2;
 /** Radians a second. One turn takes about eight seconds. */
 export const ARENA_SPIN = 0.75;
 /** If a room never reports itself mounted, hand control back anyway. */

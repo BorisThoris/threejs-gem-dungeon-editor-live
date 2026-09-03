@@ -8,7 +8,7 @@ import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { useRun } from "../state/run";
+import { tollNow, useRun } from "../state/run";
 import { GEMS_PER_LIFE } from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
@@ -57,6 +57,7 @@ function Shop({ room }: RoomKindProps) {
   const floor = useRun((s) => s.floor);
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   const held = useRun((s) => s.relics);
+  const toll = useRun(tollNow);
   const [counter, ...shelves] = shopAnchors(room);
   const satchel = useRun((s) => s.satchel);
   const identified = useRun((s) => s.identified);
@@ -73,6 +74,10 @@ function Shop({ room }: RoomKindProps) {
 
   const needsLife = lives < maxLives;
   const canAffordLife = gems >= GEMS_PER_LIFE;
+  // Gems never respawn and the exit is the only way off a floor, so a life
+  // sold from under the toll is a run the player cannot finish and is not
+  // told why. The shop declines rather than let that happen.
+  const wouldStrand = gems - GEMS_PER_LIFE < toll;
 
   // The first thing in the satchel nobody has put a name to yet.
   const puzzling = satchel.findIndex((id) => !identified.includes(id));
@@ -89,13 +94,18 @@ function Shop({ room }: RoomKindProps) {
       <InteractTrigger
         position={[counter[0], 0, counter[2]]}
         label={`Buy a life (${GEMS_PER_LIFE} gem)`}
-        enabled={needsLife && canAffordLife}
+        enabled={needsLife && canAffordLife && !wouldStrand}
         blockedReason={
-          !needsLife ? "Already at full health" : `Needs ${GEMS_PER_LIFE} gem (${gems}/${GEMS_PER_LIFE})`
+          !needsLife
+            ? "Already at full health"
+            : !canAffordLife
+              ? `Needs ${GEMS_PER_LIFE} gem (${gems}/${GEMS_PER_LIFE})`
+              : `That would leave you short of the ${toll} the exit wants`
         }
         onInteract={() => {
           const run = useRun.getState();
           if (run.lives >= run.maxLives) return;
+          if (run.gems - GEMS_PER_LIFE < tollNow(run)) return;
           if (run.spendGems(GEMS_PER_LIFE)) run.gainLife();
         }}
       />

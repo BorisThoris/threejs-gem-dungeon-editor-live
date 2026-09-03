@@ -95,6 +95,21 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   check(`${shape}: anchors stay clear of the lanes`, inLane === 0, `${inLane} in a lane`);
 }
 
+// The arena's arms must cover everywhere the player can stand, which is the
+// square box its walls make - not the polygon its floor is drawn as. Rings
+// that stopped at the drawn floor left four safe corners in a room whose
+// whole promise is that there are none.
+for (const size of L.ROOM_SIZES) {
+  const half = size / 2;
+  const rings = [];
+  for (let r = L.ARENA_INNER_RADIUS; r < half * Math.SQRT2; r += L.ARENA_RING_GAP) rings.push(r);
+  const reach = rings[rings.length - 1] + L.HAZARD_RADIUS;
+  // The farthest a player's centre can get from the middle, capsule included.
+  const corner = Math.hypot(half - 0.3, half - 0.3);
+  check(`arena ${size}: the arms reach the corners of the box`, reach >= corner, `arms ${reach.toFixed(1)}, corner ${corner.toFixed(1)}`);
+  check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
+}
+
 // The generator: connected, the exit reachable, every kind once, sizes legal.
 let bad = 0;
 for (let seed = 1; seed <= 500; seed++) {

@@ -582,6 +582,59 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("being seen rouses the floor and costs no life", seen.after.alarm > seen.before.alarm && seen.after.lives === seen.before.lives, JSON.stringify(seen));
 }
 
+// Three things a code review found, each now nailed down.
+{
+  // The run's seed is the one the summary shows, not the floor's - they
+  // part company on the way down, and showing the floor's meant every
+  // "same dungeon again" replayed a dungeon nobody had played.
+  const seeds = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(4242);
+    await new Promise((r) => setTimeout(r, 1200));
+    const onFloorOne = { run: run.getState().runSeed, floor: run.getState().dungeon.seed };
+    const d = run.getState().dungeon;
+    run.setState({ gems: 20, transitioning: true, currentRoomId: d.endId });
+    run.getState().roomReady(d.endId);
+    await new Promise((r) => setTimeout(r, 900));
+    return { onFloorOne, afterDescent: { run: run.getState().runSeed, floor: run.getState().dungeon.seed } };
+  });
+  ok("the run keeps its own seed when a floor changes", seeds.afterDescent.run === 4242 && seeds.afterDescent.floor !== 4242, JSON.stringify(seeds));
+
+  // A Sentry is the same Sentry on a replayed seed, beam angle included.
+  const deterministic = await page.evaluate(async () => {
+    const run = window.__run;
+    const read = async () => {
+      run.getState().startRun(555);
+      await new Promise((r) => setTimeout(r, 900));
+      const d = run.getState().dungeon;
+      return d.rooms
+        .map((r) => window.__sentryFor(r, d.seed, 2))
+        .map((s) => (s ? `${s.at[0].toFixed(3)},${s.at[2].toFixed(3)},${s.phase.toFixed(5)}` : "-"))
+        .join("|");
+    };
+    const one = await read();
+    const two = await read();
+    return { same: one === two, sample: one.slice(0, 60) };
+  });
+  ok("a replayed seed puts the watchers back exactly, beams and all", deterministic.same, JSON.stringify(deterministic));
+
+  // Pausing does not burn a potion.
+  const paused = await page.evaluate(async () => {
+    const run = window.__run;
+    run.getState().startRun(556);
+    await new Promise((r) => setTimeout(r, 900));
+    run.setState({ satchel: ["swiftness"], identified: [] });
+    run.getState().useItem(0);
+    const quickBefore = window.__derived.walk();
+    run.getState().pause();
+    await new Promise((r) => setTimeout(r, 1500));
+    run.getState().resume();
+    const quickAfter = window.__derived.walk();
+    return { quickBefore, quickAfter };
+  });
+  ok("a potion is not spent by the pause menu", paused.quickAfter === paused.quickBefore && paused.quickAfter > 5, JSON.stringify(paused));
+}
+
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);

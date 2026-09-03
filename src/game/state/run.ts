@@ -43,6 +43,14 @@ export interface RunState {
   dungeon: Dungeon | null;
   /** 1-based; the run is won on leaving floor FLOORS. */
   floor: number;
+  /**
+   * The seed the run started from: the one worth showing and replaying.
+   * Each floor's dungeon is generated from a seed derived from it, so
+   * `dungeon.seed` is this floor's and parts company with this on the way
+   * down. Showing that one meant every "same dungeon again" replayed a
+   * floor nobody had played.
+   */
+  runSeed: number;
   /** Rooms first entered over the whole run, for the summary. */
   roomsSeen: number;
   currentRoomId: string | null;
@@ -81,6 +89,13 @@ export interface RunState {
   /** Vaults already opened, so a door stays open once it has been. */
   unlocked: string[];
   /**
+   * The room whose key has been picked up. Kept apart from `unlocked`,
+   * which the two used to share: it held today only because the generator
+   * never puts a key inside the vault, and a second lock on a floor would
+   * have made a picked-up key silently open a door.
+   */
+  keyTakenIn: string | null;
+  /**
    * How roused this floor's Warden is. Raised by taking gems, reset on
    * every new floor. This is the whole risk side of the run: the more of a
    * floor you take, the harder it is to leave.
@@ -101,6 +116,14 @@ export interface RunState {
   /** Counted, not flagged: a puzzle overlay and a menu may both hold it. */
   inputLocks: number;
   lastDamageAt: number;
+  /**
+   * Seconds spent in the pause menu. Timed things - a potion, the damage
+   * cooldown - are deadlines on `runClock`, which is wall time less this,
+   * so a Potion of Swiftness is not burnt by twenty seconds in a menu.
+   */
+  pausedFor: number;
+  /** When the current pause began, in wall seconds, or 0 while running. */
+  pausedAt: number;
   /** performance.now() when the run began, for the summary. */
   startedAt: number;
   /** Set when the run is won or lost. */
@@ -126,6 +149,8 @@ export interface RunState {
   identifySlot: (slot: number) => boolean;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
+  /** Rouse the floor. The one way the alarm goes up. */
+  raiseAlarm: (amount: number) => void;
   /** Pick up the floor's key. */
   takeKey: (roomId: string) => void;
   /** Spend a key on a vault. Returns false without one. */
@@ -157,7 +182,7 @@ function rememberRun(s: RunState) {
   if (!s.dungeon) return;
   useRecords.getState().record({
     won: s.phase === "won",
-    seed: s.dungeon.seed,
+    seed: s.runSeed,
     carried: s.gems,
     gemsFound: s.gemsTotal,
     floor: s.floor,
@@ -182,6 +207,7 @@ export const useRun = create<RunState>()(
     paused: false,
     dungeon: null,
     floor: 1,
+    runSeed: 0,
     roomsSeen: 0,
     currentRoomId: null,
     visited: [],
@@ -202,6 +228,7 @@ export const useRun = create<RunState>()(
     sealedRoomId: null,
     keys: 0,
     unlocked: [],
+    keyTakenIn: null,
     alarm: 0,
     floorRooms: 1,
     wardenRoomId: null,
@@ -211,6 +238,8 @@ export const useRun = create<RunState>()(
     transitioning: false,
     inputLocks: 0,
     lastDamageAt: -Infinity,
+    pausedFor: 0,
+    pausedAt: 0,
     startedAt: 0,
     endedAt: 0,
 
@@ -222,6 +251,7 @@ export const useRun = create<RunState>()(
         paused: false,
         dungeon,
         floor: 1,
+        runSeed: dungeon.seed,
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
@@ -242,6 +272,7 @@ export const useRun = create<RunState>()(
         sealedRoomId: null,
         keys: 0,
         unlocked: [],
+        keyTakenIn: null,
         alarm: 0,
         floorRooms: 1,
         wardenRoomId: null,
@@ -252,6 +283,8 @@ export const useRun = create<RunState>()(
         transitioning: true,
         inputLocks: 0,
         lastDamageAt: -Infinity,
+        pausedFor: 0,
+        pausedAt: 0,
         startedAt: performance.now(),
         endedAt: 0,
       });
@@ -271,9 +304,15 @@ export const useRun = create<RunState>()(
     },
 
     pause: () => {
-      if (get().phase === "playing") set({ paused: true });
+      if (get().phase !== "playing" || get().paused) return;
+      set({ paused: true, pausedAt: performance.now() / 1000 });
     },
-    resume: () => set({ paused: false }),
+    resume: () => {
+      const s = get();
+      if (!s.paused) return;
+      const spent = s.pausedAt > 0 ? performance.now() / 1000 - s.pausedAt : 0;
+      set({ paused: false, pausedAt: 0, pausedFor: s.pausedFor + spent });
+    },
 
     travel: (dir) => {
       const s = get();
@@ -343,6 +382,7 @@ export const useRun = create<RunState>()(
           // A key is cut for one floor's lock and is no use on the next.
           keys: 0,
           unlocked: [],
+          keyTakenIn: null,
           alarm: 0,
           floorRooms: 1,
           wardenRoomId: null,
@@ -402,7 +442,7 @@ export const useRun = create<RunState>()(
     damage: () => {
       const s = get();
       if (s.phase !== "playing") return false;
-      const now = performance.now() / 1000;
+      const now = runClock(s);
       if (now - s.lastDamageAt < DAMAGE_COOLDOWN_S) return false;
       // The charm eats the floor's first hit, and still starts the
       // invulnerability window, so it reads as a hit that did not land.
@@ -455,7 +495,7 @@ export const useRun = create<RunState>()(
       const s = get();
       const id = s.satchel[slot];
       if (!id || s.phase !== "playing" || s.paused || s.inputLocks > 0) return;
-      const now = performance.now() / 1000;
+      const now = runClock(s);
       const until = (seconds: number) => now + seconds;
 
       // Whatever it does, it is spent and it is now known.
@@ -481,16 +521,14 @@ export const useRun = create<RunState>()(
           set({ mapped: true });
           break;
         case "dread":
-          set({ alarm: get().alarm + DREAD_ALARM });
-          bus.emit("alarmRaised", { alarm: get().alarm });
+          get().raiseAlarm(DREAD_ALARM);
           break;
         case "avarice":
           set({
             gems: get().gems + AVARICE_GEMS,
             gemsTotal: get().gemsTotal + AVARICE_GEMS,
-            alarm: get().alarm + AVARICE_ALARM,
           });
-          bus.emit("alarmRaised", { alarm: get().alarm });
+          get().raiseAlarm(AVARICE_ALARM);
           break;
         case "banish": {
           const after = get();
@@ -516,11 +554,16 @@ export const useRun = create<RunState>()(
 
     sealRoom: (roomId) => set({ sealedRoomId: roomId }),
 
+    raiseAlarm: (amount) => {
+      const alarm = get().alarm + amount;
+      set({ alarm });
+      bus.emit("alarmRaised", { alarm });
+    },
+
     takeKey: (roomId) => {
       const s = get();
-      if (s.keys > 0 || s.unlocked.includes(roomId)) return;
-      // The key room is remembered as unlocked so the key cannot be taken twice.
-      set({ keys: s.keys + 1, unlocked: [...s.unlocked, roomId] });
+      if (s.keyTakenIn !== null) return;
+      set({ keys: s.keys + 1, keyTakenIn: roomId });
       bus.emit("keyTaken");
     },
 
@@ -567,8 +610,16 @@ export const useRun = create<RunState>()(
   }))
 );
 
+/**
+ * The run's own clock, in seconds: wall time less whatever was spent in the
+ * pause menu. Everything timed measures against this, so pausing does not
+ * quietly spend a potion.
+ */
+export const runClock = (s: RunState): number =>
+  performance.now() / 1000 - s.pausedFor - (s.paused && s.pausedAt > 0 ? performance.now() / 1000 - s.pausedAt : 0);
+
 /** True while a timed effect is still running. */
-const running = (until: number): boolean => until > performance.now() / 1000;
+const running = (s: RunState, until: number): boolean => until > runClock(s);
 
 /**
  * How fast the player moves right now: their relics, then whatever they
@@ -577,16 +628,16 @@ const running = (until: number): boolean => until > performance.now() / 1000;
  */
 export function speedNow(s: RunState): { walk: number; dash: number } {
   const { walkSpeed, dashSpeed } = modifiers(s.relics);
-  const factor = running(s.effects.swift)
+  const factor = running(s, s.effects.swift)
     ? SWIFTNESS_MULTIPLIER
-    : running(s.effects.mire)
+    : running(s, s.effects.mire)
       ? MIRE_MULTIPLIER
       : 1;
   return { walk: walkSpeed * factor, dash: dashSpeed * factor };
 }
 
 /** Whether a Scroll of Gloom is still blacking out the map. */
-export const mapIsDark = (s: RunState): boolean => running(s.effects.gloom);
+export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
 
 /** What the exit charges on this floor, after relics. Never below one. */
 export const tollNow = (s: RunState): number =>

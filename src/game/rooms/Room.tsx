@@ -116,7 +116,7 @@ export function Room({ room, seed }: RoomProps) {
       )}
 
       {gem && <Gem roomId={room.id} position={gem} />}
-      {sentry && <Sentry position={sentry} />}
+      {sentry && <Sentry position={sentry.at} phase={sentry.phase} />}
       {holdsKey && (
         <IronKey roomId={room.id} position={keyPosition(room, seed, gem ? [gem] : [])} />
       )}

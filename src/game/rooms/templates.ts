@@ -19,5 +19,3 @@ export const getTemplate = (id: string): RoomTemplate | undefined => TEMPLATES.g
 
 export const templatesForKind = (kind: RoomTemplate["kind"]): RoomTemplate[] =>
   [...TEMPLATES.values()].filter((t) => t.kind === kind);
-
-export const allTemplates = (): RoomTemplate[] => [...TEMPLATES.values()];

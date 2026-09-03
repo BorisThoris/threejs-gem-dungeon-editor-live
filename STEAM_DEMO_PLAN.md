@@ -80,6 +80,18 @@ of spikes when its gem is lifted. Room shapes are now only used at sizes
 whose floor can actually hold the props, which had been placing them on
 bare slab in every shaped room.
 
+Then five rounds of improvement, each one deployed before the next began.
+Walking gained footsteps, a head dip and a shake when something hits you,
+with head bob switchable off because it makes some people ill. Every floor
+grew a locked vault whose key lies elsewhere - the lock only ever goes on a
+room the floor can be walked without, checked by walking it with that door
+shut. Runs stopped vanishing: a best haul, a deepest floor and a fastest
+escape are kept between sessions, every dungeon shows its seed, and a seed
+can be typed back in. A second threat arrived that does not roam - a
+watcher on a post turning a beam around a plain room, which rouses the
+floor rather than costing a life, so the Warden makes you leave and the
+Sentry makes you time your crossing.
+
 What is still ahead: a human playtest, Windows and signed macOS builds on
 their own hosts, and the Steamworks account side (app ID, depots, store
 page, capsule art).

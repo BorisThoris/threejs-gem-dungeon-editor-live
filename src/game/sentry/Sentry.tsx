@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
 import type { Group, Mesh, MeshBasicMaterial } from "three";
@@ -39,13 +39,12 @@ function angleBetween(a: number, b: number): number {
  * because a cone you can see the edge of is one you can judge, and this
  * room is entirely about judging it.
  */
-export function Sentry({ position }: { position: Vec3 }) {
+export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   const head = useRef<Group>(null);
   const wedge = useRef<Mesh>(null);
   const lit = useRef(0);
   const lastCall = useRef(-Infinity);
   const [seen, setSeen] = useState(false);
-  const phase = useMemo(() => Math.random() * TWO_PI, []);
 
   useFrame((state, delta) => {
     const g = head.current;
@@ -73,9 +72,9 @@ export function Sentry({ position }: { position: Vec3 }) {
     if (lit.current >= SENTRY_PATIENCE && now - lastCall.current > SENTRY_COOLDOWN_S) {
       lastCall.current = now;
       lit.current = 0;
-      const alarm = run.alarm + SENTRY_ALARM;
-      useRun.setState({ alarm });
-      bus.emit("alarmRaised", { alarm });
+      // Through the store's action, not setState: the alarm has one owner
+      // and anything that ever damps or caps it must apply here too.
+      run.raiseAlarm(SENTRY_ALARM);
       bus.emit("sentrySaw");
     }
 

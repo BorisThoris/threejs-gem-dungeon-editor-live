@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { useRun } from "../state/run";
+import { canControl, useRun } from "../state/run";
 
 interface GemProps {
   roomId: string;
@@ -36,7 +36,10 @@ export function Gem({ roomId, position, takeLabel }: GemProps) {
     const t = state.clock.getElapsedTime();
     g.rotation.y = t * 1.4;
     g.position.y = position[1] + Math.sin(t * 2) * 0.18;
-    if (taken || takeLabel) return;
+    // Not while the run is over or a room is still arriving: a teleport
+    // lands the camera before the room reports in, and a gem near where it
+    // lands would be taken on a floor being left.
+    if (taken || takeLabel || !canControl(useRun.getState())) return;
     const cam = state.camera.position;
     const dx = cam.x - position[0];
     const dz = cam.z - position[2];

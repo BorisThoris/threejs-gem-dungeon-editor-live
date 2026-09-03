@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
 import type { Group } from "three";
@@ -13,7 +13,8 @@ import { canControl, useRun } from "../state/run";
 import {
   ARENA_ARMS,
   ARENA_DURATION_S,
-  ARENA_RADII,
+  ARENA_INNER_RADIUS,
+  ARENA_RING_GAP,
   ARENA_SPIN,
   ARENA_WIND_UP_S,
   GROUND_Y,
@@ -45,9 +46,14 @@ export function ArenaRoom({ room }: RoomKindProps) {
   const [phase, setPhase] = useState<Phase>(taken ? "done" : "idle");
   const half = halfSize(room);
 
-  // Only the rings that fit inside this room, so a smaller arena is not
-  // ringed with spikes standing in its own walls.
-  const radii = useMemo(() => ARENA_RADII.filter((r) => r < half - 1), [half]);
+  // Rings all the way out to the corners of the box, because the box is
+  // what the player can stand in - a shaped arena's walls are still square,
+  // and rings that stopped at the drawn floor left four safe corners.
+  const radii = useMemo(() => {
+    const out: number[] = [];
+    for (let r = ARENA_INNER_RADIUS; r < half * Math.SQRT2; r += ARENA_RING_GAP) out.push(r);
+    return out;
+  }, [half]);
   const patches = useMemo(
     () =>
       Array.from({ length: ARENA_ARMS }, (_, arm) =>
@@ -60,19 +66,26 @@ export function ArenaRoom({ room }: RoomKindProps) {
   // and the cleanup would cancel the very timers it had just set. The ref
   // is what stops a room walked back into from starting all over again.
   const alreadyTaken = useRef(taken);
+  const running = useRef(false);
+
+  const stop = useCallback(() => {
+    running.current = false;
+    bus.emit("arenaRun", { running: false });
+    bus.emit("hint", null);
+    if (useRun.getState().sealedRoomId === room.id) useRun.getState().sealRoom(null);
+  }, [room.id]);
   useEffect(() => {
     if (!taken || alreadyTaken.current) return;
     setPhase("winding");
     bus.emit("hint", "The plinth is empty and the doors will not move. Keep walking.");
     bus.emit("arenaRun", { running: true });
+    running.current = true;
     useRun.getState().sealRoom(room.id);
     const toRunning = window.setTimeout(() => setPhase("running"), ARENA_WIND_UP_S * 1000);
     const toDone = window.setTimeout(
       () => {
         setPhase("done");
-        bus.emit("arenaRun", { running: false });
-        bus.emit("hint", null);
-        useRun.getState().sealRoom(null);
+        stop();
       },
       (ARENA_WIND_UP_S + ARENA_DURATION_S) * 1000
     );
@@ -80,14 +93,21 @@ export function ArenaRoom({ room }: RoomKindProps) {
       window.clearTimeout(toRunning);
       window.clearTimeout(toDone);
     };
-  }, [taken, room.id]);
+    // `stop` is memoised on room.id, which is already here, so listing it
+    // cannot re-run this effect and cancel its own timers - the bug this
+    // room had the first time round.
+  }, [taken, room.id, stop]);
 
-  // Leaving mid-run must not leave the floor's doors barred for good.
+  // Leaving mid-run - including by dying and starting a new run inside the
+  // fourteen seconds - must not leave the doors barred, the arena flagged as
+  // running, or its hint pinned to the top of the next run's screen. The
+  // timer that used to clear all three was cancelled by the very unmount
+  // that made clearing them necessary.
   useEffect(
     () => () => {
-      if (useRun.getState().sealedRoomId === room.id) useRun.getState().sealRoom(null);
+      if (running.current) stop();
     },
-    [room.id]
+    [stop]
   );
 
   return (

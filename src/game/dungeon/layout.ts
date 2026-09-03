@@ -2,12 +2,10 @@ import { createRng } from "../rng";
 import {
   DOOR_WIDTH,
   GROUND_Y,
-  INTERACT_RADIUS,
   PLAYER_SPAWN_Y,
   entranceDepth,
 } from "../world";
 import {
-  DIRS,
   DIR_STEP,
   DIR_YAW,
   OPPOSITE,
@@ -43,9 +41,6 @@ export function doorPosition(room: Room, dir: Dir): Vec3 {
   const step = DIR_STEP[dir];
   return [step.x * half, GROUND_Y, step.z * half];
 }
-
-/** Yaw of a door mesh so it faces into the room. */
-export const doorYaw = (dir: Dir): number => DIR_YAW[OPPOSITE[dir]];
 
 export interface Spawn {
   position: Vec3;
@@ -239,13 +234,3 @@ export function trapHazards(room: Room, gem: Vec3): Vec3[] {
     .map(([x, z]) => [sx * x, GROUND_Y, sz * z]);
 }
 
-/** Which of a room's walls have doorways. */
-export const doorDirs = (room: Room): Dir[] =>
-  DIRS.filter((dir) => Boolean(room.links[dir]));
-
-/** A point is within reach of a door if it is inside the interact radius. */
-export const nearDoor = (room: Room, x: number, z: number): boolean =>
-  doorDirs(room).some((dir) => {
-    const [dx, , dz] = doorPosition(room, dir);
-    return (x - dx) ** 2 + (z - dz) ** 2 <= INTERACT_RADIUS ** 2;
-  });

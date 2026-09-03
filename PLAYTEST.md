@@ -20,6 +20,9 @@ Measured over 400 generated floors.
 | Rooms on a floor | 8 | 10.0 | 12 |
 | Doorways from start to exit | 3 | 4.6 | 8 |
 | Gems available on a floor | 9 | 11.0 | 13 |
+| Chests on a floor | 3 | 7.3 | 15 |
+| Watchers on a floor (second down) | 0 | 1.3 | 5 |
+| Floors with a locked vault | | 400 of 400 | |
 | Walking time along the shortest path, no stops | 14 s | 20 s | 32 s |
 
 A run is three floors. The exit charges 3 gems, then 5, then 7: fifteen in
@@ -35,9 +38,20 @@ nine, and crosses a room at 4.4 units a second. The player walks at 5 and
 runs at 8, so it can never simply catch someone who keeps moving. It wins
 by being in the doorway you wanted.
 
-That is the whole decision the game now asks, once a room: the toll is
-paid, the exit is open, and there are four more gems on this floor. Do you
-go back for them?
+That is the whole decision the game asks, once a room: the toll is paid,
+the exit is open, and there are four more gems on this floor. Do you go
+back for them?
+
+**Three things push back in different ways.** The Warden roams and makes
+you leave a floor. The Sentry is nailed down and makes you time your
+crossing of a room; it never takes a life, only rouses the floor. The arena
+is a fixed fourteen seconds of keeping ahead of turning spikes, once, when
+you choose to start it.
+
+**Identification pays now.** About twenty-two chests over a run against
+eight kinds of item means duplicates are common, so learning that the inky
+bottle is healing is knowledge you will get to use. Earlier this was not
+true and the report said so.
 
 **What each thing costs.**
 
@@ -45,6 +59,7 @@ go back for them?
 | --- | --- | --- |
 | Exit, floor 1 / 2 / 3 | 3 / 5 / 7 gems | The way down, and the way out |
 | A life | 1 gem | One more mistake |
+| A name for an item | 1 gem | Knowing without spending it |
 | A chest | free | One potion or scroll, contents unknown |
 | A vault | one iron key, found on the floor | A room with three chests and a gem |
 | Warden's Lantern | 2 gems | Always knowing which room it is in |
@@ -54,10 +69,10 @@ go back for them?
 | Ash Censer | 4 gems | Gems rouse the floor half as much |
 | Toll Ledger | 4 gems | A gem off every exit |
 
-Prices rise by one per floor. The shop offers two relics, fixed per floor
+Relic prices rise by one per floor. The shop offers two, fixed per floor
 and per seed, so a shop is the same shop every time you walk back into it.
 
-## 2. What two independent code reviews found
+## 2. What three independent code reviews found
 
 Two reviewers read the whole tree after the rebuild. Their confirmed
 findings, all fixed on this branch:
@@ -93,16 +108,59 @@ findings, all fixed on this branch:
 `yarn test:layout` now checks the geometry over every size and 500 seeds,
 so the first two cannot come back silently.
 
+A third review, after five rounds of additions, found ten more. The worst
+were all one bug class - a fact computed twice from different premises,
+which is exactly what ARCHITECTURE.md is written against:
+
+- **The minimap turned the wrong way.** SVG rotation by the camera's yaw
+  puts the facing direction at the top; the code used minus that, so the
+  map was mirrored east to west. It was right when facing north or south,
+  which is why looking at it did not catch it.
+- **The arena had four safe corners.** Its arms swept circles out to the
+  drawn floor, but its walls are a square whatever shape the floor is, so
+  a player could stand in a corner the rings never reached - in the one
+  room whose whole promise is that there is nowhere safe to stand.
+- **The run's seed was destroyed on the way down.** Each floor generates
+  from a seed derived from the last, and the summary was showing that
+  rather than the run's, so every "same dungeon again" replayed a dungeon
+  nobody had played.
+- **The Sentry's beam angle was `Math.random()`**, so a replayed seed put
+  the watchers back in the right places pointing the wrong ways.
+- **The arena's cleanup timer was cancelled by the unmount that needed
+  it**, so dying to the arms and starting a new run left its hint pinned to
+  the screen.
+- **Timed potions ran on wall time**, so twenty seconds in the pause menu
+  spent a Potion of Swiftness. The run now owns a clock that stops.
+- The Sentry wrote the alarm directly rather than through the store, the
+  gem could be collected mid-transition, one array was holding both "the
+  key has been taken" and "this door is open", and the shop would sell a
+  life that left a player under the toll on a floor with no gems left.
+
+All ten are fixed, and the tests grew to match: the arena's arms must reach
+the corners of the box, a replayed seed must reproduce every watcher's beam
+angle, the run's seed must survive a descent, and a pause must not spend a
+potion.
+
 ## 3. What the automated walkthrough does
 
 `scripts/smoke-test.mjs` plays a run the way a player does, with the
 keyboard: it walks to doorways and presses E, prefers doors to rooms it has
 not seen, picks up gems by walking into them, tries the exit unpaid and
-paid, descends, wins from the last floor, restarts, and dies. Twenty checks
-pass on the current build. Separate probes (kept in the session, not the
-repo) drove the memory trial to a solve, the number tome, the plate trap
-with the carry mechanic, a spike patch costing a life, the shop counter,
-pause and resume, and the pointer capture.
+paid, descends, wins from the last floor, restarts, and dies. It then
+drives the systems that a random walk would not reliably reach - the toll
+curve, relics, the satchel, the arena's doors barring and letting go, the
+vault and its key, the records, and where the Sentries are. Sixty-one
+checks pass on the current build.
+
+One thing in it is a fixture rather than a test: the walker stands still to
+sample the floor, which on spikes is a way to die, so it is kept on its
+feet through the exploration phase. Dying has its own checks further down.
+
+`yarn test:layout` needs no browser and guards the geometry over every room
+size and 500 seeds: anchors clear of the door lanes and on the floor a
+shaped room actually draws, spikes in every trap room, the gem reachable
+without touching one, the generator connected, and a vault that never
+blocks the way to the exit.
 
 ## 4. What every room looks like
 
@@ -112,12 +170,12 @@ and smoother.
 | Kind | What the player finds |
 | --- | --- |
 | ![start](docs/playtest/room-start.png) | **Start.** A table, a chest, braziers, two glowing doorways. The hint says how to look. |
-| ![normal](docs/playtest/room-normal.png) | **Chamber.** Dressing only; the gem is the reason to enter. |
+| ![normal](docs/playtest/sentry.png) | **Chamber.** A gem, a chest, and from the second floor down often a watcher turning a beam around the room. |
 | ![treasure](docs/playtest/room-treasure.png) | **Vault.** Chests and a crystal; an authored layout from the Room Builder ships here. |
 | ![shop](docs/playtest/room-shop.png) | **Shop.** A counter that sells a life for a gem. |
 | ![library](docs/playtest/room-library.png) | **Library.** A lectern opens the number puzzle; solving it pays a gem. The red frame is a locked exit. |
 | ![trap](docs/playtest/room-trap.png) | **Trap room.** A ring of spikes between the doors and the gem. |
-| ![arena](docs/playtest/room-arena.png) | **Arena.** The big octagon; pillars and space. |
+| ![arena](docs/playtest/arena-gauntlet.png) | **Arena.** A plinth in the middle. Lifting its gem bars the doors and sets three arms of spikes turning. |
 | ![memory](docs/playtest/room-memory.png) | **Memory chamber.** Five crystals on pedestals; watch the order, repeat it with E. |
 | ![challenge](docs/playtest/room-challenge.png) | **Challenge room.** An idol on a pressure plate; weigh the plate with a candle before lifting it, or lose a life. |
 | ![end](docs/playtest/room-end.png) | **Exit.** Crystals and pillars; reaching it descends or wins. |

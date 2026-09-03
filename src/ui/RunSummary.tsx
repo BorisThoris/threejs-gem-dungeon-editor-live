@@ -18,7 +18,8 @@ export function RunSummary() {
   const known = useRun((s) => s.identified.length);
   const roomsSeen = useRun((s) => s.roomsSeen);
   const floor = useRun((s) => s.floor);
-  const seed = useRun((s) => s.dungeon?.seed ?? 0);
+  // The run's seed, not this floor's: they part company on the way down.
+  const seed = useRun((s) => s.runSeed);
   const seconds = useRun((s) => Math.max(0, Math.round((s.endedAt - s.startedAt) / 1000)));
   const startRun = useRun((s) => s.startRun);
   const quitToMenu = useRun((s) => s.quitToMenu);

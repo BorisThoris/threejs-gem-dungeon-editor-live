@@ -13,10 +13,20 @@ const WATCHED = new Set(["normal", "treasure", "trap"]);
  * walk back into it and a floor has a consistent character. Kept apart from
  * the component so the room shell can ask without pulling in a React tree.
  */
-export function sentryFor(room: Room, seed: number, floor: number): Vec3 | null {
+export interface SentryPlacement {
+  at: Vec3;
+  /** Where its beam is pointing at time zero, in radians. */
+  phase: number;
+}
+
+export function sentryFor(room: Room, seed: number, floor: number): SentryPlacement | null {
   if (floor < SENTRY_FIRST_FLOOR || !WATCHED.has(room.kind)) return null;
   const rng = createRng(`${seed}:${room.id}:${floor}:sentry`);
   if (rng() > SENTRY_CHANCE) return null;
   const spots = quadrantSpots(room, "far");
-  return spots[Math.floor(rng() * spots.length)];
+  const at = spots[Math.floor(rng() * spots.length)];
+  // Seeded, not random: the beam's starting angle is half of what makes a
+  // Sentry room what it is, and a seed that does not reproduce it is not
+  // reproducing the floor.
+  return { at, phase: rng() * Math.PI * 2 };
 }

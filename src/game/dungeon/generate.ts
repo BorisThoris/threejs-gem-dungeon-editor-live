@@ -1,5 +1,5 @@
 import { shapeFits } from "./layout";
-import { createRng, pick, shuffle, type Rng } from "../rng";
+import { createRng, pick, shuffle } from "../rng";
 import { templatesForKind } from "../rooms/templates";
 import {
   ROOM_SIZE_DEFAULT,
@@ -282,5 +282,3 @@ export function shortestPath(
   return path;
 }
 
-export const rngForRoom = (dungeon: Dungeon, room: Room): Rng =>
-  createRng(`${dungeon.seed}:${room.id}`);
