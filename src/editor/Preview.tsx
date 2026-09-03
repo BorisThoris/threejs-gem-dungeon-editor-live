@@ -40,6 +40,7 @@ export function Preview({ template, doors }: PreviewProps) {
     return {
       id: "preview",
       kind: template.kind,
+      seed: 0,
       grid: { x: 0, z: 0 },
       size: template.size,
       shape: template.shape,

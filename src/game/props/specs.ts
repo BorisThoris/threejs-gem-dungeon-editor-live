@@ -60,18 +60,23 @@ export const widestFurnishing = (): number =>
   Math.max(...Object.values(PROP_SPECS).filter((s) => s.solid && !s.authored).map((s) => s.radius));
 
 export const PROP_SPECS: Record<PropKind, PropSpec> = {
+  banner: { title: "Banner", radius: 0.5, solid: false },
   barrel: { title: "Barrel", radius: 0.45, solid: true, collider: { shape: "cylinder", args: [0.55, 0.42], y: 0.55 } },
   bookshelf: { title: "Bookshelf", radius: 0.8, solid: true, collider: { shape: "cuboid", args: [0.8, 1.1, 0.225], y: 1.1 } },
   candle: { title: "Candle", radius: 0.1, solid: false },
   chair: { title: "Chair", radius: 0.3, solid: true, collider: { shape: "cuboid", args: [0.25, 0.55, 0.25], y: 0.55 } },
   chest: { title: "Chest", radius: 0.5, solid: true, collider: { shape: "cuboid", args: [0.46, 0.37, 0.29], y: 0.37 } },
+  crate: { title: "Crate", radius: 0.45, solid: true, collider: { shape: "cuboid", args: [0.42, 0.4, 0.42], y: 0.4 } },
   crystal: { title: "Crystal", radius: 0.35, solid: false },
   pillar: { title: "Pillar", radius: 0.6, solid: true, collider: { shape: "cylinder", args: [2.1, 0.4], y: 2.1 } },
   potion: { title: "Potion", radius: 0.15, solid: false },
+  rubble: { title: "Rubble", radius: 0.65, solid: false },
   skull: { title: "Skull", radius: 0.2, solid: false },
+  statue: { title: "Statue", radius: 0.55, solid: true, collider: { shape: "cylinder", args: [1.15, 0.5], y: 1.15 } },
   table: { title: "Table", radius: 1, solid: true, collider: { shape: "cuboid", args: [0.9, 0.41, 0.5], y: 0.41 } },
   tile: { title: "Floor inlay", radius: 1, solid: false },
   torch: { title: "Brazier", radius: 0.4, solid: false },
+  urn: { title: "Urn", radius: 0.4, solid: true, collider: { shape: "cylinder", args: [0.6, 0.36], y: 0.6 } },
   wall: { title: "Wall segment", radius: 1.5, solid: true, authored: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
   web: { title: "Cobweb", radius: 0.7, solid: false },
   spikes: { title: "Spikes", radius: 1.2, solid: false },

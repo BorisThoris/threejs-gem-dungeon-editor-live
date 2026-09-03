@@ -45,7 +45,7 @@ const check = (name, ok, detail = "") => {
   if (!ok) failures++;
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
-const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
+const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, seed: 0, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
 /**
  * Every set of doors a room can have: all fifteen non-empty combinations.
  *
@@ -281,7 +281,7 @@ for (const size of L.ROOM_SIZES) {
 
   // And the same for a room next door, which is how the Warden's footfall
   // through a wall gets its side.
-  const here = { id: "here", kind: "normal", grid: { x: 0, z: 0 }, size: 16, shape: "square",
+  const here = { id: "here", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size: 16, shape: "square",
     links: { north: "up", east: "right", west: "left" } };
   check("a room to the east is heard on the right when facing north",
     L.sideOfNeighbour(here, "right", L.DIR_YAW.north) > 0.99);

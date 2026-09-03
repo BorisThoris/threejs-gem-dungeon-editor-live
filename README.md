@@ -159,7 +159,7 @@ in them can fail to reach a run:
   standing in a brazier, one where the gem or the floor's key can land - is
   listed in red under the grid as you place it, by the same rules that hold
   what ships. Export the JSON to ship it.
-- **Props** - inspect one of the fifteen props: footprint, solidity, rotation.
+- **Props** - inspect one of the twenty props: footprint, solidity, rotation.
 - **Surfaces** - paint a 128x128 tile and save it under a surface id. Every
   floor and wall using that surface changes at once, in a running game too.
 - **Mosaic** - a 16x16 grid of coloured shapes, saved as a surface.
@@ -174,7 +174,7 @@ intermittent stutter usually is, and all three are fixed. Rapier's
 interpolation snapshotted a position and rotation object for every body on
 every physics step, and a fixed timestep runs several steps on a late frame,
 so the frames that were already slow allocated the most - interpolation is
-off, and nothing here needs it. A room's fifteen props were fifteen rigid
+off, and nothing here needs it. A room's props were one rigid body each,
 bodies that never move; they are one static body now. Every noise-based
 sound effect built and filled its own buffer, so the Warden knocking on a
 wall was a synchronous stall every few seconds; there is one shared buffer.

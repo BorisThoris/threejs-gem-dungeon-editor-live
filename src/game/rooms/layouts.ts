@@ -87,10 +87,10 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("chest", far[1], askew(rng)),
       at("table", near[0]),
       at("chair", near[1], Math.PI / 2),
-      at("barrel", far[2]),
+      at("urn", far[2]),
       at("candle", near[2]),
       at("web", corners[2]),
-      ...middle(centre, ["barrel", "candle"]),
+      ...middle(centre, ["crate", "candle"]),
     ],
   ],
   end: [
@@ -111,7 +111,7 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("crystal", near[1]),
       at("crystal", near[3]),
       at("tile", near[0]),
-      ...middle(centre, ["pillar", "pillar"]),
+      ...middle(centre, ["statue", "statue"]),
     ],
   ],
   normal: [
@@ -122,7 +122,7 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("chair", far[2], rng() * Math.PI * 2),
       ...(rng() > 0.5 ? [at("potion", near[3])] : []),
       at("web", corners[3]),
-      ...middle(centre, ["barrel", "barrel"]),
+      ...middle(centre, ["crate", "barrel"]),
     ],
     // A room somebody worked in: a bench against the far wall, stools, and
     // the stock stacked in the near corner.
@@ -130,7 +130,7 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("table", far[0], askew(rng)),
       at("chair", far[1], -Math.PI / 2),
       at("chair", near[2], Math.PI / 4),
-      at("barrel", near[0]),
+      at("crate", near[0]),
       at("barrel", near[1]),
       at("chest", far[3], askew(rng)),
       at("web", corners[0]),
@@ -140,14 +140,26 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
     // A room somebody died in.
     ({ near, far, corners, centre, rng }) => [
       at("skull", near[2]),
-      at("skull", far[3]),
+      at("rubble", far[3]),
       at("chest", far[0], askew(rng)),
       at("barrel", near[3]),
       at("pillar", far[2]),
       ...(rng() > 0.4 ? [at("potion", near[1])] : [at("candle", near[1])]),
       at("web", corners[1]),
       at("web", corners[3]),
-      ...middle(centre, ["skull", "barrel"]),
+      ...middle(centre, ["skull", "rubble"]),
+    ],
+    // A store room: everything in it is a container, and none of them is
+    // the barrel the last three rooms were full of.
+    ({ near, far, corners, centre, rng }) => [
+      at("crate", near[0]),
+      at("crate", far[1], askew(rng)),
+      at("urn", near[2]),
+      at("urn", far[3]),
+      at("chest", far[0], askew(rng)),
+      at("banner", corners[1]),
+      at("web", corners[2]),
+      ...middle(centre, ["crate", "urn"]),
     ],
   ],
   treasure: [
@@ -168,11 +180,23 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("table", near[0]),
       at("chair", near[1], Math.PI),
       at("crystal", near[2]),
-      at("crystal", far[2]),
+      at("urn", far[2]),
       at("candle", near[3]),
       at("web", corners[1]),
       // A strongroom with a spare wall gets one more chest to open.
       ...middle(centre, ["chest", "candle"]),
+    ],
+    // A shrine somebody left offerings at, rather than a strongroom.
+    ({ near, far, corners, centre }) => [
+      at("statue", far[0], facing(far[0])),
+      at("chest", near[1], 0.3),
+      at("urn", near[2]),
+      at("urn", far[2]),
+      at("candle", near[0]),
+      at("candle", near[3]),
+      at("banner", corners[0]),
+      at("banner", corners[3]),
+      ...middle(centre, ["crystal", "crystal"]),
     ],
   ],
   trap: [
@@ -197,16 +221,46 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("web", corners[3]),
       ...middle(centre, ["pillar", "skull"]),
     ],
+    // Whatever held the ceiling up here gave way a long time ago.
+    ({ near, far, corners, centre, rng }) => [
+      at("rubble", near[0]),
+      at("rubble", far[2]),
+      at("rubble", near[3]),
+      at("pillar", far[1]),
+      at("skull", near[1]),
+      at("chest", far[3], askew(rng)),
+      at("web", corners[1]),
+      ...middle(centre, ["rubble", "skull"]),
+    ],
   ],
-  // The counter holds near[2].
+  // The counter holds near[2] and the shelves far[0] and far[1].
+  //
+  // The set pieces used to have one arrangement each, on the grounds that
+  // their content is what makes them and a shop that moved its barrels
+  // around would only be harder to read. That is true of the counter and
+  // the lectern and the pedestals, and it is not true of the barrels: a run
+  // walks into three shops, three libraries and three trials, one per
+  // floor, and with one arrangement each two of every three were identical.
+  // The content stays on its own anchors; only the dressing moves.
   shop: [
-    ({ near, far, centre }) => [
+    ({ near, far, corners, centre }) => [
       at("barrel", near[0]),
       at("barrel", near[1]),
       at("bookshelf", far[2], facing(far[2])),
       at("potion", far[3]),
       at("candle", near[3]),
-      ...middle(centre, ["barrel", "potion"]),
+      at("banner", corners[2]),
+      ...middle(centre, ["crate", "potion"]),
+    ],
+    ({ near, far, corners, centre }) => [
+      at("crate", near[0]),
+      at("urn", near[1]),
+      at("urn", far[2]),
+      at("chair", near[3], Math.PI / 3),
+      at("candle", far[3]),
+      at("banner", corners[0]),
+      at("web", corners[3]),
+      ...middle(centre, ["barrel", "crate"]),
     ],
   ],
   // The lectern holds near[3].
@@ -220,6 +274,18 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("candle", near[2]),
       // The aisle a library is supposed to have.
       ...middle(centre, ["bookshelf", "bookshelf"]),
+    ],
+    // The half of it nobody has tidied since whatever happened here.
+    ({ near, far, corners, centre, rng }) => [
+      at("bookshelf", far[1], facing(far[1])),
+      at("bookshelf", far[3], facing(far[3])),
+      at("rubble", far[2]),
+      at("crate", near[0]),
+      at("skull", near[2]),
+      at("candle", near[1]),
+      at("web", corners[1]),
+      at("web", corners[2]),
+      ...middle(centre, rng() > 0.5 ? ["bookshelf", "crate"] : ["crate", "bookshelf"]),
     ],
   ],
   // The arena, the two trials and nothing else are furnished without a
@@ -237,9 +303,29 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("skull", near[0]),
       at("barrel", near[2]),
     ],
+    ({ near, far, corners }) => [
+      at("chest", near[3], -0.4),
+      at("statue", far[0], facing(far[0])),
+      at("statue", far[2], facing(far[2])),
+      at("pillar", far[1]),
+      at("pillar", far[3]),
+      at("rubble", near[0]),
+      at("skull", near[1]),
+      at("banner", corners[1]),
+      at("banner", corners[2]),
+    ],
   ],
   // The pedestals hold the far anchors and the lectern near[3].
-  memory: [({ near }) => [at("pillar", near[0]), at("pillar", near[1]), at("pillar", near[2])]],
+  memory: [
+    ({ near }) => [at("pillar", near[0]), at("pillar", near[1]), at("pillar", near[2])],
+    ({ near, corners }) => [
+      at("statue", near[0], facing(near[0])),
+      at("urn", near[1]),
+      at("urn", near[2]),
+      at("banner", corners[0]),
+      at("banner", corners[2]),
+    ],
+  ],
   // The plate holds near[0] and the candles near[1] and near[2].
   challenge: [
     ({ near, far, corners }) => [
@@ -247,6 +333,13 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("pillar", far[1]),
       at("skull", near[3]),
       at("web", corners[0]),
+    ],
+    ({ near, far, corners }) => [
+      at("statue", far[2], facing(far[2])),
+      at("rubble", far[1]),
+      at("urn", near[3]),
+      at("skull", far[3]),
+      at("banner", corners[3]),
     ],
   ],
 };

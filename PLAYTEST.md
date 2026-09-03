@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Eighteen more turned up on the next passes, all of them things nobody had
+Twenty more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -252,22 +252,53 @@ looked at because the tests were green:
   rather than fixing it. One animation frame, one poll, edges true for
   exactly one frame, and `readGamepad` is a read: four readers spread
   across a frame now see one press four times out of four.
-- **A run is 34 rooms and 23 of them looked different.** Named twice in this
+- **A run is 34 rooms and 24 of them looked different.** Named twice in this
   document as "the same props in the same quadrants" without anyone
-  measuring it, which is how a hunch becomes received wisdom. Measured: over
-  120 runs a player walks through 34.4 rooms of which 23.0 look different,
-  the first room that looks like one already seen arrives at room 11 - in
-  120 runs out of 120 - and only 97 distinct room appearances exist in the
+  measuring it, which is how a hunch becomes received wisdom. Measured over
+  120 runs: a player walks through 34.6 rooms of which 24.1 look different,
+  the first room that looks like one already seen arrives at room 11.7 - in
+  120 runs out of 120 - and only 98 distinct room appearances exist in the
   whole game, the most common of them, the authored hall, being one room in
-  every eleven. The cause was not the fifteen props. Every room of a kind at
+  every twelve. The cause was not the fifteen props. Every room of a kind at
   a given size rendered in exactly the same corners, because the anchors
   were the same four points in every room. They are read in a seeded order
   now - four quarter turns and a mirror, and the whole frame turns together,
   so the gem, the braziers, the shop's counter and an authored template all
   turn with the dressing and a turned room is still a room somebody laid
-  out. 31.4 of 34.4 rooms look different, the first repeat moves to room 16,
-  the game has 553 distinct room appearances instead of 97, and the most
-  common one is down from 8.8% to 2.4%.
+  out.
+
+  The figures first written here for that change - 23.0 rooms of 34.4
+  looking different before, 31.4 after - came from an instrument with a bug
+  in it: the probe passed the run's seed to all three floors, where the game
+  derives a new one for each, so it generated the same dungeon three times
+  and reported its own mistake as the game repeating itself. Re-measured
+  with that fixed, and the same instrument pointed at all three trees: 24.1
+  of 34.6 rooms looked different before the turn, 32.1 after it, and the
+  first repeat moved from room 11.7 to room 18.1. The direction was right
+  and the numbers were not.
+- **Five more props moved the tail and not the number.** The last thing this
+  document kept naming was the fifteen props, so five more were added - a
+  crate, a statue, an urn, rubble and a banner - along with a fourth
+  arrangement for chambers and a third for vaults and traps. Distinct room
+  appearances went from 555 to 637 and the numbers that matter did not move
+  at all: still 32 of 34.6 rooms looking different, first repeat still at
+  room 18. Which is the useful half of measuring something: the repetition
+  left in a run was not coming from the common rooms. It was coming from the
+  set pieces, one per floor and three per run, with one arrangement each -
+  and from the start room, which the generator names `start` and digs at the
+  grid origin on every floor, so it drew the same orientation all three
+  times. A room carries its dungeon's seed now, and every set piece has a
+  second dressing with its content left where it was. 33.0 of 34.6 rooms
+  look different, the first repeat moves to room 20.7, only 95 runs in 120
+  repeat at all, and the most common look is 1.4% of rooms rather than 8.2%
+  before any of this.
+- **The instrument had a bug, and it had been reported from.** The probe
+  behind those measurements passed the run's seed to all three floors, where
+  the game derives a new one per floor - so it generated the same dungeon
+  three times and read that back as the game repeating itself. It made the
+  start room look like it repeated in 120 runs out of 120. The figures in
+  the entry above are re-measured with it fixed, and the entry says what the
+  old ones were.
 - **A harness that said the built site does not load, on one run in five.**
   The production check retried its first page load forty times with nothing
   in between, and a connection to a port nothing is listening on is refused
@@ -435,9 +466,10 @@ nobody has held a Deck with this on it.
   something standing either side of the way through rather than only in
   their corners; and every room is furnished in one of eight orientations,
   so 31 of the 34 rooms in a run look different and the first repeat is at
-  room 16. What is left to run out is the props themselves: fifteen of them,
-  and a chamber is still recognisably built from the same fifteen, however
-  they are turned.
+  room 21, with twenty props rather than fifteen and every kind furnished
+  more than one way. What is left to run out is not the room list any more:
+  it is the perf budget, which the worst room now uses 60 draw calls of 72
+  of, and the ten room kinds themselves.
 - **Is the bottom floor too much?** It arrives at alarm 2 with one room of
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than

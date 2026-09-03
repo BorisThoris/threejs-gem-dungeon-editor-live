@@ -46,6 +46,7 @@ export function roomForTemplate(t: RoomTemplate, grid = { x: 0, z: 0 }): Room {
   return {
     id: "authored",
     kind: t.kind,
+    seed: 0,
     grid,
     size: t.size,
     shape: t.shape,

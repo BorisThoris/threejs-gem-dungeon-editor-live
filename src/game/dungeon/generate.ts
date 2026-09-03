@@ -105,6 +105,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     const room: Room = {
       id: rooms.length === 0 ? "start" : `room_${rooms.length}`,
       kind,
+      seed,
       grid: { x, z },
       size,
       shape: template?.shape ?? (wanted.length ? pick(rng, wanted) : "square"),

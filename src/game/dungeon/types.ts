@@ -76,18 +76,23 @@ export const DIR_YAW: Record<Dir, number> = {
 };
 
 export const PROP_KINDS = [
+  "banner",
   "barrel",
   "bookshelf",
   "candle",
   "chair",
   "chest",
+  "crate",
   "crystal",
   "pillar",
   "potion",
+  "rubble",
   "skull",
+  "statue",
   "table",
   "tile",
   "torch",
+  "urn",
   "wall",
   "web",
   "spikes",
@@ -124,6 +129,18 @@ export interface GridPos {
 export interface Room {
   id: string;
   kind: RoomKind;
+  /**
+   * The seed of the dungeon this room belongs to.
+   *
+   * Here because a room's identity is not its id: the generator names the
+   * first room of every floor `start` and digs it at the grid origin, so
+   * the start room of floor two had the same id and the same grid position
+   * as the start room of floor one - and therefore, once rooms were
+   * furnished in a seeded orientation, exactly the same furniture in
+   * exactly the same corners. A run has three of them and two were always
+   * identical, in 120 runs out of 120.
+   */
+  seed: number;
   grid: GridPos;
   /** Side length of the square the room is built on. */
   size: number;

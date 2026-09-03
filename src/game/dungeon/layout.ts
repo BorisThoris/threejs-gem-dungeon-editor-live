@@ -178,7 +178,7 @@ export interface Orientation {
 export function orientationOf(room: Room): Orientation {
   // From the room itself, not from the run's seed: `quadrantSpots` takes a
   // Room and nothing else, and every caller depends on that.
-  const rng = createRng(`orient:${room.id}:${room.grid.x},${room.grid.z}`);
+  const rng = createRng(`orient:${room.seed}:${room.id}:${room.grid.x},${room.grid.z}`);
   return { turns: Math.floor(rng() * 4) as 0 | 1 | 2 | 3, mirror: rng() < 0.5 };
 }
 
@@ -360,7 +360,7 @@ export function cornerSpots(room: Room): Vec3[] {
  */
 export function shapeFits(shape: Shape, size: number): boolean {
   if (shape === "square") return true;
-  const room = { id: "fit", kind: "normal", grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
+  const room = { id: "fit", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
   const radius = quadrantDistance(room, "far") * Math.SQRT2;
   return radius <= diagonalReach(room) + 0.6;
 }

@@ -62,13 +62,17 @@ Two stores that both claimed the player's stats. So:
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by
   construction.
+- A `Room` carries the seed of the dungeon it belongs to, because its id is
+  not its identity: the generator names the first room of every floor
+  `start` and digs it at the grid origin, so without the seed the start room
+  of floor two was the start room of floor one down to the furniture.
 - Which way round a room is furnished is a seeded property of the room:
   four quarter turns and a mirror, applied to the quadrant and corner
   anchors and to an authored template's props. Everything a room holds comes
   off those anchors, so the whole frame turns together and a turned room is
   still a laid-out room rather than a scramble. It is what took a run from
-  23 of 34 rooms looking different to 31, and the game from 97 distinct room
-  appearances to 553. The doors, the spawns and the middle pair do not turn:
+  24 of 34.6 rooms looking different to 32, and the game from 98 distinct
+  room appearances to 555. The doors, the spawns and the middle pair do not turn:
   they are fixed by which walls the room has.
 - The anchor rings are spaced from `PROP_SPECS`, not from magic numbers: the
   widest furnishing an arrangement can place decides how far `near` stands
@@ -154,7 +158,7 @@ src/
       kinds.ts           kind -> tint, title, content component
       content.tsx        what each kind puts in the shell
       templates.ts       authored layouts, by id
-    props/catalog.tsx    the fifteen props, with footprint and solidity
+    props/catalog.tsx    the twenty props, with footprint and solidity
     puzzles/             memory trial, number tome, plate trap, Carryable
     textures/registry.ts surfaces by id: procedural defaults, overridable
     systems/             audio (synthesised), bus-driven

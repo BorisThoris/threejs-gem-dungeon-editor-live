@@ -23,7 +23,7 @@ export interface PropProps {
 }
 
 /**
- * The fifteen props the rooms are dressed with.
+ * The twenty props the rooms are dressed with.
  *
  * Each is plain geometry with an explicit collider where it is solid, so a
  * room can never be held up by an asset and a prop's collision box is never
@@ -309,6 +309,141 @@ function Web(p: PropProps) {
   );
 }
 
+/**
+ * A crate: square where the barrel is round.
+ *
+ * The cheapest new silhouette in the game. A store room dressed in barrels
+ * and a store room dressed in crates read as different rooms from the
+ * doorway, and neither is more than three boxes.
+ */
+function Crate(p: PropProps) {
+  return (
+    <group {...frame(p)}>
+      <mesh position={[0, 0.4, 0]} castShadow>
+        <boxGeometry args={[0.84, 0.8, 0.84]} />
+        <meshStandardMaterial color={WOOD} roughness={0.85} />
+      </mesh>
+      {/* Slats, so it is not a plain cube at close range. */}
+      {[0.12, 0.68].map((y) => (
+        <mesh key={y} position={[0, y, 0]}>
+          <boxGeometry args={[0.88, 0.1, 0.88]} />
+          <meshStandardMaterial color={DARK_WOOD} roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * A statue: the one thing in the room taller than the player.
+ *
+ * Every other furnishing is waist to chest height, so a room reads as a
+ * floor with things on it. A figure at head height and above gives the eye
+ * something at its own level, which is what a pillar does for the corners
+ * and nothing did for the middle of a room.
+ */
+function Statue(p: PropProps) {
+  return (
+    <group {...frame(p)}>
+      <mesh position={[0, 0.16, 0]} castShadow>
+        <boxGeometry args={[0.9, 0.32, 0.9]} />
+        <meshStandardMaterial color="#5d5c64" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 1.05, 0]} castShadow>
+        <cylinderGeometry args={[0.22, 0.34, 1.5, 10]} />
+        <meshStandardMaterial color="#8c8a92" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 1.95, 0]} castShadow>
+        <sphereGeometry args={[0.21, 12, 10]} />
+        <meshStandardMaterial color="#8c8a92" roughness={0.9} />
+      </mesh>
+      {/* Arms folded across it, which is what makes it read as a figure. */}
+      <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]}>
+        <boxGeometry args={[0.52, 0.14, 0.16]} />
+        <meshStandardMaterial color="#7e7c85" roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
+/** An urn: taller and narrower than a barrel, and fired rather than staved. */
+function Urn(p: PropProps) {
+  return (
+    <group {...frame(p)}>
+      <mesh position={[0, 0.6, 0]} castShadow>
+        <sphereGeometry args={[0.36, 12, 10]} />
+        <meshStandardMaterial color="#8a5a44" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 1.02, 0]}>
+        <cylinderGeometry args={[0.16, 0.12, 0.26, 10]} />
+        <meshStandardMaterial color="#7a4e3a" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.12, 0]}>
+        <cylinderGeometry args={[0.2, 0.24, 0.24, 10]} />
+        <meshStandardMaterial color="#7a4e3a" roughness={0.75} />
+      </mesh>
+    </group>
+  );
+}
+
+/**
+ * Rubble: a low pile of broken stone, and nothing to walk into.
+ *
+ * Not solid on purpose. A room that has been left alone for a long time
+ * wants floor clutter, and floor clutter you can trip over is floor clutter
+ * that will eventually wedge a player against a wall.
+ */
+function Rubble(p: PropProps) {
+  // Three, not five. Every mesh is a draw call and the worst room in the
+  // game is already at 56 of a budget of 72; a pile of rubble is not worth
+  // a tenth of that.
+  const stones: [number, number, number, number][] = [
+    [0, 0.11, 0, 0.22],
+    [0.28, 0.08, 0.16, 0.16],
+    [-0.24, 0.09, -0.2, 0.18],
+  ];
+  return (
+    <group {...frame(p)}>
+      {stones.map(([x, y, z, r], i) => (
+        <mesh key={i} position={[x, y, z]} rotation={[i * 0.7, i * 1.1, i * 0.4]} castShadow>
+          <dodecahedronGeometry args={[r, 0]} />
+          <meshStandardMaterial color={i % 2 ? "#6f6e76" : "#5c5b63"} roughness={0.95} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * A banner, hanging where nothing else in the game is.
+ *
+ * Every room is furnished on the floor and lit from its corners, so the
+ * wall between waist height and the ceiling is bare in all of them. This
+ * hangs there, like the cobweb, and is the only colour in a room that is
+ * not fire.
+ */
+function Banner(p: PropProps) {
+  return (
+    <group {...frame(p)} position={[p.position[0], p.position[1] + 2.05, p.position[2]]}>
+      <mesh castShadow>
+        <boxGeometry args={[0.9, 1.7, 0.04]} />
+        <meshStandardMaterial color="#7a2f3c" roughness={0.85} />
+      </mesh>
+      {/* The rail it hangs from: the rotation belongs on the mesh, not on
+          the geometry, which silently does nothing there. */}
+      <mesh position={[0, 0.9, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.04, 0.04, 1.05, 6]} />
+        <meshStandardMaterial color={IRON} metalness={0.6} roughness={0.5} />
+      </mesh>
+      {/* A device on it, so it is not a rectangle of flat colour. */}
+      <mesh position={[0, 0.15, 0.03]}>
+        <circleGeometry args={[0.22, 12]} />
+        <meshStandardMaterial color="#d8b45c" roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
 function Spikes(p: PropProps) {
   return <Hazard position={p.position} />;
 }
@@ -316,18 +451,23 @@ function Spikes(p: PropProps) {
 export type PropInfo = PropSpec & { component: ComponentType<PropProps> };
 
 const COMPONENTS: Record<PropKind, ComponentType<PropProps>> = {
+  banner: Banner,
   barrel: Barrel,
   bookshelf: Bookshelf,
   candle: Candle,
   chair: Chair,
   chest: Chest,
+  crate: Crate,
   crystal: Crystal,
   pillar: Pillar,
   potion: Potion,
+  rubble: Rubble,
   skull: Skull,
+  statue: Statue,
   table: Table,
   tile: Tile,
   torch: Torch,
+  urn: Urn,
   wall: Wall,
   web: Web,
   spikes: Spikes,
