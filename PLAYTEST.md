@@ -457,6 +457,52 @@ had looked at because the tests were green:
   32 of 2,496 combinations caught at a sprint; run against a mire of 0.9 it
   reports the potion costing nothing.
 
+- **The safest ground in the arena was the plinth you had just robbed.** The
+  arena bars its doors, sets three arms of spikes sweeping the whole floor
+  for fourteen seconds, and pins a hint to the screen saying *keep walking*.
+  The innermost ring of spikes sat 2.4 out and a patch reaches 1.2, so no
+  arm ever came within 1.2 of the middle - and a player against the plinth
+  stands 0.8 from its axis. That is not an obscure corner: it is the exact
+  spot you are standing on when you lift the gem that starts the arms.
+  Driven in the running game, standing still where the gem was: seventeen
+  seconds, three lives in, three lives out. Doing nothing was the winning
+  play in the game's only set piece.
+
+  What makes this one worth writing down is that there was already a check.
+  It is called *the arms cover everywhere the player can stand*, it ran on
+  every room size, and it passed - because it measured the outermost ring
+  against the corner of the box and the gap between rings against a
+  player's width, and never once asked about the inside. It also carried
+  its own copy of the loop that lays the rings out, which is the same
+  one-owner failure the bug itself was. `arena/sweep.ts` owns where the
+  patches go now, the room and the check both read it, and the question is
+  asked as a sweep of every radius a player can occupy rather than as three
+  spot measurements. Only the radius matters - an arm passes every angle
+  once a turn - which is what makes it answerable at all.
+
+  The innermost ring is 1.8 now, which puts the plinth's shadow inside a
+  patch's reach with 0.2 to spare, and costs nothing: the largest arena
+  lays the same eight rings it did before, and the perf budget is
+  unchanged. The room is now the two lines it always claimed to be, both
+  checked: **there is always a circle you can walk, and there is no spot
+  you can stand.** The first reads the slowest walk in the game out of
+  `systems/pace.ts` rather than `WALK_SPEED`, because the cycle before this
+  one established that a potion can halve it - the tightest circle needs
+  0.90 units a second against a mired 3.25. The second is the sweep. Run
+  against the shipped 2.4 the layout check reports a player standing 0.80
+  from the middle untouched, and the played check reports 0 hits where it
+  now reports 5.
+
+  Two smaller things fell out of it. The paragraph in `world.ts` describing
+  the room's difficulty curve had drifted from the numbers: it said the
+  wall needs 8, which is exactly a dash, when at the arena's actual size it
+  needs 8.77, which is more than a dash - so the outer half of the room
+  cannot be held at all without a Potion of Swiftness, which is a better
+  fact than the one that was written. It is measured in the check now
+  rather than asserted in prose. And the corners the last cycle of this
+  room went after are genuinely covered: at every size, the last ring lands
+  within a patch's reach of the furthest standable corner and no further.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
@@ -623,6 +669,7 @@ All in `src/game/world.ts`:
 | `WARDEN_SPEED_CALM` / `_ROUSED` | 2.2 / 4.4 | How fast it crosses a room |
 | `ESCAPE_MARGIN` | 1.15 | How much faster than a roused Warden the slowest sprint must be (`systems/pace.ts`) |
 | `WARDEN_STEP_CALM_S` / `_ROUSED_S` | 9 / 4 | Seconds between rooms |
+| `ARENA_INNER_RADIUS` / `ARENA_RING_GAP` | 1.8 / 2 | Where the arena's spike rings sit; coverage is checked in `arena/sweep.ts` |
 | `SENTRY_SPIN` | 0.55 | Radians a second the beam turns |
 | `SENTRY_PATIENCE` / `SENTRY_ALARM` | 0.9 s / 1 | How long in the light before it calls, and what that costs |
 | `ARENA_DURATION_S` / `ARENA_SPIN` | 14 / 0.75 | How long the arms turn, and how fast |

@@ -34,6 +34,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/systems/pace";
+   export * from "${root}src/game/arena/sweep";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/world";`
@@ -231,21 +232,6 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
     check(`${shape}: the floor's reach is between its narrowest and its box`, wrong === 0, `${wrong} of 192`);
   }
-}
-
-// The arena's arms must cover everywhere the player can stand, which is the
-// square box its walls make - not the polygon its floor is drawn as. Rings
-// that stopped at the drawn floor left four safe corners in a room whose
-// whole promise is that there are none.
-for (const size of L.ROOM_SIZES) {
-  const half = size / 2;
-  const rings = [];
-  for (let r = L.ARENA_INNER_RADIUS; r < half * Math.SQRT2; r += L.ARENA_RING_GAP) rings.push(r);
-  const reach = rings[rings.length - 1] + L.HAZARD_RADIUS;
-  // The farthest a player's centre can get from the middle, capsule included.
-  const corner = Math.hypot(half - 0.3, half - 0.3);
-  check(`arena ${size}: the arms reach the corners of the box`, reach >= corner, `arms ${reach.toFixed(1)}, corner ${corner.toFixed(1)}`);
-  check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
 }
 
 // Which side a sound is on. The sign matters more than the magnitude: a
@@ -685,6 +671,79 @@ check("the shipped room templates reach the floors the game generates", authored
   console.log(
     `      ${rows.length} combinations of ${RELIC_SETS.length} relic sets, ` +
       `${L.PACE_EFFECTS.length} potions and ${ALARMS.length} alarm levels.`
+  );
+}
+
+// --- The arena's two lines --------------------------------------------------
+//
+// Three arms of spikes sweep the whole floor for fourteen seconds and the
+// doors are barred, so the room is exactly two claims: there is always a
+// circle you can walk, and there is no spot you can stand. The second was
+// false for as long as the room has existed. The innermost ring sat at 2.4
+// and a patch reaches 1.2, so nothing ever came within 1.2 of the middle,
+// and a player against the plinth stands 0.8 out - which is the spot they
+// are standing on when they take the gem that starts the arms. Measured in
+// the running game: three lives in, three lives out, having done nothing.
+//
+// An arm sweeps every angle once a turn, so whether a point is reached
+// depends only on its radius, which is what makes this checkable at all.
+{
+  // Every size, though the generator only ever builds the arena at its
+  // largest: the room builder and a future kind can both reach this.
+  for (const size of L.ROOM_SIZES) {
+    const half = size / 2;
+    const rings = L.arenaRings(half);
+    const shelter = L.arenaShelter(half);
+    check(
+      `arena ${size}: no ground in it is out of the arms' reach`,
+      shelter === null,
+      shelter === null
+        ? `standable ${L.ARENA_MIN_STAND.toFixed(2)} to ${L.arenaMaxStand(half).toFixed(2)}, ` +
+          `${rings.length} rings from ${rings[0]}`
+        : `a player can stand ${shelter.toFixed(2)} from the middle untouched`
+    );
+    // Rings are only laid as far as a player can go. One past the corner is
+    // three wasted patches in the largest room in the game.
+    check(
+      `arena ${size}: the arms stop once they have covered the furthest corner`,
+      rings[rings.length - 1] - L.HAZARD_RADIUS < L.arenaMaxStand(half) &&
+        rings[rings.length - 1] + L.HAZARD_RADIUS >= L.arenaMaxStand(half),
+      `last ring ${rings[rings.length - 1].toFixed(1)}, furthest corner ${L.arenaMaxStand(half).toFixed(2)}`
+    );
+  }
+  const half = L.ROOM_SIZE_LARGE / 2;
+  // The plinth gets its own line, because it is the one place in the room a
+  // player is guaranteed to be standing: it is where the gem was.
+  check(
+    "the spot the gem is taken from is swept",
+    L.arenaRings(half).some((r) => Math.abs(r - L.ARENA_MIN_STAND) <= L.HAZARD_RADIUS),
+    `up against the plinth is ${L.ARENA_MIN_STAND.toFixed(2)} out, innermost ring ${L.arenaRings(half)[0]}`
+  );
+
+  // And the other line. The room is only fair if the innermost circle a
+  // player can hold is one they can hold on foot - and the walk it has to
+  // be held on is the slowest in the game, not WALK_SPEED, because a potion
+  // can halve that. This is the arena asking pace.ts the same question the
+  // Warden does.
+  const slowestWalk = Math.min(...L.PACE_EFFECTS.map((e) => L.paceFor([], e).walk));
+  const fastestDash = Math.max(...L.PACE_EFFECTS.map((e) => L.paceFor(L.RELIC_IDS, e).dash));
+  const inner = L.orbitSpeed(L.ARENA_INNER_ORBIT);
+  check(
+    "the innermost circle can be held at the slowest walk in the game",
+    inner < slowestWalk,
+    `holding ${L.ARENA_INNER_ORBIT.toFixed(2)} needs ${inner.toFixed(2)}, a mired walk is ${slowestWalk.toFixed(2)}`
+  );
+  // The room's shape as a difficulty curve: a stroll on the inside line,
+  // more than a plain sprint out at the wall. That gap is what makes
+  // choosing a line the thing the player is doing, and what makes a Potion
+  // of Swiftness worth drinking here - with the boots as well it is the one
+  // way to hold the outside, which is a reward rather than a hole.
+  const wall = L.orbitSpeed(half - 0.3);
+  check(
+    "the outer wall cannot be held at a plain sprint",
+    wall > L.DASH_SPEED,
+    `holding the wall needs ${wall.toFixed(2)}, a sprint is ${L.DASH_SPEED}` +
+      ` (with boots and swiftness, ${fastestDash.toFixed(2)})`
   );
 }
 

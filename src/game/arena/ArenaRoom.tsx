@@ -13,12 +13,11 @@ import { canControl, useRun } from "../state/run";
 import {
   ARENA_ARMS,
   ARENA_DURATION_S,
-  ARENA_INNER_RADIUS,
-  ARENA_RING_GAP,
   ARENA_SPIN,
   ARENA_WIND_UP_S,
   GROUND_Y,
 } from "../world";
+import { PLINTH_RADIUS, arenaRings } from "./sweep";
 
 type Phase = "idle" | "winding" | "running" | "done";
 
@@ -30,10 +29,13 @@ const PLINTH_HEIGHT = 1.1;
  *
  * Its gem is on a plinth in the middle. Lifting it bars the doors and sets
  * three arms of spikes turning, sweeping the whole floor, so there is no
- * corner to wait in - the only safe ground is the moving gap between two
- * arms. Staying in it means walking a circle for fourteen seconds, and how
- * hard that is depends entirely on which ring you choose to walk: the inner
- * line is a stroll, the outer wall needs a dash to hold.
+ * corner to wait in and no shelter behind the plinth either - the only safe
+ * ground is the moving gap between two arms. Staying in it means walking a
+ * circle for fourteen seconds, and how hard that is depends entirely on
+ * which ring you choose to walk: the inner line is a stroll, the outer wall
+ * needs a dash to hold. Which ground the arms reach is `sweep.ts`, and
+ * `yarn test:layout` holds it to the two lines that are this room: there is
+ * always a line you can walk, and there is no line you can stand on.
  *
  * Nothing here can be fought and nothing can be blocked, which is the same
  * bargain the rest of the floor makes. The difference is that the arena
@@ -46,14 +48,10 @@ export function ArenaRoom({ room }: RoomKindProps) {
   const [phase, setPhase] = useState<Phase>(taken ? "done" : "idle");
   const half = halfSize(room);
 
-  // Rings all the way out to the corners of the box, because the box is
-  // what the player can stand in - a shaped arena's walls are still square,
-  // and rings that stopped at the drawn floor left four safe corners.
-  const radii = useMemo(() => {
-    const out: number[] = [];
-    for (let r = ARENA_INNER_RADIUS; r < half * Math.SQRT2; r += ARENA_RING_GAP) out.push(r);
-    return out;
-  }, [half]);
+  // Where the patches sit is `arena/sweep.ts`, so that what the arms cover
+  // can be checked without the room being mounted. It was wrong twice: the
+  // corners of the box, and then the hole around the plinth.
+  const radii = useMemo(() => arenaRings(half), [half]);
   const patches = useMemo(
     () =>
       Array.from({ length: ARENA_ARMS }, (_, arm) =>
@@ -119,7 +117,7 @@ export function ArenaRoom({ room }: RoomKindProps) {
           <cylinderGeometry args={[0.45, 0.62, PLINTH_HEIGHT, 12]} />
           <meshStandardMaterial color="#5c5a63" roughness={0.9} />
         </mesh>
-        <CylinderCollider args={[PLINTH_HEIGHT / 2, 0.5]} position={[0, PLINTH_HEIGHT / 2, 0]} />
+        <CylinderCollider args={[PLINTH_HEIGHT / 2, PLINTH_RADIUS]} position={[0, PLINTH_HEIGHT / 2, 0]} />
       </RigidBody>
       {!taken && (
         <Gem

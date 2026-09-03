@@ -128,6 +128,12 @@ Two stores that both claimed the player's stats. So:
   `src/game/items/catalog.ts`; the effect itself is applied in one place,
   `useItem` in the run store. How fast the player moves after drinking one
   is `speedNow(state)`, and it is the only answer to that question.
+- Which ground the arena's arms sweep is `src/game/arena/sweep.ts` -
+  where the rings go, how close to the middle a player can get, and how
+  far out. The room draws from it and `yarn test:layout` checks it, which
+  matters because the room's own copy of the ring loop had left a hole
+  around the plinth that a check named after covering the floor did not
+  look for.
 - Whether the player can get away from the Warden is
   `src/game/systems/pace.ts`, and it owns both halves of that: `paceFor`
   turns relics and a potion into a walk and a sprint, `wardenSpeedAt` asks
@@ -295,7 +301,10 @@ second model for it to be written in.
   from the gems a player is guaranteed with at least one to spare. It also
   checks the one promise the Warden makes, over every relic set the shop can
   sell, every potion and every alarm level: a sprint always gets away, a
-  walk does not. The numbers behind that live in three files and were tuned
+  walk does not. The arena is held to its own two lines the same way -
+  there is always a circle you can walk, and there is no spot you can
+  stand - and the first of them asks pace.ts for the slowest walk in the
+  game rather than assuming WALK_SPEED. The numbers behind that live in three files and were tuned
   separately, which is how the potion of mire came to leave a sprint level
   with a roused Warden.
 - `yarn test:audio` listens to the game. It wraps

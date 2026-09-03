@@ -11,6 +11,15 @@
  *   yarn dev --port 5199   # in one terminal
  *   yarn test:smoke        # in another
  *
+ * Start that dev server fresh. One left running across a long editing
+ * session goes bad in a way that looks exactly like a broken game: seven
+ * checks failed together, twice, reproducibly - head bob measuring zero,
+ * the map drawing four rooms of fourteen, the tome refusing to open - and
+ * all of them passed on a server started a minute earlier with the same
+ * code. Nothing here can tell the difference, so if a run fails in a
+ * cluster and the failures make no sense together, restart the server
+ * before believing it.
+ *
  * Needs a Chromium binary. Set CHROMIUM_PATH if yours is not at the
  * Playwright default.
  */
@@ -479,8 +488,39 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     ok("the arena's doors bar when its gem is lifted", before === null && sealed === arena.id, `${before} then ${sealed}`);
     const barred = await page.evaluate(() => /will not move/i.test(document.body.innerText) || window.__run.getState().sealedRoomId !== null);
     ok("a barred door says so rather than doing nothing", barred);
+    /**
+     * Standing still where the gem was must not be the winning play.
+     *
+     * It was, for as long as this room has existed. The innermost ring of
+     * spikes sat at 2.4 and a patch reaches 1.2, so no arm ever came within
+     * 1.2 of the middle, and a player against the plinth stands 0.8 out -
+     * which is exactly where they are when they lift the gem that starts
+     * the arms. Seventeen seconds, three lives in, three lives out, in a
+     * room whose hint says "keep walking". layout-check owns the geometry
+     * of it now; this is the same claim made by playing it.
+     *
+     * Held in place rather than walked to, because the point is what
+     * happens to a player who does nothing, and lives are topped up so the
+     * run does not end and unmount the room mid-measurement.
+     */
+    const still = await page.evaluate(async () => {
+      const run = window.__run;
+      const stand = () => window.__bus.emit("teleport", { position: [0.8, 1.5, 0] });
+      let hits = 0;
+      let lives = run.getState().lives;
+      stand();
+      for (let i = 0; i < 34; i++) {
+        await new Promise((r) => setTimeout(r, 500));
+        stand();
+        const now = run.getState().lives;
+        if (now < lives) hits++;
+        if (now < 3) run.setState({ lives: 3, phase: "playing" });
+        lives = run.getState().lives;
+      }
+      return hits;
+    });
+    ok("standing where the gem was does not survive the arms", still > 0, `${still} hits while standing still`);
     // It lets go on its own, well inside the wind-up plus the run.
-    await page.waitForTimeout(17500);
     const freed = await page.evaluate(() => window.__run.getState().sealedRoomId);
     ok("the arena lets go when the arms stop", freed === null, String(freed));
   } else {

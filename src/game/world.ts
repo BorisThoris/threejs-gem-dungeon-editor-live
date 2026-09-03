@@ -288,23 +288,37 @@ export function floorRules(floor: number): FloorRules {
  * Three arms of spikes sweep the whole floor, so there is no corner to wait
  * in: the only safe ground is the turning gap between two arms, and staying
  * in it means walking a circle for as long as it lasts. The maths of that
- * is the design. At the inner ring, keeping pace needs about 1.8 units a
- * second and a walk does 5; out at the wall it needs 8, which is exactly a
- * dash, and in the corners it needs more than a dash can give. So the room
- * teaches you to run its inside line, a Potion of Swiftness is worth
- * drinking here, and a Potion of Mire is very nearly fatal.
+ * is the design, and `yarn test:layout` reads it off the numbers here
+ * rather than off this paragraph, which had drifted. The tightest circle a
+ * player can hold needs 0.90 units a second against the slowest walk in the
+ * game, which is a mired 3.25; out at the wall it needs 8.77 against a
+ * sprint of 8, so the outside cannot be held at all without a potion. So
+ * the room teaches you to run its inside line, a Potion of Swiftness is
+ * worth drinking here - with the boots it is the only way to hold the wall
+ * - and a Potion of Mire costs you the outer half of the room.
  *
  * The rings run out to the corners of the room's box, not to the edge of
  * the floor it draws. A shaped arena still has square walls, so a player
  * can stand where the polygon does not reach - and with the rings stopping
  * at the polygon, those four corners were the safest ground in a room whose
  * whole promise is that there is nowhere safe to stand.
+ *
+ * Which ground the arms actually cover is `arena/sweep.ts`, and it is
+ * checked rather than reasoned about: the corners were not the only place
+ * this room had got wrong.
  */
 export const ARENA_WIND_UP_S = 2;
 export const ARENA_DURATION_S = 14;
 export const ARENA_ARMS = 3;
-/** Innermost ring, and the gap between rings. Rings run out to the corners. */
-export const ARENA_INNER_RADIUS = 2.4;
+/**
+ * Innermost ring, and the gap between rings. Rings run out to the corners.
+ *
+ * The innermost was 2.4, and a patch reaches 1.2, so no arm ever came
+ * within 1.2 of the middle. A player stands 0.8 from the plinth's axis,
+ * which put the spot they take the gem from inside that hole: taking it and
+ * not moving was the safest play in the room. See `arena/sweep.ts`.
+ */
+export const ARENA_INNER_RADIUS = 1.8;
 export const ARENA_RING_GAP = 2;
 /** Radians a second. One turn takes about eight seconds. */
 export const ARENA_SPIN = 0.75;
