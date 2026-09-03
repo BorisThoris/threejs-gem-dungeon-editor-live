@@ -234,6 +234,12 @@ arrangement standing each prop on an anchor of its own, every shipped
 template legal in all eight ways round a room can be furnished, and every
 item findable with a look nothing else has.
 
+`yarn test:audio` listens: it taps whatever the game connects to the
+speakers and measures samples, so a cue that runs without making a sound
+fails. Every cue heard over the room, the ones you are meant to notice well
+clear of it, muting silent, and the ambient bed opening up as the floor is
+roused.
+
 `yarn test:perf` walks every room of every floor and holds what it costs to
 the budget above. It also walks one floor four times over to catch a room
 that forgets to dispose what it made.

@@ -207,6 +207,13 @@ export const ambience = {
   setTension(rouse: number) {
     if (!bed || !context) return;
     const at = context.currentTime + 0.6;
+    // These numbers are the ones that were here, and they are right:
+    // measured in the 420-900Hz band, where the low-pass opening is the
+    // whole of the difference, a roused floor puts 2.4 times the energy
+    // there. They were nearly changed on the strength of a measurement that
+    // was talking to a second copy of this module and therefore to a bed
+    // that had never been started - the replacement tuning measured
+    // slightly worse once the check was fixed.
     bed.gain.gain.linearRampToValueAtTime(0.11 + rouse * 0.1, at);
     bed.filter.frequency.linearRampToValueAtTime(320 + rouse * 420, at);
     bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6, at);
@@ -335,13 +342,24 @@ export const sfx = {
    * a synthesised footstep that tries to be a real one lands in the uncanny
    * valley, and a soft scuff does not.
    */
+  /**
+   * A footstep, and the most frequent sound in the game.
+   *
+   * It used to peak at 1.2 times the ambient bed, which is to say a walking
+   * player could not hear themselves walk: the bed runs under everything at
+   * about 0.029 and a walking step measured 0.035. Nobody noticed because
+   * nothing had ever measured a cue against the room it plays into. It sits
+   * at about twice the bed now - still the quietest thing the game plays on
+   * purpose, which is right for a sound that happens every stride, but
+   * present.
+   */
   step(strong: boolean, running = false) {
     const wobble = 0.85 + Math.random() * 0.4;
     // A run is heard by the Warden, so it had better be heard by the player
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
-    noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.16 : 0.11) * loud, 420 * wobble);
-    tone(70 * wobble, 0.06, "sine", (strong ? 0.14 : 0.09) * loud, 48 * wobble);
+    noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
+    tone(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
   },
   /** Something dropped into the satchel. */
   take() {
@@ -359,15 +377,28 @@ export const sfx = {
     noiseBurst(0.3, 0.22, 900);
   },
   /** Something thrown, landing a long way off in the dark. */
+  /**
+   * A thrown scroll landing. Its whole job is to say the noise happened
+   * over there, so it was the wrong cue to have sitting at not quite twice
+   * the room tone.
+   */
   clatter() {
-    noiseBurst(0.12, 0.13, 2400);
-    later(140, () => noiseBurst(0.16, 0.09, 1500));
-    later(300, () => tone(120, 0.5, "sine", 0.12, 70));
+    noiseBurst(0.12, 0.22, 2400);
+    later(140, () => noiseBurst(0.16, 0.15, 1500));
+    later(300, () => tone(120, 0.5, "sine", 0.2, 70));
   },
-  /** A Sentry calling out: two notes climbing, and something hears it. */
+  /**
+   * A Sentry calling out: two notes climbing, and something hears it.
+   *
+   * Measured at less than half the loudness of picking up a gem, which is
+   * the wrong way round by some distance: taking a gem is a thing you chose
+   * to do and being seen is a thing that happens to you and changes the
+   * rest of the floor. It is the loudest cue in the game bar taking a hit
+   * now.
+   */
   spotted(pan = 0) {
-    tone(440, 0.16, "square", 0.3, undefined, pan);
-    later(120, () => tone(660, 0.3, "square", 0.28, undefined, pan));
+    tone(440, 0.16, "square", 0.55, undefined, pan);
+    later(120, () => tone(660, 0.3, "square", 0.5, undefined, pan));
     later(260, () => tone(880, 0.45, "sawtooth", 0.2, undefined, pan));
   },
   /** Iron on stone: the key coming off the floor. */

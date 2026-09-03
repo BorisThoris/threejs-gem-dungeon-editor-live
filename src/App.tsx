@@ -88,9 +88,18 @@ export default function App() {
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.
     void import("./game/rooms/anchors").then((m) => (w.__anchorsFor = m.reservedAnchorsFor));
+    // The audio module, from the same instance the game plays through.
+    //
+    // A check that reaches for it with its own `import()` gets a different
+    // copy: the dev server hands the running app an updated module after an
+    // edit and a bare import the original, so `ambience.setTension` went to
+    // a second, never-started bed and returned without doing anything,
+    // silently, for a whole cycle's worth of measurements. A probe is the
+    // only honest way for a check to talk to a module's state.
     void import("./game/systems/audio").then((m) => {
       w.__stalking = m.sfx.isStalking;
       w.__sfx = m.sfx;
+      w.__ambience = m.ambience;
     });
     // Room drafts marked live in the editor register themselves when the
     // drafts module loads. The game at "/" never loads the editor, so load

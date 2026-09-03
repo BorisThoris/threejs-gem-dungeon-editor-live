@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Twenty-one more turned up on the next passes, all of them things nobody had
+Twenty-six more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -276,6 +276,44 @@ looked at because the tests were green:
   of 34.6 rooms looked different before the turn, 32.1 after it, and the
   first repeat moved from room 11.7 to room 18.1. The direction was right
   and the numbers were not.
+- **Twenty-five sounds, and nothing had ever listened to one.** The whole
+  sound design is synthesised - a few oscillators and an envelope each, no
+  audio files - which is a nice property and also means there is no asset
+  whose absence would be obvious. A build that shipped silent would have
+  passed every check this project had. `yarn test:audio` taps whatever
+  connects to the speakers, before the app loads, and measures samples: the
+  context is running, all 25 cues are heard over the room, the cues a player
+  is meant to notice are well clear of it, the held Warden sound starts and
+  stops, muting silences everything including the bed, the bed opens up when
+  the floor is roused, and no cue exists that nothing plays.
+- **A footstep was quieter than the room it played into.** Measured at 1.2
+  times the ambient bed - the most frequent sound in the game, and a walking
+  player could not hear themselves walk. It is at about twice the bed now,
+  still the quietest thing the game plays on purpose, which is right for a
+  sound that happens every stride.
+- **Being seen was quieter than picking something up.** A Sentry calling out
+  measured 0.078 against a gem's 0.170, which is the wrong way round by some
+  distance: taking a gem is a thing you chose to do, and being seen is a
+  thing that happens to you and changes the rest of the floor. The thrown
+  scroll's clatter, whose only job is to say the noise happened over there,
+  was at not quite twice the room. Both are up.
+- **A check that was talking to a different copy of the program.** The bed
+  check called `ambience.setTension` through its own `import()` of the audio
+  module - and the dev server hands the running app an updated module after
+  an edit and a bare import the original, so every call went to a second,
+  never-started bed and returned immediately. It read as the bed not
+  responding to the alarm, and the game's tuning was nearly changed on the
+  strength of it; the replacement numbers measured slightly worse once the
+  check was fixed, and were reverted. It talks to the probe now, and the bed
+  turns out to put 2.4 times the energy into 420-900Hz on a roused floor.
+- **And three measurements of the same thing that each said something
+  different.** A 600ms peak of the bed disagreed with itself one run in
+  three; a long average read the change as 1.5%; a long peak read it as
+  nothing. The bed's own low-pass is wobbled at 0.07Hz - a fourteen-second
+  cycle - so its level wanders by more than the alarm moves it. The control
+  that settled it was stopping the bed and watching the level go up. What
+  the tension does is open a filter, so the check looks at the spectrum, and
+  three runs now agree to within one per cent.
 - **A room built eighty-five geometries and eighty-five materials, for
   thirty-two shapes, and threw them all away on the way out.** The perf
   budget had been named as the thing now limiting content - the worst room

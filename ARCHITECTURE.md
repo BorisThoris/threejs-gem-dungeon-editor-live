@@ -277,6 +277,15 @@ second model for it to be written in.
   no two solid props standing inside each other and no footprint reaching
   into a lane or through a wall, spikes in every trap room and never in a
   lane, the gem reachable, the generator connected.
+- `yarn test:audio` listens to the game. It wraps
+  `AudioNode.prototype.connect` before the app loads, so anything that
+  reaches the speakers also reaches an analyser the check owns, and measures
+  samples rather than calls: every cue heard over the room tone, the loud
+  ones well clear of it, muting silent, and the ambient bed opening up when
+  the floor is roused - measured in the spectrum, because the bed's own
+  filter wobble is larger than what the alarm does to its volume. It talks
+  to the game through `window.__ambience` and `window.__sfx`, never through
+  its own import of the module: the dev server will hand it a second copy.
 - `yarn test:pad` plays the game with a synthetic standard-mapping
   controller, through the menus and the sticks: the title screen, both
   sticks, A, B, Start, pause, quit. `--desktop` runs the same thing against
