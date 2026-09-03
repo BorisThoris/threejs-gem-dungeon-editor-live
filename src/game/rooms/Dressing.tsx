@@ -4,121 +4,19 @@ import { useMemo } from "react";
 
 import { cornerSpots, HAZARD_RADIUS, inDoorLane, quadrantSpots, trapHazards, type Vec3 } from "../dungeon/layout";
 import { createRng } from "../rng";
-import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
+import type { PropPlacement, Room } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { nameOf, rollItem } from "../items/catalog";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, reservedAnchors } from "./kinds";
+import { arrangementFor, type Spots } from "./layouts";
 import { getTemplate } from "./templates";
 
 interface DressingProps {
   room: Room;
   seed: number;
 }
-
-type Spots = {
-  near: [number, number, number][];
-  far: [number, number, number][];
-  corners: [number, number, number][];
-  rng: () => number;
-};
-
-const at = (kind: PropPlacement["kind"], [x, , z]: [number, number, number], rotation = 0): PropPlacement => ({
-  kind,
-  x,
-  z,
-  rotation,
-});
-
-/**
- * What each kind puts in its quadrants when it has no authored template.
- *
- * Every room is lit from its corners; the kind decides what fills the
- * space between. Props go in the diagonal quadrants only - the only part of
- * a four-doored room that is never on a path between doorways - and the
- * quadrant anchors already keep clear of the door lanes.
- */
-const LAYOUTS: Record<RoomKind, (s: Spots) => PropPlacement[]> = {
-  start: ({ near, far }) => [
-    at("chest", near[0]),
-    at("barrel", near[1]),
-    at("table", far[2]),
-    at("chair", far[3], Math.PI),
-  ],
-  end: ({ near, far }) => [
-    at("crystal", near[0]),
-    at("crystal", near[1]),
-    at("crystal", near[2]),
-    at("candle", near[3]),
-    at("pillar", far[0]),
-    at("pillar", far[1]),
-  ],
-  normal: ({ near, far, corners, rng }) => [
-    at("chest", near[1], rng() * 0.8 - 0.4),
-    at("barrel", near[0]),
-    at("table", far[1]),
-    at("chair", far[2], rng() * Math.PI * 2),
-    ...(rng() > 0.5 ? [at("potion", near[3])] : []),
-    at("web", corners[3]),
-  ],
-  treasure: ({ near, far }) => [
-    at("chest", near[0], 0.4),
-    at("chest", far[1], -0.4),
-    at("chest", far[2], 0.9),
-    at("barrel", near[3]),
-    at("crystal", far[3]),
-    at("pillar", near[1]),
-    at("pillar", near[2]),
-  ],
-  // The counter holds near[2].
-  shop: ({ near, far }) => [
-    at("barrel", near[0]),
-    at("barrel", near[1]),
-    at("bookshelf", far[2]),
-    at("potion", far[3]),
-    at("candle", near[3]),
-  ],
-  // The lectern holds near[3].
-  library: ({ near, far }) => [
-    at("bookshelf", far[0], Math.PI / 4),
-    at("bookshelf", far[1], -Math.PI / 4),
-    at("bookshelf", far[2], -Math.PI / 4),
-    at("table", near[0]),
-    at("chair", near[1]),
-    at("candle", near[2]),
-  ],
-  trap: ({ near, far, corners }) => [
-    at("chest", near[1], -0.3),
-    at("skull", near[0]),
-    at("skull", far[2]),
-    at("web", corners[1]),
-    at("web", corners[2]),
-    at("barrel", near[3]),
-  ],
-  arena: ({ near, far }) => [
-    at("chest", near[3], 0.5),
-    at("pillar", far[0]),
-    at("pillar", far[1]),
-    at("pillar", far[2]),
-    at("pillar", far[3]),
-    at("skull", near[0]),
-    at("barrel", near[2]),
-  ],
-  // The pedestals hold the far anchors and the lectern near[3].
-  memory: ({ near }) => [
-    at("pillar", near[0]),
-    at("pillar", near[1]),
-    at("pillar", near[2]),
-  ],
-  // The plate holds near[0] and the candles near[1] and near[2].
-  challenge: ({ near, far, corners }) => [
-    at("pillar", far[0]),
-    at("pillar", far[1]),
-    at("skull", near[3]),
-    at("web", corners[0]),
-  ],
-};
 
 /** How close a prop may stand to the gem or to the kind's own content. */
 const CLEAR_OF_GEM = 1.0;
@@ -145,8 +43,10 @@ export function placementsFor(room: Room, seed: number): PropPlacement[] {
     corners: cornerSpots(room),
     rng,
   };
-  const torches = spots.corners.map((c) => at("torch", c));
-  const layout = template ? authored : LAYOUTS[room.kind](spots);
+  const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
+  // The arrangement is drawn before it is run, so a kind with several of
+  // them spends one number choosing and the rest furnishing.
+  const layout = template ? authored : arrangementFor(room.kind, rng)(spots);
   const reserved = reservedAnchors(room);
   const gem = gemFor(room, seed);
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];

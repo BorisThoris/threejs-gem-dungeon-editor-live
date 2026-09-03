@@ -22,6 +22,13 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
+- How a room of each kind is furnished lives in `src/game/rooms/layouts.ts`,
+  as arrangements that only ever name an anchor - so an arrangement is clear
+  of the door lanes by construction rather than by being checked. The kinds
+  a player walks through over and over have several, drawn from the room's
+  own seed; the set pieces have one, because their content is what makes
+  them. It is a plain module with no React in it, so the layout check can
+  bundle it for node and walk every arrangement at every size.
 - Positions inside a room come from `src/game/dungeon/layout.ts`. Doors,
   spawns, the door lanes, and three anchor families in the four diagonal
   quadrants - `near`, `far` and the corners - that are distinct by

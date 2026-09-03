@@ -49,6 +49,10 @@ and never on the way to the exit, so a vault is a detour worth taking
 rather than a wall across the run - you can always leave without it, and
 you will always wonder what was in it.
 
+Rooms of a kind are not rooms of a pattern: each one draws its furniture
+from its own seed out of two or three arrangements, so a chamber you have
+walked into before is not the chamber you walked into before.
+
 Chests hold potions and scrolls, and which look means which item is
 shuffled at the start of every run. A cloudy potion is a different thing
 each game, and the only way to learn is to drink one. Most of them help;

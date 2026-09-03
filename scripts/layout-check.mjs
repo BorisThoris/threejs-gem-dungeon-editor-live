@@ -26,6 +26,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
+   export * from "${root}src/game/rooms/layouts";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -114,6 +115,48 @@ for (const size of L.ROOM_SIZES) {
   const corner = Math.hypot(half - 0.3, half - 0.3);
   check(`arena ${size}: the arms reach the corners of the box`, reach >= corner, `arms ${reach.toFixed(1)}, corner ${corner.toFixed(1)}`);
   check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
+}
+
+// The dressing: every arrangement of every kind, at every size, must stand
+// each prop on an anchor of its own. Two props on one anchor is one prop
+// inside another, and nothing downstream would notice - the door-lane and
+// gem filters only ever compare a prop to the room, never to another prop.
+{
+  const kinds = Object.keys(L.LAYOUTS);
+  let stacked = 0;
+  let offAnchor = 0;
+  let arrangements = 0;
+  for (const kind of kinds) {
+    for (let variant = 0; variant < L.LAYOUTS[kind].length; variant++) {
+      for (const size of L.ROOM_SIZES) {
+        const r = room(size, kind);
+        const spots = {
+          near: L.quadrantSpots(r, "near"),
+          far: L.quadrantSpots(r, "far"),
+          corners: L.cornerSpots(r),
+          // Both branches of anything the arrangement decides get walked.
+          rng: () => 0.99,
+        };
+        for (const roll of [0.01, 0.99]) {
+          const placed = L.LAYOUTS[kind][variant]({ ...spots, rng: () => roll });
+          arrangements++;
+          const anchors = [...spots.near, ...spots.far, ...spots.corners];
+          const seenAt = new Set();
+          for (const p of placed) {
+            const key = `${p.x.toFixed(4)},${p.z.toFixed(4)}`;
+            if (seenAt.has(key)) stacked++;
+            seenAt.add(key);
+            if (!anchors.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < 1e-6)) offAnchor++;
+          }
+        }
+      }
+    }
+  }
+  check("no arrangement stands two props in the same place", stacked === 0, `${stacked} stacked in ${arrangements}`);
+  check("every prop stands on an anchor, so it is clear of the lanes by construction", offAnchor === 0, `${offAnchor} loose`);
+  check("the kinds a player walks through most have more than one arrangement",
+    ["normal", "treasure", "trap", "start", "end"].every((k) => L.LAYOUTS[k].length > 1),
+    kinds.map((k) => `${k}:${L.LAYOUTS[k].length}`).join(" "));
 }
 
 // The loot: every item has to be findable and has to have a look of its

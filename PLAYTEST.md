@@ -277,7 +277,10 @@ nobody has held a Deck with this on it.
 - **Three floors of the same ten room kinds.** Watch for the point where a
   player recognises a room and stops looking at it. The deeper floors are
   bigger, which buys variety and spends patience; the third is around half
-  again the size of the first.
+  again the size of the first. The kinds walked through most now have two or
+  three arrangements each, drawn from the room's seed, so the fourth chamber
+  on a floor is no longer the first chamber again - but they are still the
+  same props in the same quadrants, and that is the next thing to run out.
 - **Is the bottom floor too much?** It arrives at alarm 2 with one room of
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than
