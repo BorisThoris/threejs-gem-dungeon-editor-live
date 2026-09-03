@@ -24,7 +24,8 @@
         "test:layout": "node scripts/layout-check.mjs",
         "test:perf": "node scripts/perf-check.mjs",
         "test:prod": "yarn build && node scripts/prod-check.mjs",
-        "test:desktop": "node scripts/desktop-check.mjs"
+        "test:desktop": "node scripts/desktop-check.mjs",
+        "test:pad": "node scripts/pad-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

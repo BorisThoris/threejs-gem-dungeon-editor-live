@@ -1,14 +1,20 @@
+import { useRef } from "react";
+
 import { useRun } from "../game/state/run";
 import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
+import { usePadMenu } from "./padMenu";
 
 /** Esc pauses; the run is untouched underneath and resumes where it was. */
 export function PauseMenu() {
   const resume = useRun((s) => s.resume);
   const quitToMenu = useRun((s) => s.quitToMenu);
+  // B resumes, which is what backing out of a pause menu means.
+  const panelRef = useRef<HTMLDivElement>(null);
+  usePadMenu({ container: panelRef, onBack: resume });
   return (
     <div style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.72)" }}>
-      <div style={panel}>
+      <div style={panel} ref={panelRef}>
         <h2 style={title}>PAUSED</h2>
         <p style={body}>The dungeon waits.</p>
         <button style={button} data-testid="pause-resume" onClick={resume}>

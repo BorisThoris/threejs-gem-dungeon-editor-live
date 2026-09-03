@@ -253,6 +253,12 @@ second model for it to be written in.
   no two solid props standing inside each other and no footprint reaching
   into a lane or through a wall, spikes in every trap room and never in a
   lane, the gem reachable, the generator connected.
+- `yarn test:pad` plays the game with a synthetic standard-mapping
+  controller, through the menus and the sticks: the title screen, both
+  sticks, A, B, Start, pause, quit. `--desktop` runs the same thing against
+  the packaged Linux build, which is what a Steam Deck runs. It drives the
+  game's own reading of a pad, not the browser's gamepad driver, and says
+  so.
 - `yarn test:smoke` drives the real game in a browser: start, stand on the
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this

@@ -102,9 +102,16 @@ between here and a Steam demo.
 | `1` to `4`, or X and Y on a pad | Drink or read that satchel slot |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
+| D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |
 
 There is one interaction verb. Anything you can act on tells you so when
 you are close enough, and E does it.
+
+Every menu can be driven from the pad alone - the title screen, the pause
+menu, the end of a run - so the game can be played on a machine with no
+keyboard. `yarn test:pad` plays it that way. The one thing that still wants
+a keyboard is typing a seed and answering the library's tome; on a Deck
+those go through Steam's on-screen keyboard.
 
 ## Rooms
 

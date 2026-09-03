@@ -133,13 +133,25 @@ page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
 page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 200)));
 page.on("response", (r) => r.status() >= 400 && missing.push(`${r.status()} ${r.url()}`));
 
-// vite preview takes a moment to bind.
+/**
+ * vite preview takes a moment to bind, so this waits for it.
+ *
+ * It used to retry forty times with nothing in between, and a connection to
+ * a port nothing is listening on is refused immediately - so all forty
+ * attempts were spent inside a second, while the server was still starting,
+ * and the check failed. Everything after it passed, because by then the
+ * server was up: one red line in an otherwise green run, on maybe one run
+ * in five. A flake that says the built site does not load is exactly the
+ * kind nobody chases and everybody learns to ignore.
+ */
 let up = false;
-for (let i = 0; i < 40 && !up; i++) {
+const deadline = Date.now() + 40000;
+while (!up && Date.now() < deadline) {
   up = await page
     .goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 4000 })
     .then(() => true)
     .catch(() => false);
+  if (!up) await new Promise((r) => setTimeout(r, 500));
 }
 ok("the built site is served and loads", up);
 await page.waitForTimeout(6000);

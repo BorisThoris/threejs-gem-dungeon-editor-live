@@ -1,7 +1,10 @@
+import { useRef } from "react";
+
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
 import { body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
+import { usePadMenu } from "./padMenu";
 
 /**
  * The end of a run: what happened, what it beat, and the two ways out.
@@ -25,10 +28,14 @@ export function RunSummary() {
   const quitToMenu = useRun((s) => s.quitToMenu);
   const bests = useRecords((s) => s.lastBests);
   const won = phase === "won";
+  // B leaves for the menu. There is nothing to back out to from the end of
+  // a run, and quitting is the less destructive of the two ways on.
+  const panelRef = useRef<HTMLDivElement>(null);
+  usePadMenu({ container: panelRef, onBack: quitToMenu });
 
   return (
     <div style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.8)" }}>
-      <div style={panel}>
+      <div style={panel} ref={panelRef}>
         <h2 style={{ ...title, color: won ? colors.gold : colors.danger }}>
           {won ? "You made it out" : "You died down here"}
         </h2>

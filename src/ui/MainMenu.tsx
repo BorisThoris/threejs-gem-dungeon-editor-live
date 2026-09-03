@@ -1,10 +1,11 @@
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useRef, useState } from "react";
 
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
+import { usePadMenu } from "./padMenu";
 
 const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
@@ -13,10 +14,15 @@ export function MainMenu() {
   const [page, setPage] = useState<"menu" | "controls" | "records">("menu");
   const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
+  // B goes back to the title, and does nothing when already there rather
+  // than quitting the game by accident.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const back = useCallback(() => setPage("menu"), []);
+  usePadMenu({ container: panelRef, onBack: back });
 
   return (
     <div style={{ ...fullscreen, background: "#050608" }}>
-      <div style={panel}>
+      <div style={panel} ref={panelRef}>
         <h1 style={title}>GEM DUNGEON</h1>
         {page === "menu" ? (
           <>

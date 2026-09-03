@@ -47,8 +47,18 @@ it is always fullscreen.
 ## 4. Steam Deck
 
 - Input: the game reads the standard gamepad mapping (left stick move,
-  right stick look, A use, Start pause, L3 run). Set the Steam Input
-  template to **Gamepad** so the Deck presents itself as one.
+  right stick look, A use, Start pause, L3 run, X and Y for the first two
+  satchel slots). Set the Steam Input template to **Gamepad** so the Deck
+  presents itself as one.
+- Menus take the pad too: d-pad or left stick moves the focus, A presses
+  it, B backs out. That was not true until it was checked - every menu was
+  a column of `<button onClick>` and nothing in the UI read the pad, so a
+  Deck player could not press Start on the title screen. `yarn test:pad
+  --desktop` plays the packaged Linux build with a synthetic pad and is
+  what holds it: menu focus, both sticks, A, B and Start.
+- Still wants a keyboard: typing a seed on the title screen and answering
+  the library's tome, both of which take digits. Steam's on-screen keyboard
+  covers them; neither is on the path through a run.
 - Text scales with the viewport and was checked at 1280x800.
 - Pointer lock is not needed on Deck; the right stick looks. The "click
   the game to look around" hint is only shown when no pointer is held and

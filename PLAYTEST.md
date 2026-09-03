@@ -154,7 +154,7 @@ the corners of the box, a replayed seed must reproduce every watcher's beam
 angle, the run's seed must survive a descent, and a pause must not spend a
 potion.
 
-Fourteen more turned up on the next passes, all of them things nobody had
+Seventeen more turned up on the next passes, all of them things nobody had
 looked at because the tests were green:
 
 - **Every floor in the game was a smeared barcode.** Surfaces were filtered
@@ -229,6 +229,38 @@ looked at because the tests were green:
   have doors on one axis only and never needed the other lane at all. The
   rule reads the room's doors now, and those rooms get a pair of anchors
   either side of the way through.
+- **You could not start the game with a controller.** The demo targets
+  Steam and the Deck, which has no keyboard, and the run itself has read a
+  standard gamepad mapping since long before this tree existed - stick to
+  walk, A to use, Start to pause. None of that reached the DOM. Every menu
+  is a column of `<button onClick>` with no focus handling and nothing
+  under `src/ui` had ever read the pad, so a player holding a controller
+  could not press Start on the title screen, resume after pausing, quit, or
+  restart after dying. The game was unplayable with the only input a Deck
+  has, from its first screen, and every check we had passed because they
+  all type. Menus take the d-pad, A and B now, and `yarn test:pad` plays
+  the game with a synthetic pad - on the dev build and on the packaged
+  Linux build a Deck would actually run.
+- **Button presses were dropped in proportion to how busy the frame was.**
+  The pad was polled by whichever system read it first, memoised on a 4ms
+  wall-clock window, with rising edges computed against the previous poll -
+  so when two of the four readers in a frame fell more than four
+  milliseconds apart, the second re-polled, saw the button already down and
+  reported nothing. A did nothing, intermittently, more often the more work
+  the frame had in it, which is the worst possible shape for an input bug.
+  Scene even carried a comment warning the next person not to add a reader
+  rather than fixing it. One animation frame, one poll, edges true for
+  exactly one frame, and `readGamepad` is a read: four readers spread
+  across a frame now see one press four times out of four.
+- **A harness that said the built site does not load, on one run in five.**
+  The production check retried its first page load forty times with nothing
+  in between, and a connection to a port nothing is listening on is refused
+  immediately - so all forty attempts were spent inside a second while
+  `vite preview` was still binding. Everything after it passed, because by
+  then the server was up. One red line in an otherwise green run, saying
+  the thing that ships does not load, which is the kind of flake people
+  learn to ignore rather than chase. It waits between attempts now: three
+  consecutive runs green, having reproduced it first.
 - **Props stood inside each other, and every check said they did not.**
   `PROP_SPECS` has carried a footprint radius for every prop since the specs
   were split out, and nothing that placed a prop had ever read one: the
