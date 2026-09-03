@@ -37,6 +37,13 @@ is the moving gap between two arms, and holding it means walking a circle
 for fourteen seconds. The inner line is a stroll; the outer wall needs a
 dash to keep up. The Warden does not stop for any of this.
 
+Sound is the only thing that can tell you what is behind you, so the cues
+that come from somewhere have a side to them. The Warden stepping into the
+room next door is heard through that wall - left, right or ahead, turning as
+you turn - and a watcher calling out is heard from its post. It is the
+difference between knowing something is close and knowing which door not to
+take.
+
 From the second floor down, some plain rooms have a watcher on a post,
 turning a beam slowly around the room. It never takes a life. Being held in
 its light rouses the floor and tells the Warden where you are, which is

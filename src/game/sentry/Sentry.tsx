@@ -6,6 +6,7 @@ import type { Group, Mesh, MeshBasicMaterial } from "three";
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, useRun } from "../state/run";
+import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
   SENTRY_ALARM,
@@ -78,7 +79,10 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
       // Warden being told where the player is - it outranks a noise it was
       // off chasing, which is the whole difference between the two.
       run.giveAway(SENTRY_ALARM);
-      bus.emit("sentrySaw");
+      // It stands still at a known spot, so the call it makes has a side to
+      // it: the player learns which post to keep out of, not merely that a
+      // post exists.
+      bus.emit("sentrySaw", { pan: sideOf(position[0] - cam.x, position[2] - cam.z) });
     }
 
     // The wedge brightens as it acquires, so being about to be caught looks

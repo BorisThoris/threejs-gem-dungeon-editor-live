@@ -1,10 +1,20 @@
 import { useEffect } from "react";
 
 import { bus } from "../events";
+import { sideOfNeighbour } from "./bearing";
 import { useSettings } from "../state/settings";
 import { useRun } from "../state/run";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, sfx } from "./audio";
+
+/** The side a neighbouring room lies on, from the run's own map. */
+function towards(roomId: string): number {
+  const s = useRun.getState();
+  return sideOfNeighbour(
+    s.dungeon?.rooms.find((r) => r.id === s.currentRoomId),
+    roomId
+  );
+}
 
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
@@ -36,12 +46,17 @@ export function Audio() {
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("keyTaken", () => sfx.key()),
-      bus.on("sentrySaw", () => sfx.spotted()),
+      // Tolerant of a bare emit: a missing pan is a cue in the middle,
+      // and a sound effect is never worth throwing out of the frame loop for.
+      bus.on("sentrySaw", (e) => sfx.spotted(e?.pan ?? 0)),
       bus.on("vaultOpened", () => sfx.unlock2()),
       bus.on("arenaRun", ({ running }) => (running ? sfx.grind() : sfx.release())),
       bus.on("itemUsed", ({ cruel }) => (cruel ? sfx.bitter() : sfx.drink())),
       bus.on("charmSpent", () => sfx.charm()),
-      bus.on("wardenNearby", () => sfx.wardenNear()),
+      // Which wall the footfall came through. Without it the cue says only
+      // "it is close", which in a game about which door to take is half a
+      // sentence.
+      bus.on("wardenNearby", ({ roomId }) => sfx.wardenNear(towards(roomId))),
       bus.on("wardenWoke", () => sfx.wardenNear()),
       bus.on("wardenEntered", () => sfx.wardenHere()),
       bus.on("wardenLured", () => sfx.clatter()),

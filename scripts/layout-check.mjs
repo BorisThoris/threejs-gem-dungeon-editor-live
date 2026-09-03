@@ -27,6 +27,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/rooms/layouts";
+   export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -115,6 +116,56 @@ for (const size of L.ROOM_SIZES) {
   const corner = Math.hypot(half - 0.3, half - 0.3);
   check(`arena ${size}: the arms reach the corners of the box`, reach >= corner, `arms ${reach.toFixed(1)}, corner ${corner.toFixed(1)}`);
   check(`arena ${size}: no gap wider than a player between rings`, L.ARENA_RING_GAP <= L.HAZARD_RADIUS * 2, `gap ${L.ARENA_RING_GAP}`);
+}
+
+// Which side a sound is on. The sign matters more than the magnitude: a
+// cue panned the wrong way sends the player towards the thing it is
+// warning them about, and this project has already got a sign like this
+// backwards once, on the minimap, where it survived because it was only
+// wrong when facing east or west.
+{
+  const N = { x: 0, z: -1 };
+  const S = { x: 0, z: 1 };
+  const E = { x: 1, z: 0 };
+  const W = { x: -1, z: 0 };
+  const side = (d, yaw) => L.sideOf(d.x, d.z, yaw);
+  const near = (a, b) => Math.abs(a - b) < 1e-6;
+  // Facing north (yaw 0, the camera's own convention in DIR_YAW).
+  check("facing north, east is on the right", side(E, L.DIR_YAW.north) > 0.99);
+  check("facing north, west is on the left", side(W, L.DIR_YAW.north) < -0.99);
+  check("facing north, north has no side to it", near(side(N, L.DIR_YAW.north), 0));
+  check("facing north, south has no side to it", near(side(S, L.DIR_YAW.north), 0));
+  // And it has to hold from every heading, not only the one it was written for.
+  check("facing west, north is on the right", side(N, L.DIR_YAW.west) > 0.99);
+  check("facing east, north is on the left", side(N, L.DIR_YAW.east) < -0.99);
+  check("facing south, west is on the right", side(W, L.DIR_YAW.south) > 0.99);
+  check("facing south, east is on the left", side(E, L.DIR_YAW.south) < -0.99);
+  check("nothing at all has no side", near(L.sideOf(0, 0, 1.3), 0));
+  // Every heading, every direction: always within the pan range, and the
+  // direction the camera faces is always the one with least side to it.
+  let bad = 0;
+  for (let i = 0; i < 360; i++) {
+    const yaw = (i * Math.PI) / 180;
+    const ahead = Math.abs(L.sideOf(-Math.sin(yaw), -Math.cos(yaw), yaw));
+    if (ahead > 1e-6) bad++;
+    for (const d of [N, S, E, W]) if (Math.abs(side(d, yaw)) > 1 + 1e-9) bad++;
+  }
+  check("what the camera looks at is always dead centre, from every heading", bad === 0, `${bad} off`);
+
+  // And the same for a room next door, which is how the Warden's footfall
+  // through a wall gets its side.
+  const here = { id: "here", kind: "normal", grid: { x: 0, z: 0 }, size: 16, shape: "square",
+    links: { north: "up", east: "right", west: "left" } };
+  check("a room to the east is heard on the right when facing north",
+    L.sideOfNeighbour(here, "right", L.DIR_YAW.north) > 0.99);
+  check("a room to the west is heard on the left when facing north",
+    L.sideOfNeighbour(here, "left", L.DIR_YAW.north) < -0.99);
+  check("the room ahead is heard dead centre",
+    near(L.sideOfNeighbour(here, "up", L.DIR_YAW.north), 0));
+  check("a room that is not next door is heard dead centre",
+    L.sideOfNeighbour(here, "somewhere-else", L.DIR_YAW.east) === 0);
+  check("no room at all is heard dead centre",
+    L.sideOfNeighbour(undefined, "right", L.DIR_YAW.east) === 0);
 }
 
 // The dressing: every arrangement of every kind, at every size, must stand

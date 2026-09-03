@@ -156,7 +156,14 @@ ok("collected gems while exploring", explored.gems > 0, `${explored.gems} gems`)
 const exitDoor = await page.evaluate(() => {
   const s = window.__run.getState();
   const byId = new Map(s.dungeon.rooms.map((r) => [r.id, r]));
-  // BFS to the room next to the exit.
+  // BFS to the room next to the exit, around the locked vault.
+  //
+  // The generator only promises the vault is off the path from the START
+  // room; the walker sets out from wherever eight random doors left it, and
+  // from there the shortest way on can lead straight into a door that will
+  // not open without a key. That is what "path not walked" was, about one
+  // run in five - a real property of the floor, read as a flaky test.
+  const shut = s.dungeon.vaultId && !s.unlocked.includes(s.dungeon.vaultId) ? s.dungeon.vaultId : null;
   const prev = new Map([[s.currentRoomId, null]]);
   const q = [s.currentRoomId];
   let neighbour = null;
@@ -164,12 +171,16 @@ const exitDoor = await page.evaluate(() => {
     const id = q.shift();
     const room = byId.get(id);
     if (Object.values(room.links).includes(s.dungeon.endId)) { neighbour = id; break; }
-    for (const n of Object.values(room.links)) if (!prev.has(n)) { prev.set(n, id); q.push(n); }
+    for (const n of Object.values(room.links)) {
+      if (!n || prev.has(n) || n === shut) continue;
+      prev.set(n, id);
+      q.push(n);
+    }
   }
   if (!neighbour) return null;
   const path = [];
   for (let id = neighbour; id; id = prev.get(id)) path.unshift(id);
-  return { path, neighbour };
+  return { path, neighbour, avoided: shut };
 });
 let exitChecked = false;
 if (exitDoor) {
@@ -591,7 +602,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   const seen = await page.evaluate(async () => {
     const run = window.__run;
     const before = { alarm: run.getState().alarm, lives: run.getState().lives };
-    window.__bus.emit("sentrySaw");
+    window.__bus.emit("sentrySaw", { pan: 0 });
     run.setState({ alarm: run.getState().alarm + 1 });
     await new Promise((r) => setTimeout(r, 200));
     return { before, after: { alarm: run.getState().alarm, lives: run.getState().lives } };

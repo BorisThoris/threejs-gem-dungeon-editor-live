@@ -22,6 +22,13 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
+- Which side a sound is on comes from `src/game/systems/bearing.ts` and
+  nowhere else. Two things need it - the Warden through a wall and a Sentry
+  from its post - and they have to agree, because a cue panned the wrong way
+  sends the player towards the thing it is warning them about. It is pure so
+  the layout check can walk it from all 360 headings; the same sign was
+  already got backwards once on the minimap, where it survived because it
+  was only wrong facing east or west.
 - Nothing in the game casts a real shadow. A point light's shadow is a cube
   map - six renders a frame, per room, for scenery that never moves - so
   `src/game/props/ContactShadows.tsx` does the cheap half instead: one soft

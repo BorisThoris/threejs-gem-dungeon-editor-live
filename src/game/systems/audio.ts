@@ -28,12 +28,24 @@ function ensureContext(): AudioContext | null {
   return context;
 }
 
+/**
+ * Where a sound is, from -1 hard left to +1 hard right.
+ *
+ * The one thing a first-person camera cannot show is what is behind you,
+ * and in a game whose only verb against the Warden is evasion, "it is near"
+ * is half the sentence. A cue with a side to it says which door not to take.
+ * Only the cues that come from somewhere are panned; the ones that are
+ * about the player - a footstep, a gem, a potion - stay in the middle,
+ * because a sound with no source that wanders across the stereo field is
+ * just a sound that seems broken.
+ */
 function envelope(
   ctx: AudioContext,
   node: AudioNode,
   attack: number,
   decay: number,
-  peak: number
+  peak: number,
+  pan = 0
 ) {
   const gain = ctx.createGain();
   const now = ctx.currentTime;
@@ -41,7 +53,16 @@ function envelope(
   gain.gain.exponentialRampToValueAtTime(peak, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
   node.connect(gain);
-  gain.connect(master!);
+  if (pan === 0 || !ctx.createStereoPanner) {
+    gain.connect(master!);
+    return;
+  }
+  const panner = ctx.createStereoPanner();
+  // Never fully to one side: a cue that vanishes from one ear reads as a
+  // dropout rather than as a direction.
+  panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
+  gain.connect(panner);
+  panner.connect(master!);
 }
 
 function tone(
@@ -49,7 +70,8 @@ function tone(
   duration: number,
   type: OscillatorType = "sine",
   peak = 0.6,
-  sweepTo?: number
+  sweepTo?: number,
+  pan = 0
 ) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
@@ -59,7 +81,7 @@ function tone(
   if (sweepTo !== undefined) {
     osc.frequency.exponentialRampToValueAtTime(sweepTo, ctx.currentTime + duration);
   }
-  envelope(ctx, osc, 0.008, duration, peak);
+  envelope(ctx, osc, 0.008, duration, peak, pan);
   osc.start();
   osc.stop(ctx.currentTime + duration + 0.05);
 }
@@ -84,7 +106,7 @@ function noiseBuffer(ctx: AudioContext): AudioBuffer {
   return noise;
 }
 
-function noiseBurst(duration: number, peak = 0.4, filterHz = 1800) {
+function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
   const source = ctx.createBufferSource();
@@ -95,7 +117,7 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800) {
   filter.type = "lowpass";
   filter.frequency.value = filterHz;
   source.connect(filter);
-  envelope(ctx, filter, 0.005, duration, peak);
+  envelope(ctx, filter, 0.005, duration, peak, pan);
   source.start(ctx.currentTime, offset, duration + 0.1);
   source.stop(ctx.currentTime + duration + 0.1);
 }
@@ -281,10 +303,10 @@ export const sfx = {
     later(300, () => tone(120, 0.5, "sine", 0.12, 70));
   },
   /** A Sentry calling out: two notes climbing, and something hears it. */
-  spotted() {
-    tone(440, 0.16, "square", 0.3);
-    later(120, () => tone(660, 0.3, "square", 0.28));
-    later(260, () => tone(880, 0.45, "sawtooth", 0.2));
+  spotted(pan = 0) {
+    tone(440, 0.16, "square", 0.3, undefined, pan);
+    later(120, () => tone(660, 0.3, "square", 0.28, undefined, pan));
+    later(260, () => tone(880, 0.45, "sawtooth", 0.2, undefined, pan));
   },
   /** Iron on stone: the key coming off the floor. */
   key() {
@@ -324,9 +346,14 @@ export const sfx = {
     later(60, () => tone(330, 0.4, "sine", 0.3));
   },
   /** The Warden heard through a wall: a slow knock, no pitch to speak of. */
-  wardenNear() {
-    tone(58, 0.5, "sine", 0.45, 42);
-    noiseBurst(0.3, 0.1, 260);
+  /**
+   * It has stepped into a room next door. `pan` is which side that room is
+   * on from where the player is looking, which is the whole value of the
+   * cue: a footfall through a wall you cannot place is only a jump scare.
+   */
+  wardenNear(pan = 0) {
+    tone(58, 0.5, "sine", 0.45, 42, pan);
+    noiseBurst(0.3, 0.1, 260, pan);
   },
   /** The Warden walking into your room. */
   wardenHere() {

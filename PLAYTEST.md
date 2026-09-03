@@ -285,6 +285,10 @@ nobody has held a Deck with this on it.
   grace and two thirds of its plain rooms watched. That is meant to read as
   the bottom of something. If players stop taking gems there rather than
   hurrying, it has tipped from tense to hopeless.
+- **Does the panning read as a direction?** The Warden's footfall through a
+  wall and a watcher's call are both panned by where they are relative to
+  where the player is looking. On speakers in a room it may read as nothing
+  at all; the question is whether anyone in headphones turns the right way.
 - **Is the Scroll of Echoes read too late?** It is the only counter to the
   noise the player makes and the only way to move the Warden without a
   Banishment. Watch whether anyone throws it before they are cornered - if
