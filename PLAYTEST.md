@@ -1483,14 +1483,65 @@ coin toss at four frames a second — the first version of it reported the
 room broken and then working on the same code — so the player is put on the
 beam's own bearing instead and the two numbers underneath are read directly.
 
-## 14. Steam Deck
+## 14. The check that gave three answers
+
+Cycle 49 added a walk of the arena's circle and asserted it took no hits.
+Over four runs of identical code it reported **0, 1, 2 and 0 hits**. By this
+project's own rule that is worse than no check, so this cycle went and found
+out why. Three things, all measured:
+
+**The circle was one no player can hold.** `orbitSpeed(r)` is 0.75r, so a
+circle of three has to be walked at 2.25 m/s — and W gives 3.9 to 5.0. A
+player on a keyboard has one speed and nowhere to put the surplus except by
+leaving the line, which is exactly what happened: the walk drifted up to 1.5
+metres off a 3-metre circle. And the hits were not the arms catching up; they
+were the drift carrying the player inward onto the inner ring, where the same
+angular gap is a much shorter real distance. At r = 1.5 an arm half a radian
+away is only 0.87 m of actual distance, inside the 1.2 a spike reaches.
+
+**W was pressed before the player was aimed.** The teleport left the yaw at
+zero, so the first second went wherever that pointed — and the arms come
+alive two seconds after the gem is taken. Every failing run took its first
+hit at t = 0.9.
+
+**The aim point was behind the player's own feet.** It looked a fixed *angle*
+ahead: 0.06 rad, which at r = 3 is 18 cm against a stride of 70. The yaw it
+produced was noise.
+
+The circle is now derived from the speed the machine actually walks at
+(measured, not read from `WALK_SPEED` — damping at 6 fps costs a fifth of
+it), the player is aimed before walking, the aim leads by a distance, and the
+correction is applied by *radius*, since changing radius is the only way a
+one-speed player can change how fast they go round. Drift falls from 1.0–1.5
+to 0.7–0.8.
+
+### And it stopped asserting the outcome
+
+Even fixed, "no hits" is not assertable here. The arms test the camera's
+point once a frame; at 6 fps the player crosses two thirds of a metre between
+samples, and one run passed within **0.35 m of a spike** — well inside the
+1.2 it reaches — and recorded no hit at all. Asserting the outcome was
+asserting the sampling.
+
+So the walk now asserts three things that hold:
+
+| | |
+| --- | --- |
+| This machine's walk can hold a circle that fits the room | arithmetic, from the measured speed |
+| The walk held its line | drift < a quarter of the radius; measured 0.73–0.81 of 1.38 |
+| Walking the line beats standing still in it | 0 hits against the 5 that standing on the plinth takes |
+
+The third is the room's actual promise, and comparing two samples under the
+same conditions is the only form of it a coarse sampler cannot corrupt.
+
+## 15. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 15. What a human playtest should watch for
+## 16. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1573,7 +1624,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 16. Tuning knobs
+## 17. Tuning knobs
 
 All in `src/game/world.ts`:
 

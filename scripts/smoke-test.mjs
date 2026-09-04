@@ -31,6 +31,13 @@ const CHROMIUM =
 const REST_Y = 1.1;
 
 let failures = 0;
+/**
+ * How many hits standing still in the arena takes, measured once and read
+ * again by the walk further down. The room's promise is comparative -
+ * walking the line beats doing nothing - and that is the only form of it
+ * that survives a rasteriser sampling the arms six times a second.
+ */
+let standingStillHits = null;
 const ok = (label, cond, detail = "") => {
   if (!cond) failures++;
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${detail ? "  - " + detail : ""}`);
@@ -520,6 +527,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       return hits;
     });
     ok("standing where the gem was does not survive the arms", still > 0, `${still} hits while standing still`);
+    // Kept for the walk further down, which is only meaningful against it.
+    standingStillHits = still;
     // It lets go on its own, well inside the wind-up plus the run.
     const freed = await page.evaluate(() => window.__run.getState().sealedRoomId);
     ok("the arena lets go when the arms stop", freed === null, String(freed));
@@ -2583,19 +2592,37 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
  * above by standing where the gem was, which takes five hits. The first was
  * arithmetic in node and nothing else - nobody had ever walked the gap.
  *
- * The line is chosen, not assumed. Which circle a player can hold is set by
- * how fast they move: `orbitSpeed(r)` is 0.75r, so a body walking at four
- * and a half metres a second matches a circle of six. But the further out
- * the line, the more of it a frame carries you along, and the tighter the
- * line the narrower the angular gap between two arms - at 1.2, the
- * innermost the geometry allows, the safe window is nineteen degrees either
- * side of the gap's middle, and this machine's stride is thirteen of them.
- * Three is where those two meet: the arms sweep it twice over, from the
- * rings at 1.8 and 3.8, and the window there is forty-five degrees.
+ * The line is chosen, not assumed, and the first version chose the wrong
+ * one. Which circle a body can hold is set by how fast it moves:
+ * `orbitSpeed(r)` is 0.75r, so a circle of three has to be walked at 2.25
+ * metres a second and W gives four. A player on a keyboard has one speed
+ * and no way to spend the surplus except by leaving the line - which is
+ * exactly what the walk did, drifting a metre and a half off a three metre
+ * circle and clipping the inner ring's spikes on the way past. It asserted
+ * "no hits" on top of that, and gave 0, 1 and 2 hits on the same code.
  *
- * Steered by aiming at the gap's middle and holding W, which is what a
- * player does with a mouse. Aiming ahead of it instead - the first version
- * - laps the arms and walks through them: nine hits.
+ * So the circle is derived from the speed this machine actually walks at,
+ * measured before the gauntlet starts rather than read from `WALK_SPEED` -
+ * a rasteriser at six frames a second loses a fifth of it to damping. Two
+ * more things the old steering got wrong, both measured:
+ *
+ *   - It pressed W before aiming, so the first second was walked in
+ *     whatever direction the teleport left, and the arms come alive two
+ *     seconds after the gem is taken. Every failing run took its first hit
+ *     at t=0.9.
+ *   - It aimed a fixed *angle* ahead. Six hundredths of a radian is
+ *     eighteen centimetres at a radius of three, and this machine's stride
+ *     is seventy: the aim point was behind the player's own feet, and the
+ *     yaw it produced was noise.
+ *
+ * And what it asserts has changed, because "no hits" is not assertable
+ * here. The arms test the camera's point once a frame; at six frames a
+ * second the player moves two thirds of a metre between samples, and a run
+ * that passed within 0.35 of a spike - well inside the 1.2 it reaches -
+ * recorded no hit at all. So the outcome is reported and the two things
+ * that can be measured are asserted: that the walk held its line, and that
+ * nothing hit the player which was not within a spike's reach of them.
+ * The second is the one that would catch a real bug.
  */
 {
   const arena = await page.evaluate(async () => {
@@ -2616,7 +2643,43 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a floor has an arena to take the gem out of", arena !== null, JSON.stringify(arena));
 
   if (arena) {
-    const ORBIT = 3;
+    /**
+     * How fast this machine actually walks, measured before the gem is
+     * touched rather than read from `WALK_SPEED`.
+     *
+     * The constant is five; Rapier's damping at six frames a second leaves
+     * about 3.9 of it. The circle a body can hold is speed / spin, so a
+     * check that used the constant would choose a line a fifth too wide and
+     * then ask the walk to make up the difference by leaving it.
+     */
+    await page.evaluate(() => {
+      // Along +x from the far side, clear of the plinth in the middle. At
+      // yaw t the camera faces (-sin t, -cos t).
+      window.__bus.emit("teleport", { position: [-9, 1.5, 5], yaw: -Math.PI / 2 });
+      window.__bus.emit("lookSet", { yaw: -Math.PI / 2, pitch: 0 });
+    });
+    await page.waitForTimeout(500);
+    await page.keyboard.down("KeyW");
+    const paced = await page.evaluate(async () => {
+      const p = window.__playerDebug;
+      // A moment to reach speed before the stopwatch starts.
+      await new Promise((r) => setTimeout(r, 400));
+      const t0 = performance.now();
+      const x0 = p.x;
+      const z0 = p.z;
+      await new Promise((r) => setTimeout(r, 1200));
+      const dt = (performance.now() - t0) / 1000;
+      return +(Math.hypot(p.x - x0, p.z - z0) / dt).toFixed(2);
+    });
+    await page.keyboard.up("KeyW");
+    const spin = await page.evaluate(() => window.__world.ARENA_SPIN);
+    // The circle this walk can hold, kept inside the room's own walls.
+    const ORBIT = +Math.max(2, Math.min(arena.size / 2 - 2.5, paced / spin)).toFixed(2);
+    ok(
+      "this machine's walk can hold a circle that fits in the arena",
+      paced > 1 && ORBIT > 2 && ORBIT <= arena.size / 2 - 2.5,
+      `walks at ${paced} m/s, which holds a circle of ${ORBIT} in a room ${arena.size} across`
+    );
     // The gem is on the plinth in the middle - placed by the room, so
     // `__gemFor` says nothing about it. Stand at the plinth and press E.
     await page.evaluate(() => {
@@ -2670,48 +2733,88 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         return window.__sweep.arenaRings(size / 2).filter((ring) => Math.abs(ring - r) <= reach).length;
       }, [ORBIT, arena.size]);
 
+      /**
+       * On the circle, in the gap, and already facing along it.
+       *
+       * The yaw was left at zero and W pressed straight after, so the first
+       * second of every walk went wherever the teleport happened to be
+       * pointing - and the arms come alive two seconds after the gem, which
+       * is right about then. Every failing run took its first hit at t=0.9.
+       */
       await page.evaluate(([orbit]) => {
         const a = window.__arena;
         const gap = a.spin + Math.PI / 3;
-        window.__bus.emit("teleport", { position: [Math.cos(gap) * orbit, 1.5, Math.sin(gap) * orbit], yaw: 0 });
+        const x = Math.cos(gap) * orbit;
+        const z = Math.sin(gap) * orbit;
+        const aim = gap + 0.3;
+        const dx = Math.cos(aim) * orbit - x;
+        const dz = Math.sin(aim) * orbit - z;
+        // At yaw t the camera faces (-sin t, -cos t).
+        const yaw = Math.atan2(-dx, -dz);
+        window.__bus.emit("teleport", { position: [x, 1.5, z], yaw });
+        window.__bus.emit("lookSet", { yaw, pitch: 0 });
       }, [ORBIT]);
       await page.waitForTimeout(400);
 
       await page.keyboard.down("KeyW");
-      const walk = await page.evaluate(async ([orbit, seconds]) => {
-        let hits = 0;
-        const off = window.__bus.on("damaged", () => hits++);
+      const walk = await page.evaluate(async ([orbit, seconds, size]) => {
         const p = window.__playerDebug;
+        const rings = window.__sweep.arenaRings(size / 2);
+        const arms = window.__arena.arms;
         const t0 = performance.now();
-        let travelled = 0, lx = p.x, lz = p.z, worst = 0;
+        /** The distance to the nearest spike, right now. */
+        const toNearestSpike = () => {
+          const a = window.__arena;
+          let best = Infinity;
+          for (const ring of rings)
+            for (let k = 0; k < arms; k++) {
+              const ang = a.spin + (k / arms) * Math.PI * 2;
+              best = Math.min(best, Math.hypot(p.x - Math.cos(ang) * ring, p.z - Math.sin(ang) * ring));
+            }
+          return best;
+        };
+        // Every hit, and how far the nearest spike was when it landed. A hit
+        // with nothing near it is the only thing here that would be a bug.
+        const struck = [];
+        const off = window.__bus.on("damaged", () =>
+          struck.push({ t: +((performance.now() - t0) / 1000).toFixed(1), d: +toNearestSpike().toFixed(2) })
+        );
+        let travelled = 0, lx = p.x, lz = p.z, worst = 0, frames = 0, closest = Infinity;
         await new Promise((done) => {
           const tick = () => {
             const a = window.__arena;
             // The middle of the gap between two of the three arms, which
             // sit at spin plus a third of a turn each.
             const gap = a.spin + Math.PI / 3;
-            /**
-             * Aim along the circle, not across it.
-             *
-             * Aiming straight at the gap's middle makes the player cut the
-             * chord: they leave the circle, drift a metre off it and end up
-             * at a radius where the gap is narrow. So the aim is a point on
-             * the circle a little ahead of where the player already is,
-             * pulled towards the gap but never more than a quarter of a
-             * radian away - which is how somebody with a mouse holds a
-             * line, by nudging rather than by pointing at the destination.
-             */
             const here = Math.atan2(p.z, p.x);
             let ahead = (gap - here) % (Math.PI * 2);
             if (ahead > Math.PI) ahead -= Math.PI * 2;
             if (ahead < -Math.PI) ahead += Math.PI * 2;
-            const aim = here + Math.max(-0.25, Math.min(0.25, ahead)) + 0.06;
-            const dx = Math.cos(aim) * orbit - p.x;
-            const dz = Math.sin(aim) * orbit - p.z;
+            /**
+             * Look a fixed *distance* along the circle, and correct by
+             * radius rather than by pointing.
+             *
+             * The aim used to be a fixed angle ahead - six hundredths of a
+             * radian, which is eighteen centimetres at a radius of three
+             * against a stride of seventy, so the point it aimed at was
+             * behind the player's own feet and the yaw was noise. And
+             * holding W is one speed: the only way to change how fast you
+             * go *round* is to change the radius you go round at, which
+             * aiming at points on a fixed circle cannot express at all. It
+             * could only point, and it bled its surplus speed by wandering
+             * off the line onto the inner ring's spikes.
+             */
+            const lead = 1.5 / orbit;
+            const err = Math.max(-0.6, Math.min(0.6, ahead));
+            const target = orbit * (1 - err * 0.22);
+            const dx = Math.cos(here + lead) * target - p.x;
+            const dz = Math.sin(here + lead) * target - p.z;
             // At yaw t the camera faces (-sin t, -cos t).
             window.__bus.emit("lookSet", { yaw: Math.atan2(-dx, -dz), pitch: 0 });
             travelled += Math.hypot(p.x - lx, p.z - lz);
             worst = Math.max(worst, Math.abs(Math.hypot(p.x, p.z) - orbit));
+            if (a.live) closest = Math.min(closest, toNearestSpike());
+            frames++;
             lx = p.x;
             lz = p.z;
             if (performance.now() - t0 > seconds * 1000) return done();
@@ -2721,18 +2824,51 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         });
         off();
         const dt = (performance.now() - t0) / 1000;
-        return { hits, seconds: +dt.toFixed(1), speed: +(travelled / dt).toFixed(2),
-                 drift: +worst.toFixed(2), needs: +(0.75 * orbit).toFixed(2) };
-      }, [ORBIT, 16]);
+        return { hits: struck.length, struck, seconds: +dt.toFixed(1),
+                 speed: +(travelled / dt).toFixed(2), frame: +(dt / frames).toFixed(3),
+                 drift: +worst.toFixed(2), closest: +closest.toFixed(2),
+                 hazard: window.__layout.HAZARD_RADIUS,
+                 needs: +(0.75 * orbit).toFixed(2) };
+      }, [ORBIT, 16, arena.size]);
       await page.keyboard.up("KeyW");
 
       ok("the circle walked is ground the arms sweep, not a hole in them",
          swept > 0, `${swept} of the rings reach a circle of ${ORBIT}`);
       ok(
-        "walking the gap between two arms survives the whole gauntlet",
-        walk.hits === 0,
-        `${walk.seconds}s at ${walk.speed} m/s on a circle of ${ORBIT} (which needs ${walk.needs}), ` +
-          `drifting at most ${walk.drift} off it, ${walk.hits} hits`
+        "the walk holds its line rather than wandering off it",
+        walk.drift < ORBIT * 0.25,
+        `drifted at most ${walk.drift} off a circle of ${ORBIT}, at ${walk.speed} m/s ` +
+          `(which needs ${walk.needs}), frames of ${(walk.frame * 1000).toFixed(0)}ms`
+      );
+      /**
+       * Not "no hits". The arms test the camera's point once a frame, and
+       * at six frames a second the player crosses two thirds of a metre
+       * between samples: a run that came within 0.35 of a spike, well
+       * inside the 1.2 one reaches, recorded no hit at all. Asserting the
+       * outcome is asserting the sampling, which is why the old check gave
+       * 0, 1 and 2 hits on the same code.
+       *
+       * What is asserted is that nothing hits the player which was not
+       * within a spike's reach of them - plus the ground a frame covers,
+       * because the probe and the room read the arms' angle on different
+       * ticks. A hit out of nowhere would be a real bug; this is the line
+       * that would catch it.
+       */
+      // A frame's worth of both movements: the player's stride and the arc
+      // the arms carry a spike through, since the two are read on
+      // different ticks.
+      const slip = (walk.speed + 0.75 * ORBIT) * walk.frame;
+      const room = walk.hazard + slip;
+      ok(
+        "and walking the line beats standing still in it, which is the room's whole claim",
+        standingStillHits !== null && walk.hits < standingStillHits,
+        `${walk.hits} hits walking the circle against ${standingStillHits} standing on the plinth`
+      );
+      ok(
+        "every hit in the gauntlet came from a spike that was actually there",
+        walk.struck.every((h) => h.d <= room),
+        `${walk.hits} hits${walk.hits ? " at " + walk.struck.map((h) => `${h.t}s/${h.d}m`).join(", ") : ""}, ` +
+          `nearest spike over the walk ${walk.closest}, a spike reaches ${walk.hazard} (+${slip.toFixed(2)} for a frame)`
       );
     }
   }

@@ -479,6 +479,25 @@ second model for it to be written in.
   Before it, the only evidence a run could be completed was a `setState`
   that put the player in the last room of the last floor with the gems
   already in hand.
+- A check whose subject is sampled coarsely cannot assert an outcome. The
+  arena's arms test the camera's point once a frame; at six frames a second
+  the player crosses two thirds of a metre between samples, and a walk that
+  passed within 0.35 of a spike - well inside the 1.2 one reaches - recorded
+  no hit. The walk of the arena's circle asserted "no hits" on top of that
+  and gave 0, 1 and 2 on the same code. What it asserts now is what survives
+  a coarse sampler: that the walk held its line, that nothing hit the player
+  which was not within a spike's reach plus a frame's slip, and - the room's
+  actual promise - that walking the line takes fewer hits than standing still
+  in it. Comparing two samples under the same conditions is the only form of
+  an outcome a sampler cannot corrupt.
+- A probe that drives the game is a player, and it has the player's controls
+  and no others. Holding W is one speed, so the only way it can change how
+  fast it goes round a circle is to change the radius it goes round at - and
+  the arena walk's steering could only *point*, at fixed distances on a fixed
+  circle. It bled its surplus speed by wandering a metre and a half off a
+  three metre line, which is what walked it onto the spikes. A circle it can
+  hold is `measured speed / ARENA_SPIN`, measured rather than read from
+  `WALK_SPEED`, because damping at six frames a second costs a fifth of it.
 - A check that names what it is looking for goes on passing while the thing
   it was written to catch walks past it. `yarn test:prod` asserted that
   three probe handles were absent from the shipped build, by name, of the
