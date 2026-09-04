@@ -39,6 +39,7 @@ writeFileSync(
    export * from "${root}src/game/sentry/beam";
    export * from "${root}src/game/rooms/Dressing";
    export * from "${root}src/game/relics/catalog";
+   export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/world";`
 );
@@ -923,6 +924,67 @@ check("the shipped room templates reach the floors the game generates", authored
     "a vault is worth more than an ordinary chamber",
     perVault > perPlain * 1.5,
     `${perVault.toFixed(2)} chests against ${perPlain.toFixed(2)}`
+  );
+}
+
+// --- Can anything in the shop be bought ------------------------------------
+//
+// The shop sells six relics and nothing had ever checked their prices
+// against what the game gives a player to spend. A purchase may not leave
+// anyone short of the exit, so what the shop asks for is the price plus
+// that floor's toll - and with a gem added per floor down, that came to 5,
+// 8 and 11 gems in hand, against floors holding 5.1, 7.5 and 10.5
+// guaranteed gems in total. On the two lower floors the cheapest relic cost
+// more than the whole floor contained.
+//
+// What a floor guarantees is counted the same way the economy check counts
+// it: rooms a player can walk into and take a gem from, not the vault's,
+// not the arena's, not a puzzle's reward.
+{
+  const GATED = new Set(["arena"]);
+  const cheapest = Math.min(...Object.values(L.RELICS).map((r) => r.price));
+  const rows = [];
+  for (const floor of [1, 2, 3]) {
+    const rules = L.floorRules(floor);
+    const toll = L.tollForFloor(floor);
+    const asking = L.priceOn({ price: cheapest }, floor) + toll;
+    let least = Infinity;
+    let enough = 0;
+    let seeds = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      let free = 0;
+      for (const room of d.rooms) {
+        if (room.kind === "start" || room.kind === "end") continue;
+        if (GATED.has(room.kind)) continue;
+        if (d.vaultId && room.id === d.vaultId) continue;
+        free++;
+      }
+      seeds++;
+      total += free;
+      least = Math.min(least, free);
+      if (free >= asking) enough++;
+    }
+    rows.push({ floor, toll, asking, least, typical: total / seeds, share: enough / seeds });
+  }
+  // What the shop asks must be inside what a floor typically holds -
+  // otherwise the relic is a thing on a shelf rather than a thing for sale.
+  const overpriced = rows.filter((r) => r.asking > r.typical);
+  check(
+    "the cheapest relic never asks more than a floor typically holds",
+    overpriced.length === 0,
+    overpriced.map((r) => `floor ${r.floor} asks ${r.asking} of ${r.typical.toFixed(1)}`).join(", ") ||
+      rows.map((r) => `floor ${r.floor}: asks ${r.asking}, holds ${r.typical.toFixed(1)}`).join("; ")
+  );
+  // The deepest floor is where a player who has banked a couple on the way
+  // down actually shops, and it is the floor with the most gems in it, so
+  // there it should never be a question of the seed.
+  const deepest = rows[rows.length - 1];
+  check(
+    "and on the deepest floor every seed holds enough",
+    deepest.share === 1,
+    `${(deepest.share * 100).toFixed(0)}% of seeds, asking ${deepest.asking} of ${deepest.least}+`
   );
 }
 

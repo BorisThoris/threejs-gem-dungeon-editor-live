@@ -150,7 +150,9 @@ Two stores that both claimed the player's stats. So:
   the potion of mire once left a sprint level with a roused Warden, in a
   game whose only verb against it is running.
 - What a relic does is decided in `src/game/relics/catalog.ts`, by
-  `modifiers(relics)`. Nothing else asks whether the player holds the boots -
+  `modifiers(relics)`, and what it costs by `priceOn` in the same file -
+  checked against what a floor actually holds, because the two had never
+  been compared and the answer was that most floors could not afford one. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.
 - Where the camera is pointing is `src/game/input/look.ts`, written once a
   frame by the look controls. The minimap turns with it. It is deliberately

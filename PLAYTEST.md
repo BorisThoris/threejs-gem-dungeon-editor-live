@@ -771,6 +771,37 @@ had looked at because the tests were green:
   lap twice and three once - which is the flake, made visible instead of
   fatal.
 
+- **Six relics on a shelf nobody could reach.** The shop sells relics for
+  2 to 4 gems, a gem more per floor down, and nothing had ever put those
+  prices next to what the game gives a player to spend. A purchase may not
+  leave anyone short of the exit - the rule from two cycles before this -
+  so what the shop actually asks for is the price **plus that floor's
+  toll**: 5 gems in hand on the first floor, 8 on the second, 11 on the
+  third.
+
+  What the floors hold, counting only gems a player is guaranteed: **5.1,
+  7.5 and 10.5.** On the second and third floors the cheapest relic cost
+  more than the whole floor contained, and on the first it cost every gem
+  on it. Over 400 seeds a floor, the share that held enough at all was
+  74%, 51% and **50%** - and that is the ceiling, assuming a player sweeps
+  every room before walking into the shop, which is also the play that
+  maxes the alarm. On the shortest route to the shop a player passes 1.7,
+  2.0 and 2.3 gems.
+
+  The surcharge was pulling the same way as the toll, which already climbs
+  with depth: a relic on the third floor cost two gems more out of a purse
+  that had to keep four more back. It is gone - a relic costs what it costs
+  wherever you meet the shop - and the third floor, which is where a player
+  who has banked a couple on the way down actually shops, goes from **50%
+  of seeds holding enough to 100%**. `yarn test:layout` holds the prices
+  inside the economy from now on: what the shop asks may not exceed what a
+  floor typically holds, and on the deepest floor no seed may fall short.
+  Run against the prices as shipped, both fail and name the floors.
+
+  This does not make relics cheap. Buying one on the first floor still
+  costs a player very nearly everything that floor is worth, which is the
+  decision the shop is for. It makes the decision reachable.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
