@@ -30,11 +30,17 @@ const CHROMIUM =
  * their shapes. It used to be a per-room cost - a room built a fresh
  * geometry for every mesh in it, 85 of them for 32 distinct shapes, and
  * threw them all away on the way out - so a rising number meant a room was
- * getting heavier. Now the program holds one geometry per shape for its
- * whole life and the number is close to constant: what it catches is a new
- * shape being added, not a room leaking. The check below, which walks a
- * floor four times and compares, is what catches a leak, and it is the one
- * that matters now.
+ * getting heavier. The props hold one geometry per shape for the program's
+ * whole life now, and what a budget on this catches is a new shape being
+ * added rather than a room leaking.
+ *
+ * It is not constant, though, and reading it as if it were is what made the
+ * leak guard below fail at random for two cycles. A room's own floor and
+ * walls are sized to the room, so they are built and thrown away with it:
+ * measured over a lap of nine rooms the number reads 55 58 51 55 54 51 51
+ * 58 59, and it reads exactly that every lap afterwards. Eight of swing
+ * between rooms, and a room caught mid-mount reads lower still. The leak
+ * guard compares a room with itself for that reason.
  */
 const BUDGET = {
   calls: 72,
@@ -137,64 +143,86 @@ const byTex = worst("textures");
 ok(`no room holds more than ${BUDGET.textures} live textures`, byTex.textures <= BUDGET.textures, report(byTex, "textures"));
 ok("every room was measured", rooms.length > 40, `${rooms.length} rooms`);
 
-// Walking from room to room must not leak: three disposes what it is told
-// to and nothing else, and a room that forgets is a run that gets heavier
-// the longer it goes on.
+/**
+ * Walking from room to room must not leak, asked room by room.
+ *
+ * This measured one number - `renderer.info.memory.geometries` - after a
+ * settling walk, then again three laps later, and allowed two of drift. It
+ * failed at random, and the reason is that the number it sampled is not the
+ * program-wide constant the old comment here claimed. Measured over
+ * fourteen laps of nine rooms, one lap reads
+ *
+ *   47 50 43 47 46 43 43 50 51
+ *
+ * and it reads that every lap, exactly, for ever. The props do share their
+ * shapes for the life of the program; a room's own floor and walls are
+ * sized to the room and are built and thrown away with it, so the count is
+ * a property of *which room is mounted*, swinging sixteen within a single
+ * lap. Sample it once at the end of a lap and you have sampled whichever
+ * room the walk stopped on - and, at three hundred milliseconds a room on a
+ * rasteriser drawing six frames a second, possibly a room that had not
+ * finished mounting: the same walk with a longer dwell never dips, and with
+ * a short one reads 35 where a settled room reads 51.
+ *
+ * So the comparison is per room and against itself. Each room is held until
+ * its count stops moving, and the last lap's number for a room is compared
+ * with the first's. That is stable to the unit - and it would catch a room
+ * leaking one geometry a visit, which the old single number could not have
+ * seen at all under a swing of sixteen.
+ */
 const drift = await page.evaluate(async () => {
   const run = window.__run;
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   run.getState().startRun(555);
   await wait(1400);
   const ids = run.getState().dungeon.rooms.map((r) => r.id);
-  const walk = async () => {
-    for (const id of ids) {
-      run.setState({ transitioning: true, currentRoomId: id });
-      run.getState().roomReady(id);
-      await wait(320);
-    }
-  };
+
   /**
-   * Walk until the count stops moving, then start measuring.
+   * Stand in a room until its geometry count stops moving.
    *
-   * This took the count after one lap and called it the baseline, on the
-   * premise that one lap has visited every room and built every shape it
-   * needs. That is true of a machine that can draw them: this one renders
-   * through a software rasteriser, and on a loaded run a room had not
-   * finished mounting before the walker moved on - so the baseline read 43
-   * where a settled one reads 55, and the twelve shapes built on later laps
-   * were reported as a leak. One run in three, which is the worst kind of
-   * check: it fails at random and teaches everyone to ignore it.
-   *
-   * What it is actually asking is whether walking a floor over and over
-   * piles anything up, and that question does not need the first lap to be
-   * special. So: lap until two in a row agree, and measure from there.
+   * Three equal readings, not two. Two in a row is exactly how the old
+   * settling loop convinced itself a still-building floor had finished:
+   * a count climbing in steps pauses on a step often enough that one run
+   * in several starts measuring from halfway up the ramp.
    */
-  let settled = null;
-  let warmUp = 0;
-  for (; warmUp < 6; warmUp++) {
-    await walk();
-    const now = window.__perf.geometries;
-    if (settled === now) break;
-    settled = now;
-  }
-  const first = { ...window.__perf };
-  for (let lap = 0; lap < 3; lap++) await walk();
-  return { first, last: { ...window.__perf }, warmUp, laps: 3, rooms: ids.length };
+  const settleIn = async (id) => {
+    run.setState({ transitioning: true, currentRoomId: id });
+    run.getState().roomReady(id);
+    let last = -1;
+    let same = 0;
+    for (let i = 0; i < 16; i++) {
+      await wait(200);
+      const now = window.__perf.geometries;
+      same = now === last ? same + 1 : 0;
+      last = now;
+      if (same >= 2) break;
+    }
+    return last;
+  };
+  const walk = async () => {
+    const row = [];
+    for (const id of ids) row.push(await settleIn(id));
+    return row;
+  };
+
+  // One lap to build every shape the floor needs, then a baseline, then
+  // three more. The first lap is the only one that climbs.
+  await walk();
+  const first = await walk();
+  let last = first;
+  for (let lap = 0; lap < 3; lap++) last = await walk();
+  return { ids, first, last, laps: 3, rooms: ids.length };
 });
-/**
- * The real leak guard, and it can be strict now.
- *
- * It allowed twelve geometries of drift over four laps, because every room
- * built its own and the count genuinely moved about as rooms of different
- * sizes came and went - which meant a room that leaked eleven would have
- * passed. The shapes are shared for the life of the program now, so after
- * the first lap has visited every room the number should not move at all.
- * Measured over four laps of nine rooms: 56 then 56.
- */
+
+const grew = drift.ids
+  .map((id, i) => ({ id, by: drift.last[i] - drift.first[i] }))
+  .filter((r) => r.by > 0);
 ok(
-  "walking the floor over and over does not pile up geometries",
-  drift.last.geometries <= drift.first.geometries + 2,
-  JSON.stringify(drift)
+  "walking the floor over and over does not pile up geometries, room by room",
+  grew.length === 0,
+  grew.length
+    ? `${grew.map((r) => `${r.id} +${r.by}`).join(", ")} over ${drift.laps} laps`
+    : `${drift.rooms} rooms, none grew over ${drift.laps} laps: ${drift.first.join(" ")}`
 );
 
 // Sprinting is the frame loop at its busiest: input, physics, footsteps,

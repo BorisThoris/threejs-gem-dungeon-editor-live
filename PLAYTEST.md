@@ -1534,14 +1534,61 @@ So the walk now asserts three things that hold:
 The third is the room's actual promise, and comparing two samples under the
 same conditions is the only form of it a coarse sampler cannot corrupt.
 
-## 15. Steam Deck
+## 15. The leak guard that could not have seen a leak
+
+Cycle 55 ended by flagging two checks that had each failed once and passed
+every other time. One of them turned out to be a real defect in the check.
+
+`test:perf` walks a floor over and over and asserts that the live geometry
+count does not pile up — one number after a settling walk, the same number
+three laps later, two of drift allowed. Its comment said the props share
+their shapes for the life of the program so the number is "close to
+constant".
+
+It is not. Measured over fourteen laps of nine rooms, a lap reads
+
+    55 58 51 55 54 51 51 58 59
+
+and it reads **exactly that** every lap afterwards, for ever. The props do
+share their shapes; a room's own floor and walls are sized to the room and
+are built and thrown away with it, so the count is a property of *which room
+is mounted*. Eight of swing between rooms — and at 300 ms a room on a
+rasteriser drawing six frames a second, a room caught still mounting reads
+lower still, dipping to 35 where a settled room reads 51.
+
+So the check sampled one point on a swinging signal, compared it with
+another arbitrary point, and allowed ±2. Two consequences:
+
+- **It failed at random** — 56 against 59 on the run that flagged this, with
+  nothing wrong.
+- **It could not have found what it was for.** A room leaking one geometry a
+  visit is invisible under a swing of eight.
+
+Its settling loop was the same shape of mistake: two equal readings in a row,
+which a count climbing in steps produces often enough by pausing on a step.
+
+It compares each room with itself now — held until its count stops moving
+(three equal readings, not two), first lap against last — which is stable to
+the unit across runs and names the room that grew.
+
+### The other one is still open
+
+`test:audio` failed once in a batch and has passed ten times since, and which
+check it was went unrecorded. The obvious candidate — the Warden's held sound
+falling back to the room tone — turned out to have thirty per cent of
+headroom, so that guess was wrong. The suite now prints the tightest margin
+any loudness assertion had; across three runs it is `lose`, 34–43% clear. A
+threshold that comfortable is unlikely to be what failed, which narrows it,
+but it is not diagnosed and is not being claimed as fixed.
+
+## 16. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 16. What a human playtest should watch for
+## 17. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1624,7 +1671,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 17. Tuning knobs
+## 18. Tuning knobs
 
 All in `src/game/world.ts`:
 

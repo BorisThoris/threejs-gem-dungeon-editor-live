@@ -296,6 +296,30 @@ ok(
   const say = (e) => `${e[0]} ${e[1].toFixed(3)}`;
   console.log(`  loudest: ${sorted.slice(0, 3).map(say).join(", ")}`);
   console.log(`  quietest: ${sorted.slice(-3).map(say).join(", ")}`);
+  /**
+   * How close the closest of these came to failing.
+   *
+   * This suite failed once, in a batch, and passed ten times since; which
+   * check it was went unrecorded, and every attempt to guess it from the
+   * output was guessing - the first candidate turned out to have thirty
+   * per cent of headroom. A loudness threshold is a measurement against a
+   * measurement and it will fail again one day. When it does, this line
+   * says how close everything else was, which is the difference between a
+   * diagnosis and another shrug.
+   */
+  let tightest = null;
+  for (const [label, peak] of heard) {
+    const bar = LOUD_CUES.some((c) => label === c || label.startsWith(`${c}(`))
+      ? floorLevel * LOUD
+      : AUDIBLE;
+    const margin = peak / bar;
+    if (tightest === null || margin < tightest.margin) tightest = { label, peak, bar, margin };
+  }
+  if (tightest)
+    console.log(
+      `  tightest margin: ${tightest.label} at ${tightest.peak.toFixed(4)} against ` +
+        `${tightest.bar.toFixed(4)} - ${((tightest.margin - 1) * 100).toFixed(0)}% clear`
+    );
 }
 
 // The one held sound: it starts, it keeps going, and it stops.

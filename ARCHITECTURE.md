@@ -479,6 +479,17 @@ second model for it to be written in.
   Before it, the only evidence a run could be completed was a `setState`
   that put the player in the last room of the last floor with the gems
   already in hand.
+- A number that moves for a reason other than the one being watched cannot
+  be watched by sampling it once. `renderer.info.memory.geometries` is not
+  the program-wide constant the perf check took it for: the props share
+  their shapes for the life of the program, but a room's floor and walls are
+  sized to the room and go with it, so the count is a property of which room
+  is mounted - 55 58 51 55 54 51 51 58 59 over a lap, and exactly that every
+  lap after. The leak guard sampled it once at the end of a lap, compared
+  with once at the end of a later lap, and allowed two of drift against a
+  swing of eight; it failed at random for two cycles and could not have seen
+  a room leaking one a visit either. It compares each room with itself now,
+  which is stable to the unit and names the room that grew.
 - A check whose subject is sampled coarsely cannot assert an outcome. The
   arena's arms test the camera's point once a frame; at six frames a second
   the player crosses two thirds of a metre between samples, and a walk that
