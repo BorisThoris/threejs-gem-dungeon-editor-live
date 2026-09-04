@@ -1581,14 +1581,52 @@ any loudness assertion had; across three runs it is `lose`, 34–43% clear. A
 threshold that comfortable is unlikely to be what failed, which narrows it,
 but it is not diagnosed and is not being claimed as fixed.
 
-## 16. Steam Deck
+## 16. The chase, and why it cannot be played here
+
+The Warden is the only threat in the game and its promise is one line:
+*there is always an answer, and the answer is to run.* `systems/pace.ts`
+proves it over 2,496 combinations of relic and potion — in node, from three
+constants. Nothing has ever run away from it in the game.
+
+Trying to is instructive. Every check the project has on the Warden bounds it
+from **above**:
+
+| | |
+| --- | --- |
+| The step cap is shorter than the reach it strikes from | so there is always a frame between seeing it close and being touched |
+| The cap does not bind at 20 fps | so it is a floor under a hitch, not a nerf |
+| A slow frame never carries it across its own reach | measured with a real 900 ms stall |
+| Every sprint outruns it by `ESCAPE_MARGIN` | arithmetic, 2,496 combinations |
+
+Not one of them is a lower bound. **A Warden frozen at nought would pass
+every line above**, and "the Warden walks into the room and is dangerous"
+reads `wardenMet`, which is set by entering a room rather than by crossing
+one. So there is one more check now: it moves as fast as it is *allowed* to,
+where allowed is its own speed or the cap over a frame, whichever is less.
+Crippled to a tenth on purpose it reads 0.42 against 1.02 allowed and the
+check fires.
+
+And the reason the chase itself is still unplayed, which is worth writing
+down so nobody measures it here and believes the answer:
+
+    nominal 4.4 m/s, actual 0.94
+
+At four frames a second, `WARDEN_MAX_STEP` binds on every single frame, and
+the Warden moves at a fifth of its speed — **a quarter of a walking player**.
+That is the correct behaviour: the rule is that the game does not charge the
+player for time nobody rendered, and below about 17 fps that rule and the
+Warden's speed are in direct conflict. The rule should win. But it means a
+chase measured on this machine is a measurement of the cap, and the promise
+stays proved on paper until somebody runs it at 30 fps or better.
+
+## 17. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 17. What a human playtest should watch for
+## 18. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1671,7 +1709,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 18. Tuning knobs
+## 19. Tuning knobs
 
 All in `src/game/world.ts`:
 

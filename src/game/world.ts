@@ -206,6 +206,23 @@ export const WARDEN_TOUCH_RADIUS = 1.05;
  * A quarter of the reach it strikes from, so the player always gets frames
  * between seeing it close and being touched. At 4.4 m/s this only binds
  * below about seventeen frames a second; above that it is inert.
+ *
+ * That sentence was written when the cap was, and never checked. It is two
+ * constants held apart by a third that is not mentioned in either of them,
+ * and the failure it hides is silent: a cap that binds in play does not
+ * look like a bug, it looks like a Warden that is easy to walk away from.
+ * `MAX_FRAME_S` above already says what the slowest frame the game reckons
+ * with is, so `yarn test:layout` now asserts that the fastest Warden's step
+ * over that frame still fits under the cap - 0.22 against 0.2625, which is
+ * a fifth of margin and a real tripwire rather than a comfortable one.
+ *
+ * Below that frame rate the cap does bind and the Warden slows: measured on
+ * the software rasteriser this project tests on, four frames a second gives
+ * it 0.94 m/s against a nominal 4.4, which is a quarter of a walking
+ * player. That is the correct behaviour - it is the rule that the game does
+ * not charge the player for time nobody rendered - but it means the chase
+ * cannot be played out on such a machine, and no measurement of it taken
+ * there is a measurement of the chase.
  */
 export const WARDEN_MAX_STEP = WARDEN_TOUCH_RADIUS / 4;
 /** Doorways it is thrown back when it lands a hit. */

@@ -509,6 +509,15 @@ second model for it to be written in.
   three metre line, which is what walked it onto the spikes. A circle it can
   hold is `measured speed / ARENA_SPIN`, measured rather than read from
   `WALK_SPEED`, because damping at six frames a second costs a fifth of it.
+- A guard is not a measurement. Every check on the Warden bounded it from
+  above - a step shorter than its reach, a cap that does not bind at twenty
+  frames a second, a slow frame that cannot carry it across that reach, and
+  `pace.ts` proving on paper that every sprint outruns it - and a Warden
+  frozen at nought would have passed all of them, because "the Warden walks
+  into the room and is dangerous" reads `wardenMet`, which entering a room
+  sets. `yarn test:smoke` measures its pace against what it is allowed now:
+  its own speed, or the cap over a frame, whichever is less. Crippled to a
+  tenth on purpose it reads 0.42 against 1.02 and the check fires.
 - A check that names what it is looking for goes on passing while the thing
   it was written to catch walks past it. `yarn test:prod` asserted that
   three probe handles were absent from the shipped build, by name, of the

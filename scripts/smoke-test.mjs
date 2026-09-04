@@ -1196,6 +1196,82 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       gap: +window.__warden.distance.toFixed(2),
     };
   });
+  /**
+   * And that it moves at all, which nothing had ever asked.
+   *
+   * Every check on the only threat in the game bounds it from above. The
+   * cap must be shorter than its reach; the cap must not bind at twenty
+   * frames a second; a slow frame must not carry it across its own reach.
+   * `pace.ts` proves on paper, over 2,496 combinations, that a sprint
+   * outruns it and a walk does not - from three constants, in node. And
+   * "the Warden walks into the room and is dangerous" reads `wardenMet`,
+   * which is set by entering a room, not by crossing one.
+   *
+   * So a Warden frozen at nought would pass every line the project has.
+   * This is the lower bound: it moves as fast as it is allowed to, where
+   * what it is allowed is its own speed or the cap over a frame, whichever
+   * is less. On target hardware that is its speed; on the rasteriser this
+   * runs on it is the cap, and saying so is the point - measured here, four
+   * frames a second gives it 0.94 m/s against a nominal 4.4, a quarter of a
+   * walking player. The chase cannot be played out on a machine like this
+   * one, and a check that tried would be measuring the cap.
+   */
+  const pace = await page.evaluate(async () => {
+    const run = window.__run;
+    const s = run.getState();
+    const room = [...s.dungeon.rooms].sort((a, b) => b.size - a.size)[0];
+    run.setState({ transitioning: true, currentRoomId: room.id, lives: 99, alarm: 6 });
+    run.getState().roomReady(room.id);
+    await new Promise((r) => setTimeout(r, 1200));
+    const half = room.size / 2;
+    window.__bus.emit("teleport", { position: [-half * 0.8, 1.5, half * 0.8], yaw: 0 });
+    await new Promise((r) => setTimeout(r, 500));
+    run.setState({ wardenRoomId: room.id, wardenCameFrom: null });
+    await new Promise((r) => setTimeout(r, 800));
+    const w = window.__warden;
+    if (!w) return null;
+    const t0 = performance.now();
+    let last = { x: w.x, z: w.z, t: t0 };
+    let travelled = 0;
+    let frames = 0;
+    await new Promise((done) => {
+      const tick = () => {
+        const now = performance.now();
+        if (now - last.t > 1) {
+          travelled += Math.hypot(w.x - last.x, w.z - last.z);
+          last = { x: w.x, z: w.z, t: now };
+          frames++;
+        }
+        // Stop before it closes, so the "do not overshoot the player"
+        // clamp is never what is being measured.
+        if (now - t0 > 3000 || w.distance < 4) return done();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    const dt = (performance.now() - t0) / 1000;
+    const frame = dt / frames;
+    const cap = window.__world.WARDEN_MAX_STEP;
+    return {
+      nominal: w.speed,
+      actual: +(travelled / dt).toFixed(2),
+      // Its own speed, or the cap over a frame, whichever is less.
+      allowed: +Math.min(w.speed, cap / frame).toFixed(2),
+      fps: +(1 / frame).toFixed(1),
+      cap,
+      gap: +w.distance.toFixed(1),
+    };
+  });
+  ok("the Warden's own pace can be watched", pace !== null, JSON.stringify(pace));
+  if (pace) {
+    ok(
+      "the Warden moves as fast as it is allowed to, which nothing had checked",
+      pace.actual >= pace.allowed * 0.7 && pace.actual <= pace.allowed * 1.15,
+      `${pace.actual} m/s against ${pace.allowed} allowed (its speed is ${pace.nominal}, ` +
+        `the cap gives ${(pace.cap * pace.fps).toFixed(2)} at ${pace.fps} fps)`
+    );
+  }
+
   ok("the chase can be watched at all", hitch !== null, JSON.stringify(hitch));
   if (hitch) {
     ok(
