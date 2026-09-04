@@ -71,6 +71,18 @@ export interface RunState {
   cleared: string[];
   /** Rooms whose puzzle or challenge has been failed for good. */
   failed: string[];
+  /**
+   * How far into a room's trial the player is: misses spent in the attempt
+   * under way, and attempts spent for good.
+   *
+   * This is a fact about the run, and it used to be a fact about a
+   * component. The memory trial counted both in `useState`, and only the
+   * room the player is standing in is mounted - so stepping through a door
+   * and back handed you a fresh allowance and the trial's whole cost, a
+   * life at two misses and the book burned at two attempts, could be walked
+   * away from and never paid.
+   */
+  trials: Record<string, { attempts: number; misses: number }>;
   /** Relics held. What they do is decided in relics/catalog.ts. */
   relics: RelicId[];
   /** What is in the satchel, oldest first. Four slots, used with 1-4. */
@@ -190,6 +202,10 @@ export interface RunState {
   gainLife: () => boolean;
   clearRoom: (roomId: string) => void;
   failRoom: (roomId: string) => void;
+  /** A wrong answer in a room's trial. Returns the misses now spent in it. */
+  trialMiss: (roomId: string) => number;
+  /** An attempt spent: the misses go back to none. Returns attempts spent. */
+  trialAttempt: (roomId: string) => number;
   lockInput: () => void;
   unlockInput: () => void;
 }
@@ -244,6 +260,7 @@ export const useRun = create<RunState>()(
     gemRooms: [],
     cleared: [],
     failed: [],
+    trials: {},
     relics: [],
     satchel: [],
     identified: [],
@@ -297,6 +314,7 @@ export const useRun = create<RunState>()(
         gemRooms: [],
         cleared: [],
         failed: [],
+        trials: {},
         relics: [],
         satchel: [],
         identified: [],
@@ -415,6 +433,9 @@ export const useRun = create<RunState>()(
           gemRooms: [],
           cleared: [],
           failed: [],
+          // Room ids repeat from floor to floor, so a trial half spent on
+          // the floor above must not follow its name down.
+          trials: {},
           // A new floor is a new Warden, asleep, and a floor nobody has
           // robbed yet - though a deep one is already stirring before you
           // touch anything. Relics, gems and the satchel carry down; what
@@ -530,7 +551,7 @@ export const useRun = create<RunState>()(
     takeItem: (id, from) => {
       const s = get();
       if (s.satchel.length >= SATCHEL_SLOTS) {
-        bus.emit("hint", "Your satchel is full. Use something first.");
+        bus.emit("notice", "Your satchel is full. Use something first.");
         return false;
       }
       set({
@@ -549,7 +570,7 @@ export const useRun = create<RunState>()(
       // down a floor with nothing awake on it would consume the one card
       // that buys a window, and the player could not have known.
       if (id === "echoes" && !s.wardenRoomId) {
-        bus.emit("hint", "You could throw it, but nothing down here is listening yet.");
+        bus.emit("notice", "You could throw it, but nothing down here is listening yet.");
         return;
       }
       const now = runClock(s);
@@ -705,6 +726,19 @@ export const useRun = create<RunState>()(
     failRoom: (roomId) => {
       const s = get();
       if (!s.failed.includes(roomId)) set({ failed: [...s.failed, roomId] });
+    },
+
+    trialMiss: (roomId) => {
+      const at = get().trials[roomId] ?? { attempts: 0, misses: 0 };
+      const next = { attempts: at.attempts, misses: at.misses + 1 };
+      set((s) => ({ trials: { ...s.trials, [roomId]: next } }));
+      return next.misses;
+    },
+    trialAttempt: (roomId) => {
+      const at = get().trials[roomId] ?? { attempts: 0, misses: 0 };
+      const next = { attempts: at.attempts + 1, misses: 0 };
+      set((s) => ({ trials: { ...s.trials, [roomId]: next } }));
+      return next.attempts;
     },
 
     lockInput: () => set((s) => ({ inputLocks: s.inputLocks + 1 })),

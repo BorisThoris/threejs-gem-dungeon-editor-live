@@ -73,6 +73,15 @@ export const entranceDepth = (halfSize: number): number =>
  */
 export const MAX_FRAME_S = 1 / 20;
 
+/**
+ * How long a passing line stays on screen, on the run's clock.
+ *
+ * The run's clock and not the wall's, because a player who opens the pause
+ * menu to read a line the game has just given them should not come back to
+ * find it gone.
+ */
+export const NOTICE_HOLD_S = 6.5;
+
 // --- Movement --------------------------------------------------------------
 
 export const WALK_SPEED = 5;

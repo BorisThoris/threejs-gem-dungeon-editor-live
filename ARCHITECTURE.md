@@ -292,7 +292,33 @@ Two stores that both claimed the player's stats. So:
   game, standing exactly where the gem had been afterwards took no hits at
   all. Its phases and its arms both read `runClock` now - the arms too,
   because driven by `elapsedTime` they kept turning through a pause and the
-  player unpaused into whichever one had arrived.
+  player unpaused into whichever one had arrived. The memory trial's display
+  was the other half of the same thing: its glows and its phase changes were
+  `setTimeout`s, so opening the pause menu during "Watch." played the whole
+  pattern out behind a screen seven-tenths opaque and the player came back
+  to a question nobody had seen asked. Its deadlines go on `runClock` now,
+  drained soonest-first by a frame so that a frame long enough to cover two
+  of them still runs them in order.
+- How far into a room's trial the player is belongs to the run, not to the
+  component drawing the room. `Scene` mounts only the room the player is
+  standing in, so anything a room remembers in `useState` is forgotten at
+  its own doorway - and the memory trial's whole price, a life at two
+  mistakes and the book burned at two attempts, was two `useState` counters.
+  One step out and one step back handed you a fresh allowance every time,
+  so the room cost nothing at all. They live in the store's `trials`, keyed
+  by room, and are cleared on a new floor because room ids repeat between
+  floors. A room may still restart its own *display* by walking out; what it
+  cannot do is unspend what the player has spent.
+- There are two lines of guidance on screen and they have two owners:
+  `hint` is the standing instruction of the room the player is in, and
+  `notice` is a passing line the game says and then takes back. They were
+  one line, and the passing one cleared itself by writing null over it - so
+  a floor's opening blurb, six and a half seconds after it was shown, erased
+  the standing instruction of whatever room the player had walked into in
+  the meantime, and nothing anywhere would write it again. A notice's
+  lifetime is `NOTICE_HOLD_S` on `runClock`, held in `src/ui/Hint.tsx`
+  rather than by each thing that says one, so a line read in the pause menu
+  is still there afterwards.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -420,6 +446,12 @@ second model for it to be written in.
   good; the memory trial is begun and repeated; the challenge room's trap is
   sprung. Each exposes what a probe cannot see - the number sequence and the
   pattern - behind `import.meta.env.DEV`.
+- Playing a puzzle correctly says nothing about what it costs to play it
+  badly, and the cost is the room. The memory trial was played once, right,
+  and its gem taken, for thirty-odd cycles; the first probe to press a wrong
+  crystal found that the price could be avoided for good by stepping through
+  a doorway. It is now played wrong too: a mistake, a door out and back, and
+  the mistake after it, which is the one that takes the life.
 - `yarn test:desktop` packages the Linux build, reads what is in it, then
   starts it under a virtual display and plays it. Electron is Chromium, so
   it opens a debugging port and the same tooling that drives the web build

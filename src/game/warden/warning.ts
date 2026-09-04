@@ -19,17 +19,21 @@ const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
 const SEEN = "The watcher called out. Stay out of the light - it tells the Warden where you are.";
 const LOUD = "It heard that. Running carries down here; walking does not.";
 const THROWN = "Something clatters a long way off. It has gone to look, and it is not listening for you.";
-const HOLD_MS = 6500;
 
 export function useWardenWarning() {
   useEffect(() => {
     let told = { woke: false, here: false, seen: false, loud: false };
-    let timer: number | null = null;
-    const say = (text: string) => {
-      bus.emit("hint", text);
-      if (timer !== null) window.clearTimeout(timer);
-      timer = window.setTimeout(() => bus.emit("hint", null), HOLD_MS);
-    };
+    /**
+     * These go in the notice slot, which they own and nothing else writes.
+     *
+     * They used to be hints with a `setTimeout` that emitted `hint: null`
+     * when they were done - the wall clock, and worse, somebody else's
+     * line. A memory chamber entered within six and a half seconds of the
+     * floor's opening blurb had its own instruction wiped by that timer and
+     * never got it back. How long a notice lasts is the Hint's business
+     * now, on the run's clock.
+     */
+    const say = (text: string) => bus.emit("notice", text);
     const offs = [
       bus.on("wardenWoke", () => {
         if (told.woke) return;
@@ -62,9 +66,6 @@ export function useWardenWarning() {
         say(floorRules(1).blurb);
       }),
     ];
-    return () => {
-      if (timer !== null) window.clearTimeout(timer);
-      offs.forEach((off) => off());
-    };
+    return () => offs.forEach((off) => off());
   }, []);
 }

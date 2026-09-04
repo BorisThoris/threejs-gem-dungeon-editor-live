@@ -71,6 +71,19 @@ export interface BusEvents {
   prompt: Prompt | null;
   /** A line of guidance for the room the player is in, or nothing. */
   hint: string | null;
+  /**
+   * A line that says itself and then goes, over the room's own hint.
+   *
+   * Separate from `hint` because they are two different facts with two
+   * different owners, and one line held both: the room you are in owns the
+   * standing instruction, and the teaching lines - a floor's blurb, the
+   * Warden waking - own a passing one. The teaching line cleared itself by
+   * emitting `hint: null`, which erased whatever the room had put there,
+   * and nothing ever put it back. Standing in a memory chamber six and a
+   * half seconds after arriving on the floor, there was no instruction on
+   * screen at all.
+   */
+  notice: string | null;
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };
   /** Snap the camera to a heading, e.g. after travelling. */

@@ -9,7 +9,7 @@ import { memoryAnchors } from "./anchors";
 import { createRng } from "../rng";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
-import { useRun } from "../state/run";
+import { runClock, useRun } from "../state/run";
 
 const COLORS = [
   { base: "#ff6b6b", glow: "#ff4444" },
@@ -40,11 +40,20 @@ export function MemoryRoom({ room }: RoomKindProps) {
   const cleared = useRun((s) => s.cleared.includes(room.id));
   const burnedBefore = useRun((s) => s.failed.includes(room.id));
   const [phase, setPhase] = useState<Phase>(cleared ? "solved" : burnedBefore ? "burned" : "idle");
-  const [attempts, setAttempts] = useState(0);
-  const [misses, setMisses] = useState(0);
+  /**
+   * How much of the trial is spent, from the run rather than from here.
+   *
+   * Both counts were `useState`, and `Scene` mounts only the room the
+   * player is in: walking out after a mistake and back in unmounted the
+   * component that remembered it. The trial costs a life at two misses and
+   * burns the book at two attempts, and until this both could be avoided
+   * for good by stepping through a door.
+   */
+  const trial = useRun((s) => s.trials[room.id]);
+  const misses = trial?.misses ?? 0;
+  const attempts = trial?.attempts ?? 0;
   const progress = useRef(0);
   const pattern = useRef<number[]>([]);
-  const timers = useRef<number[]>([]);
   const meshes = useRef<(Mesh | null)[]>([]);
 
   const anchors = useMemo(() => memoryAnchors(room), [room]);
@@ -52,14 +61,40 @@ export function MemoryRoom({ room }: RoomKindProps) {
   const lectern = anchors[4];
   const flaring = useRef(false);
 
+  /**
+   * The trial's clock, which stops when the game does.
+   *
+   * These deadlines were `window.setTimeout`s - the wall clock - so opening
+   * the pause menu during "Watch." played the entire pattern out behind a
+   * screen that is seven-tenths opaque, and the player resumed into a
+   * display that had already finished and a trial that expected an answer.
+   * They go on `runClock` now, which is wall time less every second spent
+   * in a menu, and a frame runs the ones that have come due. Soonest first,
+   * so a frame long enough to cover two of them still runs them in the
+   * order they were meant to happen.
+   */
+  const pending = useRef<{ at: number; fn: () => void }[]>([]);
   const later = (ms: number, fn: () => void) => {
-    timers.current.push(window.setTimeout(fn, ms));
+    const at = runClock(useRun.getState()) + ms / 1000;
+    const queue = pending.current;
+    let i = queue.length;
+    while (i > 0 && queue[i - 1].at > at) i--;
+    queue.splice(i, 0, { at, fn });
   };
   const clearTimers = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
+    pending.current = [];
   };
   useEffect(() => clearTimers, []);
+
+  useFrame(() => {
+    const queue = pending.current;
+    if (queue.length === 0) return;
+    const now = runClock(useRun.getState());
+    while (queue.length > 0 && queue[0].at <= now) {
+      const due = queue.shift();
+      if (due) due.fn();
+    }
+  });
 
   useEffect(() => {
     const text =
@@ -103,7 +138,8 @@ export function MemoryRoom({ room }: RoomKindProps) {
       // For the browser probes, which cannot watch a material glow.
       (window as unknown as Record<string, unknown>).__memoryPattern = pattern.current;
     }
-    setMisses(0);
+    // Not the misses: they are the run's now, and only spending an attempt
+    // clears them. Beginning again after walking out is the same attempt.
     clearTimers();
     show();
   };
@@ -141,14 +177,12 @@ export function MemoryRoom({ room }: RoomKindProps) {
         });
       });
     }
-    const m = misses + 1;
-    setMisses(m);
+    const run = useRun.getState();
+    const m = run.trialMiss(room.id);
     bus.emit("puzzleResult", { roomId: room.id, completed: false });
     if (m >= MISSES_ALLOWED) {
-      const run = useRun.getState();
       run.damage();
-      const a = attempts + 1;
-      setAttempts(a);
+      const a = run.trialAttempt(room.id);
       if (a >= ATTEMPTS_ALLOWED) {
         run.failRoom(room.id);
         later(600, () => setPhase("burned"));

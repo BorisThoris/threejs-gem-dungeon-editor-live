@@ -1882,6 +1882,150 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
   }
 
+  /**
+   * What the trial costs, and whether it can be got out of.
+   *
+   * The block above plays it correctly and takes the gem. Nothing had ever
+   * played it badly, and the trial's whole shape is what happens when you
+   * do: a life at two misses, and the book burned for good at two attempts.
+   * Both counts were `useState` in the room's component, and `Scene` mounts
+   * only the room the player is standing in - so one step through a door
+   * and one step back handed you a fresh allowance, and the trial's cost
+   * could be walked away from every time. Its display was on
+   * `window.setTimeout` besides, which is the wall clock: opening the pause
+   * menu during "Watch." played the whole pattern out behind a screen that
+   * is seven-tenths opaque.
+   */
+  {
+    const trial = await standIn("memory");
+    ok("a second floor has a memory trial to fail at", trial !== null, JSON.stringify(trial && trial.id));
+    if (trial) {
+      const peds = trial.anchors.slice(0, 4);
+      const lect = trial.anchors[4];
+      const line = () =>
+        page.evaluate(() => {
+          const m = document.body.innerText.match(/(Begin the trial[^\n]*|Watch\.|Choose the crystals[^\n]*|The trial is over\.)/);
+          return m ? m[1] : null;
+        });
+
+      // --- The pattern is not played behind the pause menu -----------------
+      await stepTo(lect, 1.9);
+      await act();
+      const watching = await line();
+      ok("beginning the trial says to watch", watching === "Watch.", String(watching));
+      await page.evaluate(() => window.__run.getState().pause());
+      // Longer than the whole display, which is 4.3 seconds.
+      await page.waitForTimeout(8000);
+      const held = await line();
+      await page.evaluate(() => window.__run.getState().resume());
+      // The rest of the display, plus a frame's grace at four frames a second.
+      await page.waitForTimeout(5000);
+      const asking = await line();
+      /**
+       * Both halves in one assertion, because either alone passes on the
+       * broken code. "It has finished by now" was already true when the
+       * pause menu played it, and "it is still showing" would be true of a
+       * display that never started. What is being claimed is that the eight
+       * seconds bought nothing and the rest of it ran after the game
+       * came back.
+       */
+      ok(
+        "eight seconds in the pause menu do not play the pattern out, and it finishes after",
+        held === "Watch." && String(asking).startsWith("Choose the crystals"),
+        `paused: ${held} | resumed: ${asking}`
+      );
+
+      // --- A mistake is still spent after walking out and back in ----------
+      const pattern = await page.evaluate(() => window.__memoryPattern);
+      const wrong = [0, 1, 2, 3].find((i) => i !== pattern[0]);
+      await page.evaluate(() => window.__run.setState({ lives: 3, lastDamageAt: -Infinity }));
+      await stepTo(peds[wrong], 1.2);
+      await act();
+      await page.waitForTimeout(1600);
+      const oneMiss = await page.evaluate(() => {
+        const s = window.__run.getState();
+        return { lives: s.lives, trial: (s.trials || {})[s.currentRoomId] ?? null };
+      });
+      ok(
+        "one wrong crystal is a mistake and not yet a life",
+        oneMiss.lives === 3 && oneMiss.trial && oneMiss.trial.misses === 1,
+        JSON.stringify(oneMiss)
+      );
+
+      const returned = await page.evaluate(async () => {
+        const run = window.__run;
+        const here = run.getState().currentRoomId;
+        const room = run.getState().dungeon.rooms.find((r) => r.id === here);
+        const next = Object.values(room.links)[0];
+        run.setState({ transitioning: true, currentRoomId: next });
+        run.getState().roomReady(next);
+        await new Promise((r) => setTimeout(r, 1200));
+        run.setState({ transitioning: true, currentRoomId: here });
+        run.getState().roomReady(here);
+        await new Promise((r) => setTimeout(r, 1600));
+        return { left: next, trial: (run.getState().trials || {})[here] ?? null };
+      });
+      ok(
+        "leaving the room and coming back does not forget it",
+        returned.trial && returned.trial.misses === 1,
+        JSON.stringify(returned)
+      );
+
+      // And the second mistake costs the life, on the far side of a door.
+      await stepTo(lect, 1.9);
+      await act();
+      await page.waitForTimeout(5200);
+      const pattern2 = await page.evaluate(() => window.__memoryPattern);
+      const wrong2 = [0, 1, 2, 3].find((i) => i !== pattern2[0]);
+      await stepTo(peds[wrong2], 1.2);
+      await act();
+      await page.waitForTimeout(1600);
+      const paid = await page.evaluate(() => {
+        const s = window.__run.getState();
+        return { lives: s.lives, trial: (s.trials || {})[s.currentRoomId] ?? null };
+      });
+      ok(
+        "and the second mistake takes the life the trial is meant to cost",
+        paid.lives === 2 && paid.trial && paid.trial.attempts === 1,
+        JSON.stringify(paid)
+      );
+
+      /**
+       * And the room's own line is not erased by a passing one.
+       *
+       * The teaching lines - a floor's blurb, the Warden waking, a scroll
+       * thrown - cleared themselves by emitting `hint: null` six and a half
+       * seconds later, and that is the same line the room writes its
+       * standing instruction on. Walk into a memory chamber within six and
+       * a half seconds of arriving on the floor and the instruction was
+       * wiped by somebody else's timer, with nothing to write it again.
+       */
+      await page.waitForTimeout(9000);
+      const standing = await line();
+      await page.evaluate(() => window.__bus.emit("wardenLured", {}));
+      await page.waitForTimeout(700);
+      const both = await page.evaluate(() => ({
+        room: /Begin the trial|Watch\.|Choose the crystals|The trial is over/.test(document.body.innerText),
+        notice: /Something clatters/.test(document.body.innerText),
+      }));
+      ok(
+        "a passing line sits above the room's line rather than replacing it",
+        standing !== null && both.room && both.notice,
+        `${JSON.stringify(standing)} ${JSON.stringify(both)}`
+      );
+      await page.waitForTimeout(7000);
+      const after = await page.evaluate(() => ({
+        room: /Begin the trial|Watch\.|Choose the crystals|The trial is over/.test(document.body.innerText),
+        notice: /Something clatters/.test(document.body.innerText),
+      }));
+      ok(
+        "and it goes on its own without taking the room's line with it",
+        after.room && !after.notice,
+        JSON.stringify(after)
+      );
+    }
+  }
+
   // --- The challenge room's plate ------------------------------------------
 
   /**

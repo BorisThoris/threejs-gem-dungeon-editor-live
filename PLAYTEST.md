@@ -1400,14 +1400,67 @@ guarded rather than assumed:
   would not notice, because a floor is payable *without* the vault by
   construction. 0 of 900 locked floors.
 
-## 12. Steam Deck
+## 12. What the memory trial costs
+
+The trial is four crystals, a pattern, and a stated price: **a life at two
+mistakes, and the book burned for good at two attempts.** The suite had
+played it once, correctly, and taken the gem. Nothing had ever played it
+badly, which is where the whole shape of the room is.
+
+Both counts lived in `useState` inside the room's component, and `Scene`
+mounts only the room the player is standing in. So:
+
+| | before | after |
+| --- | --- | --- |
+| One mistake, then out of the door and back | **forgotten** | still spent |
+| The mistake after that | **nothing** | the life it is meant to cost |
+| Attempts, across a door | **always 0** | 1, and the second burns the book |
+
+One step through a doorway and one step back handed you a fresh allowance,
+every time, for nothing. The trial had no price at all. Both counts are the
+run's now, in `trials`, keyed by room and cleared on a new floor because
+room ids repeat between floors.
+
+Its display was on `window.setTimeout` besides, which is the wall clock.
+Measured: begin the trial, press Escape during "Watch.", wait eight seconds
+— longer than the whole 4.3-second display — and come back.
+
+| | before | after |
+| --- | --- | --- |
+| Eight seconds in the pause menu | pattern **played out behind it** | still showing |
+| On resume | asking for an answer nobody saw | the rest of the display, then the question |
+
+The pause screen is seven-tenths opaque with a panel over the middle of it,
+so this was not a display the player could watch through the menu. It is the
+mirror of the arena in §11: there the wall clock let the player skip the
+room's demand, here it let the room skip the player.
+
+### And the line the room writes on
+
+Found while measuring the above, by a probe that read a blank screen where
+an instruction should have been. The teaching lines — a floor's opening
+blurb, the Warden waking, a scroll thrown — cleared themselves six and a
+half seconds later by emitting `hint: null`, and that is the same single
+line every room writes its standing instruction on.
+
+So: walk into a memory chamber within six and a half seconds of arriving on
+the floor, and the instruction telling you what the room even is was wiped
+by somebody else's timer, with nothing anywhere to write it again. Measured
+in the running game, nine seconds after arriving: the room's line was gone.
+
+There are two slots now. The room owns the lower line for as long as the
+player is in it; a notice owns the upper one until it runs out, on the run's
+clock, so a line read in the pause menu is still there when the game comes
+back.
+
+## 13. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 13. What a human playtest should watch for
+## 14. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1490,7 +1543,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 14. Tuning knobs
+## 15. Tuning knobs
 
 All in `src/game/world.ts`:
 
