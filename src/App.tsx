@@ -83,6 +83,10 @@ export default function App() {
     w.__keyboard = keyboard;
     w.__settings = useSettings;
     w.__records = useRecords;
+    // The numbers themselves, so a check never keeps its own copy of one.
+    // A check that hardcodes 1.05 for the Warden's reach is a second owner
+    // of it, and passes for years after the constant moves.
+    void import("./game/world").then((m) => (w.__world = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a

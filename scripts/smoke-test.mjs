@@ -1111,6 +1111,105 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("and all of it fits inside the dial", dial.far <= dial.radius, JSON.stringify(dial));
 }
 
+/**
+ * What a slow frame does to the thing chasing you.
+ *
+ * The Warden walks by adding `speed * delta` to its position and nothing
+ * bounded the delta, so a frame that took half a second moved it two and a
+ * half metres in one instant and a frame that took eight moved it the
+ * length of the dungeon - straight onto the player, because its own step is
+ * clamped to land just inside touching range rather than past them. Every
+ * measurement of it before this one was an average over a second or more,
+ * which is exactly the shape that hides a lunge: 4.4 m/s on the mean, with
+ * single frames at twenty-three and thirty-seven.
+ *
+ * Scene.tsx had already written the same lesson down for the player -
+ * a fixed physics timestep, because a variable one hands Rapier the whole
+ * hitch and tunnels the capsule through the floor - so a hitch moved the
+ * threat and not the target.
+ *
+ * The stall here is a real one: a busy loop on the main thread, which is
+ * what a collection or a window coming back to the front looks like from
+ * inside the frame loop.
+ */
+{
+  const hitch = await page.evaluate(async () => {
+    const run = window.__run;
+    const s = run.getState();
+    // The biggest room on the floor, so there is ground for a lunge to
+    // cross, and fully roused, which is the fastest it ever moves.
+    const room = [...s.dungeon.rooms].sort((a, b) => b.size - a.size)[0];
+    run.setState({ transitioning: true, currentRoomId: room.id, lives: 99, alarm: 6 });
+    run.getState().roomReady(room.id);
+    await new Promise((r) => setTimeout(r, 1200));
+    const half = room.size / 2;
+    // Player in one corner; the Warden comes in at the opposite one.
+    window.__bus.emit("teleport", { position: [-half * 0.75, 1.5, half * 0.75], yaw: 0 });
+    await new Promise((r) => setTimeout(r, 500));
+    run.setState({ wardenRoomId: room.id, wardenCameFrom: null });
+    await new Promise((r) => setTimeout(r, 600));
+    if (!window.__warden) return null;
+
+    // Sample every frame, stalling the main thread hard in the middle of
+    // the window. The sample either side of the stall is the lunge.
+    let last = { x: window.__warden.x, z: window.__warden.z, t: performance.now() };
+    let biggest = 0;
+    let longestFrame = 0;
+    let stalled = false;
+    const t0 = last.t;
+    await new Promise((done) => {
+      const tick = () => {
+        const w = window.__warden;
+        const now = performance.now();
+        const dt = (now - last.t) / 1000;
+        if (dt > 0.001) {
+          biggest = Math.max(biggest, Math.hypot(w.x - last.x, w.z - last.z));
+          longestFrame = Math.max(longestFrame, dt);
+          last = { x: w.x, z: w.z, t: now };
+        }
+        if (!stalled && now - t0 > 400) {
+          stalled = true;
+          const until = performance.now() + 900;
+          // eslint-disable-next-line no-empty
+          while (performance.now() < until) {}
+        }
+        if (now - t0 > 2600) return done();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    return {
+      size: room.size,
+      biggest: +biggest.toFixed(2),
+      longestFrame: +longestFrame.toFixed(2),
+      cap: window.__world?.WARDEN_MAX_STEP ?? null,
+      touch: window.__world?.WARDEN_TOUCH_RADIUS ?? null,
+      gap: +window.__warden.distance.toFixed(2),
+    };
+  });
+  ok("the chase can be watched at all", hitch !== null, JSON.stringify(hitch));
+  if (hitch) {
+    ok(
+      "the check produced a frame long enough to matter",
+      hitch.longestFrame >= 0.5,
+      `longest frame ${hitch.longestFrame}s`
+    );
+    // The promise: it can never appear on top of you. A step shorter than
+    // the reach it strikes from means there is always a frame between
+    // seeing it close and being touched, however badly the frame ran.
+    ok(
+      "a slow frame never lets the Warden cross its own reach in one step",
+      hitch.biggest <= hitch.touch,
+      `biggest step ${hitch.biggest}m, strikes from ${hitch.touch}m, cap ${hitch.cap}m`
+    );
+    ok(
+      "and the step stays inside the cap world.ts sets",
+      hitch.biggest <= hitch.cap + 0.02,
+      `biggest step ${hitch.biggest}m against a cap of ${hitch.cap}m`
+    );
+  }
+}
+
 // The three puzzles, played. Eighty-seven checks and not one of them had
 // opened the tome, repeated the pattern or weighted the plate - three
 // interactive systems whose whole contract is "solved pays a gem, failed is

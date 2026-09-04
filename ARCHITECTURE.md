@@ -193,6 +193,17 @@ Two stores that both claimed the player's stats. So:
   vault whatever kind it was drawn as, and never ends up poorer for being
   locked. `yarn test:layout` checks it room by room.
 
+- Nothing that can hurt the player integrates an unbounded frame delta.
+  The physics timestep is fixed for that reason - Scene.tsx says so - and
+  the Warden was not: it added `speed * delta` to its own position, so a
+  frame that took nine tenths of a second carried it four metres in one
+  step, measured, in a room twenty-four across, against a strike radius of
+  one. `WARDEN_MAX_STEP` in world.ts is a quarter of that radius, so a
+  hitch can never put it on top of you, and `yarn test:layout` holds the
+  cap between the reach it strikes from and a step at twenty frames a
+  second. Everything else that moves on the clock - the arena's arms, the
+  Sentry's beam - reads `elapsedTime` and is placed rather than advanced,
+  so a hitch skips them past the player rather than through them.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -384,6 +395,11 @@ second model for it to be written in.
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this
   project has had was invisible to the type checker and the build.
+- `yarn test:smoke` stalls the main thread on purpose, once, and watches
+  what the Warden does across the frame that missed. An average over a
+  second is exactly the shape that hides a lunge - it read a steady 4.4 m/s
+  with single frames at twenty-three and thirty-seven - so it samples every
+  frame and takes the largest single step.
 - `yarn tour` asserts nothing. It photographs every kind of room and every
   screen the game puts in front of the player, and looking at the pictures
   is the check. The screens had never been in it, and the first eight shots

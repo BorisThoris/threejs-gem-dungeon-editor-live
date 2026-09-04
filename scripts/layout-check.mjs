@@ -664,6 +664,34 @@ check("the shipped room templates reach the floors the game generates", authored
   // and the Warden that can never catch a walking player is furniture.
   const mired = rows.filter((r) => r.effect === "mire" && r.alarm === L.ALARM_MAX);
   const fastest = mired.reduce((a, b) => (b.walk > a.walk ? b : a));
+  /**
+   * And the same promise against the clock rather than against the player.
+   *
+   * The whole matrix above compares two speeds, and a speed is a distance
+   * over a frame. The Warden's frame was the wall clock: it added
+   * `speed * delta` with nothing bounding the delta, so a hitch of a
+   * second moved it four metres in one step - measured, in a room
+   * twenty-four across, with a strike radius of one. Every sprint in the
+   * table outruns it and none of them outruns a frame that never happened.
+   *
+   * Two lines hold the cap now. It must be shorter than the reach it
+   * strikes from, so there is always a frame between seeing it close and
+   * being touched. And it must be longer than a step at a playable frame
+   * rate, or it would be a stealth nerf to the chase rather than a floor
+   * under a hitch.
+   */
+  const PLAYABLE_FPS = 20;
+  check(
+    "one frame never carries the Warden across the reach it strikes from",
+    L.WARDEN_MAX_STEP < L.WARDEN_TOUCH_RADIUS,
+    `cap ${L.WARDEN_MAX_STEP.toFixed(3)}m against a reach of ${L.WARDEN_TOUCH_RADIUS}m`
+  );
+  check(
+    `and the cap does not bind at ${PLAYABLE_FPS} frames a second or better`,
+    top / PLAYABLE_FPS < L.WARDEN_MAX_STEP,
+    `a frame at ${PLAYABLE_FPS}fps is ${(top / PLAYABLE_FPS).toFixed(3)}m, the cap is ${L.WARDEN_MAX_STEP.toFixed(3)}m`
+  );
+
   check(
     "a mired player cannot outwalk a fully roused Warden, whatever they are carrying",
     fastest.walk < top,

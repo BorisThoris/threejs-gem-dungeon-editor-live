@@ -8,7 +8,7 @@ import { bus } from "../events";
 import { canControl, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { GROUND_Y, WARDEN_TOUCH_RADIUS } from "../world";
+import { GROUND_Y, WARDEN_MAX_STEP, WARDEN_TOUCH_RADIUS } from "../world";
 import { behaviourFor } from "./tuning";
 
 interface WardenProps {
@@ -83,6 +83,28 @@ export function Warden({ room }: WardenProps) {
     const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
 
+    if (import.meta.env.DEV) {
+      /**
+       * Where it actually is, for the checks.
+       *
+       * Nothing outside this component had ever known: the run store knows
+       * which room it is in and the bus says when it strikes, and between
+       * those two the whole chase - the only thing the player can do about
+       * the only threat in the game - was unobservable. `pace.ts` proves on
+       * paper that a sprint outruns it and a walk does not, over 2,496
+       * combinations, in node, from three constants. Whether the game moves
+       * either body at those speeds was never asked, because there was no
+       * way to ask it. Written into one object rather than a fresh one, at
+       * frame rate.
+       */
+      const w = window as unknown as { __warden?: Record<string, number> };
+      const probe = (w.__warden ??= { x: 0, z: 0, distance: 0, speed: 0 });
+      probe.x = g.position.x;
+      probe.z = g.position.z;
+      probe.distance = distance;
+      probe.speed = behaviour.speed;
+    }
+
     const level = bandFor(distance);
     if (level !== band.current) {
       band.current = level;
@@ -107,8 +129,15 @@ export function Warden({ room }: WardenProps) {
     }
 
     // Straight at the player, clamped inside the room so it never drifts
-    // out through a wall it did not walk through.
-    const step = Math.min(behaviour.speed * delta, Math.max(0, distance - WARDEN_TOUCH_RADIUS * 0.5));
+    // out through a wall it did not walk through - and never further in one
+    // frame than WARDEN_MAX_STEP, whatever the frame cost. See world.ts:
+    // an unbounded delta let a single slow frame put it on top of you from
+    // across the room.
+    const step = Math.min(
+      behaviour.speed * delta,
+      WARDEN_MAX_STEP,
+      Math.max(0, distance - WARDEN_TOUCH_RADIUS * 0.5)
+    );
     scratch.to.set(dx / distance, 0, dz / distance).multiplyScalar(step);
     const limit = halfSize(room) - 0.6;
     g.position.x = Math.max(-limit, Math.min(limit, g.position.x + scratch.to.x));

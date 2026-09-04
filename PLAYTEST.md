@@ -1050,14 +1050,73 @@ line on them; each check was run against the old code first and went red.
 | ![won](docs/playtest/screen-won.png) | **Escaped.** What came out with you, what it beat, the seed, and the same dungeon again. |
 | ![lost](docs/playtest/screen-lost.png) | **Died.** What you were carrying and how far down, and none of it comes back up. |
 
-## 6. Steam Deck
+## 6. What the chase actually does
+
+The Warden is the only threat in the game and evasion is the only thing
+the player can do about it. `systems/pace.ts` proves the promise - *a
+sprint always gets away, a walk does not* - over 2,496 combinations of
+relic set, potion and alarm level. All of that is arithmetic on three
+constants, in node. Nothing had ever run from the thing in the game, and
+`yarn test:run` said so in its own output every time it ran: *the walker
+does not evade the Warden*, and of the last ten hits over three runs, ten
+came from the Warden.
+
+Measured in the running game, on the software rasteriser here:
+
+| | Measured | The constant |
+| --- | --- | --- |
+| Player walk | 4.75 m/s | `WALK_SPEED` 5 |
+| Player sprint | 7.64 m/s | `DASH_SPEED` 8 |
+| Sprint / walk | 1.61 | 1.60 |
+| Warden, fully roused, median frame | 4.35 m/s | `WARDEN_SPEED_ROUSED` 4.4 |
+| Warden, worst single frame | **36.8 m/s** | - |
+
+The last row is the finding. The Warden walks by adding `speed * delta` to
+its own position and nothing bounded the delta, so a frame that took nine
+tenths of a second moved it **four metres in one step** - in a room
+twenty-four metres across, against a strike radius of 1.05. Its step was
+already clamped to land just inside touching range rather than past the
+player, so the lunge did not overshoot: it arrived, and struck. A garbage
+collection, a room mounting, a window coming back to the front - any of
+them, and the thing you were outrunning is on you, from anywhere in the
+room, whatever `pace.ts` says.
+
+The same lesson was already written down across the room, in `Scene.tsx`:
+the physics timestep is fixed rather than variable *precisely because* a
+variable one hands Rapier the whole hitch and tunnels the player through
+the floor. The player was held to a fixed step and the thing chasing them
+was not, so a hitch moved the threat and not the target - the one
+direction that is never fair.
+
+`WARDEN_MAX_STEP` is a quarter of the reach it strikes from, so there is
+always a frame between seeing it close and being touched. It binds only
+below about seventeen frames a second; above that it is inert. The same
+stall now moves it 0.26 m instead of 4.08. Two checks in `test:layout`
+hold the cap between the strike radius and a step at twenty frames a
+second, and `test:smoke` stalls the main thread on purpose and measures
+the largest single step the Warden takes across it.
+
+Two things were measured on the way and turned out to be fine, which is
+worth writing down so nobody spends the afternoon again:
+
+- **The door handover.** Control comes back when the destination room
+  reports its colliders mounted, and a 1500 ms timeout hands it back
+  anyway if the room never does. Over 24 doors across three floors the
+  handover took 14 to 39 ms, median 22. The fallback has never fired; it
+  has forty times the margin it needs.
+- **Everything else that moves on the clock.** The arena's arms and the
+  Sentry's beam are placed from `elapsedTime` rather than advanced by
+  `delta`, so a hitch skips them past the player rather than through them.
+  The Warden was the only one integrating.
+
+## 7. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 7. What a human playtest should watch for
+## 8. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1140,7 +1199,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 8. Tuning knobs
+## 9. Tuning knobs
 
 All in `src/game/world.ts`:
 

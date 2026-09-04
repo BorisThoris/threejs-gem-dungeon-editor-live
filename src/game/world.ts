@@ -130,6 +130,31 @@ export const WARDEN_SPEED_ROUSED = 4.4;
 export const ALARM_MAX = 6;
 /** How close it has to be to take a life. */
 export const WARDEN_TOUCH_RADIUS = 1.05;
+/**
+ * The furthest it may cross in a single frame, however long that frame was.
+ *
+ * It walks by adding `speed * delta` to its position, and nothing bounded
+ * the delta. A frame that takes half a second - a room mounting, a
+ * collection, a window coming back to the front - moved it two and a half
+ * metres in one instant, and a frame that takes eight moved it the length
+ * of the dungeon. Measured on the software rasteriser here: a steady 4.4
+ * m/s with occasional single frames at twenty-three and thirty-seven. Its
+ * own step is already clamped so it lands just inside touching range
+ * rather than past the player, so the lunge did not overshoot - it
+ * arrived, and struck.
+ *
+ * The lesson had already been learned across the room, in Scene.tsx: the
+ * physics timestep is fixed rather than variable precisely because handing
+ * Rapier a whole hitch tunnels the player through the floor. The player is
+ * held to a fixed step and the thing chasing them was not, so a hitch moved
+ * the threat and not the target - which is the one direction that is never
+ * fair, in a game whose only verb against it is running.
+ *
+ * A quarter of the reach it strikes from, so the player always gets frames
+ * between seeing it close and being touched. At 4.4 m/s this only binds
+ * below about seventeen frames a second; above that it is inert.
+ */
+export const WARDEN_MAX_STEP = WARDEN_TOUCH_RADIUS / 4;
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
 /**
