@@ -37,12 +37,27 @@ writeFileSync(
    export * from "${root}src/game/systems/pace";
    export * from "${root}src/game/arena/sweep";
    export * from "${root}src/game/sentry/beam";
+   export * from "${root}src/game/rooms/Dressing";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
-await build({ entryPoints: [entry], bundle: true, platform: "node", format: "esm", outfile: out, logLevel: "error" });
+// The dressing lives in a .tsx - `placementsFor` is the pure half of a
+// component, and the editor previews with it directly - so the bundle needs
+// to know what to do with JSX and with the env the browser build defines.
+await build({
+  entryPoints: [entry],
+  bundle: true,
+  platform: "node",
+  format: "esm",
+  outfile: out,
+  logLevel: "error",
+  absWorkingDir: root,
+  loader: { ".tsx": "tsx" },
+  jsx: "automatic",
+  define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" },
+});
 const L = await import(pathToFileURL(out).href);
 
 let failures = 0;
@@ -830,6 +845,84 @@ check("the shipped room templates reach the floors the game generates", authored
     "and only in the outer half of its reach, not the whole room",
     bites > L.SENTRY_RANGE / 2,
     `a mired walk escapes out to ${bites.toFixed(1)} of ${L.SENTRY_RANGE} units`
+  );
+}
+
+// --- Is the lock worth the key ---------------------------------------------
+//
+// A floor puts one door behind a key. What was behind it was whatever room
+// the floor could be walked without - a treasure room only 29% of the time,
+// and a set piece or a plain chamber the rest - and it was furnished as
+// whatever kind it happened to be. Measured over 899 locked rooms: a vault
+// held 0.97 chests, an ordinary chamber 0.90, and the treasure rooms
+// standing open elsewhere on the same floors held 2.35. The lock cost a key
+// and paid what any room on the floor pays, which is to say nothing, while
+// the code that fills the chests carried a comment about "the vault, with
+// three of them, finally worth its name".
+//
+// Being the vault decides the furniture now. This checks it room by room
+// rather than on an average, which is the sharper question: is this
+// particular locked room better for being locked?
+{
+  const chests = (room, seed, asVault) =>
+    L.placementsFor(room, seed, { asVault }).filter((p) => p.kind === "chest").length;
+  let vaults = 0;
+  let better = 0;
+  let worse = 0;
+  let locked = 0;
+  let plain = 0;
+  let plainRooms = 0;
+  const SET_PIECES = new Set(["shop", "library", "memory", "challenge", "arena"]);
+  const bare = [];
+  let bareSet = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    for (let floor = 1; floor <= 3; floor++) {
+      const d = L.generateDungeon(seed, floor);
+      if (!d.vaultId) continue;
+      const vault = d.rooms.find((r) => r.id === d.vaultId);
+      const asVault = chests(vault, d.seed, true);
+      const asItself = chests(vault, d.seed, false);
+      vaults++;
+      locked += asVault;
+      if (asVault > asItself) better++;
+      if (asVault < asItself) worse++;
+      if (asVault === 0) {
+        if (SET_PIECES.has(vault.kind)) bareSet++;
+        else bare.push(`${vault.kind} on floor ${floor} of seed ${seed}`);
+      }
+      for (const r of d.rooms) {
+        if (r.kind !== "normal" || r.id === d.vaultId) continue;
+        plain += chests(r, d.seed, false);
+        plainRooms++;
+      }
+    }
+  }
+  check("every floor checked has a locked room to look behind", vaults > 300, `${vaults} vaults`);
+  check(
+    "locking a room never leaves it with less in it than before",
+    worse === 0,
+    `${worse} of ${vaults} came out worse`
+  );
+  check(
+    "many locked rooms hold more for being locked",
+    better > vaults / 4,
+    `${better} of ${vaults} gained chests`
+  );
+  // The ones with no chest are all set pieces, whose own content is the
+  // reward: a locked challenge room, memory trial or shop. What must never
+  // happen is a key opening onto a plain chamber with nothing extra in it.
+  check(
+    "a locked room is never a plain chamber with nothing extra in it",
+    bare.length === 0,
+    bare.join(", ") || `${bareSet} chestless vaults, every one a set piece`
+  );
+  // The headline: a key has to buy more than walking into the next room.
+  const perVault = locked / vaults;
+  const perPlain = plain / plainRooms;
+  check(
+    "a vault is worth more than an ordinary chamber",
+    perVault > perPlain * 1.5,
+    `${perVault.toFixed(2)} chests against ${perPlain.toFixed(2)}`
   );
 }
 

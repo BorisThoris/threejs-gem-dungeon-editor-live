@@ -177,6 +177,11 @@ Two stores that both claimed the player's stats. So:
   Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
 - Templates come from `src/game/rooms/templates.ts`, by id.
+- What furniture a room gets is `placementsFor` in
+  `src/game/rooms/Dressing.tsx`, and being the floor's locked room is part
+  of that question rather than a separate one: a vault is dressed as a
+  vault whatever kind it was drawn as, and never ends up poorer for being
+  locked. `yarn test:layout` checks it room by room.
 
 If you need a number and it is not in one of those places, add it there, not
 where you need it.

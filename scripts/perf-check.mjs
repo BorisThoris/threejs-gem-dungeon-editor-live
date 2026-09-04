@@ -153,10 +153,33 @@ const drift = await page.evaluate(async () => {
       await wait(320);
     }
   };
-  await walk();
+  /**
+   * Walk until the count stops moving, then start measuring.
+   *
+   * This took the count after one lap and called it the baseline, on the
+   * premise that one lap has visited every room and built every shape it
+   * needs. That is true of a machine that can draw them: this one renders
+   * through a software rasteriser, and on a loaded run a room had not
+   * finished mounting before the walker moved on - so the baseline read 43
+   * where a settled one reads 55, and the twelve shapes built on later laps
+   * were reported as a leak. One run in three, which is the worst kind of
+   * check: it fails at random and teaches everyone to ignore it.
+   *
+   * What it is actually asking is whether walking a floor over and over
+   * piles anything up, and that question does not need the first lap to be
+   * special. So: lap until two in a row agree, and measure from there.
+   */
+  let settled = null;
+  let warmUp = 0;
+  for (; warmUp < 6; warmUp++) {
+    await walk();
+    const now = window.__perf.geometries;
+    if (settled === now) break;
+    settled = now;
+  }
   const first = { ...window.__perf };
   for (let lap = 0; lap < 3; lap++) await walk();
-  return { first, last: { ...window.__perf }, laps: 4, rooms: ids.length };
+  return { first, last: { ...window.__perf }, warmUp, laps: 3, rooms: ids.length };
 });
 /**
  * The real leak guard, and it can be strict now.
@@ -169,7 +192,7 @@ const drift = await page.evaluate(async () => {
  * Measured over four laps of nine rooms: 56 then 56.
  */
 ok(
-  "walking the floor four times over does not pile up geometries",
+  "walking the floor over and over does not pile up geometries",
   drift.last.geometries <= drift.first.geometries + 2,
   JSON.stringify(drift)
 );

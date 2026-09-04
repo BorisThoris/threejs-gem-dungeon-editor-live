@@ -12,7 +12,7 @@ import {
   type Vec3,
 } from "../dungeon/layout";
 import { createRng } from "../rng";
-import type { PropPlacement, Room } from "../dungeon/types";
+import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { nameOf, rollItem } from "../items/catalog";
 import { Braziers } from "../props/Braziers";
@@ -47,38 +47,109 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
  * one axis only keeps what an author or an arrangement put across its
  * middle instead of dropping it.
  */
-export function placementsFor(room: Room, seed: number): PropPlacement[] {
+/**
+ * Furnished as the floor's vault, whatever kind of room it happens to be.
+ *
+ * The lock is put on whichever room the floor can be walked without, and
+ * that is a treasure room only 29% of the time - the rest is a set piece
+ * or a plain chamber. Measured over 899 locked rooms: a vault held 0.97
+ * chests, an ordinary chamber 0.90, and the treasure rooms standing open
+ * elsewhere on the same floors held 2.35. The lock cost a key and paid the
+ * price of any room on the floor, which is the same as paying nothing, and
+ * the comment above `Chests` had been claiming "the vault, with three of
+ * them, is finally worth its name" on the assumption that a vault is a
+ * treasure room.
+ *
+ * So being the vault is what decides the furniture now, not the kind the
+ * room was drawn as. A set piece keeps its own content - a locked shop is
+ * still a shop - and gets a treasure room's chests around it.
+ */
+export interface DressingOptions {
+  /** This is the floor's locked room. */
+  asVault?: boolean;
+}
+
+export function placementsFor(room: Room, seed: number, opts: DressingOptions = {}): PropPlacement[] {
   const authored = authoredProps(room);
-  const rng = createRng(`${seed}:${room.id}:dressing`);
-  const spots: Spots = {
-    near: quadrantSpots(room, "near"),
-    far: quadrantSpots(room, "far"),
-    corners: cornerSpots(room),
-    // Empty in a room whose doors cross its middle, which is why every
-    // arrangement has to place these by spreading rather than by index.
-    centre: centreSpots(room),
-    rng,
-  };
-  const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
-  // The arrangement is drawn before it is run, so a kind with several of
-  // them spends one number choosing and the rest furnishing.
-  const layout = room.template ? authored : arrangementFor(room.kind, rng)(spots);
   const reserved = reservedAnchors(room);
   const gem = gemFor(room, seed);
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
-  return [...torches, ...layout].filter((p) => {
+
+  /**
+   * The room furnished as one kind or another.
+   *
+   * Its own generator each time, from the same key, so asking twice does
+   * not change the answer to either question: the arrangement is drawn
+   * before it is run, and a shared generator would have the second call
+   * furnishing with the first one's numbers.
+   */
+  const near = quadrantSpots(room, "near");
+  const far = quadrantSpots(room, "far");
+  const corners = cornerSpots(room);
+  // Empty in a room whose doors cross its middle, which is why every
+  // arrangement has to place these by spreading rather than by index.
+  const centre = centreSpots(room);
+
+  /** Whether a prop of this kind may stand here at all. */
+  const allowed = (p: PropPlacement): boolean => {
     const solid = CATALOG[p.kind].solid;
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
     if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;
     return true;
-  });
+  };
+
+  const dress = (dressAs: RoomKind): PropPlacement[] => {
+    const rng = createRng(`${seed}:${room.id}:dressing`);
+    const spots: Spots = { near, far, corners, centre, rng };
+    const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
+    const layout = room.template ? authored : arrangementFor(dressAs, rng)(spots);
+    return [...torches, ...layout].filter(allowed);
+  };
+
+  const own = dress(room.kind);
+  if (!opts.asVault || room.template) return own;
+
+  // A treasure room's chests have to fit around whatever the room already
+  // holds, and in a set piece some of them do not: two locked rooms in
+  // three hundred and sixty came out with less in them than they would
+  // have had unlocked. Whichever way round it falls, the lock never takes
+  // anything out of the room.
+  const chests = (ps: PropPlacement[]) => ps.filter((p) => p.kind === "chest").length;
+  const vaulted = dress("treasure");
+  const picked = chests(vaulted) >= chests(own) ? vaulted : own;
+  if (chests(picked) > 0) return picked;
+
+  /**
+   * A locked room with no chest in it at all: eight percent of them,
+   * measured over nine hundred floors. The arrangement's chests had been
+   * filtered out by whatever the room already had standing in it.
+   *
+   * One goes back at the first anchor that passes the same rules the
+   * arrangement's own props are held to and is clear of what is already
+   * there - furthest ring first, because that is where a chest looks like
+   * it belongs. It fixes the ones with room for it and leaves about seven
+   * percent, and those turn out to be exactly the set pieces: a locked
+   * challenge room, memory trial or shop, whose own content is the reward
+   * and whose anchors are all spoken for. `yarn test:layout` holds the
+   * line there - a locked room is never a plain chamber with nothing
+   * extra in it.
+   */
+  const CLEAR_OF_PROPS = 1.4;
+  for (const spot of [...far, ...near, ...centre]) {
+    const chest: PropPlacement = { kind: "chest", x: spot[0], z: spot[2], rotation: 0 };
+    if (!allowed(chest)) continue;
+    if (picked.some((p) => near2(p, spot, CLEAR_OF_PROPS))) continue;
+    return [...picked, chest];
+  }
+  return picked;
 }
 
 /** Seeded per room, so it is the same every time you walk back in. */
 export function Dressing({ room, seed }: DressingProps) {
-  const placements = useMemo(() => placementsFor(room, seed), [room, seed]);
+  const asVault = useRun((s) => s.dungeon?.vaultId === room.id);
+  const placements = useMemo(() => placementsFor(room, seed, { asVault }), [room, seed, asVault]);
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.
   const grounded = useMemo(() => {

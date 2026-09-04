@@ -725,6 +725,52 @@ had looked at because the tests were green:
   all. It asserts the keys exist first now. Run against the page as it was,
   three checks fail rather than one.
 
+- **The lock that paid nothing.** Every floor puts one door behind a key.
+  What was behind it was whatever room the floor could be walked without,
+  furnished as whatever kind it happened to be - and nobody had ever asked
+  what that came to. Over 899 locked rooms: **a vault held 0.97 chests, an
+  ordinary chamber 0.90, and the treasure rooms standing open elsewhere on
+  the same floors held 2.35.** The key bought you the price of any room on
+  the floor, which is to say nothing, and 71% of the time the room behind
+  the lock was not a treasure room at all - the generator wants one, but
+  eligibility (off the critical path, and sparable without cutting the
+  floor in two) rules them out. The code that fills the chests carried a
+  comment about "the vault, with three of them, finally worth its name",
+  written on an assumption that held less than a third of the time.
+
+  Being the vault decides the furniture now, not the kind the room was
+  drawn as. A set piece keeps its own content - a locked shop is still a
+  shop - and gets a treasure room's chests around it. That takes a vault to
+  **1.85 chests against an ordinary chamber's 0.89**.
+
+  Two things fell out of doing it, both caught by the check rather than by
+  me. Dressing a set piece as a treasure room can *fail*: its chests have
+  to fit around what the room already holds, and two locked rooms in 360
+  came out with **less** in them than they would have had unlocked. It
+  takes whichever dressing is richer now, so the lock never removes
+  anything. And 8% of vaults ended up with no chest at all, every one of
+  them a set piece whose anchors were all spoken for. One chest goes back
+  where there is room for it; the rest are locked challenge rooms, memory
+  trials and shops, whose own content is the reward. That is the line the
+  check holds: a locked room is never a plain chamber with nothing extra in
+  it. Run against the code as shipped it names them - "normal on floor 1 of
+  seed 24, trap on floor 3 of seed 25" - rooms you find a key for and open
+  onto nothing.
+
+- **A performance check that failed one run in three.** Found while
+  verifying the above, and worth more than it. "Walking the floor four
+  times over does not pile up geometries" took the count after one lap as
+  its baseline, on the premise that one lap visits every room and builds
+  every shape. True of a machine that can draw them: this one renders
+  through a software rasteriser, and on a loaded run a room had not
+  finished mounting before the walker moved on, so the baseline read 43
+  where a settled one reads 55 - and the twelve shapes built on later laps
+  were reported as a leak. The question it is actually asking does not need
+  the first lap to be special, so it laps until two in a row agree and
+  measures from there. Three runs, three passes, and the warm-up needed one
+  lap twice and three once - which is the flake, made visible instead of
+  fatal.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
