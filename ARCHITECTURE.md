@@ -193,17 +193,27 @@ Two stores that both claimed the player's stats. So:
   vault whatever kind it was drawn as, and never ends up poorer for being
   locked. `yarn test:layout` checks it room by room.
 
-- Nothing that can hurt the player integrates an unbounded frame delta.
-  The physics timestep is fixed for that reason - Scene.tsx says so - and
-  the Warden was not: it added `speed * delta` to its own position, so a
-  frame that took nine tenths of a second carried it four metres in one
-  step, measured, in a room twenty-four across, against a strike radius of
-  one. `WARDEN_MAX_STEP` in world.ts is a quarter of that radius, so a
-  hitch can never put it on top of you, and `yarn test:layout` holds the
-  cap between the reach it strikes from and a step at twenty frames a
-  second. Everything else that moves on the clock - the arena's arms, the
-  Sentry's beam - reads `elapsedTime` and is placed rather than advanced,
-  so a hitch skips them past the player rather than through them.
+- How long one frame is allowed to count for is `MAX_FRAME_S` in world.ts,
+  a twentieth of a second, and nothing that can hurt the player may believe
+  a delta longer than that. A frame delta is a claim that whatever was true
+  at the end of the frame was true for all of it; over sixteen milliseconds
+  that is close enough and over nine hundred it is a fiction, and both
+  places that believed it did so in the player's disfavour. The Warden
+  added `speed * delta` to its own position and a nine-hundred-millisecond
+  frame carried it four metres in one step - measured, in a room
+  twenty-four across, against a strike radius of one. The Sentry added the
+  same delta to how long it had held you in its beam, and the margin that
+  is measured against is sixty-four milliseconds, so one dropped frame
+  called the player out for standing in a light that had swept past them.
+  `WARDEN_MAX_STEP` is a quarter of the reach it strikes from and the
+  Sentry charges for observed time only; `yarn test:layout` holds both
+  against `MAX_FRAME_S`, and `yarn test:smoke` stalls the main thread on
+  purpose and watches each of them across the frame that never happened.
+  The physics has said this since the beginning, in Scene.tsx, where the
+  timestep is fixed rather than variable for exactly the same reason. What
+  is left reads `elapsedTime` and is placed rather than advanced - the
+  arena's arms, the beam's own angle - so a hitch skips them past the
+  player rather than through them.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -395,11 +405,15 @@ second model for it to be written in.
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this
   project has had was invisible to the type checker and the build.
-- `yarn test:smoke` stalls the main thread on purpose, once, and watches
-  what the Warden does across the frame that missed. An average over a
-  second is exactly the shape that hides a lunge - it read a steady 4.4 m/s
-  with single frames at twenty-three and thirty-seven - so it samples every
-  frame and takes the largest single step.
+- `yarn test:smoke` stalls the main thread on purpose and watches what the
+  two things that can catch you do across the frame that never happened. An
+  average over a second is exactly the shape that hides a lunge - the
+  Warden read a steady 4.4 m/s with single frames at twenty-three and
+  thirty-seven - so it samples every frame and takes the largest single
+  step. The Sentry is stalled twice and the order is the check: a call puts
+  the post on a six-second cooldown, so with the short stall first the long
+  one's conviction was swallowed by it and the check passed on the broken
+  code.
 - `yarn tour` asserts nothing. It photographs every kind of room and every
   screen the game puts in front of the player, and looking at the pictures
   is the check. The screens had never been in it, and the first eight shots

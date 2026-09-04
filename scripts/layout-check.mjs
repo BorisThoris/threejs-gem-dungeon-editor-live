@@ -680,16 +680,15 @@ check("the shipped room templates reach the floors the game generates", authored
    * rate, or it would be a stealth nerf to the chase rather than a floor
    * under a hitch.
    */
-  const PLAYABLE_FPS = 20;
   check(
     "one frame never carries the Warden across the reach it strikes from",
     L.WARDEN_MAX_STEP < L.WARDEN_TOUCH_RADIUS,
     `cap ${L.WARDEN_MAX_STEP.toFixed(3)}m against a reach of ${L.WARDEN_TOUCH_RADIUS}m`
   );
   check(
-    `and the cap does not bind at ${PLAYABLE_FPS} frames a second or better`,
-    top / PLAYABLE_FPS < L.WARDEN_MAX_STEP,
-    `a frame at ${PLAYABLE_FPS}fps is ${(top / PLAYABLE_FPS).toFixed(3)}m, the cap is ${L.WARDEN_MAX_STEP.toFixed(3)}m`
+    `and the cap does not bind at ${Math.round(1 / L.MAX_FRAME_S)} frames a second or better`,
+    top * L.MAX_FRAME_S < L.WARDEN_MAX_STEP,
+    `a frame of ${L.MAX_FRAME_S}s carries it ${(top * L.MAX_FRAME_S).toFixed(3)}m, the cap is ${L.WARDEN_MAX_STEP.toFixed(3)}m`
   );
 
   check(
@@ -859,6 +858,27 @@ check("the shipped room templates reach the floors the game generates", authored
     !L.isCaught(L.SENTRY_RANGE, plainWalk),
     `at ${L.SENTRY_RANGE} units a walk takes ${L.slowestEscape(plainWalk).toFixed(2)}s to leave, of ${L.SENTRY_PATIENCE}s`
   );
+  /**
+   * And the promise has to survive the frame it is measured in.
+   *
+   * "A walking player is never called out" is the check above, and it is
+   * true by sixty-four milliseconds: 0.836s to cross out of the beam at
+   * its furthest reach against 0.9s of patience. The post counts that time
+   * by adding a frame delta each frame, so the finest it can tell the
+   * difference is one frame - and a frame at fifteen a second is longer
+   * than the whole margin. Above that it is charging the player for time
+   * it did not watch. MAX_FRAME_S is what the Sentry now caps a frame's
+   * worth of light at, and this is the line saying the margin is wider
+   * than the cap: the promise still holds at the slowest frame the game
+   * will count in full.
+   */
+  const margin = L.SENTRY_PATIENCE - L.slowestEscape(plainWalk);
+  check(
+    "and the margin it is never called out by is wider than a whole frame",
+    margin > L.MAX_FRAME_S,
+    `margin ${(margin * 1000).toFixed(0)}ms against a frame of ${(L.MAX_FRAME_S * 1000).toFixed(0)}ms`
+  );
+
   // The one exception, and it is meant to be one. Mire is a cruel potion:
   // it should cost something in every room that asks you to move, and this
   // is the room that asks you to move a little.

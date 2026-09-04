@@ -9,6 +9,7 @@ import { canControl, useRun } from "../state/run";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
+  MAX_FRAME_S,
   SENTRY_ALARM,
   SENTRY_COOLDOWN_S,
   SENTRY_HALF_ANGLE,
@@ -69,7 +70,38 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     const inside =
       distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE;
 
-    lit.current = inside ? lit.current + delta : 0;
+    /**
+     * Time in the light, and only time the game actually watched.
+     *
+     * This was `lit.current + delta`, and the margin it is measured
+     * against is sixty-four milliseconds: a walking player needs 0.836s to
+     * cross out of the beam at its furthest reach and the post waits 0.9s
+     * before calling. A frame at twenty a second is fifty of those
+     * milliseconds; a frame at fifteen is more than the whole margin; a
+     * hitch of nine hundred milliseconds convicted the player outright,
+     * for standing in a light that had swept past them at some unknown
+     * point during a frame nobody rendered. The beam turns a full width in
+     * 1.53s, so a long frame is precisely when "it was in the light when I
+     * looked" says least about where it was the rest of the time.
+     *
+     * Capped, so the player is charged for observed time only. It errs
+     * towards not calling out, which is the right way round: the Sentry
+     * takes no life, and a post that misses you is a worse bargain for the
+     * player than one that catches you for a frame the machine dropped.
+     */
+    lit.current = inside ? lit.current + Math.min(delta, MAX_FRAME_S) : 0;
+
+    if (import.meta.env.DEV) {
+      // How long it thinks it has held you, for the checks. Nothing
+      // outside this component could see the number the whole room turns
+      // on. Written into one object, at frame rate.
+      const w = window as unknown as { __sentry?: Record<string, number | boolean> };
+      const probe = (w.__sentry ??= { lit: 0, inside: false, facing: 0, distance: 0 });
+      probe.lit = lit.current;
+      probe.inside = inside;
+      probe.facing = facing;
+      probe.distance = distance;
+    }
     if (seen !== inside) setSeen(inside);
 
     const now = state.clock.elapsedTime;

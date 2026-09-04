@@ -1210,6 +1210,165 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+/**
+ * What a slow frame does to the light you are standing in.
+ *
+ * The Sentry counts how long it has held you by adding a frame delta each
+ * frame, and the margin that is measured against is sixty-four
+ * milliseconds: 0.836s to walk out of the beam at its furthest reach
+ * against 0.9s of patience. A frame at fifteen a second is longer than the
+ * whole margin, and a hitch of nine hundred convicted the player outright -
+ * charged for standing in a light which, over a frame that long, had swept
+ * most of a width past them. It is the same unbounded delta the Warden
+ * crossed four metres on, in the system with the thinnest margin in the
+ * game.
+ *
+ * Two stalls, because the counter is reset inside the frame that fires the
+ * call: a short one, which is too little to convict and so leaves the jump
+ * on the counter where it can be read, and a long one, which convicts. The
+ * short stall alone would pass on the broken code - the reset hides the
+ * jump - and the long one alone would not say by how much.
+ */
+{
+  const sentry = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    // A floor deep enough to be watched, and the room that got the post.
+    let found = null;
+    for (let seed = 1; seed < 60 && !found; seed++) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const d = run.getState().dungeon;
+      run.setState({ floor: 3 });
+      for (const room of d.rooms) {
+        const post = window.__sentryFor(room, d.seed, 3);
+        if (post) {
+          found = { room, post };
+          break;
+        }
+      }
+    }
+    if (!found) return { noSentry: true };
+    run.setState({ transitioning: true, currentRoomId: found.room.id, lives: 99, alarm: 0 });
+    run.getState().roomReady(found.room.id);
+    await wait(1400);
+    if (!window.__sentry) return { noProbe: true };
+
+    /**
+     * Step into the beam just behind its leading edge, stall, and see.
+     *
+     * Just behind, not in the middle: the beam turns half a radian in nine
+     * hundred milliseconds and its whole width is 0.84, so a player stood
+     * in the middle is out the far side by the time the frame lands and
+     * the counter resets rather than jumping. A tenth of a radian of margin
+     * either side is what keeps it a measurement of the stall.
+     */
+    const step = async (stallMs) => {
+      const at = found.post.at;
+      // Ahead of where the beam is now, by most of a half-width, so it is
+      // still on us when the frame finally lands.
+      const bearing = window.__sentry.facing + 0.4;
+      window.__bus.emit("teleport", {
+        position: [at[0] + Math.sin(bearing) * 3, 1.5, at[2] + Math.cos(bearing) * 3],
+        yaw: 0,
+      });
+      await wait(120);
+      let biggest = 0;
+      let longestFrame = 0;
+      let litBefore = null;
+      let calledOut = false;
+      let stalled = false;
+      let stalledAt = 0;
+      const off = window.__bus.on("sentrySaw", () => (calledOut = true));
+      let last = window.__sentry.lit;
+      let lastT = performance.now();
+      const t0 = lastT;
+      await new Promise((done) => {
+        const tick = () => {
+          const now = performance.now();
+          const s = window.__sentry;
+          if (s.lit > last) biggest = Math.max(biggest, s.lit - last);
+          longestFrame = Math.max(longestFrame, (now - lastT) / 1000);
+          last = s.lit;
+          lastT = now;
+          if (!stalled && s.inside) {
+            stalled = true;
+            litBefore = s.lit;
+            const until = performance.now() + stallMs;
+            stalledAt = until;
+            // A real one: this is what a collection or a window coming back
+            // to the front looks like from inside the frame loop.
+            // eslint-disable-next-line no-empty
+            while (performance.now() < until) {}
+          }
+          // Stops a breath after the stall, not a second: the point is
+          // whether the dropped frame convicted the player, and standing
+          // in a beam for a second convicts them fairly. A hundred and
+          // fifty milliseconds is two or three frames of the counter
+          // ticking up honestly, nowhere near the patience from here.
+          if (stalled && now - stalledAt > 150) return done();
+          if (!stalled && now - t0 > 14000) return done();
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      off();
+      return {
+        lit: stalled,
+        litBefore: litBefore === null ? null : +litBefore.toFixed(3),
+        biggest: +biggest.toFixed(3),
+        longestFrame: +longestFrame.toFixed(2),
+        calledOut,
+      };
+    };
+
+    /**
+     * The long stall first, and that ordering is the check.
+     *
+     * A call puts the post on a six-second cooldown, and both stalls
+     * together take less than that: with the short one first, the long
+     * one's conviction was swallowed by the cooldown the short one had
+     * just spent, and "a dropped frame never calls the player out" passed
+     * on the broken code. The long stall goes first, on a post that has
+     * never called, so the conviction has nothing to hide behind.
+     */
+    const long = await step(900);
+    // And a short one, too little to reach the patience from a standing
+    // start, so the counter is never reset and the size of the jump stays
+    // readable rather than being zeroed inside the frame that fired.
+    const brief = await step(500);
+    return {
+      brief,
+      long,
+      cap: window.__world.MAX_FRAME_S,
+      patience: window.__world.SENTRY_PATIENCE,
+    };
+  });
+
+  ok(
+    "a floor has a Sentry whose beam can be stood in",
+    sentry && !sentry.noSentry && !sentry.noProbe && sentry.brief.lit && sentry.long.lit,
+    JSON.stringify(sentry)
+  );
+  if (sentry && sentry.cap) {
+    ok(
+      "the check produced frames long enough to matter, inside the light",
+      sentry.brief.longestFrame >= 0.4 && sentry.long.longestFrame >= 0.8,
+      `${sentry.brief.longestFrame}s and ${sentry.long.longestFrame}s`
+    );
+    ok(
+      "a slow frame adds no more time in the light than a frame is worth",
+      sentry.brief.biggest <= sentry.cap + 0.005,
+      `a ${sentry.brief.longestFrame}s frame added ${sentry.brief.biggest}s, cap ${sentry.cap}s`
+    );
+    ok(
+      "and a dropped frame never calls the player out on its own",
+      !sentry.long.calledOut,
+      `lit for ${sentry.long.litBefore}s of ${sentry.patience}s, then a ${sentry.long.longestFrame}s frame`
+    );
+  }
+}
+
 // The three puzzles, played. Eighty-seven checks and not one of them had
 // opened the tome, repeated the pattern or weighted the plate - three
 // interactive systems whose whole contract is "solved pays a gem, failed is

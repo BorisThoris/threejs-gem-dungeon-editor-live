@@ -41,6 +41,28 @@ export const INTERACT_RADIUS = 3;
 export const entranceDepth = (halfSize: number): number =>
   Math.min(INTERACT_RADIUS + 0.5, halfSize * 0.6);
 
+/**
+ * The longest a single frame is allowed to count for.
+ *
+ * A frame delta is how much time passed, and everything that reads one is
+ * being asked to believe that whatever it saw at the end of the frame was
+ * true for all of it. Over sixteen milliseconds that is close enough. Over
+ * nine hundred - a collection, a room mounting, a window coming back to
+ * the front - it is a fiction, and every place in this game that believed
+ * it did so in the player's disfavour: the Warden crossed four metres in
+ * one step, and the Sentry charged a player nine hundred milliseconds of
+ * standing in a light the beam had swept past.
+ *
+ * The physics has said this since the beginning, in Scene.tsx, where the
+ * timestep is fixed rather than variable so a hitch cannot integrate a
+ * whole second of gravity and tunnel the player through the floor. This is
+ * the same rule for everything that is not physics. A twentieth of a
+ * second is longer than a frame on anything the game is meant to run on,
+ * so it never binds in play; below that the game is charging the player
+ * for time it did not watch, and it stops.
+ */
+export const MAX_FRAME_S = 1 / 20;
+
 // --- Movement --------------------------------------------------------------
 
 export const WALK_SPEED = 5;

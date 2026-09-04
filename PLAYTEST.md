@@ -1096,6 +1096,42 @@ hold the cap between the strike radius and a step at twenty frames a
 second, and `test:smoke` stalls the main thread on purpose and measures
 the largest single step the Warden takes across it.
 
+### The same bug, in the room with the thinnest margin
+
+The Sentry is the third of the three things that can catch a player, and
+the one whose promise is finest. Its check reads:
+
+> Standing still in the light is always seen. Walking out of it never is.
+
+The second half is true by **sixty-four milliseconds**. A walking player
+needs 0.836 s to cross out of the beam at its furthest reach; the post
+waits 0.9 s before calling. And it counted that time the same way the
+Warden moved - `lit += delta`, one unbounded frame delta a frame.
+
+| One frame at | is | against a 64 ms margin |
+| --- | --- | --- |
+| 60 fps | 17 ms | inside it |
+| 30 fps | 33 ms | inside it |
+| 20 fps | 50 ms | inside it, by 14 ms |
+| 15 fps | 67 ms | **wider than the whole margin** |
+| a 0.9 s hitch | 900 ms | convicts outright |
+
+Measured: lit for 0.258 s of the 0.9 it waits, then one dropped frame added
+0.903 s and the post called out. The beam turns most of a full width in
+that time, so a long frame is precisely when "it was in the light when I
+looked" says least about where it was the rest of the time.
+
+It charges for observed time now - `Math.min(delta, MAX_FRAME_S)` - which
+errs towards *not* calling out, and that is the right way round: the Sentry
+takes no life, so a post that misses you is a better bargain for the player
+than one that convicts them for a frame the machine dropped. The same
+stall now adds 0.05 s and nothing is called.
+
+`MAX_FRAME_S` is a twentieth of a second and is the one owner of how long a
+frame may count for, in world.ts beside the movement constants. `test:layout`
+holds the Warden's distance cap and the Sentry's margin against it;
+`test:smoke` stalls the main thread on purpose for both.
+
 Two things were measured on the way and turned out to be fine, which is
 worth writing down so nobody spends the afternoon again:
 
