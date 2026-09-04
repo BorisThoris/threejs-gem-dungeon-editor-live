@@ -802,6 +802,37 @@ had looked at because the tests were green:
   costs a player very nearly everything that floor is worth, which is the
   decision the shop is for. It makes the decision reachable.
 
+- **A question this report has been asking since the items were built.**
+  "Is identification worth anything over one run? Learning that the inky
+  bottle is healing only pays if you find a second one." It was written
+  down as something a human playtest would have to settle, and it turns out
+  to be arithmetic. Over 300 runs of three floors: **a run passes 28.4
+  chests** (5.7 on the first floor, 9.4 on the second, 13.3 on the third),
+  and **every single run turned up the same item at least twice** - about
+  seven distinct ones repeated per run. So the knowledge pays. What a
+  playtest still has to decide is whether a player *notices*, which is a
+  different question and is now the one written down.
+
+  Counting the chests turned up the bug. Two of the nine items are cruel -
+  Dread and Mire - and they are the only downside in the loot: they are
+  what makes drinking an unidentified bottle a decision rather than a free
+  refill. `rollItem` says a quarter of what is down there is a bad idea,
+  easing to an eighth as you descend. What came out was **10%**.
+
+  The line was `ITEMS[id].cruel === (rng() < cruelChance)` inside a
+  `filter`, which draws a number **for every item in the list** rather than
+  one for the choice. Each item was kept or dropped on its own flip, so the
+  pool came out weighted by how many of each kind exist: at a quarter, each
+  of the two cruel items survived a quarter of the time and each of the
+  seven kind ones three quarters, which is a shelf one part in twelve
+  cruel rather than one in four. One coin decides it now, and the measured
+  shares are 24%, 20% and 15% against the 25, 20 and 15 the code intends.
+  Run against the line as shipped, the check reports 13%, 9% and 7%.
+
+  A share is a statistical claim, so the check counts enough chests for the
+  answer to be steady - 691, 1053 and 1548 of them - rather than trusting
+  one floor of one seed.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
@@ -944,10 +975,11 @@ nobody has held a Deck with this on it.
   which wake the floor. If players hoard and never use them, the good ones
   are not good enough or the bad ones are too frightening. If they drink
   everything the moment they find it, there is no decision there either.
-- **Is identification worth anything over one run?** Learning that the inky
-  bottle is healing only pays if you find a second one. Watch whether
-  anyone gets to use that knowledge, and if not, chests need to be commoner
-  or the run longer.
+- **Does anyone bother identifying?** Answered for the arithmetic below -
+  a run passes 28 chests and every run turns up the same item twice - so
+  the knowledge is there to be used. What a human playtest still decides is
+  whether anyone *notices*: whether a player remembers the inky bottle
+  three floors later, or drinks each one as a fresh coin toss.
 
 ## 7. Tuning knobs
 

@@ -988,5 +988,54 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// --- What is in the chests --------------------------------------------------
+//
+// Two of the nine items are cruel, and they are the only downside in the
+// loot: they are what makes drinking an unidentified bottle a decision
+// rather than a free refill. How often one turns up is written in
+// `rollItem` as a quarter on the first floor, easing to an eighth on the
+// deepest - and it was not what came out. The filter asked
+// `ITEMS[id].cruel === (rng() < cruelChance)`, which draws a number for
+// every item in the list rather than one for the choice, so each item was
+// kept or dropped on its own flip and the pool came out weighted by how
+// many of each kind exist. Measured over 8,510 chests: 10% of what a
+// player found was a bad idea, against the quarter the code says.
+//
+// A share is a statistical claim, so this counts enough chests for the
+// answer to be steady rather than trusting one floor of one seed.
+{
+  const rows = [];
+  for (const floor of [1, 2, 3]) {
+    const rules = L.floorRules(floor);
+    const meant = Math.max(0.12, 0.3 - floor * 0.05);
+    let cruel = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const room of d.rooms) {
+        const ps = L.placementsFor(room, d.seed, { asVault: room.id === d.vaultId });
+        ps.forEach((p, i) => {
+          if (p.kind !== "chest") return;
+          total++;
+          if (L.ITEMS[L.rollItem(d.seed, `${room.id}:${i}`, floor)].cruel) cruel++;
+        });
+      }
+    }
+    rows.push({ floor, meant, got: cruel / total, total });
+  }
+  check(
+    "chests are as unkind as the floor says they are",
+    rows.every((r) => Math.abs(r.got - r.meant) < 0.03),
+    rows.map((r) => `floor ${r.floor}: ${(r.got * 100).toFixed(0)}% of ${r.total}, meant ${(r.meant * 100).toFixed(0)}%`).join("; ")
+  );
+  // The other half of the same fact: a floor a player is meant to be able
+  // to risk something on must actually hold something to risk.
+  check(
+    "and every floor holds cruel ones and kind ones both",
+    rows.every((r) => r.got > 0 && r.got < 1),
+    rows.map((r) => `${(r.got * 100).toFixed(0)}%`).join("/")
+  );
+}
+
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
