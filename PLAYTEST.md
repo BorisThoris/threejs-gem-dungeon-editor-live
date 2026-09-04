@@ -833,6 +833,35 @@ had looked at because the tests were green:
   answer to be steady - 691, 1053 and 1548 of them - rather than trusting
   one floor of one seed.
 
+- **A quarter of the watchers were standing inside the furniture.** The
+  Sentry's post is a two-metre column with a collider a fifth of a metre
+  across, and it was dropped on a far quadrant anchor picked at random. The
+  furniture goes on the same ring. So does the gem. Nothing on any side
+  knew about the others: the dressing keeps clear of the room's own
+  content, the gem and the spikes, and the post was in none of those lists,
+  because it is placed in its own file and cycle 23's footprint rules never
+  reached it.
+
+  Measured over 1,346 watched rooms: **27% of posts stood inside a prop,
+  22% inside a solid one so that two colliders shared the same space, and
+  27% stood on the gem.** Not near it - *on* it, the same anchor to two
+  decimal places. A player walking up to take a gem in one room in four was
+  walking into an iron post growing out of it.
+
+  The watcher is chosen first now, keeping clear of what the room's kind
+  stands in it and of the gem, and the dressing is handed the spot and
+  keeps away from it - which is the same shape as every other placement
+  rule in the room, and is why it did not need the two files to import each
+  other. All four measures read 0%. Run against the placement as shipped,
+  the check names them: "chest in a normal on floor 2 of seed 1", "urn in a
+  treasure on floor 2 of seed 4".
+
+  Worth noting what this was found by: not by looking at the Sentry, but by
+  asking what else in the game is placed somewhere and never checked
+  against what is already there. The props were checked, the gem was
+  checked, the braziers were checked, the spikes were checked, the key was
+  checked. The watcher was the one thing placed by a file of its own.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it

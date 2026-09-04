@@ -21,6 +21,7 @@ import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, reservedAnchors } from "./kinds";
 import { arrangementFor, type Spots } from "./layouts";
+import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
 
 interface DressingProps {
@@ -33,6 +34,8 @@ const CLEAR_OF_GEM = 1.0;
 const SOLID_CLEAR_OF_GEM = 1.6;
 const CLEAR_OF_CONTENT = 1.2;
 const CLEAR_OF_SPIKES = HAZARD_RADIUS + 0.5;
+/** The Sentry's post is a fifth of a metre across and two metres tall. */
+const CLEAR_OF_SENTRY = 1.3;
 
 const near2 = (p: PropPlacement, a: Vec3, r: number) =>
   (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
@@ -67,6 +70,16 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
 export interface DressingOptions {
   /** This is the floor's locked room. */
   asVault?: boolean;
+  /**
+   * Where this room's Sentry stands, if it has one.
+   *
+   * Its post goes on the same ring the furniture does and neither side
+   * knew about the other, so a quarter of them stood inside a chest. The
+   * watcher is chosen first - it needs only the room, the seed and the
+   * floor - and what it takes is passed in here, the same way the kind's
+   * own content and the gem are kept clear of.
+   */
+  sentry?: Vec3 | null;
 }
 
 export function placementsFor(room: Room, seed: number, opts: DressingOptions = {}): PropPlacement[] {
@@ -95,6 +108,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     const solid = CATALOG[p.kind].solid;
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
+    if (opts.sentry && near2(p, opts.sentry, CLEAR_OF_SENTRY)) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
     if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;
     return true;
@@ -149,7 +163,12 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
 /** Seeded per room, so it is the same every time you walk back in. */
 export function Dressing({ room, seed }: DressingProps) {
   const asVault = useRun((s) => s.dungeon?.vaultId === room.id);
-  const placements = useMemo(() => placementsFor(room, seed, { asVault }), [room, seed, asVault]);
+  const floor = useRun((s) => s.floor);
+  const sentry = useMemo(() => sentryFor(room, seed, floor)?.at ?? null, [room, seed, floor]);
+  const placements = useMemo(
+    () => placementsFor(room, seed, { asVault, sentry }),
+    [room, seed, asVault, sentry]
+  );
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.
   const grounded = useMemo(() => {

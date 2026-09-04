@@ -134,6 +134,11 @@ Two stores that both claimed the player's stats. So:
   matters because the room's own copy of the ring loop had left a hole
   around the plinth that a check named after covering the floor did not
   look for.
+- Where a room's Sentry stands is `src/game/sentry/placement.ts`, and it is
+  chosen before the furniture: it keeps clear of the kind's own content and
+  of the gem, and hands its spot to `placementsFor`, which keeps the
+  furniture clear of it. A room is assembled watcher, gem, then dressing,
+  and each step knows what the ones before it took.
 - What the Sentry's four constants mean together is
   `src/game/sentry/beam.ts`: how long the beam holds a fixed direction, and
   how long it takes to walk out of it at a given distance. One line, checked

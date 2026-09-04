@@ -37,6 +37,7 @@ writeFileSync(
    export * from "${root}src/game/systems/pace";
    export * from "${root}src/game/arena/sweep";
    export * from "${root}src/game/sentry/beam";
+   export * from "${root}src/game/sentry/placement";
    export * from "${root}src/game/rooms/Dressing";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/relics/catalog";
@@ -1035,6 +1036,52 @@ check("the shipped room templates reach the floors the game generates", authored
     rows.every((r) => r.got > 0 && r.got < 1),
     rows.map((r) => `${(r.got * 100).toFixed(0)}%`).join("/")
   );
+}
+
+// --- Where the watcher stands ----------------------------------------------
+//
+// The Sentry's post is a two-metre column with a collider a fifth of a
+// metre across, and it was dropped on a far quadrant anchor picked at
+// random. The furniture goes on the same ring, and so does the gem, and
+// nothing on any side knew about the others: the dressing keeps clear of
+// the room's own content, the gem and the spikes, and the post was in none
+// of those lists.
+//
+// Measured over 1,346 watched rooms: 27% of posts stood inside a prop, 22%
+// inside a solid one so that two colliders shared the same space, and 27%
+// stood on the gem. Not near it - on it, the same anchor to two decimal
+// places. This is the rule cycle 23 wrote for the props, applied to the one
+// thing in a room that was placed in its own file and left out of it.
+{
+  const POST = 0.22;
+  let watched = 0;
+  const inProp = [];
+  const onGem = [];
+  const inLane = [];
+  for (const floor of [1, 2, 3]) {
+    const rules = L.floorRules(floor);
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const room of d.rooms) {
+        const sentry = L.sentryFor(room, d.seed, floor);
+        if (!sentry) continue;
+        watched++;
+        const where = `${room.kind} on floor ${floor} of seed ${seed}`;
+        const ps = L.placementsFor(room, d.seed, { asVault: room.id === d.vaultId, sentry: sentry.at });
+        for (const p of ps) {
+          const gap = Math.hypot(p.x - sentry.at[0], p.z - sentry.at[2]);
+          if (gap < POST + L.PROP_SPECS[p.kind].radius) inProp.push(`${p.kind} in a ${where}`);
+        }
+        const gem = L.gemFor(room, d.seed);
+        if (gem && Math.hypot(gem[0] - sentry.at[0], gem[2] - sentry.at[2]) < POST + 0.6) onGem.push(where);
+        if (L.inDoorLane(sentry.at[0], sentry.at[2], room)) inLane.push(where);
+      }
+    }
+  }
+  check("the floors checked are watched at all", watched > 300, `${watched} watched rooms`);
+  check("no Sentry stands inside a prop", inProp.length === 0, inProp.slice(0, 3).join("; ") || `${watched} clear`);
+  check("no Sentry stands on the gem", onGem.length === 0, onGem.slice(0, 3).join("; ") || `${watched} clear`);
+  check("no Sentry stands in a doorway's path", inLane.length === 0, inLane.slice(0, 3).join("; ") || `${watched} clear`);
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
