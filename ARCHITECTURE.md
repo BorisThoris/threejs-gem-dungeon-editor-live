@@ -193,6 +193,21 @@ Two stores that both claimed the player's stats. So:
   vault whatever kind it was drawn as, and never ends up poorer for being
   locked. `yarn test:layout` checks it room by room.
 
+- Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
+  the run it belongs to rather than held on its own: the overlay closes
+  when the run's seed, floor or room changes, which covers dying, climbing
+  out, quitting and starting again. It was local state and nothing that
+  ends a run knew to say so, so a tome opened at a lectern stayed on screen
+  over the death summary, still counting down, still holding the input
+  lock, and eventually recorded a failure against a room in a dungeon that
+  had been thrown away.
+- A modal that holds the input lock owns the way out of itself for as long
+  as it is up, not for the part of it that takes input. The tome's exit
+  lived in its typing handler and its B button lives on its keypad, so for
+  the six seconds it shows the numbers - with the player frozen in place
+  and the Warden walking - neither Escape nor B did anything, under a
+  footer that said "Esc or B leaves" the whole time.
+
 If you need a number and it is not in one of those places, add it there, not
 where you need it.
 
@@ -369,3 +384,11 @@ second model for it to be written in.
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this
   project has had was invisible to the type checker and the build.
+- `yarn tour` asserts nothing. It photographs every kind of room and every
+  screen the game puts in front of the player, and looking at the pictures
+  is the check. The screens had never been in it, and the first eight shots
+  found three things wrong - a tome that could not be left while it showed
+  its numbers, a tome that outlived the run and sat over the summary, and
+  "1 rooms" on the last screen a new player sees. What it turns up gets a
+  check in `test:smoke` or `test:pad` afterwards, run against the old code
+  first to see it go red.

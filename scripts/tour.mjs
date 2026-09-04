@@ -1,5 +1,6 @@
 /**
- * A photograph of every kind of room the game builds.
+ * A photograph of every kind of room the game builds, and every screen it
+ * puts in front of the player.
  *
  *   yarn dev --port 5199   # in one terminal
  *   yarn tour              # in another
@@ -15,6 +16,16 @@
  * So it is a command now rather than an afternoon. Each room is entered the
  * way a player enters it - stood in a doorway, looking down the room - so
  * the shots are comparable with each other and with the ones before them.
+ *
+ * The screens came after, and for a worse reason: the title screen, the
+ * controls, the records page, the satchel, the tome, the pause menu and
+ * the two run summaries had never been in the report at all, and they are
+ * what a first-time player reads and what a store page shows. Eight shots
+ * found three things wrong - a tome that could not be left while it was
+ * showing its numbers, a tome that outlived the run and sat on top of the
+ * summary, and "1 rooms" on the last screen a new player sees. Nothing
+ * here asserts anything; looking at the pictures is the check, and what
+ * they turn up gets one in `test:smoke` or `test:pad` afterwards.
  */
 import { chromium } from "playwright-core";
 import { mkdirSync } from "node:fs";
@@ -182,6 +193,115 @@ for (const shot of SHOTS) {
   console.log(`shot  ${shot.file}  ${shot.kind} ${found.size} ${found.shape}, seed ${found.seed}`);
 }
 
+/**
+ * And the screens the player reads.
+ *
+ * The rooms had a tour and these had nothing: the title screen, the
+ * controls, the records page, the tome, the satchel, the pause menu and
+ * the two ways a run ends. They are what a first-time player meets and
+ * what a store page is made of, and none of them had ever been looked at
+ * as a picture.
+ */
+const SCREENS = [
+  {
+    file: "screen-title.png",
+    setUp: async () => {
+      await page.evaluate(() => window.__run.getState().quitToMenu());
+      await page.waitForTimeout(800);
+    },
+  },
+  {
+    file: "screen-controls.png",
+    setUp: async () => {
+      await page.click('button:has-text("Controls")');
+      await page.waitForTimeout(600);
+    },
+  },
+  {
+    file: "screen-records.png",
+    setUp: async () => {
+      await page.click('button:has-text("Back")');
+      await page.waitForTimeout(500);
+      await page.click('button:has-text("Records")');
+      await page.waitForTimeout(600);
+      await page.fill('[data-testid="records-seed"]', "407");
+      await page.waitForTimeout(400);
+    },
+  },
+  {
+    file: "screen-satchel.png",
+    setUp: async () => {
+      await page.evaluate(async () => {
+        const run = window.__run;
+        run.getState().startRun(4);
+        await new Promise((r) => setTimeout(r, 1600));
+        run.setState({ satchel: ["healing", "swiftness", "mapping", "gloom"], gems: 4, lives: 2 });
+      });
+      await page.waitForTimeout(1000);
+    },
+  },
+  {
+    file: "screen-tome.png",
+    setUp: async () => {
+      await page.evaluate(async () => {
+        const run = window.__run;
+        const d = run.getState().dungeon;
+        const room = d.rooms.find((r) => r.kind === "library");
+        if (!room) return;
+        run.setState({ transitioning: true, currentRoomId: room.id });
+        run.getState().roomReady(room.id);
+        await new Promise((r) => setTimeout(r, 1200));
+        window.__bus.emit("puzzleOpen", { kind: "number", difficulty: "medium", roomId: room.id });
+      });
+      await page.waitForTimeout(1400);
+    },
+  },
+  {
+    file: "screen-pause.png",
+    setUp: async () => {
+      // Out of the tome first, then into the pause menu.
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(700);
+    },
+  },
+  {
+    file: "screen-won.png",
+    setUp: async () => {
+      await page.evaluate(async () => {
+        const run = window.__run;
+        run.getState().startRun(78);
+        await new Promise((r) => setTimeout(r, 1500));
+        const d = run.getState().dungeon;
+        run.setState({ gems: 9, floor: 3, transitioning: true, currentRoomId: d.endId });
+        run.getState().roomReady(d.endId);
+      });
+      await page.waitForTimeout(1500);
+    },
+  },
+  {
+    file: "screen-lost.png",
+    setUp: async () => {
+      await page.evaluate(async () => {
+        const run = window.__run;
+        run.getState().startRun(31);
+        await new Promise((r) => setTimeout(r, 1500));
+        run.setState({ gems: 4, floor: 2, lives: 1 });
+        run.getState().damage();
+      });
+      await page.waitForTimeout(1500);
+    },
+  },
+];
+
+for (const screen of SCREENS) {
+  await screen.setUp();
+  await page.screenshot({ path: join(OUT, screen.file) });
+  taken++;
+  console.log(`shot  ${screen.file}`);
+}
+
 await browser.close();
-console.log(`\n${taken} of ${SHOTS.length} shots written to docs/playtest.`);
-process.exit(taken === SHOTS.length ? 0 : 1);
+console.log(`\n${taken} of ${SHOTS.length + SCREENS.length} shots written to docs/playtest.`);
+process.exit(taken === SHOTS.length + SCREENS.length ? 0 : 1);

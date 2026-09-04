@@ -62,9 +62,16 @@ export function RunSummary() {
               .join(" · ")}
           </p>
         )}
+        {/* Four counts and a clock. The rooms were the one count without a
+            plural, so a run that ended in the room it started in read "1
+            rooms", and the first number was the one with no noun on it -
+            "9 found" beside "you got out with 9 gems" reads as the same
+            nine, and it is not: one is what the floor gave up and the
+            other is what came back out. */}
         <p style={body}>
-          {gemsTotal} found · {relics} relic{relics === 1 ? "" : "s"} · {known} item
-          {known === 1 ? "" : "s"} named · {roomsSeen} rooms · {clock(seconds)}
+          {gemsTotal} gem{gemsTotal === 1 ? "" : "s"} found · {relics} relic
+          {relics === 1 ? "" : "s"} · {known} item{known === 1 ? "" : "s"} named ·{" "}
+          {roomsSeen} room{roomsSeen === 1 ? "" : "s"} · {clock(seconds)}
         </p>
         <p style={{ ...body, fontSize: text.small, marginBottom: 18 }}>
           <span style={{ color: colors.dim }}>SEED </span>

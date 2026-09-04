@@ -138,6 +138,12 @@ export function usePadMenu({ container, onBack, active = true }: PadMenuOptions)
         ring(null);
         return;
       }
+      // Backing out first, and whether or not there is anything to focus:
+      // the tome shows its numbers for five to seven seconds before it
+      // draws a single key, and "Esc or B leaves" is on screen the whole
+      // time. A menu with nothing pressable still has a way out of it.
+      if (pad.backPressed && onBack) onBack();
+
       const list = items();
       if (list.length === 0) return;
 
@@ -154,7 +160,6 @@ export function usePadMenu({ container, onBack, active = true }: PadMenuOptions)
         ring(target);
         target.click();
       }
-      if (pad.backPressed && onBack) onBack();
     };
     raf = requestAnimationFrame(tick);
 

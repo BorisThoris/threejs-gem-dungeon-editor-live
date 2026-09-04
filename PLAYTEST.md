@@ -1004,14 +1004,60 @@ software renderer; a real GPU is brighter and smoother.
 | ![sentry](docs/playtest/sentry.png) | **The Sentry**, on the third floor. A post with a turning beam, drawn as a wedge on the floor you can judge the edge of. Held in it for nine tenths of a second and it calls out: the floor wakes and the Warden is told where you are. |
 | ![warden](docs/playtest/warden.png) | **The Warden**, in the room with you. It drifts rather than walks and passes through everything; its eyes go from cold to orange to red as the floor wakes. Five to seven of every eight hits in a finished run come from this. |
 
-## 5. Steam Deck
+## 5. What every screen looks like
+
+The rooms had been photographed and the screens never had. The title
+screen, the controls, the records page, the satchel, the tome, the pause
+menu and the two run summaries are what a first-time player reads and what
+a store page shows, and not one of them had ever been looked at. `yarn
+tour` shoots them alongside the rooms now.
+
+Shooting them found three things wrong, all of them in the pictures:
+
+- **The tome could not be left while it was showing its numbers.** It says
+  "Esc or B leaves" in its footer from the first frame. For the five to
+  seven seconds it shows the sequence, neither did anything: the exit lived
+  inside the typing handler, and B is on the keypad, which is not drawn
+  yet. The tome holds the input lock the whole time, so a player who
+  pressed E at a lectern by accident stood frozen in a lit room, with the
+  Warden walking the floor, and no key that did anything. Every check we
+  had waited the showing phase out before touching a key, because that is
+  what somebody solving it does, so none of them had ever asked to leave.
+- **The tome outlived the run.** Whether it was open was held in the
+  overlay and nowhere else, and nothing that ends a run knew to say so.
+  Three of the eight screens came out with a tome over them - over the win
+  summary, over the death summary, and over the pause menu - still counting
+  down, still holding the input lock. When its clock ran out it recorded a
+  failure against a room in a dungeon that had been thrown away.
+- **"1 rooms".** Four counts on the summary line and three of them guarded
+  their plural. A run that ends in the room it started in - every death on
+  the way in, which is the first thing a new player does - read "1 rooms"
+  on the last screen it showed them. The first count had no noun on it
+  either: "9 found" sat directly under "You got out with 9 gems" and is a
+  different nine.
+
+All three are fixed, and `yarn test:smoke` and `yarn test:pad` hold the
+line on them; each check was run against the old code first and went red.
+
+| Screen | What it shows |
+| --- | --- |
+| ![title](docs/playtest/screen-title.png) | **Title.** Three floors, the tolls, the thing that walks, and three lives - the whole contract before the first press. |
+| ![controls](docs/playtest/screen-controls.png) | **Controls.** Keyboard and pad side by side on every line, and the two settings that persist. |
+| ![records](docs/playtest/screen-records.png) | **Records.** What every run so far came to, and a seed box with a keypad beside it so a Deck can type one. |
+| ![satchel](docs/playtest/screen-satchel.png) | **The satchel.** Four slots along the bottom, each showing what the thing looks like rather than what it is until the run learns. |
+| ![tome](docs/playtest/screen-tome.png) | **The tome, showing.** Five numbers for six seconds, then they go. Escape or B leaves from the first frame - which is what this shot found was not true. |
+| ![pause](docs/playtest/screen-pause.png) | **Paused.** The world stops. Head bob and sound are here as well as in the menu, because that is where you notice you want them off. |
+| ![won](docs/playtest/screen-won.png) | **Escaped.** What came out with you, what it beat, the seed, and the same dungeon again. |
+| ![lost](docs/playtest/screen-lost.png) | **Died.** What you were carrying and how far down, and none of it comes back up. |
+
+## 6. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 6. What a human playtest should watch for
+## 7. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1094,7 +1140,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 7. Tuning knobs
+## 8. Tuning knobs
 
 All in `src/game/world.ts`:
 

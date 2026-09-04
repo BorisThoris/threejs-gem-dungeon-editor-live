@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRng } from "../rng";
 import { colors, FONT } from "../../ui/overlay";
 import { Keypad } from "../../ui/Keypad";
+import { usePadMenu } from "../../ui/padMenu";
 
 export interface NumberPuzzleProps {
   difficulty: "easy" | "medium" | "hard";
@@ -145,14 +146,45 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
     else if (entries.length) setEntries(entries.slice(0, -1));
   }, [current, entries]);
 
+  /**
+   * The way out, for as long as the footer promises one.
+   *
+   * "Esc or B leaves" is on screen from the first frame, and for the five
+   * to seven seconds the numbers are being shown it was not true: the exit
+   * lived inside the typing handler, and B is on the keypad, which is not
+   * drawn yet. Meanwhile the tome holds the input lock, so a player who
+   * pressed E at the lectern by accident stood frozen in a lit room with
+   * the Warden walking towards them and no key that did anything. Every
+   * check we had waited out the showing phase before touching the
+   * keyboard, because that is what a solver does, so none of them ever
+   * asked to leave while it was the only thing you could want.
+   *
+   * It is its own listener now, alive whenever the puzzle is still open.
+   * Not once it is over: solving and failing already have their outcome
+   * scheduled, and an Escape in the last second and a half would report a
+   * second, different one.
+   */
+  const open = phase === "showing" || phase === "typing";
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onExit();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onExit]);
+
+  // The pad's way out while there are no keys to press yet. The keypad
+  // carries B once it is drawn, and takes the pad from this when it mounts.
+  const sheet = useRef<HTMLDivElement>(null);
+  usePadMenu({ container: sheet, onBack: onExit, active: phase === "showing" });
+
   // Typing. Attached to the window so no input element needs focus.
   useEffect(() => {
     if (phase !== "typing") return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onExit();
-        return;
-      }
       if (event.key >= "0" && event.key <= "9") {
         digit(event.key);
         event.preventDefault();
@@ -166,7 +198,7 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, digit, commit, backspace, onExit]);
+  }, [phase, digit, commit, backspace]);
 
   const slot = (text: string, state: "shown" | "done" | "active" | "empty", i: number) => (
     <div
@@ -189,7 +221,7 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
   );
 
   return (
-    <div style={{ fontFamily: FONT, textAlign: "center", color: colors.ink }}>
+    <div ref={sheet} style={{ fontFamily: FONT, textAlign: "center", color: colors.ink }}>
       <div style={{ fontSize: 12, letterSpacing: "0.06em", marginBottom: 6 }}>THE TOME OF NUMBERS</div>
       <div style={{ fontSize: 10, color: colors.dim, marginBottom: 22 }}>
         {phase === "showing" && "Remember these."}

@@ -512,8 +512,9 @@ ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await butt
 // open it, the d-pad and A over the on-screen keys, and the sequence read
 // off the DEV probe because a probe cannot remember numbers off a screen
 // that has already hidden them.
-{
-  const library = await page.evaluate(async () => {
+/** A fresh run, stood at a library's lectern and looking at it. */
+const standAtLectern = () =>
+  page.evaluate(async () => {
     const run = window.__run;
     for (let seed = 1; seed < 80; seed++) {
       run.getState().startRun(seed);
@@ -534,6 +535,9 @@ ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await butt
     }
     return null;
   });
+
+{
+  const library = await standAtLectern();
   ok("a floor has a library to open with a pad", library !== null, JSON.stringify(library));
   if (library) {
     await page.waitForTimeout(600);
@@ -616,6 +620,50 @@ ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await butt
         JSON.stringify(solved)
       );
     }
+  }
+}
+
+/**
+ * B, while the numbers are still up.
+ *
+ * "Esc or B leaves" is in the tome's footer from the first frame, and for
+ * the five to seven seconds it is showing the sequence B is the only way
+ * out a pad has - the keypad that carries B is not drawn yet, and the
+ * tome holds the input lock, so the stick does nothing either. It did not
+ * work. The check above waits the showing phase out before it touches the
+ * pad, because that is what somebody solving it does, so it never asked.
+ */
+{
+  const library = await standAtLectern();
+  if (library) {
+    await page.waitForTimeout(600);
+    await tap(page, BUTTON.a);
+    await page.waitForTimeout(500);
+    const showing = await page.evaluate(() => ({
+      up: /remember these/i.test(document.body.innerText),
+      keys: !!document.querySelector('[data-testid="keypad"]'),
+      locked: window.__run.getState().inputLocks,
+    }));
+    ok(
+      "the tome shows its numbers before it draws a key, and holds the player there",
+      showing.up && !showing.keys && showing.locked > 0,
+      JSON.stringify(showing)
+    );
+    await tap(page, BUTTON.b);
+    await page.waitForTimeout(600);
+    const left = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return {
+        up: /remember these|type them back/i.test(document.body.innerText),
+        locked: s.inputLocks,
+        failed: s.failed.length,
+      };
+    });
+    ok(
+      "B leaves the tome while it is still showing the numbers",
+      !left.up && left.locked === 0 && left.failed === 0,
+      JSON.stringify(left)
+    );
   }
 }
 

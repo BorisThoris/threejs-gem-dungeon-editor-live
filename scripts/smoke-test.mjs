@@ -685,6 +685,35 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the summary says what the run beat", escaped.bests && escaped.bests.haul === true, JSON.stringify(escaped.bests));
   ok("the summary offers the seed again", await page.evaluate(() => !!document.querySelector('[data-testid="summary-same-seed"]')));
 
+  /**
+   * The counts read as English at one of a thing.
+   *
+   * Four counts on one line and three of them guarded their plural. The
+   * rooms did not, so any run that ended in the room it started in - every
+   * death on the way in, which is the first thing a new player does - said
+   * "1 rooms" on the screen it left them looking at. It was in both run
+   * summaries in `yarn tour` and nothing had ever read the line.
+   */
+  const counts = await page.evaluate(async () => {
+    const run = window.__run;
+    run.setState({ gemsTotal: 1, roomsSeen: 1 });
+    await new Promise((r) => setTimeout(r, 200));
+    const one = document.body.innerText.match(/[^\n]*named[^\n]*/)[0];
+    run.setState({ gemsTotal: 2, roomsSeen: 2 });
+    await new Promise((r) => setTimeout(r, 200));
+    return { one, two: document.body.innerText.match(/[^\n]*named[^\n]*/)[0] };
+  });
+  ok(
+    "the summary counts read as English at one of a thing",
+    /1 gem found/.test(counts.one) && /1 room /.test(counts.one) && !/\b1 \w+s\b/.test(counts.one),
+    JSON.stringify(counts.one)
+  );
+  ok(
+    "and still pluralise at more than one",
+    /2 gems found/.test(counts.two) && /2 rooms /.test(counts.two),
+    JSON.stringify(counts.two)
+  );
+
   const kept = await page.evaluate(() => JSON.parse(localStorage.getItem("gem-dungeon.records")).bestHaul);
   ok("records outlive the page", kept === 9, String(kept));
 
@@ -1229,6 +1258,87 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       });
       ok("getting it wrong enough closes the tome for good", lost.failed && lost.cleared === 0, JSON.stringify(lost));
     }
+  }
+
+  /**
+   * Leaving, while the numbers are still on the page.
+   *
+   * The tome shows its sequence for five to seven seconds before it draws
+   * a key or accepts one, and it holds the input lock the whole time - the
+   * player is standing still in a lit room with the Warden walking the
+   * floor. The footer has said "Esc or B leaves" from the first frame
+   * since the room existed. It was not true: the exit lived inside the
+   * typing handler. Both of the checks above wait the showing phase out
+   * before touching the keyboard, because that is what somebody solving it
+   * does, so neither had ever asked.
+   */
+  const library3 = await standIn("library");
+  if (library3) {
+    await stepTo(library3.anchors[0], 1.9);
+    await act();
+    const showing = await page.evaluate(() => ({
+      up: /remember these/i.test(document.body.innerText),
+      locked: window.__run.getState().inputLocks,
+    }));
+    ok("the tome holds the player still while it shows the numbers", showing.up && showing.locked > 0, JSON.stringify(showing));
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(600);
+    const left = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return {
+        up: /remember these|type them back/i.test(document.body.innerText),
+        locked: s.inputLocks,
+        failed: s.failed.length,
+        paused: s.paused,
+      };
+    });
+    // One assertion, not two: leaving is not failing and not pausing, and
+    // "nothing was burned" is true of a tome that never closed at all - a
+    // second check for it would have passed on the broken code.
+    ok(
+      "Escape leaves the tome while it is still showing the numbers, without burning it",
+      !left.up && left.locked === 0 && left.failed === 0 && !left.paused,
+      JSON.stringify(left)
+    );
+  }
+
+  /**
+   * The tome does not outlive the run.
+   *
+   * Whether it was open was held in the overlay and nowhere else, and
+   * nothing that ends a run knew to say so. Dying with the tome up left it
+   * on screen over the summary, still counting down, still holding the
+   * input lock, and when its clock ran out it recorded a failure against a
+   * room in a dungeon that had been thrown away. Three of the eight screen
+   * shots in `yarn tour` came out with a tome over them, which is how this
+   * was found.
+   */
+  const library4 = await standIn("library");
+  if (library4) {
+    await stepTo(library4.anchors[0], 1.9);
+    await act();
+    const before = await page.evaluate(() => /remember these/i.test(document.body.innerText));
+    await page.evaluate(() => {
+      const run = window.__run;
+      run.setState({ lives: 1 });
+      run.getState().damage();
+    });
+    await page.waitForTimeout(900);
+    const after = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return {
+        phase: s.phase,
+        tome: /remember these|type them back|tome of numbers/i.test(document.body.innerText),
+        locked: s.inputLocks,
+        summary: /run|gems|floor/i.test(document.body.innerText),
+      };
+    });
+    ok("the tome is open when the run ends", before, String(before));
+    ok(
+      "and dying closes it instead of leaving it over the summary",
+      after.phase === "lost" && !after.tome && after.locked === 0,
+      JSON.stringify(after)
+    );
   }
 
   // --- The memory trial ----------------------------------------------------
