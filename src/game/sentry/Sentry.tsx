@@ -19,6 +19,9 @@ import {
 
 const TWO_PI = Math.PI * 2;
 
+/** How plainly the beam is drawn on the floor before it has acquired. */
+const BEAM_OPACITY = 0.45;
+
 /** Shortest signed angle from `a` to `b`. */
 function angleBetween(a: number, b: number): number {
   let d = (b - a) % TWO_PI;
@@ -87,8 +90,14 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
 
     // The wedge brightens as it acquires, so being about to be caught looks
     // different from merely standing in the light.
+    //
+    // It sat at 0.28 and photographed as a slight lightening of the floor
+    // rather than a cone with an edge you can judge - which is the whole of
+    // what this room asks. A walking player has 0.84 seconds to cross out
+    // of the beam against the 0.9 it waits before calling, and a margin
+    // that thin is only a margin if you can see the light arriving.
     const mat = wedge.current?.material as MeshBasicMaterial | undefined;
-    if (mat) mat.opacity = 0.28 + (inside ? Math.min(1, lit.current / SENTRY_PATIENCE) * 0.45 : 0);
+    if (mat) mat.opacity = BEAM_OPACITY + (inside ? Math.min(1, lit.current / SENTRY_PATIENCE) * 0.4 : 0);
   });
 
   return (
@@ -133,7 +142,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           <circleGeometry
             args={[SENTRY_RANGE, 28, -Math.PI / 2 - SENTRY_HALF_ANGLE, SENTRY_HALF_ANGLE * 2]}
           />
-          <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={0.3} depthWrite={false} />
+          <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
         </mesh>
       </group>
     </group>

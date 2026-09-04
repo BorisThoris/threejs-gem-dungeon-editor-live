@@ -27,7 +27,8 @@
         "test:desktop": "node scripts/desktop-check.mjs",
         "test:pad": "node scripts/pad-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
-        "test:run": "node scripts/run-through.mjs"
+        "test:run": "node scripts/run-through.mjs",
+        "tour": "node scripts/tour.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

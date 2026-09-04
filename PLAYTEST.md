@@ -891,6 +891,52 @@ had looked at because the tests were green:
   knew about the content and the gem; the watcher knew about nothing. Every
   gap in that grid was a bug, and every one of them had been shipping.
 
+- **The pictures were thirty-six cycles out of date, and reshooting them
+  found things the checks could not.** Section 4 was shot once, by hand, at
+  cycle 5. The props were rebuilt after that, five more were added, the
+  arena's arms were re-laid, the bookshelves got their books out of the
+  carcass, the vault was given a vault's furniture, and the watcher and the
+  key were moved out of the furniture they had been standing in. The
+  section a reader looks at first showed a game that no longer existed.
+  It is `yarn tour` now, so it can be redone in two minutes rather than an
+  afternoon.
+
+  Framing it took four attempts and every one of them failed in a way the
+  picture made obvious, which is the argument for looking at pictures. A
+  **doorway** is on an axis, so half the room is behind the camera: the trap
+  room came out with neither its spikes nor its gem in shot. A **corner**
+  put the camera on the gem, which collected it, so the photograph of the
+  room had no gem in it and a 1 in the HUD - and inside the spike ring, and
+  two metres from a brazier, which filled the arena with a flame. Pulled in
+  **along the diagonal**, the camera stood against a pillar that hid three of
+  the memory chamber's crystals. The **wall furthest from the room's
+  content** put the camera beside the shop's counter, looking along it,
+  which is a picture of a shop that sells nothing. What works is a wall
+  with no door in it for a plain room, and the wall directly opposite the
+  counter or the lectern or the plate for a room that has one.
+
+  Three things the pictures then found:
+
+  - **The Sentry's beam was too faint to judge.** It was drawn at 0.28 over
+    a dim floor and photographed as a slight lightening rather than a cone
+    with an edge - in a room whose whole question is where the light is,
+    and where a walking player has 0.84 seconds to cross out of it against
+    the 0.9 it waits. Confirmed in the scene graph that the wedge was there
+    all along (radius 11, a 48-degree fan) and simply too pale; it is 0.45
+    now, and the picture shows an edge.
+  - **The memory chamber has four crystals, and the caption had said five
+    since cycle 5.** `anchors.slice(0, 4)` for the pedestals, the fifth
+    anchor for the lectern.
+  - The tour's own first shot of a sentry room had the post in it and no
+    light on the floor at all, because the beam turns once every eleven
+    seconds and happened to be aimed elsewhere. It waits for the beam now.
+
+  Everything else the pictures showed was a fix from an earlier cycle,
+  working: books on the bookshelves, the key lying in the open beside the
+  arena's plinth, the watcher standing clear of the furniture, and the shop
+  refusing a relic with "that would leave you short of the 3 the exit
+  wants".
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
@@ -932,22 +978,31 @@ and a vault that never blocks the way to the exit.
 
 ## 4. What every room looks like
 
-Captured from the doorway on a software renderer; a real GPU is brighter
-and smoother.
+`yarn tour` takes these, so they are the game as it stands rather than the
+game as it stood. They had been shot once by hand and left for thirty-six
+cycles, over which the props were rebuilt, five more were added, the
+arena's arms were re-laid, the bookshelves got their books out of the
+carcass, the vault was given a vault's furniture, and the watcher and the
+key were moved out of the furniture they had been standing in. The section
+a reader looks at first showed a game that no longer existed.
+
+Each is taken from a wall with no door in it, looking across the room, on a
+software renderer; a real GPU is brighter and smoother.
 
 | Kind | What the player finds |
 | --- | --- |
-| ![start](docs/playtest/room-start.png) | **Start.** A table, a chest, braziers, two glowing doorways. The hint says how to look. |
-| ![normal](docs/playtest/sentry.png) | **Chamber.** A gem, a chest, and from the second floor down often a watcher turning a beam around the room. |
-| ![treasure](docs/playtest/room-treasure.png) | **Vault.** Chests and a crystal; an authored layout from the Room Builder ships here. |
-| ![shop](docs/playtest/room-shop.png) | **Shop.** A counter that sells a life for a gem. |
-| ![library](docs/playtest/room-library.png) | **Library.** A lectern opens the number puzzle; solving it pays a gem. The red frame is a locked exit. |
-| ![trap](docs/playtest/room-trap.png) | **Trap room.** A ring of spikes between the doors and the gem. |
-| ![arena](docs/playtest/arena-gauntlet.png) | **Arena.** A plinth in the middle. Lifting its gem bars the doors and sets three arms of spikes turning. |
-| ![memory](docs/playtest/room-memory.png) | **Memory chamber.** Five crystals on pedestals; watch the order, repeat it with E. |
-| ![challenge](docs/playtest/room-challenge.png) | **Challenge room.** An idol on a pressure plate; weigh the plate with a candle before lifting it, or lose a life. |
-| ![end](docs/playtest/room-end.png) | **Exit.** Crystals and pillars; reaching it descends or wins. |
-| ![warden](docs/playtest/warden.png) | **The Warden**, in a room with you. It drifts, it does not walk; it passes through everything; its eyes go from cold to orange to red as the floor wakes. |
+| ![start](docs/playtest/room-start.png) | **Start.** Where a floor begins: furniture, braziers in the corners, and the doorways lit blue. The line across the top says what floor this is and how awake it is. |
+| ![normal](docs/playtest/room-normal.png) | **Chamber.** The commonest room. A gem, a chest or two with something unidentified in them, and whatever the arrangement put down. |
+| ![treasure](docs/playtest/room-treasure.png) | **Vault.** More chests than an ordinary chamber - and if it is the floor's locked room, it is furnished as a vault whatever kind it was drawn as. |
+| ![shop](docs/playtest/room-shop.png) | **Shop.** A counter that sells a life for a gem, names what you are carrying for a gem, and keeps two relics on pedestals. |
+| ![library](docs/playtest/room-library.png) | **Library.** Bookshelves with their books showing, and a lectern that opens the tome of numbers. Solving it pays a gem; there are keys on screen for it, so a controller can answer. |
+| ![trap](docs/playtest/room-trap.png) | **Trap room.** A ring of spikes around the gem. The door into it calls it a dark chamber and nothing else, so the first one is a surprise. |
+| ![arena](docs/playtest/room-arena.png) | **Arena.** The gem on a plinth in the middle. Lifting it bars the doors and sets three arms of spikes sweeping the whole floor for fourteen seconds - here with the floor's iron key lying beside it, in the open. |
+| ![memory](docs/playtest/room-memory.png) | **Memory chamber.** Four crystals on pedestals and a lectern to begin at: watch the order, then choose them in it. |
+| ![challenge](docs/playtest/room-challenge.png) | **Challenge room.** An idol on a pressure plate. Weigh the plate with a candle before lifting it, or lose a life. |
+| ![end](docs/playtest/room-end.png) | **Exit.** The door out charges the floor's toll; whatever you still carry past it is what you got away with. |
+| ![sentry](docs/playtest/sentry.png) | **The Sentry**, on the third floor. A post with a turning beam, drawn as a wedge on the floor you can judge the edge of. Held in it for nine tenths of a second and it calls out: the floor wakes and the Warden is told where you are. |
+| ![warden](docs/playtest/warden.png) | **The Warden**, in the room with you. It drifts rather than walks and passes through everything; its eyes go from cold to orange to red as the floor wakes. Five to seven of every eight hits in a finished run come from this. |
 
 ## 5. Steam Deck
 

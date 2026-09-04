@@ -326,6 +326,7 @@ that ships, and the desktop package that would go on Steam.
 | `yarn test:run` | Plays three seeded runs from the first room to the victory screen: routes to gems, pays each floor's toll at the door, three floors down. The only check that finishes the game - a run is 21 to 24 rooms and exactly 15 gems, the sum of the tolls | as above |
 | `yarn test:perf` | Draw calls, triangles, live geometries and textures for every room of every floor against a written budget, plus what survives a forced collection while sprinting | as above |
 | `yarn test:prod` | Builds `dist`, serves it and plays it through the menu and the keyboard alone - the shipped bundle has no probe handles - and reads the rest off the built files: no editor in the bundle, nothing 404ing, under 1.35 MB over the wire | Chromium |
+| `yarn tour` | Not a check: photographs one room of every kind, plus a Sentry with its beam this way and the Warden in the room with you, into `docs/playtest`. The report's room tour was shot by hand once and went thirty-six cycles out of date | a dev server, Chromium |
 | `yarn test:desktop` | Packages the Linux build, reads what is inside it, then starts it under a virtual display and plays it. Holds the build config and the Steam instructions to each other | Xvfb, Chromium |
 
 `yarn typecheck` must be clean; there is no error budget and no ratchet.
