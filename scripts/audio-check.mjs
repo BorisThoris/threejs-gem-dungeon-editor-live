@@ -157,7 +157,7 @@ const TAP = `
  */
 const OVER_THE_ROOM = 1.3;
 /** A cue the game means you to notice, and how loud that is. */
-const LOUD_CUES = ["gem", "win", "lose", "hurt", "spotted", "relic"];
+const LOUD_CUES = ["gem", "win", "lose", "hurt", "spotted", "relic", "wardenStrike"];
 const LOUD = 3;
 
 /**
@@ -229,6 +229,7 @@ const CUES = [
   ["gem", 300, []],
   ["door", 400, []],
   ["hurt", 400, []],
+  ["wardenStrike", 900, []],
   ["unlock", 400, []],
   ["unlock2", 500, []],
   ["heal", 400, []],
@@ -407,7 +408,55 @@ ok(
   const unused = cues.filter(
     (name) => !["setMuted", "isMuted", "isStalking", "setTension", "start", "stop"].includes(name) && !grep(name)
   );
-  ok("every cue the module offers is played by something", unused.length === 0, unused.join(", ") || "none unused");
+  /**
+ * The Warden landing a hit, from the action rather than from the cue.
+ *
+ * `wardenStruck` was emitted for as long as the Warden could hit anybody
+ * and nothing listened to it, so being caught by the thing the whole floor
+ * is built around sounded exactly like walking into spikes. Every check
+ * above plays a cue directly, which would have gone on passing either way:
+ * the cue was never the broken part, the wire from the event to it was.
+ *
+ * Getting the instrument right took three tries and is the point worth
+ * keeping. Asking whether the strike is louder than the room passes with
+ * the listener deleted, because a strike also does damage and `hurt` alone
+ * clears that line - it measures that something happened, not that this
+ * happened. Measuring the bottom two octaves, where the strike's 55 and
+ * 82Hz live and `hurt`'s 220Hz square does not, looked exact and was not:
+ * the ambient bed sits in the same octaves, at a level that swamped it,
+ * and stopping the bed left the band at 0.24 anyway.
+ *
+ * What works is the plainest thing: play `hurt` on its own, then land a
+ * real strike, and compare the two peaks under identical conditions. A
+ * strike is `hurt` and the Warden's own voice together, so if the wire is
+ * there the second is meaningfully louder than the first. Measured over
+ * several runs: 1.33 to 1.47 times wired up, 1.05 with the one line
+ * removed, so the line is drawn at 1.2 - between them rather than beside
+ * either.
+ */
+{
+  const both = await page.evaluate(async (flush) => {
+    const run = window.__run;
+    run.getState().startRun(7);
+    await new Promise((r) => setTimeout(r, 1500));
+    run.setState({ lives: 3, phase: "playing" });
+    await new Promise((r) => setTimeout(r, flush));
+    const alone = window.__listen(1200);
+    window.__sfx.hurt();
+    const hurtAlone = await alone;
+    await new Promise((r) => setTimeout(r, flush));
+    const listening = window.__listen(1200);
+    run.getState().wardenStrike();
+    return { hurtAlone, withStrike: await listening };
+  }, FLUSH_MS);
+  ok(
+    "the Warden landing a hit is heard, not merely emitted",
+    both.withStrike > both.hurtAlone * 1.2,
+    `${both.withStrike.toFixed(4)} for a strike against ${both.hurtAlone.toFixed(4)} for the damage alone`
+  );
+}
+
+ok("every cue the module offers is played by something", unused.length === 0, unused.join(", ") || "none unused");
 }
 
 ok("nothing errored while it played", errors.length === 0, errors.slice(0, 2).join(" | "));

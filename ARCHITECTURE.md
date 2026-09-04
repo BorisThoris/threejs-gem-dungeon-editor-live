@@ -161,7 +161,12 @@ Two stores that both claimed the player's stats. So:
   what a key press was. Which buttons the satchel's slots sit on is
   `src/game/input/gamepad.ts`, as a list as long as `SATCHEL_SLOTS` - it
   was two fields for a satchel of four.
-- Anything that is not state goes over `src/game/events.ts`. One typed bus.
+- Anything that is not state goes over `src/game/events.ts`. One typed bus,
+  and `yarn test:layout` holds both ends of it together: every event it
+  declares must be emitted somewhere and listened to somewhere. A typed bus
+  checks what an event carries, not whether anybody is at the far end, and
+  three events had nobody - among them `wardenStruck`, which meant the
+  Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
 - Templates come from `src/game/rooms/templates.ts`, by id.
 

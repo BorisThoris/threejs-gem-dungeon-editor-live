@@ -7,7 +7,8 @@
 // the memory trial no crystals, in every room the generator ever made. The
 // smoke test drives the game but not its geometry; this does.
 import { build } from "esbuild";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -745,6 +746,41 @@ check("the shipped room templates reach the floors the game generates", authored
     `holding the wall needs ${wall.toFixed(2)}, a sprint is ${L.DASH_SPEED}` +
       ` (with boots and swiftness, ${fastestDash.toFixed(2)})`
   );
+}
+
+// --- Nobody on the other end ------------------------------------------------
+//
+// Everything in this game that is not state goes over one typed bus, and
+// nothing had ever asked whether the two ends of it match up. Three of the
+// thirty-one events did not.
+//
+// The worst was `wardenStruck`. It has been emitted since the Warden could
+// land a hit and nothing anywhere listened to it, so being caught by the
+// thing the entire floor is built around was presented to the player
+// exactly like walking into spikes: the same sound, the same flash, the
+// same shake. The other two were `alarmRaised`, emitted twice into nothing,
+// and `hazard`, declared and never emitted at all. TypeScript is happy with
+// all three - a bus is typed on what an event carries, not on whether
+// anyone is at the far end - which is the same reason nothing noticed that
+// a quarter of the sound cues were never played until a check went looking.
+//
+// Read off the source rather than off a running game: a listener that only
+// mounts in one room is still a listener, and waiting to see an event fire
+// would make this a test of the walker's luck.
+{
+  const events = readFileSync(join(root, "src/game/events.ts"), "utf8");
+  const body = events.slice(events.indexOf("interface BusEvents"));
+  const declared = [...body.slice(0, body.indexOf("\n}")).matchAll(/^  (\w+):/gm)].map((m) => m[1]);
+  const tree = execFileSync("grep", ["-rhoE", "bus\\.(on|emit)\\(\"\\w+\"", join(root, "src")], { encoding: "utf8" });
+  const used = (verb, name) => tree.includes(`bus.${verb}("${name}"`);
+
+  check("the bus declares the events this check knows about", declared.length > 20, `${declared.length} declared`);
+  const unheard = declared.filter((e) => used("emit", e) && !used("on", e));
+  check("every event something emits is listened to somewhere", unheard.length === 0, unheard.join(", ") || "none unheard");
+  const unspoken = declared.filter((e) => used("on", e) && !used("emit", e));
+  check("every event something listens for is emitted somewhere", unspoken.length === 0, unspoken.join(", ") || "none unspoken");
+  const orphans = declared.filter((e) => !used("emit", e) && !used("on", e));
+  check("the bus declares no event that neither end uses", orphans.length === 0, orphans.join(", ") || "none orphaned");
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

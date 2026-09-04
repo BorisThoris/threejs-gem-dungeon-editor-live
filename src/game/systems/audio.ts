@@ -455,6 +455,23 @@ export const sfx = {
     noiseBurst(0.6, 0.2, 500);
   },
   /**
+   * It has you: the heaviest sound in the game, and until now there was no
+   * sound at all.
+   *
+   * `wardenStruck` has been emitted since the Warden could land a hit and
+   * nothing anywhere listened to it, so being caught by the thing the whole
+   * floor is built around was presented exactly like walking into spikes -
+   * the same `hurt`, the same flash, the same shake. This plays over that
+   * rather than instead of it: the hit is still a hit, and this is what hit
+   * you. Lower and longer than anything else, because it is the one event
+   * in a run that a player should feel in their chest.
+   */
+  wardenStrike() {
+    tone(55, 1.2, "sawtooth", 0.5, 30);
+    later(70, () => tone(82.4, 0.9, "square", 0.32, 48));
+    later(40, () => noiseBurst(0.55, 0.45, 320));
+  },
+  /**
    * How close it is (0 far, 1 on top of you) and which side it is on.
    * Called every frame while it is in the room; silent at zero.
    */

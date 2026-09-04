@@ -479,7 +479,6 @@ export const useRun = create<RunState>()(
         alarm,
       });
       bus.emit("gemCollected", { roomId });
-      bus.emit("alarmRaised", { alarm });
       return true;
     },
 
@@ -637,9 +636,7 @@ export const useRun = create<RunState>()(
     sealRoom: (roomId) => set({ sealedRoomId: roomId }),
 
     raiseAlarm: (amount) => {
-      const alarm = get().alarm + amount;
-      set({ alarm });
-      bus.emit("alarmRaised", { alarm });
+      set({ alarm: get().alarm + amount });
     },
 
     giveAway: (amount) => {

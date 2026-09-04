@@ -37,8 +37,6 @@ export interface BusEvents {
   wardenLured: { roomId: string };
   /** The Bone Charm ate a hit. */
   charmSpent: undefined;
-  /** A gem was taken and the floor is that much more awake. */
-  alarmRaised: { alarm: number };
   /** A relic was taken. */
   relicTaken: { id: string };
   /** Something went into the satchel. */
@@ -79,8 +77,6 @@ export interface BusEvents {
   lookSet: { yaw: number; pitch: number };
   /** Move the player body, e.g. after travelling or from a test harness. */
   teleport: { position: [number, number, number]; yaw?: number };
-  /** The player stepped on something that hurts. */
-  hazard: undefined;
 }
 
 type Handler<T> = (payload: T) => void;

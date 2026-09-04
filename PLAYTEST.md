@@ -608,6 +608,45 @@ had looked at because the tests were green:
   minutes. It was waiting on a clock instead of on the thing it was waiting
   for.
 
+- **Being caught by the Warden sounded exactly like walking into spikes.**
+  Everything in this game that is not state goes over one typed bus, and
+  nothing had ever asked whether its two ends match up. Three of the
+  thirty-three events did not. `wardenStruck` has been emitted since the
+  Warden could land a hit and **nothing anywhere listened to it** - so the
+  single most dramatic thing that can happen in a run, the thing the entire
+  floor is built around, was presented with the same sound, the same flash
+  and the same shake as stepping on a spike. `alarmRaised` was emitted
+  twice into nothing. `hazard` was declared and never emitted at all.
+
+  TypeScript is happy with all three: a typed bus checks what an event
+  carries, not whether anybody is at the far end. It is the same shape of
+  hole as a quarter of the sound cues never being played, which nothing
+  noticed either until a check went looking.
+
+  The Warden's strike has a voice now - the lowest and longest thing in the
+  game, playing *over* the ordinary damage rather than instead of it, so a
+  hit is still a hit and this is what hit you. It measures 0.29 to 0.31
+  against `hurt`'s 0.20, which makes it the loudest moment the game has,
+  which is right. The other two are deleted; a rule with no listener is
+  dead weight, and the check now enforces that. `yarn test:layout` reads
+  the bus's declarations off the source and greps the tree for both ends of
+  each: run against the code as shipped it names all three, by name.
+
+  **The check I wrote for it was wrong twice, and that is the part worth
+  keeping.** The first version landed a real strike and asked whether the
+  result was louder than the room - and it passed with the listener
+  deleted, because a strike also does damage and `hurt` on its own is over
+  that line. It was measuring that *something* happened, not that *this*
+  happened, which is precisely the failure the audio harness was built to
+  end. The second tried to be clever: the strike is 55 and 82Hz and
+  `hurt` is a 220Hz square, so the bottom two octaves should say whether
+  the Warden's own voice played. But the ambient bed sits in those same
+  octaves and swamped it - 0.65 against 0.60 - and stopping the bed still
+  left the band reading 0.24. What works is the plainest thing available:
+  play `hurt` alone, then land a real strike, and compare the two peaks
+  under identical conditions. 1.33 to 1.68 times wired up, 1.05 with the
+  one line removed.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it

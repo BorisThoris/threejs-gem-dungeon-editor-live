@@ -59,6 +59,8 @@ export function Audio() {
       bus.on("wardenNearby", ({ roomId }) => sfx.wardenNear(towards(roomId))),
       bus.on("wardenWoke", () => sfx.wardenNear()),
       bus.on("wardenEntered", () => sfx.wardenHere()),
+      // Over the `hurt` that the damage itself fires, not instead of it.
+      bus.on("wardenStruck", () => sfx.wardenStrike()),
       bus.on("wardenLured", () => sfx.clatter()),
     ];
     return () => offs.forEach((off) => off());
