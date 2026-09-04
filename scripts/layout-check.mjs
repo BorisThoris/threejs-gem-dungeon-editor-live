@@ -455,11 +455,13 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   const GATED = new Set(["arena"]);
   let unpayable = 0;
   let thin = 0;
+  let loose = 0;
   const worst = {};
   for (const floor of [1, 2, 3]) {
     const rules = L.floorRules(floor);
     const toll = L.tollForFloor(floor);
     let least = Infinity;
+    let most = -Infinity;
     for (let seed = 1; seed <= 400; seed++) {
       const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       let free = 0;
@@ -470,21 +472,40 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
         free++;
       }
       least = Math.min(least, free);
+      most = Math.max(most, free);
       if (free < toll) unpayable++;
-      // At least one to spare. The toll is meant to eat most of a floor's
-      // free gems - what a run scores comes from the vault, the arena and
-      // the puzzles - but a floor that costs every single gem to leave is
-      // one where the choice the whole game is built on, take it or leave
-      // it, is not offered at all.
+      /**
+       * At least one to spare, and not more than a floor's worth over.
+       *
+       * A floor that costs every single gem to leave is one where the
+       * choice the whole game is built on, take it or leave it, is not
+       * offered at all. That was the only side guarded, and the comment
+       * beside it claimed the toll "eats most of a floor's free gems".
+       * Measured over these same four hundred seeds, it eats between
+       * forty-three and seventy-five per cent of them:
+       *
+       *   floor 1  toll 3  free 4 to 7    spare 1 to 4
+       *   floor 2  toll 5  free 6 to 10   spare 1 to 5
+       *   floor 3  toll 7  free 9 to 13   spare 2 to 6
+       *
+       * So on the loosest seeds more than half survives the exit, which is
+       * a softer decision than the sentence describes. Whether that is the
+       * right softness is a design question and PLAYTEST asks it of a
+       * human; what is guarded here is that it does not drift further. The
+       * seeds are fixed, so this passes or fails the same way every time.
+       */
       if (free < toll + 1) thin++;
+      if (free > toll * 3) loose++;
     }
-    worst[`floor ${floor}`] = `${least} free against a toll of ${toll}`;
+    worst[`floor ${floor}`] = `${least} to ${most} free against a toll of ${toll}`;
   }
   check("every floor can be paid for without the vault, the arena or a puzzle",
     unpayable === 0, `${unpayable} of 1200 could not be`);
   check("and with something left over, so taking every gem is a choice",
     thin === 0, `${thin} of 1200 were within one`);
-  console.log(`  worst seed per floor: ${Object.entries(worst).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
+  check("and the exit still costs a real share of what a floor holds",
+    loose === 0, `${loose} of 1200 held more than three times their toll`);
+  console.log(`  free gems per floor: ${Object.entries(worst).map(([k, v]) => `${k}: ${v}`).join(", ")}`);
 }
 
 // The loot: every item has to be findable and has to have a look of its

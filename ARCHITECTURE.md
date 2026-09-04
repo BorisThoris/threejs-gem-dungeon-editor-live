@@ -519,6 +519,13 @@ second model for it to be written in.
   `yarn test:prod` starts the built bundle with garbage, with JSON of the
   wrong shape, and with an older build's fields, and asks whether it reaches
   the menu and draws a room.
+- A guard on one side of a number is half a guard. The economy has always
+  checked that a floor holds enough free gems to pay its exit - a real
+  fairness promise, since a player who cannot answer the tome is never locked
+  out - and nothing checked the other side, while the comment beside it
+  claimed the toll "eats most of a floor's free gems". It eats 43% to 75% of
+  them. The economy could have drifted until a floor held ten times its toll
+  with every check green. Both sides are bounded now.
 - A measurement that guards nothing is the mirror of a guard that measures
   nothing. `yarn test:run` is the only check that plays a run end to end and
   it printed the whole shape of one - rooms entered, doors taken, gems picked

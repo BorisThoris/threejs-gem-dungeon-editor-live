@@ -1856,14 +1856,64 @@ initial value genuinely is "nothing has happened yet" (not started, level and
 facing the spawn heading, no shake) and one because it is set from the frame
 loop and was never the pattern. The Warden was the only one.
 
-## 22. Steam Deck
+## 22. How much of the demo can be skipped
+
+Cycle 62 noticed that six hits over three complete runs all came from the
+Warden — no spikes, no arena, no watcher, no plate — and that the walker
+takes exactly the fifteen gems the tolls want and leaves. This is why.
+
+Every room but the start, the end and the arena has a **gem lying on its
+floor**, the puzzle rooms included. So the memory trial and the pressure
+plate pay a *second* gem rather than the only one: their rooms can be walked
+into, robbed, and left without touching what they are for.
+
+Measured over four hundred floors apiece, counting only what a player is
+guaranteed — not the vault's, not the arena's, not a puzzle's reward:
+
+| Floor | Toll | Gems lying free | Spare after the exit |
+| --- | --- | --- | --- |
+| 1 | 3 | 4 to 7 | 1 to 4 |
+| 2 | 5 | 6 to 10 | 1 to 5 |
+| 3 | 7 | 9 to 13 | 2 to 6 |
+
+The check that guards this side has always said "every floor can be paid for
+without the vault, the arena or a puzzle", which is a real fairness promise:
+a player who cannot answer the tome, or will not walk the arena's circle, is
+never locked out of the exit. That stands.
+
+What did not stand is the sentence beside it, which said the toll "eats most
+of a floor's free gems". It eats between **43% and 75%** of them, so on the
+loosest seeds more than half survives the exit. Nothing guarded that side at
+all: the economy could have drifted until a floor held ten times its toll and
+every check would have stayed green. It is bounded now — a floor never holds
+more than three times what its exit charges — over the same fixed seeds, so
+it passes or fails the same way every time.
+
+**The design question is left open on purpose.** A player racing the exit can
+pay every toll off the floor and see no set piece at all: no gauntlet, no
+trial, no tome, no plate, no vault. For a roguelike that is a legitimate
+risk/reward shape — take more, wake the floor more. For a *demo*, whose job
+is to show what the game is, it means the most efficient way to play is the
+way that sees the least of it. Whether to force one encounter — a toll the
+floor cannot quite cover, a set piece on the way to the exit — is a decision
+for a person, not for this document, and it is on the list in §24.
+
+## 23. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 23. What a human playtest should watch for
+## 24. What a human playtest should watch for
+
+- **Does anyone see a set piece?** The measurement in §22 says a player can
+  pay every toll from gems lying on the floor and never enter the arena,
+  answer the tome, repeat the pattern, weight the plate or open the vault.
+  The most efficient way through the demo is the way that sees the least of
+  it. Watch whether a first-time player wanders into one anyway, out of
+  curiosity, or beelines for the exit — and whether they come out of a run
+  able to say what the game has in it.
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1946,7 +1996,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 24. Tuning knobs
+## 25. Tuning knobs
 
 All in `src/game/world.ts`:
 
