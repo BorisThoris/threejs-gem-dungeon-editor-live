@@ -20,6 +20,7 @@ import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, keyFor, reservedAnchors } from "./kinds";
+import { CLOSE_REACH } from "../world";
 import { arrangementFor, type Spots } from "./layouts";
 import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
@@ -257,7 +258,7 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
             label={`Open the chest - ${what}`}
             enabled={!full}
             blockedReason="Your satchel is full. Use something first."
-            radius={2.2}
+            radius={CLOSE_REACH}
             onInteract={() => useRun.getState().takeItem(id, key)}
           />
         );

@@ -5,7 +5,7 @@ import type { Group, Mesh, MeshBasicMaterial } from "three";
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
@@ -54,10 +54,28 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   useFrame((state) => {
     const g = head.current;
     if (!g) return;
-    const facing = phase + state.clock.elapsedTime * SENTRY_SPIN;
+    /**
+     * The run's clock, not the renderer's.
+     *
+     * All three of the things this post times used to read
+     * `state.clock.elapsedTime`, which keeps turning while the game is
+     * paused, and the room breaks in both directions because of it.
+     * Measured on floor three with the beam on the player: pause for half a
+     * sweep and the beam has moved on, so standing still in the light and
+     * pressing Escape was never seen at all where standing still was seen
+     * every time. Pause for a whole sweep - eleven and a half seconds, and
+     * the beam is back where it was - and the span it has held you for is
+     * still running from before the menu, so the post calls out on the
+     * first frame back, before the player has taken a step.
+     *
+     * On `runClock` the beam is where it was left, the span is what it was,
+     * and the pause key neither pays nor charges.
+     */
+    const run = useRun.getState();
+    const now = runClock(run);
+    const facing = phase + now * SENTRY_SPIN;
     g.rotation.y = facing;
 
-    const run = useRun.getState();
     if (!canControl(run)) return;
 
     const cam = state.camera.position;
@@ -100,7 +118,6 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
      * a player and return inside a hitch: lit at both ends of a dropped
      * frame means lit throughout it, and charging for that is right.
      */
-    const now = state.clock.elapsedTime;
     if (!inside) litSince.current = null;
     else if (litSince.current === null) litSince.current = now;
     const held = litSince.current === null ? 0 : now - litSince.current;

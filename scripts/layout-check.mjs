@@ -1340,6 +1340,76 @@ check("the shipped room templates reach the floors the game generates", authored
     });
   };
 
+  /**
+   * And the things a room is made of: can they be walked up to?
+   *
+   * The fill above asks it of the gem. Nothing had asked it of the plate,
+   * the lectern, the four pedestals or the shop counter - the anchors a
+   * kind's own content stands on, which are the reason those rooms exist.
+   * The dressing keeps its props off them, which is not the same as leaving
+   * a way to them: a table and a bookshelf either side of a pedestal are
+   * both clear of it and both in the way. This is the trap room's lesson
+   * applied to the furniture rather than to the spikes.
+   *
+   * `CLOSE_REACH` is the tightest reach any of them offers - a crystal on a
+   * pedestal - so it is the honest bound for all of them; a lectern and a
+   * counter reach further and are only easier.
+   */
+  const reachable = (room, seed, target) => {
+    const half = room.size / 2;
+    const gem = L.gemFor(room, seed);
+    const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
+    const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
+    const blocked = (x, z) =>
+      Math.abs(x) > half - BODY ||
+      Math.abs(z) > half - BODY ||
+      spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
+      props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
+    const n = Math.ceil((half * 2) / CELL);
+    const at = (i) => -half + i * CELL;
+    const key = (i, j) => i * 1000 + j;
+    const seen = new Set();
+    const queue = [];
+    for (const dir of ["north", "south", "east", "west"]) {
+      if (!room.links[dir]) continue;
+      const [dx, , dz] = L.doorPosition(room, dir);
+      const i = Math.round((dx * 0.82 + half) / CELL);
+      const j = Math.round((dz * 0.82 + half) / CELL);
+      if (!blocked(at(i), at(j)) && !seen.has(key(i, j))) { seen.add(key(i, j)); queue.push([i, j]); }
+    }
+    if (queue.length === 0) return false;
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di;
+        const b = j + dj;
+        if (a < 0 || b < 0 || a > n || b > n || seen.has(key(a, b)) || blocked(at(a), at(b))) continue;
+        seen.add(key(a, b));
+        queue.push([a, b]);
+      }
+    }
+    for (const c of seen) {
+      if (Math.hypot(at(Math.floor(c / 1000)) - target[0], at(c % 1000) - target[2]) <= L.CLOSE_REACH) return true;
+    }
+    return false;
+  };
+
+  let anchorsWalked = 0;
+  const outOfReach = [];
+  for (let seed = 1; seed <= 120; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    for (const room of d.rooms) {
+      for (const a of L.reservedAnchorsFor(room.kind, room)) {
+        anchorsWalked++;
+        if (!reachable(room, d.seed, a)) {
+          if (outOfReach.length < 3) {
+            outOfReach.push(`${room.kind} ${room.id}@${d.seed} ${room.size} ${room.shape}`);
+          }
+        }
+      }
+    }
+  }
+
   let split = 0;
   let withDoors = 0;
   const stranded = [];
@@ -1370,6 +1440,11 @@ check("the shipped room templates reach the floors the game generates", authored
     "and so can every other room's, past its own furniture",
     walled.other === 0,
     `${walled.other} of ${counted.other} rooms walled the gem off  ${examples.other.join(" | ")}`
+  );
+  check(
+    "every plate, lectern, pedestal and counter can be walked up to",
+    outOfReach.length === 0,
+    `${outOfReach.length} of ${anchorsWalked} anchors out of reach  ${outOfReach.join(" | ")}`
   );
   check(
     "a room with two doors can be walked between them",

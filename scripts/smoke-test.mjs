@@ -1605,6 +1605,108 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+/**
+ * The watcher against the pause key.
+ *
+ * Three things this post times all read `state.clock.elapsedTime` - the
+ * renderer's clock, which keeps turning while the game is paused - and the
+ * room broke in both directions because of it. The beam sweeps a whole
+ * circle in 11.4 seconds and covers one direction for 1.53 of them, so:
+ * pause for half a sweep and the beam has moved on, and standing still in
+ * the light and pressing Escape was never seen where standing still was
+ * seen every time; pause for a whole sweep and the beam is back where it
+ * was, but the span it has held you for is still running from before the
+ * menu, so the post calls out on the first frame back before the player has
+ * taken a step.
+ *
+ * The outcome is not what is asserted. Waiting for the beam to arrive is a
+ * coin toss on a rasteriser that renders at four frames a second - the
+ * first version of this check reported the room broken and then working on
+ * the same code - so the player is put on the beam's own bearing instead,
+ * and what is measured is the two numbers underneath: how far the beam
+ * turned across the pause, and what the span reads on the first frame back.
+ * Across six paused seconds the beam used to travel 3.85 radians, which is
+ * more than half its circle.
+ */
+{
+  const beam = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const W = window.__world;
+    let found = null;
+    for (let seed = 1; seed < 60 && !found; seed++) {
+      run.getState().startRun(seed);
+      await wait(600);
+      const d = run.getState().dungeon;
+      for (const room of d.rooms) {
+        const post = window.__sentryFor(room, d.seed, 3);
+        if (post) { found = { room, post }; break; }
+      }
+    }
+    if (!found) return { noSentry: true };
+    run.setState({ floor: 3, transitioning: true, currentRoomId: found.room.id, lives: 99, alarm: 0 });
+    run.getState().roomReady(found.room.id);
+    await wait(1600);
+    if (!window.__sentry) return { noProbe: true };
+
+    const PAUSE_S = 6;
+    // On the beam's own bearing, a little ahead of where it points now, so
+    // the player is caught partway through the pass rather than on its
+    // trailing edge. No waiting and no luck.
+    const at = found.post.at;
+    const half = found.room.size / 2;
+    const bearing = window.__sentry.facing + 0.35;
+    const r = Math.min(4, half - 1.5);
+    window.__bus.emit("teleport", {
+      position: [at[0] + Math.sin(bearing) * r, 1.5, at[2] + Math.cos(bearing) * r],
+      yaw: 0,
+    });
+    await wait(500);
+    const before = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit };
+    let called = 0;
+    const off = window.__bus.on("sentrySaw", () => { called++; });
+    run.getState().pause();
+    await wait(PAUSE_S * 1000);
+    run.getState().resume();
+    await wait(250);
+    const back = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit, called };
+    // And that it does turn when nobody is holding it: a beam frozen for
+    // good would pass every line above.
+    await wait(1200);
+    const later = window.__sentry.facing;
+    off();
+    return {
+      pause: PAUSE_S,
+      spin: W.SENTRY_SPIN,
+      onBeam: before.inside,
+      litBefore: +before.lit.toFixed(2),
+      turnedAcrossPause: +Math.abs(back.facing - before.facing).toFixed(2),
+      turnedAfter: +Math.abs(later - back.facing).toFixed(2),
+      litBack: +back.lit.toFixed(2),
+      insideBack: back.inside,
+      called: back.called,
+      alarm: run.getState().alarm,
+    };
+  });
+  ok("the player can be put on the watcher's beam without waiting for it", beam.onBeam === true, JSON.stringify(beam));
+  if (beam.onBeam) {
+    // Half the beam's own travel for the pause: it used to cover 3.85
+    // radians of the 3.3 the pause alone is worth, and now covers the
+    // quarter-second of play at the end of it.
+    const budget = beam.spin * beam.pause * 0.5;
+    ok(
+      "six seconds in the pause menu do not turn the beam, and leave the player where it left them",
+      beam.turnedAcrossPause < budget && beam.insideBack && beam.litBack < beam.pause * 0.5,
+      `turned ${beam.turnedAcrossPause} of a budget of ${budget.toFixed(2)}, still lit ${beam.insideBack}, span ${beam.litBack}s`
+    );
+    ok(
+      "and the beam is turning again the moment the game is",
+      beam.turnedAfter > beam.spin * 0.25,
+      `${beam.turnedAfter} radians after the pause, at ${beam.spin} a second`
+    );
+  }
+}
+
 // The three puzzles, played. Eighty-seven checks and not one of them had
 // opened the tome, repeated the pattern or weighted the plate - three
 // interactive systems whose whole contract is "solved pays a gem, failed is
@@ -2126,17 +2228,73 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     );
   }
 
-  // The other half of that room - weight the plate with a candle, then take
-  // the idol for a gem instead of a life - is verified by hand and not here.
-  // Putting a carried thing down places it where the camera is aimed, and
-  // the plate is a metre and a half across on top of an altar with a body
-  // of its own: a probe that teleports and turns can stand where the prompt
-  // reads "put down the candle" and still not have an aim the drop accepts.
-  // Four approaches were tried. A check that passes on some of them is a
-  // check nobody will trust, which is what the heap measurement and the
-  // vault path both taught, so what is left here is the half that is solid:
-  // the trap springs, the candle lifts, and carrying it to the plate offers
-  // to put it down.
+  /**
+   * And the half that pays: weight the plate, then take the idol.
+   *
+   * This said "verified by hand and not here" for six cycles. Putting a
+   * carried thing down places it where the camera is aimed, and the plate
+   * sits on an altar nearly three metres across with a body of its own, so
+   * a probe that teleports and turns can stand where the prompt reads "put
+   * down the candle" and still not have an aim the drop accepts; four
+   * approaches were tried and abandoned.
+   *
+   * What was missing was somewhere to look. `carry` is module data - it
+   * changes every frame something is held and nothing re-renders for it -
+   * so nothing outside the component could say whether a candle had landed
+   * on the plate, and every attempt was inferring it from the outcome it
+   * was trying to test. With the registry exposed the approach is one line
+   * of arithmetic: a drop lands 1.4 metres in front of the camera and snaps
+   * to the plate from 1.5, so standing 2.6 out and looking in puts the aim
+   * 1.2 from the plate's middle, which is inside the snap and outside the
+   * altar. It worked first time.
+   *
+   * Cycle 53 is why it is worth having at all: the memory trial had been
+   * played correctly for thirty cycles and the first probe to play it
+   * badly found the room cost nothing. This room was the mirror - its
+   * failure was checked and its success was not.
+   */
+  const won = await standIn("challenge");
+  ok("a second floor has a challenge room to win", won !== null, JSON.stringify(won && won.id));
+  if (won) {
+    const [plateAt, ...candleSpots] = won.anchors;
+    const lifted = await stepTo(candleSpots[0], 1.3);
+    ok("a candle offers to be picked up", /pick up the candle/i.test(String(lifted)), String(lifted));
+    await act();
+    const held = await page.evaluate(() => (window.__carry ? window.__carry.carriedId() : "no probe"));
+    ok("and pressing E puts it in the player's hands", held === "candle-0", String(held));
+
+    // Far enough out to be clear of the altar's body, close enough that the
+    // aim lands inside the plate's snap.
+    const offer = await stepTo(plateAt, 2.6);
+    ok("carrying it to the plate offers to put it down", /put down the candle/i.test(String(offer)), String(offer));
+    await act();
+    const onPlate = await page.evaluate(
+      ([x, z]) =>
+        window.__carry
+          ? { resting: window.__carry.countResting(x, z, 0.9, "idol"), carried: window.__carry.carriedId() }
+          : { resting: -1, carried: "no probe" },
+      [plateAt[0], plateAt[2]]
+    );
+    ok(
+      "and it lands on the plate, which nothing had ever shown",
+      onPlate.resting > 0 && onPlate.carried === null,
+      JSON.stringify(onPlate)
+    );
+
+    await page.evaluate(() => window.__run.setState({ lives: 3, lastDamageAt: -Infinity }));
+    const idolOffer = await stepTo(plateAt, 1.9);
+    ok("the plate then offers the idol", /pick up the idol/i.test(String(idolOffer)), String(idolOffer));
+    await act();
+    const paid = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { lives: s.lives, gems: s.gems, cleared: s.cleared.includes(s.currentRoomId), failed: s.failed.includes(s.currentRoomId) };
+    });
+    ok(
+      "and lifting it off a weighted plate pays a gem instead of a life",
+      paid.lives === 3 && paid.gems > 0 && paid.cleared && !paid.failed,
+      JSON.stringify(paid)
+    );
+  }
 
   /**
    * The counter, and the key on the floor.

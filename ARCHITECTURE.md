@@ -451,7 +451,19 @@ second model for it to be written in.
   and its gem taken, for thirty-odd cycles; the first probe to press a wrong
   crystal found that the price could be avoided for good by stepping through
   a doorway. It is now played wrong too: a mistake, a door out and back, and
-  the mistake after it, which is the one that takes the life.
+  the mistake after it, which is the one that takes the life. The challenge
+  room was the mirror - its trap springing was checked and its winning half
+  was not - and what had blocked that for six cycles was having nowhere to
+  look: `carry` is module data, so nothing outside the component could say
+  whether a candle had landed on the plate, and every attempt inferred it
+  from the outcome under test. Exposed as a probe, the approach is
+  arithmetic: a drop lands 1.4 metres ahead and snaps to the plate from 1.5,
+  so standing 2.6 out is inside the snap and outside the altar's body.
+- The fill that walks a room reaches the anchors a kind's own content stands
+  on as well as the gem - the plate, the lectern, the four pedestals, the
+  shop counter. The dressing keeps its props off them, which is not the same
+  as leaving a way to them: a table and a bookshelf either side of a pedestal
+  are both clear of it and both in the way. 0 of 1440.
 - `yarn test:desktop` packages the Linux build, reads what is in it, then
   starts it under a virtual display and plays it. Electron is Chromium, so
   it opens a debugging port and the same tooling that drives the web build

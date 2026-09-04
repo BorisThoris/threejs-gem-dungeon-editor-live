@@ -32,6 +32,18 @@ export const EYE_OFFSET = 0.5;
 
 /** How close the player must stand for a door, counter or lectern to offer itself. */
 export const INTERACT_RADIUS = 3;
+/**
+ * How close the player must stand for something small to offer itself.
+ *
+ * Tighter than `INTERACT_RADIUS`, which is what a door, a shop counter or a
+ * lectern uses: a chest, a crystal on its pedestal and a key on the floor
+ * stand near other things of their own kind, and a generous reach turns the
+ * arbitration between them into a coin toss. It was the same literal in
+ * three components and nothing that reasons about reach could read it - so
+ * the check that asks whether a room's own content can be walked up to had
+ * no number to ask with.
+ */
+export const CLOSE_REACH = 2.2;
 
 /**
  * How far inside the room the player lands after travelling. Clear of the

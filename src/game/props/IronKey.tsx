@@ -4,6 +4,7 @@ import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { useRun } from "../state/run";
+import { CLOSE_REACH } from "../world";
 
 interface IronKeyProps {
   roomId: string;
@@ -52,7 +53,7 @@ export function IronKey({ roomId, position }: IronKeyProps) {
       <InteractTrigger
         position={[0, 0, 0]}
         label="Take the iron key"
-        radius={2.2}
+        radius={CLOSE_REACH}
         onInteract={() => useRun.getState().takeKey(roomId)}
       />
     </group>

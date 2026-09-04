@@ -104,6 +104,12 @@ export default function App() {
     // controls. Deliberately not store state - it changes every frame a
     // mouse moves - so a check has no other way to read it.
     void import("./game/input/look").then((m) => (w.__look = m.look));
+    // Where every carryable is and which one is in the player's hands.
+    // Module data rather than store state, because it changes every frame
+    // something is carried and nothing re-renders for it - so a check that
+    // wants to know whether a candle actually landed on the plate has no
+    // other way to ask.
+    void import("./game/puzzles/Carryable").then((m) => (w.__carry = m.carry));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a

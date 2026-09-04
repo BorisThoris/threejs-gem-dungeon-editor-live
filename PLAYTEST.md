@@ -1453,14 +1453,44 @@ player is in it; a notice owns the upper one until it runs out, on the run's
 clock, so a line read in the pause menu is still there when the game comes
 back.
 
-## 13. Steam Deck
+## 13. The watcher and the pause key
+
+Cycle 52 found the arena's gauntlet running on the wall clock and cycle 53
+the memory trial's display. The Sentry was the third, and the worst of the
+three, because it breaks in **both** directions.
+
+Its beam sweeps a full circle in 11.4 seconds and covers any one direction
+for 1.53 of them. All three things it timed — the beam's own angle, the span
+the light has held you for, and the cooldown between calls — read the
+renderer's clock, which keeps turning while the game is paused.
+
+Measured on floor three, with the player standing in the beam:
+
+| Pause | before | after |
+| --- | --- | --- |
+| Half a sweep (5.7 s) | beam has moved on: **never seen** | still on you |
+| A whole sweep (11.4 s) | beam is back, and the span still runs from before the menu: **called out on the first frame back** | a fresh 0.9 s, as if you had never paused |
+
+So the room's one demand — do not stand in the light — was met by pressing
+Escape; and a player who paused for the wrong length was convicted before
+they could take a step. The measurement the check keeps is the number
+underneath both: across six paused seconds the beam used to travel **3.85
+radians**, more than half its circle, and now travels the quarter-second of
+play at the end of the pause.
+
+The check does not assert the outcome. Waiting for the beam to arrive is a
+coin toss at four frames a second — the first version of it reported the
+room broken and then working on the same code — so the player is put on the
+beam's own bearing instead and the two numbers underneath are read directly.
+
+## 14. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 14. What a human playtest should watch for
+## 15. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1543,7 +1573,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 15. Tuning knobs
+## 16. Tuning knobs
 
 All in `src/game/world.ts`:
 

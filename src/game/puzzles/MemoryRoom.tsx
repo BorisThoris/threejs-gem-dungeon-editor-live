@@ -10,6 +10,7 @@ import { createRng } from "../rng";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { runClock, useRun } from "../state/run";
+import { CLOSE_REACH } from "../world";
 
 const COLORS = [
   { base: "#ff6b6b", glow: "#ff4444" },
@@ -218,7 +219,7 @@ export function MemoryRoom({ room }: RoomKindProps) {
             label="Choose this crystal"
             enabled={phase === "playing"}
             blockedReason={phase === "showing" ? "Watch" : "Not yet"}
-            radius={2.2}
+            radius={CLOSE_REACH}
             onInteract={() => choose(i)}
           />
         </group>
