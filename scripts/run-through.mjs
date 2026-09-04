@@ -91,7 +91,34 @@ const playFloor = (page, budget) =>
       return path;
     };
 
-    const notes = { steps: 0, gems: 0, rooms: new Set(), toppedUp: 0 };
+    const notes = { steps: 0, gems: 0, rooms: new Set(), toppedUp: 0, hits: [], seen: 0 };
+    /**
+     * What took each life.
+     *
+     * The first version of this counted how often the walker had to be
+     * picked up and nothing more, which says a run is dangerous without
+     * saying what is dangerous about it. The Warden announces its own hits
+     * on the bus, so a hit with one of those beside it is the Warden and a
+     * hit without is the room: spikes, the arena's arms, or the challenge
+     * room's altar. The room's kind says which.
+     */
+    const offs = [
+      // The order matters and cost a wrong answer. `wardenStrike` calls
+      // `damage` first and announces itself second, so a listener that asks
+      // "was there a strike just now" when the damage arrives always hears
+      // no: the first version of this reported zero hits from the Warden in
+      // three whole runs, and hits in treasure and library rooms that have
+      // nothing in them that can hurt anybody. The strike relabels the hit
+      // it caused instead.
+      window.__bus.on("damaged", () => {
+        notes.hits.push({ by: here()?.kind ?? "unknown", at: performance.now() });
+      }),
+      window.__bus.on("wardenStruck", () => {
+        const last = notes.hits[notes.hits.length - 1];
+        if (last && performance.now() - last.at < 200) last.by = "warden";
+      }),
+      window.__bus.on("sentrySaw", () => notes.seen++),
+    ];
     const keepStanding = () => {
       if (state().lives < 3) {
         notes.toppedUp++;
@@ -132,6 +159,12 @@ const playFloor = (page, budget) =>
         .filter((g) => g.at !== null);
     };
 
+    /** Every return goes through here, so the listeners always come off. */
+    const done = (extra) => {
+      offs.forEach((off) => off());
+      return { ...notes, rooms: notes.rooms.size, ...extra };
+    };
+
     while (notes.steps < budget) {
       keepStanding();
       const toll = window.__derived.toll();
@@ -142,9 +175,9 @@ const playFloor = (page, budget) =>
         .map((g) => ({ ...g, path: route(state().currentRoomId, g.room.id) }))
         .filter((g) => g.path)
         .sort((a, b) => a.path.length - b.path.length);
-      if (options.length === 0) return { ...notes, rooms: notes.rooms.size, stuck: "no gem left to take" };
+      if (options.length === 0) return done({ stuck: "no gem left to take" });
       const target = options[0];
-      if (!(await walkRoute(target.path))) return { ...notes, rooms: notes.rooms.size, stuck: "a door would not open" };
+      if (!(await walkRoute(target.path))) return done({ stuck: "a door would not open" });
       const before = state().gems;
       window.__bus.emit("teleport", { position: [target.at[0], 1.5, target.at[2]] });
       await wait(700);
@@ -156,9 +189,9 @@ const playFloor = (page, budget) =>
     // room, so the walker has to reach one of its neighbours first.
     const d = state().dungeon;
     const path = route(state().currentRoomId, d.endId);
-    if (!path) return { ...notes, rooms: notes.rooms.size, stuck: "no way to the exit" };
+    if (!path) return done({ stuck: "no way to the exit" });
     const paid = await walkRoute(path);
-    return { ...notes, rooms: notes.rooms.size, gemsHeld: state().gems, paid, stuck: paid ? null : "the exit would not open" };
+    return done({ gemsHeld: state().gems, paid, stuck: paid ? null : "the exit would not open" });
   }, budget);
 
 /**
@@ -219,6 +252,24 @@ if (won.length) {
       `${range(gems)} gems picked up.`
   );
   console.log(`Lives topped up ${range(saved)} times a run - the walker does not evade the Warden.`);
+
+  // What took them. A run's danger is not one thing, and until this said so
+  // the only number was how often the walker fell over.
+  const tally = new Map();
+  let seen = 0;
+  for (const r of won)
+    for (const f of r.floors) {
+      for (const hit of f.hits ?? []) tally.set(hit.by, (tally.get(hit.by) ?? 0) + 1);
+      seen += f.seen ?? 0;
+    }
+  const total = [...tally.values()].reduce((a, b) => a + b, 0);
+  const byWarden = tally.get("warden") ?? 0;
+  console.log(
+    `Of ${total} hits over ${won.length} runs, ${byWarden} came from the Warden and ${total - byWarden} from rooms` +
+      ` (${[...tally].filter(([k]) => k !== "warden").map(([k, n]) => `${k} ${n}`).join(", ") || "none"}).` +
+      ` The Sentry called out ${seen} times - it needs nine tenths of a second` +
+      ` of standing in the light, and this walker never stands anywhere.`
+  );
 }
 
 ok("nothing errored while the run was played", errors.length === 0, errors.slice(0, 2).join(" | "));

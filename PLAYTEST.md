@@ -647,6 +647,52 @@ had looked at because the tests were green:
   under identical conditions. 1.33 to 1.68 times wired up, 1.05 with the
   one line removed.
 
+- **What actually takes a life, and the last hazard nobody had measured.**
+  The run-through said the walker had to be picked up one to five times a
+  run and nothing said by what, which describes a run as dangerous without
+  saying what is dangerous about it. Now that the Warden announces its own
+  hits, every life lost can be attributed: **five to seven of every eight
+  hits in a finished run come from the Warden**, and the rest from a trap
+  room's spikes. The demo's danger is the thing the demo is about, which is
+  worth knowing rather than assuming.
+
+  The first version of that measurement said the exact opposite - **zero**
+  hits from the Warden, and hits in treasure and library rooms, which have
+  nothing in them that can hurt anybody. `wardenStrike` calls `damage`
+  first and announces itself second, so a listener that asks "was there a
+  strike just now" when the damage arrives always hears no. Every Warden
+  hit was being labelled with the room it happened in. The strike relabels
+  the hit it caused instead. An impossible number in the output - a hit in
+  a room with no hazard in it - is what gave it away.
+
+  That left one number that was not an artefact: **the Sentry called out
+  zero times across three complete runs.** It is placed - none on the first
+  floor by design, two to six rooms on the second and third - so the zero
+  is the walker, which steps between doorways and gems and never stands
+  anywhere for the nine tenths of a second the Sentry needs. Said plainly
+  in the output rather than left to look like a bug.
+
+  But it did point at the one thing in the game that had never been
+  measured at all. The Warden's promise is checked in `systems/pace.ts`,
+  the arena's in `arena/sweep.ts`, and the Sentry was four constants in
+  `world.ts` and a paragraph saying the room is "about judging it".
+  `sentry/beam.ts` says what they mean together, and `yarn test:layout`
+  holds them to one line: **standing still in the light is always seen, and
+  walking out of it never is.** Both halves matter - a beam that sweeps
+  past faster than it can call is a light show, and a beam nobody can leave
+  is a toll rather than a decision.
+
+  Both hold, and the second is thinner than it looks: at the far edge of
+  the beam's reach a walk takes **0.84 seconds** to cross out of it against
+  the **0.9** the Sentry waits, a margin of six hundredths of a second. That
+  is the room working as designed - it is about judging it - but it was a
+  coincidence of four numbers tuned separately and is now a written-down
+  invariant that a change to any of them will trip. Nothing was retuned on
+  the strength of a fresh measurement. The exception is mire, which pushes
+  the same crossing to 0.99 seconds and makes the outer half of the beam's
+  reach genuinely inescapable: the check asserts that too, because a cruel
+  potion that costs nothing in the room built around moving is not cruel.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it

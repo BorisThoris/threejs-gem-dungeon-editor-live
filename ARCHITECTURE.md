@@ -134,6 +134,11 @@ Two stores that both claimed the player's stats. So:
   matters because the room's own copy of the ring loop had left a hole
   around the plinth that a check named after covering the floor did not
   look for.
+- What the Sentry's four constants mean together is
+  `src/game/sentry/beam.ts`: how long the beam holds a fixed direction, and
+  how long it takes to walk out of it at a given distance. One line, checked
+  - standing still in the light is always seen, walking out of it never is -
+  and the margin on the second is six hundredths of a second.
 - Whether the player can get away from the Warden is
   `src/game/systems/pace.ts`, and it owns both halves of that: `paceFor`
   turns relics and a potion into a walk and a sprint, `wardenSpeedAt` asks

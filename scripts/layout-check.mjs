@@ -36,6 +36,7 @@ writeFileSync(
    export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/systems/pace";
    export * from "${root}src/game/arena/sweep";
+   export * from "${root}src/game/sentry/beam";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/world";`
@@ -781,6 +782,55 @@ check("the shipped room templates reach the floors the game generates", authored
   check("every event something listens for is emitted somewhere", unspoken.length === 0, unspoken.join(", ") || "none unspoken");
   const orphans = declared.filter((e) => !used("emit", e) && !used("on", e));
   check("the bus declares no event that neither end uses", orphans.length === 0, orphans.join(", ") || "none orphaned");
+}
+
+// --- The Sentry's question --------------------------------------------------
+//
+// The third and last of the things in this game that can catch a player,
+// and the only one whose numbers had never been put next to a walking
+// speed. It is the gentlest of the three - it takes no life, it rouses the
+// floor by one and tells the Warden where you are - so what is worth
+// holding it to is not survivability but that it asks a question with an
+// answer:
+//
+//   Standing still in the light is always seen. Walking out of it never is.
+//
+// Both halves matter. A beam that sweeps past faster than it can call is a
+// light show; a beam nobody can leave is a toll rather than a decision.
+{
+  const slowestWalk = Math.min(...L.PACE_EFFECTS.map((e) => L.paceFor([], e).walk));
+  const plainWalk = L.paceFor([], "none").walk;
+  const miredWalk = L.paceFor([], "mire").walk;
+
+  check(
+    "standing in the beam is held long enough to be called out",
+    L.sweepTime() > L.SENTRY_PATIENCE,
+    `the beam covers one direction for ${L.sweepTime().toFixed(2)}s, and it calls after ${L.SENTRY_PATIENCE}s`
+  );
+  // Hardest at the far edge of its reach, where a player's own speed buys
+  // the least angle, and easiest under the post.
+  check(
+    "a walking player is never called out, at any distance inside its reach",
+    !L.isCaught(L.SENTRY_RANGE, plainWalk),
+    `at ${L.SENTRY_RANGE} units a walk takes ${L.slowestEscape(plainWalk).toFixed(2)}s to leave, of ${L.SENTRY_PATIENCE}s`
+  );
+  // The one exception, and it is meant to be one. Mire is a cruel potion:
+  // it should cost something in every room that asks you to move, and this
+  // is the room that asks you to move a little.
+  check(
+    "mire is what makes a Sentry able to catch you",
+    L.isCaught(L.SENTRY_RANGE, miredWalk) && slowestWalk === miredWalk,
+    `mired, leaving takes ${L.slowestEscape(miredWalk).toFixed(2)}s of ${L.SENTRY_PATIENCE}s`
+  );
+  // Where that starts to bite, so the number is written down rather than
+  // discovered by a player wondering what happened.
+  let bites = 0;
+  for (let r = 0.5; r <= L.SENTRY_RANGE; r += 0.1) if (!L.isCaught(r, miredWalk)) bites = r;
+  check(
+    "and only in the outer half of its reach, not the whole room",
+    bites > L.SENTRY_RANGE / 2,
+    `a mired walk escapes out to ${bites.toFixed(1)} of ${L.SENTRY_RANGE} units`
+  );
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

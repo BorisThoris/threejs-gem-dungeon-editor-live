@@ -161,6 +161,13 @@ export const NOISE_HOLD_S = 4;
  * in `floorRules` below; the first floor gets none, because that is where a
  * player learns the dungeon and a room that punishes walking through it is
  * not the place to do that.
+ *
+ * What these four numbers mean together is `sentry/beam.ts`, and
+ * `yarn test:layout` holds them to one line: standing still in the light is
+ * always seen, and walking out of it never is. The margin on the second is
+ * thinner than it looks - 0.84 seconds to leave against 0.9 before it
+ * calls, at the far edge of the beam's reach - which is the room working as
+ * intended and is now written down instead of being a coincidence.
  */
 /** Radians a second, and how wide the beam is either side of centre. */
 export const SENTRY_SPIN = 0.55;
