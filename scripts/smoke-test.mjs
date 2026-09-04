@@ -1284,6 +1284,74 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       gap: +w.distance.toFixed(1),
     };
   });
+  /**
+   * And it must not arrive on top of you.
+   *
+   * `WARDEN_MAX_STEP` guarantees frames between seeing it close and being
+   * touched - and it guards the walk only. The Warden enters at the doorway
+   * it came through, and a player standing in that doorway, which is where
+   * a player who has just walked in or is about to walk out is standing,
+   * had it appear at a gap of 0.00 and take a life in the same frame.
+   * Measured: struck 0.07s after the room changed, with nothing on screen
+   * beforehand. The promise that it can never appear on top of you was true
+   * of one route in and false of the other.
+   *
+   * What is asserted is when the strike lands, not whether it lands. A
+   * player who stands still is meant to be caught; the grace is the moment
+   * to move, and half a second is a sprint's worth of reach and change.
+   */
+  const arrival = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const d = run.getState().dungeon;
+    const here = d.rooms.find((r) => Object.values(r.links).length > 0);
+    const dir = ["north", "south", "east", "west"].find((k) => here.links[k]);
+    if (!here || !dir) return null;
+    const other = here.links[dir];
+    run.setState({ transitioning: true, currentRoomId: here.id, lives: 3, alarm: 6, lastDamageAt: -Infinity });
+    run.getState().roomReady(here.id);
+    await wait(1400);
+    // Exactly where it will appear: a stride inside the doorway.
+    const [dx, , dz] = window.__layout.doorPosition(here, dir);
+    window.__bus.emit("teleport", { position: [dx * 0.86, 1.5, dz * 0.86], yaw: 0 });
+    await wait(900);
+
+    /**
+     * Put it next door and let it leave before sending it back.
+     *
+     * Setting the room away and back in one tick does not re-enter it: the
+     * body only moves to a doorway when the component mounts, and the
+     * component does not unmount if React never sees it gone. The first
+     * version of this check did that and reported a gap of six metres - the
+     * Warden had simply carried on walking from where it already was, and
+     * the check called the room broken.
+     */
+    run.setState({ wardenRoomId: other, wardenCameFrom: null });
+    await wait(700);
+    const t0 = performance.now();
+    const at = [];
+    const off = window.__bus.on("wardenStruck", () => at.push((performance.now() - t0) / 1000));
+    run.getState().moveWarden(here.id);
+    await wait(1600);
+    off();
+    return {
+      struck: at.length,
+      first: at.length ? +at[0].toFixed(2) : null,
+      grace: window.__world.WARDEN_ARRIVAL_GRACE_S,
+      gap: window.__warden ? +window.__warden.distance.toFixed(2) : null,
+      lives: run.getState().lives,
+    };
+  });
+  ok("the Warden can be made to walk in on top of the player", arrival !== null && arrival.struck > 0,
+     JSON.stringify(arrival));
+  if (arrival && arrival.struck > 0) {
+    ok(
+      "and walking in on top of the player is not a life in the same frame",
+      arrival.first >= arrival.grace * 0.8,
+      `struck ${arrival.first}s after it arrived, against a grace of ${arrival.grace}s, at a gap of ${arrival.gap}`
+    );
+  }
+
   ok("the Warden's own pace can be watched", pace !== null, JSON.stringify(pace));
   if (pace) {
     ok(

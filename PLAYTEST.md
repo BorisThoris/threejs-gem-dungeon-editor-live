@@ -1664,14 +1664,51 @@ cap, so the original 4.48 was never reproduced and the fix is not proven
 against it. The detail line now reports how many room changes were ignored,
 so the next occurrence will say whether one was involved.
 
-## 18. Steam Deck
+## 18. It could walk in on top of you
+
+Cycle 58 left an unexplained 4.48-metre Warden "step" and a fix that was not
+proven against it. Chasing it found both the mechanism and, behind it, a real
+bug.
+
+**The mechanism.** Forcing a room change mid-measurement moves the Warden
+2.54 m in one sample — it is *placed* at the new room's doorway, not walked
+there — which is well past the 1.05 m the check tolerates. So a room change
+does produce a false step of the right kind, and cycle 58's narrowing was
+addressing something real. (2.54 rather than 4.48 because the displacement is
+just the distance between where it was and where the new room's doorway is;
+it varies with both.)
+
+**The bug.** It enters at the doorway it came through — which is exactly
+where a player who has just walked in, or is about to walk out, is standing.
+
+| | before | after |
+| --- | --- | --- |
+| Gap when it arrives | **0.00 m** | 0.00 m |
+| Life taken | **0.07 s later** | 0.54 s later |
+| Warning | **none** | half a second |
+
+`WARDEN_MAX_STEP` guarantees frames between seeing it close and being
+touched, and cycle 44 wrote the promise down as *"it can never appear on top
+of you"*. That guard covers the walk. Nothing covered the arrival, and the
+arrival is placement, not movement — the one route the cap cannot reach.
+
+`WARDEN_ARRIVAL_GRACE_S` is half a second on the run's clock, so it cannot be
+spent in the pause menu either. A sprint pulls away from a fully roused
+Warden at 3.6 m/s, so half a second is its reach and change: running works,
+standing still does not, which is the bargain the rest of the floor makes.
+
+The check asserts *when* the strike lands, not whether — a player who stands
+still is meant to be caught, and a check that demanded no strike at all would
+pass on a Warden that had stopped striking.
+
+## 19. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 19. What a human playtest should watch for
+## 20. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1754,7 +1791,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 20. Tuning knobs
+## 21. Tuning knobs
 
 All in `src/game/world.ts`:
 

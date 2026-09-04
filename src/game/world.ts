@@ -225,6 +225,26 @@ export const WARDEN_TOUCH_RADIUS = 1.05;
  * there is a measurement of the chase.
  */
 export const WARDEN_MAX_STEP = WARDEN_TOUCH_RADIUS / 4;
+
+/**
+ * How long after walking into the room it will not strike.
+ *
+ * `WARDEN_MAX_STEP` guarantees frames between seeing it close and being
+ * touched, and it guards the walk. It does not guard the arrival: the
+ * Warden enters at the doorway it came through, and a player standing in
+ * that doorway - which is where a player who has just walked in, or is
+ * about to walk out, is standing - had it appear on top of them and take a
+ * life in the same frame. Measured: gap on arrival 0.00, struck, three
+ * lives to two, with nothing on screen beforehand. The promise that it can
+ * never appear on top of you was true of one route in and false of the
+ * other.
+ *
+ * Half a second, on the run's clock. A sprint pulls away from a fully
+ * roused Warden at 3.6 m/s, so half a second is the reach it strikes from
+ * and change - enough that running works and standing still does not,
+ * which is the same bargain the rest of the floor makes.
+ */
+export const WARDEN_ARRIVAL_GRACE_S = 0.5;
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
 /**

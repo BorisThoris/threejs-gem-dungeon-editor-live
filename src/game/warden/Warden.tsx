@@ -5,10 +5,10 @@ import { Group, Vector3 } from "three";
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { GROUND_Y, WARDEN_MAX_STEP, WARDEN_TOUCH_RADIUS } from "../world";
+import { GROUND_Y, WARDEN_ARRIVAL_GRACE_S, WARDEN_MAX_STEP, WARDEN_TOUCH_RADIUS } from "../world";
 import { behaviourFor } from "./tuning";
 
 interface WardenProps {
@@ -57,6 +57,12 @@ export function Warden({ room }: WardenProps) {
     // `cameFrom` is read once, at the moment it enters: it must not move the
     // Warden again while it is in the room.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room]);
+
+  /** When it walked in, so an arrival cannot be a strike in the same frame. */
+  const arrivedAt = useRef<number | null>(null);
+  useEffect(() => {
+    arrivedAt.current = runClock(useRun.getState());
   }, [room]);
 
   useEffect(() => {
@@ -124,7 +130,17 @@ export function Warden({ room }: WardenProps) {
     }
 
     if (distance <= WARDEN_TOUCH_RADIUS) {
-      useRun.getState().wardenStrike();
+      /**
+       * Not on the frame it walked in on.
+       *
+       * It enters at the doorway it came through, and a player standing in
+       * that doorway had it appear on top of them and take a life in the
+       * same frame - no warning, and nothing the step cap guards against,
+       * because the cap guards walking and this is placement. The grace is
+       * on the run's clock, so it cannot be spent in the pause menu.
+       */
+      const since = arrivedAt.current === null ? Infinity : runClock(useRun.getState()) - arrivedAt.current;
+      if (since >= WARDEN_ARRIVAL_GRACE_S) useRun.getState().wardenStrike();
       return;
     }
 

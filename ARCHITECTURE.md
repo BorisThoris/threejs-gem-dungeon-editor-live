@@ -509,6 +509,14 @@ second model for it to be written in.
   three metre line, which is what walked it onto the spikes. A circle it can
   hold is `measured speed / ARENA_SPIN`, measured rather than read from
   `WALK_SPEED`, because damping at six frames a second costs a fifth of it.
+- A rule that guards how a thing moves does not guard where it is put. The
+  Warden's step cap gives the player frames between seeing it close and being
+  touched, and cycle 44 wrote that down as "it can never appear on top of
+  you" - true of the walk and false of the arrival, because it enters at the
+  doorway it came through and a player standing in that doorway had it appear
+  at a gap of 0.00 and take a life 0.07s later. Placement is the route a cap
+  on movement cannot reach. `WARDEN_ARRIVAL_GRACE_S` is the guard for it, on
+  `runClock` like every other deadline in the game.
 - Nothing the player has to act on is said in colour alone. The HUD's
   colours are decoration over counts and words - lives are hearts, gems are
   numbers, being short of the toll says "short" - and the memory trial's red
