@@ -101,7 +101,13 @@ export default function App() {
     // Without it a probe has to sweep the eight diagonal anchors hoping to
     // cross one, which is how the old gem check came to fail one run in
     // five: it was testing its own luck.
-    void import("./game/rooms/kinds").then((m) => (w.__gemFor = m.gemFor));
+    void import("./game/rooms/kinds").then((m) => {
+      w.__gemFor = m.gemFor;
+      // And where the floor's key lies, for the check that walks up and
+      // takes it. Worked out from the room and the seed, the same way the
+      // room and the dressing each work it out.
+      w.__keyFor = m.keyFor;
+    });
     // The audio module, from the same instance the game plays through.
     //
     // A check that reaches for it with its own `import()` gets a different

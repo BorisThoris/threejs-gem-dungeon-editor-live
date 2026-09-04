@@ -26,10 +26,22 @@ export interface InteractTriggerProps {
  * Two interactions can be in range at once - a shop counter beside a door.
  * Without arbitration each would publish and retract its own prompt, so
  * stepping out of one's radius would blank the prompt for the thing you were
- * still standing at, and the key would go to whichever ran last. The nearest
- * wins, and it alone draws the prompt and answers the key.
+ * still standing at, and the key would go to whichever ran last. One wins,
+ * and it alone draws the prompt and answers the key.
+ *
+ * The nearest one that can actually be used, and only failing that the
+ * nearest one at all. Straight distance was the rule and it let a thing
+ * you cannot do stand in front of a thing you can: the shop's counter
+ * carries the life at one anchor and the naming a metre and a bit along
+ * it, so a player at full health stood there reading "Already at full
+ * health" with a purchase they could afford a stride away and E doing
+ * nothing. Blocked reasons still show whenever nothing better is in reach,
+ * which is the case they are for - you walked to the one thing and cannot
+ * afford it, and the prompt says so.
  */
 const contenders = new Map<object, number>();
+/** Whether each contender can be used, for that arbitration. */
+const usable = new Map<object, boolean>();
 let lastText: string | null = null;
 let lastEnabled = true;
 
@@ -72,6 +84,7 @@ export function InteractTrigger({
     () => () => {
       // Unmounting while in range would leave this contending forever.
       contenders.delete(id);
+      usable.delete(id);
       if (contenders.size === 0) publish(null);
     },
     [id]
@@ -100,8 +113,10 @@ export function InteractTrigger({
     const offering = distSq <= radius * radius && canControl(useRun.getState());
     if (offering) {
       contenders.set(id, distSq);
-    } else if (contenders.delete(id) && contenders.size === 0) {
-      publish(null);
+      usable.set(id, enabled);
+    } else if (contenders.delete(id)) {
+      usable.delete(id);
+      if (contenders.size === 0) publish(null);
     }
     if (!offering) return;
 
@@ -109,13 +124,19 @@ export function InteractTrigger({
     // throwaway [key, value] array per entry, per trigger, every frame.
     let nearest: object | null = null;
     let nearestDist = Infinity;
+    let nearestUsable: object | null = null;
+    let nearestUsableDist = Infinity;
     contenders.forEach((d, other) => {
       if (d < nearestDist) {
         nearestDist = d;
         nearest = other;
       }
+      if (usable.get(other) && d < nearestUsableDist) {
+        nearestUsableDist = d;
+        nearestUsable = other;
+      }
     });
-    if (nearest !== id) return;
+    if ((nearestUsable ?? nearest) !== id) return;
 
     publish(enabled ? label : blockedReason ?? "Locked", enabled);
 
@@ -125,6 +146,7 @@ export function InteractTrigger({
     if (!wants || !enabled) return;
 
     contenders.delete(id);
+    usable.delete(id);
     publish(null);
     onInteract();
   });

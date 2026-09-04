@@ -1186,14 +1186,52 @@ worth writing down so nobody spends the afternoon again:
   ten frames a second, against the 1.5 m that would carry the patch over a
   0.3 m body.
 
-## 7. Steam Deck
+## 7. What the player can reach
+
+The tome, the memory trial and the challenge room had been walked up to and
+pressed E at for many cycles. The shop had not: every check of it called
+`spendGems`, `gainLife`, `identifySlot` or `addRelic` on the store, so what
+was checked was the arithmetic of a purchase and never the counter. Nor was
+the key: `takeKey` and `unlockRoom` were called, never walked onto or stood
+in front of. That is the shape that hid a tome no controller could answer
+and a title screen no controller could start — the rule held, and the way in
+was missing.
+
+Walking up to them found one:
+
+- **A thing you cannot do stood in front of a thing you can.** The shop's
+  counter carries the life purchase on one anchor and the naming a metre
+  and a bit along it, and the prompt went to whichever was *nearest*. So a
+  player at full health stood at the counter reading "Already at full
+  health", with a purchase they could afford a stride away, and E did
+  nothing. The rule is now the nearest thing that can actually be used,
+  falling back to the nearest thing at all — so blocked reasons still show
+  when you walk to the one thing in reach and cannot afford it, which is
+  what they are for.
+
+And one in the check harness itself, which is worth recording because it
+would have hidden the first: `stepTo` returned the first non-null prompt it
+read after teleporting, and a prompt is a DOM element that stays on screen
+until a trigger frame replaces it. It got away with that for as long as
+every use teleported in from somewhere with no prompt at all. The first use
+that stepped from one thing to *another* — along a counter, from a counter
+to a pedestal — read the old prompt at the new place and reported the shop
+broken three times over. It waits for the reading to settle now.
+
+Five things a player does with gems and keys are done in `yarn test:smoke`
+by standing in front of them and pressing the key, for the first time: buy
+a life, buy a name for something unidentified, buy a relic off its
+pedestal, take the iron key off the floor, and spend it on a barred vault
+door.
+
+## 8. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 8. What a human playtest should watch for
+## 9. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1276,7 +1314,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 9. Tuning knobs
+## 10. Tuning knobs
 
 All in `src/game/world.ts`:
 

@@ -1287,10 +1287,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         if (!stalled) {
           let ahead = (bearing - W.SENTRY_HALF_ANGLE - window.__sentry.facing) % TWO_PI;
           if (ahead < 0) ahead += TWO_PI;
-          // Start the stall so the beam lands about two thirds of the way
-          // through it: it is still short of the player when the frame
-          // begins and on them when it ends.
-          if (ahead * 1000 / W.SENTRY_SPIN < STALL * 0.66) {
+          const ms = (ahead * 1000) / W.SENTRY_SPIN;
+          /**
+           * Not yet lit, and about to be. Both halves matter: a stall that
+           * lands on a player the beam has already reached convicts them,
+           * and convicting them is right - so without the first condition
+           * this check fails at random depending on which frame the
+           * estimate happened to be sampled on. Frames here run at a fifth
+           * of a second and the beam comes round every 11.4, so a missed
+           * window costs a revolution rather than the check.
+           */
+          if (!window.__sentry.inside && ms > 150 && ms < 700) {
             stalled = true;
             const until = performance.now() + STALL;
             // eslint-disable-next-line no-empty
@@ -1300,7 +1307,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         } else if (litAfter === null) {
           litAfter = window.__sentry.lit;
         }
-        if (litAfter !== null || now - t0 > 14000) return done();
+        if (litAfter !== null || now - t0 > 30000) return done();
         requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -1595,19 +1602,36 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       },
       [from[0], from[1], yaw]
     );
-    // Polled, not sampled once: a prompt appears when the trigger notices
-    // the player, which is a physics step or two after the teleport.
+    /**
+     * The prompt where the player now is, not the one they left behind.
+     *
+     * This returned the first non-null read after the teleport, and a
+     * prompt is a DOM element that stays on screen until a trigger frame
+     * replaces it - so on a slow machine the first read is the prompt from
+     * where the probe was standing a moment ago. It got away with that for
+     * as long as every use teleported in from somewhere with no prompt at
+     * all: null keeps it polling. The first use that stepped from one thing
+     * to another - along a shop counter, from the counter to a pedestal -
+     * read the counter's prompt at the pedestal and reported the shop
+     * broken three times over.
+     *
+     * So it waits for the reading to settle: two consecutive reads the same,
+     * and at least a couple of frames after the teleport.
+     */
     const read = () =>
       page.evaluate(() => {
         const m = document.body.innerText.match(/E\s+([^\n]+)/);
         return m ? m[1] : null;
       });
-    for (let i = 0; i < 5; i++) {
-      const prompt = await read();
-      if (prompt) return prompt;
+    await page.waitForTimeout(350);
+    let last = await read();
+    for (let i = 0; i < 8; i++) {
       await page.waitForTimeout(200);
+      const now = await read();
+      if (now !== null && now === last) return now;
+      last = now;
     }
-    return null;
+    return last;
   };
   const act = async () => {
     await page.keyboard.press("KeyE");
@@ -1812,6 +1836,167 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   // vault path both taught, so what is left here is the half that is solid:
   // the trap springs, the candle lifts, and carrying it to the plate offers
   // to put it down.
+
+  /**
+   * The counter, and the key on the floor.
+   *
+   * The tome, the memory trial and the challenge room are all walked up to
+   * and pressed E at above. The shop was not: every check of it calls
+   * `spendGems`, `gainLife`, `identifySlot` or `addRelic` on the store
+   * directly, so what had been checked was the arithmetic of a purchase and
+   * never the counter. Nor was the key: `takeKey` and `unlockRoom` were
+   * called, never walked onto or stood in front of. Those are exactly the
+   * two shapes that hid a tome a controller could not answer and a title
+   * screen a controller could not start - the rule held and the way in
+   * missing.
+   *
+   * Five things a player does with gems and keys, done here for the first
+   * time by standing in front of them and pressing the key.
+   */
+  const shop = await standIn("shop");
+  ok("a floor has a shop", shop !== null, JSON.stringify(shop && shop.id));
+  if (shop) {
+    const counter = shop.anchors[0];
+    const shelf = shop.anchors[1];
+
+    // --- A life, across the counter ---------------------------------------
+    await page.evaluate(() => window.__run.setState({ lives: 2, gems: 9 }));
+    const lifeOffer = await stepTo(counter, 2.0);
+    ok("the counter offers a life when one is missing", /life/i.test(String(lifeOffer)), String(lifeOffer));
+    await act();
+    const bought = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { lives: s.lives, gems: s.gems };
+    });
+    ok("and pressing E at it buys one", bought.lives === 3 && bought.gems < 9, JSON.stringify(bought));
+
+    // --- A name, for a gem -------------------------------------------------
+    // The naming trigger stands a little along the counter from the life.
+    await page.evaluate(() => {
+      const run = window.__run;
+      run.setState({ lives: 3, gems: 9, satchel: ["mire"], identified: [] });
+    });
+    const naming = [counter[0], counter[1], counter[2] + 1.1];
+    const nameOffer = await stepTo(naming, 1.6);
+    ok("the counter offers to name what you cannot identify", /ask about/i.test(String(nameOffer)), String(nameOffer));
+    await act();
+    const named = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { known: s.identified.includes("mire"), gems: s.gems };
+    });
+    ok("and pressing E at it buys the name", named.known && named.gems < 9, JSON.stringify(named));
+
+    /**
+     * And a blocked reason still shows when there is nothing better.
+     *
+     * The arbitration prefers the nearest thing that can be used, which is
+     * what lets the naming be reached past a life the player does not need.
+     * The other half of that has to hold too: walk to the one thing in
+     * reach and be unable to afford it, and the prompt must still say why.
+     * A rule that only ever surfaced usable things would swallow every
+     * blocked reason in the game and nothing would notice.
+     */
+    await page.evaluate(() => {
+      const run = window.__run;
+      // Full health and nothing left to name: neither counter trigger can
+      // be used, so the nearest one wins and says so.
+      run.setState({ lives: 3, gems: 9, satchel: [], identified: [] });
+    });
+    const blocked = await stepTo(counter, 2.0);
+    ok(
+      "a blocked counter still says why, when nothing better is in reach",
+      /full health|know what everything/i.test(String(blocked)),
+      String(blocked)
+    );
+
+    // --- A relic, off its pedestal ----------------------------------------
+    await page.evaluate(() => window.__run.setState({ gems: 40, relics: [] }));
+    const relicOffer = await stepTo(shelf, 2.0);
+    ok("a pedestal offers its relic, with what it does", /gems? -/.test(String(relicOffer)), String(relicOffer));
+    await act();
+    const took = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { relics: s.relics.length, gems: s.gems };
+    });
+    ok("and pressing E at it buys the relic", took.relics === 1 && took.gems < 40, JSON.stringify(took));
+  }
+
+  /**
+   * The key, and the door it opens.
+   *
+   * The key lies on the floor of one room and is taken with E, like
+   * everything else worth having. The vault is the one room a floor can be
+   * walked without, and its door is the only one in the game that refuses
+   * a player who has the gems.
+   */
+  const vault = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let seed = 1; seed < 60; seed++) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const d = run.getState().dungeon;
+      if (!d.vaultId || !d.keyRoomId || d.keyRoomId === d.vaultId) continue;
+      // A neighbour of the vault to stand in, so its door can be reached.
+      const vaultRoom = d.rooms.find((r) => r.id === d.vaultId);
+      const dir = Object.keys(vaultRoom.links).find((k) => vaultRoom.links[k]);
+      if (!dir) continue;
+      const keyRoom = d.rooms.find((r) => r.id === d.keyRoomId);
+      return {
+        seed,
+        keyRoomId: d.keyRoomId,
+        keyAt: window.__keyFor(keyRoom, d.seed),
+        vaultId: d.vaultId,
+        fromId: vaultRoom.links[dir],
+      };
+    }
+    return null;
+  });
+  ok("a floor has a key in one room and a vault in another", vault !== null, JSON.stringify(vault && vault.seed));
+
+  if (vault) {
+    await page.evaluate(async (v) => {
+      const run = window.__run;
+      run.setState({ transitioning: true, currentRoomId: v.keyRoomId, lives: 3, gems: 20 });
+      run.getState().roomReady(v.keyRoomId);
+      await new Promise((r) => setTimeout(r, 1200));
+    }, vault);
+    const keyOffer = await stepTo(vault.keyAt, 1.6);
+    ok("the key on the floor offers to be taken", /iron key/i.test(String(keyOffer)), String(keyOffer));
+    await act();
+    const held = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { keys: s.keys, takenIn: s.keyTakenIn };
+    });
+    ok("and pressing E at it picks it up", held.keys === 1 && held.takenIn === vault.keyRoomId, JSON.stringify(held));
+
+    // Stand in the vault's neighbour and walk into the barred doorway.
+    const opened = await page.evaluate(async (v) => {
+      const run = window.__run;
+      run.setState({ transitioning: true, currentRoomId: v.fromId });
+      run.getState().roomReady(v.fromId);
+      await new Promise((r) => setTimeout(r, 1200));
+      const d = run.getState().dungeon;
+      const from = d.rooms.find((r) => r.id === v.fromId);
+      const dir = Object.keys(from.links).find((k) => from.links[k] === v.vaultId);
+      const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
+      const half = from.size / 2;
+      window.__bus.emit("teleport", {
+        position: [step[0] * half * 0.82, 1.5, step[1] * half * 0.82],
+        yaw: Math.atan2(-step[0], -step[1]),
+      });
+      await new Promise((r) => setTimeout(r, 700));
+      const m = document.body.innerText.match(/E\s+([^\n]+)/);
+      return { prompt: m ? m[1] : null, keysBefore: run.getState().keys };
+    }, vault);
+    ok("a barred vault door says it wants the key", /unlock the vault/i.test(String(opened.prompt)), JSON.stringify(opened));
+    await act();
+    const through = await page.evaluate(([v]) => {
+      const s = window.__run.getState();
+      return { unlocked: s.unlocked.includes(v.vaultId), keys: s.keys, room: s.currentRoomId };
+    }, [vault]);
+    ok("and pressing E spends the key and opens it", through.unlocked && through.keys === 0, JSON.stringify(through));
+  }
 }
 
 // The editor, which nothing had ever opened. It is the content pipeline:

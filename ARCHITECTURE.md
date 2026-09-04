@@ -225,6 +225,18 @@ Two stores that both claimed the player's stats. So:
   player rather than through them, which is the generous direction. At ten
   frames a second the furthest arm still steps only 1.19m against the 1.5m
   that would take it over a player, so it never skips one in play.
+- Which of several things in reach the player is talking to is
+  `src/game/interact/InteractTrigger.tsx`, and it is the nearest one that
+  can actually be *used*, falling back to the nearest one at all. Straight
+  distance was the rule, and it let a thing you cannot do stand in front of
+  a thing you can: the shop's counter carries the life at one anchor and
+  the naming a metre and a bit along it, so a player at full health stood
+  reading "Already at full health" with a purchase they could afford a
+  stride away and E doing nothing. Blocked reasons still surface whenever
+  nothing better is in reach, which is the case they exist for, and
+  `yarn test:smoke` holds both halves - a fix that only ever surfaced usable
+  things would swallow every blocked reason in the game and nothing would
+  notice.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -424,6 +436,14 @@ second model for it to be written in.
   step. The Sentry's stall is timed to land as the beam arrives, which is
   the case that is actually unfair: stalling while the player is already
   lit convicts them too, and that conviction is correct.
+- `yarn test:smoke` walks to the shop counter and buys each of the three
+  things it sells, walks onto the floor's key and takes it, and stands at a
+  barred door and opens it. The tome, the memory trial and the challenge
+  room had been played that way for cycles; the shop and the key were only
+  ever exercised through the store's own actions, so what was checked was
+  the arithmetic of a purchase and never the counter. That is the shape
+  that hid a tome no controller could answer and a title screen no
+  controller could start: the rule held, the way in missing.
 - `yarn test:smoke` also walks a beam, which nothing had ever done, and
   checks the game against `beam.ts` rather than against `WALK_SPEED`. The
   player is a rigid body driven once a rendered frame and this runs on a
