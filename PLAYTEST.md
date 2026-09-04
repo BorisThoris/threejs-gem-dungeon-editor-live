@@ -1827,7 +1827,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §23 asks a human
+  moment it can afford to. That is precisely the behaviour §25 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -1896,16 +1896,82 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §24.
+for a person, not for this document, and it is on the list in §25.
 
-## 23. Steam Deck
+## 23. The satchel spending what it cannot use
+
+Two ways to lose an item for nothing, both found by reading `useItem`
+against the rest of the store rather than by playing.
+
+**A satchel key stayed live while the screen was black between rooms.**
+`canControl` is the store's one answer to "is the player in control": phase,
+pause, transition, input locks. `useItem` spelled out three of those four and
+left out the transition — which is the one it needed. Walking through a door
+sets `transitioning`, teleports the player, and darkens the screen until the
+new room reports itself mounted (capped at `TRANSITION_FALLBACK_MS`, 1.5 s).
+Through all of it, 1 to 4 worked, and so did the pad's slot buttons, which
+are read straight off the frame loop.
+
+The cheap version of the cost is a timer: a Potion of Swiftness drunk in that
+window starts its eighteen seconds on a player who cannot move. The expensive
+version is at the exit door, where the loss is total — the descent clears
+`effects` a beat after the door lands, so the potion leaves the satchel and
+then the effect is wiped. Measured on the old code, one press at the door:
+
+```
+before: swift set to 30.7 s, satchel empty, floor 1
+after:  floor 2, swift 0, satchel empty
+```
+
+The fix is one line — `canControl(s)` instead of a copy of it — and it covers
+the keyboard and the pad at once, because both go through the store. The
+three places that still spell the terms out are the two pause toggles and the
+pointer lock, and those are exactly the ones that *should* work while the
+screen is dark.
+
+**Banishment was consumed on a floor it could do nothing to.** The Scroll of
+Echoes refuses when no Warden is awake, and says so: *"You could throw it,
+but nothing down here is listening yet."* Banishment needs the same thing and
+never checked. On floor one the Warden does not wake until three rooms have
+been walked, and the floor arrives at alarm 0; read in that window the scroll
+throws nothing, calms nothing, and is gone. It is the strongest card in the
+deck and the one the player is most likely to be saving.
+
+The guard has to be exactly as wide as the no-op, which is why it is two
+conditions and not one: calming a floor you have already robbed is a real
+reason to read it early even with nothing walking yet, and a guard on the
+Warden alone would have eaten that. Both sides are asserted —
+
+```
+PASS  banishment is not spent on a floor it can neither throw nor calm
+PASS  but a roused floor is calm enough reason to read it, Warden or no Warden
+```
+
+— and the second one passes on the old code too, which is the point of it.
+The other three went red on the shipped build before the fix.
+
+**The fix broke five checks' footing, and one of them said so.** `useItem`
+now asks `canControl`, so any probe that hands the store an item moments
+after `startRun` or a forced room change can be refused for a reason that
+has nothing to do with what is being asked. The first full run caught it:
+*"but a roused floor is calm enough reason to read it"* failed with the
+scroll still in the satchel, and its own sibling — *"banishment is not spent
+on a floor it can neither throw nor calm"* — had **passed for the wrong
+reason**, refused because the screen was still dark rather than because the
+floor was quiet. Five probes slept a fixed number of milliseconds and hoped.
+Four of them now wait for control, report whether they got it, and assert
+that flag, so none can pass on a reading that never happened; the fifth is
+the mired walk, which waits the same way but needs no flag because a potion
+that was never drunk shows up directly in the speed it measures.
+
+## 24. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 24. What a human playtest should watch for
+## 25. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -1996,7 +2062,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 25. Tuning knobs
+## 26. Tuning knobs
 
 All in `src/game/world.ts`:
 

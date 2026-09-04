@@ -244,6 +244,28 @@ Two stores that both claimed the player's stats. So:
   rude until the prompt began going to the nearest *usable* thing, at which
   point a chest claiming to be usable outranked the door beside it and a
   player with a full satchel was told to loot a room they could not leave.
+- Whether the player is in control at all is `canControl` in
+  `src/game/state/run.ts`: playing, not paused, not mid-transition, no
+  input locks. Anything that spends something asks it rather than spelling
+  it out again. `useItem` spelled out three of those four terms and left
+  out `transitioning`, which is the one a satchel key needs most - 1 to 4
+  and the pad's slot buttons stay live through the black frame between two
+  rooms, so a Potion of Swiftness could be drunk on a player who cannot
+  move. At the exit door it cost the whole bottle: the descent wipes
+  `effects` a beat later, so the potion left the satchel and did nothing at
+  all. Measured before the fix - swift set to 30.7, floor 2, swift 0,
+  satchel empty. The three places that still name the terms themselves are
+  the pause toggles and the pointer, and they are the ones that should
+  still work while the screen is dark.
+- A card the player cannot benefit from is refused before it is spent, and
+  the refusal says why. Two scrolls need a Warden on the floor and only one
+  of them checked: Echoes told you nothing was listening yet, while
+  Banishment - the stronger of the two - was consumed in silence on a floor
+  whose Warden had not woken and whose alarm was still its own baseline,
+  throwing nothing and calming nothing. The guard has to be exactly as wide
+  as the no-op: a roused floor is a real reason to read Banishment early
+  even with nothing walking it, so both sides are asserted in
+  `yarn test:smoke`.
 - Which of several things in reach the player is talking to is
   `src/game/interact/InteractTrigger.tsx`, and it is the nearest one that
   can actually be *used*, falling back to the nearest one at all. Straight

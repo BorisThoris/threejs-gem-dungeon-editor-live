@@ -473,6 +473,87 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("what you drink changes how fast you move", faster.quick > faster.plain && faster.slow < faster.plain, JSON.stringify(faster));
 }
 
+/**
+ * The satchel while the screen is black between two rooms.
+ *
+ * `useItem` spelled out three of `canControl`'s four terms and left out
+ * `transitioning`, so 1 to 4 - and the pad's slot buttons, read straight
+ * off the frame loop - stayed live through a door. Two costs, and the
+ * second is the whole potion: a Potion of Swiftness drunk in that window
+ * starts its eighteen seconds on a player who cannot move, and if the door
+ * was the exit, the descent wipes `effects` a beat later and the bottle was
+ * spent on nothing at all.
+ *
+ * Driven through the store rather than by mashing a key at a door, because
+ * `travel` sets `transitioning` synchronously and the press has to land
+ * inside that window: at four frames a second a keystroke cannot be aimed
+ * at it, and a check that only sometimes reaches the bug is worse than
+ * none. What a player's finger does is the same call.
+ */
+{
+  const held = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(4177);
+    await wait(2500);
+    const s = run.getState();
+    const room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+    const dir = Object.keys(room.links).find((d) => room.links[d]);
+    run.setState({ satchel: ["swiftness"], identified: ["swiftness"], effects: { swift: 0, mire: 0, gloom: 0 } });
+    run.getState().travel(dir);
+    const mid = run.getState();
+    mid.useItem(0);
+    const after = run.getState();
+    return {
+      transitioning: mid.transitioning,
+      slots: after.satchel.length,
+      swift: after.effects.swift,
+    };
+  });
+  ok(
+    "a satchel key does nothing while the screen is black between rooms",
+    held.transitioning === true && held.slots === 1 && held.swift === 0,
+    JSON.stringify(held)
+  );
+
+  // The same press at the exit door, which is where it cost everything.
+  const exit = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(4177);
+    await wait(2000);
+    const d = run.getState().dungeon;
+    let fromId = null;
+    let dir = null;
+    for (const r of d.rooms) {
+      for (const k of Object.keys(r.links)) if (r.links[k] === d.endId) { fromId = r.id; dir = k; }
+    }
+    if (!fromId) return null;
+    run.setState({
+      currentRoomId: fromId,
+      transitioning: false,
+      gems: 99,
+      satchel: ["swiftness"],
+      identified: ["swiftness"],
+      effects: { swift: 0, mire: 0, gloom: 0 },
+    });
+    await wait(1200);
+    const floor = run.getState().floor;
+    run.getState().travel(dir);
+    run.getState().useItem(0);
+    await wait(4000);
+    const after = run.getState();
+    return { floor, now: after.floor, slots: after.satchel.length, swift: after.effects.swift };
+  });
+  if (exit) {
+    ok(
+      "and the potion drunk at the exit door is still in the satchel a floor down",
+      exit.now === exit.floor + 1 && exit.slots === 1 && exit.swift === 0,
+      JSON.stringify(exit)
+    );
+  }
+}
+
 // The arena is a set piece: taking its gem bars the doors and starts the
 // arms, and the room lets go again when they stop.
 {
@@ -817,8 +898,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   // Pausing does not burn a potion.
   const paused = await page.evaluate(async () => {
     const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     run.getState().startRun(556);
-    await new Promise((r) => setTimeout(r, 900));
+    // Waited for, not slept through: reading an item needs control, and a
+    // fresh run holds it back until the start room reports in.
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
     run.setState({ satchel: ["swiftness"], identified: [] });
     run.getState().useItem(0);
     const quickBefore = window.__derived.walk();
@@ -826,9 +914,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await new Promise((r) => setTimeout(r, 1500));
     run.getState().resume();
     const quickAfter = window.__derived.walk();
-    return { quickBefore, quickAfter };
+    return { ready, quickBefore, quickAfter };
   });
-  ok("a potion is not spent by the pause menu", paused.quickAfter === paused.quickBefore && paused.quickAfter > 5, JSON.stringify(paused));
+  ok("a potion is not spent by the pause menu", paused.ready && paused.quickAfter === paused.quickBefore && paused.quickAfter > 5, JSON.stringify(paused));
 }
 
 // The descent, driven through the real store: a seed replays floor for
@@ -1031,17 +1119,77 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     JSON.stringify(called)
   );
 
-  // Thrown on a floor with nothing awake, it is not spent.
+  /**
+   * Thrown on a floor with nothing awake, it is not spent.
+   *
+   * `useItem` asks `canControl`, so a fresh run whose start room has not
+   * reported in yet refuses every item for a reason that has nothing to do
+   * with what is being asked. A fixed sleep is not enough on a machine
+   * drawing four frames a second: this waits for control and says whether
+   * it got it, so the check cannot pass because the door was still shut.
+   */
   const wasted = await page.evaluate(async () => {
     const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     run.getState().startRun(2469);
-    await new Promise((r) => setTimeout(r, 1000));
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
     run.setState({ wardenRoomId: null, satchel: ["echoes"], identified: [] });
     run.getState().useItem(0);
     const s = run.getState();
-    return { held: s.satchel.length, known: s.identified.length, lure: window.__derived.lure() };
+    return { ready, held: s.satchel.length, known: s.identified.length, lure: window.__derived.lure() };
   });
-  ok("and is not spent on a floor with nothing to hear it", wasted.held === 1 && wasted.known === 0 && wasted.lure === null, JSON.stringify(wasted));
+  ok(
+    "and is not spent on a floor with nothing to hear it",
+    wasted.ready && wasted.held === 1 && wasted.known === 0 && wasted.lure === null,
+    JSON.stringify(wasted)
+  );
+
+  /**
+   * The same question of the other scroll that needs a Warden.
+   *
+   * Echoes had this guard and Banishment did not, though Banishment is the
+   * stronger card: on a floor whose Warden has not woken and whose alarm is
+   * still the floor's own baseline it throws nothing and calms nothing, and
+   * it was being spent for that with no message. Read with the floor
+   * roused it still has work to do, so the guard has to let that through -
+   * both sides are asserted here.
+   */
+  const banished = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(2469);
+    // The same wait, and for the same reason: refused-because-still-dark
+    // looks exactly like refused-because-the-floor-is-quiet from here.
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
+    const base = window.__derived.rules().startingAlarm;
+    run.setState({ wardenRoomId: null, alarm: base, satchel: ["banish"], identified: [] });
+    run.getState().useItem(0);
+    const quiet = { ready, held: run.getState().satchel.length, known: run.getState().identified.length };
+    // The same floor, the same absent Warden, but robbed: the calm is a
+    // real reason to read it and the guard must not eat that.
+    run.setState({ wardenRoomId: null, alarm: base + 4, satchel: ["banish"], identified: [] });
+    run.getState().useItem(0);
+    const roused = { ready, held: run.getState().satchel.length, alarm: run.getState().alarm, base: base + 4 };
+    return { quiet, roused };
+  });
+  ok(
+    "banishment is not spent on a floor it can neither throw nor calm",
+    banished.quiet.ready && banished.quiet.held === 1 && banished.quiet.known === 0,
+    JSON.stringify(banished.quiet)
+  );
+  ok(
+    "but a roused floor is calm enough reason to read it, Warden or no Warden",
+    banished.roused.ready && banished.roused.held === 0 && banished.roused.alarm < banished.roused.base,
+    JSON.stringify(banished.roused)
+  );
 }
 
 // A floor's starting alarm is its baseline, not just its opening value: a
@@ -1058,6 +1206,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       run.getState().roomReady(d.endId);
       await wait(900);
     }
+    // Reading a scroll needs control, and a forced descent leaves the
+    // screen dark until the new start room reports in. Waited for rather
+    // than slept through, so "the floor stayed at its baseline" can never
+    // mean "the scroll was never read".
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
     const floorStarts = window.__derived.rules().startingAlarm;
     run.getState().raiseAlarm(4);
     const roused = run.getState().alarm;
@@ -1066,12 +1223,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const once = run.getState().alarm;
     run.setState({ satchel: ["banish"], identified: ["banish"] });
     run.getState().useItem(0);
-    return { floorStarts, roused, once, twice: run.getState().alarm };
+    return { ready, floorStarts, roused, once, twice: run.getState().alarm };
   });
-  ok("a scroll calms the floor", calm.once < calm.roused, JSON.stringify(calm));
+  ok("a scroll calms the floor", calm.ready && calm.once < calm.roused, JSON.stringify(calm));
   ok(
     "but never below what the floor itself starts at",
-    calm.floorStarts > 0 && calm.twice >= calm.floorStarts,
+    calm.ready && calm.floorStarts > 0 && calm.twice >= calm.floorStarts,
     JSON.stringify(calm)
   );
 }
@@ -1643,6 +1800,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
                        alarm: 0, satchel: mire ? ["mire"] : [] });
         run.getState().roomReady(spot.roomId);
         await wait(1400);
+        // The potion below needs control, which the forced room change
+        // holds back until the room reports in.
+        for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
         // Slot zero: the store indexes the satchel from nought and the
         // keys pass n-1. The first version of this drank slot one of a
         // satchel of one and measured an unmired walk twice.

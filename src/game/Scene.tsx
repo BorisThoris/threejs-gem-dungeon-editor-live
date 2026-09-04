@@ -24,6 +24,10 @@ function PadPause() {
   useFrame(() => {
     const pad = readGamepad();
     const run = useRun.getState();
+    // No guard here either: `useItem` asks `canControl` and drops the press
+    // whenever the player is not in control, the black frame between two
+    // rooms included. The pause toggle below is the one thing that should
+    // still answer while the screen is dark, so it keeps its own terms.
     for (let i = 0; i < pad.slotPressed.length; i++) if (pad.slotPressed[i]) run.useItem(i);
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;

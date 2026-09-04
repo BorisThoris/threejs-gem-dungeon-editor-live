@@ -565,12 +565,32 @@ export const useRun = create<RunState>()(
     useItem: (slot) => {
       const s = get();
       const id = s.satchel[slot];
-      if (!id || s.phase !== "playing" || s.paused || s.inputLocks > 0) return;
+      // `canControl`, not a hand-rolled copy of it. This spelled out three
+      // of that predicate's four terms and left out `transitioning`, and
+      // that is the term this one needed most: a satchel key is live while
+      // the screen is black between rooms, and a potion drunk in that
+      // window starts its clock on a player who cannot move. Walking into
+      // the exit is the worst of it - the descent wipes `effects` a beat
+      // later, so a Potion of Swiftness read at the door is spent, gone
+      // from the satchel, and worth nothing at all. Measured: swift set to
+      // 30.7, floor 2 reached, swift 0, satchel empty.
+      if (!id || !canControl(s)) return;
       // Checked before the scroll is spent, not after: throwing a noise
       // down a floor with nothing awake on it would consume the one card
       // that buys a window, and the player could not have known.
       if (id === "echoes" && !s.wardenRoomId) {
         bus.emit("notice", "You could throw it, but nothing down here is listening yet.");
+        return;
+      }
+      // The same guard, for the scroll that promises the same thing twice
+      // over. Banishment throws the Warden and calms the floor; on a floor
+      // whose Warden has not woken and whose alarm is still its own
+      // baseline it does neither, and it was being spent for it - the
+      // strongest card in the deck, gone with nothing said. The calm is a
+      // real reason to read it early, so this refuses only when both
+      // halves are no-ops.
+      if (id === "banish" && !s.wardenRoomId && s.alarm <= floorRules(s.floor).startingAlarm) {
+        bus.emit("notice", "Nothing walks this floor yet, and it is already as quiet as it gets.");
         return;
       }
       const now = runClock(s);

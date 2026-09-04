@@ -42,8 +42,12 @@ function usePauseKeys() {
 }
 
 /**
- * 1 to 4 drink or read what is in that slot. The store refuses while a
- * puzzle or a menu is up, so there is no guard here.
+ * 1 to 4 drink or read what is in that slot. The store refuses whenever the
+ * player is not in control - a menu, a puzzle, a pause, or the black frame
+ * between two rooms - so there is no guard here. It is `canControl` that
+ * decides that, in one place; this hook does not get a vote, and nor do
+ * the pad's slot buttons in Scene, which are read off the frame loop with
+ * no guard of their own.
  */
 function useSatchelKeys() {
   useEffect(() => {
