@@ -2330,6 +2330,36 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     ok("taking the gem off the plinth starts the arms", sprung.taken === 1 && sprung.arena !== null,
        JSON.stringify(sprung));
 
+    /**
+     * And the gauntlet cannot be waited out in the pause menu.
+     *
+     * The two phases were `window.setTimeout`s, which is the wall clock,
+     * and the run store keeps `runClock` - wall time less every second
+     * spent in a menu - precisely so a timed thing is not burnt by a
+     * pause; the comment beside `pausedFor` says so about the Potion of
+     * Swiftness. The arena did not ask. Take the gem, press Escape, wait
+     * seventeen seconds and come back: measured, the doors had unsealed
+     * themselves and standing exactly where the gem had been took no
+     * hits. The room's one demand, skipped with the pause key.
+     *
+     * Seventeen seconds is longer than the whole gauntlet, so a seal
+     * that survives it survives anything.
+     */
+    const waited = await page.evaluate(async () => {
+      const run = window.__run;
+      run.getState().pause();
+      await new Promise((r) => setTimeout(r, 17000));
+      const sealed = run.getState().sealedRoomId;
+      run.getState().resume();
+      await new Promise((r) => setTimeout(r, 500));
+      return { sealed, paused: run.getState().paused };
+    });
+    ok(
+      "the gauntlet cannot be waited out in the pause menu",
+      waited.sealed === arena.id,
+      `after seventeen seconds paused the doors were ${waited.sealed ? "still barred" : "open"}`
+    );
+
     if (sprung.arena) {
       // The ground being walked has to be ground the arms reach, or this
       // is a hole rather than a gauntlet.

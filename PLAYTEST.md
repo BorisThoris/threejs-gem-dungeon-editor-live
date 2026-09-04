@@ -1364,14 +1364,50 @@ Two things worth recording:
   life, then walks the wall corridor and does not — the room's two claims,
   tried for the first time.
 
-## 11. Steam Deck
+## 11. The gauntlet you could wait out
+
+The arena is the game's one timed room: take the gem and the doors bar
+themselves for fourteen seconds while three arms of spikes sweep the floor.
+It timed those fourteen seconds with `window.setTimeout` — the wall clock.
+
+The run store keeps `runClock`, which is wall time **less every second
+spent in a menu**, and the comment beside `pausedFor` says exactly why:
+*"so a Potion of Swiftness is not burnt by twenty seconds in a menu."* The
+arena never asked it.
+
+Measured: take the gem, press Escape, wait seventeen seconds, come back.
+
+| | before | after |
+| --- | --- | --- |
+| Doors after 17 s paused | **open** | still barred |
+| Standing where the gem was | **0 hits** | 2 hits |
+
+The room's one demand — keep walking for fourteen seconds — cost nothing at
+all. Both its phases and its arms read the run clock now; the arms too,
+because driven by `elapsedTime` they kept turning through a pause and the
+player unpaused into whichever one had arrived.
+
+Two more assumptions were measured this cycle and hold, and are now
+guarded rather than assumed:
+
+- **A room joins the rooms it links to.** The generator checks connectivity
+  on the room graph and takes for granted that a room can be crossed. The
+  flood fill walks from each doorway to the others: 0 of 969 rooms with two
+  or more doors are cut in half by their own furniture.
+- **The key is never behind the door it opens.** If the generator ever put
+  the floor's key inside the vault, or in a room only reachable through it,
+  the lock would be unopenable — and the check that a floor is payable
+  would not notice, because a floor is payable *without* the vault by
+  construction. 0 of 900 locked floors.
+
+## 12. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 12. What a human playtest should watch for
+## 13. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1454,7 +1490,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 13. Tuning knobs
+## 14. Tuning knobs
 
 All in `src/game/world.ts`:
 

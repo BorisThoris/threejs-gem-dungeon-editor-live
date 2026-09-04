@@ -1291,6 +1291,71 @@ check("the shipped room templates reach the floors the game generates", authored
       }
     }
   }
+  /**
+   * And the map's own assumption: a room joins the rooms it links to.
+   *
+   * The generator checks connectivity on the room graph and takes it for
+   * granted that a room can be crossed. Nothing had asked. A room whose two
+   * doors are on opposite walls with its own furniture between them would
+   * strand a player in a dungeon the generator had certified connected -
+   * and the fill above starts from every doorway at once, so it would not
+   * notice a room split in two as long as the gem were in either half.
+   */
+  const crossable = (room, seed) => {
+    const dirs = ["north", "south", "east", "west"].filter((x) => room.links[x]);
+    if (dirs.length < 2) return null;
+    const half = room.size / 2;
+    const gem = L.gemFor(room, seed);
+    const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
+    const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
+    const blocked = (x, z) =>
+      Math.abs(x) > half - BODY ||
+      Math.abs(z) > half - BODY ||
+      spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
+      props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
+    const n = Math.ceil((half * 2) / CELL);
+    const at = (i) => -half + i * CELL;
+    const key = (i, j) => i * 1000 + j;
+    const doorCell = (dir) => {
+      const [dx, , dz] = L.doorPosition(room, dir);
+      return [Math.round((dx * 0.82 + half) / CELL), Math.round((dz * 0.82 + half) / CELL)];
+    };
+    const [i0, j0] = doorCell(dirs[0]);
+    if (blocked(at(i0), at(j0))) return null;
+    const seen = new Set([key(i0, j0)]);
+    const queue = [[i0, j0]];
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di;
+        const b = j + dj;
+        if (a < 0 || b < 0 || a > n || b > n || seen.has(key(a, b)) || blocked(at(a), at(b))) continue;
+        seen.add(key(a, b));
+        queue.push([a, b]);
+      }
+    }
+    return dirs.slice(1).every((dir) => {
+      const [i, j] = doorCell(dir);
+      return seen.has(key(i, j));
+    });
+  };
+
+  let split = 0;
+  let withDoors = 0;
+  const stranded = [];
+  for (let seed = 1; seed <= 120; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    for (const room of d.rooms) {
+      const ok2 = crossable(room, d.seed);
+      if (ok2 === null) continue;
+      withDoors++;
+      if (!ok2) {
+        split++;
+        if (stranded.length < 3) stranded.push(`${room.kind} ${room.id}@${d.seed} ${room.size} ${room.shape}`);
+      }
+    }
+  }
+
   check(
     "every doorway leads somewhere: the walk always starts",
     noWayIn === 0,
@@ -1305,6 +1370,50 @@ check("the shipped room templates reach the floors the game generates", authored
     "and so can every other room's, past its own furniture",
     walled.other === 0,
     `${walled.other} of ${counted.other} rooms walled the gem off  ${examples.other.join(" | ")}`
+  );
+  check(
+    "a room with two doors can be walked between them",
+    split === 0,
+    `${split} of ${withDoors} rooms could not be crossed  ${stranded.join(" | ")}`
+  );
+
+  /**
+   * And the key is never behind the door it opens.
+   *
+   * The vault is the one room a floor can be walked without, which is what
+   * makes it lockable; the key is laid in another room. If the generator
+   * ever put it in the vault, or in a room only reachable through it, the
+   * lock would be unopenable and the floor's richest room lost - and the
+   * check that a floor is payable would not notice, because it is payable
+   * without the vault by construction.
+   */
+  let keyInside = 0;
+  let keyBehind = 0;
+  let lockedFloors = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    for (let floor = 1; floor <= L.FLOORS; floor++) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      if (!d.vaultId || !d.keyRoomId) continue;
+      lockedFloors++;
+      if (d.keyRoomId === d.vaultId) {
+        keyInside++;
+        continue;
+      }
+      const open = L.reachableWithout(d.rooms, d.startId, d.vaultId);
+      const reached = open.has ? open.has(d.keyRoomId) : open.includes(d.keyRoomId);
+      if (!reached) keyBehind++;
+    }
+  }
+  check(
+    "the floor's key is never inside the vault it opens",
+    keyInside === 0,
+    `${keyInside} of ${lockedFloors} floors`
+  );
+  check(
+    "nor in a room only reachable through it",
+    keyBehind === 0,
+    `${keyBehind} of ${lockedFloors} floors`
   );
 }
 

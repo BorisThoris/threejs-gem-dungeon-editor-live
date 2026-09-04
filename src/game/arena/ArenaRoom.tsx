@@ -9,7 +9,7 @@ import { bus } from "../events";
 import { Gem } from "../props/Gem";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import {
   ARENA_ARMS,
   ARENA_DURATION_S,
@@ -72,29 +72,43 @@ export function ArenaRoom({ room }: RoomKindProps) {
     bus.emit("hint", null);
     if (useRun.getState().sealedRoomId === room.id) useRun.getState().sealRoom(null);
   }, [room.id]);
+  /**
+   * When the gauntlet started, on the run's own clock.
+   *
+   * It was two `setTimeout`s, which is the wall clock, and the run store
+   * keeps `runClock` - wall time less every second spent in a menu -
+   * precisely so a timed thing is not burnt by a pause. The comment beside
+   * `pausedFor` says so about the Potion of Swiftness. The arena did not
+   * ask: take the gem, press Escape, wait seventeen seconds and come back,
+   * and the doors are open and the arms are done. Measured in the game -
+   * the seal lifted itself while the game was paused, and standing exactly
+   * where the gem had been took no hits at all. The room's one demand,
+   * skipped with the pause key.
+   */
+  const startedAt = useRef<number | null>(null);
+
   useEffect(() => {
     if (!taken || alreadyTaken.current) return;
     setPhase("winding");
+    startedAt.current = runClock(useRun.getState());
     bus.emit("hint", "The plinth is empty and the doors will not move. Keep walking.");
     bus.emit("arenaRun", { running: true });
     running.current = true;
     useRun.getState().sealRoom(room.id);
-    const toRunning = window.setTimeout(() => setPhase("running"), ARENA_WIND_UP_S * 1000);
-    const toDone = window.setTimeout(
-      () => {
-        setPhase("done");
-        stop();
-      },
-      (ARENA_WIND_UP_S + ARENA_DURATION_S) * 1000
-    );
-    return () => {
-      window.clearTimeout(toRunning);
-      window.clearTimeout(toDone);
-    };
-    // `stop` is memoised on room.id, which is already here, so listing it
-    // cannot re-run this effect and cancel its own timers - the bug this
-    // room had the first time round.
-  }, [taken, room.id, stop]);
+  }, [taken, room.id]);
+
+  // The phases, on that clock rather than on a timer nobody can pause.
+  useFrame(() => {
+    if (startedAt.current === null || phase === "done") return;
+    const t = runClock(useRun.getState()) - startedAt.current;
+    if (t >= ARENA_WIND_UP_S + ARENA_DURATION_S) {
+      startedAt.current = null;
+      setPhase("done");
+      stop();
+    } else if (t >= ARENA_WIND_UP_S && phase !== "running") {
+      setPhase("running");
+    }
+  });
 
   // Leaving mid-run - including by dying and starting a new run inside the
   // fourteen seconds - must not leave the doors barred, the arena flagged as
@@ -148,8 +162,12 @@ function Arms({ patches, live }: { patches: Patch[]; live: boolean }) {
   const started = useRef<number | null>(null);
 
   useFrame((state) => {
-    if (started.current === null) started.current = state.clock.elapsedTime;
-    const t = state.clock.elapsedTime - started.current;
+    // The same clock the phases run on: driven by `elapsedTime` the arms
+    // kept turning through a pause and the player unpaused into whichever
+    // one had arrived, which is the other half of the same bug.
+    const now = runClock(useRun.getState());
+    if (started.current === null) started.current = now;
+    const t = now - started.current;
     const spin = t * ARENA_SPIN;
     const control = canControl(useRun.getState());
     const cam = state.camera.position;

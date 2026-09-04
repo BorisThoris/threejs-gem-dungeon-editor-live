@@ -279,7 +279,20 @@ Two stores that both claimed the player's stats. So:
   and past the furniture, and asks whether the walk arrives. It is the only
   check that asks whether a room can be *walked* rather than whether things
   are spaced; the furniture turns out to be innocent in all 945 rooms, and
-  it is worth knowing that rather than assuming it.
+  it is worth knowing that rather than assuming it. The same fill holds two
+  more assumptions nobody had stated: that a room joins the rooms it links
+  to, by walking from each of its doorways to the others, and that the
+  floor's key is neither inside the vault it opens nor behind it.
+- A timed thing in the game is a deadline on `runClock`, which is wall time
+  less every second spent in a menu. The store keeps `pausedFor` precisely
+  for that - the comment beside it says so about the Potion of Swiftness -
+  and the arena did not ask: its wind-up and its fourteen seconds were
+  `window.setTimeout`s, so taking the gem and pressing Escape for seventeen
+  seconds unsealed the doors and finished the gauntlet. Measured in the
+  game, standing exactly where the gem had been afterwards took no hits at
+  all. Its phases and its arms both read `runClock` now - the arms too,
+  because driven by `elapsedTime` they kept turning through a pause and the
+  player unpaused into whichever one had arrived.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
