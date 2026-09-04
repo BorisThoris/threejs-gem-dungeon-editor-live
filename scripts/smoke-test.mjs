@@ -1883,6 +1883,86 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 
   // --- The challenge room's plate ------------------------------------------
+
+  /**
+   * The spikes, walked into and walked round.
+   *
+   * `yarn test:run` has reported it in its own output every time it has
+   * run: of the hits it takes over three whole runs, none come from rooms.
+   * The trap room is one of the ten kinds the game builds and its entire
+   * content is a ring of spikes that has never hurt anything - and the
+   * room's own comment says "the direct line to the reward is the
+   * dangerous one and the way round, along the walls, is safe", which is
+   * two claims and neither had been tried.
+   *
+   * The way round is the one that was false. Two of the three patches sat
+   * on the gem's own coordinate and reached to within nine centimetres of
+   * the wall, so in seventy of a hundred and thirteen trap rooms there was
+   * no way round at all. `yarn test:layout` floods the floor now; this
+   * walks it.
+   */
+  const trap = await standIn("trap");
+  ok("a floor has a trap room", trap !== null, JSON.stringify(trap && trap.id));
+  if (trap) {
+    const where = await page.evaluate(() => {
+      const s = window.__run.getState();
+      const room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+      const gem = window.__gemFor(room, s.dungeon.seed);
+      return { gem, spikes: window.__layout.trapHazards(room, gem), half: room.size / 2 };
+    });
+    ok("its gem is guarded by spikes", where.spikes.length > 0, `${where.spikes.length} patches`);
+
+    // Straight at it, across the arc: the direct line is the dangerous one.
+    const direct = await page.evaluate(async ([spike]) => {
+      const run = window.__run;
+      run.setState({ lives: 3, lastDamageAt: -Infinity });
+      const before = run.getState().lives;
+      window.__bus.emit("teleport", { position: [spike[0], 1.5, spike[2]], yaw: 0 });
+      await new Promise((r) => setTimeout(r, 900));
+      return { before, after: run.getState().lives };
+    }, [where.spikes[0]]);
+    ok(
+      "standing on a patch costs a life, which nothing had ever shown",
+      direct.after === direct.before - 1,
+      JSON.stringify(direct)
+    );
+
+    /**
+     * And the way round. Along the wall on the gem's own side, which is
+     * the corridor the patches used to seal: a stride in from the wall,
+     * level with the gem, is outside every patch and within reach of it.
+     */
+    const round = await page.evaluate(async ([gem, spikes, half]) => {
+      const run = window.__run;
+      run.setState({ lives: 3, lastDamageAt: -Infinity, gemRooms: [] });
+      const body = window.__world.PLAYER_CAPSULE_RADIUS;
+      const wall = half - body;
+      // Hard against the wall the gem is nearest, level with it.
+      const x = Math.abs(gem[0]) > Math.abs(gem[2]) ? Math.sign(gem[0]) * wall : gem[0];
+      const z = Math.abs(gem[0]) > Math.abs(gem[2]) ? gem[2] : Math.sign(gem[2]) * wall;
+      const clear = spikes.every((s) => Math.hypot(x - s[0], z - s[2]) > window.__layout.HAZARD_RADIUS);
+      const before = run.getState().lives;
+      window.__bus.emit("teleport", { position: [x, 1.5, z], yaw: 0 });
+      await new Promise((r) => setTimeout(r, 900));
+      return {
+        clear,
+        lives: run.getState().lives,
+        before,
+        reach: +Math.hypot(x - gem[0], z - gem[2]).toFixed(2),
+      };
+    }, [where.gem, where.spikes, where.half]);
+    ok(
+      "and the corridor along the wall is clear of them",
+      round.clear && round.lives === round.before,
+      JSON.stringify(round)
+    );
+    ok(
+      "and it is close enough to the gem to take it",
+      round.reach <= 2.4,
+      `${round.reach} from the gem, which reaches 2.4`
+    );
+  }
+
   const sprung = await standIn("challenge");
   ok("a floor has a challenge room", sprung !== null, JSON.stringify(sprung && sprung.id));
   if (sprung) {

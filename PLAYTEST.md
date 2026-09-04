@@ -1321,14 +1321,57 @@ components write theirs through a cast — `(window as unknown as {…}).__sentr
 Widened to any `.__name`, it caught the leak, and picked up three more real
 probes the first pattern had been missing.
 
-## 10. Steam Deck
+## 10. A place to stand is not a way to get there
+
+The trap room's check asked whether some point within reach of the gem was
+outside every spike patch, and called that *"the gem can be taken without
+touching spikes"*. It passed on every seed for the whole life of the room.
+
+A place to stand is not a way to get there. A player arrives through a
+doorway and has to walk. Two of the three patches sat on the gem's own
+coordinate, and a corner gem in a room sixteen across sits 6.41 out: the
+patch reaches 1.2 past that, to **7.61, against a wall a player can press
+to 7.7**. Nine centimetres of corridor — in a room whose own comment reads
+*"the direct line to the reward is the dangerous one and the way round,
+along the walls, is safe"*.
+
+Flooding the floor from every doorway, past the spikes and past the
+furniture:
+
+| | walled the gem off |
+| --- | --- |
+| Trap rooms | **70 of 113** |
+| Every other room | 0 of 945 |
+
+So in 62 % of trap rooms the gem cost a life, unavoidably — a toll rather
+than a decision, which is the same flaw cycle 31 found in the arena, in the
+opposite direction. There *was* a clear spot beside the gem, hard in the
+corner, with no route to it, which is exactly what the old check measured.
+
+`WALL_CORRIDOR` keeps a patch half a metre off the wall. 70 of 113 → 0 of
+113, with the corridor a player walks now 0.4 wide either side.
+
+Two things worth recording:
+
+- **The furniture is innocent.** The flood fill blocks on solid props as
+  well, and not one of 945 rooms is cut by its own dressing. That was worth
+  measuring rather than assuming — it is the first check in the project
+  that asks whether a room can be *walked* rather than whether things are
+  spaced far enough apart.
+- **Nothing had ever been hurt by spikes.** `yarn test:run` reports it in
+  its own output every time: of the hits it takes over three whole runs,
+  none come from rooms. `test:smoke` now stands on a patch and loses a
+  life, then walks the wall corridor and does not — the room's two claims,
+  tried for the first time.
+
+## 11. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 11. What a human playtest should watch for
+## 12. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1411,7 +1454,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 12. Tuning knobs
+## 13. Tuning knobs
 
 All in `src/game/world.ts`:
 

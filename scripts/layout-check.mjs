@@ -1195,5 +1195,118 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+
+// --- Is there a way to the gem, or only a place to stand beside it -------
+//
+// The trap room's check asked whether some point within reach of the gem
+// was outside every spike patch, and called that "the gem can be taken
+// without touching spikes". A place to stand is not a way to get there. A
+// player arrives through a doorway and has to walk, and in a room sixteen
+// across with the gem in a corner at 6.41, two of the three patches sat on
+// the gem's own coordinate and reached 1.2 past it - to 7.61, against a
+// wall a player can press to 7.7. Nine centimetres of corridor, in a room
+// whose own comment says "the way round, along the walls, is safe".
+// Flooding the floor found the gem walled off in seventy of a hundred and
+// thirteen trap rooms; the old check passed on every one of them, because
+// there was indeed a clear spot, hard in the corner, with no route to it.
+//
+// So this floods the floor from every doorway the room has, past the
+// spikes and past the furniture, and asks whether the walk arrives. It is
+// the first check in the project that asks whether a room can be walked
+// rather than whether things are spaced - the props turn out to be
+// innocent, and it is worth knowing that rather than assuming it.
+{
+  /** A quarter of a metre: a third of the narrowest corridor a body fits. */
+  const CELL = 0.25;
+  const BODY = L.PLAYER_CAPSULE_RADIUS;
+  /** The gem's own trigger reaches this far; anything less is not the game. */
+  const GEM_REACH = 2.4;
+
+  const routeToGem = (room, seed) => {
+    const half = room.size / 2;
+    const gem = L.gemFor(room, seed);
+    if (!gem) return null;
+    const spikes = room.kind === "trap" ? L.trapHazards(room, gem) : [];
+    const props = L.placementsFor(room, seed).filter((p) => L.PROP_SPECS[p.kind].solid);
+    // The hazard tests the camera's own point, so a patch blocks a disc of
+    // exactly its radius - the body's width is what the walls take.
+    const blocked = (x, z) =>
+      Math.abs(x) > half - BODY ||
+      Math.abs(z) > half - BODY ||
+      spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
+      props.some((p) => Math.hypot(x - p.x, z - p.z) < L.PROP_SPECS[p.kind].radius + BODY);
+
+    const n = Math.ceil((half * 2) / CELL);
+    const at = (i) => -half + i * CELL;
+    const key = (i, j) => i * 1000 + j;
+    const seen = new Set();
+    const queue = [];
+    for (const dir of ["north", "south", "east", "west"]) {
+      if (!room.links[dir]) continue;
+      const [dx, , dz] = L.doorPosition(room, dir);
+      // A stride inside the doorway, which is where travel puts the player.
+      const i = Math.round((dx * 0.82 + half) / CELL);
+      const j = Math.round((dz * 0.82 + half) / CELL);
+      if (!blocked(at(i), at(j)) && !seen.has(key(i, j))) {
+        seen.add(key(i, j));
+        queue.push([i, j]);
+      }
+    }
+    if (queue.length === 0) return { entered: false };
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const a = i + di;
+        const b = j + dj;
+        if (a < 0 || b < 0 || a > n || b > n || seen.has(key(a, b)) || blocked(at(a), at(b))) continue;
+        seen.add(key(a, b));
+        queue.push([a, b]);
+      }
+    }
+    for (const c of seen) {
+      if (Math.hypot(at(Math.floor(c / 1000)) - gem[0], at(c % 1000) - gem[2]) <= GEM_REACH) {
+        return { entered: true, reached: true };
+      }
+    }
+    return { entered: true, reached: false };
+  };
+
+  const walled = { trap: 0, other: 0 };
+  const counted = { trap: 0, other: 0 };
+  let noWayIn = 0;
+  // One list per bucket: shared, a trap room's example was printed beside
+  // the count of the other rooms and read as though it were one of them.
+  const examples = { trap: [], other: [] };
+  for (let seed = 1; seed <= 120; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    for (const room of d.rooms) {
+      const r = routeToGem(room, d.seed);
+      if (!r) continue;
+      const bucket = room.kind === "trap" ? "trap" : "other";
+      counted[bucket]++;
+      if (!r.entered) noWayIn++;
+      else if (!r.reached) {
+        walled[bucket]++;
+        if (examples[bucket].length < 3) examples[bucket].push(`${room.id}@${d.seed} ${room.size} ${room.shape}`);
+      }
+    }
+  }
+  check(
+    "every doorway leads somewhere: the walk always starts",
+    noWayIn === 0,
+    `${noWayIn} rooms with no clear ground inside a doorway`
+  );
+  check(
+    "a trap room's gem can be walked to, not merely stood beside",
+    walled.trap === 0,
+    `${walled.trap} of ${counted.trap} trap rooms walled the gem off  ${examples.trap.join(" | ")}`
+  );
+  check(
+    "and so can every other room's, past its own furniture",
+    walled.other === 0,
+    `${walled.other} of ${counted.other} rooms walled the gem off  ${examples.other.join(" | ")}`
+  );
+}
+
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

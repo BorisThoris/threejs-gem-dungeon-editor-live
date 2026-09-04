@@ -265,6 +265,21 @@ Two stores that both claimed the player's stats. So:
   walk has to hold still fits inside the room. A player on a keyboard
   cannot walk slower than they walk, so the line they hold is the one their
   speed fits and the inner stroll is only available to a stick.
+- A place to stand is not a way to get there, and until cycle 51 no check
+  in the project knew the difference. The trap room's asked whether some
+  point within reach of the gem was outside every spike patch and called
+  that "the gem can be taken without touching spikes"; a player arrives
+  through a doorway and has to walk. Two of the three patches sat on the
+  gem's own coordinate and reached to within nine centimetres of the wall,
+  so in seventy of a hundred and thirteen trap rooms there was a clear spot
+  hard in the corner and no route to it - in a room whose own comment says
+  "the way round, along the walls, is safe". `WALL_CORRIDOR` in
+  `dungeon/layout.ts` keeps a patch off the wall by half a metre, and
+  `yarn test:layout` floods the floor from every doorway, past the spikes
+  and past the furniture, and asks whether the walk arrives. It is the only
+  check that asks whether a room can be *walked* rather than whether things
+  are spaced; the furniture turns out to be innocent in all 945 rooms, and
+  it is worth knowing that rather than assuming it.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -436,7 +451,7 @@ second model for it to be written in.
   and of each other, nothing in a lane the room it stands in actually has,
   no two solid props standing inside each other and no footprint reaching
   into a lane or through a wall, spikes in every trap room and never in a
-  lane, the gem reachable, the generator connected, and every floor payable
+  lane, the gem walkable to from a doorway past the spikes and the furniture, the generator connected, and every floor payable
   from the gems a player is guaranteed with at least one to spare. It also
   checks the one promise the Warden makes, over every relic set the shop can
   sell, every potion and every alarm level: a sprint always gets away, a

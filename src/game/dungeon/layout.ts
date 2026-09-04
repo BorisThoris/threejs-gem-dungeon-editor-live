@@ -2,6 +2,7 @@ import { createRng } from "../rng";
 import {
   DOOR_WIDTH,
   GROUND_Y,
+  PLAYER_CAPSULE_RADIUS,
   PLAYER_SPAWN_Y,
   entranceDepth,
 } from "../world";
@@ -417,11 +418,28 @@ function freeAnchor(room: Room, seedKey: string, reserved: Vec3[], height: numbe
 export const HAZARD_RADIUS = 1.2;
 
 /**
+ * How much clear floor is left between a patch's reach and the wall.
+ *
+ * The way round is along the walls, and for most of this room's life there
+ * was not one. Two of the three patches sat on the gem's own coordinate,
+ * and a corner gem in a room sixteen across sits 6.41 out: the patch
+ * reaches 1.2 past that, to 7.61, against a wall a player can press to
+ * 7.7. Nine centimetres. Flooding the floor from the doorways found the
+ * gem walled off in seventy of a hundred and thirteen trap rooms - and the
+ * check that was meant to catch it asked whether some point within reach
+ * of the gem was outside every patch, which is a place to stand and not a
+ * way to get there. There was a clear spot, hard in the corner, with no
+ * route to it.
+ */
+const WALL_CORRIDOR = 0.5;
+
+/**
  * Spikes for a trap room: three patches between the gem and the lanes it
  * is approached from, so the direct line to the reward is the dangerous
  * one and the way round, along the walls, is safe. A patch is never in a
  * lane - in a small room it is pulled back to the lane's edge instead -
- * so the room is always crossable, and the gem always has a safe side.
+ * and never so near a wall that it closes the corridor beside it, so the
+ * room is always crossable and the gem always has a safe side.
  */
 export function trapHazards(room: Room, gem: Vec3): Vec3[] {
   const sx = Math.sign(gem[0]) || 1;
@@ -431,9 +449,12 @@ export function trapHazards(room: Room, gem: Vec3): Vec3[] {
   const gz = Math.abs(gem[2]);
   const d = Math.max(1.6, Math.min(2.4, Math.min(gx, gz) - clearance));
   const pull = (v: number) => Math.max(clearance, v);
+  // Off the wall by a corridor's width, so a player can always come round.
+  const wall = halfSize(room) - PLAYER_CAPSULE_RADIUS - HAZARD_RADIUS - WALL_CORRIDOR;
+  const off = (v: number) => Math.min(v, wall);
   const patches: [number, number][] = [
-    [pull(gx - d), gz],
-    [gx, pull(gz - d)],
+    [pull(gx - d), off(gz)],
+    [off(gx), pull(gz - d)],
     [pull(gx - d * 0.75), pull(gz - d * 0.75)],
   ];
   return patches
