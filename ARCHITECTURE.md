@@ -225,6 +225,14 @@ Two stores that both claimed the player's stats. So:
   player rather than through them, which is the generous direction. At ten
   frames a second the furthest arm still steps only 1.19m against the 1.5m
   that would take it over a player, so it never skips one in play.
+- A trigger that can refuse says so before the press, not after. Three in
+  the game carried no `enabled` guard - the gem, the key and the chest -
+  and only the chest can refuse: `takeItem` declines a full satchel, so it
+  went on offering "Open the chest - a green potion" with four things
+  carried and E did nothing but drop a hint afterwards. That was merely
+  rude until the prompt began going to the nearest *usable* thing, at which
+  point a chest claiming to be usable outranked the door beside it and a
+  player with a full satchel was told to loot a room they could not leave.
 - Which of several things in reach the player is talking to is
   `src/game/interact/InteractTrigger.tsx`, and it is the nearest one that
   can actually be *used*, falling back to the nearest one at all. Straight
@@ -437,8 +445,10 @@ second model for it to be written in.
   the case that is actually unfair: stalling while the player is already
   lit convicts them too, and that conviction is correct.
 - `yarn test:smoke` walks to the shop counter and buys each of the three
-  things it sells, walks onto the floor's key and takes it, and stands at a
-  barred door and opens it. The tome, the memory trial and the challenge
+  things it sells, walks onto the floor's key and takes it, stands at a
+  barred door and opens it, opens a chest and is refused by one with a full
+  satchel, and presses 1 to 4 - the keyboard half of the satchel, whose pad
+  half was checked in cycle 36 and whose keys never were. The tome, the memory trial and the challenge
   room had been played that way for cycles; the shop and the key were only
   ever exercised through the store's own actions, so what was checked was
   the arithmetic of a purchase and never the counter. That is the shape

@@ -1224,6 +1224,24 @@ a life, buy a name for something unidentified, buy a relic off its
 pedestal, take the iron key off the floor, and spend it on a barred vault
 door.
 
+Walking to a chest found the same thing again, one trigger further on.
+Three interact triggers in the game carried no guard at all — the gem, the
+key and the chest — and only the chest can refuse: `takeItem` declines a
+full satchel. So it went on saying "Open the chest — a green potion" with
+four things already carried, and E did nothing but drop a hint after the
+fact. Rude on its own; not rude once the prompt goes to the nearest thing
+that can be *used*, because a chest claiming it can be then outranks the
+door standing beside it and a player with a full satchel is told to loot a
+room they cannot leave. It says so before the press now.
+
+And the keyboard's satchel keys had never been pressed. The pad's four
+satchel buttons were checked when cycle 36 found only two of them worked;
+the keys they mirror — the ones a desktop player uses all run — were only
+ever exercised as `useItem(0)` on the store. They work: 1 uses the leftmost
+slot, the rest close up behind it, and 4 on a satchel of three does
+nothing. It is the same hole cycle 24 found in the other direction, where
+every check typed and the pad could not start the game.
+
 ## 8. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the

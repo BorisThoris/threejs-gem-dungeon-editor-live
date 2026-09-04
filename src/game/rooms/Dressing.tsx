@@ -14,7 +14,7 @@ import {
 import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { nameOf, rollItem } from "../items/catalog";
+import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
 import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
@@ -227,6 +227,19 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
   const looted = useRun((s) => s.looted);
   const appearances = useRun((s) => s.appearances);
   const identified = useRun((s) => s.identified);
+  /**
+   * A chest with nowhere to put what is in it.
+   *
+   * `takeItem` declines a full satchel, and a chest was one of the three
+   * triggers in the game with no `enabled` on it, so it went on offering
+   * "Open the chest - a green potion" with four things already carried and
+   * E did nothing but drop a hint afterwards. Saying so before the press is
+   * better on its own, and it stopped being optional when the prompt began
+   * going to the nearest thing that can actually be *used*: a chest that
+   * claims it can be outranks the door standing beside it, and the player
+   * cannot leave the room the game is telling them to loot.
+   */
+  const full = useRun((s) => s.satchel.length >= SATCHEL_SLOTS);
 
   return (
     <>
@@ -242,6 +255,8 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
             key={key}
             position={[p.x, 0, p.z]}
             label={`Open the chest - ${what}`}
+            enabled={!full}
+            blockedReason="Your satchel is full. Use something first."
             radius={2.2}
             onInteract={() => useRun.getState().takeItem(id, key)}
           />

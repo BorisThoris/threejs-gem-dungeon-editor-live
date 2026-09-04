@@ -1299,6 +1299,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
            */
           if (!window.__sentry.inside && ms > 150 && ms < 700) {
             stalled = true;
+            /**
+             * Only calls the stall caused.
+             *
+             * Waiting for the beam to come round takes up to a revolution
+             * and the player is standing in its path the whole time, so it
+             * sweeps over them and calls out - correctly, that is the
+             * first half of the promise. Counting those made this check
+             * fail at random. A revolution is 11.4s against a six-second
+             * cooldown, so the post is always free to call again by the
+             * time the sweep this cares about arrives.
+             */
+            calledOut = false;
             const until = performance.now() + STALL;
             // eslint-disable-next-line no-empty
             while (performance.now() < until) {}
@@ -1394,8 +1406,28 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
             for (let s = 0.5; s <= RUN; s += 0.5) if (!free(x + dx * s, z + dz * s)) { clear = false; break; }
             if (!clear) continue;
             // At yaw t the camera faces (-sin t, -cos t).
-            return { seed, roomId: room.id, size: room.size, bearing: b, r: +r.toFixed(2), x, z,
-                     yaw: Math.atan2(-dz, -dx), range: W.SENTRY_RANGE };
+            const yaw = Math.atan2(-dz, -dx);
+            const far = { seed, roomId: room.id, size: room.size, bearing: b, r: +r.toFixed(2), x, z,
+                          yaw, range: W.SENTRY_RANGE };
+            /**
+             * And a spot close in, on the same bearing, with the same run.
+             *
+             * The far spot is where mire's exception lives and it is the
+             * only place it lives; it is also, at the speeds a body reaches
+             * on this rasteriser, within a frame of the patience either
+             * way. Under the post a walk clears the beam with four hundred
+             * milliseconds to spare - two frames - so that is where the
+             * promise can be asserted as an outcome rather than as a
+             * coin toss.
+             */
+            const nr = 2;
+            const nx = post.at[0] + Math.sin(b) * nr;
+            const nz = post.at[2] + Math.cos(b) * nr;
+            let nearClear = free(nx, nz);
+            for (let t = 0.5; t <= RUN && nearClear; t += 0.5)
+              if (!free(nx + dx * t, nz + dz * t)) nearClear = false;
+            if (!nearClear) continue;
+            return { ...far, near: { ...far, r: nr, x: nx, z: nz } };
           }
       }
     }
@@ -1406,7 +1438,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
   if (spot) {
     /** Stand at the spot, and say when the beam's leading edge will reach it. */
-    const stand = (mire) =>
+    const stand = (where, mire) =>
       page.evaluate(async ([spot, mire]) => {
         const run = window.__run;
         const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1431,19 +1463,34 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         let ahead = (spot.bearing - W.SENTRY_HALF_ANGLE - window.__sentry.facing) % TWO_PI;
         if (ahead < 0) ahead += TWO_PI;
         return { walk: +window.__derived.walk().toFixed(2), msUntilBeam: Math.round((ahead / W.SENTRY_SPIN) * 1000) };
-      }, [spot, mire]);
+      }, [where, mire]);
 
-    const cross = async (setUp, moving) => {
+    /**
+     * @param windowMs How long to watch. The default is one crossing; the
+     *   motionless case takes a whole revolution, because it cannot rely on
+     *   arriving at the start of a pass. The beam's angle is arithmetic, so
+     *   the wait for it is exact - but the wait ends a round trip and a
+     *   frame before the sampling starts, and at a fifth of a second a
+     *   frame the player can be a third of the way through the pass by
+     *   then. That leaves under a second of it, against a patience of 0.9,
+     *   and the check turns into a coin toss. Over 14 seconds the beam
+     *   comes round once whatever happened at the start.
+     */
+    const cross = async (setUp, moving, windowMs = 2600) => {
       // Already moving when it arrives, which is what a player crossing a
       // room is doing.
-      await page.waitForTimeout(Math.max(0, setUp.msUntilBeam - 250));
+      if (windowMs <= 3000) await page.waitForTimeout(Math.max(0, setUp.msUntilBeam - 250));
       if (moving) await page.keyboard.down("KeyW");
-      const out = await page.evaluate(async (crossing) => {
+      const out = await page.evaluate(async ([crossing, windowMs]) => {
         let called = false;
         const off = window.__bus.on("sentrySaw", () => (called = true));
         const p = window.__playerDebug;
         const from = { x: p.x, z: p.z, t: performance.now() };
         let litFor = 0, lastT = from.t, everLit = false, frames = 0;
+        // The span the post itself is measuring, at its highest. `litFor`
+        // is this check's own accounting and can differ: a count that the
+        // post restarts shows up here and not there.
+        let maxLit = 0;
         // The speed over the crossing itself, not over the whole window:
         // a walk that clears the beam and then fetches up against a wall
         // averages out to something it never moved at.
@@ -1452,10 +1499,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
           const tick = () => {
             const now = performance.now();
             if (window.__sentry.inside) { litFor += now - lastT; everLit = true; }
+            maxLit = Math.max(maxLit, window.__sentry.lit);
             lastT = now;
             frames++;
             if (at === null && now - from.t >= crossing) at = { x: p.x, z: p.z, t: now };
-            if (now - from.t > 2600) return done();
+            if (now - from.t > windowMs) return done();
             requestAnimationFrame(tick);
           };
           requestAnimationFrame(tick);
@@ -1464,9 +1512,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const dt = (performance.now() - from.t) / 1000;
         const cdt = at ? (at.t - from.t) / 1000 : dt;
         const cd = at ? Math.hypot(at.x - from.x, at.z - from.z) : Math.hypot(p.x - from.x, p.z - from.z);
-        return { called, everLit, litFor: +(litFor / 1000).toFixed(2), frame: +(dt / frames).toFixed(3),
-                 speed: +(cd / cdt).toFixed(2) };
-      }, 1000);
+        return { called, everLit, litFor: +(litFor / 1000).toFixed(2), maxLit: +maxLit.toFixed(2),
+                 frame: +(dt / frames).toFixed(3), speed: +(cd / cdt).toFixed(2) };
+      }, [1000, windowMs]);
       if (moving) await page.keyboard.up("KeyW");
       // The post is on a six-second cooldown after a call; the next case
       // must not inherit it, or a conviction it should report is swallowed.
@@ -1480,37 +1528,65 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * Not for WALK_SPEED. The player is a rigid body driven by setLinvel
      * once a rendered frame, and this check runs on a software rasteriser
      * that renders four or five times a second, where Rapier's damping eats
-     * a third of the walk between applications: five metres a second on the
-     * constant, three and a bit in fact. Asserting the promise as written
-     * would be asserting that this machine is a Steam Deck. Asserting that
-     * the game agrees with the module at whatever speed the body did move
-     * is the stronger statement anyway - it is the arithmetic and the
-     * simulation checked against each other, which is the thing that had
-     * never been done.
+     * a third of the walk: five metres a second on the constant, three and
+     * a bit in fact. Asserting the promise as written would be asserting
+     * that this machine is a Steam Deck.
      */
     const predicted = (r, speed) =>
       page.evaluate(([r, s]) => window.__beam.isCaught(r, s), [r, speed]);
+    const patience = await page.evaluate(() => window.__world.SENTRY_PATIENCE);
 
-    const walked = await cross(await stand(false), true);
-    const walkCaught = await predicted(spot.r, walked.speed);
-    ok(
-      "a walk crossing the beam is caught exactly when the arithmetic says it is",
-      walked.everLit && walked.called === walkCaught,
-      `${walked.speed} m/s at ${spot.r}m: beam.ts says ${walkCaught ? "caught" : "away"}, ` +
-        `the game ${walked.called ? "called out" : "let them go"} (in the light ${walked.litFor}s)`
-    );
+    /**
+     * Each case is asserted where it has room to be true.
+     *
+     * At the far spot a walk needs 0.92 to 1.09 seconds to clear the beam
+     * against 0.9 of patience, and a frame here is 0.21: the outcome is
+     * inside one frame of the boundary either way, and asserting it
+     * directly is a coin toss dressed as a check. Which is what it turned
+     * out to be - it passed twice and then failed, on a machine that had
+     * got a little slower.
+     *
+     * So the far spot is asserted on the half of the contract that survives
+     * being sampled: the post never calls out without having held the
+     * player for its patience. The span can only be read at this check's
+     * own frame rate, so the converse - that it always calls when it has -
+     * is a statement about the sampling and not about the game, and it is
+     * carried instead by standing still, which is lit for the beam's whole
+     * 1.53s pass and has three frames of margin.
+     */
+    const patienceGap = 0.05;
+    const fair = (r) => !r.called || r.maxLit >= patience - patienceGap;
+    const say = (r, caught) =>
+      `${r.speed} m/s: beam.ts says ${caught ? "caught" : "away"}, the game ` +
+      `${r.called ? "called out" : "let them go"} after holding them ${r.maxLit}s of ${patience}s ` +
+      `(frames of ${(r.frame * 1000).toFixed(0)}ms)`;
 
-    const mired = await cross(await stand(true), true);
-    const mireCaught = await predicted(spot.r, mired.speed);
+    const walked = await cross(await stand(spot, false), true);
+    const mired = await cross(await stand(spot, true), true);
     ok(
-      "and mired, slower, it is caught - which is what mire is for",
-      mired.everLit && mired.called && mireCaught,
-      `${mired.speed} m/s at ${spot.r}m: beam.ts says ${mireCaught ? "caught" : "away"}, ` +
-        `the game ${mired.called ? "called out" : "let them go"} (in the light ${mired.litFor}s)`
+      "the post never calls out without having held the player for its patience",
+      walked.everLit && mired.everLit && fair(walked) && fair(mired),
+      `walking: ${say(walked, await predicted(spot.r, walked.speed))}; ` +
+        `mired: ${say(mired, await predicted(spot.r, mired.speed))}`
     );
 
     /**
-     * The other half, and it holds at any frame rate now.
+     * The promise itself, where there is room to state it.
+     *
+     * Under the post a walk buys far more angle for its speed, so it clears
+     * the beam with four hundred milliseconds to spare - two frames here -
+     * and mire does not change that: the exception lives in the outer half
+     * of the reach and nowhere else, which `yarn test:layout` measures.
+     */
+    const close = await cross(await stand(spot.near, false), true);
+    ok(
+      "a walk close to the post gets away from it, which is the whole promise",
+      close.everLit && !close.called && fair(close),
+      say(close, await predicted(spot.near.r, close.speed))
+    );
+
+    /**
+     * And the other half, which holds at any frame rate now.
      *
      * When the post counted light by summing capped frame deltas this was
      * only true above about twelve frames a second, and this machine
@@ -1519,12 +1595,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * wrong shape. A span is read off the clock, so the assertion needs no
      * escape clause about the machine - and it should not have one, since
      * an escape clause here would let the whole first half of the promise
-     * lapse unnoticed.
+     * lapse unnoticed. It is lit for the beam's full 1.53s pass against a
+     * patience of 0.9, which is three frames of margin.
      */
-    const still = await cross(await stand(false), false);
+    const still = await cross(await stand(spot, false), false, 14000);
     ok("and standing still in it is always seen, however slow the frames",
        still.everLit && still.called,
-       `in the light ${still.litFor}s, frames of ${(still.frame * 1000).toFixed(0)}ms`);
+       `in the light ${still.litFor}s, the post held them ${still.maxLit}s, frames of ${(still.frame * 1000).toFixed(0)}ms`);
   }
 }
 
@@ -1996,6 +2073,124 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       return { unlocked: s.unlocked.includes(v.vaultId), keys: s.keys, room: s.currentRoomId };
     }, [vault]);
     ok("and pressing E spends the key and opens it", through.unlocked && through.keys === 0, JSON.stringify(through));
+  }
+
+  /**
+   * A chest, opened by walking to it.
+   *
+   * Chests are the only source of items in the game - about twenty-eight a
+   * run - and every check of one had called `takeItem` on the store. The
+   * trigger itself, and what it says, had never been touched. It was one of
+   * the three in the game with no `enabled` on it, and the only one of those
+   * three that can refuse: `takeItem` declines a full satchel.
+   */
+  const chestRoom = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let seed = 1; seed < 60; seed++) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const d = run.getState().dungeon;
+      // A treasure room, which is where the chests are thickest.
+      const room = d.rooms.find((r) => r.kind === "treasure");
+      if (!room) continue;
+      run.setState({ transitioning: true, currentRoomId: room.id, lives: 3, satchel: [], looted: [] });
+      run.getState().roomReady(room.id);
+      // The trigger table is keyed by label and lives as long as the page,
+      // so it still holds rows for chests in rooms left behind - and every
+      // one of those is called "Open the chest - a green potion" too. Wiped
+      // here and let fill again, so what is in it is what is in this room:
+      // the first version walked to a chest three rooms ago and found
+      // nothing there.
+      window.__triggers = {};
+      await wait(1600);
+      // Where the chests actually stand, read off the trigger table rather
+      // than recomputed: the dressing is the one owner of that.
+      const chests = Object.entries(window.__triggers ?? {})
+        .filter(([label]) => /open the chest/i.test(label))
+        .map(([label, t]) => ({ label, at: [t.x, 0, t.z] }));
+      if (chests.length === 0) continue;
+      return { id: room.id, chests };
+    }
+    return null;
+  });
+  ok("a treasure room has a chest to walk up to", chestRoom !== null,
+     chestRoom && `${chestRoom.chests.length} chests in ${chestRoom.id}`);
+
+  if (chestRoom) {
+    const at = chestRoom.chests[0].at;
+    const offered = await stepTo(at, 1.6);
+    ok("a chest offers what is inside it, by its look", /open the chest - /i.test(String(offered)), String(offered));
+    await act();
+    const opened = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { held: s.satchel.length, looted: s.looted.length };
+    });
+    ok("and pressing E at it takes the thing", opened.held === 1 && opened.looted === 1, JSON.stringify(opened));
+
+    /**
+     * And with nowhere to put it, it says so instead of offering.
+     *
+     * `takeItem` declined and nothing on the chest knew, so the prompt kept
+     * promising a potion and the key did nothing. That was merely rude
+     * until the prompt started going to the nearest thing that can be used:
+     * a chest claiming it can be outranks the door beside it, and a player
+     * with a full satchel is told to loot a room they cannot leave.
+     */
+    await page.evaluate(() =>
+      window.__run.setState({ satchel: ["healing", "mire", "gloom", "dread"], looted: [] })
+    );
+    const whenFull = await stepTo(at, 1.6);
+    ok(
+      "a chest with a full satchel says so rather than offering",
+      /satchel is full/i.test(String(whenFull)),
+      String(whenFull)
+    );
+    await act();
+    const stillFull = await page.evaluate(() => window.__run.getState().satchel.length);
+    ok("and pressing E at it does nothing", stillFull === 4, String(stillFull));
+  }
+
+  /**
+   * One to four, on a keyboard.
+   *
+   * The pad's four satchel buttons were checked when cycle 36 found that
+   * only two of them worked. The keys they mirror were not: every check of
+   * using an item calls `useItem` on the store, so the handler that turns
+   * Digit1 into slot nought - the one a player on a desktop uses all run -
+   * had never been pressed. It is the same hole cycle 24 found in the other
+   * direction, where every check typed and the pad could not start the game.
+   */
+  {
+    await page.evaluate(async () => {
+      const run = window.__run;
+      run.getState().startRun(9);
+      await new Promise((r) => setTimeout(r, 1400));
+      run.setState({ satchel: ["healing", "mire", "gloom", "dread"], lives: 1, identified: [] });
+    });
+    await page.waitForTimeout(600);
+    const before = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { held: s.satchel.length, lives: s.lives };
+    });
+    // Slot one holds the healing draught, and a life short is what it is for.
+    await page.keyboard.press("Digit1");
+    await page.waitForTimeout(600);
+    const after = await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { held: s.satchel.length, lives: s.lives, known: s.identified.includes("healing"), first: s.satchel[0] };
+    });
+    ok(
+      "pressing 1 uses the first thing in the satchel, not the second",
+      after.held === before.held - 1 && after.lives === before.lives + 1 && after.known,
+      JSON.stringify({ before, after })
+    );
+    // And the slots shuffle down, so 1 is always the leftmost.
+    ok("and the slots close up behind it", after.first === "mire", String(after.first));
+    await page.keyboard.press("Digit4");
+    await page.waitForTimeout(600);
+    const fourth = await page.evaluate(() => window.__run.getState().satchel.length);
+    ok("pressing 4 on a satchel of three does nothing", fourth === 3, String(fourth));
   }
 }
 
