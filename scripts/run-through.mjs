@@ -270,6 +270,55 @@ if (won.length) {
       ` The Sentry called out ${seen} times - it needs nine tenths of a second` +
       ` of standing in the light, and this walker never stands anywhere.`
   );
+
+  /**
+   * And now some of it is held to something.
+   *
+   * Every line above was printed and asserted by nothing. This is the only
+   * check in the project that plays a whole run, so it is the only place
+   * that can see the shape of one - and a run that picked up no gems, or
+   * needed twenty lives to finish, printed an alarming number and exited
+   * zero. A measurement that guards nothing is the mirror of the one-sided
+   * guards cycle 57 found on the Warden.
+   *
+   * Only what can be tied to the game's own numbers is asserted. The tolls
+   * are read from the running game rather than written here, because a
+   * check holding its own copy of a constant goes on passing after the
+   * constant moves - which is how the trap room's reach came to be wrong in
+   * two places at once.
+   */
+  const owed = await page.evaluate(() => {
+    const W = window.__world;
+    let sum = 0;
+    for (let floor = 1; floor <= W.FLOORS; floor++) sum += W.tollForFloor(floor);
+    return { sum, floors: W.FLOORS, lives: W.STARTING_LIVES };
+  });
+  ok(
+    "a finished run picked up at least what the exits charged",
+    Math.min(...gems) >= owed.sum,
+    `${range(gems)} gems against ${owed.sum} owed over ${owed.floors} floors`
+  );
+  /**
+   * Something hurt the player. Over three complete runs, if nothing ever
+   * lands a hit, the demo has no danger left in it - and every check that
+   * a hazard *can* hurt is a set piece with the player parked on it.
+   */
+  ok(
+    "and something took a life over the course of it",
+    total > 0,
+    `${total} hits over ${won.length} runs`
+  );
+  /**
+   * A wide band, on purpose. The walker does not evade, so this measures
+   * the Warden's lethality against a player who walks into it, and that
+   * number is allowed to move. What it is not allowed to do is collapse:
+   * four times the observed worst is a regression, not a tuning change.
+   */
+  ok(
+    "and the walker was not kept alive more than a run's worth of times over",
+    Math.max(...saved) <= owed.lives * 4,
+    `topped up ${range(saved)} times a run, against a ceiling of ${owed.lives * 4}`
+  );
 }
 
 ok("nothing errored while the run was played", errors.length === 0, errors.slice(0, 2).join(" | "));

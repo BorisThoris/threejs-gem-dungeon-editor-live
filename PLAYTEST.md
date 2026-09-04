@@ -1571,15 +1571,30 @@ It compares each room with itself now — held until its count stops moving
 (three equal readings, not two), first lap against last — which is stable to
 the unit across runs and names the room that grew.
 
-### The other one is still open
+### The other one, closed two cycles later
 
-`test:audio` failed once in a batch and has passed ten times since, and which
-check it was went unrecorded. The obvious candidate — the Warden's held sound
-falling back to the room tone — turned out to have thirty per cent of
-headroom, so that guess was wrong. The suite now prints the tightest margin
-any loudness assertion had; across three runs it is `lose`, 34–43% clear. A
-threshold that comfortable is unlikely to be what failed, which narrows it,
-but it is not diagnosed and is not being claimed as fixed.
+`test:audio` failed once in a batch and passed ten times after, with which
+check it was unrecorded. Cycle 56 guessed the Warden's held sound and was
+wrong — that has thirty per cent of headroom — so instead it made the suite
+print the tightest margin any loudness assertion had, and left the flake
+open rather than tuning something on a hunch.
+
+It failed again while cycle 62 was running, and this time the line named it:
+
+    FAIL  all 26 cues are heard over the room - step(true,false) 0.0310
+
+The quietest cue in the game is a footstep, and it is measured against a bar
+derived from the room tone — 0.063 on the runs that passed, 0.031 on the one
+that did not, against a bar of about 0.041 that moves as well. Two small
+noisy numbers compared once, which is exactly the shape cycle 55 found in the
+arena.
+
+A short quiet click sampled once for half a second is a poor estimate of
+itself, so it is played up to three times now and the loudest taken. A cue
+that is genuinely silent stays silent across three tries, so nothing the
+check could catch is given up, and the retries are reported so a cue that
+only ever passes on the third is visible. Three runs since: green, and none
+of them needed a second try.
 
 ## 16. The chase, and why it cannot be played here
 
@@ -1774,14 +1789,81 @@ ships, and it is sensitive: with the records loader's fallback removed on
 purpose, the first case reports *menu false, HUD false, two shades drawn* and
 a `SyntaxError` — the game does not boot at all.
 
-## 21. Steam Deck
+## 21. A whole run, measured and held to nothing
+
+`yarn test:run` is the only check that plays a run end to end, so it is the
+only place that can see the shape of one. It printed all of it and asserted
+none of it:
+
+    A finished run: 21 to 24 rooms entered, 26 to 41 doors taken, 15 gems picked up.
+    Lives topped up 1 to 3 times a run - the walker does not evade the Warden.
+    Of 6 hits over 3 runs, 6 came from the Warden and 0 from rooms (none).
+
+A run that picked up no gems, or needed twenty lives to finish, would have
+printed an alarming number and exited zero. Three of those lines are
+assertions now, and only the ones that can be tied to the game's own
+constants — read out of the running game rather than copied into the check,
+because a check holding its own copy of a number goes on passing after the
+number moves:
+
+| | |
+| --- | --- |
+| Gems picked up ≥ what the exits charged | 15 against 15 owed, from `tollForFloor` over `FLOORS` |
+| Something took a life over the run | 6 hits over 3 runs |
+| Top-ups did not collapse | 1–3 a run against a ceiling of `STARTING_LIVES × 4` |
+
+The band on the last one is wide on purpose: the walker does not evade, so
+that number measures the Warden against a player who walks into it and is
+allowed to move. What it may not do is collapse.
+
+### Two things the same output has been saying all along
+
+- **No room has ever hurt anybody on a real run.** Six hits over three
+  complete runs, all six from the Warden, none from the spikes, the arena,
+  the watcher or the plate. Each of those is verified to be dangerous by a
+  set piece with the player parked on it — and in a played run, none of them
+  fires. Whether that is right is a design question for a human: the trap
+  room's own comment says the way round is meant to be safe.
+- **The walker banks nothing.** It picks up exactly 15 gems and the tolls
+  take exactly 15. The half of the economy that turns surplus gems into a
+  score is never exercised by a finished run, because the walker leaves the
+  moment it can afford to. That is precisely the behaviour §23 asks a human
+  to watch for, and the automated walker does it every time.
+
+### A third instrument, fixed the same way
+
+The chest checks failed twice in this cycle with a null prompt, and it was
+the probe again rather than the game. A treasure room is where the chests are
+thickest, and the fixed spot 1.6 m to the side of one chest can be inside
+another: the teleport lands the player in it, the solver shoves them out, and
+they finish beyond the 2.2 m a chest offers from. It tries four approaches
+now and takes the first that is offered anything — a chest that offers
+nothing from any of them is a real failure; one that only offers from three
+is a crowded room.
+
+That is three measuring instruments corrected in three cycles — the arena's
+steering, the footstep's loudness, and now the chest's approach — against one
+correction to the game in the same span. Worth saying plainly: at this point
+the checks break more often than the thing they check.
+
+### And the sweep that found nothing
+
+Cycle 61's race — a ref written by an effect and read by the frame loop,
+with `null` standing for the *unsafe* reading — was swept for across every
+component. Five refs have that shape: the arena's two, the mouse look's yaw
+and pitch, and the player's hit shake. All five are safe, four because their
+initial value genuinely is "nothing has happened yet" (not started, level and
+facing the spawn heading, no shake) and one because it is set from the frame
+loop and was never the pattern. The Warden was the only one.
+
+## 22. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 22. What a human playtest should watch for
+## 23. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1864,7 +1946,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 23. Tuning knobs
+## 24. Tuning knobs
 
 All in `src/game/world.ts`:
 

@@ -519,6 +519,12 @@ second model for it to be written in.
   `yarn test:prod` starts the built bundle with garbage, with JSON of the
   wrong shape, and with an older build's fields, and asks whether it reaches
   the menu and draws a room.
+- A measurement that guards nothing is the mirror of a guard that measures
+  nothing. `yarn test:run` is the only check that plays a run end to end and
+  it printed the whole shape of one - rooms entered, doors taken, gems picked
+  up, lives it had to be given, and what took them - while asserting none of
+  it. What can be tied to the game's own numbers is asserted now, and read
+  out of the running game rather than copied into the check.
 - Anything the frame loop reads is established by the frame loop. An effect
   runs after commit and `useFrame` runs on the next animation frame, and the
   order is not fixed: the Warden's arrival time was set in an effect keyed on

@@ -2725,7 +2725,27 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
   if (chestRoom) {
     const at = chestRoom.chests[0].at;
-    const offered = await stepTo(at, 1.6);
+    /**
+     * Approach from whichever side is free.
+     *
+     * One fixed stand-off failed twice, cycles apart, with a null prompt: a
+     * treasure room is where the chests are thickest, and a spot 1.6 to the
+     * side of one chest can be inside another. The teleport lands the
+     * player in it, the solver shoves them out, and they finish beyond the
+     * 2.2 a chest offers from - so the check reported the chest broken when
+     * what was broken was where it chose to stand. A chest that offers
+     * nothing from any of four approaches is a real failure; one that only
+     * offers from three is a crowded room.
+     */
+    const standAtChest = async (spot) => {
+      let last = null;
+      for (const [away, mode] of [[1.6, "side"], [1.9, "in"], [1.6, "in"], [2.1, "side"]]) {
+        last = await stepTo(spot, away, mode);
+        if (/open the chest/i.test(String(last))) return last;
+      }
+      return last;
+    };
+    const offered = await standAtChest(at);
     ok("a chest offers what is inside it, by its look", /open the chest - /i.test(String(offered)), String(offered));
     await act();
     const opened = await page.evaluate(() => {
@@ -2746,7 +2766,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await page.evaluate(() =>
       window.__run.setState({ satchel: ["healing", "mire", "gloom", "dread"], looted: [] })
     );
-    const whenFull = await stepTo(at, 1.6);
+    const whenFull = await standAtChest(at);
     ok(
       "a chest with a full satchel says so rather than offering",
       /satchel is full/i.test(String(whenFull)),
