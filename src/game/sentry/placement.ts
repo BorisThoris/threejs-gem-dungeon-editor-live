@@ -36,7 +36,7 @@ export interface SentryPlacement {
 const POST_RADIUS = 0.22;
 const CLEAR_OF_CONTENT = POST_RADIUS + 1.1;
 
-export function sentryFor(room: Room, seed: number, floor: number): SentryPlacement | null {
+export function sentryFor(room: Room, seed: number, floor: number, alsoTaken: Vec3[] = []): SentryPlacement | null {
   const chance = floorRules(floor).sentryChance;
   if (chance <= 0 || !WATCHED.has(room.kind)) return null;
   const rng = createRng(`${seed}:${room.id}:${floor}:sentry`);
@@ -47,7 +47,10 @@ export function sentryFor(room: Room, seed: number, floor: number): SentryPlacem
   // it - because the arrangement is chosen after this and cannot be known
   // here without the two files importing each other.
   const gem = gemFor(room, seed);
-  const taken = [...claimedSpots(room), ...(gem ? [gem] : [])];
+  // `alsoTaken` is where the key lies, in the one room a floor puts one in.
+  // The room shell and the dressing both know which room that is; this
+  // does not, and does not need to.
+  const taken = [...claimedSpots(room), ...(gem ? [gem] : []), ...alsoTaken];
   const free = (spot: Vec3) =>
     !taken.some((t) => Math.hypot(spot[0] - t[0], spot[2] - t[2]) < CLEAR_OF_CONTENT);
   const far = quadrantSpots(room, "far");

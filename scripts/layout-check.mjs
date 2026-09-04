@@ -1054,7 +1054,11 @@ check("the shipped room templates reach the floors the game generates", authored
 // thing in a room that was placed in its own file and left out of it.
 {
   const POST = 0.22;
+  /** Roughly what a key lying on the floor occupies. */
+  const KEY = 0.35;
   let watched = 0;
+  let keysLaid = 0;
+  const keyInProp = [];
   const inProp = [];
   const onGem = [];
   const inLane = [];
@@ -1063,11 +1067,31 @@ check("the shipped room templates reach the floors the game generates", authored
     for (let seed = 1; seed <= 120; seed++) {
       const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       for (const room of d.rooms) {
-        const sentry = L.sentryFor(room, d.seed, floor);
+        const where = `${room.kind} on floor ${floor} of seed ${seed}`;
+        // The room in the order it is assembled: gem, key, watcher,
+        // furniture. Each is worked out from the room and the seed alone,
+        // which is what lets the shell and the dressing agree without
+        // talking to each other - and is exactly what was missing.
+        const key = room.id === d.keyRoomId ? L.keyFor(room, d.seed) : null;
+        const sentry = L.sentryFor(room, d.seed, floor, key ? [key] : []);
+        const ps = L.placementsFor(room, d.seed, {
+          asVault: room.id === d.vaultId,
+          sentry: sentry?.at ?? null,
+          key,
+        });
+        if (key) {
+          keysLaid++;
+          for (const p of ps) {
+            if (Math.hypot(p.x - key[0], p.z - key[2]) < KEY + L.PROP_SPECS[p.kind].radius) {
+              keyInProp.push(`${p.kind} on the key in a ${where}`);
+            }
+          }
+          if (sentry && Math.hypot(sentry.at[0] - key[0], sentry.at[2] - key[2]) < KEY + POST) {
+            keyInProp.push(`the post on the key in a ${where}`);
+          }
+        }
         if (!sentry) continue;
         watched++;
-        const where = `${room.kind} on floor ${floor} of seed ${seed}`;
-        const ps = L.placementsFor(room, d.seed, { asVault: room.id === d.vaultId, sentry: sentry.at });
         for (const p of ps) {
           const gap = Math.hypot(p.x - sentry.at[0], p.z - sentry.at[2]);
           if (gap < POST + L.PROP_SPECS[p.kind].radius) inProp.push(`${p.kind} in a ${where}`);
@@ -1082,6 +1106,17 @@ check("the shipped room templates reach the floors the game generates", authored
   check("no Sentry stands inside a prop", inProp.length === 0, inProp.slice(0, 3).join("; ") || `${watched} clear`);
   check("no Sentry stands on the gem", onGem.length === 0, onGem.slice(0, 3).join("; ") || `${watched} clear`);
   check("no Sentry stands in a doorway's path", inLane.length === 0, inLane.slice(0, 3).join("; ") || `${watched} clear`);
+  // The key is the same rule and the worse offender: it was put at the
+  // anchor furthest from the room's content and the gem, and the furniture
+  // then went down knowing nothing about it. 65% of keys lay inside a prop
+  // and 59% inside a solid one - the thing a player is hunting for, under
+  // a pillar.
+  check("the floors checked lay a key at all", keysLaid > 200, `${keysLaid} keys`);
+  check(
+    "no key lies inside anything",
+    keyInProp.length === 0,
+    keyInProp.slice(0, 3).join("; ") || `${keysLaid} clear`
+  );
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

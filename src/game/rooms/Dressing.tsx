@@ -19,7 +19,7 @@ import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
-import { gemFor, reservedAnchors } from "./kinds";
+import { gemFor, keyFor, reservedAnchors } from "./kinds";
 import { arrangementFor, type Spots } from "./layouts";
 import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
@@ -36,6 +36,8 @@ const CLEAR_OF_CONTENT = 1.2;
 const CLEAR_OF_SPIKES = HAZARD_RADIUS + 0.5;
 /** The Sentry's post is a fifth of a metre across and two metres tall. */
 const CLEAR_OF_SENTRY = 1.3;
+/** A key lying on the floor: small, but it has to be seen to be found. */
+const CLEAR_OF_KEY = 1.2;
 
 const near2 = (p: PropPlacement, a: Vec3, r: number) =>
   (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
@@ -80,6 +82,8 @@ export interface DressingOptions {
    * own content and the gem are kept clear of.
    */
   sentry?: Vec3 | null;
+  /** Where the floor's key lies, in the one room that holds it. */
+  key?: Vec3 | null;
 }
 
 export function placementsFor(room: Room, seed: number, opts: DressingOptions = {}): PropPlacement[] {
@@ -109,6 +113,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
     if (opts.sentry && near2(p, opts.sentry, CLEAR_OF_SENTRY)) return false;
+    if (opts.key && near2(p, opts.key, CLEAR_OF_KEY)) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
     if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;
     return true;
@@ -163,11 +168,20 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
 /** Seeded per room, so it is the same every time you walk back in. */
 export function Dressing({ room, seed }: DressingProps) {
   const asVault = useRun((s) => s.dungeon?.vaultId === room.id);
+  const hasKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
   const floor = useRun((s) => s.floor);
-  const sentry = useMemo(() => sentryFor(room, seed, floor)?.at ?? null, [room, seed, floor]);
+  // The order a room is assembled in: the gem, then the key, then the
+  // watcher, then the furniture. Each is worked out from the room and the
+  // seed alone, so the room shell and this arrive at the same answers
+  // without talking to each other.
+  const key = useMemo(() => (hasKey ? keyFor(room, seed) : null), [room, seed, hasKey]);
+  const sentry = useMemo(
+    () => sentryFor(room, seed, floor, key ? [key] : [])?.at ?? null,
+    [room, seed, floor, key]
+  );
   const placements = useMemo(
-    () => placementsFor(room, seed, { asVault, sentry }),
-    [room, seed, asVault, sentry]
+    () => placementsFor(room, seed, { asVault, sentry, key }),
+    [room, seed, asVault, sentry, key]
   );
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.

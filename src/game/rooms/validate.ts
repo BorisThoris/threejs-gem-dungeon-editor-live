@@ -1,8 +1,8 @@
-import { cornerSpots, inDoorLane, keyPosition, orientationOf, overhangsLane } from "../dungeon/layout";
+import { cornerSpots, inDoorLane, orientationOf, overhangsLane } from "../dungeon/layout";
 import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
-import { claimedSpots, gemFor } from "./kinds";
+import { claimedSpots, gemFor, keyFor } from "./kinds";
 import { orientProps } from "./templates";
 
 /**
@@ -119,7 +119,7 @@ export function templateProblems(
         say("is too close to where the gem can land and will be dropped");
         break;
       }
-      const key = keyPosition(room, seed, [...claimedSpots(room), ...(gem ? [gem] : [])]);
+      const key = keyFor(room, seed);
       if (Math.hypot(key[0] - p.x, key[2] - p.z) < clear) {
         say("is too close to where the floor's key can land and will be dropped");
         break;

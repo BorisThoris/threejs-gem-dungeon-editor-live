@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
-import { keyPosition, trapHazards } from "../dungeon/layout";
+import { trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -14,7 +14,7 @@ import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
-import { claimedSpots, gemFor, KIND_CONTENT, KIND_TINT } from "./kinds";
+import { gemFor, keyFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -125,7 +125,7 @@ export function Room({ room, seed }: RoomProps) {
           // Everything already in the room, the gem included: the key was
           // only avoiding the gem, so on an authored floor it could land on
           // a chest and take the chest with it.
-          position={keyPosition(room, seed, [...claimedSpots(room), ...(gem ? [gem] : [])])}
+          position={keyFor(room, seed)}
         />
       )}
       <RoomWarden room={room} />

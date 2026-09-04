@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 
-import { gemPosition, type Vec3 } from "../dungeon/layout";
+import { gemPosition, keyPosition, type Vec3 } from "../dungeon/layout";
 import { reservedAnchorsFor } from "./anchors";
 import { authoredProps } from "./templates";
 import type { Room, RoomKind } from "../dungeon/types";
@@ -87,4 +87,20 @@ export function claimedSpots(room: Room): Vec3[] {
 export function gemFor(room: Room, seed: number): Vec3 | null {
   if (room.kind === "start" || room.kind === "end" || room.kind === "arena") return null;
   return gemPosition(room, seed, claimedSpots(room));
+}
+
+/**
+ * Where this room's key lies, if it is the room holding one.
+ *
+ * The one owner of that, because it was worked out in two places - the room
+ * shell and the template checker - and known to nothing else. The key is
+ * put at the anchor furthest from what the room's kind has claimed and from
+ * the gem, and the furniture is placed afterwards knowing none of it: 65%
+ * of keys lay inside a prop and 59% inside a solid one, which is the thing
+ * a player is hunting for, under a pillar. A room is assembled gem, key,
+ * watcher, furniture, and each step is handed what the ones before took.
+ */
+export function keyFor(room: Room, seed: number): Vec3 {
+  const gem = gemFor(room, seed);
+  return keyPosition(room, seed, [...claimedSpots(room), ...(gem ? [gem] : [])]);
 }

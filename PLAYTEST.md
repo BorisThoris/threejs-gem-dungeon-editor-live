@@ -862,6 +862,35 @@ had looked at because the tests were green:
   checked, the braziers were checked, the spikes were checked, the key was
   checked. The watcher was the one thing placed by a file of its own.
 
+- **And two thirds of the keys were under the furniture.** The lens that
+  found the Sentry - *what else is placed somewhere and never checked
+  against what is already there?* - had one more answer, and a worse one.
+  A floor hides its key in one room, at the anchor furthest from what that
+  room's kind stands in it and from the gem. The furniture then goes down
+  knowing nothing about it. Measured over 600 floors: **65% of keys lay
+  inside a prop, 59% inside a solid one.** The thing a player is hunting
+  for, under a pillar.
+
+  It was worse than the Sentry for a reason worth writing down: the key
+  seeks the anchor *furthest* from what it knows about, and what it does
+  not know about is the furniture - which is placed on those same far
+  anchors and is thickest exactly where the key was told to go. Avoiding
+  half the room drove it into the other half.
+
+  Same fix, and the room now has an order: **gem, key, watcher, furniture**,
+  each worked out from the room and the seed alone so the room shell and
+  the dressing arrive at the same answers without talking to each other.
+  All three measures read 0%. Where the key lies also has one owner now
+  (`keyFor`) instead of being worked out identically in the room shell and
+  the template checker - which is the same one-owner slip underneath, and
+  the reason nothing had ever noticed.
+
+  What this pair of cycles really says is that a room is assembled by five
+  files that each knew about some of the others. The props knew about the
+  gem, the content and the spikes; the gem knew about the content; the key
+  knew about the content and the gem; the watcher knew about nothing. Every
+  gap in that grid was a bug, and every one of them had been shipping.
+
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a
 life - is verified by hand only. Putting a carried thing down places it
