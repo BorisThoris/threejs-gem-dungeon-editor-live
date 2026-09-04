@@ -1,7 +1,7 @@
 import { useRef } from "react";
 
 import { useRecords } from "../game/state/records";
-import { useRun } from "../game/state/run";
+import { runSeconds, useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
 import { body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
@@ -23,7 +23,9 @@ export function RunSummary() {
   const floor = useRun((s) => s.floor);
   // The run's seed, not this floor's: they part company on the way down.
   const seed = useRun((s) => s.runSeed);
-  const seconds = useRun((s) => Math.max(0, Math.round((s.endedAt - s.startedAt) / 1000)));
+  // `runSeconds`, not a second copy of the arithmetic: the number on this
+  // screen and the number folded into the records are the same question.
+  const seconds = useRun(runSeconds);
   const startRun = useRun((s) => s.startRun);
   const quitToMenu = useRun((s) => s.quitToMenu);
   const bests = useRecords((s) => s.lastBests);

@@ -1827,7 +1827,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §25 asks a human
+  moment it can afford to. That is precisely the behaviour §26 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -1896,7 +1896,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §25.
+for a person, not for this document, and it is on the list in §26.
 
 ## 23. The satchel spending what it cannot use
 
@@ -1964,14 +1964,53 @@ that flag, so none can pass on a reading that never happened; the fifth is
 the mired walk, which waits the same way but needs no flag because a potion
 that was never drunk shows up directly in the speed it measures.
 
-## 24. Steam Deck
+## 24. The one clock the run itself was not kept on
+
+`runClock` is wall time less whatever the player spent in a menu, and it is
+what every timed thing in the game measures against — a potion's duration,
+the damage cooldown, the arena's fourteen seconds, the watcher's patience,
+the noise a sprint leaves behind. Cycles 52 and 54 put two of those on it
+after finding them running behind the pause screen.
+
+The run's own timer was not on it. `endedAt - startedAt` on the raw wall
+clock, and written out **twice** — once in `rememberRun`, folding the run
+into the records, and once in `RunSummary`, drawing it on the screen. Both
+copies counted the pause menu.
+
+Measured, one run, one pause:
+
+```
+wall clock 7.2 s, of which 5.0 s was the pause menu
+recorded and shown: 0:07
+```
+
+So the honest time was about two seconds and the game said seven. This is
+not only cosmetic: `fastestEscape` is a saved personal best, kept in
+localStorage across sessions, and it is that number. A player who opens the
+menu mid-run is scored for the time they spent reading it, and there is no
+symmetry to it — the error only ever runs one way.
+
+`startedAt` and `endedAt` are read off the run clock now, in seconds, and
+`runSeconds` is the one place the subtraction happens. After the fix the
+same run reads **0:02**.
+
+The check is deliberately read through what a player can see — the minutes
+and seconds on the summary, against the wall clock the test script is
+holding — rather than off the two fields, because the fix changes the units
+those fields are kept in and a check on the fields would have gone red for
+that alone. The second half, that the records were given the same seconds
+the summary shows, **passes on the old code too**: the two copies of the sum
+agreed with each other, they were just both wrong. It is there so they
+cannot quietly part company later.
+
+## 25. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 25. What a human playtest should watch for
+## 26. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2062,7 +2101,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 26. Tuning knobs
+## 27. Tuning knobs
 
 All in `src/game/world.ts`:
 

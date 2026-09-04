@@ -154,9 +154,13 @@ export interface RunState {
   pausedFor: number;
   /** When the current pause began, in wall seconds, or 0 while running. */
   pausedAt: number;
-  /** performance.now() when the run began, for the summary. */
+  /**
+   * `runClock` when the run began, in seconds. On the run clock, not the
+   * wall clock, so the summary and the records agree with everything else
+   * the game times.
+   */
   startedAt: number;
-  /** Set when the run is won or lost. */
+  /** The same clock, read when the run is won or lost. */
   endedAt: number;
 
   startRun: (seed?: number) => void;
@@ -217,6 +221,22 @@ export const canControl = (s: RunState): boolean =>
 let transitionFallback: number | null = null;
 
 /**
+ * How long the run took, in whole seconds.
+ *
+ * The one place that answers it. This was written out twice - here and in
+ * RunSummary - from `endedAt - startedAt` on the wall clock, so both copies
+ * counted the time the player spent in the pause menu. Measured: a run of
+ * about seven seconds with a five-second pause in it was recorded and shown
+ * as 0:11, and `fastestEscape` is a saved personal best sitting on top of
+ * that number. Everything else the game times - a potion, the damage
+ * cooldown, the arena's fourteen seconds, the watcher's beam - is a
+ * deadline on `runClock`; this is the run itself, and it was the one thing
+ * not kept on it.
+ */
+export const runSeconds = (s: RunState): number =>
+  Math.max(0, Math.round((s.endedAt > 0 ? s.endedAt : runClock(s)) - s.startedAt));
+
+/**
  * Fold a finished run into the records. Called from the two places a run
  * can end and nowhere else, so a run is never counted twice.
  */
@@ -228,7 +248,7 @@ function rememberRun(s: RunState) {
     carried: s.gems,
     gemsFound: s.gemsTotal,
     floor: s.floor,
-    seconds: Math.max(0, Math.round((s.endedAt - s.startedAt) / 1000)),
+    seconds: runSeconds(s),
   });
 }
 
@@ -341,7 +361,9 @@ export const useRun = create<RunState>()(
         lastDamageAt: -Infinity,
         pausedFor: 0,
         pausedAt: 0,
-        startedAt: performance.now(),
+        // `pausedFor` and `pausedAt` are cleared in this same write, so the
+        // run clock immediately after it is exactly this.
+        startedAt: performance.now() / 1000,
         endedAt: 0,
       });
       const spawn = spawnAtStart();
@@ -409,7 +431,7 @@ export const useRun = create<RunState>()(
       }
       if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
         if (s.floor >= FLOORS) {
-          set({ transitioning: false, phase: "won", endedAt: performance.now() });
+          set({ transitioning: false, phase: "won", endedAt: runClock(s) });
           rememberRun(get());
           bus.emit("runWon");
           return;
@@ -526,7 +548,7 @@ export const useRun = create<RunState>()(
       set({ lives, lastDamageAt: now });
       bus.emit("damaged");
       if (lives === 0) {
-        set({ phase: "lost", endedAt: performance.now() });
+        set({ phase: "lost", endedAt: now });
         rememberRun(get());
         bus.emit("runLost");
       }

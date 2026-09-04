@@ -819,6 +819,70 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     return { same: one === shape(), rooms: run.getState().dungeon.rooms.length };
   });
   ok("the same seed builds the same dungeon", same.same, JSON.stringify(same));
+
+  /**
+   * The run's own clock, which was the one clock not kept on the run clock.
+   *
+   * Everything else the game times is a deadline on `runClock` - wall time
+   * less whatever was spent in a menu - and the run timer was raw
+   * `performance.now()`, written out twice: once into the records and once
+   * onto the summary. So the pause menu counted, and `fastestEscape` is a
+   * saved personal best sitting on that number.
+   *
+   * Read through what a player can see rather than off the two fields, so
+   * that it is the pause being asserted and not the units they are kept
+   * in: the minutes and seconds on the summary, against the wall clock this
+   * script is holding. A five-second pause in a run of about seven, which
+   * is the size of thing this machine can tell apart.
+   */
+  const timed = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    window.__records.getState().clear();
+    const t0 = performance.now();
+    run.getState().startRun(909);
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
+    await wait(800);
+    run.getState().pause();
+    await wait(5000);
+    run.getState().resume();
+    await wait(400);
+    // Out through the bottom floor's exit, so the run leaves a fastest
+    // escape behind - the records' own copy of this number, and the one a
+    // player keeps.
+    const d = run.getState().dungeon;
+    run.setState({ gems: 9, floor: 3, transitioning: true, currentRoomId: d.endId });
+    run.getState().roomReady(d.endId);
+    await wait(500);
+    const wall = (performance.now() - t0) / 1000;
+    const face = document.body.innerText.match(/\b(\d+):(\d\d)\b/);
+    return {
+      ready,
+      phase: run.getState().phase,
+      wall: Math.round(wall * 10) / 10,
+      paused: Math.round(run.getState().pausedFor * 10) / 10,
+      shown: face ? Number(face[1]) * 60 + Number(face[2]) : -1,
+      fastest: window.__records.getState().fastestEscape,
+    };
+  });
+  ok(
+    "the run's own timer does not count the time spent in the pause menu",
+    timed.ready && timed.phase === "won" && timed.paused >= 4.5 && timed.wall - timed.shown >= 4,
+    JSON.stringify(timed)
+  );
+  // This one passes on the old code as well: the two copies of the sum
+  // agreed with each other, they were just both counting the menu. It is
+  // here so they cannot quietly part company later.
+  ok(
+    "and the records were given the same seconds the summary shows",
+    timed.shown >= 0 && timed.fastest === timed.shown,
+    JSON.stringify({ shown: timed.shown, fastest: timed.fastest })
+  );
+
   await page.evaluate(() => window.__records.getState().clear());
 }
 

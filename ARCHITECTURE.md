@@ -257,6 +257,15 @@ Two stores that both claimed the player's stats. So:
   satchel empty. The three places that still name the terms themselves are
   the pause toggles and the pointer, and they are the ones that should
   still work while the screen is dark.
+- How long a run took is `runSeconds` in `src/game/state/run.ts`, and it is
+  on `runClock` like everything else the game times. It was neither: the
+  sum `endedAt - startedAt` was written out twice, in the records and on the
+  summary, and both copies read the wall clock, so the pause menu counted
+  towards the run. A run of about seven seconds with a five-second pause in
+  it was recorded and shown as 0:07, and `fastestEscape` is a saved
+  personal best sitting on that number. `startedAt` and `endedAt` are read
+  off the run clock now, in seconds, so the subtraction is already right
+  wherever it is done - and there is one place it is done.
 - A card the player cannot benefit from is refused before it is spent, and
   the refusal says why. Two scrolls need a Warden on the floor and only one
   of them checked: Echoes told you nothing was listening yet, while
