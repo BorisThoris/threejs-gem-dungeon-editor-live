@@ -1619,14 +1619,59 @@ Warden's speed are in direct conflict. The rule should win. But it means a
 chase measured on this machine is a measurement of the cap, and the promise
 stays proved on paper until somebody runs it at 30 fps or better.
 
-## 17. Steam Deck
+## 17. The one thing the game said in colour alone
+
+The challenge room's plate turns **green** when something else is holding it
+down and **red** when only the idol is. That was the entire readout of the
+one state in the game a player has to act on before acting: lift the idol off
+a red plate and the trap springs, off a green one and it pays a gem. The
+room's standing line described the trap in general and never the plate in
+front of you.
+
+Red against green is the commonest colour-blind failure there is. About one
+man in twelve was being asked to guess.
+
+The rest of the game came through the sweep clean, which is worth saying
+because it was not obvious:
+
+| | encoded as | also |
+| --- | --- | --- |
+| Lives | colour when low | **♥ counts** |
+| Gems, toll, what you are short | colour | **numbers and the word "short"** |
+| A wrong crystal in the memory trial | a red flare | **"2 mistakes left" in the hint** |
+| The Warden's rouse | eye colour | **the sound swelling, and the alarm** |
+| The plate | **green or red** | *nothing* |
+
+The room says it now: *"The plate is bare: lift the idol now and the trap
+springs"* against *"Something else is holding the plate down. The idol will
+come away safely."* The line changes the moment a candle lands, on the same
+frame that repaints the plate — so it costs no per-frame work, and the colour
+stays for everyone who can read it.
+
+### And an unexplained failure, dealt with honestly
+
+While running this, `a slow frame never lets the Warden cross its own reach
+in one step` failed once with a step of **4.48 m** against a cap of 0.2625.
+Its per-frame walk cannot produce that; the only things that set its position
+directly are mounting at a room's entrance and the clamp that keeps it inside
+the walls, and the difference between a room 24 across and one 14 across is
+about five metres. So the check now ignores a displacement that straddles a
+room change, because a Warden being *placed* is not a Warden walking.
+
+That is a correct narrowing regardless — but it is **not a diagnosis**. Two
+subsequent runs saw no room change at all and a maximum step of exactly the
+cap, so the original 4.48 was never reproduced and the fix is not proven
+against it. The detail line now reports how many room changes were ignored,
+so the next occurrence will say whether one was involved.
+
+## 18. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 18. What a human playtest should watch for
+## 19. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1709,7 +1754,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 19. Tuning knobs
+## 20. Tuning knobs
 
 All in `src/game/world.ts`:
 

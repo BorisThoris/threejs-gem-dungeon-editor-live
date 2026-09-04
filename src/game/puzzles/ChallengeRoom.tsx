@@ -34,19 +34,34 @@ export function ChallengeRoom({ room }: RoomKindProps) {
   );
   const plateMat = useRef<MeshStandardMaterial>(null);
   const plateWeighted = useRef<boolean | null>(null);
+  /**
+   * Whether the plate is held down, in words as well as in colour.
+   *
+   * The plate went green or red and that was the whole readout: the room's
+   * standing line said what the trap was in general and never what the
+   * plate was doing at that moment. Red against green is the commonest
+   * colour-blind failure there is, and this was the one state in the game
+   * a player has to act on that was encoded in colour alone - so about one
+   * man in twelve was being asked to guess. It is state rather than a ref
+   * because the line has to re-render; it is set from the same frame that
+   * repaints the plate, which only runs when the answer changes.
+   */
+  const [safeNow, setSafeNow] = useState(false);
   const [plate, ...candleSpots] = challengeAnchors(room);
 
   useEffect(() => {
     bus.emit(
       "hint",
       outcome === "pending"
-        ? "The idol is trapped. Weigh the plate down with something else before you lift it."
+        ? safeNow
+          ? "Something else is holding the plate down. The idol will come away safely."
+          : "The plate is bare: lift the idol now and the trap springs. Weigh it down with something else first."
         : outcome === "solved"
           ? "The idol is yours."
           : "The trap has sprung. The idol can still be taken, but it no longer pays."
     );
     return () => bus.emit("hint", null);
-  }, [outcome]);
+  }, [outcome, safeNow]);
 
   /** Something other than the idol is holding the plate down. */
   const weighted = () => carry.countResting(plate[0], plate[2], PLATE_RADIUS, IDOL) > 0;
@@ -60,6 +75,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
     if (safe === plateWeighted.current) return;
     plateWeighted.current = safe;
     plateMat.current.emissive.copy(safe ? PLATE_SAFE : PLATE_ARMED);
+    setSafeNow(safe);
   });
 
   const onIdolLifted = () => {

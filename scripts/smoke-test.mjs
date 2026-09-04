@@ -1159,11 +1159,27 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await new Promise((r) => setTimeout(r, 600));
     if (!window.__warden) return null;
 
-    // Sample every frame, stalling the main thread hard in the middle of
-    // the window. The sample either side of the stall is the lunge.
-    let last = { x: window.__warden.x, z: window.__warden.z, t: performance.now() };
+    /**
+     * Sample every frame, stalling the main thread hard in the middle of
+     * the window. The sample either side of the stall is the lunge.
+     *
+     * The room either side of it too. What is being asked is whether one
+     * frame of *walking* can carry it across its reach - and a Warden whose
+     * room changes is not walking, it is being placed: the body mounts at
+     * the new room's entrance, and the clamp that keeps it inside the walls
+     * snaps it in by up to the difference between a room twenty-four across
+     * and one fourteen across. That reads as a five metre step and it fired
+     * here once, at 4.48. A displacement across a room change is not a step
+     * and is not counted.
+     */
+    const where = () => {
+      const r = run.getState();
+      return `${r.currentRoomId}:${r.wardenRoomId}`;
+    };
+    let last = { x: window.__warden.x, z: window.__warden.z, t: performance.now(), room: where() };
     let biggest = 0;
     let longestFrame = 0;
+    let moved = 0;
     let stalled = false;
     const t0 = last.t;
     await new Promise((done) => {
@@ -1171,10 +1187,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const w = window.__warden;
         const now = performance.now();
         const dt = (now - last.t) / 1000;
+        const room = where();
         if (dt > 0.001) {
-          biggest = Math.max(biggest, Math.hypot(w.x - last.x, w.z - last.z));
-          longestFrame = Math.max(longestFrame, dt);
-          last = { x: w.x, z: w.z, t: now };
+          if (room === last.room) {
+            biggest = Math.max(biggest, Math.hypot(w.x - last.x, w.z - last.z));
+            longestFrame = Math.max(longestFrame, dt);
+          } else {
+            moved++;
+          }
+          last = { x: w.x, z: w.z, t: now, room };
         }
         if (!stalled && now - t0 > 400) {
           stalled = true;
@@ -1194,6 +1215,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       cap: window.__world?.WARDEN_MAX_STEP ?? null,
       touch: window.__world?.WARDEN_TOUCH_RADIUS ?? null,
       gap: +window.__warden.distance.toFixed(2),
+      relocations: moved,
     };
   });
   /**
@@ -1285,7 +1307,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     ok(
       "a slow frame never lets the Warden cross its own reach in one step",
       hitch.biggest <= hitch.touch,
-      `biggest step ${hitch.biggest}m, strikes from ${hitch.touch}m, cap ${hitch.cap}m`
+      `biggest step ${hitch.biggest}m, strikes from ${hitch.touch}m, cap ${hitch.cap}m` +
+        (hitch.relocations ? `, ignoring ${hitch.relocations} room change(s)` : "")
     );
     ok(
       "and the step stays inside the cap world.ts sets",
@@ -2342,6 +2365,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a second floor has a challenge room to win", won !== null, JSON.stringify(won && won.id));
   if (won) {
     const [plateAt, ...candleSpots] = won.anchors;
+    const bare = await page.evaluate(() => {
+      const m = document.body.innerText.match(/(The plate is bare[^\n]*|Something else is holding[^\n]*|The idol is trapped[^\n]*)/);
+      return m ? m[1] : null;
+    });
+    ok(
+      "an unweighted plate says so in words",
+      /The plate is bare/.test(String(bare)),
+      String(bare)
+    );
     const lifted = await stepTo(candleSpots[0], 1.3);
     ok("a candle offers to be picked up", /pick up the candle/i.test(String(lifted)), String(lifted));
     await act();
@@ -2364,6 +2396,27 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       "and it lands on the plate, which nothing had ever shown",
       onPlate.resting > 0 && onPlate.carried === null,
       JSON.stringify(onPlate)
+    );
+
+    /**
+     * And the room says so in words, not only in the plate's colour.
+     *
+     * Green for safe and red for armed was the entire readout - the
+     * standing line described the trap in general and never the state of
+     * the plate in front of you. Red against green is the commonest
+     * colour-blind failure there is, and this was the one state in the game
+     * a player has to act on that had no other cue. Read before and after,
+     * because either line alone would pass on the old code: the point is
+     * that it changed when the candle landed.
+     */
+    const said = await page.evaluate(() => {
+      const m = document.body.innerText.match(/(The plate is bare[^\n]*|Something else is holding[^\n]*|The idol is trapped[^\n]*)/);
+      return m ? m[1] : null;
+    });
+    ok(
+      "and the room says the plate is held, rather than only turning it green",
+      /Something else is holding the plate down/.test(String(said)),
+      `${JSON.stringify(said)} (before the candle it read ${JSON.stringify(bare)})`
     );
 
     await page.evaluate(() => window.__run.setState({ lives: 3, lastDamageAt: -Infinity }));

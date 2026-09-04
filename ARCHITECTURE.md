@@ -509,6 +509,15 @@ second model for it to be written in.
   three metre line, which is what walked it onto the spikes. A circle it can
   hold is `measured speed / ARENA_SPIN`, measured rather than read from
   `WALK_SPEED`, because damping at six frames a second costs a fifth of it.
+- Nothing the player has to act on is said in colour alone. The HUD's
+  colours are decoration over counts and words - lives are hearts, gems are
+  numbers, being short of the toll says "short" - and the memory trial's red
+  flare is redundant with a hint that counts the mistakes left. The challenge
+  room's plate was the exception and the only one: green for held and red for
+  bare, with the room's standing line describing the trap in general and
+  never the plate in front of you. Red against green is the commonest
+  colour-blind failure there is. The room says which it is now, on the same
+  frame that repaints it.
 - A guard is not a measurement. Every check on the Warden bounded it from
   above - a step shorter than its reach, a cap that does not bind at twenty
   frames a second, a slow frame that cannot carry it across that reach, and
