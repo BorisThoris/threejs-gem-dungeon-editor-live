@@ -1242,14 +1242,60 @@ slot, the rest close up behind it, and 4 on a satchel of three does
 nothing. It is the same hole cycle 24 found in the other direction, where
 every check typed and the pad could not start the game.
 
-## 8. Steam Deck
+## 8. Walking the arena's circle
+
+The arena holds itself to two lines:
+
+> There is always a line you can walk. There is no line you can stand on.
+
+The second has been checked in the running game since cycle 31 — standing
+where the gem was takes five hits in fourteen seconds. The first was
+arithmetic on four constants in node, and nobody had ever walked the gap.
+
+Walked now, and the walking taught something the arithmetic did not. Which
+circle a player can hold is set by how fast they move: `orbitSpeed(r)` is
+0.75r, so
+
+| Walking at | holds a circle of |
+| --- | --- |
+| 3.25 m/s (mired) | 4.3 |
+| 5 m/s (plain) | 6.7 |
+| 6.25 m/s (boots) | 8.3 |
+| 9.38 m/s (boots + swiftness) | 12.5 |
+
+`ARENA_INNER_ORBIT` is 1.2 — the innermost circle the geometry allows — and
+holding it takes 0.9 m/s. **No keyboard can walk that slowly.** W is on or
+off, so the inner stroll the room's comment describes is available only to
+somebody with a stick they can half-deflect; a player on a keyboard holds
+the line their speed fits. Measured: a body moving at 4.6 m/s aimed at a
+circle of 1.2 laps the arms and takes seven hits, and the same body on a
+circle of 3 walks the whole gauntlet untouched. The arms sweep a circle of
+3 twice over, from the rings at 1.8 and 3.8 — it is a gap in the turn, not
+a hole in the arms.
+
+So `test:layout` gained the mirror of the check it already had. It asked
+whether the tightest circle can be held by the slowest walk; it now also
+asks whether the circle the *fastest* walk has to hold still fits inside
+the room. Walking 9.38 holds a circle of 12.5, and a player can get 16.5
+from the middle of the arena the generator builds — four units of room to
+spare.
+
+One thing about steering, which cost two attempts: aiming at the gap's
+middle makes the player cut the chord. They leave the circle, drift a metre
+off it and fetch up at a radius where the angular gap is narrow — nineteen
+degrees either side at 1.2, against forty-five at 3. The check aims a
+quarter of a radian along the circle from where the player already is
+instead, which is how somebody with a mouse holds a line: by nudging, not
+by pointing at the destination.
+
+## 9. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 9. What a human playtest should watch for
+## 10. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1332,7 +1378,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 10. Tuning knobs
+## 11. Tuning knobs
 
 All in `src/game/world.ts`:
 

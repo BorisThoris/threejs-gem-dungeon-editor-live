@@ -245,6 +245,15 @@ Two stores that both claimed the player's stats. So:
   `yarn test:smoke` holds both halves - a fix that only ever surfaced usable
   things would swallow every blocked reason in the game and nothing would
   notice.
+- Which ground the arena's arms reach is `src/game/arena/sweep.ts`, and it
+  answers both halves of the room: `arenaShelter` is null for every size
+  the game builds, so there is no line to stand on, and `orbitSpeed(r)`
+  says what holding a line of radius r costs. Both ends of that are
+  checked, and the second end was the one missing: the innermost line can
+  be held at the slowest walk in the game, *and* the circle the fastest
+  walk has to hold still fits inside the room. A player on a keyboard
+  cannot walk slower than they walk, so the line they hold is the one their
+  speed fits and the inner stroll is only available to a stick.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -454,6 +463,14 @@ second model for it to be written in.
   the arithmetic of a purchase and never the counter. That is the shape
   that hid a tome no controller could answer and a title screen no
   controller could start: the rule held, the way in missing.
+- `yarn test:smoke` walks the arena's circle for the full fourteen-second
+  gauntlet, which nothing had ever done either. The room's two lines are
+  "there is always a line you can walk" and "there is no line you can stand
+  on"; standing where the gem was had been checked and takes five hits, and
+  the other half was arithmetic in node. Which circle a player can hold is
+  set by how fast they move, and the check steers along the line rather
+  than at the gap - aiming at the gap's middle makes the player cut the
+  chord, drift a metre off the circle and end up where the gap is narrow.
 - `yarn test:smoke` also walks a beam, which nothing had ever done, and
   checks the game against `beam.ts` rather than against `WALK_SPEED`. The
   player is a rigid body driven once a rendered frame and this runs on a

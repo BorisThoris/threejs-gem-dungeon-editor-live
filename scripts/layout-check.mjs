@@ -791,6 +791,30 @@ check("the shipped room templates reach the floors the game generates", authored
     `holding the wall needs ${wall.toFixed(2)}, a sprint is ${L.DASH_SPEED}` +
       ` (with boots and swiftness, ${fastestDash.toFixed(2)})`
   );
+
+  /**
+   * And the mirror of the innermost line, which is the one that binds.
+   *
+   * The check above asks whether the tightest circle can be held by the
+   * slowest walk. A player on a keyboard has the opposite problem: they
+   * cannot walk slower than they walk. W is on or off, so the circle they
+   * hold is the one their speed fits - `speed / ARENA_SPIN` - and that
+   * circle has to be inside the room. The inner line is a stroll only for
+   * somebody with a stick they can half-deflect.
+   *
+   * Walked in the running game, this is what it looks like: a body moving
+   * at 4.6 m/s held a circle of 3 for the whole gauntlet untouched, and the
+   * same body aimed at a circle of 1.2 - the innermost the geometry allows
+   * - lapped the arms and took seven hits.
+   */
+  const fastestWalk = Math.max(...L.PACE_EFFECTS.map((e) => L.paceFor(L.RELIC_IDS, e).walk));
+  const needs = fastestWalk / L.ARENA_SPIN;
+  check(
+    "the circle the fastest walk in the game has to hold still fits in the room",
+    needs <= L.arenaMaxStand(half),
+    `walking ${fastestWalk.toFixed(2)} holds a circle of ${needs.toFixed(1)}, ` +
+      `and a player can get ${L.arenaMaxStand(half).toFixed(1)} from the middle`
+  );
 }
 
 // --- Nobody on the other end ------------------------------------------------

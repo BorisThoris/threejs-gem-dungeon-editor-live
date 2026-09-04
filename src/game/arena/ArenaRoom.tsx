@@ -154,6 +154,23 @@ function Arms({ patches, live }: { patches: Patch[]; live: boolean }) {
     const control = canControl(useRun.getState());
     const cam = state.camera.position;
 
+    if (import.meta.env.DEV) {
+      /**
+       * Where the arms are, for the check that walks the gap.
+       *
+       * The room's promise has two halves and only one of them could be
+       * driven: standing where the gem was is checked and takes five hits.
+       * Walking the circle between two arms needs to know where the arms
+       * are, and nothing outside this component did. Written into one
+       * object, at frame rate.
+       */
+      const w = window as unknown as { __arena?: Record<string, number | boolean> };
+      const probe = (w.__arena ??= { spin: 0, live: false, arms: ARENA_ARMS });
+      probe.spin = spin;
+      probe.live = live;
+      probe.arms = ARENA_ARMS;
+    }
+
     patches.forEach((patch, i) => {
       const g = groups.current[i];
       if (!g) return;

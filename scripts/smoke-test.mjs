@@ -2192,6 +2192,139 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const fourth = await page.evaluate(() => window.__run.getState().satchel.length);
     ok("pressing 4 on a satchel of three does nothing", fourth === 3, String(fourth));
   }
+
+/**
+ * The arena's circle, walked.
+ *
+ * `arena/sweep.ts` holds the room to two lines: there is always a line you
+ * can walk, and there is no line you can stand on. The second is checked
+ * above by standing where the gem was, which takes five hits. The first was
+ * arithmetic in node and nothing else - nobody had ever walked the gap.
+ *
+ * The line is chosen, not assumed. Which circle a player can hold is set by
+ * how fast they move: `orbitSpeed(r)` is 0.75r, so a body walking at four
+ * and a half metres a second matches a circle of six. But the further out
+ * the line, the more of it a frame carries you along, and the tighter the
+ * line the narrower the angular gap between two arms - at 1.2, the
+ * innermost the geometry allows, the safe window is nineteen degrees either
+ * side of the gap's middle, and this machine's stride is thirteen of them.
+ * Three is where those two meet: the arms sweep it twice over, from the
+ * rings at 1.8 and 3.8, and the window there is forty-five degrees.
+ *
+ * Steered by aiming at the gap's middle and holding W, which is what a
+ * player does with a mouse. Aiming ahead of it instead - the first version
+ * - laps the arms and walks through them: nine hits.
+ */
+{
+  const arena = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let seed = 1; seed < 60; seed++) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const room = run.getState().dungeon.rooms.find((r) => r.kind === "arena");
+      if (!room) continue;
+      run.setState({ transitioning: true, currentRoomId: room.id, lives: 99 });
+      run.getState().roomReady(room.id);
+      await wait(1500);
+      return { id: room.id, size: room.size };
+    }
+    return null;
+  });
+  ok("a floor has an arena to take the gem out of", arena !== null, JSON.stringify(arena));
+
+  if (arena) {
+    const ORBIT = 3;
+    // The gem is on the plinth in the middle - placed by the room, so
+    // `__gemFor` says nothing about it. Stand at the plinth and press E.
+    await page.evaluate(() => {
+      window.__bus.emit("teleport", { position: [0, 1.5, 1.3], yaw: Math.PI });
+      window.__bus.emit("lookSet", { yaw: Math.PI, pitch: -0.2 });
+    });
+    await page.waitForTimeout(700);
+    await act();
+    const sprung = await page.evaluate(() => ({
+      taken: window.__run.getState().gemRooms.length,
+      arena: window.__arena ? { ...window.__arena } : null,
+    }));
+    ok("taking the gem off the plinth starts the arms", sprung.taken === 1 && sprung.arena !== null,
+       JSON.stringify(sprung));
+
+    if (sprung.arena) {
+      // The ground being walked has to be ground the arms reach, or this
+      // is a hole rather than a gauntlet.
+      const swept = await page.evaluate(([r, size]) => {
+        const reach = window.__layout.HAZARD_RADIUS;
+        return window.__sweep.arenaRings(size / 2).filter((ring) => Math.abs(ring - r) <= reach).length;
+      }, [ORBIT, arena.size]);
+
+      await page.evaluate(([orbit]) => {
+        const a = window.__arena;
+        const gap = a.spin + Math.PI / 3;
+        window.__bus.emit("teleport", { position: [Math.cos(gap) * orbit, 1.5, Math.sin(gap) * orbit], yaw: 0 });
+      }, [ORBIT]);
+      await page.waitForTimeout(400);
+
+      await page.keyboard.down("KeyW");
+      const walk = await page.evaluate(async ([orbit, seconds]) => {
+        let hits = 0;
+        const off = window.__bus.on("damaged", () => hits++);
+        const p = window.__playerDebug;
+        const t0 = performance.now();
+        let travelled = 0, lx = p.x, lz = p.z, worst = 0;
+        await new Promise((done) => {
+          const tick = () => {
+            const a = window.__arena;
+            // The middle of the gap between two of the three arms, which
+            // sit at spin plus a third of a turn each.
+            const gap = a.spin + Math.PI / 3;
+            /**
+             * Aim along the circle, not across it.
+             *
+             * Aiming straight at the gap's middle makes the player cut the
+             * chord: they leave the circle, drift a metre off it and end up
+             * at a radius where the gap is narrow. So the aim is a point on
+             * the circle a little ahead of where the player already is,
+             * pulled towards the gap but never more than a quarter of a
+             * radian away - which is how somebody with a mouse holds a
+             * line, by nudging rather than by pointing at the destination.
+             */
+            const here = Math.atan2(p.z, p.x);
+            let ahead = (gap - here) % (Math.PI * 2);
+            if (ahead > Math.PI) ahead -= Math.PI * 2;
+            if (ahead < -Math.PI) ahead += Math.PI * 2;
+            const aim = here + Math.max(-0.25, Math.min(0.25, ahead)) + 0.06;
+            const dx = Math.cos(aim) * orbit - p.x;
+            const dz = Math.sin(aim) * orbit - p.z;
+            // At yaw t the camera faces (-sin t, -cos t).
+            window.__bus.emit("lookSet", { yaw: Math.atan2(-dx, -dz), pitch: 0 });
+            travelled += Math.hypot(p.x - lx, p.z - lz);
+            worst = Math.max(worst, Math.abs(Math.hypot(p.x, p.z) - orbit));
+            lx = p.x;
+            lz = p.z;
+            if (performance.now() - t0 > seconds * 1000) return done();
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        off();
+        const dt = (performance.now() - t0) / 1000;
+        return { hits, seconds: +dt.toFixed(1), speed: +(travelled / dt).toFixed(2),
+                 drift: +worst.toFixed(2), needs: +(0.75 * orbit).toFixed(2) };
+      }, [ORBIT, 16]);
+      await page.keyboard.up("KeyW");
+
+      ok("the circle walked is ground the arms sweep, not a hole in them",
+         swept > 0, `${swept} of the rings reach a circle of ${ORBIT}`);
+      ok(
+        "walking the gap between two arms survives the whole gauntlet",
+        walk.hits === 0,
+        `${walk.seconds}s at ${walk.speed} m/s on a circle of ${ORBIT} (which needs ${walk.needs}), ` +
+          `drifting at most ${walk.drift} off it, ${walk.hits} hits`
+      );
+    }
+  }
+}
 }
 
 // The editor, which nothing had ever opened. It is the content pipeline:

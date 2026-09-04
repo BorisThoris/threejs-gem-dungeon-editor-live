@@ -92,6 +92,13 @@ export default function App() {
     // speed the constants assume - on a software rasteriser those are not
     // the same number.
     void import("./game/sentry/beam").then((m) => (w.__beam = m));
+    // And the arena's, so the check that walks its circle can ask whether
+    // the ground it walked is ground the arms actually sweep.
+    void import("./game/arena/sweep").then((m) => (w.__sweep = m));
+    // The room geometry's own constants, for the same reason as `__world`:
+    // a check that keeps its own copy of a hazard's reach is a second owner
+    // of it and goes on passing after the number moves.
+    void import("./game/dungeon/layout").then((m) => (w.__layout = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
