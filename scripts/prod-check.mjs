@@ -249,6 +249,72 @@ ok("Escape opens the pause menu", /resume|quit|paused/i.test(paused), paused.sli
 
 ok("no errors on the console or off it", errors.length === 0, errors.slice(0, 2).join(" | "));
 
+/**
+ * And it starts for somebody who has played an older build.
+ *
+ * A demo that ships updates meets its own saved data written by a version
+ * that no longer exists: renamed fields, retired ones, values of the wrong
+ * type, and whatever a half-finished write left behind. Four keys ship -
+ * settings, records, surfaces and the editor's drafts - and the boot is the
+ * one moment where a bad byte costs the whole session, because there is no
+ * game yet to fall back into.
+ *
+ * Records and settings read every field through a type check with a
+ * default. The surface store did not: it wrote whatever it parsed into the
+ * override map, and got away with it only because a bad `img.src` never
+ * fires `onload`. That is safety by accident, and this is the check that
+ * would notice the day it stopped being true.
+ */
+const STALE = [
+  ["garbage in every key", {
+    "gem-dungeon.settings": "}{not json",
+    "gem-dungeon.records": "}{not json",
+    "gem-dungeon.surfaces": "}{not json",
+    "gem-dungeon.drafts": "}{not json",
+  }],
+  ["json of the wrong shape", {
+    "gem-dungeon.settings": "42",
+    "gem-dungeon.records": "[1,2,3]",
+    "gem-dungeon.surfaces": "null",
+    "gem-dungeon.drafts": '"a string"',
+  }],
+  ["an older build's fields, and overrides that are not images", {
+    "gem-dungeon.settings": JSON.stringify({ cameraBob: "yes", sound: 1, musicVolume: 0.5 }),
+    "gem-dungeon.records": JSON.stringify({ runs: "12", bestHaul: null, retiredField: true }),
+    "gem-dungeon.surfaces": JSON.stringify({
+      stone: 123, wood: { src: "x" }, brick: "", moss: "not-a-url", iron: null, dirt: "javascript:0",
+    }),
+    "gem-dungeon.drafts": JSON.stringify([{ id: 1 }]),
+  }],
+];
+for (const [label, store] of STALE) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const p2 = await ctx.newPage();
+  const bad = [];
+  p2.on("pageerror", (e) => bad.push(String(e).slice(0, 120)));
+  await p2.addInitScript((s) => {
+    for (const [k, v] of Object.entries(s)) localStorage.setItem(k, v);
+  }, store);
+  await p2.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 20000 }).catch(() => {});
+  await p2.waitForTimeout(3500);
+  const menu = await p2.evaluate(() => /start/i.test(document.body.innerText));
+  const start = await p2.$('button:has-text("Start")');
+  if (start) await start.click();
+  await p2.waitForTimeout(9000);
+  // No probes in the shipped bundle, so the evidence is what is drawn.
+  const lit = await p2.evaluate(() => document.body.innerText);
+  const shot = await p2.screenshot({ clip: { x: 440, y: 250, width: 400, height: 300 } });
+  const shades = new Set();
+  for (let i = 0; i < shot.length; i += 997) shades.add(shot[i] >> 4);
+  ok(
+    `it starts with ${label}`,
+    menu && /lives|gems/i.test(lit) && shades.size > 3 && bad.length === 0,
+    `menu ${menu}, hud ${/lives|gems/i.test(lit)}, ${shades.size} shades drawn` +
+      (bad.length ? `, errors ${JSON.stringify(bad.slice(0, 1))}` : "")
+  );
+  await ctx.close();
+}
+
 await browser.close();
 stop();
 console.log(failures === 0 ? "\nAll production checks passed." : `\n${failures} check(s) failed.`);

@@ -509,6 +509,23 @@ second model for it to be written in.
   three metre line, which is what walked it onto the spikes. A circle it can
   hold is `measured speed / ARENA_SPIN`, measured rather than read from
   `WALK_SPEED`, because damping at six frames a second costs a fifth of it.
+- Everything read back from `localStorage` states the shape it accepts, and
+  falls back rather than throwing. Four keys ship, and the boot is the one
+  moment where a bad byte costs the whole session: there is no game yet to
+  fall back into, so a demo that ships updates has to survive its own older
+  saves. Records and settings check every field against a default; the
+  surface override store took whatever it parsed and got away with it only
+  because a bad `img.src` never fires `onload`, which is safety by accident.
+  `yarn test:prod` starts the built bundle with garbage, with JSON of the
+  wrong shape, and with an older build's fields, and asks whether it reaches
+  the menu and draws a room.
+- Anything the frame loop reads is established by the frame loop. An effect
+  runs after commit and `useFrame` runs on the next animation frame, and the
+  order is not fixed: the Warden's arrival time was set in an effect keyed on
+  the room, and on a run where the frame won the ref was still null - so the
+  grace that stops it striking on the frame it walks in did nothing, and it
+  struck 0.11s after arriving. Where a default has to stand for "not known
+  yet", it is the safe reading and not the convenient one.
 - A rule that guards how a thing moves does not guard where it is put. The
   Warden's step cap gives the player frames between seeing it close and being
   touched, and cycle 44 wrote that down as "it can never appear on top of

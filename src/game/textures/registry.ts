@@ -188,8 +188,18 @@ function loadPersisted() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
-    for (const [id, url] of Object.entries(JSON.parse(raw) as Record<string, string>)) {
-      overrides.set(id, url);
+    /**
+     * Only strings, and only ones that look like an image.
+     *
+     * This took whatever it parsed. Nothing broke, because a bad `img.src`
+     * simply never fires `onload` and the surface keeps the procedural
+     * texture it was already drawn with - safe by accident rather than by
+     * design, and the accident stops holding the day an override is handed
+     * to anything but an `Image`. A demo that ships updates meets data
+     * written by an older build, so the shape it accepts is worth stating.
+     */
+    for (const [id, url] of Object.entries(JSON.parse(raw) as Record<string, unknown>)) {
+      if (typeof url === "string" && url.startsWith("data:image/")) overrides.set(id, url);
     }
   } catch {
     // Storage may be unavailable or corrupt; the defaults still work.

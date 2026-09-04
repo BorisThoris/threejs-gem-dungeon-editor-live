@@ -59,11 +59,19 @@ export function Warden({ room }: WardenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room]);
 
-  /** When it walked in, so an arrival cannot be a strike in the same frame. */
-  const arrivedAt = useRef<number | null>(null);
-  useEffect(() => {
-    arrivedAt.current = runClock(useRun.getState());
-  }, [room]);
+  /**
+   * When it walked in, so an arrival cannot be a strike in the same frame.
+   *
+   * Set from the frame loop rather than an effect. An effect runs after
+   * commit and `useFrame` runs on the next animation frame, and those two
+   * can happen in either order: on a run where the frame won, the ref was
+   * still null, null meant "no arrival to be inside" - and the Warden
+   * struck 0.11s after walking in, with the grace in place and doing
+   * nothing. Its own check caught it two cycles later. Keyed on the room
+   * it arrived in, so there is no ordering left to get wrong.
+   */
+  const arrivedIn = useRef<string | null>(null);
+  const arrivedAt = useRef(0);
 
   useEffect(() => {
     bus.emit("wardenProximity", { level: 0 });
@@ -77,6 +85,10 @@ export function Warden({ room }: WardenProps) {
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
+    if (arrivedIn.current !== room.id) {
+      arrivedIn.current = room.id;
+      arrivedAt.current = runClock(useRun.getState());
+    }
     const t = state.clock.elapsedTime;
     const behaviour = behaviourFor(alarm);
 
@@ -112,8 +124,7 @@ export function Warden({ room }: WardenProps) {
       // How long since it walked in, so a check can tell "still inside its
       // arrival grace" from "not striking at all" - which is the difference
       // between a rule working and a rule stuck on.
-      probe.sinceArrival =
-        arrivedAt.current === null ? Infinity : runClock(useRun.getState()) - arrivedAt.current;
+      probe.sinceArrival = runClock(useRun.getState()) - arrivedAt.current;
     }
 
     const level = bandFor(distance);
@@ -144,7 +155,7 @@ export function Warden({ room }: WardenProps) {
        * because the cap guards walking and this is placement. The grace is
        * on the run's clock, so it cannot be spent in the pause menu.
        */
-      const since = arrivedAt.current === null ? Infinity : runClock(useRun.getState()) - arrivedAt.current;
+      const since = runClock(useRun.getState()) - arrivedAt.current;
       if (since >= WARDEN_ARRIVAL_GRACE_S) useRun.getState().wardenStrike();
       return;
     }

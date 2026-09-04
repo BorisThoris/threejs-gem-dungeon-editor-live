@@ -1701,6 +1701,19 @@ The check asserts *when* the strike lands, not whether — a player who stands
 still is meant to be caught, and a check that demanded no strike at all would
 pass on a Warden that had stopped striking.
 
+### The fix had a race, and its own check found it
+
+Two cycles later the check failed: **struck 0.11 s after it arrived**, with the
+grace in place and doing nothing. The arrival time was recorded in an effect,
+and an effect runs after commit while `useFrame` runs on the next animation
+frame — those two can happen in either order. On a run where the frame won,
+the ref was still `null`, and `null` had been written to mean *no arrival to
+be inside*, which is the least safe reading of "we do not know yet".
+
+It is keyed on the room and set from the frame loop now, so there is no
+ordering left to get wrong. Three consecutive runs since: struck at 0.70,
+1.05 and 0.75 s.
+
 ## 19. The mirror that would not be built
 
 Cycle 59 guarded the Warden's arrival. The player is placed too — every door
@@ -1728,14 +1741,47 @@ exactly like cycle 59's fix working and would be a Warden that has stopped
 striking — the one-sided guard problem from cycle 57, in the fix for cycle
 59. It reads 9.28 s against a grace of 0.5 s, and the check says so.
 
-## 20. Steam Deck
+## 20. Starting with an older build's saved data
+
+A demo that ships updates meets its own saved data written by a version that
+no longer exists — renamed fields, retired ones, values of the wrong type,
+whatever a half-finished write left behind. The boot is the one moment where
+a bad byte costs the whole session, because there is no game yet to fall back
+into. Four keys ship: `settings`, `records`, `surfaces`, and the editor's
+`drafts`.
+
+Nothing had ever started the game with any of them holding something
+unexpected. Started with each of these against the **built** bundle, it
+reaches the menu, starts a run and draws the room:
+
+| | |
+| --- | --- |
+| Garbage in every key | starts |
+| JSON of the wrong shape — a number, an array, `null`, a bare string | starts |
+| An older build's fields, and surface overrides that are not images | starts |
+
+So this is a negative, and a welcome one. Records and settings earn it: every
+field goes through a type check with a default. The surface store did not —
+it wrote whatever it parsed into the override map, and got away with it only
+because a bad `img.src` never fires `onload` and the surface keeps the
+procedural texture it was already drawn with. **Safety by accident**, which
+stops holding the day an override is handed to anything but an `Image`. It
+states the shape it accepts now (a `data:image/` string), which is what the
+editor actually writes.
+
+The check is in `test:prod` because that is the suite that touches what
+ships, and it is sensitive: with the records loader's fallback removed on
+purpose, the first case reports *menu false, HUD false, two shades drawn* and
+a `SyntaxError` — the game does not boot at all.
+
+## 21. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 21. What a human playtest should watch for
+## 22. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1818,7 +1864,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 22. Tuning knobs
+## 23. Tuning knobs
 
 All in `src/game/world.ts`:
 
