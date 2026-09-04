@@ -555,10 +555,8 @@ had looked at because the tests were green:
   accommodate it. The harness renders at 800x600 instead of 1280x800
   instead, which is its own business: nothing in it reads a layout.
 
-  Still keyboard-only: the seed box on the Records page. A pad player can
-  start a run, and replay the last one from the summary, but cannot type an
-  arbitrary seed. That is a convenience rather than a room they cannot
-  finish, and on a Deck Steam's own on-screen keyboard covers it.
+  Left keyboard-only at the time: the seed box on the Records page, which
+  the cycle after this one closed.
 
 - **Nobody had ever finished the game.** Every check in this project drives
   a piece of it - a room, a puzzle, a purchase, a sound, a gamepad - and the
@@ -692,6 +690,40 @@ had looked at because the tests were green:
   the same crossing to 0.99 seconds and makes the outer half of the beam's
   reach genuinely inescapable: the check asserts that too, because a cruel
   potion that costs nothing in the room built around moving is not cruel.
+
+- **The last screen a controller could not use.** Three cycles of gamepad
+  work went past the seed box on the Records page, each one writing down
+  that it was still keyboard-only: a d-pad could put the focus in the box
+  and then there was nothing it could do. It is a convenience rather than a
+  room you cannot finish, which is exactly why it kept being left - and
+  three notes saying "still keyboard-only" is a thing nobody is going to
+  fix by accident.
+
+  What actually blocked it was the pad's navigation. Menus in this game
+  were a column of buttons, so moving meant "one place along, either axis";
+  the tome's keypad made that a grid, so it took a column count. The
+  Records page is neither - a box, a keypad, and buttons underneath - and
+  no column count describes it. So the rows are read off the page instead:
+  anything whose box overlaps another's vertically is on the same row,
+  left and right move within a row, up and down go to the nearest thing by
+  horizontal centre on the row above or below. A column of buttons is then
+  just a page where every row holds one thing and behaves exactly as it
+  did. The `columns` parameter is gone.
+
+  Laying it out then mattered as much as the code. `Run it` sat beside the
+  box, which is where a mouse looks for it and nowhere a d-pad pressing
+  down will ever arrive. The page is a sequence now - box, keys, run it,
+  the rest - so holding one direction walks all of it. `yarn test:pad`
+  types 407 on the pad, a digit from a different row of the keypad each
+  time, and asserts the run that starts is dungeon 407.
+
+  And one more check that passed on broken code, which is becoming this
+  project's most reliable kind of bug. "Every digit of a seed can be
+  reached" walked the keypad by index, and with no keypad on the page
+  `indexOf` returns -1 and so does "where is the focus": it walked zero
+  steps, decided it had arrived, and passed on a page with no keys on it at
+  all. It asserts the keys exist first now. Run against the page as it was,
+  three checks fail rather than one.
 
 One thing is deliberately not automated. The challenge room's other half -
 weight the plate with a candle, then take the idol for a gem instead of a

@@ -5,6 +5,7 @@ import { useRun } from "../game/state/run";
 import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
+import { Keypad } from "./Keypad";
 import { usePadMenu } from "./padMenu";
 
 const isElectron = () =>
@@ -133,32 +134,53 @@ function Records({
           </Fragment>
         ))}
       </dl>
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <input
-          value={seed}
-          onChange={(e) => setSeed(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
-          placeholder={records.bestSeed !== null ? `best was ${records.bestSeed}` : "seed"}
-          data-testid="records-seed"
-          style={{
-            flex: 1,
-            padding: "12px 14px",
-            fontFamily: FONT,
-            fontSize: text.body,
-            color: colors.ink,
-            background: "rgba(255,255,255,0.05)",
-            border: `1px solid ${colors.line}`,
-            borderRadius: 4,
-          }}
+      {/*
+        Box, keys, then the button, in that order down the page.
+        `Run it` sat beside the box, which is where a mouse looks for it and
+        nowhere a d-pad pressing down will ever arrive: the page reads as a
+        sequence now, so holding one direction walks all of it.
+      */}
+      <input
+        value={seed}
+        onChange={(e) => setSeed(e.target.value.replace(/[^0-9]/g, "").slice(0, 10))}
+        placeholder={records.bestSeed !== null ? `best was ${records.bestSeed}` : "seed"}
+        data-testid="records-seed"
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "12px 14px",
+          marginBottom: 10,
+          textAlign: "center",
+          fontFamily: FONT,
+          fontSize: text.body,
+          color: colors.ink,
+          background: "rgba(255,255,255,0.05)",
+          border: `1px solid ${colors.line}`,
+          borderRadius: 4,
+        }}
+      />
+      {/*
+        The same keys the tome uses, because a seed is a number and a Deck
+        has no keyboard. This was the last screen in the game a controller
+        could not use: the box could be focused with a d-pad and then there
+        was no way to put anything in it. It does not read the pad itself -
+        the whole panel is one menu, and the keys are part of it.
+      */}
+      <div style={{ marginBottom: 12 }}>
+        <Keypad
+          ownsPad={false}
+          onDigit={(d) => setSeed((seed + d).slice(0, 10))}
+          onBackspace={() => setSeed(seed.slice(0, -1))}
         />
-        <button
-          style={{ ...button, width: "auto", margin: 0, opacity: usable ? 1 : 0.4 }}
-          disabled={!usable}
-          data-testid="records-run-seed"
-          onClick={() => startRun(typed)}
-        >
-          Run it
-        </button>
       </div>
+      <button
+        style={{ ...button, opacity: usable ? 1 : 0.4 }}
+        disabled={!usable}
+        data-testid="records-run-seed"
+        onClick={() => startRun(typed)}
+      >
+        Run it
+      </button>
       <button style={secondaryButton} data-testid="records-clear" onClick={records.clear}>
         Forget everything
       </button>

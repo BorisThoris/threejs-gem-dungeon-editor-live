@@ -161,7 +161,10 @@ Two stores that both claimed the player's stats. So:
   function, so "Hunting" in the corner and the thing in the doorway can
   never disagree.
 - Menus a pad can use are `src/ui/padMenu.ts`, and numbers a pad can enter
-  are `src/ui/Keypad.tsx`. One owner each, because the reason the tome
+  are `src/ui/Keypad.tsx`. Where a d-pad press takes the focus is read off
+  the page - things whose boxes overlap vertically are a row - rather than
+  from a declared column count, because the pages that need it are neither
+  lists nor grids. One owner each, because the reason the tome
   could not be answered with a controller is that it had its own idea of
   what a key press was. Which buttons the satchel's slots sit on is
   `src/game/input/gamepad.ts`, as a list as long as `SATCHEL_SLOTS` - it

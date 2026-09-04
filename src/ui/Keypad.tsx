@@ -37,6 +37,14 @@ export interface KeypadProps {
   action?: KeypadAction;
   /** What B does. */
   onBack?: () => void;
+  /**
+   * False when the keypad sits inside a menu that already reads the pad -
+   * the Records page is a text box, a button, these keys and two more
+   * buttons, and it is one menu. Only the most recently mounted menu owns
+   * the pad, so a keypad that registered its own would take it and never
+   * give it back, and the buttons around it would go dead.
+   */
+  ownsPad?: boolean;
 }
 
 const COLUMNS = 3;
@@ -54,9 +62,9 @@ const key: CSSProperties = {
   cursor: "pointer",
 };
 
-export function Keypad({ onDigit, onBackspace, action, onBack }: KeypadProps) {
+export function Keypad({ onDigit, onBackspace, action, onBack, ownsPad = true }: KeypadProps) {
   const grid = useRef<HTMLDivElement>(null);
-  usePadMenu({ container: grid, onBack, columns: COLUMNS });
+  usePadMenu({ container: grid, onBack, active: ownsPad });
 
   // Prevented so a click never leaves the focus on a key: with one focused,
   // Space and Enter would press it again as well as doing what they mean.

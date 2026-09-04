@@ -387,6 +387,88 @@ await tap(page, BUTTON.a);
 await page.waitForTimeout(2500);
 ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await buttons()).join(", "));
 
+// --- A seed typed on the pad -----------------------------------------------
+//
+// The last screen in the game a controller could not use. The Records page
+// has a box for replaying a dungeon by its number, and a d-pad could focus
+// it and then do nothing: three cycles of gamepad work went past it, each
+// time writing down that it was still keyboard-only. It has the tome's keys
+// under it now, and the whole panel is one menu - a text box, a button
+// beside it, twelve keys and two more buttons - which is what forced the
+// pad's navigation to read rows off the page instead of counting columns.
+{
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(600);
+  ok("back at the menu to reach the records from", await someButton(/records/i), (await buttons()).join(", "));
+  await focusOn(page, /records/i);
+  await tap(page, BUTTON.a);
+  await page.waitForTimeout(600);
+  ok("the records page opens on a pad", await someButton(/run it/i), (await buttons()).join(", "));
+
+  // 407: a digit from each row of the keypad, so a walk that only works
+  // along one row cannot pass this.
+  const SEED = "407";
+  const where = () =>
+    page.evaluate(() => {
+      const keys = [...document.querySelectorAll('[data-testid="keypad"] button')];
+      return { labels: keys.map((k) => (k.textContent ?? "").trim()), at: keys.indexOf(document.activeElement) };
+    });
+  const onPage = await where();
+  ok("the records page draws keys a pad can reach", onPage.labels.length >= 11, `${onPage.labels.length} keys`);
+  let typed = onPage.labels.length > 0;
+  for (const digit of SEED) {
+    const { labels, at } = await where();
+    const target = labels.indexOf(digit);
+    // Without a keypad there is nothing to find, and `indexOf` and "where
+    // the focus is" are both -1: the first version of this walked zero
+    // steps, decided it had arrived, and passed on a page with no keys on
+    // it at all.
+    if (target < 0) {
+      typed = false;
+      break;
+    }
+    // Walked by feel rather than by arithmetic: this page is not a grid,
+    // it is a grid with a text box on top of it and buttons underneath, and
+    // the point of the check is that a player can get around it at all.
+    let landed = false;
+    for (let i = 0; i < 20 && !landed; i++) {
+      const now = await where();
+      if (now.at === target) landed = true;
+      else await tap(page, now.at < 0 || now.at > target ? BUTTON.up : BUTTON.down, 3);
+      const after = await where();
+      if (after.at === target) landed = true;
+      else if (after.at >= 0) {
+        const row = Math.floor(after.at / 3);
+        const want = Math.floor(target / 3);
+        if (row === want) await tap(page, after.at < target ? BUTTON.right : BUTTON.left, 3);
+      }
+    }
+    void at;
+    if (!landed) typed = false;
+    else await tap(page, BUTTON.a, 3);
+  }
+  ok("every digit of a seed can be reached on the records page", typed);
+  const inBox = await page.evaluate(() => document.querySelector('[data-testid="records-seed"]')?.value ?? "");
+  ok("the digits pressed land in the seed box", inBox === SEED, `"${inBox}"`);
+
+  if (inBox === SEED) {
+    await focusOn(page, /run it/i);
+    await tap(page, BUTTON.a);
+    await page.waitForTimeout(2000);
+    const ran = await page.evaluate(() => ({
+      seed: window.__run.getState().dungeon?.seed ?? null,
+      phase: window.__run.getState().phase,
+    }));
+    ok(
+      "a seed typed on the pad alone starts that dungeon",
+      ran.phase === "playing" && ran.seed === Number(SEED),
+      JSON.stringify(ran)
+    );
+    await page.evaluate(() => window.__run.getState().quitToMenu());
+    await page.waitForTimeout(600);
+  }
+}
+
 // --- The satchel, all of it ------------------------------------------------
 //
 // The satchel holds four and the pad reached two of them. A Deck player who

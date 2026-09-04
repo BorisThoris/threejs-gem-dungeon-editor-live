@@ -42,17 +42,63 @@ export interface PadMenuOptions {
   onBack?: () => void;
   /** False while the menu is not on screen. */
   active?: boolean;
-  /**
-   * How wide the menu is, if it is a grid rather than a list. Left and
-   * right then move one place and up and down move a row, which is what
-   * anyone pointing a d-pad at a keypad expects. Left at 1 - a column of
-   * buttons - both axes move one place, which is what every menu in the
-   * game was before there was a keypad in it.
-   */
-  columns?: number;
 }
 
-export function usePadMenu({ container, onBack, active = true, columns = 1 }: PadMenuOptions): void {
+/**
+ * Where a d-pad press takes the focus, from where the buttons actually are.
+ *
+ * The menus in this game were a column of buttons and the answer was "one
+ * place along, either axis". Then the tome grew a keypad, and a keypad is a
+ * grid: this took a `columns` count and moved by one or by a row. That was
+ * enough for a menu that is only a grid, and no use at all for the Records
+ * page, which is a text box, a button beside it, a keypad, and two more
+ * buttons underneath - the last screen in the game a controller cannot use,
+ * and the reason it stayed that way.
+ *
+ * So the rows are read off the page rather than declared. Anything whose
+ * box overlaps another's vertically is on the same row as it; left and
+ * right move within a row, up and down move to the nearest thing by
+ * horizontal centre on the row above or below. Both wrap. A column of
+ * buttons is then just a page where every row holds one thing, and behaves
+ * exactly as it did - including left and right moving one place, because
+ * with nothing else on the row that is the only sensible thing left to do.
+ */
+function move(list: HTMLElement[], here: number, dx: number, dy: number): number {
+  // Nothing focused: the first press lands on an end rather than the second
+  // item, which is the state a menu opens in.
+  if (here < 0) return dx + dy > 0 ? 0 : list.length - 1;
+
+  const boxes = list.map((el) => el.getBoundingClientRect());
+  const mid = (i: number) => boxes[i].left + boxes[i].width / 2;
+  const sameRow = (a: number, b: number) =>
+    Math.min(boxes[a].bottom, boxes[b].bottom) - Math.max(boxes[a].top, boxes[b].top) > 0;
+
+  if (dx) {
+    const row = list.map((_, i) => i).filter((i) => sameRow(i, here));
+    // Alone on its row - an ordinary menu button - so left and right do
+    // what they have always done here and step through the whole list.
+    if (row.length < 2) return (((here + dx) % list.length) + list.length) % list.length;
+    row.sort((a, b) => mid(a) - mid(b));
+    const at = row.indexOf(here);
+    return row[(at + dx + row.length) % row.length];
+  }
+
+  // Rows in order down the page, then the one after this in the direction
+  // asked for, wrapping round the ends.
+  const rows: number[][] = [];
+  for (const i of list.map((_, i) => i).sort((a, b) => boxes[a].top - boxes[b].top)) {
+    const last = rows[rows.length - 1];
+    if (last && sameRow(last[0], i)) last.push(i);
+    else rows.push([i]);
+  }
+  const from = rows.findIndex((r) => r.includes(here));
+  const to = rows[(from + dy + rows.length) % rows.length];
+  // The nearest thing on that row to where the finger already was, so
+  // moving down a keypad's column stays in that column.
+  return to.reduce((best, i) => (Math.abs(mid(i) - mid(here)) < Math.abs(mid(best) - mid(here)) ? i : best));
+}
+
+export function usePadMenu({ container, onBack, active = true }: PadMenuOptions): void {
   useEffect(() => {
     if (!active) return;
     const id = Symbol("padMenu");
@@ -95,18 +141,8 @@ export function usePadMenu({ container, onBack, active = true, columns = 1 }: Pa
       const list = items();
       if (list.length === 0) return;
 
-      // A row is worth `columns` places, a column one. Both wrap through
-      // the whole list, so a grid whose last row is short is still every
-      // button in it and nothing can be focused that is not there.
-      const step = pad.menuX + pad.menuY * columns;
-      if (step !== 0) {
-        const here = at(list);
-        const next =
-          here < 0
-            ? step > 0
-              ? 0
-              : list.length - 1
-            : (((here + step) % list.length) + list.length) % list.length;
+      if (pad.menuX || pad.menuY) {
+        const next = move(list, at(list), pad.menuX, pad.menuY);
         list[next].focus();
         ring(list[next]);
       }
@@ -128,5 +164,5 @@ export function usePadMenu({ container, onBack, active = true, columns = 1 }: Pa
       const i = stack.indexOf(id);
       if (i >= 0) stack.splice(i, 1);
     };
-  }, [container, onBack, active, columns]);
+  }, [container, onBack, active]);
 }
