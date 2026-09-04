@@ -104,11 +104,16 @@ export function Warden({ room }: WardenProps) {
        * frame rate.
        */
       const w = window as unknown as { __warden?: Record<string, number> };
-      const probe = (w.__warden ??= { x: 0, z: 0, distance: 0, speed: 0 });
+      const probe = (w.__warden ??= { x: 0, z: 0, distance: 0, speed: 0, sinceArrival: 0 });
       probe.x = g.position.x;
       probe.z = g.position.z;
       probe.distance = distance;
       probe.speed = behaviour.speed;
+      // How long since it walked in, so a check can tell "still inside its
+      // arrival grace" from "not striking at all" - which is the difference
+      // between a rule working and a rule stuck on.
+      probe.sinceArrival =
+        arrivedAt.current === null ? Infinity : runClock(useRun.getState()) - arrivedAt.current;
     }
 
     const level = bandFor(distance);

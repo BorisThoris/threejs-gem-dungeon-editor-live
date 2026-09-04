@@ -1701,14 +1701,41 @@ The check asserts *when* the strike lands, not whether — a player who stands
 still is meant to be caught, and a check that demanded no strike at all would
 pass on a Warden that had stopped striking.
 
-## 19. Steam Deck
+## 19. The mirror that would not be built
+
+Cycle 59 guarded the Warden's arrival. The player is placed too — every door
+puts them a fixed depth inside the next room — so the obvious next question
+was whether a player can walk in *on top of the Warden* and lose a life on
+the first controllable frame. The arrival grace would not cover it: it is
+keyed on the Warden's room change, not the player's.
+
+**Three attempts, and the scenario would not stand up.**
+
+| attempt | what happened |
+| --- | --- |
+| Park the player on the spawn spot, let the Warden close, step out and back | no strike — and the probe was reading *stale* values from an unmounted Warden, so it proved nothing |
+| Shorten the absence so the room-stepping driver cannot interfere | `wardenRoomId` had changed anyway: it left during the 300 ms |
+| Reason it out instead | when the player re-enters, the Warden re-mounts **at its own doorway**, not where it was standing — so it is not lying in wait on the player's spawn, and if it comes in through the same door, cycle 59's grace already covers it |
+
+So the mirror is **not demonstrated, and not claimed to be safe either**. What
+defeats it is a structural accident — the Warden being re-placed on the
+player's return — rather than a rule anyone wrote down, which is exactly the
+kind of thing that stops being true after an unrelated change.
+
+What did come out of it is worth having. The probe now carries how long the
+Warden has been in the room, because a grace that never expired would look
+exactly like cycle 59's fix working and would be a Warden that has stopped
+striking — the one-sided guard problem from cycle 57, in the fix for cycle
+59. It reads 9.28 s against a grace of 0.5 s, and the check says so.
+
+## 20. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 20. What a human playtest should watch for
+## 21. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1791,7 +1818,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 21. Tuning knobs
+## 22. Tuning knobs
 
 All in `src/game/world.ts`:
 

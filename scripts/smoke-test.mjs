@@ -1282,6 +1282,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       fps: +(1 / frame).toFixed(1),
       cap,
       gap: +w.distance.toFixed(1),
+      sinceArrival: +w.sinceArrival.toFixed(2),
+      grace: window.__world.WARDEN_ARRIVAL_GRACE_S,
     };
   });
   /**
@@ -1354,6 +1356,22 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
   ok("the Warden's own pace can be watched", pace !== null, JSON.stringify(pace));
   if (pace) {
+    /**
+     * The arrival grace expires.
+     *
+     * Cycle 59 stopped the Warden striking on the frame it walks in. A
+     * grace that never ran out would look exactly like that fix working
+     * and would be a Warden that has stopped striking altogether - which
+     * is the shape of every one-sided guard this project has had. The
+     * probe carries how long it has been in the room, so the two are
+     * distinguishable: after three seconds of walking at the player it has
+     * to read past the grace.
+     */
+    ok(
+      "and its arrival grace runs out rather than holding it off for good",
+      pace.sinceArrival > pace.grace,
+      `${pace.sinceArrival}s since it walked in, against a grace of ${pace.grace}s`
+    );
     ok(
       "the Warden moves as fast as it is allowed to, which nothing had checked",
       pace.actual >= pace.allowed * 0.7 && pace.actual <= pace.allowed * 1.15,
