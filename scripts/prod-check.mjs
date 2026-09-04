@@ -18,7 +18,7 @@
  *
  * It builds and serves dist itself, so it needs no terminal of its own.
  */
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { gzipSync } from "node:zlib";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -157,10 +157,41 @@ ok("the built site is served and loads", up);
 await page.waitForTimeout(6000);
 
 ok("nothing 404s", missing.length === 0, missing.slice(0, 3).join(" | "));
-ok(
-  "the probes the other checks use are not in the shipped game",
-  await page.evaluate(() => [window.__run, window.__bus, window.__perf].every((h) => h === undefined))
-);
+/**
+ * Every probe the source declares, rather than three of them by name.
+ *
+ * This listed `__run`, `__bus` and `__perf`, which were all the probes
+ * there were when it was written. There are a dozen now - the world's
+ * constants and the layout's, the beam's arithmetic and the sweep's, where
+ * the Warden is, how long the Sentry has held you, where the arena's arms
+ * are, where the camera points, the trigger table, the player's body, the
+ * gem and the key. All of them are stripped, which is why nothing noticed.
+ * A check that names what it is looking for goes on passing while the
+ * thing it was written to catch walks past it.
+ *
+ * So the list is read out of `src/` instead of kept here. Add a probe and
+ * this covers it without being told. Asking the page for everything on
+ * `window` beginning with two underscores is the other way to write it,
+ * and it catches `__THREE__`, which is three.js's own revision marker and
+ * not ours to remove.
+ */
+const declared = [
+  ...new Set(
+    // Any `.__name`, not `window.__name` or `w.__name`. The components
+    // write theirs through a cast - `(window as unknown as {...}).__sentry`
+    // - so a pattern anchored on the object misses exactly the idiom most
+    // of them use. Proved by leaking one on purpose: written that way it
+    // walked straight past the first version of this.
+    execSync(`grep -rhoE "\\.__[A-Za-z][A-Za-z0-9]*" ${new URL("../src/", import.meta.url).pathname} || true`)
+      .toString()
+      .split("\n")
+      .map((line) => line.trim().slice(1))
+      .filter((name) => /^__[A-Za-z][A-Za-z0-9]*$/.test(name))
+  ),
+].sort();
+ok("the source declares probes for the checks to read", declared.length >= 10, `${declared.length}: ${declared.join(" ")}`);
+const leaked = await page.evaluate((names) => names.filter((n) => window[n] !== undefined), declared);
+ok("and not one of them survives into the shipped game", leaked.length === 0, leaked.join(", "));
 ok(
   "the editor route gives the game, not the tools",
   await page

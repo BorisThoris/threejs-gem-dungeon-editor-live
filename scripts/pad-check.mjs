@@ -314,6 +314,66 @@ await page.waitForTimeout(500);
 ok("the right stick looks", (await painted()) !== beforeLook);
 
 /**
+ * And a frame the machine dropped does not swing the view.
+ *
+ * The stick's look was `GAMEPAD_LOOK_SPEED * delta` with nothing bounding
+ * the delta - 2.4 radians a second, so a nine-hundred-millisecond hitch
+ * with the stick held over turned the camera a hundred and twenty-four
+ * degrees in a single frame. Cycle 44 went looking for raw deltas because
+ * the Warden crossed four metres on one, and found it in the thing that
+ * chases the player; it did not find the thing the player steers with.
+ *
+ * The mouse is deliberately not held to this. It reports pixels moved, so
+ * a long frame carries more of them because the hand moved that far. A
+ * stick reports a position, and how long it stood there is the game's to
+ * decide.
+ */
+{
+  const yawOf = () => page.evaluate(() => window.__run && window.__look ? window.__look.yaw : null);
+  await page.evaluate(() => window.__pad.axis(2, 1));
+  await frames(page, 3);
+  const swing = await page.evaluate(async () => {
+    const look = window.__look;
+    const from = look.yaw;
+    let worst = 0;
+    let longest = 0;
+    let last = look.yaw;
+    let lastT = performance.now();
+    const t0 = lastT;
+    let stalled = false;
+    await new Promise((done) => {
+      const tick = () => {
+        const now = performance.now();
+        worst = Math.max(worst, Math.abs(look.yaw - last));
+        longest = Math.max(longest, (now - lastT) / 1000);
+        last = look.yaw;
+        lastT = now;
+        if (!stalled) {
+          stalled = true;
+          const until = performance.now() + 900;
+          // eslint-disable-next-line no-empty
+          while (performance.now() < until) {}
+        }
+        if (now - t0 > 1400) return done();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    return { worst: +worst.toFixed(3), longest: +longest.toFixed(2), turned: +Math.abs(look.yaw - from).toFixed(2) };
+  });
+  await page.evaluate(() => window.__pad.axis(2, 0));
+  await frames(page, 3);
+  const cap = await page.evaluate(() => window.__world.GAMEPAD_LOOK_SPEED * window.__world.MAX_FRAME_S);
+  ok("the check produced a frame long enough to matter", swing.longest >= 0.5, `longest frame ${swing.longest}s`);
+  ok(
+    "a dropped frame never swings the view further than a frame is worth",
+    swing.worst <= cap + 0.02,
+    `worst single frame turned ${(swing.worst * 57.3).toFixed(0)} degrees, cap is ${(cap * 57.3).toFixed(0)}`
+  );
+  void yawOf;
+}
+
+/**
  * The dropped-press check.
  *
  * The pad used to be polled by whoever read it first, memoised on a 4ms

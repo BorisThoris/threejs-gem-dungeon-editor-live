@@ -5,7 +5,7 @@ import { PerspectiveCamera } from "three";
 import { spawnAtStart } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, useRun, type RunState } from "../state/run";
-import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MOUSE_SENSITIVITY } from "../world";
+import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MAX_FRAME_S, MOUSE_SENSITIVITY } from "../world";
 import { readGamepad } from "./gamepad";
 import { look } from "./look";
 
@@ -127,13 +127,33 @@ export function useMouseLook() {
     };
   }, [camera, gl]);
 
-  // Stick look, applied per frame so it is frame-rate independent.
+  /**
+   * Stick look, applied per frame so it is frame-rate independent - and no
+   * frame counts for more than a frame.
+   *
+   * This was the one place left in the game that turned a raw delta into
+   * movement. Cycle 44 went looking for those because the Warden crossed
+   * four metres in a single slow frame, and found it in the one thing that
+   * chases the player; what it did not find was the one thing the player
+   * steers with. At 2.4 radians a second, a nine-hundred-millisecond hitch
+   * with the stick held over swings the view a hundred and twenty-four
+   * degrees in one frame - on a Steam Deck, which is the only input this
+   * path serves, and at exactly the moment a player is least able to
+   * afford losing track of the room.
+   *
+   * A mouse is unaffected: it moves the camera by the pixels it reported,
+   * and a long frame simply carries more of them, which is what the player
+   * did with their hand. A stick reports a position, not a movement, so
+   * the time it stood there is the game's to decide, and the game should
+   * not decide that a frame it never rendered counts in full.
+   */
   useFrame((_, delta) => {
     if (!canControl(useRun.getState())) return;
     const pad = readGamepad();
     if (!pad.connected || (pad.lookX === 0 && pad.lookY === 0)) return;
-    yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * delta;
-    pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * delta;
+    const step = Math.min(delta, MAX_FRAME_S);
+    yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * step;
+    pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * step;
     pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
     camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
     look.yaw = yaw.current;

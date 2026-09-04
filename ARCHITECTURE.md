@@ -194,7 +194,8 @@ Two stores that both claimed the player's stats. So:
   locked. `yarn test:layout` checks it room by room.
 - How long one frame is allowed to count for is `MAX_FRAME_S` in world.ts,
   a twentieth of a second, and nothing that *moves* on a delta may believe
-  one longer than that. A frame delta is a claim that whatever was true at
+  one longer than that. Two things do: the Warden, and the stick the player
+  looks with. A frame delta is a claim that whatever was true at
   the end of the frame was true for all of it; over sixteen milliseconds
   that is close enough and over nine hundred it is a fiction. The Warden
   added `speed * delta` to its own position and a nine-hundred-millisecond
@@ -220,11 +221,21 @@ Two stores that both claimed the player's stats. So:
   direction for 1.53s, so it cannot leave a player and return inside a
   hitch: lit at both ends of a dropped frame means lit throughout it, and
   charging for that is right.
+- The stick the player looks with is the other one, and it took until cycle
+  50 to find. `GAMEPAD_LOOK_SPEED * delta` is 2.4 radians a second, so a
+  nine-hundred-millisecond hitch with the stick held over swung the view a
+  hundred and twenty-four degrees in one frame - on the only input a Steam
+  Deck has. The mouse is deliberately not held to this: it reports pixels
+  moved, and a long frame carries more of them because the hand moved that
+  far. A stick reports a position, and how long it stood there is the
+  game's to decide.
 - What is left reads `elapsedTime` and is placed rather than advanced - the
   arena's arms, the beam's own angle - so a hitch skips them past the
   player rather than through them, which is the generous direction. At ten
   frames a second the furthest arm still steps only 1.19m against the 1.5m
-  that would take it over a player, so it never skips one in play.
+  that would take it over a player, so it never skips one in play. The
+  footsteps take distance walked rather than time, and fire at most one
+  step a frame, so a hitch drops a footstep rather than firing a burst.
 - A trigger that can refuse says so before the press, not after. Three in
   the game carried no `enabled` guard - the gem, the key and the chest -
   and only the chest can refuse: `takeItem` declines a full satchel, so it
@@ -396,6 +407,15 @@ second model for it to be written in.
   Before it, the only evidence a run could be completed was a `setState`
   that put the player in the last room of the last floor with the gems
   already in hand.
+- A check that names what it is looking for goes on passing while the thing
+  it was written to catch walks past it. `yarn test:prod` asserted that
+  three probe handles were absent from the shipped build, by name, of the
+  twenty-eight the source now declares - all stripped, which is why nothing
+  noticed. It reads the list out of `src/` now. The pattern matches any
+  `.__name`, not `window.__name`, because most components write theirs
+  through a cast and an object-anchored pattern misses exactly that idiom:
+  proved by leaking a probe on purpose, which walked past the first version
+  and was caught by the second.
 - `yarn test:prod` is the only check that touches what ships. Every other
   one drives the dev server, where the DEV blocks still exist; the
   production bundle has no probe handles and no editor, so that one is

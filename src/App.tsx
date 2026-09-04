@@ -76,6 +76,7 @@ export default function App() {
 
   useEffect(() => installKeyboard(), []);
 
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const w = window as unknown as Record<string, unknown>;
@@ -99,6 +100,10 @@ export default function App() {
     // a check that keeps its own copy of a hazard's reach is a second owner
     // of it and goes on passing after the number moves.
     void import("./game/dungeon/layout").then((m) => (w.__layout = m));
+    // Where the camera is pointing, written once a frame by the look
+    // controls. Deliberately not store state - it changes every frame a
+    // mouse moves - so a check has no other way to read it.
+    void import("./game/input/look").then((m) => (w.__look = m.look));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a

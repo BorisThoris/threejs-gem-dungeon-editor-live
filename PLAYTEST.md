@@ -1288,14 +1288,47 @@ quarter of a radian along the circle from where the player already is
 instead, which is how somebody with a mouse holds a line: by nudging, not
 by pointing at the destination.
 
-## 9. Steam Deck
+## 9. Two loose ends, six cycles on
+
+**The stick swung the view a third of a turn on a dropped frame.** Cycle 44
+went hunting for raw frame deltas because the Warden crossed four metres on
+one, and found it in the thing that chases the player. It did not find the
+thing the player *steers* with. `GAMEPAD_LOOK_SPEED * delta` is 2.4 radians
+a second, so a 900 ms hitch with the stick held over turned the camera
+**124 degrees in a single frame** — measured — on the only input a Steam
+Deck has, at exactly the moment a player can least afford to lose track of
+the room. Bounded by `MAX_FRAME_S`, which also gives that constant a live
+consumer again: cycle 46 took the Sentry off it and left a rule with
+nothing obeying it. The same stall now turns 7 degrees.
+
+The mouse is deliberately not held to this. It reports pixels moved, and a
+long frame carries more of them because the hand moved that far. A stick
+reports a *position*, and how long it stood there is the game's to decide.
+
+**A check that names what it is looking for.** `yarn test:prod` asserted
+that three probe handles were absent from the shipped build — `__run`,
+`__bus`, `__perf` — which were all the probes there were when it was
+written. The source declares twenty-eight now. Every one of them is
+stripped, which is why nothing noticed, and the check would have gone on
+passing if one leaked. It reads the list out of `src/` instead of keeping
+it, so a new probe is covered without being told.
+
+That was proved rather than assumed: a probe was leaked on purpose, outside
+the DEV guard, and it **walked straight past the first version of the fix**.
+The pattern was anchored on `window.__name` and `w.__name`, and most
+components write theirs through a cast — `(window as unknown as {…}).__sentry`
+— so the object-anchored pattern missed exactly the idiom most of them use.
+Widened to any `.__name`, it caught the leak, and picked up three more real
+probes the first pattern had been missing.
+
+## 10. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 10. What a human playtest should watch for
+## 11. What a human playtest should watch for
 
 - **Is the Warden frightening or annoying?** It cannot be fought, blocked
   or outpaced, only avoided. That is either tense or it is a tax. The two
@@ -1378,7 +1411,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 11. Tuning knobs
+## 12. Tuning knobs
 
 All in `src/game/world.ts`:
 
