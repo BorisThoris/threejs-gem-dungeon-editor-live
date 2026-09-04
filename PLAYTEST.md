@@ -1121,16 +1121,54 @@ Measured: lit for 0.258 s of the 0.9 it waits, then one dropped frame added
 that time, so a long frame is precisely when "it was in the light when I
 looked" says least about where it was the rest of the time.
 
-It charges for observed time now - `Math.min(delta, MAX_FRAME_S)` - which
-errs towards *not* calling out, and that is the right way round: the Sentry
-takes no life, so a post that misses you is a better bargain for the player
-than one that convicts them for a frame the machine dropped. The same
-stall now adds 0.05 s and nothing is called.
+The unfair case is narrower than that first looked, and finding the edge of
+it took walking the room. The beam takes 11.4 s to come round and covers one
+direction for 1.53 s, so it cannot leave a player and return inside a hitch:
+lit at both ends of a dropped frame means lit throughout it, and charging
+for that is right. What is wrong is the **arrival** - on the frame the light
+first touches you, a hitch takes the count from nothing to past the patience
+in one go, and you are called out on the instant of contact with no chance
+to move.
 
-`MAX_FRAME_S` is a twentieth of a second and is the one owner of how long a
-frame may count for, in world.ts beside the movement constants. `test:layout`
-holds the Warden's distance cap and the Sentry's margin against it;
-`test:smoke` stalls the main thread on purpose for both.
+Capping each frame's contribution fixed that and bought a worse problem.
+The count is also how *standing still in the light is always seen* is
+decided, and a machine whose frames run longer than the cap accrues only
+the capped share of each — below about twelve frames a second the post
+stopped calling anybody out at all. That was found by walking a beam in the
+running game, on the rasteriser here, which renders at four or five: a
+motionless player stood in the light for a second and a half untroubled.
+Half the room's promise, switched off.
+
+It measures a **span** now — the clock read when the light arrives, and how
+long ago that was. Neither problem, and no constant: the arrival starts the
+span at nought rather than finishing it, and a slow machine measures the
+same second and a half a fast one does.
+
+> Cap a thing that is being *moved*. Read the clock twice for a thing that
+> is being *timed*.
+
+### Walking it, at last
+
+Nothing had ever walked out of a beam. Every check that had touched a
+Sentry either stood still or teleported, so both halves of the promise were
+arithmetic on four constants and nothing more. `yarn test:smoke` walks one
+now, at a spot chosen rather than assumed: far enough out that a mired walk
+would be caught there — beyond about 8.5 of the beam's 11 — with five clear
+metres of tangential run left in the room, which rules out the corners, and
+the corners are the only places a player can be a full eleven metres from a
+post standing on a far anchor. The first attempt stood the player in one and
+measured them walking into a wall at 0.36 m/s.
+
+It checks the game against `beam.ts`, not against `WALK_SPEED`. The player
+is a rigid body driven by `setLinvel` once a rendered frame, and on the
+software rasteriser here — four or five frames a second — Rapier's damping
+eats a third of the walk: five metres a second on the constant, three and a
+bit in fact. Asserting the promise as written would be asserting that this
+machine is a Steam Deck. Asserting that the simulation and the arithmetic
+agree at whatever speed the body *did* move is the stronger statement, and
+it is the one thing about that room nothing had ever checked. Measured:
+3.81 m/s at 10.4 m out, `beam.ts` says caught, the game called out; mired at
+2.55 m/s, caught, called out; standing still, called out at 210 ms frames.
 
 Two things were measured on the way and turned out to be fine, which is
 worth writing down so nobody spends the afternoon again:
@@ -1143,7 +1181,10 @@ worth writing down so nobody spends the afternoon again:
 - **Everything else that moves on the clock.** The arena's arms and the
   Sentry's beam are placed from `elapsedTime` rather than advanced by
   `delta`, so a hitch skips them past the player rather than through them.
-  The Warden was the only one integrating.
+  The Warden was the only one integrating. And the arms do not skip a
+  player in play either: the furthest ring moves 1.19 m between frames at
+  ten frames a second, against the 1.5 m that would carry the patch over a
+  0.3 m body.
 
 ## 7. Steam Deck
 

@@ -60,6 +60,16 @@ export const entranceDepth = (halfSize: number): number =>
  * second is longer than a frame on anything the game is meant to run on,
  * so it never binds in play; below that the game is charging the player
  * for time it did not watch, and it stops.
+ *
+ * A cap is not always the right shape for it, and the Sentry is where that
+ * was learned. Capping each frame's worth of light stopped a hitch
+ * convicting a player the instant the beam touched them, and it also
+ * capped the counting: below about twelve frames a second a motionless
+ * player was never called out at all, which is half the room's promise
+ * quietly switched off. It measures a span now instead - the clock read
+ * when the light arrives, and how long ago that was - which has neither
+ * problem and needs no constant. Where a thing is being *moved* by a
+ * delta, cap it; where a thing is being *timed*, read the clock twice.
  */
 export const MAX_FRAME_S = 1 / 20;
 

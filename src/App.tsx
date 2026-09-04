@@ -87,6 +87,11 @@ export default function App() {
     // A check that hardcodes 1.05 for the Warden's reach is a second owner
     // of it, and passes for years after the constant moves.
     void import("./game/world").then((m) => (w.__world = m));
+    // And the Sentry's arithmetic, so a check can ask what the module
+    // predicts for the speed a body actually managed rather than for the
+    // speed the constants assume - on a software rasteriser those are not
+    // the same number.
+    void import("./game/sentry/beam").then((m) => (w.__beam = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a

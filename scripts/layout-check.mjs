@@ -863,14 +863,18 @@ check("the shipped room templates reach the floors the game generates", authored
    *
    * "A walking player is never called out" is the check above, and it is
    * true by sixty-four milliseconds: 0.836s to cross out of the beam at
-   * its furthest reach against 0.9s of patience. The post counts that time
-   * by adding a frame delta each frame, so the finest it can tell the
-   * difference is one frame - and a frame at fifteen a second is longer
-   * than the whole margin. Above that it is charging the player for time
-   * it did not watch. MAX_FRAME_S is what the Sentry now caps a frame's
-   * worth of light at, and this is the line saying the margin is wider
-   * than the cap: the promise still holds at the slowest frame the game
-   * will count in full.
+   * its furthest reach against 0.9s of patience. The post decides that by
+   * looking once a frame, so the finest it can tell the difference is one
+   * frame, and a frame at fifteen a second is longer than the whole
+   * margin. MAX_FRAME_S is the longest frame this game counts in full, and
+   * the margin has to be wider than it or the promise is finer than the
+   * instrument measuring it.
+   *
+   * How long it has held you is a span rather than a sum - the clock read
+   * when the light arrives, and the answer is how long ago that was - so
+   * the number itself does not drift with the frame rate. What is left is
+   * this: a walk that clears the beam between two consecutive looks is
+   * never seen at all, and one that does not has the margin to spare.
    */
   const margin = L.SENTRY_PATIENCE - L.slowestEscape(plainWalk);
   check(

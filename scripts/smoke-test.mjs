@@ -1211,161 +1211,313 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
- * What a slow frame does to the light you are standing in.
+ * What a dropped frame does to a beam arriving on you.
  *
- * The Sentry counts how long it has held you by adding a frame delta each
+ * The post used to count time in the light by adding a frame delta a
  * frame, and the margin that is measured against is sixty-four
  * milliseconds: 0.836s to walk out of the beam at its furthest reach
- * against 0.9s of patience. A frame at fifteen a second is longer than the
- * whole margin, and a hitch of nine hundred convicted the player outright -
- * charged for standing in a light which, over a frame that long, had swept
- * most of a width past them. It is the same unbounded delta the Warden
- * crossed four metres on, in the system with the thinnest margin in the
- * game.
+ * against 0.9s of patience. On the frame the light first touched a player,
+ * a hitch of nine hundred milliseconds took the count from nothing to past
+ * the patience in one go - called out on the instant of contact, with no
+ * chance to move.
  *
- * Two stalls, because the counter is reset inside the frame that fires the
- * call: a short one, which is too little to convict and so leaves the jump
- * on the counter where it can be read, and a long one, which convicts. The
- * short stall alone would pass on the broken code - the reset hides the
- * jump - and the long one alone would not say by how much.
+ * That is the case worth checking, and it is not the one this check tried
+ * first. Stalling while the player was *already* lit convicts them too, and
+ * that conviction is correct: the beam takes 11.4s to come round and
+ * covers one direction for 1.53s, so it cannot leave a player and return
+ * inside a hitch, and lit at both ends of a dropped frame means lit
+ * throughout it. So the stall is timed to land as the beam arrives.
  */
 {
-  const sentry = await page.evaluate(async () => {
+  const arrival = await page.evaluate(async () => {
     const run = window.__run;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    // A floor deep enough to be watched, and the room that got the post.
+    const W = window.__world;
     let found = null;
     for (let seed = 1; seed < 60 && !found; seed++) {
       run.getState().startRun(seed);
-      await wait(700);
+      await wait(600);
       const d = run.getState().dungeon;
-      run.setState({ floor: 3 });
       for (const room of d.rooms) {
         const post = window.__sentryFor(room, d.seed, 3);
-        if (post) {
-          found = { room, post };
-          break;
-        }
+        if (post) { found = { room, post }; break; }
       }
     }
     if (!found) return { noSentry: true };
-    run.setState({ transitioning: true, currentRoomId: found.room.id, lives: 99, alarm: 0 });
+    run.setState({ floor: 3, transitioning: true, currentRoomId: found.room.id, lives: 99, alarm: 0 });
     run.getState().roomReady(found.room.id);
     await wait(1400);
     if (!window.__sentry) return { noProbe: true };
 
-    /**
-     * Step into the beam just behind its leading edge, stall, and see.
-     *
-     * Just behind, not in the middle: the beam turns half a radian in nine
-     * hundred milliseconds and its whole width is 0.84, so a player stood
-     * in the middle is out the far side by the time the frame lands and
-     * the counter resets rather than jumping. A tenth of a radian of margin
-     * either side is what keeps it a measurement of the stall.
-     */
-    const step = async (stallMs) => {
-      const at = found.post.at;
-      // Ahead of where the beam is now, by most of a half-width, so it is
-      // still on us when the frame finally lands.
-      const bearing = window.__sentry.facing + 0.4;
-      window.__bus.emit("teleport", {
-        position: [at[0] + Math.sin(bearing) * 3, 1.5, at[2] + Math.cos(bearing) * 3],
-        yaw: 0,
-      });
-      await wait(120);
-      let biggest = 0;
-      let longestFrame = 0;
-      let litBefore = null;
-      let calledOut = false;
-      let stalled = false;
-      let stalledAt = 0;
-      const off = window.__bus.on("sentrySaw", () => (calledOut = true));
-      let last = window.__sentry.lit;
-      let lastT = performance.now();
-      const t0 = lastT;
-      await new Promise((done) => {
-        const tick = () => {
-          const now = performance.now();
-          const s = window.__sentry;
-          if (s.lit > last) biggest = Math.max(biggest, s.lit - last);
-          longestFrame = Math.max(longestFrame, (now - lastT) / 1000);
-          last = s.lit;
-          lastT = now;
-          if (!stalled && s.inside) {
-            stalled = true;
-            litBefore = s.lit;
-            const until = performance.now() + stallMs;
-            stalledAt = until;
-            // A real one: this is what a collection or a window coming back
-            // to the front looks like from inside the frame loop.
-            // eslint-disable-next-line no-empty
-            while (performance.now() < until) {}
-          }
-          // Stops a breath after the stall, not a second: the point is
-          // whether the dropped frame convicted the player, and standing
-          // in a beam for a second convicts them fairly. A hundred and
-          // fifty milliseconds is two or three frames of the counter
-          // ticking up honestly, nowhere near the patience from here.
-          if (stalled && now - stalledAt > 150) return done();
-          if (!stalled && now - t0 > 14000) return done();
-          requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      });
-      off();
-      return {
-        lit: stalled,
-        litBefore: litBefore === null ? null : +litBefore.toFixed(3),
-        biggest: +biggest.toFixed(3),
-        longestFrame: +longestFrame.toFixed(2),
-        calledOut,
-      };
-    };
+    // Somewhere the beam will reach, well inside the room.
+    const half = found.room.size / 2;
+    const at = found.post.at;
+    let bearing = 0;
+    let r = 4;
+    for (let b = 0; b < Math.PI * 2; b += 0.05) {
+      const x = at[0] + Math.sin(b) * r;
+      const z = at[2] + Math.cos(b) * r;
+      if (Math.abs(x) < half - 1 && Math.abs(z) < half - 1) { bearing = b; break; }
+    }
+    window.__bus.emit("teleport", {
+      position: [at[0] + Math.sin(bearing) * r, 1.5, at[2] + Math.cos(bearing) * r],
+      yaw: 0,
+    });
+    await wait(500);
 
     /**
-     * The long stall first, and that ordering is the check.
-     *
-     * A call puts the post on a six-second cooldown, and both stalls
-     * together take less than that: with the short one first, the long
-     * one's conviction was swallowed by the cooldown the short one had
-     * just spent, and "a dropped frame never calls the player out" passed
-     * on the broken code. The long stall goes first, on a post that has
-     * never called, so the conviction has nothing to hide behind.
+     * Stall so that the beam's leading edge arrives during the frame that
+     * never happened. The angle is arithmetic - phase plus elapsed times
+     * spin - so the arrival can be waited for rather than polled for.
      */
-    const long = await step(900);
-    // And a short one, too little to reach the patience from a standing
-    // start, so the counter is never reset and the size of the jump stays
-    // readable rather than being zeroed inside the frame that fired.
-    const brief = await step(500);
+    const TWO_PI = Math.PI * 2;
+    const STALL = 900;
+    let calledOut = false;
+    let litAfter = null;
+    let longestFrame = 0;
+    const off = window.__bus.on("sentrySaw", () => (calledOut = true));
+    await new Promise((done) => {
+      let lastT = performance.now();
+      const t0 = lastT;
+      let stalled = false;
+      const tick = () => {
+        const now = performance.now();
+        longestFrame = Math.max(longestFrame, (now - lastT) / 1000);
+        lastT = now;
+        if (!stalled) {
+          let ahead = (bearing - W.SENTRY_HALF_ANGLE - window.__sentry.facing) % TWO_PI;
+          if (ahead < 0) ahead += TWO_PI;
+          // Start the stall so the beam lands about two thirds of the way
+          // through it: it is still short of the player when the frame
+          // begins and on them when it ends.
+          if (ahead * 1000 / W.SENTRY_SPIN < STALL * 0.66) {
+            stalled = true;
+            const until = performance.now() + STALL;
+            // eslint-disable-next-line no-empty
+            while (performance.now() < until) {}
+            litAfter = null;
+          }
+        } else if (litAfter === null) {
+          litAfter = window.__sentry.lit;
+        }
+        if (litAfter !== null || now - t0 > 14000) return done();
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    off();
     return {
-      brief,
-      long,
-      cap: window.__world.MAX_FRAME_S,
-      patience: window.__world.SENTRY_PATIENCE,
+      inside: window.__sentry.inside,
+      litAfter: litAfter === null ? null : +litAfter.toFixed(3),
+      longestFrame: +longestFrame.toFixed(2),
+      calledOut,
+      patience: W.SENTRY_PATIENCE,
     };
   });
 
-  ok(
-    "a floor has a Sentry whose beam can be stood in",
-    sentry && !sentry.noSentry && !sentry.noProbe && sentry.brief.lit && sentry.long.lit,
-    JSON.stringify(sentry)
-  );
-  if (sentry && sentry.cap) {
+  ok("a Sentry can be stood in front of at all", arrival && !arrival.noSentry && !arrival.noProbe, JSON.stringify(arrival));
+  if (arrival && arrival.patience) {
     ok(
-      "the check produced frames long enough to matter, inside the light",
-      sentry.brief.longestFrame >= 0.4 && sentry.long.longestFrame >= 0.8,
-      `${sentry.brief.longestFrame}s and ${sentry.long.longestFrame}s`
+      "the check produced a frame long enough to matter",
+      arrival.longestFrame >= 0.5,
+      `longest frame ${arrival.longestFrame}s`
     );
     ok(
-      "a slow frame adds no more time in the light than a frame is worth",
-      sentry.brief.biggest <= sentry.cap + 0.005,
-      `a ${sentry.brief.longestFrame}s frame added ${sentry.brief.biggest}s, cap ${sentry.cap}s`
+      "a beam arriving during a dropped frame does not call the player out on the spot",
+      !arrival.calledOut && (arrival.litAfter === null || arrival.litAfter < arrival.patience),
+      `after a ${arrival.longestFrame}s frame the post had held them ${arrival.litAfter}s of ${arrival.patience}s`
     );
+  }
+}
+
+
+/**
+ * Walking out of the beam, which nothing had ever done.
+ *
+ * `sentry/beam.ts` says the room asks a question and the question has an
+ * answer - standing still in the light is always seen, walking out of it
+ * never is - and mire is what turns the second half off. That was arithmetic
+ * on four constants, in node, and every check that had ever touched a
+ * Sentry either stood still or teleported. Whether the game moves a body
+ * out of a beam in the time the module says it does was never asked.
+ *
+ * The spot is chosen, not assumed. It has to be far enough out that a
+ * mired walk would be caught there - beyond about 8.5 of the beam's 11 -
+ * and have five clear metres of tangential run left in the room, which
+ * rules out the corners, and the corners are the only places a player can
+ * be a full eleven metres from a post standing on a far anchor. The first
+ * attempt at this stood the player in one and measured them walking into a
+ * wall at 0.36 m/s.
+ *
+ * Against the sweep, which is beam.ts's pessimistic route: caught at the
+ * leading edge, crossing the whole wedge with the beam turning towards you
+ * the whole way, so the two rates add.
+ */
+{
+  const spot = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    // Long enough to hold a whole crossing: 0.836s at a walk of five is
+    // 4.2 metres, and the first version of this allowed 5.2 and measured
+    // the player averaging 3.3 m/s because they spent the back half of the
+    // window against a wall - at which speed the beam catches them fairly,
+    // and the check reported the promise broken.
+    const RUN = 7.5;
+    for (let seed = 1; seed < 40; seed++) {
+      run.getState().startRun(seed);
+      await wait(500);
+      const d = run.getState().dungeon;
+      for (const room of d.rooms) {
+        const post = window.__sentryFor(room, d.seed, 3);
+        if (!post) continue;
+        const half = room.size / 2;
+        const free = (x, z) => Math.abs(x) < half - 0.8 && Math.abs(z) < half - 0.8;
+        for (let r = 10.4; r >= 8.8; r -= 0.2)
+          for (let b = 0; b < Math.PI * 2; b += 0.05) {
+            const x = post.at[0] + Math.sin(b) * r;
+            const z = post.at[2] + Math.cos(b) * r;
+            if (!free(x, z)) continue;
+            // Against the sweep is the bearing decreasing, which is the
+            // direction (cos b, -sin b). Every half metre of it has to be
+            // inside the room or the walk ends against a wall.
+            const dx = Math.cos(b);
+            const dz = -Math.sin(b);
+            let clear = true;
+            for (let s = 0.5; s <= RUN; s += 0.5) if (!free(x + dx * s, z + dz * s)) { clear = false; break; }
+            if (!clear) continue;
+            // At yaw t the camera faces (-sin t, -cos t).
+            return { seed, roomId: room.id, size: room.size, bearing: b, r: +r.toFixed(2), x, z,
+                     yaw: Math.atan2(-dz, -dx), range: W.SENTRY_RANGE };
+          }
+      }
+    }
+    return null;
+  });
+  ok("a watched room has ground a mired walk would be caught on, with room to run", spot !== null,
+     spot && `${spot.r}m from the post, of a reach of ${spot.range}, in a room ${spot.size} across`);
+
+  if (spot) {
+    /** Stand at the spot, and say when the beam's leading edge will reach it. */
+    const stand = (mire) =>
+      page.evaluate(async ([spot, mire]) => {
+        const run = window.__run;
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const W = window.__world;
+        run.getState().startRun(spot.seed);
+        await wait(700);
+        run.setState({ floor: 3, transitioning: true, currentRoomId: spot.roomId, lives: 99,
+                       alarm: 0, satchel: mire ? ["mire"] : [] });
+        run.getState().roomReady(spot.roomId);
+        await wait(1400);
+        // Slot zero: the store indexes the satchel from nought and the
+        // keys pass n-1. The first version of this drank slot one of a
+        // satchel of one and measured an unmired walk twice.
+        if (mire) { run.getState().useItem(0); await wait(300); }
+        window.__bus.emit("teleport", { position: [spot.x, 1.5, spot.z], yaw: spot.yaw });
+        window.__bus.emit("lookSet", { yaw: spot.yaw, pitch: 0 });
+        await wait(500);
+        // Arithmetic, not polling: the beam's angle is phase plus elapsed
+        // time times its spin, and a poll from node costs a round trip out
+        // of an eight-hundred-millisecond budget.
+        const TWO_PI = Math.PI * 2;
+        let ahead = (spot.bearing - W.SENTRY_HALF_ANGLE - window.__sentry.facing) % TWO_PI;
+        if (ahead < 0) ahead += TWO_PI;
+        return { walk: +window.__derived.walk().toFixed(2), msUntilBeam: Math.round((ahead / W.SENTRY_SPIN) * 1000) };
+      }, [spot, mire]);
+
+    const cross = async (setUp, moving) => {
+      // Already moving when it arrives, which is what a player crossing a
+      // room is doing.
+      await page.waitForTimeout(Math.max(0, setUp.msUntilBeam - 250));
+      if (moving) await page.keyboard.down("KeyW");
+      const out = await page.evaluate(async (crossing) => {
+        let called = false;
+        const off = window.__bus.on("sentrySaw", () => (called = true));
+        const p = window.__playerDebug;
+        const from = { x: p.x, z: p.z, t: performance.now() };
+        let litFor = 0, lastT = from.t, everLit = false, frames = 0;
+        // The speed over the crossing itself, not over the whole window:
+        // a walk that clears the beam and then fetches up against a wall
+        // averages out to something it never moved at.
+        let at = null;
+        await new Promise((done) => {
+          const tick = () => {
+            const now = performance.now();
+            if (window.__sentry.inside) { litFor += now - lastT; everLit = true; }
+            lastT = now;
+            frames++;
+            if (at === null && now - from.t >= crossing) at = { x: p.x, z: p.z, t: now };
+            if (now - from.t > 2600) return done();
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
+        off();
+        const dt = (performance.now() - from.t) / 1000;
+        const cdt = at ? (at.t - from.t) / 1000 : dt;
+        const cd = at ? Math.hypot(at.x - from.x, at.z - from.z) : Math.hypot(p.x - from.x, p.z - from.z);
+        return { called, everLit, litFor: +(litFor / 1000).toFixed(2), frame: +(dt / frames).toFixed(3),
+                 speed: +(cd / cdt).toFixed(2) };
+      }, 1000);
+      if (moving) await page.keyboard.up("KeyW");
+      // The post is on a six-second cooldown after a call; the next case
+      // must not inherit it, or a conviction it should report is swallowed.
+      await page.waitForTimeout(6500);
+      return out;
+    };
+
+    /**
+     * What beam.ts predicts for the speed the body actually managed.
+     *
+     * Not for WALK_SPEED. The player is a rigid body driven by setLinvel
+     * once a rendered frame, and this check runs on a software rasteriser
+     * that renders four or five times a second, where Rapier's damping eats
+     * a third of the walk between applications: five metres a second on the
+     * constant, three and a bit in fact. Asserting the promise as written
+     * would be asserting that this machine is a Steam Deck. Asserting that
+     * the game agrees with the module at whatever speed the body did move
+     * is the stronger statement anyway - it is the arithmetic and the
+     * simulation checked against each other, which is the thing that had
+     * never been done.
+     */
+    const predicted = (r, speed) =>
+      page.evaluate(([r, s]) => window.__beam.isCaught(r, s), [r, speed]);
+
+    const walked = await cross(await stand(false), true);
+    const walkCaught = await predicted(spot.r, walked.speed);
     ok(
-      "and a dropped frame never calls the player out on its own",
-      !sentry.long.calledOut,
-      `lit for ${sentry.long.litBefore}s of ${sentry.patience}s, then a ${sentry.long.longestFrame}s frame`
+      "a walk crossing the beam is caught exactly when the arithmetic says it is",
+      walked.everLit && walked.called === walkCaught,
+      `${walked.speed} m/s at ${spot.r}m: beam.ts says ${walkCaught ? "caught" : "away"}, ` +
+        `the game ${walked.called ? "called out" : "let them go"} (in the light ${walked.litFor}s)`
     );
+
+    const mired = await cross(await stand(true), true);
+    const mireCaught = await predicted(spot.r, mired.speed);
+    ok(
+      "and mired, slower, it is caught - which is what mire is for",
+      mired.everLit && mired.called && mireCaught,
+      `${mired.speed} m/s at ${spot.r}m: beam.ts says ${mireCaught ? "caught" : "away"}, ` +
+        `the game ${mired.called ? "called out" : "let them go"} (in the light ${mired.litFor}s)`
+    );
+
+    /**
+     * The other half, and it holds at any frame rate now.
+     *
+     * When the post counted light by summing capped frame deltas this was
+     * only true above about twelve frames a second, and this machine
+     * renders at five: a motionless player stood in the light for a second
+     * and a half untroubled, which is how the cap was found to be the
+     * wrong shape. A span is read off the clock, so the assertion needs no
+     * escape clause about the machine - and it should not have one, since
+     * an escape clause here would let the whole first half of the promise
+     * lapse unnoticed.
+     */
+    const still = await cross(await stand(false), false);
+    ok("and standing still in it is always seen, however slow the frames",
+       still.everLit && still.called,
+       `in the light ${still.litFor}s, frames of ${(still.frame * 1000).toFixed(0)}ms`);
   }
 }
 

@@ -9,7 +9,6 @@ import { canControl, useRun } from "../state/run";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
-  MAX_FRAME_S,
   SENTRY_ALARM,
   SENTRY_COOLDOWN_S,
   SENTRY_HALF_ANGLE,
@@ -47,11 +46,12 @@ function angleBetween(a: number, b: number): number {
 export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   const head = useRef<Group>(null);
   const wedge = useRef<Mesh>(null);
-  const lit = useRef(0);
+  /** When the light first touched the player, or null while it has not. */
+  const litSince = useRef<number | null>(null);
   const lastCall = useRef(-Infinity);
   const [seen, setSeen] = useState(false);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const g = head.current;
     if (!g) return;
     const facing = phase + state.clock.elapsedTime * SENTRY_SPIN;
@@ -71,25 +71,39 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
       distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE;
 
     /**
-     * Time in the light, and only time the game actually watched.
+     * How long the light has held you: a span, not a sum.
      *
-     * This was `lit.current + delta`, and the margin it is measured
-     * against is sixty-four milliseconds: a walking player needs 0.836s to
-     * cross out of the beam at its furthest reach and the post waits 0.9s
-     * before calling. A frame at twenty a second is fifty of those
-     * milliseconds; a frame at fifteen is more than the whole margin; a
-     * hitch of nine hundred milliseconds convicted the player outright,
-     * for standing in a light that had swept past them at some unknown
-     * point during a frame nobody rendered. The beam turns a full width in
-     * 1.53s, so a long frame is precisely when "it was in the light when I
-     * looked" says least about where it was the rest of the time.
+     * This added a frame delta a frame, and the margin it is measured
+     * against is sixty-four milliseconds - a walking player needs 0.836s
+     * to cross out of the beam at its furthest reach and the post waits
+     * 0.9s. On the frame the beam first touched a player, a hitch of nine
+     * hundred milliseconds took the count from nothing to past the
+     * patience in one go: called out on the instant of contact, for a
+     * light that had been on them for a fraction of a frame nobody
+     * rendered, with no chance to move.
      *
-     * Capped, so the player is charged for observed time only. It errs
-     * towards not calling out, which is the right way round: the Sentry
-     * takes no life, and a post that misses you is a worse bargain for the
-     * player than one that catches you for a frame the machine dropped.
+     * Capping each frame's contribution fixed that and bought a worse
+     * problem. The count is also how "standing still in the light is
+     * always seen" is decided, and a machine whose frames run longer than
+     * the cap accrues only the capped share of each - below about twelve
+     * frames a second the post stopped calling anybody out at all. That
+     * was found by walking a beam in the running game, on a rasteriser
+     * that renders at ten: the player stood in the light for a second and
+     * a half untroubled.
+     *
+     * A span has neither problem and needs no constant. The clock is read
+     * when the light arrives and the answer is how long ago that was, so
+     * the beam arriving during a dropped frame starts the span at nought
+     * rather than finishing it, and a slow machine measures the same
+     * second and a half a fast one does. The beam takes 11.4s to come
+     * round and covers one direction for 1.53s of that, so it cannot leave
+     * a player and return inside a hitch: lit at both ends of a dropped
+     * frame means lit throughout it, and charging for that is right.
      */
-    lit.current = inside ? lit.current + Math.min(delta, MAX_FRAME_S) : 0;
+    const now = state.clock.elapsedTime;
+    if (!inside) litSince.current = null;
+    else if (litSince.current === null) litSince.current = now;
+    const held = litSince.current === null ? 0 : now - litSince.current;
 
     if (import.meta.env.DEV) {
       // How long it thinks it has held you, for the checks. Nothing
@@ -97,17 +111,16 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
       // on. Written into one object, at frame rate.
       const w = window as unknown as { __sentry?: Record<string, number | boolean> };
       const probe = (w.__sentry ??= { lit: 0, inside: false, facing: 0, distance: 0 });
-      probe.lit = lit.current;
+      probe.lit = held;
       probe.inside = inside;
       probe.facing = facing;
       probe.distance = distance;
     }
     if (seen !== inside) setSeen(inside);
 
-    const now = state.clock.elapsedTime;
-    if (lit.current >= SENTRY_PATIENCE && now - lastCall.current > SENTRY_COOLDOWN_S) {
+    if (held >= SENTRY_PATIENCE && now - lastCall.current > SENTRY_COOLDOWN_S) {
       lastCall.current = now;
-      lit.current = 0;
+      litSince.current = now;
       // Through the store's action, not setState: the alarm has one owner
       // and anything that ever damps or caps it must apply here too. And
       // giveAway rather than raiseAlarm, because being called out is the
@@ -129,7 +142,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     // of the beam against the 0.9 it waits before calling, and a margin
     // that thin is only a margin if you can see the light arriving.
     const mat = wedge.current?.material as MeshBasicMaterial | undefined;
-    if (mat) mat.opacity = BEAM_OPACITY + (inside ? Math.min(1, lit.current / SENTRY_PATIENCE) * 0.4 : 0);
+    if (mat) mat.opacity = BEAM_OPACITY + (inside ? Math.min(1, held / SENTRY_PATIENCE) * 0.4 : 0);
   });
 
   return (

@@ -192,28 +192,39 @@ Two stores that both claimed the player's stats. So:
   of that question rather than a separate one: a vault is dressed as a
   vault whatever kind it was drawn as, and never ends up poorer for being
   locked. `yarn test:layout` checks it room by room.
-
 - How long one frame is allowed to count for is `MAX_FRAME_S` in world.ts,
-  a twentieth of a second, and nothing that can hurt the player may believe
-  a delta longer than that. A frame delta is a claim that whatever was true
-  at the end of the frame was true for all of it; over sixteen milliseconds
-  that is close enough and over nine hundred it is a fiction, and both
-  places that believed it did so in the player's disfavour. The Warden
+  a twentieth of a second, and nothing that *moves* on a delta may believe
+  one longer than that. A frame delta is a claim that whatever was true at
+  the end of the frame was true for all of it; over sixteen milliseconds
+  that is close enough and over nine hundred it is a fiction. The Warden
   added `speed * delta` to its own position and a nine-hundred-millisecond
   frame carried it four metres in one step - measured, in a room
-  twenty-four across, against a strike radius of one. The Sentry added the
-  same delta to how long it had held you in its beam, and the margin that
-  is measured against is sixty-four milliseconds, so one dropped frame
-  called the player out for standing in a light that had swept past them.
-  `WARDEN_MAX_STEP` is a quarter of the reach it strikes from and the
-  Sentry charges for observed time only; `yarn test:layout` holds both
-  against `MAX_FRAME_S`, and `yarn test:smoke` stalls the main thread on
-  purpose and watches each of them across the frame that never happened.
-  The physics has said this since the beginning, in Scene.tsx, where the
-  timestep is fixed rather than variable for exactly the same reason. What
-  is left reads `elapsedTime` and is placed rather than advanced - the
+  twenty-four across, against a strike radius of one. `WARDEN_MAX_STEP` is
+  a quarter of that radius; `yarn test:layout` holds it against
+  `MAX_FRAME_S` and `yarn test:smoke` stalls the main thread on purpose and
+  watches it across the frame that never happened. The physics has said
+  this since the beginning, in Scene.tsx, where the timestep is fixed
+  rather than variable for exactly the same reason.
+- But cap a thing that is being *moved*, and read the clock twice for a
+  thing that is being *timed*. The Sentry added the same delta to how long
+  it had held you in its beam, and on the frame the light first touched a
+  player a hitch took that from nothing to past its patience in one go -
+  called out on the instant of contact. Capping each frame's contribution
+  fixed that and quietly broke the other half of the same promise: the
+  count is also how "standing still in the light is always seen" is
+  decided, so a machine whose frames ran longer than the cap accrued only
+  the capped share of each, and below about twelve frames a second the post
+  called nobody out at all. It measures a span now - the clock read when
+  the light arrives, and how long ago that was - which has neither problem
+  and needs no constant. The beam takes 11.4s to come round and covers one
+  direction for 1.53s, so it cannot leave a player and return inside a
+  hitch: lit at both ends of a dropped frame means lit throughout it, and
+  charging for that is right.
+- What is left reads `elapsedTime` and is placed rather than advanced - the
   arena's arms, the beam's own angle - so a hitch skips them past the
-  player rather than through them.
+  player rather than through them, which is the generous direction. At ten
+  frames a second the furthest arm still steps only 1.19m against the 1.5m
+  that would take it over a player, so it never skips one in play.
 - Whether a puzzle is open is `src/ui/PuzzleOverlay.tsx`, and it is tied to
   the run it belongs to rather than held on its own: the overlay closes
   when the run's seed, floor or room changes, which covers dying, climbing
@@ -410,10 +421,17 @@ second model for it to be written in.
   average over a second is exactly the shape that hides a lunge - the
   Warden read a steady 4.4 m/s with single frames at twenty-three and
   thirty-seven - so it samples every frame and takes the largest single
-  step. The Sentry is stalled twice and the order is the check: a call puts
-  the post on a six-second cooldown, so with the short stall first the long
-  one's conviction was swallowed by it and the check passed on the broken
-  code.
+  step. The Sentry's stall is timed to land as the beam arrives, which is
+  the case that is actually unfair: stalling while the player is already
+  lit convicts them too, and that conviction is correct.
+- `yarn test:smoke` also walks a beam, which nothing had ever done, and
+  checks the game against `beam.ts` rather than against `WALK_SPEED`. The
+  player is a rigid body driven once a rendered frame and this runs on a
+  software rasteriser at four or five, where Rapier's damping eats a third
+  of the walk: asserting the promise as written would be asserting that
+  this machine is a Steam Deck. Asserting that the simulation and the
+  arithmetic agree at whatever speed the body did move is the stronger
+  statement, and it is the one thing about that room nothing had checked.
 - `yarn tour` asserts nothing. It photographs every kind of room and every
   screen the game puts in front of the player, and looking at the pictures
   is the check. The screens had never been in it, and the first eight shots
