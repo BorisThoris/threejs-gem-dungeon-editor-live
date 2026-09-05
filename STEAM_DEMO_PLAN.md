@@ -117,9 +117,65 @@ being routed with no line on screen. Handlers are isolated now, still
 loud, and `tone` floors its sweep target so that particular footgun
 cannot fire again.
 
+Then nine more rounds, each deployed before the next began, and each one
+verified in the real browser rather than argued for.
+
+The Cutpurse arrived: a third thing in the dungeon and the first that
+wants something. It comes for a player who has stopped moving with gems on
+them, takes exactly one and runs for the doorway it came in by. Touch it
+and the gem comes back; let it out and the gem is in a nest that is then
+on your map. A theft is a detour, not a loss, priced in the only currency
+the game has. It runs at six against a walk of five and a sprint of eight,
+so it is the only thing here answered by reacting rather than by moving
+well, and `systems/pace.ts` holds that sentence over every relic and
+potion alongside the Warden's mirror of it.
+
+Then five delvers, each trading one thing the run needs for another, all
+available from the first game. The Pilgrim paid with a gem on every exit
+for about a minute before the economy check threw it out: the thinnest
+first floor holds four guaranteed gems against a toll of three, so one
+more on the door left a run that had to take every gem on the floor to
+leave. The floors have no slack to spend on a delver; the alarm does.
+
+Then the lantern, which is the sprint's bargain asked once a room instead
+of once a corridor: seeing, or unseen. Raised, it lights the room and
+makes you the brightest thing on a dark floor - the Warden walks for you
+and a watcher is twice as quick. It starts down, and that took three
+failing checks to learn: raised as a default meant every run opened
+already seen, for nothing the player had done.
+
+Then barring a doorway - the one thing the player does to the dungeon
+rather than to themselves - and blessed and cursed items, where a curse is
+always a cost and never a lie. Then ten deeds with a real seam to Steam's
+achievements, and thirteen options with every key rebindable, captions for
+the sounds that carry information, and marks so that nothing is said in
+colour alone.
+
+Along the way the checks found things reasoning had not: an event bus
+where one throwing handler silenced every listener after it; two files
+whose names differed only in case, which no macOS or Windows checkout can
+hold; a menu taller than a Steam Deck's screen with a button nobody could
+press; a brazier's prompt that out-reached the memory trial and made the
+room unplayable; a volume slider that did nothing on the screen it was
+offered on; and a key row labelled "Back" beside every menu's Back button.
+
+One thing about the checks themselves is worth saying before somebody
+reads a red line and goes looking for a bug in the dungeon. The smoke
+suite has grown from 189 checks to 275 and the page has grown a lot of
+overlays, and on this machine - a software rasteriser at three to five
+frames a second - it now fails two to four checks intermittently, never
+the same ones twice, always in the same shape: the harness read a prompt
+too early, or stood a little wrong. Three of them were tracked down and
+fixed properly this round; the rest are described in PLAYTEST §29 along
+with what would actually fix them, which is waiting on a condition the
+game publishes rather than on a clock. The checks that cover the new
+mechanics pass on every run.
+
 What is still ahead: a human playtest, Windows and signed macOS builds on
-their own hosts, and the Steamworks account side (app ID, depots, store
-page, capsule art).
+their own hosts, and the Steamworks account side (app ID, depots, capsule
+art and screenshots). The store copy itself is written and lives in
+[steam/STORE.md](steam/STORE.md), with `yarn test:layout` holding its
+numbers against `world.ts` so the page and the game cannot drift apart.
 
 This document records why the game was not playable, what was changed to make it
 playable, how each change was verified, and what still stands between here and a
@@ -352,6 +408,15 @@ that ships, and the desktop package that would go on Steam.
 | `yarn test:prod` | 17 checks on what ships. Builds `dist`, serves it and plays it through the menu and the keyboard alone - the shipped bundle has no probe handles - and reads the rest off the built files: no editor in the bundle, nothing 404ing, under 1.35 MB over the wire, and it still starts for somebody whose saved data was written by a build that no longer exists | Chromium |
 | `yarn tour` | Not a check: photographs one room of every kind, a Sentry with its beam this way, the Warden in the room with you, and the eight screens the player reads - title, controls, records, satchel, tome, pause and both run summaries - into `docs/playtest`. Looking at the pictures is the check; the first eight screen shots found three real bugs, and each of them now has one in `test:smoke` or `test:pad` | a dev server, Chromium |
 | `yarn test:desktop` | Packages the Linux build, reads what is inside it, then starts it under a virtual display and plays it. Holds the build config and the Steam instructions to each other | Xvfb, Chromium |
+
+Two of the layout checks hold documents to code rather than code to code,
+which is unusual enough to be worth saying: every deed's Steam API name
+has to appear in `steam/README.md`, the file somebody will type those
+names out of into the Steamworks partner site, and every number in
+`steam/STORE.md` - floors, tolls, item kinds, delvers, deeds, the two
+wounds that rout the Warden - has to match `world.ts`. A store page that
+says three floors while the game ships four is a mistake that is
+embarrassing in public and invisible in a diff.
 
 `yarn typecheck` must be clean; there is no error budget and no ratchet.
 `yarn lint` likewise. The browser checks need `playwright-core` and a

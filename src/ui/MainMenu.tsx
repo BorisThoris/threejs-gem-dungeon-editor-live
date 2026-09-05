@@ -15,7 +15,9 @@ const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
 export function MainMenu() {
-  const [page, setPage] = useState<"menu" | "controls" | "records" | "delvers" | "deeds">("menu");
+  const [page, setPage] = useState<
+    "menu" | "controls" | "records" | "delvers" | "deeds" | "credits"
+  >("menu");
   const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
   // The one last taken down, so a player who has settled on a delver is
@@ -36,7 +38,15 @@ export function MainMenu() {
   return (
     <div style={{ ...fullscreen, background: "#050608" }}>
       <div style={panel} ref={panelRef}>
-        <h1 style={title}>GEM DUNGEON</h1>
+        <h1 style={{ ...title, marginBottom: 4 }}>GEM DUNGEON</h1>
+        {/* Which build this is. It exists for bug reports: a demo goes out
+            to people who have no other way to tell you which one broke. */}
+        <div
+          style={{ fontSize: text.small, color: colors.dim, marginBottom: 14 }}
+          data-testid="menu-build"
+        >
+          demo {__APP_VERSION__} · {__APP_BUILT__}
+        </div>
         {page === "menu" ? (
           <>
             <p style={body}>
@@ -69,12 +79,17 @@ export function MainMenu() {
             <button style={secondaryButton} data-testid="menu-deeds" onClick={() => setPage("deeds")}>
               Deeds
             </button>
+            <button style={secondaryButton} data-testid="menu-credits" onClick={() => setPage("credits")}>
+              Credits
+            </button>
             {isElectron() && (
               <button style={secondaryButton} onClick={() => window.close()}>
                 Quit
               </button>
             )}
           </>
+        ) : page === "credits" ? (
+          <Credits onBack={() => setPage("menu")} />
         ) : page === "deeds" ? (
           <Deeds onBack={() => setPage("menu")} />
         ) : page === "delvers" ? (
@@ -124,6 +139,60 @@ export function MainMenu() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Who made it, what it is made of, and what is owed.
+ *
+ * The font is the part that is not optional. Liberation Sans ships with
+ * the game so that text renders with no network access, and the OFL that
+ * permits that requires the licence to travel with it - it does, in
+ * `public/fonts/`, and this is where a player is told so.
+ *
+ * The rest is here because a shipped thing says what it is built on. The
+ * sound is worth naming for a different reason: there are no audio files
+ * in this game at all, every cue is synthesised at runtime, and that is
+ * the reason the download is a megabyte.
+ */
+function Credits({ onBack }: { onBack: () => void }) {
+  const rows: [string, string][] = [
+    ["Design and code", "Boris Bostandzhiev"],
+    ["Built with", "React Three Fiber, three.js, Rapier, Zustand, Electron"],
+    ["Sound", "Synthesised at runtime with the Web Audio API. No audio files."],
+    ["Type", "Liberation Sans, under the SIL Open Font License 1.1"],
+    ["Build", `${__APP_VERSION__} · ${__APP_BUILT__}`],
+  ];
+  return (
+    <>
+      <p style={{ ...body, marginBottom: 14 }}>
+        A first-person dungeon run: take what you can carry, and pay the door.
+      </p>
+      <dl
+        style={{
+          ...body,
+          textAlign: "left",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "4px 18px",
+          marginBottom: 16,
+        }}
+      >
+        {rows.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt style={{ color: colors.accent }}>{label}</dt>
+            <dd style={{ margin: 0 }}>{value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      <p style={{ ...body, fontSize: text.small, color: colors.dim, marginBottom: 16 }}>
+        The font's full licence ships beside it in the game's files, as the OFL
+        requires.
+      </p>
+      <button style={button} data-testid="credits-back" onClick={onBack}>
+        Back
+      </button>
+    </>
   );
 }
 

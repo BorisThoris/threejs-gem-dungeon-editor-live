@@ -78,8 +78,31 @@ export const scaled = (base: number, charge: Charge): number =>
 export const inverted = (base: number, charge: Charge): number =>
   charge === "blessed" ? Math.max(1, Math.round(base * 0.5)) : charge === "cursed" ? Math.round(base * 1.5) : base;
 
-/** What to call it on a prompt: "a blessed cloudy potion". */
+/** The word on its own, for a place that has room for a column of them. */
 export const chargeWord = (charge: Charge): string => (charge === "plain" ? "" : charge);
+
+/**
+ * What to call a thing on a prompt, charge and all.
+ *
+ * "a cursed amber potion", not "cursed an amber potion" - which is what
+ * the first version of this produced, because an item's unknown name
+ * carries its own article ("an amber potion") and the charge was simply
+ * stuck on the front. It read as broken English on the one line a player
+ * reads most often, and no check would ever have caught it: every check
+ * this touches asks whether the prompt matches /open the chest/.
+ *
+ * The article comes from the charge word when there is one, because that
+ * is now the first word: "a cursed", "a blessed". A name with no article
+ * of its own - the real name of an identified item, "Potion of Healing" -
+ * takes the charge in front and no article at all, which is how a shop
+ * label reads.
+ */
+export function describe(charge: Charge, name: string): string {
+  const mark = chargeWord(charge);
+  if (!mark) return name;
+  const bare = name.replace(/^an? /, "");
+  return name === bare ? `${mark} ${name}` : `a ${mark} ${bare}`;
+}
 
 /** The one step the shop sells: cursed to plain, plain to blessed. */
 export const lifted = (charge: Charge): Charge =>

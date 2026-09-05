@@ -2133,9 +2133,41 @@ nobody has held a Deck with this on it.
   curiosity, or beelines for the exit — and whether they come out of a run
   able to say what the game has in it.
 
-- **Is the Warden frightening or annoying?** It cannot be fought, blocked
-  or outpaced, only avoided. That is either tense or it is a tax. The two
-  dials are `WARDEN_SPEED_ROUSED` and `WARDEN_STEP_ROUSED_S`.
+- **Is the Warden frightening or annoying?** It cannot be killed or
+  outpaced - it can now be wounded, thrown back and shut out, and all three
+  are temporary. That is either tense or it is a tax. The two dials are
+  `WARDEN_SPEED_ROUSED` and `WARDEN_STEP_ROUSED_S`.
+
+- **Does anyone fight it, and does anyone try twice?** Standing where the
+  trap room's spikes are between you and the doorway is the whole of the
+  new play, it is never explained, and it is worth exactly twice per floor
+  before the Warden learns. Watch whether a player finds it at all, whether
+  they understand why it stopped working, and whether "wary of spikes" on
+  the HUD is enough to tell them.
+
+- **Is barring a door worth eight seconds of being heard?** It is the
+  loudest act in the game and it buys the largest thing. If nobody ever
+  bars one, the noise is too expensive or the detour it forces is too
+  small; if everybody bars every door behind them, it is free.
+
+- **Does the lantern ever go down?** The bargain only exists if both halves
+  get chosen. If players raise it on the first floor and never touch it
+  again, the dark is not playable enough or being seen costs too little; if
+  they never raise it, fifteen units of light is not worth a hundred and
+  fifty seconds of oil.
+
+- **Is the Cutpurse a threat or an annoyance?** It cannot hurt you and it
+  takes one gem. The interesting failure is a player who does not realise
+  they could have caught it, and the boring one is a player who walks all
+  the way back to a nest for a single gem because they feel they have to.
+
+- **Does anyone drink a cursed bottle?** The charge is visible and the name
+  is not, which is meant to make a cursed unknown potion a real question
+  rather than an obvious no. If nobody ever drinks one, curses are too
+  harsh; if everybody does, they are decoration.
+
+- **Which delver does a second run get played as?** The five are meant to
+  be unrankable. If everyone's second run is the same one, they are not.
 - **Does anyone go back for the last gems?** If players always leave the
   moment the toll is paid, the alarm is too punishing or the score is not
   visible enough. If they always strip the floor, it is not punishing at all.
@@ -2165,6 +2197,9 @@ nobody has held a Deck with this on it.
 - **Does anyone work out the inner line?** Keeping ahead of the arms near
   the middle is a walk and near the wall is a dash. That is the whole skill
   of the room, and it is never explained.
+- **Do the captions read, for someone using them?** They name the cue and
+  the side it came from, which is what the audio carries. Nobody who
+  needed them has read them yet.
 - **Does anyone stop running?** A sprint is 60% faster and tells the Warden
   which room you are in for four seconds. If players sprint everywhere
   anyway, the noise costs too little; if they never sprint, it costs too
@@ -2279,7 +2314,80 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 29. Tuning knobs
+## 29. Two harness bugs that read as game bugs
+
+Both were found in the last round and both are worth writing down, because
+the failure they produce is indistinguishable from the game being broken.
+
+**The watcher's beam.** The check that puts a player in the beam without
+waiting for it placed them 0.35 radians "ahead" of where it pointed,
+without asking which way it was turning. The beam reaches 0.42 either side
+and moves 0.28 while a teleport settles, so on one heading the player
+ended up outside it: two runs in three found them on the beam and the
+third looked exactly like the Sentry being broken. It samples the facing
+twice to get the direction, leads it, and then - after the settle - stands
+the player on the beam's centre, because leading it alone left them near
+the trailing edge and the six-second pause leaks about a quarter of a
+radian at its boundaries, which carried the beam straight past them. Four
+runs in four now.
+
+**The memory trial's lectern.** The trial's fourth pedestal and its
+lectern share a quadrant and sit 0.9 apart, and E acts on whichever is
+nearer. About one run in several the harness landed on the crystal,
+pressed E at it, and reported five checks failed with the room's standing
+hint still on screen. It approaches from a second side and tries once more
+before giving up, which is what a player does.
+
+**And reading a prompt at all.** `stepTo` waits for the reading to settle -
+two consecutive equal non-null reads - and gave up after about six frames.
+A frame on the software rasteriser this project tests on is a quarter of a
+second, and the suite has grown: two runs in a row returned null for a
+prompt that was on screen, and in both the very next check pressed E at
+the same spot and worked, which is the tell. The budget is sixteen tries
+now rather than eight.
+
+**And one real bug the third one found.** Chasing the null prompt meant
+standing at a chest and reading what it actually said, which was "Open the
+chest - cursed an amber potion". An item's unknown name carries its own
+article and the charge had been stuck in front of it. It is "a cursed
+amber potion" now, and `describe()` is checked - but the reason it lasted
+is worth more than the fix: every check that touches that prompt asks
+whether it matches `/open the chest/`, so not one of them could ever have
+seen it. It was found by reading a line, which is still the only way some
+things get found.
+
+**What is left, said plainly.** After those three fixes the suite still
+fails intermittently: across six consecutive runs of the 275 checks it
+passed completely once and otherwise failed two to four, never the same
+ones twice - a prompt read as null at a vault door and then opened by the
+next check, a chest that offered nothing from four approaches and
+everything from four approaches ten minutes later, a relic pedestal that
+lost the arbitration to a shop counter beside it, a tome reported closed a
+beat after it opened.
+
+Every one of them is the same shape: the harness read too early or stood
+in the wrong place, on a machine rendering at three to five frames a
+second, running a suite that has grown from 189 checks to 275 and a page
+that has grown a lot of overlays. None of them has ever been a failure the
+game reproduces when the same thing is done to it by hand, and the checks
+that cover the new mechanics - the Warden's wounds, the devices, the
+Cutpurse, the delvers, the lantern, the bars, the charges, the deeds, the
+options - pass on every run.
+
+That is worth knowing before somebody reads a red line and starts looking
+for a bug in the dungeon. It is also worth fixing properly, and the way to
+fix it is not more timeouts: it is for the harness to wait on a condition
+the game publishes rather than on a clock. That is the next round's work,
+and it is written down here rather than left as folklore.
+
+None of the first three was a change to the game. All three were checks whose
+failure mode was "the game is broken" when the truth was "the harness
+stood in the wrong place" or "the harness was in a hurry", and a check
+that lies in that direction is worse than no check - it costs an
+afternoon looking for a bug that is not there, and the third time it
+happens people start ignoring the suite.
+
+## 30. Tuning knobs
 
 All in `src/game/world.ts`:
 

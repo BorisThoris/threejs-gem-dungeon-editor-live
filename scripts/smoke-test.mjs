@@ -2112,13 +2112,29 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const f0 = window.__sentry.facing;
     await wait(200);
     const turning = Math.sign(wrap(window.__sentry.facing - f0)) || 1;
-    const bearing = window.__sentry.facing + turning * 0.35;
     const r = Math.min(4, half - 1.5);
-    window.__bus.emit("teleport", {
-      position: [at[0] + Math.sin(bearing) * r, 1.5, at[2] + Math.cos(bearing) * r],
-      yaw: 0,
-    });
+    const standAt = (bearing) =>
+      window.__bus.emit("teleport", {
+        position: [at[0] + Math.sin(bearing) * r, 1.5, at[2] + Math.cos(bearing) * r],
+        yaw: 0,
+      });
+    // Ahead of it first, so the body has somewhere to settle to...
+    standAt(window.__sentry.facing + turning * 0.35);
     await wait(500);
+    /**
+     * ...and then onto the beam's centre, read again after the settle.
+     *
+     * Leading it by a fixed angle put the player just inside the trailing
+     * edge by the time the teleport had settled - which is fine for
+     * "is the player on the beam" and wrong for everything after it: the
+     * six-second pause leaks about a quarter of a radian at its two
+     * boundaries, and a quarter of a radian carried the beam straight
+     * past them. Dead centre leaves 0.42 either side, which is wider than
+     * anything the pause can leak, so the check that follows is measuring
+     * the pause rather than the placement.
+     */
+    standAt(window.__sentry.facing);
+    await wait(220);
     const before = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit };
     let called = 0;
     const off = window.__bus.on("sentrySaw", () => { called++; });
@@ -2259,10 +2275,23 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const m = document.body.innerText.match(/E\s+([^\n]+)/);
         return m ? m[1] : null;
       });
-    await page.waitForTimeout(350);
+    /**
+     * Long enough for this machine, which is slower than it was.
+     *
+     * Two consecutive equal non-null reads, and a trigger publishes once
+     * per frame - so the budget is measured in frames, and a frame here is
+     * a quarter of a second on the software rasteriser. Eight tries at
+     * 200ms is under two seconds, which is about six frames, and as the
+     * suite has grown the page has got busier: two runs in a row returned
+     * null for a prompt that was there, and the check after each of them
+     * pressed E at the same spot and worked. A read that gives up before
+     * the game has drawn is a check that reports the game broken because
+     * the harness was in a hurry.
+     */
+    await page.waitForTimeout(400);
     let last = await read();
-    for (let i = 0; i < 8; i++) {
-      await page.waitForTimeout(200);
+    for (let i = 0; i < 16; i++) {
+      await page.waitForTimeout(220);
       const now = await read();
       if (now !== null && now === last) return now;
       last = now;
@@ -2467,10 +2496,26 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
           return m ? m[1] : null;
         });
 
-      // --- The pattern is not played behind the pause menu -----------------
+      /**
+       * --- The pattern is not played behind the pause menu ---------------
+       *
+       * Approached from two sides before giving up, because a memory
+       * trial's fourth pedestal and its lectern share a quadrant and sit
+       * 0.9 apart (see `stepTo` above) and E acts on whichever is nearer.
+       * One run in several landed on the crystal, pressed E at it, and
+       * reported five checks failed with the room's standing hint still on
+       * screen - which looks exactly like the trial being broken and is
+       * the harness standing in the wrong place. Stepping round and trying
+       * once more is what a player does, and it is what this does now.
+       */
       await stepTo(lect, 1.9);
       await act();
-      const watching = await line();
+      let watching = await line();
+      if (watching !== "Watch.") {
+        await stepTo(lect, 1.9, "in");
+        await act();
+        watching = await line();
+      }
       ok("beginning the trial says to watch", watching === "Watch.", String(watching));
       await page.evaluate(() => window.__run.getState().pause());
       // Longer than the whole display, which is 4.3 seconds.
@@ -3382,6 +3427,65 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
   }
 }
+}
+
+/**
+ * What a shipped thing has to say about itself.
+ *
+ * A build stamp, because a demo goes out to people whose only way to tell
+ * you which build broke is what is on the title screen. Credits, because
+ * the font ships with the game and the licence that permits that requires
+ * the licence to travel with it. And one line on the winning summary
+ * saying this is a demo - only on a win, because telling somebody who has
+ * just died on floor two that there is more of this is not the moment.
+ */
+{
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(500);
+  const stamp = await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="menu-build"]');
+    return el ? el.textContent : null;
+  });
+  ok(
+    "the title screen says which build this is",
+    stamp && /demo \d+\.\d+\.\d+ · \d{4}-\d{2}-\d{2}/.test(stamp),
+    String(stamp)
+  );
+
+  const credits = await page.$('[data-testid="menu-credits"]');
+  if (credits) await credits.click();
+  await page.waitForTimeout(400);
+  const said = await page.evaluate(() => document.body.innerText);
+  ok(
+    "the credits name what the game is built on, and the font's licence",
+    /Open Font License/i.test(said) && /three\.js/i.test(said) && /Web Audio/i.test(said),
+    said.slice(0, 120).replace(/\n/g, " | ")
+  );
+  const creditsBack = await page.$('[data-testid="credits-back"]');
+  if (creditsBack) await creditsBack.click();
+  await page.waitForTimeout(300);
+
+  // The demo line, on a win and not on a death.
+  const demoLine = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(3);
+    await sleep(1200);
+    run.setState({ phase: "lost", endedAt: run.getState().startedAt + 10 });
+    await sleep(400);
+    const onDeath = !!document.querySelector('[data-testid="summary-demo"]');
+    run.setState({ phase: "won" });
+    await sleep(400);
+    const onWin = !!document.querySelector('[data-testid="summary-demo"]');
+    return { onDeath, onWin };
+  });
+  ok(
+    "the summary says this is a demo when you get out, and not when you die",
+    demoLine.onWin === true && demoLine.onDeath === false,
+    JSON.stringify(demoLine)
+  );
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(400);
 }
 
 /**

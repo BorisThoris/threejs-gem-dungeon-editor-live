@@ -153,6 +153,10 @@ not you have done it. None of them changes a run - everything the game has
 is there from the first one - and they exist to name the things the systems
 support that you might not think to try.
 
+The title screen carries which build it is, because a demo goes out to
+people whose only way to tell you which one broke is what is on the
+screen.
+
 Every dungeon is a seed, and the summary shows it. A run worth telling
 someone about is a run they can walk themselves, and the one you just lost
 is usually the one you want another go at, so the summary offers the same

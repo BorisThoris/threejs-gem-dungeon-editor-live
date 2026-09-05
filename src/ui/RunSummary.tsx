@@ -58,6 +58,19 @@ export function RunSummary() {
             None of it comes back up.
           </p>
         )}
+        {/* It is a demo, and the screen a player reaches after winning is
+            the one place to say so without it being an advertisement in
+            the middle of a game. Only on a win: telling somebody who just
+            died on floor two that there is more of this is not the moment. */}
+        {won && (
+          <p
+            style={{ ...body, fontSize: text.small, color: colors.dim, marginBottom: 10 }}
+            data-testid="summary-demo"
+          >
+            That is the demo: three floors of it. The full dungeon goes deeper, and
+            what is down there does not stay on its own floor.
+          </p>
+        )}
         {bests && (bests.haul || bests.depth || bests.speed) && (
           <p style={{ ...body, marginBottom: 8, color: colors.gold }}>
             {[

@@ -1629,6 +1629,56 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// --- The store page ---------------------------------------------------------
+//
+// `steam/STORE.md` is the copy for a page nobody can edit from inside the
+// game, and it makes claims with numbers in them. Those numbers are in
+// world.ts, and a store page that says three floors while the game ships
+// four is the kind of mistake that is embarrassing in public and invisible
+// in a diff.
+{
+  const store = readFileSync(join(root, "steam/STORE.md"), "utf8");
+  /**
+   * The page is prose, so its numbers are words.
+   *
+   * Matching them means turning the game's numbers into the same words -
+   * and this list has to cover every number the page could ever want, or
+   * the check silently compares against `undefined` and passes on
+   * anything. The first version of it ran off the end of its own array
+   * and reported a page that says "Ten deeds" as not saying ten deeds.
+   */
+  const WORDS = [
+    "zero", "one", "two", "three", "four", "five", "six",
+    "seven", "eight", "nine", "ten", "eleven", "twelve",
+  ];
+  const word = (n) => WORDS[n] ?? String(n);
+  /** Said in words or in digits; the page may phrase it either way. */
+  const says = (n, noun) =>
+    new RegExp(`\\b(${word(n)}|${n}) ${noun}`, "i").test(store);
+
+  const tolls = Array.from({ length: L.FLOORS }, (_, i) => L.tollForFloor(i + 1));
+  check("the store page says the right number of floors", says(L.FLOORS, "floors"), `${L.FLOORS} floors`);
+  check(
+    "and the right tolls, in order",
+    new RegExp(tolls.map(word).join(", then "), "i").test(store) ||
+      store.includes(tolls.join(", then ")),
+    tolls.join(", then ")
+  );
+  check(
+    "and the right number of item kinds and delvers",
+    says(L.ITEM_IDS.length, "kinds") && says(L.DELVER_IDS.length, "delvers"),
+    `${L.ITEM_IDS.length} items, ${L.DELVER_IDS.length} delvers`
+  );
+  check("and the right number of deeds", says(L.DEED_IDS.length, "deeds"), `${L.DEED_IDS.length} deeds`);
+  // The two wounds that rout the Warden are the one mechanic the page
+  // makes a specific promise about.
+  check(
+    "and the promise it makes about the Warden is the one the game keeps",
+    says(L.WARDEN_WOUNDS_TO_ROUT, "wounds"),
+    `${L.WARDEN_WOUNDS_TO_ROUT} wounds`
+  );
+}
+
 // --- Keys -------------------------------------------------------------------
 //
 // Every key the game reads was a literal at its call site until a player
@@ -2086,6 +2136,23 @@ check("the shipped room templates reach the floors the game generates", authored
     (id) => L.scaled(10, "cursed") !== 10 && L.inverted(10, "cursed") !== 10
   );
   check("every charge changes the number it touches", differs, "");
+  /**
+   * And it reads as English on the line a player reads most often.
+   *
+   * An item's unknown name carries its own article - "an amber potion" -
+   * and the first version of the chest prompt stuck the charge in front of
+   * it: "Open the chest - cursed an amber potion". Every check that
+   * touches that prompt asks whether it matches /open the chest/, so none
+   * of them would ever have seen it; it was found by reading one.
+   */
+  check(
+    "a charged thing reads as English, with the word inside the article",
+    L.describe("cursed", "an amber potion") === "a cursed amber potion" &&
+      L.describe("blessed", "a coil of black wire") === "a blessed coil of black wire" &&
+      L.describe("plain", "an amber potion") === "an amber potion" &&
+      L.describe("cursed", "Potion of Healing") === "cursed Potion of Healing",
+    `${L.describe("cursed", "an amber potion")} / ${L.describe("blessed", "a coil of black wire")}`
+  );
 
   // A snare is set by hand on one spot, and the thing it is meant to catch
   // crosses at most WARDEN_MAX_STEP in a frame. If it were narrow enough to

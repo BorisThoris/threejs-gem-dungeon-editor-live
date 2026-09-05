@@ -15,7 +15,7 @@ import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
-import { chargeWord } from "../items/charge";
+import { describe } from "../items/charge";
 import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
@@ -252,12 +252,12 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
         if (looted.includes(key)) return null;
         const id = rollItem(seed, key, floor);
         const known = identified.includes(id);
-        // "a cursed cloudy potion". The charge is on the prompt because it
+        // "a cursed amber potion". The charge is on the prompt because it
         // is the whole decision at a chest: a cursed unknown bottle is a
         // real question, and an unknown bottle that might be cursed is the
-        // coin flip the game already had.
-        const mark = chargeWord(charges[id]);
-        const what = `${mark ? mark + " " : ""}${nameOf(id, appearances, known)}`;
+        // coin flip the game already had. `describe` puts the word inside
+        // the article rather than in front of it.
+        const what = describe(charges[id], nameOf(id, appearances, known));
         return (
           <InteractTrigger
             key={key}

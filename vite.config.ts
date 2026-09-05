@@ -59,6 +59,20 @@ export default defineConfig({
   },
   // Additional Electron optimizations
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
+    /**
+     * What build this is, on the title screen and the pause menu.
+     *
+     * A version and a date, baked in at build time. It exists for bug
+     * reports: "it crashed on the third floor" is worth very little
+     * without knowing which build crashed, and a demo goes out to people
+     * who have no other way to tell you.
+     *
+     * Read from package.json rather than written twice - the one place a
+     * version already lives - and the date is the build's, so two builds
+     * of the same version can still be told apart.
+     */
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.0.0'),
+    __APP_BUILT__: JSON.stringify(new Date().toISOString().slice(0, 10))
   }
 })
