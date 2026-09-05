@@ -18,6 +18,9 @@ import { PauseMenu } from "./ui/PauseMenu";
 import { Prompt } from "./ui/Prompt";
 import { PuzzleOverlay } from "./ui/PuzzleOverlay";
 import { RunSummary } from "./ui/RunSummary";
+import { useMixerSettings } from "./game/systems/mixer";
+import { Captions } from "./ui/Captions";
+import { UI_SCALE_VAR } from "./ui/overlay";
 import { DeedToast } from "./ui/Deed";
 import { ItemLog, Satchel } from "./ui/Satchel";
 import { Transitions } from "./ui/Transitions";
@@ -51,18 +54,37 @@ function usePauseKeys() {
  * the pad's slot buttons in Scene, which are read off the frame loop with
  * no guard of their own.
  */
+/**
+ * The player's overlay scale, on the document root.
+ *
+ * One style write rather than threading a number through every overlay:
+ * every size in `ui/overlay.ts` is a clamp that multiplies by this
+ * variable, so setting it here resizes the HUD, the prompts, the menus and
+ * the summary at once and re-renders nothing.
+ */
+function useUiScale() {
+  const uiScale = useSettings((s) => s.uiScale);
+  useEffect(() => {
+    document.documentElement.style.setProperty(UI_SCALE_VAR, String(uiScale));
+  }, [uiScale]);
+}
+
+const SLOT_ACTIONS = ["slot1", "slot2", "slot3", "slot4"] as const;
+
 function useSatchelKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
-      // F raises and lowers the lantern. Beside the satchel keys because
-      // it is the same kind of thing: a hand doing something, refused by
-      // the store whenever the player is not in control.
-      if (event.code === "KeyF") {
+      // The lantern, beside the satchel keys because it is the same kind
+      // of thing: a hand doing something, refused by the store whenever
+      // the player is not in control. Which key that is belongs to the
+      // player now (`input/bindings.ts`), so nothing here names one.
+      const bindings = useSettings.getState().bindings;
+      if (bindings.lantern.includes(event.code)) {
         if (canControl(useRun.getState())) useRun.getState().toggleLantern();
         return;
       }
-      const slot = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(event.code);
+      const slot = SLOT_ACTIONS.findIndex((action) => bindings[action].includes(event.code));
       if (slot < 0) return;
       useRun.getState().useItem(slot);
     };
@@ -85,6 +107,10 @@ export default function App() {
   const paused = useRun((s) => s.paused);
   usePauseKeys();
   useSatchelKeys();
+  useUiScale();
+  // The mixer follows the settings wherever the player is, including the
+  // title screen the volume slider lives on.
+  useMixerSettings();
   useWardenWarning();
   // What earns a deed, in one place. Nothing else in the game knows deeds
   // exist, which is the only way a list of achievements stays a list of
@@ -100,7 +126,11 @@ export default function App() {
     w.__bus = bus;
     w.__keyboard = keyboard;
     w.__settings = useSettings;
+    // What the mixer is actually set to, so a check on the volume slider
+    // asks the audio rather than the setting that was supposed to reach it.
+    void import("./game/systems/audio").then((m) => (w.__sfxVolume = m.sfx.volume));
     w.__records = useRecords;
+    w.__settings = useSettings;
     void import("./game/state/deeds").then((m) => (w.__deeds = m.useDeeds));
     // The numbers themselves, so a check never keeps its own copy of one.
     // A check that hardcodes 1.05 for the Warden's reach is a second owner
@@ -193,6 +223,7 @@ export default function App() {
       <Prompt />
       <Satchel />
       <ItemLog />
+      <Captions />
       <DeedToast />
       <PuzzleOverlay />
       {paused && phase === "playing" && <PauseMenu />}

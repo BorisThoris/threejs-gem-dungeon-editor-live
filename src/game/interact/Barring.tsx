@@ -22,9 +22,6 @@ import { INTERACT_RADIUS } from "../world";
  * opposite of going through, and putting both on one key means every door
  * needs a mode.
  */
-/** B, beside the satchel keys and the lantern's F. */
-const BAR_KEY = "KeyB";
-
 export function Barring({ room }: { room: Room }) {
   useFrame((state) => {
     const run = useRun.getState();
@@ -36,7 +33,7 @@ export function Barring({ room }: { room: Room }) {
     // reach, so a press near no door is not silently eaten - the keyboard
     // module's presses are one-shot and whoever asks first wins.
     const pad = readGamepad().barPressed;
-    if (!pad && !keyboard.peekPress(BAR_KEY)) return;
+    if (!pad && !keyboard.peekAction("bar")) return;
 
     const cam = state.camera.position;
     let best: { dir: Dir; to: string; d: number } | null = null;
@@ -49,7 +46,7 @@ export function Barring({ room }: { room: Room }) {
       if (!best || d < best.d) best = { dir, to, d };
     }
     if (!best) return;
-    if (!pad) keyboard.consumePress(BAR_KEY);
+    if (!pad) keyboard.consumeAction("bar");
     useRun.getState().barDoor(best.to);
   });
 

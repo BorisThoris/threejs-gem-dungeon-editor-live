@@ -64,6 +64,17 @@ export function Player() {
   const bob = useRef({ distance: 0, strength: 0, nextStep: STRIDE, strong: true });
   const shake = useRef(0);
   const cameraBob = useSettings((s) => s.cameraBob);
+  const shakeOn = useSettings((s) => s.shake);
+  const toggleSprint = useSettings((s) => s.toggleSprint);
+  /**
+   * Whether a toggled sprint is currently on.
+   *
+   * A ref rather than state: it changes on a keypress and is read in the
+   * frame loop, and nothing renders differently for it. Not reset when the
+   * setting changes - a player who switches to toggle mid-run finds the
+   * sprint off, which is where it starts.
+   */
+  const sprinting = useRef(false);
 
   const scratch = useMemo(
     () => ({
@@ -109,7 +120,7 @@ export function Player() {
     const sway = cameraBob ? Math.sin(phase * 0.5) * BOB_SWAY * b.strength : 0;
     let knock = 0;
     let knockX = 0;
-    if (shake.current > 0) {
+    if (shakeOn && shake.current > 0) {
       shake.current = Math.max(0, shake.current - delta);
       const falling = (shake.current / SHAKE_S) ** 2;
       knock = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
@@ -140,11 +151,23 @@ export function Player() {
     const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
-    const forward = keyboard.isDown("KeyW") || keyboard.isDown("ArrowUp");
-    const back = keyboard.isDown("KeyS") || keyboard.isDown("ArrowDown");
-    const left = keyboard.isDown("KeyA") || keyboard.isDown("ArrowLeft");
-    const right = keyboard.isDown("KeyD") || keyboard.isDown("ArrowRight");
-    const dash = keyboard.isDown("ShiftLeft") || keyboard.isDown("ShiftRight") || pad.dash;
+    const forward = keyboard.actionDown("forward");
+    const back = keyboard.actionDown("back");
+    const left = keyboard.actionDown("left");
+    const right = keyboard.actionDown("right");
+    /**
+     * Held, or toggled.
+     *
+     * Holding a key for the length of a chase is a real barrier and the
+     * chase is most of this game. Nothing about the sprint changes when
+     * this is on - it is still loud, it still costs what it costs - only
+     * how the key is asked for. The pad's own hold works either way,
+     * because a stick click is not the thing that is hard to hold.
+     */
+    const dash = toggleSprint
+      ? (keyboard.consumeAction("sprint") ? (sprinting.current = !sprinting.current) : sprinting.current) ||
+        pad.dash
+      : keyboard.actionDown("sprint") || pad.dash;
 
     // Clamp rather than normalise, so a half-deflected stick walks slower.
     const inputZ = clampUnit(+back - +forward + pad.moveY);

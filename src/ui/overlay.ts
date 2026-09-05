@@ -17,11 +17,29 @@ export const clock = (s: number): string =>
  * needlessly small on a 4K desktop. At 1280 wide these come out around
  * 14-15px; at 1920 they hit their caps.
  */
+/**
+ * The player's own scale, as a CSS variable the sizes below multiply by.
+ *
+ * A custom property rather than a number threaded through every component:
+ * every size in this file is already a `clamp`, and multiplying inside the
+ * clamp keeps the floor and the ceiling meaning what they meant - the
+ * smallest readable size and the largest sensible one, both scaled. Set
+ * once on the document root by `useUiScale`, so a change costs one style
+ * write rather than a re-render of every overlay in the game.
+ *
+ * It exists for the Deck first. 1280x800 is a seven-inch screen held at
+ * arm's length, and text sized for a monitor at that distance is text
+ * nobody reads.
+ */
+export const UI_SCALE_VAR = "--gd-ui-scale";
+const scale = (min: number, vw: number, max: number): string =>
+  `clamp(calc(${min}px * var(${UI_SCALE_VAR}, 1)), calc(${vw}vw * var(${UI_SCALE_VAR}, 1)), calc(${max}px * var(${UI_SCALE_VAR}, 1)))`;
+
 export const text = {
-  small: "clamp(11px, 1.05vw, 15px)",
-  body: "clamp(12px, 1.15vw, 16px)",
-  title: "clamp(18px, 1.9vw, 26px)",
-  chip: "clamp(12px, 1.2vw, 16px)",
+  small: scale(11, 1.05, 15),
+  body: scale(12, 1.15, 16),
+  title: scale(18, 1.9, 26),
+  chip: scale(12, 1.2, 16),
 };
 
 export const colors = {

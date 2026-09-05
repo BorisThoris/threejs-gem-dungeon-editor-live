@@ -4,6 +4,7 @@ import { bus } from "../game/events";
 import { ITEMS, nameOf } from "../game/items/catalog";
 import { CHARGE_COLOUR, chargeWord } from "../game/items/charge";
 import { satchelSlots, useRun } from "../game/state/run";
+import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
 /**
@@ -21,6 +22,10 @@ export function Satchel() {
   // it: the look tells you the charge and only drinking one tells you the
   // name, which is the whole shape of what a run knows.
   const charges = useRun((s) => s.charges);
+  // A charge is a coloured band and a word. The word is always there when
+  // the marks are on, including for a plain kind, so "no word" never has
+  // to be read as information by somebody who cannot see the band.
+  const marks = useSettings((s) => s.highContrast);
   // Four for everyone but the Courier, who traded two of them for speed.
   // Drawn from the run rather than the constant, so a two-slot satchel
   // shows two slots instead of two full ones and two that can never fill.
@@ -81,7 +86,7 @@ export function Satchel() {
                     ? ITEMS[id].name.replace(/^(Potion|Scroll) of /, "")
                     : shortLook(nameOf(id, appearances, false))}
                 </div>
-                {charges[id] !== "plain" && (
+                {(marks || charges[id] !== "plain") && (
                   <div
                     style={{
                       fontSize: text.small,
@@ -89,7 +94,7 @@ export function Satchel() {
                       letterSpacing: "0.06em",
                     }}
                   >
-                    {chargeWord(charges[id])}
+                    {chargeWord(charges[id]) || "plain"}
                   </div>
                 )}
                 {/* What the key will actually do. A device goes on the

@@ -3385,6 +3385,237 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * The options screen: the list a Steam release gets judged on.
+ *
+ * Most of what is here is not a preference. Head bob and screen shake make
+ * people ill; a game whose main threat is a sound needs a way to see the
+ * sound; the alarm and the item charges were told in hue alone; sprint on
+ * a held key is a real barrier over a chase that lasts a minute; and a
+ * seven-inch screen wants bigger text than a monitor does. Every one of
+ * them has to survive a reload, reach the thing it claims to change, and
+ * be reachable at 1280x800 with a gamepad - which is what is driven here.
+ */
+{
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(500);
+  const controls = await page.$('button:has-text("Controls")');
+  if (controls) await controls.click();
+  await page.waitForTimeout(400);
+
+  const screen = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('[data-testid^="opt-"],[data-testid^="bind-"]')];
+    const unreachable = [];
+    for (const el of rows) {
+      el.scrollIntoView({ block: "nearest" });
+      const r = el.getBoundingClientRect();
+      if (r.bottom > window.innerHeight || r.top < 0 || r.height === 0) {
+        unreachable.push(el.getAttribute("data-testid"));
+      }
+    }
+    return {
+      ids: rows.map((e) => e.getAttribute("data-testid")),
+      unreachable,
+      // Not one native range input: a slider is a drag, a gamepad cannot
+      // drag, and the Deck is a gamepad.
+      ranges: document.querySelectorAll('input[type="range"]').length,
+    };
+  });
+  for (const id of ["opt-bob", "opt-shake", "opt-sprint", "opt-invert", "opt-captions", "opt-contrast"]) {
+    if (!screen.ids.includes(id)) ok(`the options offer ${id}`, false, screen.ids.join(", "));
+  }
+  ok(
+    "the options screen offers comfort, look, sound, reading and the keys",
+    ["opt-bob", "opt-shake", "opt-sprint", "opt-sensitivity", "opt-padlook", "opt-invert",
+     "opt-sound", "opt-volume", "opt-captions", "opt-contrast", "opt-uiscale", "bind-forward",
+     "bind-reset"].every((id) => screen.ids.includes(id)),
+    `${screen.ids.length} controls`
+  );
+  ok(
+    "every one of them can be reached and pressed at a Steam Deck's size",
+    screen.unreachable.length === 0,
+    JSON.stringify(screen.unreachable)
+  );
+  ok(
+    "and none of them is a drag, because a gamepad cannot drag",
+    screen.ranges === 0,
+    `${screen.ranges} range inputs`
+  );
+
+  // A slider moves the number and the number is written down.
+  const volumeBefore = await page.evaluate(
+    () => document.querySelector('[data-testid="opt-volume"]').dataset.value
+  );
+  for (let i = 0; i < 3; i++) {
+    await page.click('[data-testid="opt-volume-down"]');
+    await page.waitForTimeout(80);
+  }
+  const volume = await page.evaluate(() => ({
+    shown: document.querySelector('[data-testid="opt-volume"]').dataset.value,
+    stored: JSON.parse(localStorage.getItem("gem-dungeon.settings") || "{}").volume,
+    heard: window.__sfxVolume ? window.__sfxVolume() : null,
+  }));
+  ok(
+    "a slider moves, is remembered, and reaches the thing it claims to change",
+    Number(volume.shown) < Number(volumeBefore) &&
+      volume.stored === Number(volume.shown) &&
+      (volume.heard === null || Math.abs(volume.heard - Number(volume.shown)) < 0.001),
+    JSON.stringify({ before: volumeBefore, ...volume })
+  );
+
+  // The overlay scale reaches the document rather than one component.
+  await page.click('[data-testid="opt-uiscale-up"]');
+  await page.waitForTimeout(250);
+  const scaled = await page.evaluate(() => ({
+    cssVar: getComputedStyle(document.documentElement).getPropertyValue("--gd-ui-scale").trim(),
+    size: getComputedStyle(document.querySelector('[data-testid="bind-forward"]')).fontSize,
+  }));
+  ok(
+    "the overlay scale is one variable on the document, not a number in a component",
+    Number(scaled.cssVar) > 1 && parseFloat(scaled.size) > 0,
+    JSON.stringify(scaled)
+  );
+
+  /**
+   * Rebinding, all the way through: the row takes the key, the key is
+   * written down, taking a key off another action says so, and - the only
+   * part that matters - the new key actually plays the game.
+   */
+  await page.click('[data-testid="bind-lantern"]');
+  await page.waitForTimeout(150);
+  await page.keyboard.press("KeyL");
+  await page.waitForTimeout(250);
+  const bound = await page.evaluate(() => ({
+    lantern: document.querySelector('[data-testid="bind-lantern"]').dataset.keys,
+    stored: (JSON.parse(localStorage.getItem("gem-dungeon.settings") || "{}").bindings || {}).lantern,
+  }));
+  ok(
+    "a key row takes the next key pressed, and remembers it",
+    bound.lantern === "KeyL" && JSON.stringify(bound.stored) === '["KeyL"]',
+    JSON.stringify(bound)
+  );
+
+  await page.click('[data-testid="bind-bar"]');
+  await page.waitForTimeout(150);
+  await page.keyboard.press("KeyL");
+  await page.waitForTimeout(250);
+  const stolen = await page.evaluate(() => ({
+    bar: document.querySelector('[data-testid="bind-bar"]').dataset.keys,
+    lantern: document.querySelector('[data-testid="bind-lantern"]').dataset.keys,
+    saysSo: /Unbound/.test(document.body.innerText),
+  }));
+  ok(
+    "binding a key another action holds takes it off that one, and says which",
+    stolen.bar === "KeyL" && stolen.lantern === "" && stolen.saysSo,
+    JSON.stringify(stolen)
+  );
+
+  await page.click('[data-testid="bind-reset"]');
+  await page.waitForTimeout(200);
+  await page.click('[data-testid="bind-lantern"]');
+  await page.waitForTimeout(150);
+  await page.keyboard.press("KeyL");
+  await page.waitForTimeout(250);
+  const backBtn = await page.$('[data-testid="controls-back"]');
+  if (backBtn) await backBtn.click();
+  await page.waitForTimeout(400);
+  const startBtn = await page.$('[data-testid="menu-start"]');
+  if (startBtn) await startBtn.click();
+  await page.waitForTimeout(9000);
+  const played = await page.evaluate(() => window.__derived.lantern().raised);
+  await page.keyboard.press("KeyL");
+  await page.waitForTimeout(500);
+  const onNewKey = await page.evaluate(() => window.__derived.lantern().raised);
+  await page.keyboard.press("KeyF");
+  await page.waitForTimeout(500);
+  const onOldKey = await page.evaluate(() => window.__derived.lantern().raised);
+  ok(
+    "and the key a player chose is the key that plays the game",
+    played === false && onNewKey === true && onOldKey === true,
+    JSON.stringify({ atStart: played, afterNewKey: onNewKey, afterOldKey: onOldKey })
+  );
+  // Put it back, so nothing after this is playing a rebound game.
+  await page.evaluate(() => window.__settings.getState().resetBindings());
+  await page.waitForTimeout(150);
+
+  // Captions: the cue the game makes, in words, for a player who cannot
+  // hear it. Off by default and on when asked for.
+  const captioned = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    window.__settings.getState().setCaptions(false);
+    window.__bus.emit("wardenEntered", { roomId: "x" });
+    await sleep(200);
+    const off = /It is in the room/.test(document.body.innerText);
+    window.__settings.getState().setCaptions(true);
+    await sleep(150);
+    window.__bus.emit("wardenEntered", { roomId: "x" });
+    await sleep(250);
+    const on = /It is in the room/.test(document.body.innerText);
+    window.__settings.getState().setCaptions(false);
+    return { off, on };
+  });
+  ok(
+    "captions say what the game just said out loud, and only when asked for",
+    captioned.off === false && captioned.on === true,
+    JSON.stringify(captioned)
+  );
+
+  // Nothing said in colour alone.
+  const contrast = await page.evaluate(async () => {
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const run = window.__run;
+    run.setState({ alarm: 5, wardenRoomId: run.getState().dungeon.rooms[1].id, satchel: ["mire"] });
+    window.__settings.getState().setHighContrast(false);
+    await sleep(250);
+    const plain = document.body.innerText;
+    window.__settings.getState().setHighContrast(true);
+    await sleep(250);
+    const marked = document.body.innerText;
+    window.__settings.getState().setHighContrast(false);
+    return { plainHasBars: /\|\|/.test(plain), markedHasBars: /\|\|/.test(marked) };
+  });
+  ok(
+    "the alarm is a shape as well as a colour when the marks are on",
+    contrast.plainHasBars === false && contrast.markedHasBars === true,
+    JSON.stringify(contrast)
+  );
+
+  // And a reload keeps all of it.
+  await page.evaluate(() => {
+    const s = window.__settings.getState();
+    s.setCameraBob(false);
+    s.setShake(false);
+    s.setToggleSprint(true);
+    s.setInvertY(true);
+  });
+  await page.waitForTimeout(200);
+  await page.reload({ waitUntil: "load" });
+  await page.waitForTimeout(2500);
+  const kept = await page.evaluate(() => {
+    const s = window.__settings.getState();
+    return { bob: s.cameraBob, shake: s.shake, sprint: s.toggleSprint, invert: s.invertY, volume: s.volume };
+  });
+  ok(
+    "every setting survives a reload",
+    kept.bob === false && kept.shake === false && kept.sprint === true && kept.invert === true && kept.volume < 0.8,
+    JSON.stringify(kept)
+  );
+  // Back to the defaults, so the rest of the run is the game as shipped.
+  await page.evaluate(() => {
+    const s = window.__settings.getState();
+    s.setCameraBob(true);
+    s.setShake(true);
+    s.setToggleSprint(false);
+    s.setInvertY(false);
+    s.setVolume(0.8);
+    s.setCaptions(false);
+    s.setHighContrast(false);
+    s.setUiScale(1);
+    s.resetBindings();
+  });
+  await page.waitForTimeout(200);
+}
+
+/**
  * Deeds, and the seam they report through.
  *
  * Every one of them is earned by something that happens in a run, from

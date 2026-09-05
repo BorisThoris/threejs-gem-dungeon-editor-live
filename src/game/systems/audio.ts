@@ -10,6 +10,17 @@
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = false;
+/**
+ * How loud, 0 to 1, on top of the mute.
+ *
+ * The master gain was the literal 0.35 in three places - the one place it
+ * is set up and the two ends of the mute - so a volume slider had three
+ * owners before it had one. `masterGain()` is that one owner now.
+ */
+let volume = 0.8;
+/** The mix's own ceiling, which the player's volume scales. */
+const MIX_CEILING = 0.44;
+const masterGain = (): number => (muted ? 0 : MIX_CEILING * volume);
 
 function ensureContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -21,7 +32,7 @@ function ensureContext(): AudioContext | null {
     if (!Ctor) return null;
     context = new Ctor();
     master = context.createGain();
-    master.gain.value = muted ? 0 : 0.35;
+    master.gain.value = masterGain();
     master.connect(context.destination);
   }
   if (context.state === "suspended") void context.resume();
@@ -640,9 +651,14 @@ export const sfx = {
   },
   setMuted(next: boolean) {
     muted = next;
-    if (master) master.gain.value = next ? 0 : 0.35;
+    if (master) master.gain.value = masterGain();
   },
   isMuted: () => muted,
+  setVolume(next: number) {
+    volume = Math.max(0, Math.min(1, next));
+    if (master) master.gain.value = masterGain();
+  },
+  volume: () => volume,
   /** Whether the held Warden sound is running. For the smoke test. */
   isStalking: () => stalking !== null,
 };

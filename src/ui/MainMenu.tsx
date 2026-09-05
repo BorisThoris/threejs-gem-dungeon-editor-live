@@ -113,7 +113,11 @@ export function MainMenu() {
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>
             <Options />
-            <button style={secondaryButton} onClick={() => setPage("menu")}>
+            <button
+              style={secondaryButton}
+              data-testid="controls-back"
+              onClick={() => setPage("menu")}
+            >
               Back
             </button>
           </>

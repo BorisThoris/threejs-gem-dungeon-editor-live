@@ -390,7 +390,10 @@ src/
       catalog.ts         ten achievements, with the Steam names they map to
       watch.ts           the only thing in the game that earns one
     state/run.ts         the run: phase, lives, gems, current room, visited
-    input/               keyboard (edge presses), gamepad, mouse look
+    input/
+      keyboard.ts        edge presses, asked by action rather than by key
+      bindings.ts        which key does what, and what a player may change
+      gamepad.ts, mouseLook.ts, look.ts
     player/
       Player.tsx         the capsule the camera rides on
       where.ts           where it is standing, for the things outside the

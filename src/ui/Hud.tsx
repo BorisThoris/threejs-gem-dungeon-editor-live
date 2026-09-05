@@ -19,6 +19,7 @@ import {
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
+import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
 const ALARM_COLOUR = ["#7f8794", "#e0b74a", "#e07a3a", "#f0506a"];
@@ -43,6 +44,10 @@ export function Hud() {
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
   const keys = useRun((s) => s.keys);
   const nestGems = useRun((s) => s.nestGems);
+  // Nothing said in colour alone. The alarm was a word whose *colour*
+  // carried half its meaning and the gem count's danger likewise, which is
+  // exactly the thing a colour-blind player cannot read.
+  const marks = useSettings((s) => s.highContrast);
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
@@ -91,7 +96,10 @@ export function Hud() {
         <span style={{ color: colors.accent }}>{gems}</span>
         <span style={{ color: colors.dim }}> · toll {toll} · </span>
         {owed > 0 ? (
-          <span style={{ color: colors.danger }}>{owed} short</span>
+          <span style={{ color: colors.danger }}>
+            {marks && "! "}
+            {owed} short
+          </span>
         ) : (
           <span style={{ color: colors.gold }}>{spare} spare</span>
         )}
@@ -106,6 +114,10 @@ export function Hud() {
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>
           <span style={{ color: alarmColour }}>
+            {/* The bars are the alarm level in a shape rather than a hue,
+                so "Stirring" and "Enraged" are told apart by a reader who
+                sees both of them as the same grey. */}
+            {marks && `${"|".repeat(Math.min(4, Math.floor(rouse * 3.99) + 1))} `}
             {alarmLabel(alarm, heard, lured, reeling, seen)}
           </span>
           {/* Said once it is true, because it changes what the trap room is

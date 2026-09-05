@@ -2214,7 +2214,39 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 27. Deeds
+## 27. Options and accessibility
+
+Thirteen settings, on one screen, reachable from the title and from the
+pause menu. Most of them are not preferences - they are the list a Steam
+release gets judged on, and several are the difference between a game
+somebody can play and one they cannot.
+
+| | What it is for |
+| --- | --- |
+| Head bob, screen shake | Both make some people ill. Off, independently. |
+| Sprint: hold or press | Holding a key for the length of a chase is a real barrier, and the chase is most of this game. |
+| Mouse, right stick, invert | 0.25x to 3x each, and up is down if you want it. |
+| Sound, volume | The mute was the only sound control there was. |
+| Captions | The Warden is heard before it is seen and its distance is a sound. That is the best idea in the game and it was unavailable to anyone who cannot hear it. |
+| High contrast marks | The alarm was a word whose colour carried half its meaning, and item charges were a coloured band. Both read without the colour now. |
+| Overlay size | 0.8x to 1.6x. 1280x800 is a seven-inch screen at arm's length. |
+| Keys | All twelve actions rebindable. |
+
+Two things about the shape of it rather than the list. Every control is a
+button or a pair of buttons and there is not one `<input type="range">` in
+it: a slider is a drag, a gamepad cannot drag, and the Deck is a gamepad.
+And the movement action is labelled "Backward" rather than "Back", because
+every menu in the game has a Back button - a harness looking for the page's
+Back button found the key row instead, clicked it, and rebound walking
+backwards, which is exactly what a player scanning the screen would do.
+
+Rebinding uses `event.code`, so a binding made on QWERTY is the same
+physical key on AZERTY. Escape can never be bound - it is how a player gets
+the pointer and the menu back, and a game that lets you bind it away is a
+game you can get stuck in. Binding a key another action holds takes it off
+that one and the screen says which action that left with nothing.
+
+## 28. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2247,7 +2279,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 28. Tuning knobs
+## 29. Tuning knobs
 
 All in `src/game/world.ts`:
 

@@ -31,6 +31,7 @@ writeFileSync(
    export * from "${root}src/game/thief/nest";
    export * from "${root}src/game/delvers/catalog";
    export * from "${root}src/game/deeds/catalog";
+   export * from "${root}src/game/input/bindings";
    export * from "${root}src/game/rooms/layouts";
    export * from "${root}src/game/props/specs";
    export * from "${root}src/game/rooms/anchors";
@@ -1625,6 +1626,74 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- Keys -------------------------------------------------------------------
+//
+// Every key the game reads was a literal at its call site until a player
+// could change them. What can go wrong now is arithmetic on a map: two
+// actions on one key, an action with none, or a key nobody can bind their
+// way out of.
+{
+  const defaults = L.DEFAULT_BINDINGS;
+  check(
+    "every action has a default key and a name",
+    L.ACTIONS.every((a) => defaults[a].length > 0 && L.ACTION_LABEL[a]),
+    `${L.ACTIONS.length} actions`
+  );
+  const all = L.ACTIONS.flatMap((a) => defaults[a]);
+  check(
+    "and no two actions share one out of the box",
+    new Set(all).size === all.length,
+    all.join(", ")
+  );
+  check(
+    "every default key is one a player could bind themselves",
+    all.every((k) => L.bindable(k)),
+    all.filter((k) => !L.bindable(k)).join(", ") || "all bindable"
+  );
+  // Escape is how a player gets the pointer and the menu back. A game
+  // that lets you bind it away is a game you can get stuck in.
+  check(
+    "and Escape is not one of them",
+    !L.bindable("Escape") && !all.includes("Escape"),
+    ""
+  );
+  // Binding a held key takes it off whatever held it, which is the only
+  // behaviour that cannot leave a player unable to bind anything without
+  // first hunting for which row has their key.
+  const stolen = L.bindTo(defaults, "bar", "KeyE");
+  check(
+    "binding a key another action holds takes it off that one",
+    stolen.bar.join() === "KeyE" && !stolen.interact.includes("KeyE"),
+    `bar ${stolen.bar.join()}, use ${stolen.interact.join() || "none"}`
+  );
+  check(
+    "and the screen can say which action that left with nothing",
+    L.unbound(stolen).includes("interact") && L.unbound(defaults).length === 0,
+    L.unbound(stolen).join(", ")
+  );
+  // Codes, not characters: a binding made on one keyboard layout has to
+  // mean the same physical key on another.
+  check(
+    "keys are physical codes, read back as something a person can read",
+    L.keyLabel("KeyW") === "W" && L.keyLabel("ArrowUp") === "Up" && L.keyLabel("ShiftLeft") === "Left Shift",
+    `${L.keyLabel("KeyW")} / ${L.keyLabel("ArrowUp")} / ${L.keyLabel("ShiftLeft")}`
+  );
+  check(
+    "and an action with two keys reads as both",
+    L.keysLabel(defaults.forward) === "W or Up",
+    L.keysLabel(defaults.forward)
+  );
+  // No action may be named the same as a menu button. Every menu in the
+  // game has a Back button, and a key row called "Back" is ambiguous to a
+  // player scanning the screen - it was ambiguous enough that a harness
+  // clicked the row instead of the button and rebound walking backwards.
+  check(
+    "no action is labelled the same as a menu button",
+    !Object.values(L.ACTION_LABEL).some((l) => /^(back|start|quit|resume)$/i.test(l)),
+    Object.values(L.ACTION_LABEL).join(", ")
   );
 }
 

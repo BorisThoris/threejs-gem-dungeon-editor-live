@@ -5,6 +5,7 @@ import { PerspectiveCamera } from "three";
 import { spawnAtStart } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, useRun, type RunState } from "../state/run";
+import { useSettings } from "../state/settings";
 import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MAX_FRAME_S, MOUSE_SENSITIVITY } from "../world";
 import { readGamepad } from "./gamepad";
 import { look } from "./look";
@@ -84,8 +85,13 @@ export function useMouseLook() {
 
     const onMouseMove = (event: MouseEvent) => {
       if (document.pointerLockElement !== canvas) return;
-      yaw.current -= (event.movementX || 0) * MOUSE_SENSITIVITY;
-      pitch.current -= (event.movementY || 0) * MOUSE_SENSITIVITY;
+      // The player's own figures, over the game's. Read off the store at
+      // the moment the mouse moves rather than subscribed to: this handler
+      // is not a React render and a change takes effect on the next
+      // movement either way.
+      const { sensitivity, invertY } = useSettings.getState();
+      yaw.current -= (event.movementX || 0) * MOUSE_SENSITIVITY * sensitivity;
+      pitch.current -= (event.movementY || 0) * MOUSE_SENSITIVITY * sensitivity * (invertY ? -1 : 1);
       pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
       apply();
     };
@@ -152,8 +158,9 @@ export function useMouseLook() {
     const pad = readGamepad();
     if (!pad.connected || (pad.lookX === 0 && pad.lookY === 0)) return;
     const step = Math.min(delta, MAX_FRAME_S);
-    yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * step;
-    pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * step;
+    const { padLook, invertY } = useSettings.getState();
+    yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * padLook * step;
+    pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * padLook * step * (invertY ? -1 : 1);
     pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
     camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
     look.yaw = yaw.current;

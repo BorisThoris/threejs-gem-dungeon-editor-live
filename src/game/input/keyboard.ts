@@ -17,6 +17,9 @@
  * a room later.
  */
 
+import type { Action } from "./bindings";
+import { keysFor } from "../state/settings";
+
 const PRESS_TTL_MS = 1000;
 
 const held = new Set<string>();
@@ -72,4 +75,27 @@ export const keyboard = {
   consumePress: (code: string): boolean => fresh(code) && pressed.delete(code),
   /** True while a recent keydown is still unconsumed. */
   peekPress: (code: string): boolean => fresh(code),
+
+  /**
+   * The same three questions, asked of an action rather than a key.
+   *
+   * Everything in the game that reads the keyboard asks these now, and the
+   * mapping is the player's (`state/settings.ts`, over
+   * `input/bindings.ts`). Before this, every key was a literal at its call
+   * site, which is fine while nobody may change them and impossible the
+   * moment somebody may.
+   *
+   * An action may have several keys - W and Up are both forward - so
+   * `held` is any of them, and a press is consumed from the first that has
+   * one. Consuming exactly one matters: two keys bound to one action must
+   * not fire it twice if a player is somehow holding both.
+   */
+  actionDown: (action: Action): boolean => keysFor(action).some((code) => held.has(code)),
+  consumeAction: (action: Action): boolean => {
+    for (const code of keysFor(action)) {
+      if (fresh(code) && pressed.delete(code)) return true;
+    }
+    return false;
+  },
+  peekAction: (action: Action): boolean => keysFor(action).some((code) => fresh(code)),
 };

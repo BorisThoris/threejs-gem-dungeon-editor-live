@@ -142,7 +142,7 @@ export function InteractTrigger({
 
     // Only the nearest consumes the press, so a tap is never eaten by a
     // trigger that then declines to act on it.
-    const wants = keyboard.consumePress("KeyE") || readGamepad().interactPressed;
+    const wants = keyboard.consumeAction("interact") || readGamepad().interactPressed;
     if (!wants || !enabled) return;
 
     contenders.delete(id);

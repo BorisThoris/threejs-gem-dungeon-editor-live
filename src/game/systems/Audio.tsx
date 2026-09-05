@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
-import { useSettings } from "../state/settings";
 import { useRun } from "../state/run";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, sfx } from "./audio";
@@ -22,8 +21,6 @@ export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
   // The bed runs while a run is on and fades out when it ends or is quit.
   const rouse = useRun((s) => behaviourFor(s.alarm).rouse);
-  const sound = useSettings((s) => s.sound);
-  useEffect(() => sfx.setMuted(!sound), [sound]);
   useEffect(() => {
     if (!playing) return;
     ambience.start();

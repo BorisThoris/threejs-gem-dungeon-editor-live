@@ -141,6 +141,13 @@ it will be. While it is chasing a sound it already heard, it is not
 listening for you - so the scroll is also the one thing that buys you the
 right to run.
 
+The options screen is one page from the title or the pause menu: head bob
+and screen shake off independently, sprint on a hold or a press, mouse and
+stick sensitivity, inverted look, volume, captions for the sounds that
+carry information, high-contrast marks so nothing is said in colour alone,
+overlay size, and every key rebindable. There is not one drag control on
+it, because a gamepad cannot drag and the Steam Deck is a gamepad.
+
 Ten deeds are listed at the title screen, with what each is for whether or
 not you have done it. None of them changes a run - everything the game has
 is there from the first one - and they exist to name the things the systems
