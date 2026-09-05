@@ -8,8 +8,10 @@ import {
   tollNow,
   useCurrentRoom,
   useRun,
+  lanternLit,
   wardNow,
-  wardenHears,
+  wardenSeesLight,
+  wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
 import { KIND_TITLE } from "../game/rooms/kinds";
@@ -42,7 +44,7 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
-  const { heard, lured, reeling, warded } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
@@ -102,7 +104,7 @@ export function Hud() {
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>
           <span style={{ color: alarmColour }}>
-            {alarmLabel(alarm, heard, lured, reeling)}
+            {alarmLabel(alarm, heard, lured, reeling, seen)}
           </span>
           {/* Said once it is true, because it changes what the trap room is
               worth walking to - and a rule the player is not told has
@@ -113,6 +115,16 @@ export function Hud() {
           {warded && <span style={{ color: colors.gold }}> · warded out of this room</span>}
         </div>
       )}
+      <div>
+        <span style={{ color: colors.dim }}>LANTERN </span>
+        <span style={{ color: lit ? colors.gold : colors.dim }}>{lit ? "up" : "down"}</span>
+        <span style={{ color: colors.dim }}> · </span>
+        {/* Oil in whole seconds. It only burns while the lantern is up, so
+            a player who keeps it down never watches this number, which is
+            the point of it being a decision rather than a countdown. */}
+        <span style={{ color: oil <= 20 ? colors.danger : colors.ink }}>{oil}s</span>
+        <span style={{ color: colors.dim }}> oil</span>
+      </div>
       {/* Only once it has cost you something. A line about a thief nobody
           has met yet is a spoiler and a distraction. */}
       {nestGems > 0 && (
@@ -143,6 +155,9 @@ export function Hud() {
  */
 function useWardenSense(): {
   heard: boolean;
+  seen: boolean;
+  lit: boolean;
+  oil: number;
   lured: boolean;
   reeling: boolean;
   warded: boolean;
@@ -151,7 +166,10 @@ function useWardenSense(): {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
     return {
-      heard: !lured && wardenHears(s),
+      heard: !lured && wardenSenses(s),
+      seen: !lured && wardenSeesLight(s),
+      lit: lanternLit(s),
+      oil: Math.ceil(s.oil),
       lured,
       reeling: wardenStaggered(s),
       warded: wardNow(s) !== null && wardNow(s) === s.currentRoomId,
@@ -163,6 +181,9 @@ function useWardenSense(): {
       () => setSense((was) => {
         const now = read();
         return was.heard === now.heard &&
+          was.seen === now.seen &&
+          was.lit === now.lit &&
+          was.oil === now.oil &&
           was.lured === now.lured &&
           was.reeling === now.reeling &&
           was.warded === now.warded

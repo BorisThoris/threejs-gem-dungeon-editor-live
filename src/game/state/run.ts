@@ -42,6 +42,8 @@ import {
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   CUTPURSE_FROM_FLOOR,
+  LANTERN_FULL_S,
+  LANTERN_SEEN_HOLD_S,
   CUTPURSE_GRACE_ROOMS,
   CUTPURSE_REST_S,
   CUTPURSE_SHY_S,
@@ -150,6 +152,18 @@ export interface RunState {
    * tests all read the same fact.
    */
   noisyUntil: number;
+  /**
+   * The lantern: whether it is up, and how many seconds of oil are left.
+   *
+   * Oil burns only while it is raised, so a player who keeps it down never
+   * runs out and never has to think about it. `litUntil` is the other half
+   * - the run-clock second the Warden stops walking towards the light -
+   * and is the exact twin of `noisyUntil`, deliberately: the two bargains
+   * in this game are shaped the same and are kept the same way.
+   */
+  lanternRaised: boolean;
+  oil: number;
+  litUntil: number;
   /** Whether a Scroll of Mapping has shown this floor. */
   mapped: boolean;
   /** Chests already emptied, as `roomId:index`. */
@@ -303,6 +317,18 @@ export interface RunState {
   giveAway: (amount: number) => void;
   /** The player made a noise loud enough to be placed. Sprinting does this. */
   makeNoise: () => void;
+  /** Raise or lower the lantern. Raising with no oil left does nothing. */
+  toggleLantern: () => void;
+  /**
+   * Burn `seconds` of oil and keep the light seen.
+   *
+   * Called from the frame loop, so it must not write on every frame: every
+   * write re-runs every selector in the store, and this is the same lesson
+   * `makeNoise` above already learned. The driver accumulates and flushes.
+   */
+  burnOil: (seconds: number) => void;
+  /** Fill it from a brazier. Returns false when it is already full. */
+  fillLantern: () => boolean;
   /** Pick up the floor's key. */
   takeKey: (roomId: string) => void;
   /** Spend a key on a vault. Returns false without one. */
@@ -407,6 +433,9 @@ export const useRun = create<RunState>()(
     noisyUntil: 0,
     wardenLure: null,
     lureUntil: 0,
+    lanternRaised: false,
+    oil: LANTERN_FULL_S,
+    litUntil: 0,
     mapped: false,
     looted: [],
     placed: [],
@@ -480,6 +509,11 @@ export const useRun = create<RunState>()(
         appearances: appearancesFor(dungeon.seed),
         effects: { swift: 0, mire: 0, gloom: 0 },
         noisyUntil: 0,
+        // Down. See world.ts: up as a default made every run open already
+        // seen, which is the bargain removed rather than offered.
+        lanternRaised: false,
+        oil: LANTERN_FULL_S,
+        litUntil: 0,
         mapped: false,
         looted: [],
         placed: [],
@@ -619,6 +653,13 @@ export const useRun = create<RunState>()(
           // was drunk on the last floor does not.
           effects: { swift: 0, mire: 0, gloom: 0 },
           noisyUntil: 0,
+          // The oil goes down with you, like the lives and the gems and
+          // unlike the alarm. A lantern refilled at every stair would be a
+          // per-floor allowance nobody has to think about; carrying it is
+          // what makes a room you chose to light up on floor one cost you
+          // something on floor three. Only what the last floor knew about
+          // you is left behind.
+          litUntil: 0,
           mapped: false,
           looted: [],
           // A snare set on the floor above is on the floor above. Devices
@@ -1043,6 +1084,45 @@ export const useRun = create<RunState>()(
       if (!heard) bus.emit("wardenHeard");
     },
 
+    toggleLantern: () => {
+      const s = get();
+      if (!s.lanternRaised && s.oil <= 0) {
+        bus.emit("notice", "The lantern is dry. There is fire in the braziers.");
+        return;
+      }
+      const raised = !s.lanternRaised;
+      // Seen from the moment it goes up, and for a few seconds after it
+      // comes down. Raising used to leave this to `burnOil`, which flushes
+      // about once a second - so for that second the brightest thing on
+      // the floor was invisible to the thing hunting by light, and a check
+      // that raised the lantern and looked immediately saw nothing happen.
+      set({ lanternRaised: raised, litUntil: runClock(s) + LANTERN_SEEN_HOLD_S });
+      bus.emit("lanternToggled", { raised });
+    },
+
+    burnOil: (seconds) => {
+      const s = get();
+      if (!s.lanternRaised || s.oil <= 0) return;
+      const oil = Math.max(0, s.oil - seconds);
+      const now = runClock(s);
+      if (oil <= 0) {
+        // It goes out on its own, and says so: a light that simply stopped
+        // reaching would read as the floor getting darker.
+        set({ oil: 0, lanternRaised: false, litUntil: now + LANTERN_SEEN_HOLD_S });
+        bus.emit("lanternOut");
+        return;
+      }
+      set({ oil, litUntil: now + LANTERN_SEEN_HOLD_S });
+    },
+
+    fillLantern: () => {
+      const s = get();
+      if (s.oil >= LANTERN_FULL_S) return false;
+      set({ oil: LANTERN_FULL_S });
+      bus.emit("lanternFilled");
+      return true;
+    },
+
     takeKey: (roomId) => {
       const s = get();
       if (s.keyTakenIn !== null) return;
@@ -1190,6 +1270,27 @@ export function lureNow(s: RunState): string | null {
  */
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 
+/** Whether the lantern is up and still has oil in it. */
+export const lanternLit = (s: RunState): boolean => s.lanternRaised && s.oil > 0;
+
+/**
+ * Whether the Warden is currently walking to a light it can see. The exact
+ * twin of `wardenHears`, and for the same reason: the two bargains this
+ * game makes with the player - fast or unnoticed, seeing or unseen - are
+ * the same shape and are kept the same way.
+ */
+export const wardenSeesLight = (s: RunState): boolean => running(s, s.litUntil);
+
+/**
+ * Whether it knows where the player is at all, by either sense.
+ *
+ * One owner. The driver, the HUD and the tuning all used to ask
+ * `wardenHears`, and adding a second way of being given away without this
+ * would have meant three places each deciding for themselves whether
+ * light counts - which is exactly the class of bug the rebuild was for.
+ */
+export const wardenSenses = (s: RunState): boolean => wardenHears(s) || wardenSeesLight(s);
+
 /**
  * Whether the Warden is still reeling from the spikes. While it is, it
  * neither walks nor strikes nor steps between rooms - which is the window
@@ -1277,6 +1378,10 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     slots: () => satchelSlots(useRun.getState()),
     rules: () => floorRules(useRun.getState().floor),
     hears: () => wardenHears(useRun.getState()),
+    lantern: () => {
+      const s = useRun.getState();
+      return { raised: s.lanternRaised, lit: lanternLit(s), oil: s.oil, seen: wardenSeesLight(s) };
+    },
     lure: () => lureNow(useRun.getState()),
     items: () => ITEM_IDS.slice(),
     warden: () => {
@@ -1302,7 +1407,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     },
     hunts: () => {
       const s = useRun.getState();
-      return behaviourFor(s.alarm, !lureNow(s) && wardenHears(s)).hunts;
+      return behaviourFor(s.alarm, !lureNow(s) && wardenSenses(s)).hunts;
     },
   };
 }

@@ -5,13 +5,14 @@ import type { Group, Mesh, MeshBasicMaterial } from "three";
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
-import { canControl, runClock, useRun } from "../state/run";
+import { canControl, lanternLit, runClock, useRun } from "../state/run";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
   SENTRY_ALARM,
   SENTRY_COOLDOWN_S,
   SENTRY_HALF_ANGLE,
+  LANTERN_SEEN_FACTOR,
   SENTRY_PATIENCE,
   SENTRY_RANGE,
   SENTRY_SPIN,
@@ -135,7 +136,18 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     }
     if (seen !== inside) setSeen(inside);
 
-    if (held >= SENTRY_PATIENCE && now - lastCall.current > SENTRY_COOLDOWN_S) {
+    /**
+     * How long it waits before calling, for this player right now.
+     *
+     * Half as long if they are holding a raised lantern. The margin to
+     * walk out of the beam is 0.84 seconds against a patience of 0.9 -
+     * thin on purpose - so halving it means a lit player is called out
+     * before they can cross, and putting the lantern down is the answer to
+     * a room with a post in it. That is the same bargain the sprint makes,
+     * asked by the other threat.
+     */
+    const patience = lanternLit(run) ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    if (held >= patience && now - lastCall.current > SENTRY_COOLDOWN_S) {
       lastCall.current = now;
       litSince.current = now;
       // Through the store's action, not setState: the alarm has one owner
@@ -159,7 +171,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     // of the beam against the 0.9 it waits before calling, and a margin
     // that thin is only a margin if you can see the light arriving.
     const mat = wedge.current?.material as MeshBasicMaterial | undefined;
-    if (mat) mat.opacity = BEAM_OPACITY + (inside ? Math.min(1, held / SENTRY_PATIENCE) * 0.4 : 0);
+    if (mat) mat.opacity = BEAM_OPACITY + (inside ? Math.min(1, held / patience) * 0.4 : 0);
   });
 
   return (

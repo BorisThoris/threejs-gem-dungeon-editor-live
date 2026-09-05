@@ -5,7 +5,7 @@ import { installKeyboard, keyboard } from "./game/input/keyboard";
 import { useWardenWarning } from "./game/warden/warning";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
-import { useRun } from "./game/state/run";
+import { canControl, useRun } from "./game/state/run";
 import { useRecords } from "./game/state/records";
 import { useSettings } from "./game/state/settings";
 import { Audio } from "./game/systems/Audio";
@@ -42,7 +42,7 @@ function usePauseKeys() {
 }
 
 /**
- * 1 to 4 drink or read what is in that slot. The store refuses whenever the
+ * 1 to 4 drink, read or set down what is in that slot, and F is the lantern. The store refuses whenever the
  * player is not in control - a menu, a puzzle, a pause, or the black frame
  * between two rooms - so there is no guard here. It is `canControl` that
  * decides that, in one place; this hook does not get a vote, and nor do
@@ -53,6 +53,13 @@ function useSatchelKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+      // F raises and lowers the lantern. Beside the satchel keys because
+      // it is the same kind of thing: a hand doing something, refused by
+      // the store whenever the player is not in control.
+      if (event.code === "KeyF") {
+        if (canControl(useRun.getState())) useRun.getState().toggleLantern();
+        return;
+      }
       const slot = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(event.code);
       if (slot < 0) return;
       useRun.getState().useItem(slot);

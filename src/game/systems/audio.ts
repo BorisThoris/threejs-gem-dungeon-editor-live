@@ -534,6 +534,21 @@ export const sfx = {
     later(80, () => noiseBurst(0.2, 0.24, 3200, pan));
     later(170, () => tone(820, 0.22, "triangle", 0.2, 1180, pan));
   },
+  /** A shutter opening or closing on a lamp: metal, short, two-part. */
+  lantern(up: boolean) {
+    tone(up ? 420 : 300, 0.06, "square", 0.14, up ? 620 : 210);
+    later(45, () => noiseBurst(0.06, 0.12, up ? 3400 : 1800));
+  },
+  /** The last of the oil: a small failing sputter, and then nothing. */
+  lanternOut() {
+    tone(300, 0.2, "triangle", 0.16, 120);
+    later(120, () => noiseBurst(0.3, 0.14, 900));
+  },
+  /** Filled from a brazier: oil catching. */
+  lanternFilled() {
+    noiseBurst(0.35, 0.16, 1400);
+    later(120, () => tone(360, 0.28, "triangle", 0.16, 540));
+  },
   /** Something small set on stone: a scrape and a click. */
   setDown() {
     noiseBurst(0.09, 0.16, 1400);

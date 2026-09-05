@@ -24,6 +24,8 @@ const ROUTED = "It will not cross those again. Whatever else this floor gives yo
 const SET = "It stays where you left it, and it is still there when you come back through.";
 const THIEF = "Something small is in here with you, and it wants what you are carrying. Shift, now.";
 const ROBBED = "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere.";
+const DRY = "The lantern is out. Fill it at a brazier - though a brazier is the brightest place to stand.";
+const LIGHT = "Your lantern is up, and it is the brightest thing on this floor. F puts it down.";
 
 export function useWardenWarning() {
   useEffect(() => {
@@ -36,6 +38,7 @@ export function useWardenWarning() {
       set: false,
       thief: false,
       robbed: false,
+      light: false,
     };
     /**
      * These go in the notice slot, which they own and nothing else writes.
@@ -91,6 +94,17 @@ export function useWardenWarning() {
         told.thief = true;
         say(THIEF);
       }),
+      // Not a one-off: running out is a thing to be told about every time
+      // it happens, because the answer to it is somewhere else in the room.
+      bus.on("lanternOut", () => say(DRY)),
+      // The lantern starts down, so the first time it goes up is the first
+      // time the player has chosen to be seen - which is worth saying once,
+      // because the cost of it is paid somewhere they are not looking.
+      bus.on("lanternToggled", ({ raised }) => {
+        if (!raised || told.light) return;
+        told.light = true;
+        say(LIGHT);
+      }),
       bus.on("thiefFled", () => {
         if (told.robbed) return;
         told.robbed = true;
@@ -114,6 +128,7 @@ export function useWardenWarning() {
           set: false,
           thief: false,
           robbed: false,
+          light: false,
         };
         say(floorRules(1).blurb);
       }),

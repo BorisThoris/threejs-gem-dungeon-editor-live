@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { canControl, lureNow, useRun, wardNow, wardenHears, wardenStaggered } from "../state/run";
+import { canControl, lureNow, useRun, wardNow, wardenSenses, wardenStaggered } from "../state/run";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
 
@@ -33,7 +33,10 @@ export function WardenDriver() {
     // following a noise it already heard rather than listening for the
     // player, which is why a Scroll of Echoes is also permission to run.
     const lure = lureNow(run);
-    const behaviour = behaviourFor(run.alarm, !lure && wardenHears(run));
+    // Heard, or seen: a raised lantern on a dark floor gives a player away
+    // exactly as a sprint does, and `wardenSenses` is the one place that
+    // decides that so the driver, the HUD and the tuning cannot disagree.
+    const behaviour = behaviourFor(run.alarm, !lure && wardenSenses(run));
     since.current += delta;
     if (since.current < behaviour.stepSeconds) return;
     since.current = 0;

@@ -28,6 +28,14 @@ across the floor. It learns, though - after that it walks round anything
 that has bitten it - so the room is worth exactly twice, and then it is a
 trap room again.
 
+You carry a lantern. It starts down, and whether you raise it is the other
+question the game asks all the time. Raised, you can see the room - and you are the brightest
+thing on a dark floor: the Warden walks straight for you, and a watcher
+needs half as long to be sure of what it is looking at. Lowered, you have a
+hand's worth of glow and nothing knows where you are. It only burns oil
+while it is up, so keeping it down costs nothing but sight, and you fill it
+at the braziers, which are the brightest place in any room to be standing.
+
 Speed is not free either. A sprint is loud, and while it can hear you the
 Warden stops wandering and walks straight for the room you are in. Walking
 is quiet. So every corridor is the same small question as the floor itself:
@@ -137,6 +145,7 @@ between here and a Steam demo.
 | Mouse (click the game to take it, Esc gives it back), or right stick | Look |
 | `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
 | `1` to `4`, or X and Y on a pad | Drink, read, or set down that satchel slot |
+| `F`, or R3 | Raise or lower the lantern. Seeing, or unseen. |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
 | D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |

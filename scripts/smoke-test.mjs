@@ -3351,6 +3351,158 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * The lantern, and the second bargain.
+ *
+ * Seeing or unseen, asked once a room, and it is worth checking in the
+ * real game for the same reason the sprint's twin was: the light, the oil,
+ * what the Warden knows and what a watcher does about it are four
+ * different modules agreeing about one fact, which is exactly the shape of
+ * bug this tree was rebuilt to make impossible.
+ */
+{
+  const lamp = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+    run.getState().startRun(31, "vagrant");
+    await sleep(1500);
+    // Down and full: a run opens with the choice unmade. It used to open
+    // raised, which meant it opened already seen - the Warden walking for
+    // the player and every watcher twice as quick, from the first second.
+    out.startsDown = window.__derived.lantern();
+    const dimAt = window.__lantern ? { ...window.__lantern } : null;
+    await sleep(2500);
+    out.unlitBurn = window.__derived.lantern().oil;
+
+    // Up: it burns, and the light in the scene follows it.
+    run.getState().toggleLantern();
+    await sleep(600);
+    const lit0 = window.__lantern ? { ...window.__lantern } : null;
+    await sleep(2500);
+    const burnedUp = window.__derived.lantern().oil;
+    run.getState().toggleLantern();
+    await sleep(700);
+    const downAt = window.__derived.lantern().oil;
+    await sleep(2500);
+    out.burn = {
+      afterUp: burnedUp,
+      downAt,
+      afterDown: window.__derived.lantern().oil,
+      brightUp: lit0 ? lit0.intensity : null,
+      brightDown: dimAt ? dimAt.intensity : null,
+      reachUp: lit0 ? lit0.distance : null,
+      reachDown: dimAt ? dimAt.distance : null,
+    };
+
+    // Raised, seen at once; lowered, still seen for a few seconds, then
+    // not. Sampled around the toggles rather than after them: the hold is
+    // three seconds, and a check that looks three and a bit seconds later
+    // can only ever see the second half of the rule.
+    run.setState({ litUntil: 0 });
+    run.getState().toggleLantern();
+    await sleep(120);
+    out.seenAtOnce = window.__derived.lantern().seen;
+    run.getState().toggleLantern();
+    await sleep(150);
+    out.seenAfterLowering = window.__derived.lantern().seen;
+    await sleep(3600);
+    out.unseenLater = window.__derived.lantern().seen;
+
+    // Up on a floor that has not heard a thing, and the Warden comes.
+    run.setState({ noisyUntil: 0, litUntil: 0, alarm: 0, wardenLure: null, lureUntil: 0, lanternRaised: false });
+    const huntsQuiet = window.__derived.hunts();
+    run.getState().toggleLantern();
+    await sleep(400);
+    out.light = { huntsQuiet, huntsLit: window.__derived.hunts(), lit: window.__derived.lantern().lit };
+
+    // Burned dry: it goes out on its own and will not come back up.
+    run.setState({ oil: 1.2 });
+    let wentOut = false;
+    const off = window.__bus.on("lanternOut", () => (wentOut = true));
+    for (let i = 0; i < 40 && !wentOut; i++) await sleep(200);
+    off();
+    const dry = window.__derived.lantern();
+    run.getState().toggleLantern();
+    await sleep(200);
+    out.dry = {
+      wentOut,
+      oil: dry.oil,
+      raised: dry.raised,
+      stillDownAfterPressing: window.__derived.lantern().raised === false,
+    };
+
+    // And a brazier fills it. Driven through the store: which corner a
+    // room's braziers stand in is the dressing's business and walking to
+    // one is a matter of frames, neither of which is what this asks.
+    const filled = run.getState().fillLantern();
+    out.fill = { filled, oil: window.__derived.lantern().oil, again: run.getState().fillLantern() };
+
+    // It goes down the stairs with you rather than being refilled there.
+    //
+    // Descending is walking *into* the exit room, not out of it: stand in
+    // a room that has a doorway to it and take that doorway. The first
+    // version of this stood in the exit and walked out, which travels
+    // perfectly well and stays on floor one.
+    run.setState({ oil: 40, lanternRaised: false });
+    const before = run.getState().oil;
+    const endId = run.getState().dungeon.endId;
+    const doorway = run.getState().dungeon.rooms
+      .map((r) => ({ room: r, dir: Object.keys(r.links).find((d) => r.links[d] === endId) }))
+      .find((x) => x.dir);
+    run.setState({ currentRoomId: doorway.room.id, gems: 99, transitioning: false });
+    run.getState().travel(doorway.dir);
+    await sleep(2400);
+    out.carriesDown = { before, after: run.getState().oil, floor: run.getState().floor };
+    return out;
+  });
+
+  ok(
+    "a run starts with a full lantern, down: the choice is unmade, not made for you",
+    lamp.startsDown.raised === false &&
+      lamp.startsDown.lit === false &&
+      lamp.startsDown.oil === 150 &&
+      lamp.unlitBurn === 150,
+    JSON.stringify({ ...lamp.startsDown, afterTwoSeconds: lamp.unlitBurn })
+  );
+  ok(
+    "oil burns while it is up and does not while it is down",
+    lamp.burn.afterUp < 150 && lamp.burn.afterDown === lamp.burn.downAt,
+    JSON.stringify({ up: lamp.burn.afterUp, atDown: lamp.burn.downAt, later: lamp.burn.afterDown })
+  );
+  ok("raising it is seen at once, not a second later", lamp.seenAtOnce === true);
+  ok(
+    "and the light in the room really goes with it",
+    lamp.burn.brightUp > lamp.burn.brightDown * 2 && lamp.burn.reachUp > lamp.burn.reachDown * 1.8,
+    JSON.stringify(lamp.burn)
+  );
+  ok(
+    "putting it down does not un-see you at once, and does a few seconds later",
+    lamp.seenAfterLowering === true && lamp.unseenLater === false,
+    JSON.stringify({ at: lamp.seenAfterLowering, later: lamp.unseenLater })
+  );
+  ok(
+    "a raised lantern sets the Warden walking for you on a floor that has heard nothing",
+    lamp.light.huntsQuiet === false && lamp.light.huntsLit === true,
+    JSON.stringify(lamp.light)
+  );
+  ok(
+    "the last of the oil puts it out on its own, and it will not come back up",
+    lamp.dry.wentOut && lamp.dry.oil === 0 && lamp.dry.raised === false && lamp.dry.stillDownAfterPressing,
+    JSON.stringify(lamp.dry)
+  );
+  ok(
+    "a brazier fills it, once",
+    lamp.fill.filled === true && lamp.fill.oil === 150 && lamp.fill.again === false,
+    JSON.stringify(lamp.fill)
+  );
+  ok(
+    "and the oil goes down the stairs rather than being refilled there",
+    lamp.carriesDown.floor === 2 && lamp.carriesDown.after === lamp.carriesDown.before,
+    JSON.stringify(lamp.carriesDown)
+  );
+}
+
+/**
  * Delvers: five different openings, and the rules that hold across them.
  *
  * Each one is a trade, and the trades are easy to write and easy to get

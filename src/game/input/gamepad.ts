@@ -45,6 +45,8 @@ export interface GamepadState {
   slotPressed: boolean[];
   /** B / Circle: back out of a menu. Rising edge. */
   backPressed: boolean;
+  /** R3 / right stick click: raise or lower the lantern. Rising edge. */
+  lanternPressed: boolean;
   /**
    * One step of the d-pad or the left stick, for menus. Rising edge, and
    * repeating while held so a list can be scrolled without letting go.
@@ -61,6 +63,11 @@ const BUTTON_INTERACT = 0;
 const BUTTON_BACK = 1;
 const BUTTON_PAUSE = 9;
 const BUTTON_DASH = 10;
+// 11 = R3 / right stick click. The last free button on a standard pad: A,
+// B, X, Y, both shoulders, Start and L3 are all spoken for, and the
+// triggers are analogue and easy to brush. A Steam Deck has to be able to
+// do everything a keyboard can.
+const BUTTON_LANTERN = 11;
 // 2 = X / Square, 3 = Y / Triangle, 4 = LB / L1, 5 = RB / R1. One per
 // satchel slot, in that order, so the list is as long as the satchel is.
 const BUTTON_SLOTS = [2, 3, 4, 5].slice(0, SATCHEL_SLOTS);
@@ -97,6 +104,7 @@ const state: GamepadState = {
   pausePressed: false,
   slotPressed: BUTTON_SLOTS.map(() => false),
   backPressed: false,
+  lanternPressed: false,
   menuX: 0,
   menuY: 0,
 };
@@ -104,7 +112,12 @@ const state: GamepadState = {
 function clear(): void {
   state.connected = false;
   state.moveX = state.moveY = state.lookX = state.lookY = 0;
-  state.dash = state.interactPressed = state.pausePressed = state.backPressed = false;
+  state.dash =
+    state.interactPressed =
+    state.pausePressed =
+    state.backPressed =
+    state.lanternPressed =
+      false;
   state.slotPressed.fill(false);
   state.menuX = state.menuY = 0;
   held.x = held.y = 0;
@@ -157,6 +170,7 @@ function poll(now: number): void {
   state.dash = pad.buttons[BUTTON_DASH]?.pressed ?? false;
   state.interactPressed = risingEdge(pad, BUTTON_INTERACT);
   state.backPressed = risingEdge(pad, BUTTON_BACK);
+  state.lanternPressed = risingEdge(pad, BUTTON_LANTERN);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 

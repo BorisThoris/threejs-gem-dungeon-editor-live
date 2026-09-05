@@ -1008,6 +1008,37 @@ check("the shipped room templates reach the floors the game generates", authored
     `margin ${(margin * 1000).toFixed(0)}ms against a frame of ${(L.MAX_FRAME_S * 1000).toFixed(0)}ms`
   );
 
+  /**
+   * And a raised lantern is the other way to be caught by one.
+   *
+   * The beam takes 0.9 seconds to be sure of someone, a walk takes 0.836
+   * to leave it at the furthest reach, and halving the patience for a
+   * player carrying the only bright thing on the floor turns that from
+   * "never called out" into "always called out". That is the whole reason
+   * to put the light down in a watched room, and it has to be true at
+   * every distance that matters rather than only at the edge - a rule
+   * that applies in the outer half of a room is a rule a player learns as
+   * bad luck. Close under the post is the exception and is geometry
+   * rather than mercy: a step there is worth a lot of angle, and a player
+   * standing on top of a watcher has other problems.
+   */
+  const litPatience = L.SENTRY_PATIENCE * L.LANTERN_SEEN_FACTOR;
+  let litSafe = 0;
+  for (let r = 1.0; r <= L.SENTRY_RANGE; r += 0.1) {
+    if (L.timeToLeaveBeam(r, plainWalk) <= litPatience) litSafe = r;
+  }
+  check(
+    "a walking player holding a raised lantern is called out at any real distance",
+    L.timeToLeaveBeam(L.SENTRY_RANGE, plainWalk) > litPatience &&
+      litSafe < L.SENTRY_RANGE / 2,
+    `lit patience ${litPatience}s; a walk only escapes it within ${litSafe.toFixed(1)} of the post, of ${L.SENTRY_RANGE} units of reach`
+  );
+  check(
+    "and putting it down is a real answer, not a smaller helping of the same thing",
+    !L.isCaught(L.SENTRY_RANGE, plainWalk),
+    `unlit, leaving takes ${L.slowestEscape(plainWalk).toFixed(2)}s of ${L.SENTRY_PATIENCE}s`
+  );
+
   // The one exception, and it is meant to be one. Mire is a cruel potion:
   // it should cost something in every room that asks you to move, and this
   // is the room that asks you to move a little.
@@ -1590,6 +1621,78 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- The lantern ------------------------------------------------------------
+//
+// The second bargain in the game - seeing, or unseen - and three of its
+// four numbers only mean anything against the rooms they are used in.
+{
+  const smallest = Math.min(...L.ROOM_SIZES);
+  const largest = Math.max(...L.ROOM_SIZES);
+  check(
+    "raised, the lantern lights most of an ordinary room but not the largest one",
+    L.LANTERN_RANGE_UP > L.ROOM_SIZE_DEFAULT * 0.75 && L.LANTERN_RANGE_UP < largest,
+    `${L.LANTERN_RANGE_UP} against rooms ${smallest} to ${largest} across`
+  );
+  check(
+    "lowered, it does not reach the far wall of even the smallest room",
+    L.LANTERN_RANGE_DOWN < smallest / 2,
+    `${L.LANTERN_RANGE_DOWN} against a half-room of ${smallest / 2}`
+  );
+  check(
+    "and lowering it is a real change rather than a dimmer setting",
+    L.LANTERN_INTENSITY_UP > L.LANTERN_INTENSITY_DOWN * 4 &&
+      L.LANTERN_RANGE_UP > L.LANTERN_RANGE_DOWN * 2,
+    `${L.LANTERN_INTENSITY_DOWN}->${L.LANTERN_INTENSITY_UP} candela, ${L.LANTERN_RANGE_DOWN}->${L.LANTERN_RANGE_UP} units`
+  );
+  /**
+   * A full lantern must not cover a whole run held up.
+   *
+   * Otherwise the decision is not one: a player raises it on the first
+   * floor and never touches it again. A floor is 19 to 22 seconds of
+   * walking on its shortest path and three to five minutes actually
+   * played, so a run is roughly ten to fifteen minutes - and a hundred and
+   * fifty seconds of oil is a fraction of that, refilled at braziers by
+   * anyone who wants the light back.
+   *
+   * The other end matters too: it has to be enough to actually use, or the
+   * answer is always "down" and the choice is again not one. Long enough
+   * to cross several rooms lit is the bar.
+   */
+  const crossing = L.ROOM_SIZE_LARGE / L.WALK_SPEED;
+  check(
+    "a full lantern is worth several rooms of light, and nowhere near a run of it",
+    L.LANTERN_FULL_S > crossing * 8 && L.LANTERN_FULL_S < 60 * 8,
+    `${L.LANTERN_FULL_S}s, against ${crossing.toFixed(1)}s to cross the largest room`
+  );
+  check(
+    "putting it down does not un-see you at once, and un-sees you sooner than stopping running does",
+    L.LANTERN_SEEN_HOLD_S > 0 && L.LANTERN_SEEN_HOLD_S < L.NOISE_HOLD_S,
+    `${L.LANTERN_SEEN_HOLD_S}s lit against ${L.NOISE_HOLD_S}s loud`
+  );
+  /**
+   * And a brazier never beats a thing the room put there on purpose.
+   *
+   * The one interaction verb offers the nearest usable thing, so a fill
+   * prompt with a generous reach steals the key from whatever it is
+   * standing near. At 2.4 a corner brazier out-reached the memory trial's
+   * crystals and the trial could not be played at all - the smoke test
+   * read back "Choose this crystal, Fill your lantern, Watch" and the
+   * room never cleared. Under `CLOSE_REACH`, which is what a room's own
+   * small content is offered within, and far enough that a player does
+   * not have to stand in the coals.
+   */
+  check(
+    "a brazier can be filled from without standing in its coals",
+    L.LANTERN_FILL_REACH > 1,
+    `${L.LANTERN_FILL_REACH} units`
+  );
+  check(
+    "and never out-reaches a thing the room put there on purpose",
+    L.LANTERN_FILL_REACH < L.CLOSE_REACH,
+    `${L.LANTERN_FILL_REACH} against a room's own reach of ${L.CLOSE_REACH}`
   );
 }
 

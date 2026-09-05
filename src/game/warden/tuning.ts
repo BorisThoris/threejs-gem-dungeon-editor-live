@@ -45,12 +45,16 @@ export function alarmLabel(
   alarm: number,
   heard = false,
   lured = false,
-  reeling = false
+  reeling = false,
+  seen = false
 ): string {
   // Outranks everything else it could be doing: whatever the floor's alarm
   // says, for these few seconds it is not coming.
   if (reeling) return "Reeling";
   if (lured) return "Following a noise";
+  // Which sense gave the player away, because the two have different
+  // answers: one is put down with a key, the other by stopping.
+  if (seen) return "Sees your light";
   if (heard) return "Heard you";
   if (alarm <= 0) return "Still";
   if (alarm < ALARM_HUNTS_AT) return "Stirring";

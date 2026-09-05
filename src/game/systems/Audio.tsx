@@ -76,6 +76,9 @@ export function Audio() {
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),
       bus.on("nestEmptied", () => sfx.gem()),
+      bus.on("lanternToggled", ({ raised }) => sfx.lantern(raised)),
+      bus.on("lanternOut", () => sfx.lanternOut()),
+      bus.on("lanternFilled", () => sfx.lanternFilled()),
       bus.on("wardenLured", () => sfx.clatter()),
     ];
     return () => offs.forEach((off) => off());

@@ -333,6 +333,86 @@ export const SENTRY_PATIENCE = 0.9;
 export const SENTRY_ALARM = 1;
 export const SENTRY_COOLDOWN_S = 6;
 
+// --- The lantern ------------------------------------------------------------
+
+/**
+ * The light you carry, and the second bargain in the game.
+ *
+ * The first is the sprint: fast, or unnoticed. It is the best thing in the
+ * run and for a long time it was the only one - every other decision was
+ * about gems, and every moment-to-moment decision was that same one
+ * question asked again. The lantern is its twin, asked once a room instead
+ * of once a corridor: *seeing, or unseen*.
+ *
+ * It starts down, and that matters. Raised was the obvious default - it
+ * is the light, why would you not have it - and it made every run open
+ * with the Warden already walking towards the player and every watcher
+ * twice as quick, from the first second, with nothing done to deserve it.
+ * Three checks that had held for months failed at once and were right to.
+ * Down is the game as it was; up is a thing the player chooses and pays
+ * for, which is the only way a bargain is one.
+ *
+ * Raised, you see the room: a wide, warm light that reaches most of the
+ * way across an ordinary one. It also puts you on a dark floor holding the
+ * only bright thing on it - the Warden walks straight for the room you are
+ * in, exactly as it does while you are running, and a watcher's beam needs
+ * half as long to be sure of you.
+ *
+ * Lowered, you have a hand's worth of glow and the floor's own braziers,
+ * and nothing knows where you are.
+ *
+ * It burns only while raised, which is what makes it a decision rather
+ * than a countdown: a player who keeps it down never runs out, and the oil
+ * is spent on the rooms they chose to actually look at. It is filled from
+ * the braziers, which are the brightest thing in any room and therefore
+ * the worst place to stand - the same trade, one more time, in the way you
+ * fix it.
+ *
+ * The deeper floors are darker, and that is the point: this is worth the
+ * most exactly where being seen costs the most.
+ */
+export const LANTERN_FULL_S = 150;
+/**
+ * How long the Warden keeps walking towards you after the light goes down.
+ *
+ * The sprint's is four seconds and this is three, and the difference is
+ * the argument: a sound is over the moment it stops, while a light was a
+ * thing it was looking at. Shorter than the sprint's only because putting
+ * a lantern down is instant and stopping a run is not.
+ */
+export const LANTERN_SEEN_HOLD_S = 3;
+/** Reach and candela, raised and lowered. */
+export const LANTERN_RANGE_UP = 15;
+export const LANTERN_RANGE_DOWN = 5;
+export const LANTERN_INTENSITY_UP = 24;
+export const LANTERN_INTENSITY_DOWN = 4;
+/**
+ * What a raised lantern does to a watcher's patience, as a multiplier.
+ *
+ * Half. The beam takes 0.9 seconds to be sure of someone in it, and
+ * `yarn test:layout` holds that number against the margin a player has to
+ * walk out - 0.84 seconds at the far edge of its reach, which is thin on
+ * purpose. Halving it means a lit player in a watched room is called out
+ * before they can cross it, and that is the whole reason to put the
+ * lantern down in a room with a post in it.
+ */
+export const LANTERN_SEEN_FACTOR = 0.5;
+/**
+ * How close a brazier has to be to fill from.
+ *
+ * Small, and it took a failing check to say how small. A room's own
+ * content - a crystal on its pedestal, a lectern, an idol - is offered
+ * within `CLOSE_REACH`, and the one interaction verb picks the nearest
+ * thing that can be used. At 2.4 a corner brazier reached far enough to
+ * win that arbitration from the memory trial's crystals, so pressing E at
+ * a crystal filled the lantern and the trial could not be played at all:
+ * the prompt list read "Choose this crystal, Fill your lantern, Watch".
+ * Under `CLOSE_REACH` means a brazier never beats a thing a room put
+ * there on purpose, and `yarn test:layout` holds it to that against the
+ * clearance the dressing already keeps around a brazier.
+ */
+export const LANTERN_FILL_REACH = 1.5;
+
 // --- The Cutpurse ------------------------------------------------------------
 
 /**

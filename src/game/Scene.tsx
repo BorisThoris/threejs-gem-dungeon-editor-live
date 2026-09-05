@@ -3,6 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 
 import { readGamepad } from "./input/gamepad";
+import { Lantern } from "./player/Lantern";
 import { Player } from "./player/Player";
 // Registers what each room kind puts inside its shell.
 import "./rooms/content";
@@ -11,7 +12,7 @@ import { GroundPlane } from "./rooms/GroundPlane";
 import { Perf } from "./systems/Perf";
 import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
-import { useCurrentRoom, useRun } from "./state/run";
+import { canControl, useCurrentRoom, useRun } from "./state/run";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
@@ -30,6 +31,10 @@ function PadPause() {
     // rooms included. The pause toggle below is the one thing that should
     // still answer while the screen is dark, so it keeps its own terms.
     for (let i = 0; i < pad.slotPressed.length; i++) if (pad.slotPressed[i]) run.useItem(i);
+    // The lantern is the same kind of press, and the store refuses it
+    // whenever the player is not in control - so, like the slots, it has
+    // no guard of its own here.
+    if (pad.lanternPressed && canControl(run)) run.toggleLantern();
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;
     if (run.paused) run.resume();
@@ -104,6 +109,10 @@ export function Scene() {
           in - both of them need a frame loop that outlives a room. */}
       <WardenDriver />
       <CutpurseDriver />
+      {/* The light the player carries. Outside the physics tree because it
+          follows the camera rather than a body, and it has to keep burning
+          while a room is still mounting. */}
+      <Lantern />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />

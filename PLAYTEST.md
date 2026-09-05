@@ -35,6 +35,27 @@ thirty-seven on the ground, so a run that took everything and paid every
 toll would climb out with twenty-two. That number is the score, and nothing
 else is.
 
+**The third bargain, and the one asked once a room.** You carry a lantern
+and you decide whether it is up. Raised, it lights most of an ordinary room
+- and it puts you on a dark floor holding the only bright thing on it: the
+Warden walks straight for the room you are in, exactly as it does while you
+are sprinting, and a watcher needs half as long to be sure of you (0.45
+seconds against 0.9, where crossing out of a beam takes 0.836). Lowered,
+you have five units of glow and the floor's own braziers, and nothing knows
+where you are.
+
+It starts down. Raised was the obvious default and it was wrong: every run
+opened with the Warden already walking towards the player and every watcher
+twice as quick, from the first second, for nothing the player had done.
+Three checks that had held for months failed at once and were right to.
+
+It burns only while raised, which is what makes it a decision rather than a
+countdown: a player who keeps it down never runs out. A hundred and fifty
+seconds is worth about thirty crossings of the largest room and nowhere
+near a whole run, and it is filled from braziers - which are the brightest
+thing in any room and therefore the worst place to stand, so even the
+refill is the same trade. The oil goes down the stairs with you.
+
 **The other bargain.** A dash is 8 units a second against a walk of 5 and
 used to cost nothing, so the whole game was played holding shift. It is loud
 now: while the player runs, and for four seconds after, the Warden walks
@@ -2192,6 +2213,12 @@ All in `src/game/world.ts`:
 | `CUTPURSE_SPEED` | 6 | Against a walk of 5 and a sprint of 8 |
 | `CUTPURSE_REST_S` / `_SHY_S` | 22 / 40 | How long it waits after a theft, and after being caught |
 | `CUTPURSE_GRACE_ROOMS` | 2 | Rooms entered on a floor before it takes an interest |
+| `LANTERN_FULL_S` | 150 | Seconds of raised light on a full lantern |
+| `LANTERN_SEEN_HOLD_S` | 3 | How long the Warden keeps coming after you lower it |
+| `LANTERN_RANGE_UP` / `_DOWN` | 15 / 5 | How far it reaches, up and down |
+| `LANTERN_INTENSITY_UP` / `_DOWN` | 24 / 4 | Candela, up and down |
+| `LANTERN_SEEN_FACTOR` | 0.5 | What a raised lantern does to a watcher's patience |
+| `LANTERN_FILL_REACH` | 2.4 | How close to a brazier you fill from |
 | `RATTLE_ALARM` | 2 | What dropping a knot of iron costs |
 
 Everything that changes with depth is one table, `floorRules(floor)` in the

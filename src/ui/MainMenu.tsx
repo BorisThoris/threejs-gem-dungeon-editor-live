@@ -90,6 +90,12 @@ export function MainMenu() {
                 Hold Shift, or L3. The Warden is slower than you are - but running is
                 loud, and while it can hear you it walks straight for you.
               </dd>
+              <dt style={{ color: colors.accent }}>Lantern</dt>
+              <dd style={{ margin: 0 }}>
+                F, or click the right stick. Up, you see the room and everything down
+                here sees you; down, you have a hand's worth of glow and nothing knows
+                where you are. It only burns oil while it is up, and braziers fill it.
+              </dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>

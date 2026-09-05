@@ -40,6 +40,12 @@ export interface BusEvents {
   wardenRouted: undefined;
   /** A sprint gave the player away: it knows which room they are in. */
   wardenHeard: undefined;
+  /** The lantern went up or down. */
+  lanternToggled: { raised: boolean };
+  /** The last of the oil burned away. */
+  lanternOut: undefined;
+  /** Filled from a brazier. */
+  lanternFilled: undefined;
   /** A thrown sound has sent it somewhere that is not where the player is. */
   wardenLured: { roomId: string };
   /** The Bone Charm ate a hit. */

@@ -3,6 +3,9 @@ import { useFrame } from "@react-three/fiber";
 import { Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
+import { InteractTrigger } from "../interact/InteractTrigger";
+import { useRun } from "../state/run";
+import { LANTERN_FILL_REACH, LANTERN_FULL_S } from "../world";
 import { geo, mat } from "./shared";
 
 /**
@@ -137,6 +140,29 @@ function Flame({ at }: { at: PropPlacement }) {
   );
 }
 
+/**
+ * A brazier is also the only fire in the dungeon, and the lantern is
+ * filled from it.
+ *
+ * That is where the trade in the lantern closes. It is the brightest thing
+ * in any room and therefore the worst place to be standing, so topping up
+ * is the same bargain the light itself makes, in the way you fix it. It
+ * offers itself only when there is something to fill, so a room does not
+ * carry four prompts a player has no use for.
+ */
+function Refill({ at }: { at: PropPlacement }) {
+  const full = useRun((s) => s.oil >= LANTERN_FULL_S);
+  if (full) return null;
+  return (
+    <InteractTrigger
+      position={[at.x, 1.3, at.z]}
+      radius={LANTERN_FILL_REACH}
+      label="Fill your lantern"
+      onInteract={() => useRun.getState().fillLantern()}
+    />
+  );
+}
+
 export function Braziers({ places }: { places: PropPlacement[] }) {
   // A stable identity for the list, so the matrices are not rewritten on
   // every render of the room around them.
@@ -149,6 +175,9 @@ export function Braziers({ places }: { places: PropPlacement[] }) {
       ))}
       {at.map((place, i) => (
         <Flame key={i} at={place} />
+      ))}
+      {at.map((place, i) => (
+        <Refill key={`fill-${i}`} at={place} />
       ))}
     </group>
   );

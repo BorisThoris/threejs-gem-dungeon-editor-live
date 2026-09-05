@@ -388,6 +388,7 @@ src/
       Player.tsx         the capsule the camera rides on
       where.ts           where it is standing, for the things outside the
                          frame loop that need it (setting a device down)
+      Lantern.tsx        the light they carry, and the oil it burns
     interact/            InteractTrigger (E on anything), DoorTrigger
     rooms/
       Room.tsx           the shell: floor, walls with doorways, ceiling, light
