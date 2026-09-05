@@ -257,6 +257,19 @@ Two stores that both claimed the player's stats. So:
   satchel empty. The three places that still name the terms themselves are
   the pause toggles and the pointer, and they are the ones that should
   still work while the screen is dark.
+- What a room is *made of* is `src/game/rooms/biomes.ts`, and it is a
+  different question from what the room is *for*. Kind decides content and
+  rules; biome decides stone, damp and light. They used to be one fact -
+  `KIND_TINT` gave each kind one floor colour, one wall colour and one
+  surface - so every chamber in the game was the same grey box and the only
+  thing separating two of them was where the furniture fell, over the
+  twenty-one to twenty-four rooms a finished run walks through. Each kind
+  now lists at least two biomes it may be built in and the room's own seed
+  picks one, so a trap room can be a dry catacomb or a flooded cistern and
+  still be the same trap room. `yarn test:layout` holds it the way it holds
+  the sizes: no kind always made of the same thing, no biome declared that
+  a player cannot stand in, every biome painted with a surface the registry
+  actually has, and the same room the same place when you walk back in.
 - How big a room is comes from `SIZE_RANGE` in
   `src/game/dungeon/generate.ts`, rolled per room from the ladder in
   `ROOM_SIZES`, and how it is shaped from `SHAPES_FOR` filtered by

@@ -20,7 +20,8 @@ import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { SNARE_RADIUS } from "../items/catalog";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
-import { gemFor, keyFor, KIND_CONTENT, KIND_TINT } from "./kinds";
+import { biomeFor } from "./biomes";
+import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -87,7 +88,10 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
 
 export function Room({ room, seed }: RoomProps) {
   const half = halfSize(room);
-  const tint = KIND_TINT[room.kind];
+  // What the room is made of, as distinct from what it is for. Rolled from
+  // the room's own seed, so it is the same place every time you walk back
+  // into it.
+  const tint = biomeFor(room.kind, room.id, seed);
   const Content = KIND_CONTENT[room.kind];
   // One tile every four units, whatever the room's size.
   const floorSurface = useSurface(tint.surface, room.size / 4);
@@ -167,8 +171,8 @@ export function Room({ room, seed }: RoomProps) {
           the rest, and do more of it the deeper the floor is. */}
       <pointLight
         position={[0, GROUND_Y + WALL_HEIGHT - 0.6, 0]}
-        color={light.fill}
-        intensity={light.fillIntensity}
+        color={tint.glow}
+        intensity={light.fillIntensity * tint.light}
         distance={room.size * 1.6}
         decay={1.5}
       />

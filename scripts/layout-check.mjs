@@ -37,6 +37,8 @@ writeFileSync(
    export * from "${root}src/game/rooms/anchors";
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
+   export * from "${root}src/game/rooms/biomes";
+   export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/systems/pace";
@@ -2412,6 +2414,62 @@ check("the shipped room templates reach the floors the game generates", authored
       ? `never built: ${unbuilt.join(", ")}`
       : L.SHAPES.map((sh) => `${sh} ${((100 * (shapes.get(sh) ?? 0)) / rooms).toFixed(1)}%`).join("  ")
   );
+}
+
+/**
+ * A room's kind is what it is for; its biome is what it is made of.
+ *
+ * Both used to be the same fact: one floor colour, one wall colour and one
+ * surface per kind, so every chamber in the game was the same grey box.
+ * Held the same way the sizes are - on the output, not on the table.
+ */
+{
+  const seen = new Map();
+  const perKind = new Map();
+  let rooms = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed: seed * 31 + floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const r of d.rooms) {
+        rooms++;
+        const b = L.biomeIdFor(r.kind, r.id, d.seed);
+        seen.set(b, (seen.get(b) ?? 0) + 1);
+        if (!perKind.has(r.kind)) perKind.set(r.kind, new Set());
+        perKind.get(r.kind).add(b);
+      }
+    }
+  }
+  const pinned = [...perKind.entries()].filter(([, set]) => set.size < 2).map(([k]) => k);
+  check(
+    "no kind of room is always made of the same thing",
+    pinned.length === 0,
+    pinned.length ? `${pinned.join(", ")} never vary` : `${perKind.size} kinds over ${rooms} rooms`
+  );
+
+  const never = L.BIOMES.filter((b) => !seen.has(b));
+  check(
+    "every biome the game declares is one a player can stand in",
+    never.length === 0,
+    never.length ? `never built: ${never.join(", ")}` : `${seen.size} biomes`
+  );
+
+  /**
+   * A biome that names a surface the texture registry cannot paint is a
+   * grey room with a confident name. `iron` was in the registry and in no
+   * room in the game before this.
+   */
+  const missing = L.BIOMES.filter((b) => !L.BUILTIN_SURFACES.includes(L.BIOME[b].surface));
+  check(
+    "and every one of them is painted with a surface that exists",
+    missing.length === 0,
+    missing.length ? missing.join(", ") : L.BUILTIN_SURFACES.join(", ")
+  );
+
+  // A room looks the same every time you walk back into it.
+  const a = L.biomeIdFor("normal", "room_3", 4242);
+  const b = L.biomeIdFor("normal", "room_3", 4242);
+  check("and a room is the same place when you walk back in", a === b, `${a} then ${b}`);
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

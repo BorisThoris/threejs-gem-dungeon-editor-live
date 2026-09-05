@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §27 asks a human
+  moment it can afford to. That is precisely the behaviour §28 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §27.
+for a person, not for this document, and it is on the list in §28.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2183,14 +2183,85 @@ three weaknesses in the suite that had nothing to do with room size:
 None of those three was caused by the change; all three were revealed by
 it.
 
-## 26. Steam Deck
+## 26. Every chamber was the same chamber
+
+Run 1 gave rooms room to differ. This is the other half: what they are made
+of.
+
+A room's kind decided everything about how it looked - `KIND_TINT` held one
+floor colour, one wall colour and one surface per kind. So all ten kinds
+had exactly one appearance each, and since a finished run walks through
+twenty-one to twenty-four rooms, most of what a player saw was the same
+grey stone box with the furniture moved.
+
+Kind and biome are separate questions now. Kind still decides content and
+rules; **biome** decides stone, damp and light, and the room's own seed
+picks one from the list its kind allows:
+
+| biome | reads as | surface |
+| --- | --- | --- |
+| Hewn stone | the plain dungeon | stone |
+| Mossy | damp, overgrown | moss |
+| Catacomb | dry, warm, brick | brick |
+| Flooded | cold, dim, blue | dirt |
+| Foundry | orange glow, metal | iron |
+| Timbered | lived-in | wood |
+| Bone | pale, bleached | stone |
+| Crystal | violet | stone |
+
+Every kind lists at least two, so a trap room can be a dry catacomb or a
+flooded cistern and still be the same trap room. The biome also tints the
+room's overhead fill and scales it — a flooded room is genuinely darker,
+a foundry genuinely warmer — but only within the floor's own light curve,
+which still owns how deep a floor feels.
+
+`iron` had been in the texture registry and in no room in the game. It is
+the foundry's floor now, which is the same "declared and never built"
+finding as the diamond and the triangle in §25, one layer up.
+
+Four checks hold it, the same way the sizes are held — on the output, not
+the table: no kind always made of the same thing, no biome declared that a
+player cannot stand in, every biome painted with a surface the registry
+actually has, and the same room the same place when you walk back into it.
+There is no red-on-old-code proof for these: `biomeIdFor` is new, so there
+is nothing old to run them against. The property was false by construction
+before — one `KIND_TINT` row per kind — and the checks hold it going
+forward.
+
+### Four more probes that were reading the wrong thing
+
+- **The candle was put down with one E press and no check that it landed.**
+  A dropped press left the player still carrying it, and three checks
+  behind it fell over — the plate never weighted, so it never offered the
+  idol and never paid the gem, none of which is what any of them is about.
+- **The lantern's brightness was read 600 ms after raising it.** The light
+  eases over frames; at three and a half frames a second that is two
+  frames, and the run read the fully-lowered 4 and 5 — "a lantern whose
+  light does not follow it". My first fix was worse: it waited for the
+  value to *stop changing*, polling every 150 ms, and at that frame rate
+  two polls usually land inside the same frame, so it settled instantly on
+  the stale value. It takes the **peak over five seconds** now: a lantern
+  whose light never rises has no peak to find. Reads 24 and 15 against 4
+  and 5.
+- **The tome's keypad walk tapped out an exact row and column delta.** One
+  d-pad edge lost between polls put it a key off and it gave up, reporting
+  the tome unanswerable on a pad. It reads the position back and re-walks
+  the remainder.
+- **And my own run-1 fix had a bug.** The menu focus walk judged progress
+  by the focused element's *text*, and the options page carries several
+  identical `-` and `+` steppers — so walking across them read as not
+  moving, spent the retry budget and stopped halfway down, reporting "the
+  focus can be walked to Quit to menu" while sitting on "High contrast
+  marks". It compares the focused element's **index** now.
+
+## 27. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 27. What a human playtest should watch for
+## 28. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2316,7 +2387,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 28. Options and accessibility
+## 29. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2348,7 +2419,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 29. Deeds
+## 30. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2381,7 +2452,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 30. Two harness bugs that read as game bugs
+## 31. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2454,7 +2525,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 31. Tuning knobs
+## 32. Tuning knobs
 
 All in `src/game/world.ts`:
 

@@ -2778,7 +2778,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // aim lands inside the plate's snap.
     const offer = await stepTo(plateAt, 2.6);
     ok("carrying it to the plate offers to put it down", /put down the candle/i.test(String(offer)), String(offer));
-    await act();
+    // Pressed until the candle is actually out of the hands, not pressed
+    // once and hoped. A dropped E here leaves the player still carrying it
+    // and knocks over the three checks behind this one - the plate never
+    // gets weighted, so it never offers the idol and never pays the gem -
+    // none of which is what any of them is about.
+    for (let i = 0; i < 5; i++) {
+      const held = await page.evaluate(() => (window.__carry ? window.__carry.carriedId() : null));
+      if (held === null) break;
+      await act();
+      await page.waitForTimeout(400);
+    }
     const onPlate = await page.evaluate(
       ([x, z]) =>
         window.__carry
@@ -4199,9 +4209,33 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.unlitBurn = window.__derived.lantern().oil;
 
     // Up: it burns, and the light in the scene follows it.
+    //
+    // The lantern eases between down and up over frames rather than
+    // snapping, so the reading is taken once it has stopped moving rather
+    // than a fixed moment after the toggle. Six hundred milliseconds is two
+    // frames on a machine drawing three and a half a second, and the run
+    // that caught this read the fully-lowered 4 and 5 - a lantern that had
+    // been raised and had not yet moved, reported as a lantern whose light
+    // does not follow it.
+    // The brightest it got, over a window, rather than a reading taken at
+    // one moment. Two things defeat a single sample here: the ease takes
+    // frames, and on a machine drawing three or four a second two polls a
+    // hundred and fifty milliseconds apart usually land inside the *same*
+    // frame - so "it stopped changing" is indistinguishable from "it has
+    // not started yet", and the first version of this settled instantly on
+    // the fully-lowered value. Peak over five seconds has neither problem:
+    // a lantern whose light never rises has no peak to find.
+    const brightest = async () => {
+      let best = null;
+      for (let i = 0; i < 25; i++) {
+        await sleep(200);
+        const now = window.__lantern ? { ...window.__lantern } : null;
+        if (now && (!best || now.intensity > best.intensity)) best = now;
+      }
+      return best;
+    };
     run.getState().toggleLantern();
-    await sleep(600);
-    const lit0 = window.__lantern ? { ...window.__lantern } : null;
+    const lit0 = await brightest();
     await sleep(2500);
     const burnedUp = window.__derived.lantern().oil;
     run.getState().toggleLantern();

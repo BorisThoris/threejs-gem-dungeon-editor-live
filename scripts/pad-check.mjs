@@ -122,10 +122,26 @@ const SLOT_BUTTONS = [BUTTON.x, BUTTON.y, BUTTON.lb, BUTTON.rb];
  * not a bound, so it is counted off the page: however many things can hold
  * the focus, plus a couple for a wrap.
  */
-const focusables = () =>
-  page.evaluate(
-    () => document.querySelectorAll("button, [tabindex]:not([tabindex='-1']), input, select").length
-  );
+const FOCUSABLE = "button, [tabindex]:not([tabindex='-1']), input, select";
+
+const focusables = () => page.evaluate((sel) => document.querySelectorAll(sel).length, FOCUSABLE);
+
+/**
+ * Where the focus is, as a position rather than as a word.
+ *
+ * Progress cannot be judged by the focused element's text: the options page
+ * carries several `-` and `+` steppers, so walking from one to the next
+ * reads as the focus not having moved. A walk that treats that as a lost
+ * press retries it, spends its budget and stops halfway down the menu -
+ * which is how "the focus can be walked to Quit to menu" came back sitting
+ * on "High contrast marks".
+ */
+const focusAt = () =>
+  page.evaluate((sel) => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return -1;
+    return [...document.querySelectorAll(sel)].indexOf(el);
+  }, FOCUSABLE);
 
 const focusOn = async (page, pattern, steps) => {
   const limit = steps ?? (await focusables()) + 2;
@@ -138,15 +154,15 @@ const focusOn = async (page, pattern, steps) => {
   // of counted, and only real movement spends the budget.
   let moved = 0;
   let misses = 0;
-  let last = await focused();
+  let where = await focusAt();
   while (moved < limit && misses < 12) {
-    if (pattern.test(last)) return true;
+    if (pattern.test(await focused())) return true;
     await tap(page, BUTTON.down);
-    const now = await focused();
-    if (now === last) misses++;
+    const now = await focusAt();
+    if (now === where) misses++;
     else {
       moved++;
-      last = now;
+      where = now;
     }
   }
   return pattern.test(await focused());
@@ -693,12 +709,22 @@ const standAtLectern = () =>
           await tap(page, BUTTON.right, 2);
           at = 0;
         }
-        const rows = Math.floor(target / COLUMNS) - Math.floor(at / COLUMNS);
-        const cols = (target % COLUMNS) - (at % COLUMNS);
-        for (let i = 0; i < Math.abs(rows); i++) await tap(page, rows > 0 ? BUTTON.down : BUTTON.up, 2);
-        for (let i = 0; i < Math.abs(cols); i++) await tap(page, cols > 0 ? BUTTON.right : BUTTON.left, 2);
-        at = target;
-        if ((await where()).at !== target) return false;
+        // Steered to the key, not counted out to it. The pad's rising edges
+        // are computed once per poll, so on a machine drawing three or four
+        // frames a second a press can land between polls and be lost: a
+        // walk that taps out an exact row and column delta then ends up one
+        // key off gives up, and the tome reports as unanswerable on a pad.
+        // The position is read back and the remaining delta re-walked, a
+        // few times, before that is believed.
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const rows = Math.floor(target / COLUMNS) - Math.floor(at / COLUMNS);
+          const cols = (target % COLUMNS) - (at % COLUMNS);
+          for (let i = 0; i < Math.abs(rows); i++) await tap(page, rows > 0 ? BUTTON.down : BUTTON.up, 2);
+          for (let i = 0; i < Math.abs(cols); i++) await tap(page, cols > 0 ? BUTTON.right : BUTTON.left, 2);
+          at = (await where()).at;
+          if (at === target) break;
+        }
+        if (at !== target) return false;
         await tap(page, BUTTON.a, 2);
         return true;
       };
