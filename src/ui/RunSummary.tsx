@@ -1,5 +1,6 @@
 import { useRef } from "react";
 
+import { DELVERS } from "../game/delvers/catalog";
 import { useRecords } from "../game/state/records";
 import { runSeconds, useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
@@ -23,6 +24,10 @@ export function RunSummary() {
   const floor = useRun((s) => s.floor);
   // The run's seed, not this floor's: they part company on the way down.
   const seed = useRun((s) => s.runSeed);
+  // Who was carrying it. Twenty-two gems means two different things
+  // depending on which of these got out with them, and the summary is the
+  // one screen that has room to say so.
+  const delver = useRun((s) => DELVERS[s.delver]);
   // `runSeconds`, not a second copy of the arithmetic: the number on this
   // screen and the number folded into the records are the same question.
   const seconds = useRun(runSeconds);
@@ -76,7 +81,9 @@ export function RunSummary() {
           {roomsSeen} room{roomsSeen === 1 ? "" : "s"} · {clock(seconds)}
         </p>
         <p style={{ ...body, fontSize: text.small, marginBottom: 18 }}>
-          <span style={{ color: colors.dim }}>SEED </span>
+          <span style={{ color: colors.dim }}>AS </span>
+          {delver.name}
+          <span style={{ color: colors.dim }}> · SEED </span>
           {seed}
         </p>
         <button style={button} data-testid="summary-again" onClick={() => startRun()}>

@@ -45,6 +45,23 @@ export const fullscreen: CSSProperties = {
   zIndex: 1000,
 };
 
+/**
+ * Every full-screen panel in the game: the title, the pause menu, the run
+ * summary, the records, the delvers.
+ *
+ * The height rule is not decoration. Panels were sized by their contents
+ * with nowhere for the overflow to go, which is fine for four buttons and
+ * wrong the first time one of them holds a list: the delver picker's five
+ * cards ran off the bottom of a 1280x800 window, and 1280x800 is the Steam
+ * Deck's screen exactly. What that looked like was not a scrollbar - it
+ * was a button that could be seen and could not be pressed, because it was
+ * outside the viewport. Capped at the window less its margins, and it
+ * scrolls inside itself when it has to.
+ *
+ * `overscrollBehavior` so a flick at the end of the list does not scroll
+ * the page behind it, and the gamepad menu's focus ring calls
+ * `scrollIntoView`, so a pad walks the list as well as a mouse does.
+ */
 export const panel: CSSProperties = {
   background: colors.panel,
   border: `1px solid ${colors.line}`,
@@ -52,6 +69,22 @@ export const panel: CSSProperties = {
   padding: "28px 32px",
   minWidth: 320,
   maxWidth: 520,
+  maxHeight: "calc(100vh - 48px)",
+  overflowY: "auto",
+  overscrollBehavior: "contain",
+  /**
+   * With the padding inside the cap, not added to it.
+   *
+   * The first attempt at the height rule set `maxHeight` and left
+   * `box-sizing` at its default, which measures the cap against the
+   * content box: 752 of content plus 56 of padding is 808, in a window
+   * 800 tall. The panel scrolled and was still eight pixels too big, and
+   * the card at the bottom stayed unreachable - which looked exactly like
+   * the fix not working. Measured in the browser rather than guessed at:
+   * `clientHeight` 808 against a `maxHeight` of 752 is the whole bug in
+   * two numbers.
+   */
+  boxSizing: "border-box",
   textAlign: "center",
 };
 

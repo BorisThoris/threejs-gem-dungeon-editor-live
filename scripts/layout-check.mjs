@@ -28,6 +28,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/thief/nest";
+   export * from "${root}src/game/delvers/catalog";
    export * from "${root}src/game/rooms/layouts";
    export * from "${root}src/game/props/specs";
    export * from "${root}src/game/rooms/anchors";
@@ -40,7 +41,6 @@ writeFileSync(
    export * from "${root}src/game/sentry/beam";
    export * from "${root}src/game/sentry/placement";
    export * from "${root}src/game/rooms/Dressing";
-   export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
@@ -502,6 +502,83 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
     worst[`floor ${floor}`] = `${least} to ${most} free against a toll of ${toll}`;
   }
+  /**
+   * And the same rule for every delver, because one of them raises the toll.
+   *
+   * A delver may change what a run opens with; it may not change what the
+   * dungeon is. This is the check that stopped the Pilgrim paying for its
+   * fourth life with a gem on every exit: the thinnest first floor holds
+   * four gems it can guarantee against a toll of three, so one more on the
+   * door left a run that had to take every gem on the floor to leave,
+   * which is the game's whole decision switched off. It pays on the alarm
+   * now. A delver's own relics are priced in too, because the Toll Ledger
+   * takes a gem off and must not be what makes the sums work.
+   */
+  let delverUnpayable = 0;
+  let delverThin = 0;
+  let delverCases = 0;
+  const delverWorst = {};
+  for (const id of L.DELVER_IDS) {
+    const delver = L.DELVERS[id];
+    // The relics a delver starts with, priced in: the Ledger takes a gem
+    // off, which would hide a toll bonus that the floor cannot cover.
+    const discount = L.modifiers(delver.relics).tollDiscount;
+    let tightest = Infinity;
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      const toll = Math.max(1, L.tollForFloor(floor) - discount);
+      for (let seed = 1; seed <= 200; seed++) {
+        const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+        let free = 0;
+        for (const room of d.rooms) {
+          if (room.kind === "start" || room.kind === "end") continue;
+          if (GATED.has(room.kind)) continue;
+          if (d.vaultId && room.id === d.vaultId) continue;
+          free++;
+        }
+        delverCases++;
+        if (free < toll) delverUnpayable++;
+        if (free < toll + 1) delverThin++;
+        tightest = Math.min(tightest, free - toll);
+      }
+    }
+    delverWorst[delver.name] = tightest;
+  }
+  check(
+    "no delver can be given a floor it cannot pay to leave",
+    delverUnpayable === 0,
+    `${delverUnpayable} of ${delverCases}`
+  );
+  check(
+    "and every delver is still offered the choice: a gem spare on the worst seed",
+    delverThin === 0,
+    Object.entries(delverWorst).map(([k, v]) => `${k} +${v}`).join(", ")
+  );
+  // A delver may not quietly be the easy one either. Lives, slots, gems in
+  // hand and the alarm are different currencies on purpose, so what is
+  // asserted is only that every one of them pays for what it brings.
+  const freeLunch = L.DELVER_IDS.filter((id) => {
+    const d = L.DELVERS[id];
+    if (id === "vagrant") return false;
+    const gains =
+      (d.lives > L.STARTING_LIVES ? 1 : 0) +
+      (d.gems > 0 ? 1 : 0) +
+      d.relics.length +
+      d.satchel.length +
+      (d.slots > 4 ? 1 : 0);
+    const costs =
+      (d.lives < L.STARTING_LIVES ? 1 : 0) +
+      (d.slots < 4 ? 1 : 0) +
+      (d.alarmBonus > 0 ? 1 : 0) +
+      (d.alarmFactor > 1 ? 1 : 0);
+    return gains > 0 && costs === 0;
+  });
+  check(
+    "and every delver but the Vagrant pays for what it brings",
+    freeLunch.length === 0,
+    freeLunch.length ? freeLunch.join(", ") : `${L.DELVER_IDS.length} delvers`
+  );
+
   check("every floor can be paid for without the vault, the arena or a puzzle",
     unpayable === 0, `${unpayable} of 1200 could not be`);
   check("and with something left over, so taking every gem is a choice",

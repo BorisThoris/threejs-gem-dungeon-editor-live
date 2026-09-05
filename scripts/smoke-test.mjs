@@ -3351,6 +3351,254 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * Delvers: five different openings, and the rules that hold across them.
+ *
+ * Each one is a trade, and the trades are easy to write and easy to get
+ * wrong in the same way: a starting relic that the modifiers never see, a
+ * satchel that says two slots and accepts four, an alarm bonus that the
+ * first rout scrubs off. All of those are invisible from the title screen
+ * and only show up in the run, so they are asked of the run.
+ */
+{
+  const delvers = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+
+    // The plain game, unchanged: this is the one every other delver is a
+    // deviation from, so it is the one worth pinning.
+    run.getState().startRun(5, "vagrant");
+    await sleep(1200);
+    const v = run.getState();
+    out.vagrant = { lives: v.lives, gems: v.gems, relics: v.relics.length, satchel: v.satchel.length, alarm: v.alarm, delver: v.delver };
+
+    // The Ratcatcher: two tools, known on sight, and one less life.
+    run.getState().startRun(5, "ratcatcher");
+    await sleep(900);
+    const r = run.getState();
+    out.ratcatcher = {
+      lives: r.lives,
+      maxLives: r.maxLives,
+      satchel: [...r.satchel],
+      known: r.satchel.every((id) => r.identified.includes(id)),
+      // The satchel shows what it holds rather than a look, because it is known.
+      readsAsNamed: /Wire Snare|Snare/i.test(document.body.innerText),
+    };
+
+    // The Courier: two slots, and the boots really in the modifiers.
+    run.getState().startRun(5, "courier");
+    await sleep(900);
+    const before = run.getState();
+    const took = [
+      before.takeItem("healing"),
+      run.getState().takeItem("mapping"),
+      run.getState().takeItem("gloom"),
+    ];
+    const c = run.getState();
+    out.courier = {
+      slots: window.__derived.slots(),
+      took,
+      held: c.satchel.length,
+      walk: window.__derived.walk(),
+      plainWalk: null,
+    };
+
+    // The Tomb Robber: gems in hand, a chart, and a floor already stirring
+    // - including after a rout, which clamps the alarm to a baseline.
+    run.getState().startRun(5, "robber");
+    await sleep(900);
+    const b = run.getState();
+    const baseline = window.__derived.rules().startingAlarm;
+    run.setState({ alarm: baseline + 4, wardenRoomId: b.dungeon.rooms[1].id, wardenWounds: 1, wardenStaggerUntil: 0 });
+    run.getState().wardenWounded();
+    await sleep(150);
+    out.robber = {
+      gems: b.gems,
+      gemsTotal: b.gemsTotal,
+      chart: b.relics.includes("chart"),
+      alarmOnArrival: b.alarm,
+      floorBaseline: baseline,
+      alarmAfterRout: run.getState().alarm,
+    };
+
+    // The Pilgrim: a fourth life and the charm, paid for on the alarm.
+    run.getState().startRun(5, "pilgrim");
+    await sleep(900);
+    const p0 = run.getState();
+    const room = p0.dungeon.rooms.find((x) => x.kind !== "start" && x.kind !== "end");
+    const alarmBefore = p0.alarm;
+    run.getState().collectGem(room.id);
+    const p1 = run.getState();
+    out.pilgrim = {
+      lives: p1.lives,
+      charm: p1.relics.includes("charm"),
+      alarmBefore,
+      alarmAfterOneGem: p1.alarm,
+      toll: window.__derived.toll(),
+      vagrantToll: null,
+    };
+    run.getState().startRun(5, "vagrant");
+    await sleep(700);
+    out.pilgrim.vagrantToll = window.__derived.toll();
+    out.courier.plainWalk = window.__derived.walk();
+
+    // And it is remembered, so the title screen opens on the one you played.
+    //
+    // Ended through the game's own losing path rather than by writing
+    // `phase` into the store: the record is folded in by the two places a
+    // run can end, and a test that sets the phase directly proves only
+    // that a field can be assigned. It did, and reported no delver
+    // remembered at all.
+    run.getState().startRun(5, "courier");
+    await sleep(700);
+    run.setState({ lives: 1, lastDamageAt: -Infinity, freeHitUsed: true });
+    run.getState().damage();
+    await sleep(400);
+    out.remembered = window.__records.getState().lastDelver;
+    out.endedProperly = run.getState().phase;
+    return out;
+  });
+
+  ok(
+    "the Vagrant is the plain game: three lives, nothing held, no debts",
+    delvers.vagrant.lives === 3 &&
+      delvers.vagrant.gems === 0 &&
+      delvers.vagrant.relics === 0 &&
+      delvers.vagrant.satchel === 0 &&
+      delvers.vagrant.delver === "vagrant",
+    JSON.stringify(delvers.vagrant)
+  );
+  ok(
+    "the Ratcatcher starts with its two tools, and knows them on sight",
+    delvers.ratcatcher.satchel.length === 2 && delvers.ratcatcher.known === true,
+    JSON.stringify(delvers.ratcatcher)
+  );
+  ok(
+    "and pays for them with a life",
+    delvers.ratcatcher.lives === 2 && delvers.ratcatcher.maxLives === 2,
+    JSON.stringify({ lives: delvers.ratcatcher.lives, max: delvers.ratcatcher.maxLives })
+  );
+  ok(
+    "the Courier's satchel really is two slots, not four drawn as two",
+    delvers.courier.slots === 2 &&
+      delvers.courier.took[2] === false &&
+      delvers.courier.held === 2,
+    JSON.stringify(delvers.courier)
+  );
+  ok(
+    "and its boots are in the speed the game actually moves it at",
+    delvers.courier.walk > delvers.courier.plainWalk,
+    `${delvers.courier.walk} against a plain ${delvers.courier.plainWalk}`
+  );
+  ok(
+    "the Tomb Robber opens with gems in hand, counted as found",
+    delvers.robber.gems === 2 && delvers.robber.gemsTotal === 2 && delvers.robber.chart === true,
+    JSON.stringify(delvers.robber)
+  );
+  ok(
+    "and its floor is already stirring, and stays that way through a rout",
+    delvers.robber.alarmOnArrival === delvers.robber.floorBaseline + 1 &&
+      delvers.robber.alarmAfterRout >= delvers.robber.floorBaseline + 1,
+    JSON.stringify({
+      arrival: delvers.robber.alarmOnArrival,
+      baseline: delvers.robber.floorBaseline,
+      afterRout: delvers.robber.alarmAfterRout,
+    })
+  );
+  ok(
+    "the Pilgrim gets a fourth life and the charm",
+    delvers.pilgrim.lives === 4 && delvers.pilgrim.charm === true,
+    JSON.stringify(delvers.pilgrim)
+  );
+  ok(
+    "and pays on the alarm rather than at the door, which the floors cannot afford",
+    delvers.pilgrim.alarmAfterOneGem === delvers.pilgrim.alarmBefore + 2 &&
+      delvers.pilgrim.toll === delvers.pilgrim.vagrantToll,
+    JSON.stringify({
+      rose: delvers.pilgrim.alarmAfterOneGem - delvers.pilgrim.alarmBefore,
+      toll: delvers.pilgrim.toll,
+      plain: delvers.pilgrim.vagrantToll,
+    })
+  );
+  ok(
+    "the delver you played is remembered for the next run",
+    delvers.remembered === "courier" && delvers.endedProperly === "lost",
+    JSON.stringify({ remembered: delvers.remembered, phase: delvers.endedProperly })
+  );
+
+  // And the title screen offers them, on the keyboard and to a reader.
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(600);
+  const picker = await page.$('[data-testid="menu-delvers"]');
+  if (picker) await picker.click();
+  await page.waitForTimeout(400);
+  /**
+   * Every card reachable, in a 1280x800 window.
+   *
+   * That is the Steam Deck's resolution, and it is what this browser is
+   * sized to. The picker's five cards plus the paragraph above them were
+   * taller than the panel had room for and the panel did not scroll, so
+   * the last card and the button under it sat below the bottom of the
+   * screen - visible to a query, clickable by nothing. Playwright found it
+   * by refusing to click for thirty seconds.
+   *
+   * Reachable, not on screen at once: a list longer than the screen is
+   * fine, and this is the same question a pad asks when it rings the next
+   * item - scroll it in the way the pad menu does, and then it has to be
+   * somewhere a player can see and press.
+   */
+  const cards = await page.evaluate(() => {
+    const all = [
+      ...document.querySelectorAll('[data-testid^="delver-"]'),
+      document.querySelector('[data-testid="delvers-back"]'),
+    ].filter(Boolean);
+    const unreachable = [];
+    for (const el of all) {
+      el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom > window.innerHeight || rect.top < 0 || rect.height === 0) {
+        unreachable.push(el.getAttribute("data-testid"));
+      }
+    }
+    return {
+      count: document.querySelectorAll('[data-testid^="delver-"]').length,
+      text: document.body.innerText,
+      allInView: unreachable.length === 0,
+      outOfView: unreachable,
+    };
+  });
+  ok("the title screen offers every delver", cards.count === 5, `${cards.count} cards`);
+  ok(
+    "and every card can be scrolled to and pressed on a Steam Deck's screen",
+    cards.allInView,
+    JSON.stringify(cards.outOfView)
+  );
+  ok(
+    "and each card says what it costs as well as what it brings",
+    /Two lives instead of three/.test(cards.text) && /Two satchel slots/.test(cards.text),
+    ""
+  );
+  const pick = await page.$('[data-testid="delver-pilgrim"]');
+  if (pick) await pick.click();
+  await page.waitForTimeout(200);
+  const backBtn = await page.$('[data-testid="delvers-back"]');
+  if (backBtn) await backBtn.click();
+  await page.waitForTimeout(300);
+  const started = await page.evaluate(async () => {
+    const btn = document.querySelector('[data-testid="menu-start"]');
+    const label = btn ? btn.textContent : "";
+    if (btn) btn.click();
+    await new Promise((r) => setTimeout(r, 1200));
+    return { label, delver: window.__run.getState().delver, lives: window.__run.getState().lives };
+  });
+  ok(
+    "picking one and pressing Start goes down as that delver",
+    started.delver === "pilgrim" && started.lives === 4 && /Pilgrim/.test(started.label),
+    JSON.stringify(started)
+  );
+}
+
+/**
  * The Cutpurse, and where a theft goes.
  *
  * The other two things in the dungeon are answered by moving well. This

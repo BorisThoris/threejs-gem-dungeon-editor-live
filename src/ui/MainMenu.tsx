@@ -1,8 +1,9 @@
 import { Fragment, useCallback, useRef, useState } from "react";
 
+import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
-import { FLOORS, STARTING_LIVES, tollForFloor } from "../game/world";
+import { FLOORS, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { Keypad } from "./Keypad";
@@ -12,9 +13,18 @@ const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
 export function MainMenu() {
-  const [page, setPage] = useState<"menu" | "controls" | "records">("menu");
+  const [page, setPage] = useState<"menu" | "controls" | "records" | "delvers">("menu");
   const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
+  // The one last taken down, so a player who has settled on a delver is
+  // not asked again every time. Read once: this is a starting value for a
+  // choice, not a thing the screen has to stay in step with.
+  const [delver, setDelver] = useState<DelverId>(
+    () => (DELVER_IDS as readonly string[]).includes(useRecords.getState().lastDelver ?? "")
+      ? (useRecords.getState().lastDelver as DelverId)
+      : DEFAULT_DELVER
+  );
+  const chosen = DELVERS[delver];
   // B goes back to the title, and does nothing when already there rather
   // than quitting the game by accident.
   const panelRef = useRef<HTMLDivElement>(null);
@@ -35,11 +45,18 @@ export function MainMenu() {
               <br />
               Every gem you take wakes the thing that walks the floor. You cannot fight it,
               and you cannot outrun it quietly: it hears a sprint.
-              You have {STARTING_LIVES} lives. Each floor down is larger, more closely
+              You have {chosen.lives} lives. Each floor down is larger, more closely
               watched, and wakes sooner than the one above it.
             </p>
-            <button style={button} data-testid="menu-start" onClick={() => startRun()}>
-              Start
+            <button style={button} data-testid="menu-start" onClick={() => startRun(undefined, delver)}>
+              Start as the {chosen.name}
+            </button>
+            <button
+              style={secondaryButton}
+              data-testid="menu-delvers"
+              onClick={() => setPage("delvers")}
+            >
+              Choose a delver
             </button>
             <button style={secondaryButton} onClick={() => setPage("controls")}>
               Controls
@@ -53,6 +70,8 @@ export function MainMenu() {
               </button>
             )}
           </>
+        ) : page === "delvers" ? (
+          <Delvers chosen={delver} onChoose={setDelver} onBack={() => setPage("menu")} />
         ) : page === "records" ? (
           <Records seed={seed} setSeed={setSeed} onBack={() => setPage("menu")} />
         ) : (
@@ -82,6 +101,79 @@ export function MainMenu() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Who to go down as.
+ *
+ * Every card says both halves of its trade in the player's own order -
+ * what it brings, then what it costs - because a list of only the good
+ * halves is a list of upgrades, and these are not upgrades. The Vagrant is
+ * first and is the plain game; nothing here is strictly better than it.
+ *
+ * A delver that has got out alive at least once is marked, which is the
+ * only progression in the game and is deliberately a record rather than an
+ * unlock: everything is available from the first run.
+ */
+function Delvers({
+  chosen,
+  onChoose,
+  onBack,
+}: {
+  chosen: DelverId;
+  onChoose: (id: DelverId) => void;
+  onBack: () => void;
+}) {
+  const escapedAs = useRecords((s) => s.escapedAs);
+  return (
+    <>
+      <p style={{ ...body, marginBottom: 14 }}>
+        Who goes down. Each of these trades one thing the run needs for another,
+        and none of them is the easy one.
+      </p>
+      <div style={{ display: "grid", gap: 8, marginBottom: 14 }}>
+        {DELVER_IDS.map((id) => {
+          const d = DELVERS[id];
+          const picked = id === chosen;
+          return (
+            <button
+              key={id}
+              data-testid={`delver-${id}`}
+              onClick={() => onChoose(id)}
+              style={{
+                ...secondaryButton,
+                width: "100%",
+                textAlign: "left",
+                padding: "10px 14px",
+                borderColor: picked ? colors.gold : colors.line,
+                background: picked ? "rgba(224,183,74,0.08)" : undefined,
+              }}
+            >
+              <div style={{ color: picked ? colors.gold : colors.ink, fontSize: text.body }}>
+                {d.name}
+                {escapedAs.includes(id) && (
+                  <span style={{ color: colors.dim, fontSize: text.small }}> · escaped</span>
+                )}
+              </div>
+              <div style={{ color: colors.dim, fontSize: text.small, lineHeight: 1.5 }}>
+                {d.blurb}
+              </div>
+              <div style={{ fontSize: text.small, lineHeight: 1.6, marginTop: 4 }}>
+                <span style={{ color: colors.accent }}>+ </span>
+                {d.brings}
+                <br />
+                <span style={{ color: colors.danger }}>− </span>
+                {d.costs}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      <button style={button} data-testid="delvers-back" onClick={onBack}>
+        Take the {DELVERS[chosen].name} down
+      </button>
+    </>
   );
 }
 

@@ -26,6 +26,7 @@ import {
   type Appearances,
   type ItemId,
 } from "../items/catalog";
+import { DEFAULT_DELVER, DELVERS, delverOr, knownFrom, type DelverId } from "../delvers/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
@@ -117,6 +118,13 @@ export interface RunState {
    * away from and never paid.
    */
   trials: Record<string, { attempts: number; misses: number }>;
+  /**
+   * Who went down. Chosen at the title and fixed for the run: it decides
+   * what the first door is walked up to with, and it goes on the summary
+   * because "twenty-two gems" means two different things depending on
+   * which of these was carrying them.
+   */
+  delver: DelverId;
   /** Relics held. What they do is decided in relics/catalog.ts. */
   relics: RelicId[];
   /** What is in the satchel, oldest first. Four slots, used with 1-4. */
@@ -244,7 +252,7 @@ export interface RunState {
   /** The same clock, read when the run is won or lost. */
   endedAt: number;
 
-  startRun: (seed?: number) => void;
+  startRun: (seed?: number, delver?: DelverId) => void;
   quitToMenu: () => void;
   pause: () => void;
   resume: () => void;
@@ -353,6 +361,7 @@ function rememberRun(s: RunState) {
   useRecords.getState().record({
     won: s.phase === "won",
     seed: s.runSeed,
+    delver: s.delver,
     carried: s.gems,
     gemsFound: s.gemsTotal,
     floor: s.floor,
@@ -392,6 +401,7 @@ export const useRun = create<RunState>()(
     relics: [],
     satchel: [],
     identified: [],
+    delver: DEFAULT_DELVER,
     appearances: appearancesFor(0),
     effects: { swift: 0, mire: 0, gloom: 0 },
     noisyUntil: 0,
@@ -429,9 +439,14 @@ export const useRun = create<RunState>()(
     startedAt: 0,
     endedAt: 0,
 
-    startRun: (seed) => {
+    startRun: (seed, delverId) => {
       const floor = 1;
       const rules = floorRules(floor);
+      // The one they asked for, the one they last used, or the Vagrant.
+      // Falling back rather than throwing because this comes off a saved
+      // preference, and a build that renames a delver must not make an old
+      // save unable to start a run.
+      const delver = delverOr(delverId ?? useRecords.getState().lastDelver);
       const dungeon = generateDungeon({
         seed,
         minRooms: rules.minRooms,
@@ -447,17 +462,21 @@ export const useRun = create<RunState>()(
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
-        lives: STARTING_LIVES,
-        maxLives: STARTING_LIVES,
-        gems: 0,
-        gemsTotal: 0,
+        delver: delver.id,
+        lives: delver.lives,
+        maxLives: delver.lives,
+        // Gems in hand at the first door count as found: they are part of
+        // what this run got out with, and the summary would otherwise show
+        // a Tomb Robber carrying two gems it says were never picked up.
+        gems: delver.gems,
+        gemsTotal: delver.gems,
         gemRooms: [],
         cleared: [],
         failed: [],
         trials: {},
-        relics: [],
-        satchel: [],
-        identified: [],
+        relics: [...delver.relics],
+        satchel: [...delver.satchel],
+        identified: knownFrom(delver),
         appearances: appearancesFor(dungeon.seed),
         effects: { swift: 0, mire: 0, gloom: 0 },
         noisyUntil: 0,
@@ -480,7 +499,7 @@ export const useRun = create<RunState>()(
         keys: 0,
         unlocked: [],
         keyTakenIn: null,
-        alarm: rules.startingAlarm,
+        alarm: rules.startingAlarm + delver.alarmBonus,
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
@@ -621,7 +640,12 @@ export const useRun = create<RunState>()(
           keys: 0,
           unlocked: [],
           keyTakenIn: null,
-          alarm: rules.startingAlarm,
+          // The delver's bonus is part of every floor's baseline, not a
+          // one-off on the first: a Tomb Robber is remembered by the whole
+          // dungeon, and `wardenWounded` and a Scroll of Banishment both
+          // clamp the alarm to the floor's baseline, so a bonus that only
+          // applied on arrival would be scrubbed off by the first rout.
+          alarm: rules.startingAlarm + DELVERS[get().delver].alarmBonus,
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
@@ -667,7 +691,12 @@ export const useRun = create<RunState>()(
       if (s.gemRooms.includes(roomId)) return false;
       // Every gem taken rouses the floor. This is the whole bargain: the
       // reward and the danger come from the same act.
-      const alarm = s.alarm + ALARM_PER_GEM * modifiers(s.relics).alarmPerGem;
+      // The delver's multiplier and the relic's, in that order: a Pilgrim
+      // with an Ash Censer is back to an ordinary gem, which is exactly
+      // what four gems bought them.
+      const alarm =
+        s.alarm +
+        ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
       set({
         gems: s.gems + 1,
         gemsTotal: s.gemsTotal + 1,
@@ -725,7 +754,7 @@ export const useRun = create<RunState>()(
 
     takeItem: (id, from) => {
       const s = get();
-      if (s.satchel.length >= SATCHEL_SLOTS) {
+      if (s.satchel.length >= satchelSlots(s)) {
         bus.emit("notice", "Your satchel is full. Use something first.");
         return false;
       }
@@ -764,7 +793,7 @@ export const useRun = create<RunState>()(
       // strongest card in the deck, gone with nothing said. The calm is a
       // real reason to read it early, so this refuses only when both
       // halves are no-ops.
-      if (id === "banish" && !s.wardenRoomId && s.alarm <= floorRules(s.floor).startingAlarm) {
+      if (id === "banish" && !s.wardenRoomId && s.alarm <= alarmFloorFor(s)) {
         bus.emit("notice", "Nothing walks this floor yet, and it is already as quiet as it gets.");
         return;
       }
@@ -838,9 +867,7 @@ export const useRun = create<RunState>()(
           // is its character, not just its opening value: letting a scroll
           // take the bottom floor to "Still" made it calmer than the first
           // one, which is the opposite of what the descent claims.
-          set({
-            alarm: Math.max(floorRules(after.floor).startingAlarm, get().alarm - BANISH_CALM),
-          });
+          set({ alarm: Math.max(alarmFloorFor(after), get().alarm - BANISH_CALM) });
           break;
         }
       }
@@ -1086,7 +1113,7 @@ export const useRun = create<RunState>()(
         wardenCameFrom: null,
         wardenLure: null,
         lureUntil: 0,
-        alarm: Math.max(floorRules(s.floor).startingAlarm, s.alarm - WARDEN_ROUT_CALM),
+        alarm: Math.max(alarmFloorFor(s), s.alarm - WARDEN_ROUT_CALM),
       });
       bus.emit("wardenWounded", { wounds });
       bus.emit("wardenRouted");
@@ -1185,12 +1212,36 @@ export const wardNow = (s: RunState): string | null =>
 export const snaresIn = (placed: readonly PlacedDevice[], roomId: string): PlacedDevice[] =>
   placed.filter((d) => d.live && d.id === "snare" && d.roomId === roomId);
 
+/**
+ * The lowest this floor's alarm can be brought, for this delver.
+ *
+ * Two places calm the floor - a Scroll of Banishment and a rout - and both
+ * clamp to a baseline. That baseline was `floorRules(floor).startingAlarm`
+ * written out twice, which was right until a delver could add to it: a
+ * Tomb Robber's floor starts at 2 and either of those would have taken it
+ * to 1, quietly making the run easier than the character it chose.
+ */
+export const alarmFloorFor = (s: RunState): number =>
+  floorRules(s.floor).startingAlarm + DELVERS[s.delver].alarmBonus;
+
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
 
-/** What the exit charges on this floor, after relics. Never below one. */
+/**
+ * What the exit charges on this floor, after relics. Never below one.
+ *
+ * Not after the delver: a delver was going to be able to raise this, and
+ * the economy check found in one run that the floors do not hold a gem of
+ * slack to spend on it. What a delver changes is the alarm, which does.
+ */
 export const tollNow = (s: RunState): number =>
   Math.max(1, tollForFloor(s.floor) - modifiers(s.relics).tollDiscount);
+
+/**
+ * How many slots this run's satchel has. Four for everyone but the
+ * Courier, who trades two of them for the boots.
+ */
+export const satchelSlots = (s: RunState): number => DELVERS[s.delver].slots;
 
 /** Gems held over what the exit will cost: what the run is actually earning. */
 export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s));
@@ -1223,6 +1274,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     toll: () => tollNow(useRun.getState()),
     spare: () => spareGems(useRun.getState()),
     walk: () => speedNow(useRun.getState()).walk,
+    slots: () => satchelSlots(useRun.getState()),
     rules: () => floorRules(useRun.getState().floor),
     hears: () => wardenHears(useRun.getState()),
     lure: () => lureNow(useRun.getState()),

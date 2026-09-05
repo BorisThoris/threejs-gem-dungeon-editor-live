@@ -81,6 +81,14 @@ and never on the way to the exit, so a vault is a detour worth taking
 rather than a wall across the run - you can always leave without it, and
 you will always wonder what was in it.
 
+You pick who goes down. Five delvers, each trading one thing the run needs
+for another: the Vagrant brings nothing and owes nothing, the Tomb Robber
+opens with a chart and two gems on a floor that is already stirring, the
+Ratcatcher knows every device on sight and has one life fewer, the Courier
+is a quarter faster with half a satchel, and the Pilgrim gets four lives
+and a charm because the dungeon minds them being here twice as much. None
+of them is the easy one, and all of them are available from the first run.
+
 Rooms of a kind are not rooms of a pattern: each one draws its furniture
 from its own seed out of two or three arrangements, so a chamber you have
 walked into before is not the chamber you walked into before.

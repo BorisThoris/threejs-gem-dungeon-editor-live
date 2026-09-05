@@ -381,6 +381,7 @@ src/
       types.ts           Room {id, kind, grid, size, shape, links, template?}
       generate.ts        grid walk, connected by construction, exit farthest
       layout.ts          where everything in a room is
+    delvers/catalog.ts   the five ways to start, each a trade not an upgrade
     state/run.ts         the run: phase, lives, gems, current room, visited
     input/               keyboard (edge presses), gamepad, mouse look
     player/

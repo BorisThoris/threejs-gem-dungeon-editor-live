@@ -28,11 +28,27 @@ export interface Records {
   gemsEverFound: number;
   /** The seed of the best haul, so it can be run again. */
   bestSeed: number | null;
+  /**
+   * The delver last taken down, so the title screen opens on the one you
+   * played rather than making you pick again every time. Held here rather
+   * than in the run because it has to outlive one, and this file is
+   * already the only thing that does.
+   *
+   * A string rather than the `DelverId` union on purpose: this is read
+   * back off a disk written by some earlier build, and a name that no
+   * longer exists must become the Vagrant rather than a type error at the
+   * one moment the game is starting.
+   */
+  lastDelver: string | null;
+  /** Which delvers have got out alive at least once. */
+  escapedAs: string[];
 }
 
 export interface RunOutcome {
   won: boolean;
   seed: number;
+  /** Who was carrying it. */
+  delver: string;
   /** Gems still held at the end. Only counts as a haul if they got out. */
   carried: number;
   gemsFound: number;
@@ -62,6 +78,8 @@ const EMPTY: Records = {
   fastestEscape: 0,
   gemsEverFound: 0,
   bestSeed: null,
+  lastDelver: null,
+  escapedAs: [],
 };
 
 const number = (v: unknown, fallback: number): number =>
@@ -80,6 +98,8 @@ function load(): Records {
       fastestEscape: number(p.fastestEscape, 0),
       gemsEverFound: number(p.gemsEverFound, 0),
       bestSeed: typeof p.bestSeed === "number" ? p.bestSeed : null,
+      lastDelver: typeof p.lastDelver === "string" ? p.lastDelver : null,
+      escapedAs: Array.isArray(p.escapedAs) ? p.escapedAs.filter((d) => typeof d === "string") : [],
     };
   } catch {
     return EMPTY;
@@ -115,6 +135,11 @@ export const useRecords = create<RecordsStore>()((set, get) => ({
       fastestEscape: speed ? outcome.seconds : before.fastestEscape,
       gemsEverFound: before.gemsEverFound + outcome.gemsFound,
       bestSeed: haul ? outcome.seed : before.bestSeed,
+      lastDelver: outcome.delver,
+      escapedAs:
+        outcome.won && !before.escapedAs.includes(outcome.delver)
+          ? [...before.escapedAs, outcome.delver]
+          : before.escapedAs,
     };
     const bests = { haul, depth, speed };
     set({ ...next, lastBests: bests });

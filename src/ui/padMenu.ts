@@ -114,6 +114,19 @@ export function usePadMenu({ container, onBack, active = true }: PadMenuOptions)
       if (el) {
         el.style.outline = RING;
         el.style.outlineOffset = RING_OFFSET;
+        /**
+         * And bring it into view.
+         *
+         * Panels scroll inside themselves now (see `panel` in overlay.ts),
+         * because the delver picker's five cards are taller than a Steam
+         * Deck's screen. A pad walking down that list would otherwise ring
+         * a button nobody can see, which is worse than not ringing it at
+         * all: the player presses A on something they cannot read.
+         *
+         * `nearest` rather than `center` so a list that already fits does
+         * not jump on every press.
+         */
+        el.scrollIntoView({ block: "nearest", inline: "nearest" });
       }
     };
 

@@ -106,6 +106,24 @@ twelve kinds of item means duplicates are common, so learning that the inky
 bottle is healing is knowledge you will get to use. Earlier this was not
 true and the report said so.
 
+**Five ways to start.** A delver is chosen at the title and fixed for the
+run, and each is a trade rather than an upgrade. The Vagrant is the plain
+game and is deliberately not the worst of them.
+
+| Delver | Brings | Costs |
+| --- | --- | --- |
+| Vagrant | Three lives, four slots, no debts | Nothing, and nothing extra |
+| Tomb Robber | The Robber's Chart, two gems in hand | Every floor is already stirring |
+| Ratcatcher | A snare and a ward stone, known on sight | Two lives instead of three |
+| Courier | Soft Boots: a quarter faster | Two satchel slots |
+| Pilgrim | Four lives and the Bone Charm | Gems rouse the floor twice over |
+
+The Pilgrim paid with a gem on every exit for about a minute. The economy
+check threw it out: the thinnest first floor holds four gems it can
+guarantee against a toll of three, so one more on the door left a run that
+had to take every gem on the floor to leave - the game's whole decision
+switched off. The floors have no slack to spend; the alarm does.
+
 **What each thing costs.**
 
 | | Cost | What it buys |

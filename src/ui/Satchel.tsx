@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
-import { ITEMS, SATCHEL_SLOTS, nameOf } from "../game/items/catalog";
-import { useRun } from "../game/state/run";
+import { ITEMS, nameOf } from "../game/items/catalog";
+import { satchelSlots, useRun } from "../game/state/run";
 import { FONT, colors, text } from "./overlay";
 
 /**
@@ -16,6 +16,10 @@ export function Satchel() {
   const satchel = useRun((s) => s.satchel);
   const identified = useRun((s) => s.identified);
   const appearances = useRun((s) => s.appearances);
+  // Four for everyone but the Courier, who traded two of them for speed.
+  // Drawn from the run rather than the constant, so a two-slot satchel
+  // shows two slots instead of two full ones and two that can never fill.
+  const slots = useRun(satchelSlots);
 
   if (satchel.length === 0) return null;
 
@@ -33,7 +37,7 @@ export function Satchel() {
         zIndex: 900,
       }}
     >
-      {Array.from({ length: SATCHEL_SLOTS }, (_, i) => {
+      {Array.from({ length: slots }, (_, i) => {
         const id = satchel[i];
         const known = id ? identified.includes(id) : false;
         const look = id ? appearances[id] : null;
