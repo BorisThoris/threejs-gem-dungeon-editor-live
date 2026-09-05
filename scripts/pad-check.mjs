@@ -113,9 +113,23 @@ const SLOT_BUTTONS = [BUTTON.x, BUTTON.y, BUTTON.lb, BUTTON.rb];
  * Bounded, and it says so when it fails rather than pressing down forever:
  * the first version of this had a bare `while` in it, met a menu whose
  * focus never moved, and sat there until the ten-minute timeout killed it.
+ *
+ * The bound was a flat twelve presses, which was every menu in the game
+ * when it was written. The pause menu carries the settings now - thirteen
+ * of them, each with its own controls, and every key rebindable - so
+ * "Quit to menu" sits about thirty stops down and twelve presses stopped
+ * short of it. A number that has to be revised whenever a menu grows is
+ * not a bound, so it is counted off the page: however many things can hold
+ * the focus, plus a couple for a wrap.
  */
-const focusOn = async (page, pattern, steps = 12) => {
-  for (let i = 0; i < steps; i++) {
+const focusables = () =>
+  page.evaluate(
+    () => document.querySelectorAll("button, [tabindex]:not([tabindex='-1']), input, select").length
+  );
+
+const focusOn = async (page, pattern, steps) => {
+  const limit = steps ?? (await focusables()) + 2;
+  for (let i = 0; i < limit; i++) {
     if (pattern.test(await focused())) return true;
     await tap(page, BUTTON.down);
   }
@@ -253,11 +267,27 @@ const buttons = () =>
   page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.textContent?.trim() ?? ""));
 const someButton = async (pattern) => (await buttons()).some((b) => pattern.test(b));
 
+/**
+ * The title screen's first button, whatever it is currently called.
+ *
+ * This was matched as `/^start$/i` back when the button said "Start". It
+ * says "Start as the Vagrant" now that a run begins with a chosen delver,
+ * so the anchored pattern stopped matching anything and took fourteen
+ * checks down with it - not because the game broke, but because none of
+ * them could get past the title screen. The walk to it landed on the last
+ * button in the list instead, opened Credits, and every check after that
+ * was reading a page rather than a run.
+ *
+ * Matched on the word now, so the delver's name may change without this
+ * being a failure. It is still unambiguous: nothing else on the menu
+ * begins with "start".
+ */
+
 ok("the game sees a pad", await page.evaluate(() => navigator.getGamepads()[0]?.connected === true));
 
 // --- The title screen, which is where a Deck player is stuck ---------------
 
-ok("the menu is up", await someButton(/^start$/i), (await buttons()).join(", "));
+ok("the menu is up", await someButton(/^start\b/i), (await buttons()).join(", "));
 ok("nothing is focused before the pad is touched", (await focused()) === "");
 
 await tap(page, BUTTON.down);
@@ -276,10 +306,10 @@ await page.waitForTimeout(500);
 ok("A opens the page the focus is on", /move|look|interact/i.test(await screen()), (await screen()).slice(0, 50).replace(/\n/g, " · "));
 await tap(page, BUTTON.b);
 await page.waitForTimeout(500);
-ok("B backs out of it", await someButton(/^start$/i), (await buttons()).join(", "));
+ok("B backs out of it", await someButton(/^start\b/i), (await buttons()).join(", "));
 
 // Start the run.
-ok("the focus can be walked back to Start", await focusOn(page, /^start$/i), await focused());
+ok("the focus can be walked back to Start", await focusOn(page, /^start\b/i), await focused());
 await tap(page, BUTTON.a);
 await page.waitForTimeout(9000);
 const hud = await screen();
@@ -445,7 +475,7 @@ await page.waitForTimeout(900);
 ok("the focus can be walked to Quit to menu", await focusOn(page, /quit/i), await focused());
 await tap(page, BUTTON.a);
 await page.waitForTimeout(2500);
-ok("A on Quit to menu leaves the run", await someButton(/^start$/i), (await buttons()).join(", "));
+ok("A on Quit to menu leaves the run", await someButton(/^start\b/i), (await buttons()).join(", "));
 
 // --- A seed typed on the pad -----------------------------------------------
 //
