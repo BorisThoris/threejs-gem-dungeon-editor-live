@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { bus } from "../events";
+import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
 import { useSettings } from "../state/settings";
 import { useRun } from "../state/run";
@@ -51,7 +52,15 @@ export function Audio() {
       bus.on("sentrySaw", (e) => sfx.spotted(e?.pan ?? 0)),
       bus.on("vaultOpened", () => sfx.unlock2()),
       bus.on("arenaRun", ({ running }) => (running ? sfx.grind() : sfx.release())),
-      bus.on("itemUsed", ({ cruel }) => (cruel ? sfx.bitter() : sfx.drink())),
+      // A device is set down rather than drunk, and it fires `itemUsed` too
+      // so the identify-by-use bookkeeping stays in one place - so this
+      // takes the cue and the swallow below is told to skip devices.
+      bus.on("devicePlaced", ({ cruel }) => (cruel ? sfx.clatter() : sfx.setDown())),
+      bus.on("itemUsed", ({ id, cruel }) => {
+        if (ITEMS[id as ItemId]?.family === "device") return;
+        if (cruel) sfx.bitter();
+        else sfx.drink();
+      }),
       bus.on("charmSpent", () => sfx.charm()),
       // Which wall the footfall came through. Without it the cue says only
       // "it is close", which in a game about which door to take is half a

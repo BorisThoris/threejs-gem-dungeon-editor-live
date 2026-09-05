@@ -383,7 +383,10 @@ src/
       layout.ts          where everything in a room is
     state/run.ts         the run: phase, lives, gems, current room, visited
     input/               keyboard (edge presses), gamepad, mouse look
-    player/Player.tsx    the capsule the camera rides on
+    player/
+      Player.tsx         the capsule the camera rides on
+      where.ts           where it is standing, for the things outside the
+                         frame loop that need it (setting a device down)
     interact/            InteractTrigger (E on anything), DoorTrigger
     rooms/
       Room.tsx           the shell: floor, walls with doorways, ceiling, light
@@ -392,7 +395,17 @@ src/
       kinds.ts           kind -> tint, title, content component
       content.tsx        what each kind puts in the shell
       templates.ts       authored layouts, by id
-    props/catalog.tsx    the twenty props, with footprint and solidity
+    props/
+      catalog.tsx        the twenty props, with footprint and solidity
+      Hazard.tsx         a patch of spikes: costs the player a life, and
+                         wounds the Warden that walks into it
+      Placed.tsx         the devices the player has set down in this room
+    warden/
+      Warden.tsx         the body, in the room the player is standing in
+      WardenDriver.tsx   its walk through the rooms nobody is standing in
+      roam.ts            which room next: hunt, wander, wake, be thrown back
+      steer.ts           walking round what has already bitten it
+      tuning.ts          alarm -> speed, step, hunts; and what the HUD calls it
     puzzles/             memory trial, number tome, plate trap, Carryable
     textures/registry.ts surfaces by id: procedural defaults, overridable
     systems/             audio (synthesised), bus-driven
@@ -415,7 +428,18 @@ src/
    one. Doors travel: the run sets the new room, teleports the player just
    inside the wall they came through, and waits for `roomReady` again.
 4. Gems are picked up by proximity. Traps damage on entry with a cooldown in
-   the store. The shop sells a life for a gem. Puzzles pay a gem when solved.
+   the store, and they do it to the Warden too: a patch of spikes wounds
+   whatever walks into it, so a trap room is somewhere the player can
+   choose to fight from. Two wounds rout it and teach it - a routed Warden
+   steers round anything that has bitten it for the rest of the floor
+   (`warden/steer.ts`), which keeps the trick finite. The shop sells a life
+   for a gem. Puzzles pay a gem when solved.
+   The satchel's third family, devices, is set down on the floor rather
+   than used on the player, and stays in the room after they leave it: a
+   Wire Snare (wounds the next thing across it, and is not in the list a
+   routed Warden avoids, which is why it still works), a Ward Stone (the
+   Warden will not enter this room while it holds) and a Knot of Loose Iron
+   (the cruel one: it lands loudly and gives the player away).
 5. Every gem taken raises the floor's `alarm`. The alarm decides how often
    the Warden steps from room to room, whether it wanders or walks towards
    the player, and how fast it crosses a room. Sprinting gives the player's

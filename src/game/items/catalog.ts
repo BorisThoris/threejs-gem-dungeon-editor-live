@@ -3,15 +3,22 @@ import { createRng, shuffle } from "../rng";
 /**
  * What a dungeon holds besides gems.
  *
- * Nine consumables in two families. Which appearance means which item is
- * shuffled at the start of every run, so a cloudy potion is a different
+ * Twelve consumables in three families. Which appearance means which item
+ * is shuffled at the start of every run, so a cloudy potion is a different
  * thing each game and the only way to learn is to drink one. That is the
  * whole point of them: the game already asks whether one more room is worth
  * it, and this asks the same question of a bottle you found in a chest with
  * something walking towards you.
  *
- * Every item is one use. None of them is strictly a trap - the two worst
- * both rouse the floor, which is survivable and sometimes even worth it if
+ * Potions and scrolls happen to the player. Devices happen to the room:
+ * they are set down where you stand and are still there when you come back
+ * through, which is a different question - not "is now the moment" but "is
+ * this the room". They arrived with the spikes learning to bite the Warden:
+ * once the floor's own furniture could stop it, the obvious next thing to
+ * ask was whether the player could bring some.
+ *
+ * Every item is one use. None of them is strictly a trap - the worst of
+ * them rouse the floor, which is survivable and sometimes even worth it if
  * you were leaving anyway.
  */
 
@@ -25,10 +32,20 @@ export const ITEM_IDS = [
   "avarice",
   "gloom",
   "echoes",
+  "snare",
+  "rattle",
+  "wardstone",
 ] as const;
 export type ItemId = (typeof ITEM_IDS)[number];
 
-export type ItemFamily = "potion" | "scroll";
+/**
+ * A device is not drunk or read: it is put down where you stand, and it
+ * stays in the room after you have left it. That is the whole reason the
+ * family exists. Everything in the satchel until now happened to the
+ * player and lasted as long as a timer; a device happens to the room, and
+ * the question it asks is not "is now the moment" but "is this the room".
+ */
+export type ItemFamily = "potion" | "scroll" | "device";
 
 export interface Item {
   id: ItemId;
@@ -105,6 +122,27 @@ export const ITEMS: Record<ItemId, Item> = {
     blurb: "Something clatters at the far end of the floor, and the Warden goes to find it.",
     cruel: false,
   },
+  snare: {
+    id: "snare",
+    family: "device",
+    name: "Wire Snare",
+    blurb: "Set where you stand. The next thing to walk into it is wounded and held.",
+    cruel: false,
+  },
+  rattle: {
+    id: "rattle",
+    family: "device",
+    name: "Knot of Loose Iron",
+    blurb: "It goes down loudly. The floor wakes, and the Warden knows where you are.",
+    cruel: true,
+  },
+  wardstone: {
+    id: "wardstone",
+    family: "device",
+    name: "Ward Stone",
+    blurb: "While it lies here the Warden will not come into this room.",
+    cruel: false,
+  },
 };
 
 /**
@@ -117,6 +155,11 @@ const POTION_LOOKS = [
   { label: "amber", colour: "#e0a63c" },
   { label: "inky", colour: "#4b3f78" },
   { label: "green", colour: "#4faa62" },
+];
+const DEVICE_LOOKS = [
+  { label: "coil of black wire", colour: "#6f7683" },
+  { label: "knotted leather pouch", colour: "#8a6b46" },
+  { label: "chalk-marked stone", colour: "#c3bda8" },
 ];
 const SCROLL_LOOKS = [
   { label: "KHOR VELUM", colour: "#d8cdb0" },
@@ -142,8 +185,10 @@ export function appearancesFor(seed: number): Appearances {
   const rng = createRng(`${seed}:appearances`);
   const potions = ITEM_IDS.filter((id) => ITEMS[id].family === "potion");
   const scrolls = ITEM_IDS.filter((id) => ITEMS[id].family === "scroll");
+  const devices = ITEM_IDS.filter((id) => ITEMS[id].family === "device");
   const potionLooks = shuffle(rng, POTION_LOOKS);
   const scrollLooks = shuffle(rng, SCROLL_LOOKS);
+  const deviceLooks = shuffle(rng, DEVICE_LOOKS);
   const out = {} as Appearances;
   potions.forEach((id, i) => {
     const look = potionLooks[i].label;
@@ -153,8 +198,15 @@ export function appearancesFor(seed: number): Appearances {
   scrolls.forEach((id, i) => {
     out[id] = { unknown: `a scroll marked ${scrollLooks[i].label}`, colour: scrollLooks[i].colour };
   });
+  devices.forEach((id, i) => {
+    const look = deviceLooks[i].label;
+    out[id] = { unknown: `${/^[aeiou]/i.test(look) ? "an" : "a"} ${look}`, colour: deviceLooks[i].colour };
+  });
   return out;
 }
+
+/** Whether an item is put down in the room rather than used on yourself. */
+export const isDevice = (id: ItemId): boolean => ITEMS[id].family === "device";
 
 /** What to call an item, given what the player has worked out so far. */
 export const nameOf = (id: ItemId, appearances: Appearances, known: boolean): string =>
@@ -168,15 +220,18 @@ export const nameOf = (id: ItemId, appearances: Appearances, known: boolean): st
  * generator once for every item in the list rather than once for the
  * choice - so each item was kept or dropped on its own flip, and what came
  * out was a mixed pool weighted by how many of each kind there are. Two of
- * the nine items are cruel; at a quarter, each of those survived a quarter
+ * the nine items were cruel; at a quarter, each of those survived a quarter
  * of the time and each of the seven kind ones three quarters, which is a
  * pool that is one part in twelve cruel rather than one in four. Measured
  * over 8,510 chests across 300 runs: 10% of what a player found was a bad
  * idea, against the quarter written here.
  *
- * The two cruel items are the only downside in the loot, and they are what
+ * The cruel items are the only downside in the loot, and they are what
  * makes drinking an unidentified bottle a decision instead of a free
- * refill.
+ * refill. There are four of twelve now rather than two of nine, which does
+ * not change the odds a player sees - the coin above decides which shelf
+ * to draw from and the shelves are drawn from evenly - only how many
+ * different bad ideas there are.
  */
 export function rollItem(seed: number, key: string, floor: number): ItemId {
   const rng = createRng(`${seed}:${key}:loot`);
@@ -223,3 +278,32 @@ export const BANISH_CALM = 3;
 export const ECHOES_S = 14;
 /** Slots in the satchel. */
 export const SATCHEL_SLOTS = 4;
+
+// --- Devices ---------------------------------------------------------------
+
+/**
+ * How wide a snare's bite is.
+ *
+ * Narrower than a patch of spikes, because a snare is set by hand on one
+ * spot rather than laid across an approach, and because the Warden walks
+ * straight lines at the player: a snare as wide as a spike patch would be
+ * hard to miss, and the point of setting one is choosing where. Wide
+ * enough that a walk at four and a half metres a second cannot step over
+ * it between two frames, which at a twentieth of a second is 0.22 - so the
+ * margin here is four-fold rather than a coincidence.
+ */
+export const SNARE_RADIUS = 1.0;
+/**
+ * How long a snare holds what it catches, against three and a half seconds
+ * for the floor's own spikes.
+ *
+ * Longer, and deliberately: the spikes are already there and cost nothing
+ * to walk behind, while a snare cost a satchel slot from the moment it was
+ * found and a chest that could have held a life. If the thing you carried
+ * across two floors bought less than the furniture, nobody would carry it.
+ */
+export const SNARE_HOLD_S = 5;
+/** How long a ward stone keeps the Warden out of the room it lies in. */
+export const WARD_S = 30;
+/** How much a dropped knot of iron rouses the floor. */
+export const RATTLE_ALARM = 2;

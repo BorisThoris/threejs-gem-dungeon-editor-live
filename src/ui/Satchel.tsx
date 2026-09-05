@@ -51,7 +51,7 @@ export function Satchel() {
           >
             <div style={{ fontSize: text.small, color: colors.dim, marginBottom: 6 }}>
               <span style={{ color: id ? colors.accent : colors.dim }}>{i + 1}</span>
-              {id && ITEMS[id].family === "scroll" ? " scroll" : id ? " potion" : " —"}
+              {id ? ` ${ITEMS[id].family}` : " —"}
             </div>
             {id && look && (
               <>
@@ -64,8 +64,19 @@ export function Satchel() {
                   }}
                 />
                 <div style={{ fontSize: text.small, lineHeight: 1.5, color: colors.ink }}>
-                  {known ? ITEMS[id].name.replace(/^(Potion|Scroll) of /, "") : shortLook(nameOf(id, appearances, false))}
+                  {known
+                    ? ITEMS[id].name.replace(/^(Potion|Scroll) of /, "")
+                    : shortLook(nameOf(id, appearances, false))}
                 </div>
+                {/* What the key will actually do. A device goes on the
+                    floor and stays there, which is a different decision
+                    from drinking something, and a player who finds that
+                    out by pressing the key has spent it. */}
+                {ITEMS[id].family === "device" && (
+                  <div style={{ fontSize: text.small, color: colors.dim, marginTop: 4 }}>
+                    set it down
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -75,9 +86,16 @@ export function Satchel() {
   );
 }
 
-/** "an inky potion" -> "inky"; "a scroll marked KHOR VELUM" -> "KHOR VELUM". */
+/**
+ * "an inky potion" -> "inky"; "a scroll marked KHOR VELUM" -> "KHOR VELUM";
+ * "a coil of black wire" -> "black wire".
+ */
 const shortLook = (unknown: string): string =>
-  unknown.replace(/^an? scroll marked /, "").replace(/^an? /, "").replace(/ potion$/, "");
+  unknown
+    .replace(/^an? scroll marked /, "")
+    .replace(/^an? (coil|knot(ted)?|bundle) of /, "")
+    .replace(/^an? /, "")
+    .replace(/ potion$/, "");
 
 /**
  * What just happened to the thing you drank.

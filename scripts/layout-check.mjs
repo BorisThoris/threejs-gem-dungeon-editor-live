@@ -43,6 +43,7 @@ writeFileSync(
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
+   export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -1511,6 +1512,58 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- Devices ---------------------------------------------------------------
+//
+// The satchel's third family is set down on the floor rather than used on
+// yourself, so the things that can go wrong with it are arithmetic: an
+// appearance shuffle that is no longer a bijection (an item with no look,
+// or a look that means nothing), and a snare narrow enough for the thing
+// it is meant to catch to step over between two frames.
+{
+  const families = ["potion", "scroll", "device"];
+  const counts = Object.fromEntries(
+    families.map((f) => [f, L.ITEM_IDS.filter((id) => L.ITEMS[id].family === f).length])
+  );
+  const looks = L.appearancesFor(7);
+  const unknowns = L.ITEM_IDS.map((id) => looks[id] && looks[id].unknown);
+  check(
+    "every item has a look, and no two items share one",
+    unknowns.every(Boolean) && new Set(unknowns).size === L.ITEM_IDS.length,
+    `${new Set(unknowns).size} looks for ${L.ITEM_IDS.length} items`
+  );
+  // The same seed is the same run down to which bottle is the good one.
+  const again = L.appearancesFor(7);
+  check(
+    "and the shuffle is the seed's, so a replayed seed is the same run",
+    L.ITEM_IDS.every((id) => again[id].unknown === looks[id].unknown)
+  );
+  check(
+    "each family has as many items as it has looks to go round",
+    counts.device === 3 && counts.potion === 4 && counts.scroll === 5,
+    JSON.stringify(counts)
+  );
+  // A snare is set by hand on one spot, and the thing it is meant to catch
+  // crosses at most WARDEN_MAX_STEP in a frame. If it were narrow enough to
+  // be stepped over, it would fail rarely and look like bad luck.
+  check(
+    "a snare cannot be stepped over between two frames",
+    L.SNARE_RADIUS * 2 > L.WARDEN_MAX_STEP * 4,
+    `${L.SNARE_RADIUS * 2} across against a step of at most ${L.WARDEN_MAX_STEP.toFixed(3)}`
+  );
+  check(
+    "a snare holds longer than the floor's own spikes, which cost nothing to walk behind",
+    L.SNARE_HOLD_S > L.WARDEN_STAGGER_S,
+    `${L.SNARE_HOLD_S}s against ${L.WARDEN_STAGGER_S}s`
+  );
+  // A ward has to outlast several of its steps or it is a stone that buys
+  // one move: the slowest it ever steps is nine seconds, the fastest four.
+  check(
+    "a ward outlasts several of the Warden's steps",
+    L.WARD_S >= L.WARDEN_STEP_CALM_S * 3,
+    `${L.WARD_S}s against steps of ${L.WARDEN_STEP_ROUSED_S}-${L.WARDEN_STEP_CALM_S}s`
   );
 }
 

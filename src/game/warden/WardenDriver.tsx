@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { canControl, lureNow, useRun, wardenHears, wardenStaggered } from "../state/run";
+import { canControl, lureNow, useRun, wardNow, wardenHears, wardenStaggered } from "../state/run";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
 
@@ -53,6 +53,16 @@ export function WardenDriver() {
       Math.random()
     );
     if (!to) return;
+    /**
+     * A ward stone is a room it will not walk into, so it waits outside.
+     *
+     * Refusing the step rather than routing around it, because the stone
+     * says "not this room" and not "the long way round": a Warden that
+     * detoured would still be coming, and the thirty seconds the stone
+     * buys is the one place in the game where the answer to it is to stand
+     * still. It goes back to walking when the stone runs out.
+     */
+    if (to === wardNow(run)) return;
     run.moveWarden(to);
 
     // Heard through the wall: it has stepped into a room you could walk to.

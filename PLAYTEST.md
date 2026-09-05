@@ -61,8 +61,29 @@ crossing of a room; it never takes a life, only rouses the floor. The arena
 is a fixed fourteen seconds of keeping ahead of turning spikes, once, when
 you choose to start it.
 
+**And the floor pushes back on the Warden.** Its own spikes do not care
+which of you stands on them. A trap room is now somewhere a player can
+choose to fight from - stand with a patch between you and the way in, and
+the thing walking at you takes a wound, reels for three and a half seconds
+and comes on. Two wounds rout it: thrown across the floor, a point off the
+alarm, and from then on it walks round anything that has bitten it, so the
+trick is worth exactly twice per floor and then the room is a trap room
+again. It still cannot be killed and it still cannot be fought, and that
+is the point - a wound buys a window and a rout buys a room, and neither
+buys the floor.
+
+**Three of the twelve items are set down rather than used.** A Wire Snare
+wounds the next thing to cross it, and works on a Warden that has already
+learned about the floor's spikes, because a wire in an ordinary room is
+not something it has been taught to see. A Ward Stone empties the room it
+is set in and holds it empty for thirty seconds, which is the one place in
+the game where standing still is the answer. A Knot of Loose Iron is the
+cruel one: it goes down loudly, and the floor knows where you are. All
+three stay in the room after you leave it, which is the rule the game
+teaches with a line the first time one is set.
+
 **Identification pays now.** About twenty-two chests over a run against
-eight kinds of item means duplicates are common, so learning that the inky
+twelve kinds of item means duplicates are common, so learning that the inky
 bottle is healing is knowledge you will get to use. Earlier this was not
 true and the report said so.
 
@@ -73,7 +94,7 @@ true and the report said so.
 | Exit, floor 1 / 2 / 3 | 3 / 5 / 7 gems | The way down, and the way out |
 | A life | 1 gem | One more mistake |
 | A name for an item | 1 gem | Knowing without spending it |
-| A chest | free | One potion or scroll, contents unknown |
+| A chest | free | One potion, scroll or device, contents unknown |
 | A vault | one iron key, found on the floor | A room with three chests and a gem |
 | Warden's Lantern | 2 gems | Always knowing which room it is in |
 | Robber's Chart | 2 gems | Rooms that still hold a gem, on the map |
@@ -2124,6 +2145,13 @@ All in `src/game/world.ts`:
 | `SENTRY_SPIN` | 0.55 | Radians a second the beam turns |
 | `SENTRY_PATIENCE` / `SENTRY_ALARM` | 0.9 s / 1 | How long in the light before it calls, and what that costs |
 | `ARENA_DURATION_S` / `ARENA_SPIN` | 14 / 0.75 | How long the arms turn, and how fast |
+| `WARDEN_STAGGER_S` | 3.5 | How long the floor's spikes leave it reeling |
+| `WARDEN_WOUNDS_TO_ROUT` | 2 | Wounds before it is thrown across the floor and learns |
+| `WARDEN_ROUT_CALM` | 1 | What a rout takes off the alarm (never below the floor's baseline) |
+| `WARDEN_HAZARD_BERTH` | 0.9 | How wide a berth a wary Warden gives a patch it has been bitten by |
+| `SNARE_RADIUS` / `SNARE_HOLD_S` | 1.0 / 5 | A set snare's bite, and how long it holds what it catches (`items/catalog.ts`) |
+| `WARD_S` | 30 | How long a ward stone keeps the Warden out of the room it lies in |
+| `RATTLE_ALARM` | 2 | What dropping a knot of iron costs |
 
 Everything that changes with depth is one table, `floorRules(floor)` in the
 same file - the generator, the Warden's grace, the alarm a floor starts at,

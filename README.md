@@ -20,6 +20,14 @@ barrels and pillars - but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
 
+The dungeon is not on its side, though. The spikes in a trap room do not
+care which of you stands on them, so a trap room is somewhere you can
+choose to fight from: stand with a patch between you and the door, and the
+thing walking at you takes a wound and reels. Two wounds and it is thrown
+across the floor. It learns, though - after that it walks round anything
+that has bitten it - so the room is worth exactly twice, and then it is a
+trap room again.
+
 Speed is not free either. A sprint is loud, and while it can hear you the
 Warden stops wandering and walks straight for the room you are in. Walking
 is quiet. So every corridor is the same small question as the floor itself:
@@ -66,12 +74,22 @@ Rooms of a kind are not rooms of a pattern: each one draws its furniture
 from its own seed out of two or three arrangements, so a chamber you have
 walked into before is not the chamber you walked into before.
 
-Chests hold potions and scrolls, and which look means which item is
-shuffled at the start of every run. A cloudy potion is a different thing
+Chests hold potions, scrolls and devices, and which look means which item
+is shuffled at the start of every run. A cloudy potion is a different thing
 each game, and the only way to learn is to drink one. Most of them help;
-two of them wake the floor. You carry four at a time and use them with the
-number keys, which means the real question is whether now - with something
-walking towards you - is the moment to find out what you picked up.
+a few of them wake the floor. You carry four at a time and use them with
+the number keys, which means the real question is whether now - with
+something walking towards you - is the moment to find out what you picked
+up.
+
+The devices are the ones you take with you. They are set down where you
+stand rather than used on yourself, and they are still there when you come
+back through: a snare that wounds the next thing to walk into it, wherever
+you set it, and which works even on a Warden that has learned about the
+floor's own spikes; a ward stone that empties the room it lies in and holds
+it empty for half a minute, which is the one place in the game where
+standing still is the answer; and a knot of loose iron, which lands loudly
+and tells the floor exactly where you are.
 
 One of them is the answer to the noise. A Scroll of Echoes throws a clatter
 to the far end of the floor, and the Warden goes to find it: it does not
@@ -99,7 +117,7 @@ between here and a Steam demo.
 | `W A S D` / arrows, or left stick | Move |
 | Mouse (click the game to take it, Esc gives it back), or right stick | Look |
 | `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
-| `1` to `4`, or X and Y on a pad | Drink or read that satchel slot |
+| `1` to `4`, or X and Y on a pad | Drink, read, or set down that satchel slot |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
 | D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |

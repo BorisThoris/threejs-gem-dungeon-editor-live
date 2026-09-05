@@ -19,6 +19,13 @@ export interface Patch {
   x: number;
   z: number;
   r: number;
+  /**
+   * What this patch is, when something has to be done to it as well as to
+   * whatever walked in. The floor's own spikes have none - they are
+   * scenery and stay where they are - and a snare has the key it was set
+   * down under, so springing it can find it again.
+   */
+  key?: string;
 }
 
 /** How far ahead it looks when deciding whether the straight line is clear. */
@@ -26,16 +33,29 @@ const LOOKAHEAD = 1.4;
 /** The fan it tries, in radians either side, nearest heading first. */
 const FAN = [0.44, 0.87, 1.31, 1.75, 2.18];
 
-/** Whether a point lies inside any patch, with `margin` of extra berth. */
-export function inPatch(patches: readonly Patch[], x: number, z: number, margin = 0): boolean {
+/** The patch a point lies inside, with `margin` of extra berth, or null. */
+export function patchAt(
+  patches: readonly Patch[],
+  x: number,
+  z: number,
+  margin = 0
+): Patch | null {
   for (const p of patches) {
     const dx = x - p.x;
     const dz = z - p.z;
     const reach = p.r + margin;
-    if (dx * dx + dz * dz <= reach * reach) return true;
+    if (dx * dx + dz * dz <= reach * reach) return p;
   }
-  return false;
+  return null;
 }
+
+/** Whether a point lies inside any patch, with `margin` of extra berth. */
+export const inPatch = (
+  patches: readonly Patch[],
+  x: number,
+  z: number,
+  margin = 0
+): boolean => patchAt(patches, x, z, margin) !== null;
 
 /**
  * A unit heading from (x,z) towards (tx,tz) that keeps `berth` clear of

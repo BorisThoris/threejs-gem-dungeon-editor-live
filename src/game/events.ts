@@ -52,6 +52,8 @@ export interface BusEvents {
   itemUsed: { id: string; cruel: boolean };
   /** The shopkeeper put a name to something without it being spent. */
   itemNamed: { id: string };
+  /** A device was set down on the floor of the room the player is in. */
+  devicePlaced: { id: string; cruel: boolean };
   /** The arena's arms have started or stopped. */
   arenaRun: { running: boolean };
   /** The floor's key has been picked up. */

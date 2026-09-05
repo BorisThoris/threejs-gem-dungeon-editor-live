@@ -21,10 +21,11 @@ const LOUD = "It heard that. Running carries down here; walking does not.";
 const THROWN = "Something clatters a long way off. It has gone to look, and it is not listening for you.";
 const BIT = "The spikes do not care which of you stands on them. Put another patch between you.";
 const ROUTED = "It will not cross those again. Whatever else this floor gives you, that trick is spent.";
+const SET = "It stays where you left it, and it is still there when you come back through.";
 
 export function useWardenWarning() {
   useEffect(() => {
-    let told = { woke: false, here: false, seen: false, loud: false, bit: false };
+    let told = { woke: false, here: false, seen: false, loud: false, bit: false, set: false };
     /**
      * These go in the notice slot, which they own and nothing else writes.
      *
@@ -71,9 +72,16 @@ export function useWardenWarning() {
         say(BIT);
       }),
       bus.on("wardenRouted", () => say(ROUTED)),
+      // Said the first time only, and only to teach the one rule a player
+      // cannot see: that a device outlives the visit it was set during.
+      bus.on("devicePlaced", () => {
+        if (told.set) return;
+        told.set = true;
+        say(SET);
+      }),
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
-        told = { woke: false, here: false, seen: false, loud: false, bit: false };
+        told = { woke: false, here: false, seen: false, loud: false, bit: false, set: false };
         say(floorRules(1).blurb);
       }),
     ];

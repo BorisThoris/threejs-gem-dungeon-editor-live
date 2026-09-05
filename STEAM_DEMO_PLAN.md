@@ -93,6 +93,30 @@ watcher on a post turning a beam around a plain room, which rouses the
 floor rather than costing a life, so the Warden makes you leave and the
 Sentry makes you time your crossing.
 
+Then the dungeon stopped being a stage set. Its spikes had applied to one
+of the two things in it: a player could back into a trap room and watch
+the Warden come straight through three patches without breaking stride.
+Now the floor wounds it - it reels, and two wounds rout it across the
+floor and take a point off the alarm - and afterwards it walks round
+anything that has bitten it, so a trap room is somewhere to choose to
+fight from exactly twice and then a trap room again. It still cannot be
+killed and it still cannot be fought; a wound buys a window and a rout
+buys a room. The satchel grew a third family to carry that off the trap
+room floor: three devices set down where you stand and left behind when
+you go - a snare that wounds the next thing across it and that a routed
+Warden has not been taught to see, a ward stone that empties a room and
+holds it empty for thirty seconds, and a knot of loose iron that lands
+loudly and tells the floor exactly where you are.
+
+Building it turned up a second bug worth more than the first: the event
+bus dispatched to its subscribers bare, so the first handler to throw
+ended the loop and every listener after it never ran. A new sound cue
+passed a pan where the oscillator wanted a sweep target, and what that
+looked like from the outside was not a missing sound - it was the Warden
+being routed with no line on screen. Handlers are isolated now, still
+loud, and `tone` floors its sweep target so that particular footgun
+cannot fire again.
+
 What is still ahead: a human playtest, Windows and signed macOS builds on
 their own hosts, and the Steamworks account side (app ID, depots, store
 page, capsule art).

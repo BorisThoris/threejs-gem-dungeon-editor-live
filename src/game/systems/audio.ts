@@ -490,6 +490,11 @@ export const sfx = {
    * a different thing happening or the player reads the window they just
    * bought as damage they just took.
    */
+  /** Something small set on stone: a scrape and a click. */
+  setDown() {
+    noiseBurst(0.09, 0.16, 1400);
+    later(60, () => tone(320, 0.07, "square", 0.14, 260));
+  },
   wardenWound() {
     tone(660, 0.09, "square", 0.22, 880);
     later(30, () => noiseBurst(0.18, 0.3, 2600));

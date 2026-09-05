@@ -8,12 +8,14 @@ import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
 import { IronKey } from "../props/IronKey";
 import { Hazard } from "../props/Hazard";
-import { useRun } from "../state/run";
+import { PlacedDevices } from "../props/Placed";
+import { snaresIn, useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
+import { SNARE_RADIUS } from "../items/catalog";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
 import { gemFor, keyFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
@@ -43,7 +45,24 @@ interface RoomProps {
  */
 function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
   const here = useRun((s) => s.wardenRoomId === room.id);
-  return here ? <Warden room={room} hazards={hazards} /> : null;
+  // Snares the player has set in this room wound it as the floor's own
+  // spikes do, and are deliberately not in the list it steers round: a
+  // routed Warden has learned about the spikes it can see, and a wire on
+  // the floor is why setting one is still worth a satchel slot afterwards.
+  const snares = useRun((s) => s.placed);
+  const wounding = useMemo<Patch[]>(
+    () => [
+      ...hazards,
+      ...snaresIn(snares, room.id).map((d) => ({
+        x: d.x,
+        z: d.z,
+        r: SNARE_RADIUS,
+        key: d.key,
+      })),
+    ],
+    [hazards, snares, room.id]
+  );
+  return here ? <Warden room={room} hazards={wounding} avoid={hazards} /> : null;
 }
 
 export function Room({ room, seed }: RoomProps) {
@@ -150,6 +169,7 @@ export function Room({ room, seed }: RoomProps) {
         />
       )}
       <RoomWarden room={room} hazards={wardenHazards} />
+      <PlacedDevices roomId={room.id} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

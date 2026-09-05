@@ -15,15 +15,21 @@ import {
   ITEMS,
   MIRE_S,
   ITEM_IDS,
+  RATTLE_ALARM,
   SATCHEL_SLOTS,
+  SNARE_HOLD_S,
+  SNARE_RADIUS,
   SWIFTNESS_S,
+  WARD_S,
   appearancesFor,
+  isDevice,
   type Appearances,
   type ItemId,
 } from "../items/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
+import { playerAt } from "../player/where";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -42,6 +48,18 @@ import {
 } from "../world";
 
 export type Phase = "menu" | "playing" | "won" | "lost";
+
+/** A device the player has put down, where they put it. */
+export interface PlacedDevice {
+  /** Unique for the run, so a snare can be sprung by name. */
+  key: string;
+  id: ItemId;
+  roomId: string;
+  x: number;
+  z: number;
+  /** False once a snare has caught something: it stays as wreckage. */
+  live: boolean;
+}
 
 export interface RunState {
   phase: Phase;
@@ -115,6 +133,23 @@ export interface RunState {
   mapped: boolean;
   /** Chests already emptied, as `roomId:index`. */
   looted: string[];
+  /**
+   * Devices set down on this floor, in the room they were set down in.
+   *
+   * Held on the run rather than in the room, because only one room is
+   * mounted at a time and a snare has to still be there when the player
+   * comes back through - which is most of the point of setting one. Wiped
+   * with the floor, like the key and the lock.
+   */
+  placed: PlacedDevice[];
+  /**
+   * The room a ward stone lies in and the run-clock second it stops
+   * holding. One at a time: a second stone moves the ward rather than
+   * stacking, which is the reading of "while it lies here" that does not
+   * need a rule to explain it.
+   */
+  wardRoomId: string | null;
+  wardUntil: number;
   /** A room whose doors are barred while something in it is happening. */
   sealedRoomId: string | null;
   /** Iron keys in hand. One opens one vault. */
@@ -195,8 +230,16 @@ export interface RunState {
   takeItem: (id: ItemId, from?: string) => boolean;
   /** Drink or read what is in a slot, and learn what it was. */
   useItem: (slot: number) => void;
+  /**
+   * Put the device in a slot down where the player is standing. Called by
+   * `useItem` for anything in the device family, so 1-4 is still the one
+   * key that spends a slot however the thing in it works.
+   */
+  placeDevice: (slot: number) => boolean;
   /** Learn what a slot holds without spending it. The shop charges for this. */
   identifySlot: (slot: number) => boolean;
+  /** A snare caught something and is spent. */
+  springSnare: (key: string) => void;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -217,8 +260,12 @@ export interface RunState {
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
   wardenStrike: () => void;
-  /** It walked into a patch of the floor's spikes. */
-  wardenWounded: () => void;
+  /**
+   * It walked into something that hurt it: the floor's own spikes, or a
+   * snare the player set. `hold` is how long it reels, which is the only
+   * thing the two differ in.
+   */
+  wardenWounded: (hold?: number) => void;
   /** Take a hit. Returns false if inside the invulnerability window. */
   damage: () => boolean;
   gainLife: () => boolean;
@@ -309,6 +356,9 @@ export const useRun = create<RunState>()(
     lureUntil: 0,
     mapped: false,
     looted: [],
+    placed: [],
+    wardRoomId: null,
+    wardUntil: 0,
     sealedRoomId: null,
     keys: 0,
     unlocked: [],
@@ -364,6 +414,9 @@ export const useRun = create<RunState>()(
         noisyUntil: 0,
         mapped: false,
         looted: [],
+        placed: [],
+        wardRoomId: null,
+        wardUntil: 0,
         sealedRoomId: null,
         keys: 0,
         unlocked: [],
@@ -490,6 +543,11 @@ export const useRun = create<RunState>()(
           noisyUntil: 0,
           mapped: false,
           looted: [],
+          // A snare set on the floor above is on the floor above. Devices
+          // go with the room they were set in, like the key and the lock.
+          placed: [],
+          wardRoomId: null,
+          wardUntil: 0,
           sealedRoomId: null,
           // A key is cut for one floor's lock and is no use on the next.
           keys: 0,
@@ -645,6 +703,13 @@ export const useRun = create<RunState>()(
       const now = runClock(s);
       const until = (seconds: number) => now + seconds;
 
+      // A device is not drunk or read: it goes on the floor where the
+      // player is standing, and it is still there when they come back.
+      if (isDevice(id)) {
+        get().placeDevice(slot);
+        return;
+      }
+
       // Whatever it does, it is spent and it is now known.
       set({
         satchel: s.satchel.filter((_, i) => i !== slot),
@@ -712,6 +777,70 @@ export const useRun = create<RunState>()(
         }
       }
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
+    },
+
+    placeDevice: (slot) => {
+      const s = get();
+      const id = s.satchel[slot];
+      if (!id || !isDevice(id) || !s.currentRoomId || !canControl(s)) return false;
+      const now = runClock(s);
+      const roomId = s.currentRoomId;
+      const key = `${roomId}:${id}:${s.placed.length}:${Math.round(now * 100)}`;
+      // Where the player is standing, from the one place that knows.
+      const at = { x: playerAt.x, z: playerAt.z };
+
+      set({
+        satchel: s.satchel.filter((_, i) => i !== slot),
+        identified: s.identified.includes(id) ? s.identified : [...s.identified, id],
+        placed: [
+          ...s.placed,
+          // A knot of iron is spent the moment it lands; the other two are
+          // live until something walks into them or their time runs out.
+          // It stays on the floor either way, because a player who cannot
+          // see where they dropped the loud thing cannot learn to avoid
+          // dropping it there.
+          { key, id, roomId, x: at.x, z: at.z, live: id !== "rattle" },
+        ],
+      });
+
+      switch (id) {
+        case "rattle":
+          get().giveAway(RATTLE_ALARM);
+          break;
+        case "wardstone": {
+          set({ wardRoomId: roomId, wardUntil: now + WARD_S });
+          // "It will not come into this room" has to be true of a Warden
+          // already standing in it, or the one moment worth spending the
+          // stone on is the one moment it does nothing.
+          const after = get();
+          if (after.wardenRoomId === roomId && after.dungeon) {
+            const here = roomById(after.dungeon, roomId);
+            const out = here
+              ? Object.values(here.links).filter((to): to is string => Boolean(to))
+              : [];
+            if (out.length) {
+              set({ wardenRoomId: out[0], wardenCameFrom: null, wardenLure: null, lureUntil: 0 });
+            }
+          }
+          break;
+        }
+        case "snare":
+          break;
+      }
+      bus.emit("devicePlaced", { id, cruel: ITEMS[id].cruel });
+      bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
+      return true;
+    },
+
+    springSnare: (key) => {
+      const s = get();
+      const device = s.placed.find((d) => d.key === key);
+      if (!device || !device.live) return;
+      set({ placed: s.placed.map((d) => (d.key === key ? { ...d, live: false } : d)) });
+      // Through the same door the floor's own spikes use, so the wound, the
+      // count towards a rout and the reeling all stay in one place - and a
+      // snare cannot be a second, quietly different way of hurting it.
+      get().wardenWounded(SNARE_HOLD_S);
     },
 
     identifySlot: (slot) => {
@@ -788,7 +917,7 @@ export const useRun = create<RunState>()(
       bus.emit("wardenStruck");
     },
 
-    wardenWounded: () => {
+    wardenWounded: (hold = WARDEN_STAGGER_S) => {
       const s = get();
       if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
       const now = runClock(s);
@@ -800,7 +929,7 @@ export const useRun = create<RunState>()(
 
       const wounds = s.wardenWounds + 1;
       if (wounds < WARDEN_WOUNDS_TO_ROUT) {
-        set({ wardenWounds: wounds, wardenStaggerUntil: now + WARDEN_STAGGER_S });
+        set({ wardenWounds: wounds, wardenStaggerUntil: now + hold });
         bus.emit("wardenWounded", { wounds });
         return;
       }
@@ -901,6 +1030,21 @@ export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
  * the player bought, and the only thing in the game that stops it.
  */
 export const wardenStaggered = (s: RunState): boolean => running(s, s.wardenStaggerUntil);
+
+/**
+ * The room a ward stone is still holding, or null. Read by the Warden's
+ * driver, which will not step into it, and by the HUD, which says so.
+ */
+export const wardNow = (s: RunState): string | null =>
+  s.wardRoomId && running(s, s.wardUntil) ? s.wardRoomId : null;
+
+/**
+ * The snares still set in a room. Takes the list rather than the whole
+ * run, so a component can subscribe to just that slice of the store and
+ * not re-render on every gem.
+ */
+export const snaresIn = (placed: readonly PlacedDevice[], roomId: string): PlacedDevice[] =>
+  placed.filter((d) => d.live && d.id === "snare" && d.roomId === roomId);
 
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);

@@ -15,16 +15,24 @@ import {
   WARDEN_MAX_STEP,
   WARDEN_TOUCH_RADIUS,
 } from "../world";
-import { inPatch, steerAround, type Patch } from "./steer";
+import { patchAt, steerAround, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 
 interface WardenProps {
   room: Room;
   /**
-   * The room's own hazards, in room-local coordinates. The floor does not
-   * care which of you stands on it: walking into one of these wounds it.
+   * Everything in the room that wounds it, in room-local coordinates. The
+   * floor does not care which of you stands on it.
    */
   hazards?: readonly Patch[];
+  /**
+   * The subset it knows about, which is what it walks round once it has
+   * learned. A snare is in `hazards` and not in here, and that is the
+   * whole reason a snare still works on a Warden that has been routed: it
+   * has been taught to avoid the spikes it can see, and a wire on the
+   * floor of an ordinary room is not one of them.
+   */
+  avoid?: readonly Patch[];
 }
 
 /** Proximity bands the DOM draws a vignette from: none, near, close, upon you. */
@@ -48,7 +56,7 @@ const bandFor = (distance: number): number => {
  * level, so it never wins a straight race - it wins by being between you
  * and the door, and by arriving while you are deciding whether to be greedy.
  */
-export function Warden({ room, hazards = [] }: WardenProps) {
+export function Warden({ room, hazards = [], avoid = hazards }: WardenProps) {
   const group = useRef<Group>(null);
   const eyes = useRef<Group>(null);
   const alarm = useRun((s) => s.alarm);
@@ -203,7 +211,7 @@ export function Warden({ room, hazards = [] }: WardenProps) {
     );
     // Straight at the player until the spikes have taught it otherwise.
     const heading = wary
-      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, hazards, WARDEN_HAZARD_BERTH)
+      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, avoid, WARDEN_HAZARD_BERTH)
       : { dx: dx / distance, dz: dz / distance };
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     const limit = halfSize(room) - 0.6;
@@ -213,14 +221,17 @@ export function Warden({ room, hazards = [] }: WardenProps) {
     // What it just walked into. Tested after the step, against the position
     // it actually ended the frame at, so a patch it was steered round is
     // never charged and one it was cornered into always is.
-    const standing = inPatch(hazards, g.position.x, g.position.z);
+    const standing = patchAt(hazards, g.position.x, g.position.z);
     if (!standing) inHazard.current = false;
     else if (!inHazard.current) {
       inHazard.current = true;
       // The store decides whether that is actually a wound - it refuses one
       // while it is still reeling from the last - and the sound and the line
       // hang off the event it emits, so nothing here has a second opinion.
-      useRun.getState().wardenWounded();
+      // A patch that names itself is a snare, and springing it goes through
+      // the same door so the two cannot drift apart.
+      if (standing.key) useRun.getState().springSnare(standing.key);
+      else useRun.getState().wardenWounded();
     }
   });
 

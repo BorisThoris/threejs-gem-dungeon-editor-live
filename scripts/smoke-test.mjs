@@ -2068,12 +2068,28 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     if (!window.__sentry) return { noProbe: true };
 
     const PAUSE_S = 6;
-    // On the beam's own bearing, a little ahead of where it points now, so
-    // the player is caught partway through the pass rather than on its
-    // trailing edge. No waiting and no luck.
+    /**
+     * On the beam's own bearing, a little ahead of where it points now, so
+     * the player is caught partway through the pass rather than on its
+     * trailing edge. No waiting and no luck.
+     *
+     * "Ahead" has to mean ahead in the direction it is actually turning,
+     * and for a long time this added a fixed 0.35 without asking. The beam
+     * is half as wide as that either side of centre and it turns 0.55
+     * radians a second, so over the half-second the teleport takes to
+     * settle it moves 0.28 - towards the player on one heading and away on
+     * the other, and away puts them at 0.63 against a beam that reaches
+     * 0.42. Measured: two runs in three found the player on the beam, one
+     * did not, and the one that did not looked exactly like the Sentry
+     * being broken. Sample the facing twice, take the sign, and lead it.
+     */
     const at = found.post.at;
     const half = found.room.size / 2;
-    const bearing = window.__sentry.facing + 0.35;
+    const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    const f0 = window.__sentry.facing;
+    await wait(200);
+    const turning = Math.sign(wrap(window.__sentry.facing - f0)) || 1;
+    const bearing = window.__sentry.facing + turning * 0.35;
     const r = Math.min(4, half - 1.5);
     window.__bus.emit("teleport", {
       position: [at[0] + Math.sin(bearing) * r, 1.5, at[2] + Math.cos(bearing) * r],
@@ -3332,6 +3348,208 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
   }
 }
+}
+
+/**
+ * The satchel's third family: things set down on the floor rather than
+ * used on yourself.
+ *
+ * The three of them are three different answers to one question - what a
+ * player can do about the Warden somewhere that is not a trap room - and
+ * each has a rule that can only be checked by playing it: a snare wounds
+ * something the room's own spikes would not (it is not in the list a
+ * routed Warden walks round), a ward stone empties the room it is set in
+ * and keeps it empty, and a knot of iron does the opposite of what a
+ * player hoped when they pressed the key.
+ */
+{
+  const devices = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(11);
+    await sleep(1800);
+    const s0 = run.getState();
+    const here = s0.currentRoomId;
+    const neighbours = Object.values(
+      s0.dungeon.rooms.find((r) => r.id === here).links
+    ).filter(Boolean);
+    const out = {};
+
+    // --- A snare wounds a Warden that has already learned about spikes ---
+    run.setState({
+      lives: 99,
+      alarm: 6,
+      satchel: ["snare"],
+      identified: [],
+      placed: [],
+      // Wary: it has been routed once already, so nothing but a thing it
+      // cannot know about is going to touch it.
+      wardenWary: true,
+      wardenWounds: 0,
+      wardenStaggerUntil: 0,
+      wardenRoomId: null,
+      wardRoomId: null,
+      wardUntil: 0,
+    });
+    /**
+     * Set the snare on the line the Warden will actually walk.
+     *
+     * The first version of this stood at the middle of the room, set the
+     * snare there and then stood off to one side, and the Warden went
+     * straight from its doorway to the player without going near the wire
+     * - which is not the snare failing, it is the test not knowing where
+     * the walk was. It comes in at the doorway it came from, so the line
+     * is known: put the snare a fifth of the way along it and the player
+     * at the far end of the same ray.
+     */
+    const room0 = s0.dungeon.rooms.find((r) => r.id === here);
+    const STEP = { north: { x: 0, z: -1 }, south: { x: 0, z: 1 }, east: { x: 1, z: 0 }, west: { x: -1, z: 0 } };
+    const inDir = Object.keys(room0.links).find((d) => room0.links[d] === neighbours[0]) || "north";
+    const half0 = room0.size / 2;
+    const entry = { x: STEP[inDir].x * half0 * 0.86, z: STEP[inDir].z * half0 * 0.86 };
+    const along = (t) => [entry.x * (1 - t) + -entry.x * 0.6 * t, 1.5, entry.z * (1 - t) + -entry.z * 0.6 * t];
+    window.__bus.emit("teleport", { position: along(0.35) });
+    await sleep(500);
+    const before = run.getState().satchel.length;
+    run.getState().useItem(0);
+    await sleep(200);
+    const set = run.getState();
+    out.placedFromSlot = {
+      satchel: set.satchel.length,
+      before,
+      placed: set.placed.length,
+      room: set.placed[0] ? set.placed[0].roomId : null,
+      live: set.placed[0] ? set.placed[0].live : null,
+      known: set.identified.includes("snare"),
+    };
+
+    // Now stand at the far end of that same ray, so its walk crosses it.
+    window.__bus.emit("teleport", { position: along(1) });
+    await sleep(400);
+    let wounded = 0;
+    const off = window.__bus.on("wardenWounded", () => wounded++);
+    run.setState({ wardenRoomId: here, wardenCameFrom: neighbours[0] || null });
+    let reeled = false;
+    for (let i = 0; i < 70 && !wounded; i++) {
+      await sleep(200);
+      if (run.getState().wardenRoomId !== here) {
+        run.setState({ wardenRoomId: here, wardenCameFrom: neighbours[0] || null });
+      }
+    }
+    for (let i = 0; i < 10; i++) {
+      await sleep(150);
+      if (window.__derived.warden().staggered) reeled = true;
+    }
+    off();
+    const sprung = run.getState();
+    const sprungAt = sprung.placed[0] ? { x: +sprung.placed[0].x.toFixed(2), z: +sprung.placed[0].z.toFixed(2) } : null;
+    out.snare = {
+      wounded,
+      reeled,
+      snareAt: sprungAt,
+      walkedFrom: entry,
+      spent: sprung.placed.length === 1 && sprung.placed[0].live === false,
+      stillDrawn: sprung.placed.length,
+      wary: sprung.wardenWary,
+    };
+
+    // --- A ward stone empties the room and keeps it empty ---
+    run.setState({
+      satchel: ["wardstone"],
+      placed: [],
+      wardRoomId: null,
+      wardUntil: 0,
+      wardenRoomId: here,
+      wardenCameFrom: null,
+      wardenStaggerUntil: 0,
+      alarm: 6,
+    });
+    await sleep(300);
+    run.getState().useItem(0);
+    await sleep(300);
+    const warded = run.getState();
+    out.ward = {
+      leftTheRoom: warded.wardenRoomId !== here,
+      wardRoom: warded.wardRoomId === here,
+      known: warded.identified.includes("wardstone"),
+    };
+    // It must not walk back in while the stone holds. Put it next door,
+    // fully roused and hunting, and watch the room it will not enter.
+    run.setState({ wardenRoomId: neighbours[0] || here, wardenCameFrom: null, noisyUntil: 1e9 });
+    let cameBack = false;
+    for (let i = 0; i < 60; i++) {
+      await sleep(200);
+      if (run.getState().wardenRoomId === here) cameBack = true;
+    }
+    out.ward.heldForTwelveSeconds = !cameBack;
+
+    // --- And the one that does the opposite of what you wanted ---
+    run.setState({
+      satchel: ["rattle"],
+      placed: [],
+      alarm: 0,
+      wardRoomId: null,
+      wardUntil: 0,
+      wardenLure: "somewhere",
+      lureUntil: 1e9,
+    });
+    await sleep(200);
+    const quiet = run.getState().alarm;
+    run.getState().useItem(0);
+    await sleep(250);
+    const loud = run.getState();
+    out.rattle = {
+      alarmBefore: quiet,
+      alarmAfter: loud.alarm,
+      lureDropped: loud.wardenLure === null,
+      leftOnTheFloor: loud.placed.length === 1,
+      inert: loud.placed.length === 1 ? loud.placed[0].live === false : null,
+      known: loud.identified.includes("rattle"),
+    };
+    return out;
+  });
+
+  ok(
+    "pressing a slot key on a device sets it down instead of drinking it",
+    devices.placedFromSlot.satchel === devices.placedFromSlot.before - 1 &&
+      devices.placedFromSlot.placed === 1 &&
+      devices.placedFromSlot.live === true,
+    JSON.stringify(devices.placedFromSlot)
+  );
+  ok(
+    "and setting it down is how you learn what it was",
+    devices.placedFromSlot.known
+  );
+  ok(
+    "a snare wounds a Warden that has already learned to walk round spikes",
+    devices.snare.wounded >= 1 && devices.snare.wary === true,
+    JSON.stringify(devices.snare)
+  );
+  ok("and it reels from a snare as it does from the floor", devices.snare.reeled);
+  ok(
+    "a sprung snare is spent, and stays on the floor as wreckage",
+    devices.snare.spent && devices.snare.stillDrawn === 1,
+    JSON.stringify({ spent: devices.snare.spent, drawn: devices.snare.stillDrawn })
+  );
+  ok(
+    "a ward stone turns the Warden out of the room it is set in",
+    devices.ward.leftTheRoom && devices.ward.wardRoom,
+    JSON.stringify(devices.ward)
+  );
+  ok(
+    "and it does not walk back in while the stone holds, however loud you are",
+    devices.ward.heldForTwelveSeconds
+  );
+  ok(
+    "the knot of iron wakes the floor and ends any noise it was chasing",
+    devices.rattle.alarmAfter > devices.rattle.alarmBefore && devices.rattle.lureDropped,
+    JSON.stringify(devices.rattle)
+  );
+  ok(
+    "and it lies where it landed, inert, so you can see what you did",
+    devices.rattle.leftOnTheFloor && devices.rattle.inert === true,
+    JSON.stringify({ onFloor: devices.rattle.leftOnTheFloor, inert: devices.rattle.inert })
+  );
 }
 
 /**

@@ -8,6 +8,7 @@ import {
 import { Euler, Quaternion, Vector3 } from "three";
 
 import { spawnAtStart } from "../dungeon/layout";
+import { setPlayerAt } from "./where";
 import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
@@ -96,6 +97,10 @@ export function Player() {
     if (!rb) return;
 
     const p = rb.translation();
+    // One writer for where the player is: everything outside the frame loop
+    // that needs it - putting a device down on the floor, for one - reads it
+    // from there rather than keeping a copy.
+    setPlayerAt(p.x, p.z);
     const b = bob.current;
     // The head dips on each footfall and sways on the stride, at a size
     // meant to be felt rather than seen. Anyone it bothers can switch it off.

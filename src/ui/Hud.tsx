@@ -8,6 +8,7 @@ import {
   tollNow,
   useCurrentRoom,
   useRun,
+  wardNow,
   wardenHears,
   wardenStaggered,
 } from "../game/state/run";
@@ -40,7 +41,7 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
-  const { heard, lured, reeling } = useWardenSense();
+  const { heard, lured, reeling, warded } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
@@ -106,6 +107,9 @@ export function Hud() {
               worth walking to - and a rule the player is not told has
               changed reads as the trick simply having stopped working. */}
           {wary && !reeling && <span style={{ color: colors.dim }}> · wary of spikes</span>}
+          {/* The one state in the game where standing still is the answer,
+              so it says so where the player is already looking. */}
+          {warded && <span style={{ color: colors.gold }}> · warded out of this room</span>}
         </div>
       )}
       {relics.length > 0 && (
@@ -127,18 +131,31 @@ export function Hud() {
  * otherwise the HUD would keep saying "Heard you" until something else
  * happened to change the store.
  */
-function useWardenSense(): { heard: boolean; lured: boolean; reeling: boolean } {
+function useWardenSense(): {
+  heard: boolean;
+  lured: boolean;
+  reeling: boolean;
+  warded: boolean;
+} {
   const read = () => {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
-    return { heard: !lured && wardenHears(s), lured, reeling: wardenStaggered(s) };
+    return {
+      heard: !lured && wardenHears(s),
+      lured,
+      reeling: wardenStaggered(s),
+      warded: wardNow(s) !== null && wardNow(s) === s.currentRoomId,
+    };
   };
   const [sense, setSense] = useState(read);
   useEffect(() => {
     const t = window.setInterval(
       () => setSense((was) => {
         const now = read();
-        return was.heard === now.heard && was.lured === now.lured && was.reeling === now.reeling
+        return was.heard === now.heard &&
+          was.lured === now.lured &&
+          was.reeling === now.reeling &&
+          was.warded === now.warded
           ? was
           : now;
       }),
