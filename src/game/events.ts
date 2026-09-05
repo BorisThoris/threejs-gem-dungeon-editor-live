@@ -54,6 +54,16 @@ export interface BusEvents {
   itemNamed: { id: string };
   /** A device was set down on the floor of the room the player is in. */
   devicePlaced: { id: string; cruel: boolean };
+  /** Something small has come into the room, and it wants what you carry. */
+  thiefCame: { roomId: string };
+  /** It got a gem off you and is running for a doorway. */
+  thiefTook: { gems: number };
+  /** It made it out with them, and they are in its nest now. */
+  thiefFled: { gems: number; roomId: string | null };
+  /** It was caught - by the player, or by something on the floor. */
+  thiefCaught: { gems: number };
+  /** The nest was walked to and emptied. */
+  nestEmptied: { gems: number };
   /** The arena's arms have started or stopped. */
   arenaRun: { running: boolean };
   /** The floor's key has been picked up. */

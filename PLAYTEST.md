@@ -72,6 +72,25 @@ again. It still cannot be killed and it still cannot be fought, and that
 is the point - a wound buys a window and a rout buys a room, and neither
 buys the floor.
 
+**And a third thing in the dungeon, which is the first one that wants
+something.** The Cutpurse arrives on floor two. It cannot hurt you and it
+never will: it comes for a player who has stopped moving with gems on
+them, takes exactly one, and runs for the doorway it came in by. Catching
+it hands the gem straight back; letting it go puts the gem in a nest, and
+the nest goes on the map the moment it has cost you something. So a theft
+is not a loss, it is a detour, priced in the only currency this game has -
+how much further into a floor that is more awake than when you last
+crossed it is one gem worth walking?
+
+It runs at 6 against a walk of 5 and a sprint of 8, which makes it the
+only thing here answered by reacting rather than by moving well: walking
+after it is watching it leave. Two items break that on purpose and both
+are checked rather than discovered - Soft Boots make a walk enough (6.25),
+and a Potion of Mire makes a sprint not enough (5.20), so a mired player
+watches it go and walks to the nest. The floor's spikes and a set snare
+stop it exactly as they stop the Warden; so does a ward stone, which keeps
+everything out and not only the thing it was bought for.
+
 **Three of the twelve items are set down rather than used.** A Wire Snare
 wounds the next thing to cross it, and works on a Warden that has already
 learned about the floor's spikes, because a wire in an ordinary room is
@@ -2151,6 +2170,10 @@ All in `src/game/world.ts`:
 | `WARDEN_HAZARD_BERTH` | 0.9 | How wide a berth a wary Warden gives a patch it has been bitten by |
 | `SNARE_RADIUS` / `SNARE_HOLD_S` | 1.0 / 5 | A set snare's bite, and how long it holds what it catches (`items/catalog.ts`) |
 | `WARD_S` | 30 | How long a ward stone keeps the Warden out of the room it lies in |
+| `CUTPURSE_FROM_FLOOR` | 2 | The first floor with a thief on it |
+| `CUTPURSE_SPEED` | 6 | Against a walk of 5 and a sprint of 8 |
+| `CUTPURSE_REST_S` / `_SHY_S` | 22 / 40 | How long it waits after a theft, and after being caught |
+| `CUTPURSE_GRACE_ROOMS` | 2 | Rooms entered on a floor before it takes an interest |
 | `RATTLE_ALARM` | 2 | What dropping a knot of iron costs |
 
 Everything that changes with depth is one table, `floorRules(floor)` in the

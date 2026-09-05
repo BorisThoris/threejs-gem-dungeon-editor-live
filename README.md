@@ -58,6 +58,17 @@ stereo field as it comes round a pillar. You can shut your eyes and still
 know which way to go, which is the point of a threat you are only ever
 allowed to run from.
 
+From the second floor down there is also something small in the dark that
+wants what you are carrying. The Cutpurse cannot hurt you. It waits until
+you have stopped moving with gems on you, comes in at a doorway, takes
+exactly one and runs back out with it. It moves faster than you walk and
+slower than you run, so catching it means reaching for shift the moment
+you hear it - and if you do not, the gem is not gone. It is in a nest
+somewhere on the floor, and the nest is on your map from the moment it
+costs you something. Whether one gem is worth walking back through a floor
+that is more awake than when you crossed it is the same question the game
+asks everywhere else, in a smaller shape.
+
 From the second floor down, some plain rooms have a watcher on a post,
 turning a beam slowly around the room. It never takes a life. Being held in
 its light rouses the floor and tells the Warden where you are, which is

@@ -72,6 +72,10 @@ export function Audio() {
       bus.on("wardenStruck", () => sfx.wardenStrike()),
       bus.on("wardenWounded", () => sfx.wardenWound()),
       bus.on("wardenRouted", () => sfx.wardenRout()),
+      bus.on("thiefTook", () => sfx.snatch()),
+      bus.on("thiefFled", () => sfx.thiefFled()),
+      bus.on("thiefCaught", () => sfx.thiefDropped()),
+      bus.on("nestEmptied", () => sfx.gem()),
       bus.on("wardenLured", () => sfx.clatter()),
     ];
     return () => offs.forEach((off) => off());

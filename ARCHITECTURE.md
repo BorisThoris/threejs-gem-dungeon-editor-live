@@ -400,6 +400,11 @@ src/
       Hazard.tsx         a patch of spikes: costs the player a life, and
                          wounds the Warden that walks into it
       Placed.tsx         the devices the player has set down in this room
+    thief/
+      Cutpurse.tsx       the body: comes in, takes one gem, runs out
+      CutpurseDriver.tsx when it tries; a timer and a set of conditions
+      nest.ts            which room it nests in, derived from the floor
+      Hoard.tsx          the heap of what it took, and taking it back
     warden/
       Warden.tsx         the body, in the room the player is standing in
       WardenDriver.tsx   its walk through the rooms nobody is standing in
@@ -452,7 +457,13 @@ src/
    slower than a walk at every level: it wins by being between the player
    and the door. Touching the player costs a life and throws it three
    doorways away.
-6. The exit door charges `tollForFloor(floor)`, which rises on every floor.
+6. From floor two, the Cutpurse comes for a player who has stopped moving
+   with gems on them. It takes one and runs for the doorway it came in by:
+   touch it and the gem comes back, let it out and the gem is in its nest,
+   which is then on the map. Nothing is destroyed - a theft is a detour,
+   and `thief/nest.ts` guarantees the detour is walkable (never the vault,
+   never a room only reachable through it).
+7. The exit door charges `tollForFloor(floor)`, which rises on every floor.
    Entering the exit room descends to a fresh dungeon - lives, gems and
    relics carried, alarm and Warden reset to what the new floor's own rules
    say - and the exit of floor `FLOORS` wins. The gems still held at that point are the run's score. Losing the

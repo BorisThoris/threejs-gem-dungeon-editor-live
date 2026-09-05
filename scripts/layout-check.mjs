@@ -27,6 +27,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
+   export * from "${root}src/game/thief/nest";
    export * from "${root}src/game/rooms/layouts";
    export * from "${root}src/game/props/specs";
    export * from "${root}src/game/rooms/anchors";
@@ -1512,6 +1513,89 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- The Cutpurse -----------------------------------------------------------
+//
+// It runs from you holding a gem, which is the Warden's promise in reverse,
+// and the two places the promise is knowingly false are an item doing its
+// job rather than a bug. All four are asserted here so a change to a
+// multiplier says which of them it broke.
+{
+  const RELIC_SETS = [[], ["boots"], ["lantern", "chart"], ["boots", "charm", "ledger"]];
+  const speed = L.CUTPURSE_SPEED;
+  let sprintCatches = 0;
+  let walkFails = 0;
+  let cases = 0;
+  for (const relics of RELIC_SETS) {
+    const has = (id) => relics.includes(id);
+    const pace = L.paceFor(relics, "none");
+    cases++;
+    if (L.catchesCutpurse(pace, speed)) sprintCatches++;
+    // Boots are the documented exception, and are asked about separately.
+    if (!L.outwalksCutpurse(pace, speed) || has("boots")) walkFails++;
+  }
+  check(
+    "unhindered, a sprint always catches the Cutpurse",
+    sprintCatches === cases,
+    `${sprintCatches} of ${cases} relic sets`
+  );
+  check(
+    "and a walk never does, unless you bought the boots for exactly that",
+    walkFails === cases,
+    `${walkFails} of ${cases} relic sets`
+  );
+  check(
+    "Soft Boots are the exception, and they really are one",
+    L.outwalksCutpurse(L.paceFor(["boots"], "none"), speed) &&
+      !L.outwalksCutpurse(L.paceFor([], "none"), speed),
+    `booted walk ${L.paceFor(["boots"], "none").walk} against ${speed}`
+  );
+  check(
+    "and a Potion of Mire is the other: nothing you have catches it",
+    !L.catchesCutpurse(L.paceFor([], "mire"), speed),
+    `mired sprint ${L.paceFor([], "mire").dash.toFixed(2)} against ${speed}`
+  );
+  // The nest is where a theft stops being a punishment, so a floor must
+  // always have one, it must never be behind a door that wants a key, and
+  // it must never be the room the exit is in.
+  let noNest = 0;
+  let nestLocked = 0;
+  let nestBehindLock = 0;
+  let nestIsSetPiece = 0;
+  let floors = 0;
+  for (let seed = 1; seed <= 300; seed++) {
+    for (const depth of [2, 3]) {
+      const rules = L.floorRules(depth);
+      const d = L.generateDungeon({ seed: seed * 31 + depth, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      floors++;
+      const nest = L.nestRoom(d);
+      if (!nest) {
+        noNest++;
+        continue;
+      }
+      if (nest === d.vaultId) nestLocked++;
+      if (d.vaultId) {
+        const open = L.reachableWithout(d.rooms, d.startId, d.vaultId);
+        const reached = open.has ? open.has(nest) : open.includes(nest);
+        if (!reached) nestBehindLock++;
+      }
+      const room = d.rooms.find((r) => r.id === nest);
+      if (["start", "end", "shop", "arena", "memory", "challenge"].includes(room.kind)) nestIsSetPiece++;
+    }
+  }
+  check("every floor deep enough to have a thief has a nest", noNest === 0, `${noNest} of ${floors} floors`);
+  check("the nest is never inside the locked vault", nestLocked === 0, `${nestLocked} of ${floors}`);
+  check(
+    "nor in a room only reachable through it: your own gems are never behind a key",
+    nestBehindLock === 0,
+    `${nestBehindLock} of ${floors}`
+  );
+  check(
+    "and never in a room that already asks a question of its own",
+    nestIsSetPiece === 0,
+    `${nestIsSetPiece} of ${floors}`
   );
 }
 

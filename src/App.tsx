@@ -115,6 +115,10 @@ export default function App() {
     // other way to ask.
     void import("./game/puzzles/Carryable").then((m) => (w.__carry = m.carry));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
+    // Which room a floor's Cutpurse nests in. Derived from the dungeon
+    // rather than stored in it, so a check that wants to set up a theft
+    // has no way to ask the store which room to expect.
+    void import("./game/thief/nest").then((m) => (w.__nestRoom = m.nestRoom));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.

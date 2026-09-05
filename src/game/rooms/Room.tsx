@@ -13,6 +13,8 @@ import { snaresIn, useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
+import { Cutpurse } from "../thief/Cutpurse";
+import { Hoard } from "../thief/Hoard";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { SNARE_RADIUS } from "../items/catalog";
@@ -63,6 +65,23 @@ function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
     [hazards, snares, room.id]
   );
   return here ? <Warden room={room} hazards={wounding} avoid={hazards} /> : null;
+}
+
+/**
+ * The Cutpurse, while it is in the room. Its own component for the same
+ * reason RoomWarden is: it comes and goes every twenty seconds and the
+ * room around it should not re-render when it does.
+ */
+function RoomThief({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
+  const visiting = useRun((s) => s.thiefPhase !== "away");
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return visiting && here ? <Cutpurse room={room} hazards={hazards} /> : null;
+}
+
+/** The heap, in the one room on the floor that has one. */
+function RoomNest({ roomId, half }: { roomId: string; half: number }) {
+  const isNest = useRun((s) => s.nestRoomId === roomId && s.nestGems > 0);
+  return isNest ? <Hoard roomId={roomId} half={half} /> : null;
 }
 
 export function Room({ room, seed }: RoomProps) {
@@ -169,7 +188,9 @@ export function Room({ room, seed }: RoomProps) {
         />
       )}
       <RoomWarden room={room} hazards={wardenHazards} />
+      <RoomThief room={room} hazards={wardenHazards} />
       <PlacedDevices roomId={room.id} />
+      <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

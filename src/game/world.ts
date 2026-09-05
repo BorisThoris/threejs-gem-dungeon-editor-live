@@ -333,6 +333,60 @@ export const SENTRY_PATIENCE = 0.9;
 export const SENTRY_ALARM = 1;
 export const SENTRY_COOLDOWN_S = 6;
 
+// --- The Cutpurse ------------------------------------------------------------
+
+/**
+ * The third thing in the dungeon, and the first one that wants something.
+ *
+ * The Warden makes you leave a floor and the Sentry makes you time your
+ * crossing of a room. Both of them are answered by moving well, which
+ * means the whole game was one verb played at two tempos. This one is
+ * answered by *reacting*: it comes for what you are carrying, and the
+ * moment it has it the question is no longer where to walk but whether
+ * your hand got to shift in time.
+ *
+ * It cannot hurt you and it never will. What it takes is gems, which is
+ * the only currency in the run, and it does not destroy them - it carries
+ * them to a nest somewhere on the floor, and the nest is on the map from
+ * the moment it robs you. So a theft is not a loss, it is a detour, priced
+ * in exactly the thing the whole game is about: how much further into a
+ * roused floor is this worth walking?
+ *
+ * It arrives on floor two. Floor one is where the dungeon is learned and
+ * a thing that takes your gems while you are learning what a gem is for
+ * is not the place to start.
+ */
+export const CUTPURSE_FROM_FLOOR = 2;
+/**
+ * How fast it moves coming in, and going out with your gem.
+ *
+ * Six against a walk of five and a sprint of eight: a walk never closes on
+ * it and a sprint closes at two metres a second, which over the second and
+ * a half it takes to reach a doorway is a metre and a half of ground - so
+ * catching it is holding shift the instant you hear it, and not otherwise.
+ * `systems/pace.ts` holds those three numbers to that sentence, over every
+ * relic and potion in the game, and writes down the two places where the
+ * sentence stops being true: Soft Boots make a walk enough, and a Potion
+ * of Mire makes a sprint not enough. Both are the item doing its job, and
+ * both are checked rather than discovered.
+ */
+export const CUTPURSE_SPEED = 6;
+/** How close it has to get to take something, and to be caught. */
+export const CUTPURSE_TOUCH_RADIUS = 1.1;
+/**
+ * Seconds it waits in the dark before trying again, after a theft and
+ * after being caught.
+ *
+ * Longer after being caught: it has been hurt, and a player who reacted in
+ * time should get more than four seconds of peace for it. Not so long that
+ * a floor only ever sees it once - the nest is worth walking to, and one
+ * gem is rarely worth the walk.
+ */
+export const CUTPURSE_REST_S = 22;
+export const CUTPURSE_SHY_S = 40;
+/** Rooms entered on a floor before it takes an interest. */
+export const CUTPURSE_GRACE_ROOMS = 2;
+
 // --- The descent ------------------------------------------------------------
 
 /**

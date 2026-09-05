@@ -50,6 +50,10 @@ export function Minimap() {
   const unlocked = useRun((s) => s.unlocked);
   const shows = useRun((s) => modifiers(s.relics));
   const mapped = useRun((s) => s.mapped);
+  // The nest goes on the dial the moment something of yours is in it. That
+  // is the whole difference between a theft and a punishment: the gems are
+  // not gone, they are somewhere, and the map says where.
+  const nestRoomId = useRun((s) => (s.nestGems > 0 && s.nestSeen ? s.nestRoomId : null));
   const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
 
   // Gloom runs out on a clock, not on a state change, so the map has to
@@ -99,6 +103,9 @@ export function Minimap() {
       const room = dungeon.rooms.find((r) => r.id === id);
       for (const link of Object.values(room?.links ?? {})) if (link) known.add(link);
     }
+    // A nest that has your gems in it is on the map whether or not you
+    // have walked that far: being told where they went is the point.
+    if (nestRoomId) known.add(nestRoomId);
     const shown = dungeon.rooms.filter((r) => known.has(r.id));
     // Room-grid offsets from the room the player is standing in, and the
     // spacing that keeps the farthest of them on the dial.
@@ -115,6 +122,7 @@ export function Minimap() {
       state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
       isExit: r.id === dungeon.endId,
       isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
+      isNest: r.id === nestRoomId,
       hasWarden: shows.showsWarden && r.id === wardenRoomId,
       hasGem:
         shows.showsGems &&
@@ -127,7 +135,7 @@ export function Minimap() {
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked]);
+  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -197,6 +205,18 @@ export function Minimap() {
                   strokeDasharray={c.isVault ? "4 3" : undefined}
                 />
                 {c.hasGem && <circle r={3.4} fill={colors.accent} opacity={0.95} />}
+                {/* Not the gold of an exit or a vault, and not the ring of
+                    the Warden: what is in there is yours, so it is drawn in
+                    the colour gems are drawn in everywhere else. */}
+                {c.isNest && (
+                  <circle
+                    r={cell / 2 + 2}
+                    fill="none"
+                    stroke={colors.accent}
+                    strokeWidth={2}
+                    strokeDasharray="3 3"
+                  />
+                )}
                 {c.hasWarden && (
                   <circle r={cell / 2 + 2} fill="none" stroke={colors.danger} strokeWidth={2.5} />
                 )}

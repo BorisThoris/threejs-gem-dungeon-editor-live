@@ -30,6 +30,7 @@ import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
+import { nestRoom } from "../thief/nest";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -39,6 +40,10 @@ import {
   NOISE_HOLD_S,
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
+  CUTPURSE_FROM_FLOOR,
+  CUTPURSE_GRACE_ROOMS,
+  CUTPURSE_REST_S,
+  CUTPURSE_SHY_S,
   WARDEN_BANISH_DISTANCE,
   WARDEN_ROUT_CALM,
   WARDEN_STAGGER_S,
@@ -48,6 +53,14 @@ import {
 } from "../world";
 
 export type Phase = "menu" | "playing" | "won" | "lost";
+
+/**
+ * What the Cutpurse is doing. It is only ever in the room the player is
+ * standing in - it has no life of its own between visits, because a thief
+ * that wanders a floor nobody is watching is just a second Warden with a
+ * different model.
+ */
+export type ThiefPhase = "away" | "stalking" | "fleeing";
 
 /** A device the player has put down, where they put it. */
 export interface PlacedDevice {
@@ -150,6 +163,23 @@ export interface RunState {
    */
   wardRoomId: string | null;
   wardUntil: number;
+  /**
+   * The Cutpurse: what it is doing, when it will next try, and how much of
+   * yours is in its nest.
+   *
+   * `nestRoomId` is derived from the floor rather than stored with it, and
+   * cached here so the map, the room shell and the driver all read one
+   * answer. `nestSeen` is whether the player has been shown where it is,
+   * which is what turns a theft from a loss into a walk.
+   */
+  thiefPhase: ThiefPhase;
+  thiefNextAt: number;
+  /** Gems it is carrying right now: dropped if it is caught. */
+  thiefHolding: number;
+  /** Gems already in the nest, waiting to be walked to. */
+  nestGems: number;
+  nestRoomId: string | null;
+  nestSeen: boolean;
   /** A room whose doors are barred while something in it is happening. */
   sealedRoomId: string | null;
   /** Iron keys in hand. One opens one vault. */
@@ -240,6 +270,19 @@ export interface RunState {
   identifySlot: (slot: number) => boolean;
   /** A snare caught something and is spent. */
   springSnare: (key: string) => void;
+  /** The Cutpurse comes into the room the player is standing in. */
+  thiefArrives: () => boolean;
+  /** It reached the player and took a gem. False if there was nothing to take. */
+  thiefSteals: () => boolean;
+  /** It got out of the room with what it was holding. */
+  thiefEscapes: () => void;
+  /**
+   * The player caught it, or something on the floor did. It drops what it
+   * has and stays away longer.
+   */
+  thiefCaught: () => void;
+  /** The player walked into the nest and took back what was in it. */
+  emptyNest: () => boolean;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -357,6 +400,12 @@ export const useRun = create<RunState>()(
     mapped: false,
     looted: [],
     placed: [],
+    thiefPhase: "away",
+    thiefNextAt: 0,
+    thiefHolding: 0,
+    nestGems: 0,
+    nestRoomId: null,
+    nestSeen: false,
     wardRoomId: null,
     wardUntil: 0,
     sealedRoomId: null,
@@ -415,6 +464,16 @@ export const useRun = create<RunState>()(
         mapped: false,
         looted: [],
         placed: [],
+        thiefPhase: "away",
+        thiefNextAt: 0,
+        thiefHolding: 0,
+        nestGems: 0,
+        // The first floor is where the dungeon is learned, and the thief
+        // arrives on the second - but this reads the same rule the descent
+        // does rather than hard-coding null, so moving CUTPURSE_FROM_FLOOR
+        // moves both ends of it.
+        nestRoomId: floor >= CUTPURSE_FROM_FLOOR ? nestRoom(dungeon) : null,
+        nestSeen: false,
         wardRoomId: null,
         wardUntil: 0,
         sealedRoomId: null,
@@ -546,6 +605,15 @@ export const useRun = create<RunState>()(
           // A snare set on the floor above is on the floor above. Devices
           // go with the room they were set in, like the key and the lock.
           placed: [],
+          // A new floor is a new thief with an empty nest. What it stole
+          // on the floor above and you did not go back for is gone, which
+          // is the whole price of walking on rather than walking back.
+          thiefPhase: "away",
+          thiefNextAt: 0,
+          thiefHolding: 0,
+          nestGems: 0,
+          nestRoomId: floor >= CUTPURSE_FROM_FLOOR ? nestRoom(dungeon) : null,
+          nestSeen: false,
           wardRoomId: null,
           wardUntil: 0,
           sealedRoomId: null,
@@ -843,6 +911,77 @@ export const useRun = create<RunState>()(
       get().wardenWounded(SNARE_HOLD_S);
     },
 
+    thiefArrives: () => {
+      const s = get();
+      if (s.thiefPhase !== "away" || !s.currentRoomId) return false;
+      if (s.floor < CUTPURSE_FROM_FLOOR) return false;
+      // Nothing to take is nothing to come for. It is a thief, not a
+      // threat: turning up empty-handed to be chased would be all of the
+      // interruption and none of the decision.
+      if (s.gems < 1) return false;
+      if (runClock(s) < s.thiefNextAt) return false;
+      if (s.floorRooms < CUTPURSE_GRACE_ROOMS) return false;
+      // A ward stone keeps everything out, not only the Warden. It is a
+      // circle drawn on the floor of a room, and a rule that reads "the
+      // Warden will not come in here, but" is a rule nobody remembers.
+      if (wardNow(s) === s.currentRoomId) return false;
+      set({ thiefPhase: "stalking" });
+      bus.emit("thiefCame", { roomId: s.currentRoomId });
+      return true;
+    },
+
+    thiefSteals: () => {
+      const s = get();
+      if (s.thiefPhase !== "stalking") return false;
+      if (s.gems < 1) {
+        // It got to you and there was nothing left. It leaves rather than
+        // circling: a thief with nothing to steal is not a chase.
+        set({ thiefPhase: "fleeing", thiefHolding: 0 });
+        return false;
+      }
+      set({ gems: s.gems - 1, thiefHolding: s.thiefHolding + 1, thiefPhase: "fleeing" });
+      bus.emit("thiefTook", { gems: 1 });
+      return true;
+    },
+
+    thiefEscapes: () => {
+      const s = get();
+      if (s.thiefPhase === "away") return;
+      const held = s.thiefHolding;
+      set({
+        thiefPhase: "away",
+        thiefHolding: 0,
+        nestGems: s.nestGems + held,
+        thiefNextAt: runClock(s) + CUTPURSE_REST_S,
+        // The nest goes on the map the moment it costs you something. A
+        // theft you cannot answer is a punishment; a theft with an address
+        // is a decision about how much further you are willing to walk.
+        nestSeen: s.nestSeen || held > 0,
+      });
+      if (held > 0) bus.emit("thiefFled", { gems: held, roomId: s.nestRoomId });
+    },
+
+    thiefCaught: () => {
+      const s = get();
+      if (s.thiefPhase === "away") return;
+      const held = s.thiefHolding;
+      set({
+        thiefPhase: "away",
+        thiefHolding: 0,
+        gems: s.gems + held,
+        thiefNextAt: runClock(s) + CUTPURSE_SHY_S,
+      });
+      bus.emit("thiefCaught", { gems: held });
+    },
+
+    emptyNest: () => {
+      const s = get();
+      if (s.nestGems < 1) return false;
+      set({ gems: s.gems + s.nestGems, nestGems: 0 });
+      bus.emit("nestEmptied", { gems: s.nestGems });
+      return true;
+    },
+
     identifySlot: (slot) => {
       const s = get();
       const id = s.satchel[slot];
@@ -1096,6 +1235,17 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
         wary: s.wardenWary,
         staggered: wardenStaggered(s),
         alarm: s.alarm,
+      };
+    },
+    thief: () => {
+      const s = useRun.getState();
+      return {
+        phase: s.thiefPhase,
+        holding: s.thiefHolding,
+        nest: s.nestRoomId,
+        nestGems: s.nestGems,
+        nestSeen: s.nestSeen,
+        nextIn: Math.max(0, s.thiefNextAt - runClock(s)),
       };
     },
     hunts: () => {

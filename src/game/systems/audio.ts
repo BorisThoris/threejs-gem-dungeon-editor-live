@@ -140,6 +140,9 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
 
 const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
 
+/** When the last chitter played, for the throttle in `sfx.skitter`. */
+let lastSkitter = 0;
+
 /**
  * The Warden crossing the room you are standing in.
  *
@@ -490,6 +493,47 @@ export const sfx = {
    * a different thing happening or the player reads the window they just
    * bought as damage they just took.
    */
+  /**
+   * The Cutpurse moving: a dry chitter, repeated while it is in the room.
+   *
+   * Not a held node like `stalk`. The Warden's sound is a presence and has
+   * to swell continuously; this one is a small animal, and small animals
+   * make a series of noises rather than one long one. A throttled one-shot
+   * is also the cheap option, and the thing making it is in the room for
+   * six seconds at a time.
+   *
+   * The throttle is here rather than at the call site because the call
+   * site is a frame loop and a rate limit kept in a component is a rate
+   * limit that resets every time the component remounts.
+   */
+  skitter(closeness: number, pan = 0) {
+    if (closeness <= 0) return;
+    const now = performance.now();
+    // Faster when it is near: the same trick a Geiger counter uses, and
+    // the only cue the player gets that it is behind them.
+    const gap = 260 - Math.min(1, closeness) * 140;
+    if (now - lastSkitter < gap) return;
+    lastSkitter = now;
+    const level = 0.05 + Math.min(1, closeness) * 0.16;
+    tone(1100 + Math.random() * 500, 0.035, "square", level, 700, pan);
+    later(24, () => noiseBurst(0.035, level * 0.7, 5200, pan));
+  },
+  /** It has your gem: a snatch, and something small skittering off. */
+  snatch(pan = 0) {
+    tone(1400, 0.1, "sawtooth", 0.26, 620, pan);
+    later(50, () => noiseBurst(0.12, 0.24, 4200, pan));
+  },
+  /** It got away with something: a rattle going away from you. */
+  thiefFled(pan = 0) {
+    tone(880, 0.16, "square", 0.2, 300, pan);
+    later(90, () => tone(560, 0.3, "square", 0.16, 180, pan));
+  },
+  /** Caught: a squeal, and what it was holding hitting the floor. */
+  thiefDropped(pan = 0) {
+    tone(1500, 0.13, "sawtooth", 0.24, 380, pan);
+    later(80, () => noiseBurst(0.2, 0.24, 3200, pan));
+    later(170, () => tone(820, 0.22, "triangle", 0.2, 1180, pan));
+  },
   /** Something small set on stone: a scrape and a click. */
   setDown() {
     noiseBurst(0.09, 0.16, 1400);

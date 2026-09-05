@@ -38,6 +38,7 @@ export function Hud() {
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
   const keys = useRun((s) => s.keys);
+  const nestGems = useRun((s) => s.nestGems);
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
@@ -110,6 +111,15 @@ export function Hud() {
           {/* The one state in the game where standing still is the answer,
               so it says so where the player is already looking. */}
           {warded && <span style={{ color: colors.gold }}> · warded out of this room</span>}
+        </div>
+      )}
+      {/* Only once it has cost you something. A line about a thief nobody
+          has met yet is a spoiler and a distraction. */}
+      {nestGems > 0 && (
+        <div>
+          <span style={{ color: colors.dim }}>STOLEN </span>
+          <span style={{ color: colors.accent }}>{nestGems}</span>
+          <span style={{ color: colors.dim }}> · in its nest, on the map</span>
         </div>
       )}
       {relics.length > 0 && (

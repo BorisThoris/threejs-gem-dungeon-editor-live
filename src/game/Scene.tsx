@@ -12,6 +12,7 @@ import { Perf } from "./systems/Perf";
 import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { useCurrentRoom, useRun } from "./state/run";
+import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
@@ -98,8 +99,11 @@ export function Scene() {
       <Perf />
       <FloorLight />
       <PadPause />
-      {/* The Warden walks the floor whether or not its room is mounted. */}
+      {/* The Warden walks the floor whether or not its room is mounted, and
+          the Cutpurse's timer runs whichever room the player is standing
+          in - both of them need a frame loop that outlives a room. */}
       <WardenDriver />
+      <CutpurseDriver />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />

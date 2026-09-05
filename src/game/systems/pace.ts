@@ -60,3 +60,36 @@ export const wardenSpeedAt = (alarm: number): number => behaviourFor(alarm).spee
  * about a room's length of ground over the length of a chase.
  */
 export const ESCAPE_MARGIN = 1.15;
+
+/**
+ * The other chase, and the other promise.
+ *
+ * The Warden's is "a sprint always gets away". The Cutpurse's is its
+ * mirror - it runs *from* you, holding a gem, and the promise is:
+ *
+ *   A sprint catches it. A walk does not.
+ *
+ * Same shape, opposite direction, and it needs its own home for the same
+ * reason the first one did: three constants in three files that only add
+ * up to a playable chase by coincidence are three constants that will stop
+ * adding up the first time one of them is tuned.
+ *
+ * Two places the sentence is knowingly false, and both are an item doing
+ * exactly what it was bought or feared for:
+ *
+ *   Soft Boots      a walk is enough. Three gems for not having to sprint
+ *                   at the one thing sprinting is for.
+ *   Potion of Mire  a sprint is not enough. Nothing you have is. It gets
+ *                   away with the gem, and the nest is where you get it
+ *                   back.
+ *
+ * `yarn test:layout` walks the whole matrix and asserts all four of those
+ * - the promise, and each exception in the one place it applies - so a
+ * change to a multiplier says which of them it broke.
+ */
+export const catchesCutpurse = (pace: Pace, cutpurseSpeed: number): boolean =>
+  pace.dash > cutpurseSpeed;
+
+/** Whether a player at this pace can close on it without sprinting. */
+export const outwalksCutpurse = (pace: Pace, cutpurseSpeed: number): boolean =>
+  pace.walk > cutpurseSpeed;

@@ -22,10 +22,21 @@ const THROWN = "Something clatters a long way off. It has gone to look, and it i
 const BIT = "The spikes do not care which of you stands on them. Put another patch between you.";
 const ROUTED = "It will not cross those again. Whatever else this floor gives you, that trick is spent.";
 const SET = "It stays where you left it, and it is still there when you come back through.";
+const THIEF = "Something small is in here with you, and it wants what you are carrying. Shift, now.";
+const ROBBED = "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere.";
 
 export function useWardenWarning() {
   useEffect(() => {
-    let told = { woke: false, here: false, seen: false, loud: false, bit: false, set: false };
+    let told = {
+      woke: false,
+      here: false,
+      seen: false,
+      loud: false,
+      bit: false,
+      set: false,
+      thief: false,
+      robbed: false,
+    };
     /**
      * These go in the notice slot, which they own and nothing else writes.
      *
@@ -72,6 +83,19 @@ export function useWardenWarning() {
         say(BIT);
       }),
       bus.on("wardenRouted", () => say(ROUTED)),
+      // The one line in the game that has to arrive before the player can
+      // act on it rather than after: everything else teaches by having
+      // just happened, and this teaches by having four seconds left.
+      bus.on("thiefCame", () => {
+        if (told.thief) return;
+        told.thief = true;
+        say(THIEF);
+      }),
+      bus.on("thiefFled", () => {
+        if (told.robbed) return;
+        told.robbed = true;
+        say(ROBBED);
+      }),
       // Said the first time only, and only to teach the one rule a player
       // cannot see: that a device outlives the visit it was set during.
       bus.on("devicePlaced", () => {
@@ -81,7 +105,16 @@ export function useWardenWarning() {
       }),
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
-        told = { woke: false, here: false, seen: false, loud: false, bit: false, set: false };
+        told = {
+          woke: false,
+          here: false,
+          seen: false,
+          loud: false,
+          bit: false,
+          set: false,
+          thief: false,
+          robbed: false,
+        };
         say(floorRules(1).blurb);
       }),
     ];

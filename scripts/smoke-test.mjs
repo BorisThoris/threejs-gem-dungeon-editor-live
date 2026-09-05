@@ -3351,6 +3351,200 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * The Cutpurse, and where a theft goes.
+ *
+ * The other two things in the dungeon are answered by moving well. This
+ * one is answered by reacting, and what has to be true in the real game
+ * rather than on paper is the shape of one visit: it comes, touching it
+ * takes exactly one gem, touching it again gives that gem straight back,
+ * and letting it go puts the gem in a nest that is then on the map.
+ *
+ * The chase itself is not played out here, and cannot be. This machine
+ * renders at three to five frames a second, and everything that moves on
+ * a frame delta is capped at a twentieth of a second per frame - so the
+ * Cutpurse crosses 0.75 metres a second here against a nominal six, the
+ * same way the Warden manages 0.94 against 4.4 (see world.ts, and section
+ * 16 of PLAYTEST.md). A check that waited for it to reach the player
+ * would be measuring the rasteriser. Whether a sprint catches it and a
+ * walk does not is arithmetic over three constants and is proved for
+ * every relic and potion in `yarn test:layout`; what is proved here is
+ * everything that happens the moment the two of them touch.
+ */
+{
+  const thief = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+    run.getState().startRun(23);
+    await sleep(1600);
+    // Floor two: it does not exist on the floor where the dungeon is
+    // learned, and that is worth checking before anything else.
+    const first = run.getState();
+    run.setState({ gems: 5, floorRooms: 9, thiefNextAt: 0 });
+    out.noThiefOnFloorOne = {
+      nest: first.nestRoomId,
+      arrives: run.getState().thiefArrives(),
+    };
+
+    const rooms = first.dungeon.rooms;
+    const here = first.currentRoomId;
+    run.setState({
+      floor: 2,
+      // A nest, derived the way a real descent derives it.
+      nestRoomId: window.__nestRoom(first.dungeon),
+      nestGems: 0,
+      nestSeen: false,
+      gems: 4,
+      lives: 99,
+      floorRooms: 9,
+      thiefPhase: "away",
+      thiefNextAt: 0,
+      thiefHolding: 0,
+      wardenRoomId: null,
+      wardRoomId: null,
+      wardUntil: 0,
+      placed: [],
+    });
+    const nestId = run.getState().nestRoomId;
+    out.nest = { room: nestId, isARoom: rooms.some((r) => r.id === nestId), notHere: nestId !== here };
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    await sleep(600);
+
+    // --- It comes, on its own, to a player who has stopped -----------
+    out.came = await new Promise((resolve) => {
+      const off = window.__bus.on("thiefCame", () => { off(); resolve(true); });
+      setTimeout(() => { off(); resolve(false); }, 14000);
+    });
+    if (!out.came) return out;
+    // Its body writes the probe from its own frame loop, and a frame here
+    // is a quarter of a second - so this waits for one rather than reading
+    // the instant the event lands and calling an unrendered frame a
+    // missing Cutpurse.
+    for (let i = 0; i < 20 && !window.__thief; i++) await sleep(150);
+    out.mounted = !!window.__thief;
+
+    // --- Touching it takes exactly one gem ---------------------------
+    let took = 0;
+    const offTook = window.__bus.on("thiefTook", () => took++);
+    const gemsBefore = run.getState().gems;
+    // Stand on it rather than wait for it to cross the room: see above.
+    for (let i = 0; i < 40 && run.getState().thiefPhase === "stalking"; i++) {
+      if (window.__thief) window.__bus.emit("teleport", { position: [window.__thief.x, 1.5, window.__thief.z] });
+      await sleep(120);
+    }
+    offTook();
+    out.stole = {
+      took,
+      gemsBefore,
+      gemsAfter: run.getState().gems,
+      holding: run.getState().thiefHolding,
+      phase: run.getState().thiefPhase,
+    };
+
+    // --- Touching it again gives it back -----------------------------
+    for (let i = 0; i < 40 && run.getState().thiefPhase === "fleeing"; i++) {
+      if (window.__thief) window.__bus.emit("teleport", { position: [window.__thief.x, 1.5, window.__thief.z] });
+      await sleep(120);
+    }
+    const caught = run.getState();
+    out.caught = {
+      phase: caught.thiefPhase,
+      gems: caught.gems,
+      nestGems: caught.nestGems,
+      holding: caught.thiefHolding,
+    };
+
+    // --- And a visit it gets away with -------------------------------
+    //
+    // Driven through the store rather than by waiting out a walk to the
+    // doorway, for the frame-rate reason above. What is being asked is
+    // where a stolen gem ends up, not how long the run to the door takes.
+    run.setState({ thiefPhase: "fleeing", thiefHolding: 1, gems: 3, nestGems: 0, nestSeen: false });
+    run.getState().thiefEscapes();
+    await sleep(200);
+    const robbed = run.getState();
+    out.fled = {
+      intoNest: robbed.nestGems,
+      held: robbed.gems,
+      nestOnMap: robbed.nestSeen,
+      phase: robbed.thiefPhase,
+      restsBeforeTrying: window.__derived.thief().nextIn > 5,
+    };
+
+    // --- Walking to the nest and taking it back ----------------------
+    const beforeWalk = robbed.gems;
+    const got = run.getState().emptyNest();
+    out.emptied = {
+      got,
+      before: beforeWalk,
+      after: run.getState().gems,
+      nestNow: run.getState().nestGems,
+      twice: run.getState().emptyNest(),
+    };
+
+    // --- Nothing to steal is nothing to come for ---------------------
+    run.setState({ thiefPhase: "away", thiefNextAt: 0, gems: 0, currentRoomId: here, wardRoomId: null, wardUntil: 0 });
+    out.empty = run.getState().thiefArrives();
+
+    // --- A ward stone keeps it out too -------------------------------
+    run.setState({ thiefPhase: "away", thiefNextAt: 0, gems: 4, wardRoomId: here, wardUntil: 1e9, currentRoomId: here });
+    out.warded = run.getState().thiefArrives();
+    return out;
+  });
+
+  ok(
+    "there is no Cutpurse on the floor where the dungeon is learned",
+    thief.noThiefOnFloorOne.nest === null && thief.noThiefOnFloorOne.arrives === false,
+    JSON.stringify(thief.noThiefOnFloorOne)
+  );
+  ok(
+    "a floor deep enough for one nests it in a real room that is not the one you are in",
+    thief.nest && thief.nest.isARoom && thief.nest.notHere,
+    JSON.stringify(thief.nest)
+  );
+  ok("it comes, on its own, for a player who has stopped with gems on them", thief.came === true);
+  if (thief.came) {
+    ok("and it is really in the room: a body, not a flag", thief.mounted === true);
+    ok(
+      "touching it takes exactly one gem, off what you are carrying",
+      thief.stole.took === 1 &&
+        thief.stole.gemsAfter === thief.stole.gemsBefore - 1 &&
+        thief.stole.holding === 1 &&
+        thief.stole.phase === "fleeing",
+      JSON.stringify(thief.stole)
+    );
+    ok(
+      "catching it hands the gem straight back and sends it away",
+      thief.caught.phase === "away" &&
+        thief.caught.holding === 0 &&
+        thief.caught.nestGems === 0 &&
+        thief.caught.gems === thief.stole.gemsBefore,
+      JSON.stringify(thief.caught)
+    );
+    ok(
+      "letting it go puts the gem in its nest rather than destroying it",
+      thief.fled.intoNest === 1 && thief.fled.held === 3 && thief.fled.phase === "away",
+      JSON.stringify(thief.fled)
+    );
+    ok(
+      "and the nest goes on the map the moment it has cost you something",
+      thief.fled.nestOnMap === true && thief.fled.restsBeforeTrying === true,
+      JSON.stringify({ seen: thief.fled.nestOnMap, rests: thief.fled.restsBeforeTrying })
+    );
+    ok(
+      "walking to the nest takes back everything in it, once",
+      thief.emptied.got === true &&
+        thief.emptied.after === thief.emptied.before + 1 &&
+        thief.emptied.nestNow === 0 &&
+        thief.emptied.twice === false,
+      JSON.stringify(thief.emptied)
+    );
+  }
+  ok("it does not come for a player with nothing to take", thief.empty === false);
+  ok("a ward stone keeps the Cutpurse out as well as the Warden", thief.warded === false);
+}
+
+/**
  * The satchel's third family: things set down on the floor rather than
  * used on yourself.
  *
