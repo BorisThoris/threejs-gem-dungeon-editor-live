@@ -26,6 +26,7 @@ import {
   type Appearances,
   type ItemId,
 } from "../items/catalog";
+import { chargesFor, inverted, lifted, scaled, type Charge, type Charges } from "../items/charge";
 import { DEFAULT_DELVER, DELVERS, delverOr, knownFrom, type DelverId } from "../delvers/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
@@ -138,6 +139,15 @@ export interface RunState {
   identified: ItemId[];
   /** Which look means which item, this run. Fixed when the run starts. */
   appearances: Appearances;
+  /**
+   * Which kinds this dungeon has blessed and which it has cursed, this
+   * run. Visible on sight, unlike the appearances - see items/charge.ts
+   * for why the two hidden axes are one hidden axis.
+   *
+   * Not readonly: the shop lifts one kind a step, which is the only thing
+   * in the game that changes it.
+   */
+  charges: Charges;
   /** Timed effects, as the wall-clock second each one runs out. */
   effects: { swift: number; mire: number; gloom: number };
   /**
@@ -304,6 +314,12 @@ export interface RunState {
   placeDevice: (slot: number) => boolean;
   /** Learn what a slot holds without spending it. The shop charges for this. */
   identifySlot: (slot: number) => boolean;
+  /**
+   * Lift what is in a slot one step: cursed to plain, plain to blessed.
+   * It lifts the whole kind, because a charge is a fact about a kind in
+   * this dungeon rather than about one bottle. The shop charges for it.
+   */
+  blessSlot: (slot: number) => boolean;
   /** A snare caught something and is spent. */
   springSnare: (key: string) => void;
   /** The Cutpurse comes into the room the player is standing in. */
@@ -454,6 +470,7 @@ export const useRun = create<RunState>()(
     identified: [],
     delver: DEFAULT_DELVER,
     appearances: appearancesFor(0),
+    charges: chargesFor(0),
     effects: { swift: 0, mire: 0, gloom: 0 },
     noisyUntil: 0,
     wardenLure: null,
@@ -534,6 +551,7 @@ export const useRun = create<RunState>()(
         satchel: [...delver.satchel],
         identified: knownFrom(delver),
         appearances: appearancesFor(dungeon.seed),
+        charges: chargesFor(dungeon.seed),
         effects: { swift: 0, mire: 0, gloom: 0 },
         noisyUntil: 0,
         // Down. See world.ts: up as a default made every run open already
@@ -885,7 +903,18 @@ export const useRun = create<RunState>()(
         return;
       }
       const now = runClock(s);
-      const until = (seconds: number) => now + seconds;
+      /**
+       * What this dungeon has done to this kind of thing.
+       *
+       * Every number below reads it. Where more is better - how long a
+       * potion runs, how far a scroll throws - `scaled` does the work;
+       * where more is worse - how much a bad potion rouses the floor -
+       * the call site says so itself with `inverted`, because a helper
+       * that silently flips its own sign is one that gets used the wrong
+       * way round exactly once.
+       */
+      const charge = s.charges[id];
+      const until = (seconds: number) => now + scaled(seconds, charge);
 
       // A device is not drunk or read: it goes on the floor where the
       // player is standing, and it is still there when they come back.
@@ -903,18 +932,36 @@ export const useRun = create<RunState>()(
       switch (id) {
         case "healing":
           get().gainLife();
+          // Blessed, it is worth two - if there is room for two. Cursed,
+          // it heals and the floor hears you retching, which is the shape
+          // every cursed thing here takes: it still does its job, and it
+          // costs you something on the way.
+          if (charge === "blessed") get().gainLife();
+          if (charge === "cursed") get().raiseAlarm(1);
           break;
         case "swiftness":
           set({ effects: { ...get().effects, swift: until(SWIFTNESS_S), mire: 0 } });
           break;
         case "mire":
-          set({ effects: { ...get().effects, mire: until(MIRE_S), swift: 0 } });
+          // Cruel already, so the charge runs the other way: blessed means
+          // a shorter mire, cursed a longer one.
+          set({
+            effects: {
+              ...get().effects,
+              mire: now + inverted(MIRE_S, charge),
+              swift: 0,
+            },
+          });
           break;
         case "gloom":
-          set({ effects: { ...get().effects, gloom: until(GLOOM_S) } });
+          set({ effects: { ...get().effects, gloom: now + inverted(GLOOM_S, charge) } });
           break;
         case "mapping":
           set({ mapped: true });
+          // A cursed map is a map, and then the dark. It still did what it
+          // said on the label, which is the rule for every cursed thing
+          // here: the trap is the price, never the promise.
+          if (charge === "cursed") set({ effects: { ...get().effects, gloom: now + GLOOM_S * 0.5 } });
           break;
         case "echoes": {
           // Thrown as far as the floor goes: the room the Warden would have
@@ -934,15 +981,18 @@ export const useRun = create<RunState>()(
         case "dread":
           // It says on the label that the Warden knows where you are, so a
           // noise it was off chasing stops mattering.
-          get().giveAway(DREAD_ALARM);
+          get().giveAway(inverted(DREAD_ALARM, charge));
           break;
-        case "avarice":
-          set({
-            gems: get().gems + AVARICE_GEMS,
-            gemsTotal: get().gemsTotal + AVARICE_GEMS,
-          });
-          get().raiseAlarm(AVARICE_ALARM);
+        case "avarice": {
+          // Both halves move, in opposite directions: blessed is more gems
+          // for less noise, cursed is fewer for more. It is the one item
+          // where the charge changes what the trade is rather than how
+          // much of it there is.
+          const gems = charge === "blessed" ? AVARICE_GEMS + 1 : charge === "cursed" ? 1 : AVARICE_GEMS;
+          set({ gems: get().gems + gems, gemsTotal: get().gemsTotal + gems });
+          get().raiseAlarm(inverted(AVARICE_ALARM, charge));
           break;
+        }
         case "banish": {
           const after = get();
           if (after.dungeon && after.currentRoomId && after.wardenRoomId) {
@@ -954,7 +1004,9 @@ export const useRun = create<RunState>()(
           // is its character, not just its opening value: letting a scroll
           // take the bottom floor to "Still" made it calmer than the first
           // one, which is the opposite of what the descent claims.
-          set({ alarm: Math.max(alarmFloorFor(after), get().alarm - BANISH_CALM) });
+          set({
+            alarm: Math.max(alarmFloorFor(after), get().alarm - scaled(BANISH_CALM, charge)),
+          });
           break;
         }
       }
@@ -985,12 +1037,13 @@ export const useRun = create<RunState>()(
         ],
       });
 
+      const charge = s.charges[id];
       switch (id) {
         case "rattle":
-          get().giveAway(RATTLE_ALARM);
+          get().giveAway(inverted(RATTLE_ALARM, charge));
           break;
         case "wardstone": {
-          set({ wardRoomId: roomId, wardUntil: now + WARD_S });
+          set({ wardRoomId: roomId, wardUntil: now + scaled(WARD_S, charge) });
           // "It will not come into this room" has to be true of a Warden
           // already standing in it, or the one moment worth spending the
           // stone on is the one moment it does nothing.
@@ -1022,7 +1075,10 @@ export const useRun = create<RunState>()(
       // Through the same door the floor's own spikes use, so the wound, the
       // count towards a rout and the reeling all stay in one place - and a
       // snare cannot be a second, quietly different way of hurting it.
-      get().wardenWounded(SNARE_HOLD_S);
+      // The charge of the kind that was set, read now rather than stored
+      // on the device: the shop can lift a kind after a snare is already
+      // on the floor, and the wire in the ground is the same wire.
+      get().wardenWounded(scaled(SNARE_HOLD_S, s.charges.snare));
     },
 
     thiefArrives: () => {
@@ -1093,6 +1149,15 @@ export const useRun = create<RunState>()(
       if (s.nestGems < 1) return false;
       set({ gems: s.gems + s.nestGems, nestGems: 0 });
       bus.emit("nestEmptied", { gems: s.nestGems });
+      return true;
+    },
+
+    blessSlot: (slot) => {
+      const s = get();
+      const id = s.satchel[slot];
+      if (!id || s.charges[id] === "blessed") return false;
+      set({ charges: { ...s.charges, [id]: lifted(s.charges[id]) } });
+      bus.emit("itemBlessed", { id, charge: get().charges[id] });
       return true;
     },
 
@@ -1482,6 +1547,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     },
     lure: () => lureNow(useRun.getState()),
     items: () => ITEM_IDS.slice(),
+    charges: () => ({ ...useRun.getState().charges }),
     warden: () => {
       const s = useRun.getState();
       return {

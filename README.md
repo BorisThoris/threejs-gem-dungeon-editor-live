@@ -117,6 +117,14 @@ the number keys, which means the real question is whether now - with
 something walking towards you - is the moment to find out what you picked
 up.
 
+Every kind of thing in a dungeon is also blessed, plain or cursed, and
+unlike its name that is visible from across the room. So a chest offers "a
+cursed cloudy potion" and you get to decide whether finding out what it is
+is worth what a curse will cost - because a curse here is always a cost
+and never a lie. Cursed healing still heals; the floor just hears you do
+it. The shop will lift one kind a step for two gems, and it is the only
+thing that answers a curse.
+
 The devices are the ones you take with you. They are set down where you
 stand rather than used on yourself, and they are still there when you come
 back through: a snare that wounds the next thing to walk into it, wherever

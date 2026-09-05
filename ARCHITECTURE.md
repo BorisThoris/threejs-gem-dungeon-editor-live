@@ -382,6 +382,10 @@ src/
       generate.ts        grid walk, connected by construction, exit farthest
       layout.ts          where everything in a room is
     delvers/catalog.ts   the five ways to start, each a trade not an upgrade
+    items/
+      catalog.ts         twelve consumables in three families, and the
+                         appearance shuffle that hides which is which
+      charge.ts          blessed / plain / cursed, per kind, per run
     state/run.ts         the run: phase, lives, gems, current room, visited
     input/               keyboard (edge presses), gamepad, mouse look
     player/

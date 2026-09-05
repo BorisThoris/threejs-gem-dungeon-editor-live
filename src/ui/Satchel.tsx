@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
 import { ITEMS, nameOf } from "../game/items/catalog";
+import { CHARGE_COLOUR, chargeWord } from "../game/items/charge";
 import { satchelSlots, useRun } from "../game/state/run";
 import { FONT, colors, text } from "./overlay";
 
@@ -16,6 +17,10 @@ export function Satchel() {
   const satchel = useRun((s) => s.satchel);
   const identified = useRun((s) => s.identified);
   const appearances = useRun((s) => s.appearances);
+  // What this dungeon has done to each kind. Visible without identifying
+  // it: the look tells you the charge and only drinking one tells you the
+  // name, which is the whole shape of what a run knows.
+  const charges = useRun((s) => s.charges);
   // Four for everyone but the Courier, who traded two of them for speed.
   // Drawn from the run rather than the constant, so a two-slot satchel
   // shows two slots instead of two full ones and two that can never fill.
@@ -65,6 +70,10 @@ export function Satchel() {
                     borderRadius: 2,
                     background: look.colour,
                     marginBottom: 6,
+                    // A charged kind is ringed in its own colour, so the
+                    // row reads at a glance without being read.
+                    boxShadow:
+                      charges[id] === "plain" ? "none" : `0 0 0 1px ${CHARGE_COLOUR[charges[id]]}`,
                   }}
                 />
                 <div style={{ fontSize: text.small, lineHeight: 1.5, color: colors.ink }}>
@@ -72,6 +81,17 @@ export function Satchel() {
                     ? ITEMS[id].name.replace(/^(Potion|Scroll) of /, "")
                     : shortLook(nameOf(id, appearances, false))}
                 </div>
+                {charges[id] !== "plain" && (
+                  <div
+                    style={{
+                      fontSize: text.small,
+                      color: CHARGE_COLOUR[charges[id]],
+                      letterSpacing: "0.06em",
+                    }}
+                  >
+                    {chargeWord(charges[id])}
+                  </div>
+                )}
                 {/* What the key will actually do. A device goes on the
                     floor and stays there, which is a different decision
                     from drinking something, and a player who finds that

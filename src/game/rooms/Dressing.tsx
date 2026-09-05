@@ -15,6 +15,7 @@ import { createRng } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
+import { chargeWord } from "../items/charge";
 import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
 import { CATALOG, Prop, PropColliders } from "../props/catalog";
@@ -241,6 +242,7 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
    * cannot leave the room the game is telling them to loot.
    */
   const full = useRun((s) => s.satchel.length >= SATCHEL_SLOTS);
+  const charges = useRun((s) => s.charges);
 
   return (
     <>
@@ -250,7 +252,12 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
         if (looted.includes(key)) return null;
         const id = rollItem(seed, key, floor);
         const known = identified.includes(id);
-        const what = nameOf(id, appearances, known);
+        // "a cursed cloudy potion". The charge is on the prompt because it
+        // is the whole decision at a chest: a cursed unknown bottle is a
+        // real question, and an unknown bottle that might be cursed is the
+        // coin flip the game already had.
+        const mark = chargeWord(charges[id]);
+        const what = `${mark ? mark + " " : ""}${nameOf(id, appearances, known)}`;
         return (
           <InteractTrigger
             key={key}

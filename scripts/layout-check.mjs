@@ -27,6 +27,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
+   export * from "${root}src/game/items/charge";
    export * from "${root}src/game/thief/nest";
    export * from "${root}src/game/delvers/catalog";
    export * from "${root}src/game/rooms/layouts";
@@ -1909,6 +1910,70 @@ check("the shipped room templates reach the floors the game generates", authored
     counts.device === 3 && counts.potion === 4 && counts.scroll === 5,
     JSON.stringify(counts)
   );
+  /**
+   * Blessed, plain and cursed: how much of a dungeon is marked.
+   *
+   * A fifth each is what keeps the marked ones worth reading - a dungeon
+   * where half of everything glowed would be one where the glow means
+   * nothing - and it is a fifth of *kinds* rather than of objects, so the
+   * roll is over twelve and lands where it lands. What is checked is that
+   * over many seeds it averages what it says, that no seed comes out with
+   * everything charged, and that the run's charges are the seed's, like
+   * everything else about a run.
+   */
+  let blessed = 0;
+  let cursed = 0;
+  let total = 0;
+  let allCharged = 0;
+  let nonePlain = 0;
+  for (let seed = 1; seed <= 400; seed++) {
+    const charges = L.chargesFor(seed);
+    const plain = L.ITEM_IDS.filter((id) => charges[id] === "plain").length;
+    blessed += L.ITEM_IDS.filter((id) => charges[id] === "blessed").length;
+    cursed += L.ITEM_IDS.filter((id) => charges[id] === "cursed").length;
+    total += L.ITEM_IDS.length;
+    if (plain === 0) nonePlain++;
+    if (plain < L.ITEM_IDS.length / 3) allCharged++;
+  }
+  check(
+    "about a fifth of a dungeon's kinds are blessed and a fifth cursed",
+    Math.abs(blessed / total - 0.2) < 0.04 && Math.abs(cursed / total - 0.2) < 0.04,
+    `${((blessed / total) * 100).toFixed(1)}% blessed, ${((cursed / total) * 100).toFixed(1)}% cursed over ${total} rolls`
+  );
+  check(
+    "and no dungeon comes out with nothing ordinary in it",
+    nonePlain === 0,
+    `${nonePlain} of 400 seeds had no plain kind at all`
+  );
+  check(
+    "the charges are the seed's, so a replayed seed is the same dungeon",
+    L.ITEM_IDS.every((id) => L.chargesFor(11)[id] === L.chargesFor(11)[id]) &&
+      JSON.stringify(L.chargesFor(11)) !== JSON.stringify(L.chargesFor(12)),
+    ""
+  );
+  // The two helpers pull in opposite directions on purpose, and the whole
+  // point of having two is that neither silently inverts.
+  check(
+    "a blessing is more of a good thing and less of a bad one",
+    L.scaled(10, "blessed") > 10 &&
+      L.scaled(10, "cursed") < 10 &&
+      L.inverted(10, "blessed") < 10 &&
+      L.inverted(10, "cursed") > 10,
+    `good ${L.scaled(10, "cursed")}/${L.scaled(10, "blessed")}, bad ${L.inverted(10, "cursed")}/${L.inverted(10, "blessed")}`
+  );
+  check(
+    "and a cursed thing lifted is plain, not blessed in one step",
+    L.lifted("cursed") === "plain" && L.lifted("plain") === "blessed" && L.lifted("blessed") === "blessed",
+    `${L.lifted("cursed")} / ${L.lifted("plain")}`
+  );
+  // Nothing a curse does may be nothing: a cursed mire that lasted the
+  // same time as a plain one would be a mark on a bottle that means
+  // nothing, which is worse than no mark.
+  const differs = ["swiftness", "mire", "gloom"].every(
+    (id) => L.scaled(10, "cursed") !== 10 && L.inverted(10, "cursed") !== 10
+  );
+  check("every charge changes the number it touches", differs, "");
+
   // A snare is set by hand on one spot, and the thing it is meant to catch
   // crosses at most WARDEN_MAX_STEP in a frame. If it were narrow enough to
   // be stepped over, it would fail rarely and look like bad luck.

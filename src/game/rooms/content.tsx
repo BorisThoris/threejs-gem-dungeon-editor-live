@@ -8,11 +8,24 @@ import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
+import type { ItemId } from "../items/catalog";
+import type { Charges } from "../items/charge";
 import { canSpend, tollNow, useRun } from "../state/run";
 import { GEMS_PER_LIFE } from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
 const NAMING_PRICE = 1;
+/**
+ * What the shopkeeper charges to lift something a step: cursed to plain,
+ * plain to blessed.
+ *
+ * Two, against one for a name. A name is knowledge and this is a change to
+ * the dungeon, and it is the only thing in the game that undoes a curse -
+ * so it is the second most expensive thing on the counter and still
+ * cheaper than any relic, because what it buys is one kind of item rather
+ * than a rule of the run.
+ */
+const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
 import { libraryLectern, shopAnchors } from "./anchors";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
@@ -80,6 +93,10 @@ function Shop({ room }: RoomKindProps) {
   // The first thing in the satchel nobody has put a name to yet.
   const puzzling = satchel.findIndex((id) => !identified.includes(id));
   const canAffordName = gems >= NAMING_PRICE;
+  const charges = useRun((s) => s.charges);
+  const canBless = useRun((s) => canSpend(s, BLESSING_PRICE));
+  const canAffordBlessing = gems >= BLESSING_PRICE;
+  const liftable = worstSlot(satchel, charges);
 
   return (
     <>
@@ -133,11 +150,56 @@ function Shop({ room }: RoomKindProps) {
           if (run.spendGems(NAMING_PRICE)) run.identifySlot(slot);
         }}
       />
+      {/* Lifting a curse. A cursed kind is a real cost the player has been
+          carrying all run - every one of them they find is worse - and
+          this is the only thing that answers it. */}
+      <InteractTrigger
+        position={[counter[0] - 1.1, 0, counter[2] + 1.1]}
+        label={
+          liftable >= 0
+            ? `Have ${appearances[satchel[liftable]].unknown} blessed (${BLESSING_PRICE} gems)`
+            : "Have something blessed"
+        }
+        enabled={liftable >= 0 && canBless}
+        blockedReason={
+          liftable < 0
+            ? "Nothing you carry could be better than it is"
+            : !canAffordBlessing
+              ? `Needs ${BLESSING_PRICE} gems (${gems}/${BLESSING_PRICE})`
+              : `That would leave you short of the ${toll} the exit wants`
+        }
+        onInteract={() => {
+          const run = useRun.getState();
+          // Cursed first: it is the one a player is actually carrying a
+          // cost for, and spending two gems to make a plain thing blessed
+          // while a cursed thing sits in the next slot is not what anyone
+          // meant by pressing this.
+          const slot = worstSlot(run.satchel, run.charges);
+          if (slot < 0 || !canSpend(run, BLESSING_PRICE)) return;
+          if (run.spendGems(BLESSING_PRICE)) run.blessSlot(slot);
+        }}
+      />
       {offer.map((id, i) => (
         <RelicStand key={id} id={id} position={shelves[i]} floor={floor} />
       ))}
     </>
   );
+}
+
+/**
+ * The slot most worth lifting: the first cursed thing, or failing that the
+ * first plain one.
+ *
+ * One owner for that ordering, because the prompt and the press both have
+ * to agree about which slot the two gems are going to. They did not have
+ * to before - naming takes the first unidentified slot and there is only
+ * one way to be unidentified - and the moment there were two grades of
+ * "could be better", the button and its label could name different things.
+ */
+function worstSlot(satchel: readonly ItemId[], charges: Charges): number {
+  const cursed = satchel.findIndex((id) => charges[id] === "cursed");
+  if (cursed >= 0) return cursed;
+  return satchel.findIndex((id) => charges[id] === "plain");
 }
 
 /** One relic on a pedestal, with its price and what it does in the prompt. */

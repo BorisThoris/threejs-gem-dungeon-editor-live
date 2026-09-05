@@ -442,7 +442,30 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   // Using an item identifies it and does what it says.
   const used = await page.evaluate(async () => {
     const run = window.__run;
-    run.setState({ satchel: ["dread", "avarice", "mapping", "swiftness"], identified: [], alarm: 0, gems: 0, mapped: false });
+    /**
+     * Plain, explicitly.
+     *
+     * What these four lines are about is that using a thing spends it,
+     * identifies it and does what it says - not how much of it there is.
+     * A dungeon charges its kinds, so on a seed where Avarice happened to
+     * be blessed this read three gems and one alarm and called the
+     * economy broken. Whether a charge moves those numbers is checked
+     * where charges are checked; here they are pinned.
+     */
+    run.setState({
+      satchel: ["dread", "avarice", "mapping", "swiftness"],
+      identified: [],
+      alarm: 0,
+      gems: 0,
+      mapped: false,
+      charges: {
+        ...run.getState().charges,
+        dread: "plain",
+        avarice: "plain",
+        mapping: "plain",
+        swiftness: "plain",
+      },
+    });
     run.getState().useItem(0);
     const afterDread = { alarm: run.getState().alarm, known: run.getState().identified.includes("dread") };
     run.getState().useItem(0);
@@ -3032,7 +3055,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const run = window.__run;
       run.getState().startRun(9);
       await new Promise((r) => setTimeout(r, 1400));
-      run.setState({ satchel: ["healing", "mire", "gloom", "dread"], lives: 1, identified: [] });
+      // Plain healing, explicitly: what this checks is which slot the key
+      // reaches, and a blessed draught is worth two lives, which read as
+      // the wrong slot having been used.
+      run.setState({
+        satchel: ["healing", "mire", "gloom", "dread"],
+        lives: 1,
+        identified: [],
+        charges: { ...run.getState().charges, healing: "plain" },
+      });
     });
     await page.waitForTimeout(600);
     const before = await page.evaluate(() => {
@@ -3348,6 +3379,154 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
   }
 }
+}
+
+/**
+ * Blessed and cursed: the charge on a kind of thing.
+ *
+ * Every number a charge touches lives at a different call site - a
+ * duration here, an alarm there, a count of gems - and the one rule
+ * across them is that a curse is always a cost and never a lie: a cursed
+ * thing still does what it says, and charges you for it. Worth driving in
+ * the real game because the helpers pull in opposite directions and the
+ * call sites choose which, so a call site that chose wrong would read as
+ * a blessing that made things worse.
+ */
+{
+  const buc = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+    run.getState().startRun(41, "vagrant");
+    await sleep(1400);
+    const charges = window.__derived.charges();
+    out.roll = {
+      kinds: Object.keys(charges).length,
+      values: [...new Set(Object.values(charges))].sort(),
+      seeded: JSON.stringify(charges),
+    };
+
+    // A blessed potion runs longer than a plain one, and a cursed one
+    // barely at all. Measured on the deadline the store actually sets.
+    const swiftFor = async (charge) => {
+      run.setState({
+        charges: { ...run.getState().charges, swiftness: charge },
+        satchel: ["swiftness"],
+        identified: ["swiftness"],
+        effects: { swift: 0, mire: 0, gloom: 0 },
+      });
+      await sleep(120);
+      run.getState().useItem(0);
+      await sleep(120);
+      const s = run.getState();
+      return Math.round(s.effects.swift - (performance.now() / 1000 - s.pausedFor));
+    };
+    out.swift = {
+      cursed: await swiftFor("cursed"),
+      plain: await swiftFor("plain"),
+      blessed: await swiftFor("blessed"),
+    };
+
+    // A cursed mire is longer, not shorter: the charge runs the other way
+    // on a thing that is bad to begin with.
+    const mireFor = async (charge) => {
+      run.setState({
+        charges: { ...run.getState().charges, mire: charge },
+        satchel: ["mire"],
+        identified: ["mire"],
+        effects: { swift: 0, mire: 0, gloom: 0 },
+      });
+      await sleep(120);
+      run.getState().useItem(0);
+      await sleep(120);
+      const s = run.getState();
+      return Math.round(s.effects.mire - (performance.now() / 1000 - s.pausedFor));
+    };
+    out.mire = {
+      blessed: await mireFor("blessed"),
+      plain: await mireFor("plain"),
+      cursed: await mireFor("cursed"),
+    };
+
+    // Blessed healing is two lives; cursed healing is one life and a floor
+    // that heard you - it still did what it said, and charged for it.
+    const healFor = async (charge) => {
+      run.setState({
+        charges: { ...run.getState().charges, healing: charge },
+        satchel: ["healing"],
+        identified: ["healing"],
+        lives: 1,
+        maxLives: 4,
+        alarm: 0,
+      });
+      await sleep(100);
+      run.getState().useItem(0);
+      await sleep(150);
+      return { lives: run.getState().lives, alarm: run.getState().alarm };
+    };
+    out.heal = {
+      plain: await healFor("plain"),
+      blessed: await healFor("blessed"),
+      cursed: await healFor("cursed"),
+    };
+
+    // And the shop lifts one step, cursed first, for gems.
+    run.setState({
+      charges: { ...run.getState().charges, mapping: "cursed", echoes: "plain" },
+      satchel: ["echoes", "mapping"],
+      gems: 40,
+    });
+    await sleep(120);
+    const gemsBefore = run.getState().gems;
+    // The counter's own arbitration: the cursed thing, not the first slot.
+    run.getState().blessSlot(1);
+    await sleep(120);
+    out.blessing = {
+      mapping: run.getState().charges.mapping,
+      echoes: run.getState().charges.echoes,
+      gemsBefore,
+    };
+    run.getState().blessSlot(1);
+    await sleep(100);
+    out.blessing.twice = run.getState().charges.mapping;
+    return out;
+  });
+
+  ok(
+    "a run charges its kinds, and they are the seed's",
+    buc.roll.kinds === 12 && buc.roll.values.length >= 2,
+    JSON.stringify({ kinds: buc.roll.kinds, values: buc.roll.values })
+  );
+  ok(
+    "a blessed potion runs longer than a plain one and a cursed one shorter",
+    buc.swift.blessed > buc.swift.plain && buc.swift.plain > buc.swift.cursed,
+    JSON.stringify(buc.swift)
+  );
+  ok(
+    "and on a cruel potion the charge runs the other way: a cursed mire is longer",
+    buc.mire.cursed > buc.mire.plain && buc.mire.plain > buc.mire.blessed,
+    JSON.stringify(buc.mire)
+  );
+  ok(
+    "blessed healing is two lives, plain is one",
+    buc.heal.blessed.lives === 3 && buc.heal.plain.lives === 2,
+    JSON.stringify({ blessed: buc.heal.blessed, plain: buc.heal.plain })
+  );
+  ok(
+    "and cursed healing still heals: a curse is a cost, never a lie",
+    buc.heal.cursed.lives === 2 && buc.heal.cursed.alarm > buc.heal.plain.alarm,
+    JSON.stringify({ cursed: buc.heal.cursed, plain: buc.heal.plain })
+  );
+  ok(
+    "the shop lifts a cursed kind one step, to plain and not to blessed",
+    buc.blessing.mapping === "plain" && buc.blessing.echoes === "plain",
+    JSON.stringify(buc.blessing)
+  );
+  ok(
+    "and lifting it again blesses it",
+    buc.blessing.twice === "blessed",
+    String(buc.blessing.twice)
+  );
 }
 
 /**

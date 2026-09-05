@@ -136,6 +136,25 @@ cruel one: it goes down loudly, and the floor knows where you are. All
 three stay in the room after you leave it, which is the rule the game
 teaches with a line the first time one is set.
 
+**Blessed and cursed.** Every kind of item in a dungeon is blessed, plain
+or cursed - a fifth, three fifths, a fifth - fixed by the run's seed and
+*visible on sight*. That is two departures from where the idea comes from,
+and both are the same departure: the run already hides which look means
+which item, and a second hidden axis rolled per object would be knowledge
+you could never accumulate. Here the look tells you the charge and only
+drinking one tells you the name, so a chest offers "a cursed cloudy
+potion" and the question is whether finding out what it is, for free, is
+worth what a curse will cost.
+
+A curse is always a cost and never a lie: cursed healing still heals, and
+the floor hears you doing it. Cursed mapping still maps, and then the dark.
+The two helpers pull opposite ways on purpose - blessed is more of a good
+thing (swiftness 27s against 18) and less of a bad one (mire 6s against
+12) - and each call site says which it wants, because a helper that
+silently inverts is one that gets used the wrong way round exactly once.
+The shop lifts one kind a step for two gems, cursed first: it is the only
+thing in the game that answers a curse.
+
 **Identification pays now.** About twenty-two chests over a run against
 twelve kinds of item means duplicates are common, so learning that the inky
 bottle is healing is knowledge you will get to use. Earlier this was not
@@ -166,6 +185,7 @@ switched off. The floors have no slack to spend; the alarm does.
 | Exit, floor 1 / 2 / 3 | 3 / 5 / 7 gems | The way down, and the way out |
 | A life | 1 gem | One more mistake |
 | A name for an item | 1 gem | Knowing without spending it |
+| A blessing | 2 gems | One kind lifted a step: cursed to plain, plain to blessed |
 | A chest | free | One potion, scroll or device, contents unknown |
 | A vault | one iron key, found on the floor | A room with three chests and a gem |
 | Warden's Lantern | 2 gems | Always knowing which room it is in |
