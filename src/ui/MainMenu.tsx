@@ -96,6 +96,12 @@ export function MainMenu() {
                 here sees you; down, you have a hand's worth of glow and nothing knows
                 where you are. It only burns oil while it is up, and braziers fill it.
               </dd>
+              <dt style={{ color: colors.accent }}>Bar a door</dt>
+              <dd style={{ margin: 0 }}>
+                B at a doorway, or d-pad down. It goes off the Warden's map for
+                forty-five seconds and it walks round - and hammering it up is the
+                loudest thing you can do down here.
+              </dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>

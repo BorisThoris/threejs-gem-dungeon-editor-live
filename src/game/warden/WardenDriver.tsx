@@ -2,7 +2,16 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { canControl, lureNow, useRun, wardNow, wardenSenses, wardenStaggered } from "../state/run";
+import {
+  barsNow,
+  canControl,
+  lureNow,
+  useRun,
+  wardNow,
+  wardenSenses,
+  wardenStaggered,
+} from "../state/run";
+import { barToBreak } from "./bars";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
 
@@ -47,13 +56,30 @@ export function WardenDriver() {
     // leaves, which is the whole point of throwing one.
     if (!lure && run.wardenRoomId === run.currentRoomId) return;
 
+    const bars = barsNow(run);
+    /**
+     * A bar it cannot get round, it breaks.
+     *
+     * Never a wall it can never cross: a player who could shut it out of
+     * half the floor would have somewhere to wait, and there being nowhere
+     * to wait is the whole of what this thing is for. Breaking costs it
+     * this step and is heard everywhere, so the bar never simply stops
+     * working without the player being told.
+     */
+    const wall = barToBreak(run.dungeon, run.wardenRoomId, lure ?? run.currentRoomId, bars);
+    if (wall) {
+      run.breakBar();
+      return;
+    }
+
     const to = nextRoom(
       run.dungeon,
       run.wardenRoomId,
       lure ?? run.currentRoomId,
       lure ? true : behaviour.hunts,
       run.wardenCameFrom,
-      Math.random()
+      Math.random(),
+      bars
     );
     if (!to) return;
     /**

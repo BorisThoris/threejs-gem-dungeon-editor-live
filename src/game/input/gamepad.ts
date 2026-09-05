@@ -48,6 +48,17 @@ export interface GamepadState {
   /** R3 / right stick click: raise or lower the lantern. Rising edge. */
   lanternPressed: boolean;
   /**
+   * D-pad down: bar the nearest doorway. Rising edge.
+   *
+   * The d-pad is the menus' and is idle while a run is being played, which
+   * is what makes it available - every face button, both shoulders, Start
+   * and both stick clicks are spoken for. `usePadMenu` is only mounted
+   * while a menu is on screen and the store refuses the action whenever
+   * the player is not in control, so the two readers can never both act on
+   * one press.
+   */
+  barPressed: boolean;
+  /**
    * One step of the d-pad or the left stick, for menus. Rising edge, and
    * repeating while held so a list can be scrolled without letting go.
    */
@@ -105,6 +116,7 @@ const state: GamepadState = {
   slotPressed: BUTTON_SLOTS.map(() => false),
   backPressed: false,
   lanternPressed: false,
+  barPressed: false,
   menuX: 0,
   menuY: 0,
 };
@@ -117,6 +129,7 @@ function clear(): void {
     state.pausePressed =
     state.backPressed =
     state.lanternPressed =
+    state.barPressed =
       false;
   state.slotPressed.fill(false);
   state.menuX = state.menuY = 0;
@@ -171,6 +184,7 @@ function poll(now: number): void {
   state.interactPressed = risingEdge(pad, BUTTON_INTERACT);
   state.backPressed = risingEdge(pad, BUTTON_BACK);
   state.lanternPressed = risingEdge(pad, BUTTON_LANTERN);
+  state.barPressed = risingEdge(pad, DPAD.down);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 

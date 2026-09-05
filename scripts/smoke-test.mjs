@@ -3351,6 +3351,158 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * Barring a doorway: the one thing the player does to the dungeon itself.
+ *
+ * Everything else in the run is done to their own state. This changes the
+ * floor's shape for the Warden, which means four things have to agree that
+ * were not written together: the store's edge key, the Warden's pathing,
+ * the door that draws the planks, and the travel that lifts them. What is
+ * checked here is the whole life of one bar.
+ */
+{
+  const bar = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+    run.getState().startRun(19, "vagrant");
+    await sleep(1600);
+    const s0 = run.getState();
+    const here = s0.dungeon.rooms.find((r) => r.id === s0.currentRoomId);
+    const dir = Object.keys(here.links).find((d) => here.links[d]);
+    const neighbour = here.links[dir];
+
+    // Put one up. It is loud, and it replaces nothing because there is
+    // nothing to replace.
+    run.setState({ noisyUntil: 0 });
+    const quiet = window.__derived.hears();
+    const put = run.getState().barDoor(neighbour);
+    await sleep(250);
+    const s1 = run.getState();
+    out.put = {
+      put,
+      key: s1.barredDoor,
+      symmetric: s1.barredDoor === window.__bars.barKey(neighbour, here.id),
+      quietBefore: quiet,
+      loudAfter: window.__derived.hears(),
+      seconds: Math.round(s1.barUntil - s1.startedAt) > 0,
+    };
+
+    // The Warden will not step through it. Stand it in the room on the far
+    // side, hunting, and ask its own next step where it would go.
+    run.setState({ wardenRoomId: neighbour, wardenCameFrom: null, alarm: 6 });
+    const steps = [];
+    for (let i = 0; i < 60; i++) {
+      steps.push(window.__roam.nextRoom(s1.dungeon, neighbour, here.id, true, null, i / 60, window.__derived.bars()));
+    }
+    out.pathing = {
+      throughTheBar: steps.filter((x) => x === here.id).length,
+      total: steps.length,
+    };
+
+    // Only one at a time: barring a second doorway moves the bar.
+    const other = Object.keys(here.links).map((d) => here.links[d]).filter((x) => x && x !== neighbour)[0];
+    if (other) {
+      run.getState().barDoor(other);
+      await sleep(150);
+      out.onlyOne = {
+        key: run.getState().barredDoor,
+        moved: run.getState().barredDoor === window.__bars.barKey(here.id, other),
+      };
+      run.getState().barDoor(neighbour);
+      await sleep(150);
+    }
+
+    // Walking out through your own bar lifts it: it buys the room you are
+    // leaving, not a corridor to pace.
+    let lifted = null;
+    const off = window.__bus.on("barBroken", (e) => (lifted = e));
+    run.getState().travel(dir);
+    await sleep(1800);
+    off();
+    out.lifted = {
+      event: lifted,
+      barNow: run.getState().barredDoor,
+      room: run.getState().currentRoomId === neighbour,
+    };
+
+    // And when it has no way round, it breaks through rather than waiting
+    // for ever. Driven on the data, because whether this floor happens to
+    // have a corridor is the generator's business.
+    const d = run.getState().dungeon;
+    let deadEnd = null;
+    for (const room of d.rooms) {
+      for (const to of Object.values(room.links)) {
+        if (!to) continue;
+        const set = new Set([window.__bars.barKey(room.id, to)]);
+        if (!window.__bars.pathAround(d.rooms, to, room.id, set)) {
+          deadEnd = { room: room.id, to, key: [...set][0] };
+          break;
+        }
+      }
+      if (deadEnd) break;
+    }
+    out.breaks = null;
+    if (deadEnd) {
+      run.setState({
+        currentRoomId: deadEnd.room,
+        barredDoor: deadEnd.key,
+        barUntil: 1e9,
+        wardenRoomId: deadEnd.to,
+        wardenCameFrom: null,
+        alarm: 6,
+        noisyUntil: 1e9,
+        transitioning: false,
+      });
+      let broke = null;
+      const offBreak = window.__bus.on("barBroken", (e) => (broke = e));
+      for (let i = 0; i < 80 && !broke; i++) await sleep(200);
+      offBreak();
+      out.breaks = {
+        broke: !!broke,
+        byWarden: broke ? broke.byWarden : null,
+        barNow: run.getState().barredDoor,
+      };
+    }
+    return out;
+  });
+
+  ok(
+    "a doorway can be barred, and the bar is the same doorway from either side",
+    bar.put.put === true && bar.put.key && bar.put.symmetric,
+    JSON.stringify(bar.put)
+  );
+  ok(
+    "putting one up is loud: it tells the floor exactly where you were",
+    bar.put.quietBefore === false && bar.put.loudAfter === true,
+    JSON.stringify({ before: bar.put.quietBefore, after: bar.put.loudAfter })
+  );
+  ok(
+    "the Warden's own next step never crosses it, over sixty tries",
+    bar.pathing.throughTheBar === 0,
+    JSON.stringify(bar.pathing)
+  );
+  if (bar.onlyOne) {
+    ok(
+      "barring a second doorway moves the bar rather than adding one",
+      bar.onlyOne.moved === true,
+      JSON.stringify(bar.onlyOne)
+    );
+  }
+  ok(
+    "walking out through your own bar lifts it, so it is not a corridor to pace",
+    bar.lifted.event && bar.lifted.event.byWarden === false && bar.lifted.barNow === null && bar.lifted.room,
+    JSON.stringify(bar.lifted)
+  );
+  if (bar.breaks) {
+    ok(
+      "and with no way round it comes through rather than waiting for ever",
+      bar.breaks.broke === true && bar.breaks.byWarden === true && bar.breaks.barNow === null,
+      JSON.stringify(bar.breaks)
+    );
+  }
+}
+
+/**
  * The lantern, and the second bargain.
  *
  * Seeing or unseen, asked once a room, and it is worth checking in the

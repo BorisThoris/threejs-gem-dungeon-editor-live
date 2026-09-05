@@ -1,6 +1,7 @@
 import { doorPosition } from "../dungeon/layout";
 import { roomById, type Dir, type Room } from "../dungeon/types";
-import { tollNow, useRun } from "../state/run";
+import { barredNow, tollNow, useRun } from "../state/run";
+import { barKey } from "../warden/bars";
 import { DOOR_HEIGHT, DOOR_WIDTH, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
 
@@ -53,6 +54,12 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const keys = useRun((s) => s.keys);
   const unlocked = useRun((s) => (toId ? s.unlocked.includes(toId) : false));
   const dungeon = useRun((s) => s.dungeon);
+  // Whether this is the barred doorway, and whether a bar could be put on
+  // it. Both come off the store rather than being worked out here, so the
+  // planks the player sees and the edge the Warden avoids cannot disagree.
+  const barred = useRun((s) =>
+    toId && s.currentRoomId ? barredNow(s) === barKey(s.currentRoomId, toId) : false
+  );
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
@@ -77,12 +84,35 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
         <DoorFrame color={color} />
         <pointLight position={[0, DOOR_HEIGHT - 0.6, 0]} color={color} intensity={7} distance={8} decay={1.8} />
       </group>
+      {/* The planks, if this is the one. Drawn across the gap and low, so
+          a player can see at a glance which doorway they shut and from
+          which side - it is the only thing in the game they have changed
+          about the dungeon itself. */}
+      {barred && (
+        <group position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
+          {[0.7, 1.5, 2.3].map((y) => (
+            <mesh key={y} position={[0, y, 0]} rotation={[0, 0, (y - 1.5) * 0.05]} castShadow>
+              <boxGeometry args={[DOOR_WIDTH + 0.5, 0.22, 0.16]} />
+              <meshStandardMaterial color="#6b4a2c" roughness={0.95} />
+            </mesh>
+          ))}
+        </group>
+      )}
       <InteractTrigger
         position={position}
         label={
           locked
             ? `Unlock the vault (1 iron key)`
-            : `Open ${KIND_LABEL[target.kind] ?? "the door"}`
+            : barred
+              ? `Lift your bar and open ${KIND_LABEL[target.kind] ?? "the door"}`
+              : // The bar's key is said on the prompt the player is already
+                // reading. It is the only verb in the game that is not E,
+                // and a control nobody is told about is a control nobody
+                // uses - but only where it can be used, so an exit and a
+                // locked vault do not carry a hint about a thing they will
+                // refuse.
+                `Open ${KIND_LABEL[target.kind] ?? "the door"}` +
+                (isExit || locked ? "" : "   ·   B bars it")
         }
         enabled={enabled}
         blockedReason={

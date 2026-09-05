@@ -4,6 +4,7 @@ import { CircleGeometry, PlaneGeometry } from "three";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
+import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
 import { IronKey } from "../props/IronKey";
@@ -175,6 +176,7 @@ export function Room({ room, seed }: RoomProps) {
       {DIRS.map((dir) =>
         room.links[dir] ? <DoorTrigger key={dir} room={room} dir={dir} /> : null
       )}
+      <Barring room={room} />
 
       {gem && <Gem roomId={room.id} position={gem} />}
       {sentry && <Sentry position={sentry.at} phase={sentry.phase} />}

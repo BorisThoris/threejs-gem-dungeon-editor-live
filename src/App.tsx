@@ -126,6 +126,11 @@ export default function App() {
     // rather than stored in it, so a check that wants to set up a theft
     // has no way to ask the store which room to expect.
     void import("./game/thief/nest").then((m) => (w.__nestRoom = m.nestRoom));
+    // The bars: the edge key and the pathing round one. A check that kept
+    // its own copy of "which doorway is this" would be a second owner of
+    // the one fact the whole feature turns on.
+    void import("./game/warden/bars").then((m) => (w.__bars = m));
+    void import("./game/warden/roam").then((m) => (w.__roam = m));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.

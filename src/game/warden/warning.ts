@@ -26,6 +26,8 @@ const THIEF = "Something small is in here with you, and it wants what you are ca
 const ROBBED = "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere.";
 const DRY = "The lantern is out. Fill it at a brazier - though a brazier is the brightest place to stand.";
 const LIGHT = "Your lantern is up, and it is the brightest thing on this floor. F puts it down.";
+const BARRED = "That doorway is shut to it. It will walk round - and everything down here heard you shut it.";
+const SMASHED = "It came through the bar. There was no way round, and now it knows exactly where you are.";
 
 export function useWardenWarning() {
   useEffect(() => {
@@ -39,6 +41,7 @@ export function useWardenWarning() {
       thief: false,
       robbed: false,
       light: false,
+      barred: false,
     };
     /**
      * These go in the notice slot, which they own and nothing else writes.
@@ -97,6 +100,16 @@ export function useWardenWarning() {
       // Not a one-off: running out is a thing to be told about every time
       // it happens, because the answer to it is somewhere else in the room.
       bus.on("lanternOut", () => say(DRY)),
+      bus.on("doorBarred", () => {
+        if (told.barred) return;
+        told.barred = true;
+        say(BARRED);
+      }),
+      // Every time: a bar going is a rule changing back, and the player is
+      // usually looking the other way when it happens.
+      bus.on("barBroken", ({ byWarden }) => {
+        if (byWarden) say(SMASHED);
+      }),
       // The lantern starts down, so the first time it goes up is the first
       // time the player has chosen to be seen - which is worth saying once,
       // because the cost of it is paid somewhere they are not looking.
@@ -129,6 +142,7 @@ export function useWardenWarning() {
           thief: false,
           robbed: false,
           light: false,
+          barred: false,
         };
         say(floorRules(1).blurb);
       }),

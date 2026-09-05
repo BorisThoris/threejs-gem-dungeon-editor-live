@@ -79,6 +79,9 @@ export function Audio() {
       bus.on("lanternToggled", ({ raised }) => sfx.lantern(raised)),
       bus.on("lanternOut", () => sfx.lanternOut()),
       bus.on("lanternFilled", () => sfx.lanternFilled()),
+      bus.on("doorBarred", () => sfx.barDoor()),
+      // Two very different events with one piece of state behind them.
+      bus.on("barBroken", ({ byWarden }) => (byWarden ? sfx.barBreak() : sfx.barLift())),
       bus.on("wardenLured", () => sfx.clatter()),
     ];
     return () => offs.forEach((off) => off());

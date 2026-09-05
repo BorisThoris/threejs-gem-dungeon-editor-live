@@ -28,6 +28,14 @@ across the floor. It learns, though - after that it walks round anything
 that has bitten it - so the room is worth exactly twice, and then it is a
 trap room again.
 
+There is one thing you can do to the dungeon rather than to yourself.
+Press B at a doorway and you bar it, and for the next forty-five seconds
+that doorway is not on the Warden's map: it walks round. Hammering a plank
+across a door is also the loudest thing you can do in a place whose only
+threat hunts by sound, so a bar buys distance and spends surprise. One at
+a time, walking back through your own bar lifts it, and if there is no way
+round at all it comes through the bar instead - which you will hear.
+
 You carry a lantern. It starts down, and whether you raise it is the other
 question the game asks all the time. Raised, you can see the room - and you are the brightest
 thing on a dark floor: the Warden walks straight for you, and a watcher
@@ -146,6 +154,7 @@ between here and a Steam demo.
 | `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
 | `1` to `4`, or X and Y on a pad | Drink, read, or set down that satchel slot |
 | `F`, or R3 | Raise or lower the lantern. Seeing, or unseen. |
+| `B`, or d-pad down | Bar the doorway you are standing at. Loud. |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
 | D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |

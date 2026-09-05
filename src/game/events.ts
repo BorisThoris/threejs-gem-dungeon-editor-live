@@ -46,6 +46,14 @@ export interface BusEvents {
   lanternOut: undefined;
   /** Filled from a brazier. */
   lanternFilled: undefined;
+  /** A doorway was barred, from the room the player is standing in. */
+  doorBarred: { roomId: string; toRoomId: string };
+  /**
+   * A bar is gone. `byWarden` is the difference between the two ways that
+   * happens - it came through, or the player lifted it walking out - and
+   * they want opposite sounds and opposite reactions.
+   */
+  barBroken: { byWarden: boolean };
   /** A thrown sound has sent it somewhere that is not where the player is. */
   wardenLured: { roomId: string };
   /** The Bone Charm ate a hit. */

@@ -56,6 +56,20 @@ near a whole run, and it is filled from braziers - which are the brightest
 thing in any room and therefore the worst place to stand, so even the
 refill is the same trade. The oil goes down the stairs with you.
 
+**And one thing you can do to the dungeon itself.** Press B at a doorway
+and you bar it: that doorway leaves the Warden's map for forty-five
+seconds and it has to walk round. It is the loudest act in the game -
+eight seconds of being placed, against a sprint's four - so a bar buys
+distance and spends surprise, which is the same trade as everything else
+here in a shape that changes the floor rather than the player.
+
+One at a time, because two would let a player wall themselves into a
+corner and wait, and there being nowhere to wait is what the Warden is
+for. Walking out through your own bar lifts it, so it buys the room you
+are leaving and not a corridor to pace. And when there is no way round -
+8,236 of 14,480 doorways over 600 generated floors - it breaks through,
+losing a step and telling the whole floor it did.
+
 **The other bargain.** A dash is 8 units a second against a walk of 5 and
 used to cost nothing, so the whole game was played holding shift. It is loud
 now: while the player runs, and for four seconds after, the Warden walks
@@ -2218,7 +2232,9 @@ All in `src/game/world.ts`:
 | `LANTERN_RANGE_UP` / `_DOWN` | 15 / 5 | How far it reaches, up and down |
 | `LANTERN_INTENSITY_UP` / `_DOWN` | 24 / 4 | Candela, up and down |
 | `LANTERN_SEEN_FACTOR` | 0.5 | What a raised lantern does to a watcher's patience |
-| `LANTERN_FILL_REACH` | 2.4 | How close to a brazier you fill from |
+| `LANTERN_FILL_REACH` | 1.5 | How close to a brazier you fill from |
+| `BAR_S` | 45 | How long a barred doorway holds |
+| `BAR_NOISE_S` | 8 | How long hammering one up keeps you placed |
 | `RATTLE_ALARM` | 2 | What dropping a knot of iron costs |
 
 Everything that changes with depth is one table, `floorRules(floor)` in the

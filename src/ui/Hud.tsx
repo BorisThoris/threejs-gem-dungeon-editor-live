@@ -8,7 +8,9 @@ import {
   tollNow,
   useCurrentRoom,
   useRun,
+  barredNow,
   lanternLit,
+  runClock,
   wardNow,
   wardenSeesLight,
   wardenSenses,
@@ -44,7 +46,7 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
-  const { heard, seen, lit, oil, lured, reeling, warded } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
@@ -125,6 +127,13 @@ export function Hud() {
         <span style={{ color: oil <= 20 ? colors.danger : colors.ink }}>{oil}s</span>
         <span style={{ color: colors.dim }}> oil</span>
       </div>
+      {barSeconds > 0 && (
+        <div>
+          <span style={{ color: colors.dim }}>BARRED </span>
+          <span style={{ color: colors.gold }}>a doorway</span>
+          <span style={{ color: colors.dim }}> · {barSeconds}s</span>
+        </div>
+      )}
       {/* Only once it has cost you something. A line about a thief nobody
           has met yet is a spoiler and a distraction. */}
       {nestGems > 0 && (
@@ -161,6 +170,7 @@ function useWardenSense(): {
   lured: boolean;
   reeling: boolean;
   warded: boolean;
+  barSeconds: number;
 } {
   const read = () => {
     const s = useRun.getState();
@@ -173,6 +183,9 @@ function useWardenSense(): {
       lured,
       reeling: wardenStaggered(s),
       warded: wardNow(s) !== null && wardNow(s) === s.currentRoomId,
+      // Whole seconds: a bar is forty-five of them and the number is only
+      // there to say "soon" or "not yet".
+      barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
     };
   };
   const [sense, setSense] = useState(read);
@@ -186,7 +199,8 @@ function useWardenSense(): {
           was.oil === now.oil &&
           was.lured === now.lured &&
           was.reeling === now.reeling &&
-          was.warded === now.warded
+          was.warded === now.warded &&
+          was.barSeconds === now.barSeconds
           ? was
           : now;
       }),

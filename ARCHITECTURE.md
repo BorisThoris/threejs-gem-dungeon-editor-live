@@ -389,7 +389,8 @@ src/
       where.ts           where it is standing, for the things outside the
                          frame loop that need it (setting a device down)
       Lantern.tsx        the light they carry, and the oil it burns
-    interact/            InteractTrigger (E on anything), DoorTrigger
+    interact/            InteractTrigger (E on anything), DoorTrigger,
+                         Barring (B at the nearest doorway)
     rooms/
       Room.tsx           the shell: floor, walls with doorways, ceiling, light
       Walls.tsx          four walls, a doorway cut per link
@@ -412,6 +413,7 @@ src/
       WardenDriver.tsx   its walk through the rooms nobody is standing in
       roam.ts            which room next: hunt, wander, wake, be thrown back
       steer.ts           walking round what has already bitten it
+      bars.ts            barred doorways as edges, and the floor without them
       tuning.ts          alarm -> speed, step, hunts; and what the HUD calls it
     puzzles/             memory trial, number tome, plate trap, Carryable
     textures/registry.ts surfaces by id: procedural defaults, overridable

@@ -1,5 +1,6 @@
 import { bfsDepth, shortestPath } from "../dungeon/generate";
 import { roomById, type Dungeon } from "../dungeon/types";
+import { barKey, pathAround } from "./bars";
 
 /**
  * Which room the Warden is in, and which it walks to next.
@@ -45,18 +46,31 @@ export function nextRoom(
   playerRoomId: string,
   hunts: boolean,
   cameFrom: string | null,
-  random: number
+  random: number,
+  /**
+   * Doorways the player has barred. It walks round them; when there is no
+   * way round it breaks through, which is the driver's business and not
+   * this function's - here a barred doorway is simply not a way out.
+   */
+  bars: ReadonlySet<string> = EMPTY
 ): string | null {
   const room = roomById(dungeon, fromId);
   if (!room) return null;
-  const exits = Object.values(room.links).filter((id): id is string => Boolean(id));
+  const all = Object.values(room.links).filter((id): id is string => Boolean(id));
+  const exits = all.filter((id) => !bars.has(barKey(fromId, id)));
   if (exits.length === 0) return null;
 
   if (hunts) {
-    const path = shortestPath(dungeon.rooms, fromId, playerRoomId);
+    // The long way round, if the short one is barred. `shortestPath` when
+    // nothing is barred, so the ordinary case allocates nothing extra.
+    const path = bars.size
+      ? pathAround(dungeon.rooms, fromId, playerRoomId, bars)
+      : shortestPath(dungeon.rooms, fromId, playerRoomId);
     if (path && path.length > 1) return path[1];
   }
   const onward = exits.filter((id) => id !== cameFrom);
   const choices = onward.length ? onward : exits;
   return choices[Math.floor(random * choices.length) % choices.length];
 }
+
+const EMPTY: ReadonlySet<string> = new Set();

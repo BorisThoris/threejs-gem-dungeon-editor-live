@@ -534,6 +534,28 @@ export const sfx = {
     later(80, () => noiseBurst(0.2, 0.24, 3200, pan));
     later(170, () => tone(820, 0.22, "triangle", 0.2, 1180, pan));
   },
+  /** Hammering: three heavy strikes on wood, loud and slow. */
+  barDoor() {
+    const hit = (at: number) =>
+      later(at, () => {
+        tone(150, 0.14, "square", 0.32, 70);
+        noiseBurst(0.16, 0.3, 900);
+      });
+    hit(0);
+    hit(220);
+    hit(470);
+  },
+  /** It comes through: splintering, and then it is in the doorway. */
+  barBreak() {
+    noiseBurst(0.3, 0.4, 2200);
+    later(90, () => tone(110, 0.5, "sawtooth", 0.36, 55));
+    later(260, () => noiseBurst(0.35, 0.3, 700));
+  },
+  /** The player lifts their own: wood on stone, and nothing else. */
+  barLift() {
+    tone(220, 0.1, "triangle", 0.16, 150);
+    later(80, () => noiseBurst(0.14, 0.14, 1200));
+  },
   /** A shutter opening or closing on a lamp: metal, short, two-part. */
   lantern(up: boolean) {
     tone(up ? 420 : 300, 0.06, "square", 0.14, up ? 620 : 210);

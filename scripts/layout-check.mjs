@@ -44,6 +44,8 @@ writeFileSync(
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
+   export * from "${root}src/game/warden/bars";
+   export * from "${root}src/game/warden/roam";
    export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/world";`
 );
@@ -1621,6 +1623,104 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- Barring a doorway ------------------------------------------------------
+//
+// The one thing a player can do to the dungeon itself, and the one that
+// could break it. A bar the Warden cannot get round is a hiding place, and
+// the whole of what the Warden is for is that there is nowhere to wait -
+// so what is checked is not that bars work, it is that they always run
+// out of ways to work.
+{
+  let cutOff = 0;
+  let neverRound = 0;
+  let bars = 0;
+  let roundTrips = 0;
+  let longer = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    for (const depth of [1, 2, 3]) {
+      const rules = L.floorRules(depth);
+      const d = L.generateDungeon({ seed: seed * 17 + depth, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const room of d.rooms) {
+        for (const to of Object.values(room.links)) {
+          if (!to) continue;
+          const key = L.barKey(room.id, to);
+          const set = new Set([key]);
+          bars++;
+          /**
+           * With this one doorway shut, can the Warden still get to the
+           * player from the far side of the floor?
+           *
+           * Either by walking round - which is the good case and is what
+           * makes a bar worth putting up - or, when there is no way round,
+           * by having a doorway to break. The one thing that must never
+           * happen is neither: a room it can look at and never enter.
+           */
+          const round = L.pathAround(d.rooms, to, room.id, set);
+          if (round) {
+            roundTrips++;
+            const direct = L.shortestPath(d.rooms, to, room.id);
+            // Going round is only worth doing if it is further.
+            if (direct && round.length > direct.length) longer++;
+            continue;
+          }
+          neverRound++;
+          const breakable = L.barToBreak(d, to, room.id, set);
+          if (!breakable) cutOff++;
+        }
+      }
+    }
+  }
+  check(
+    "a barred doorway never cuts the Warden off from anywhere",
+    cutOff === 0,
+    `${cutOff} of ${bars} doorways left it with no way round and nothing to break`
+  );
+  check(
+    "when there is a way round it takes it, and the way round is longer",
+    roundTrips > 0 && longer === roundTrips,
+    `${longer} of ${roundTrips} detours were longer than the door`
+  );
+  check(
+    "and the doorways with no way round are a real share of them, so bars can be broken",
+    neverRound > 0,
+    `${neverRound} of ${bars} doorways have no way round`
+  );
+  // The edge key is symmetric, or a doorway could be barred from one side
+  // and open from the other.
+  check(
+    "a doorway barred from either side is the same doorway",
+    L.barKey("room_2", "room_9") === L.barKey("room_9", "room_2"),
+    L.barKey("room_9", "room_2")
+  );
+  // And the Warden's walk actually honours it.
+  {
+    const d = L.generateDungeon({ seed: 7, minRooms: 10, maxRooms: 13 });
+    const from = d.rooms.find((r) => Object.values(r.links).filter(Boolean).length > 1);
+    const shut = Object.values(from.links).find(Boolean);
+    const set = new Set([L.barKey(from.id, shut)]);
+    let wentThrough = 0;
+    for (let i = 0; i < 200; i++) {
+      const to = L.nextRoom(d, from.id, shut, true, null, i / 200, set);
+      if (to === shut) wentThrough++;
+    }
+    check(
+      "the Warden's own next step never crosses a bar",
+      wentThrough === 0,
+      `${wentThrough} of 200 steps went through it`
+    );
+  }
+  check(
+    "a bar outlasts several of its steps but not a floor",
+    L.BAR_S > L.WARDEN_STEP_CALM_S * 3 && L.BAR_S < 90,
+    `${L.BAR_S}s against steps of ${L.WARDEN_STEP_ROUSED_S}-${L.WARDEN_STEP_CALM_S}s`
+  );
+  check(
+    "and putting one up is the loudest thing in the game",
+    L.BAR_NOISE_S > L.NOISE_HOLD_S && L.BAR_NOISE_S > L.LANTERN_SEEN_HOLD_S,
+    `${L.BAR_NOISE_S}s against a sprint's ${L.NOISE_HOLD_S}s and a light's ${L.LANTERN_SEEN_HOLD_S}s`
   );
 }
 

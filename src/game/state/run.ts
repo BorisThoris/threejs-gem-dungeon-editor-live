@@ -32,6 +32,7 @@ import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
 import { nestRoom } from "../thief/nest";
+import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -42,6 +43,8 @@ import {
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   CUTPURSE_FROM_FLOOR,
+  BAR_NOISE_S,
+  BAR_S,
   LANTERN_FULL_S,
   LANTERN_SEEN_HOLD_S,
   CUTPURSE_GRACE_ROOMS,
@@ -202,6 +205,17 @@ export interface RunState {
   nestGems: number;
   nestRoomId: string | null;
   nestSeen: boolean;
+  /**
+   * The doorway the player has barred, and when it gives way on its own.
+   *
+   * One at a time: two would let a player wall themselves into a corner
+   * and wait, which is a hiding place rather than a decision, and the
+   * Warden's whole job is that there is nowhere to wait. Held as an edge
+   * key (`warden/bars.ts`) rather than a room and a direction, because
+   * barring a doorway from either side is the same act.
+   */
+  barredDoor: string | null;
+  barUntil: number;
   /** A room whose doors are barred while something in it is happening. */
   sealedRoomId: string | null;
   /** Iron keys in hand. One opens one vault. */
@@ -320,6 +334,17 @@ export interface RunState {
   /** Raise or lower the lantern. Raising with no oil left does nothing. */
   toggleLantern: () => void;
   /**
+   * Bar the doorway between the room the player is in and `toRoomId`. Loud,
+   * and it replaces whatever was barred before. False when it cannot.
+   */
+  barDoor: (toRoomId: string) => boolean;
+  /**
+   * The bar is gone: the Warden came through it, or the player lifted it
+   * walking out. Two very different events with one piece of state, so the
+   * event says which.
+   */
+  breakBar: (byWarden?: boolean) => void;
+  /**
    * Burn `seconds` of oil and keep the light seen.
    *
    * Called from the frame loop, so it must not write on every frame: every
@@ -436,6 +461,8 @@ export const useRun = create<RunState>()(
     lanternRaised: false,
     oil: LANTERN_FULL_S,
     litUntil: 0,
+    barredDoor: null,
+    barUntil: 0,
     mapped: false,
     looted: [],
     placed: [],
@@ -514,6 +541,8 @@ export const useRun = create<RunState>()(
         lanternRaised: false,
         oil: LANTERN_FULL_S,
         litUntil: 0,
+        barredDoor: null,
+        barUntil: 0,
         mapped: false,
         looted: [],
         placed: [],
@@ -589,6 +618,19 @@ export const useRun = create<RunState>()(
       const to = roomById(s.dungeon, toId);
       if (!to) return;
 
+      /**
+       * Walking out through your own bar lifts it.
+       *
+       * A bar the player can pass and the Warden cannot would otherwise be
+       * a door that only opens one way for forty-five seconds, and the
+       * play it invites is to stand behind it - which is a hiding place,
+       * and hiding places are the one thing this dungeon is built not to
+       * have. Lifting it means a bar is spent the moment you use the
+       * doorway yourself: it buys you the room you are leaving, not a
+       * corridor you can pace.
+       */
+      if (barredNow(s) === barKey(s.currentRoomId!, toId)) get().breakBar(false);
+
       const seen = s.visited.includes(toId);
       set({
         transitioning: true,
@@ -660,6 +702,10 @@ export const useRun = create<RunState>()(
           // something on floor three. Only what the last floor knew about
           // you is left behind.
           litUntil: 0,
+          // A plank across a doorway on the floor above is on the floor
+          // above, like the key and the lock and the snares.
+          barredDoor: null,
+          barUntil: 0,
           mapped: false,
           looted: [],
           // A snare set on the floor above is on the floor above. Devices
@@ -1123,6 +1169,33 @@ export const useRun = create<RunState>()(
       return true;
     },
 
+    barDoor: (toRoomId) => {
+      const s = get();
+      if (!s.currentRoomId || !s.dungeon || !canControl(s)) return false;
+      const here = roomById(s.dungeon, s.currentRoomId);
+      if (!here || !Object.values(here.links).includes(toRoomId)) return false;
+      const key = barKey(s.currentRoomId, toRoomId);
+      if (key === barredNow(s)) return false;
+      const now = runClock(s);
+      set({
+        barredDoor: key,
+        barUntil: now + BAR_S,
+        // Hammering is the loudest thing in the game, and it is made
+        // standing still. What the bar buys is distance; what it spends is
+        // any doubt about where you were when you made it.
+        noisyUntil: Math.max(s.noisyUntil, now + BAR_NOISE_S),
+      });
+      bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
+      return true;
+    },
+
+    breakBar: (byWarden = true) => {
+      const s = get();
+      if (!s.barredDoor) return;
+      set({ barredDoor: null, barUntil: 0 });
+      bus.emit("barBroken", { byWarden });
+    },
+
     takeKey: (roomId) => {
       const s = get();
       if (s.keyTakenIn !== null) return;
@@ -1325,6 +1398,30 @@ export const snaresIn = (placed: readonly PlacedDevice[], roomId: string): Place
 export const alarmFloorFor = (s: RunState): number =>
   floorRules(s.floor).startingAlarm + DELVERS[s.delver].alarmBonus;
 
+/**
+ * The doorway currently barred, or null. A bar is a deadline like every
+ * other timed thing in the run, so whether one is standing is asked here
+ * rather than remembered anywhere else.
+ */
+export const barredNow = (s: RunState): string | null =>
+  s.barredDoor && running(s, s.barUntil) ? s.barredDoor : null;
+
+/** The bars the Warden's pathing has to work around: none, or the one. */
+export const barsNow = (s: RunState): Set<string> => {
+  const bar = barredNow(s);
+  return bar ? new Set([bar]) : EMPTY_BARS;
+};
+
+/**
+ * One empty set rather than a fresh one per call. This is read from the
+ * frame loop, and a new Set every frame is garbage the collector has to
+ * come back for - which on this project is not a theoretical cost: a
+ * forced collection mid-sprint is one of the things `yarn test:perf`
+ * measures, and the Warden's own step cap exists because of what a long
+ * frame does to it.
+ */
+const EMPTY_BARS: Set<string> = new Set();
+
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
 
@@ -1378,6 +1475,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     slots: () => satchelSlots(useRun.getState()),
     rules: () => floorRules(useRun.getState().floor),
     hears: () => wardenHears(useRun.getState()),
+    bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();
       return { raised: s.lanternRaised, lit: lanternLit(s), oil: s.oil, seen: wardenSeesLight(s) };
