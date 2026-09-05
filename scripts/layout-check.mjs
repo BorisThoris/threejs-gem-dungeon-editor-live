@@ -2340,5 +2340,79 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+/**
+ * The dungeon is not built out of one room.
+ *
+ * Size was a constant per kind, so every room of a kind was the same room:
+ * measured over 13,996 generated rooms there were three distinct sizes in
+ * the whole game and 65.7% of them were the same sixteen-metre box. Nothing
+ * noticed, because every check swept the sizes it was handed and each kind
+ * only ever handed it one.
+ *
+ * Held here as the shape of the output rather than as the table that
+ * produced it: whatever `SIZE_RANGE` says, what a player walks through has
+ * to actually vary.
+ */
+{
+  const sizes = new Map();
+  const shapes = new Map();
+  let rooms = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({
+        seed: seed * 31 + floor,
+        minRooms: rules.minRooms,
+        maxRooms: rules.maxRooms,
+      });
+      for (const r of d.rooms) {
+        rooms++;
+        if (!sizes.has(r.kind)) sizes.set(r.kind, new Set());
+        sizes.get(r.kind).add(r.size);
+        shapes.set(r.shape, (shapes.get(r.shape) ?? 0) + 1);
+      }
+    }
+  }
+  const pinned = [...sizes.entries()].filter(([, set]) => set.size < 2).map(([k]) => k);
+  check(
+    "no kind of room is always built at the same size",
+    pinned.length === 0,
+    pinned.length ? `${pinned.join(", ")} never vary` : `${sizes.size} kinds, ${rooms} rooms`
+  );
+
+  // The commonest size used to be two thirds of every room in the game.
+  const tally = new Map();
+  for (const set of sizes.values()) for (const v of set) tally.set(v, 0);
+  for (let seed = 1; seed <= 200; seed++) {
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed: seed * 31 + floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const r of d.rooms) tally.set(r.size, (tally.get(r.size) ?? 0) + 1);
+    }
+  }
+  const total = [...tally.values()].reduce((a, b) => a + b, 0);
+  const commonest = Math.max(...tally.values()) / total;
+  check(
+    "and no single size is most of the dungeon",
+    commonest < 0.5,
+    `commonest size is ${(commonest * 100).toFixed(1)}% of ${total} rooms, over ${tally.size} sizes`
+  );
+
+  /**
+   * A shape the game declares and never builds is a shape that does not
+   * exist. The diamond needs twenty metres of room and the triangle
+   * twenty-eight; nothing was ever built that big, so two of the six were
+   * dead letters in the type.
+   */
+  const unbuilt = L.SHAPES.filter((sh) => !shapes.has(sh));
+  check(
+    "every shape the game declares is one a player can walk into",
+    unbuilt.length === 0,
+    unbuilt.length
+      ? `never built: ${unbuilt.join(", ")}`
+      : L.SHAPES.map((sh) => `${sh} ${((100 * (shapes.get(sh) ?? 0)) / rooms).toFixed(1)}%`).join("  ")
+  );
+}
+
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

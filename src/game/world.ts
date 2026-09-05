@@ -117,8 +117,25 @@ export const CAMERA_FOV = 90;
 export const ROOM_SIZE_DEFAULT = 16;
 export const ROOM_SIZE_SMALL = 14;
 export const ROOM_SIZE_LARGE = 24;
-/** Every size a room may be; the editor offers exactly these. */
-export const ROOM_SIZES = [ROOM_SIZE_SMALL, ROOM_SIZE_DEFAULT, ROOM_SIZE_LARGE] as const;
+export const ROOM_SIZE_HUGE = 30;
+/**
+ * Every size a room may be, in two-metre steps; the editor offers exactly
+ * these and `yarn test:layout` sweeps all of them.
+ *
+ * There were three, and each kind was pinned to exactly one of them, so
+ * two thirds of every room in the game was the same sixteen-metre box -
+ * measured over 13,996 rooms: 14m 17.1%, 16m 65.7%, 24m 17.1%, and not one
+ * kind that could be built at more than a single size. A room's size is
+ * rolled from its kind's range now (`SIZE_RANGE` in dungeon/generate.ts),
+ * so two treasure rooms on the same floor are not the same room.
+ *
+ * The step is two metres rather than one because `shapeFits` changes
+ * answer on that scale and the checks sweep every entry: a diamond needs
+ * twenty metres to hold its own outer ring of props, a triangle
+ * twenty-eight. Both were declared in the shape table and neither had ever
+ * been built, because nothing was ever big enough.
+ */
+export const ROOM_SIZES = [14, 16, 18, 20, 22, 24, 26, 28, 30] as const;
 
 // --- Run rules --------------------------------------------------------------
 

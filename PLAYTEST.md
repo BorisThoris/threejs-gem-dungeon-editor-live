@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §26 asks a human
+  moment it can afford to. That is precisely the behaviour §27 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §26.
+for a person, not for this document, and it is on the list in §27.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2116,14 +2116,81 @@ the summary shows, **passes on the old code too**: the two copies of the sum
 agreed with each other, they were just both wrong. It is there so they
 cannot quietly part company later.
 
-## 25. Steam Deck
+## 25. The dungeon was mostly one room
+
+Ten kinds of room, six shapes, three sizes — and each kind pinned to
+exactly one of those sizes. Measured over 13,996 generated rooms across 400
+seeds and three floors:
+
+| | before | after |
+| --- | --- | --- |
+| distinct sizes built | 3 | 9 |
+| commonest size's share | 65.7% (16 m) | 35.6% |
+| kinds that could vary in size | 0 of 10 | 10 of 10 |
+| shapes ever built | 4 of 6 | 6 of 6 |
+
+Two thirds of every room a player walked into was the same sixteen-metre
+box. Shape varied; size did not.
+
+The two missing shapes turned out to be locked out *by* that. A shaped room
+is a polygon inscribed in its box, so it has less floor than its size
+suggests, and `shapeFits` refuses a shape that cannot hold its own outer
+ring of props. Measured:
+
+```
+diamond   needs 20 m      triangle  needs 28 m
+largest room in the game: 24 m, and the only kind listing diamond
+was treasure — pinned at 16 m. Triangle was in no kind's list at all.
+```
+
+So the game declared six shapes and built four, and no check noticed,
+because every check swept the sizes it was handed and each kind only ever
+handed it one.
+
+Size is rolled per room from a per-kind range now (`SIZE_RANGE`), on a
+two-metre ladder from 14 to 30. The bounds are what each kind's content
+needs rather than taste: the shop and library stay small because a counter
+and a lectern read better close to; the trap room needs floor between its
+gem and the door lanes; the arena has to hold a sweep its arms can turn
+through. An arena can now be a thirty-metre triangle, and the arena's own
+invariant — that its arms reach every piece of ground a player can stand
+on — is checked on those too.
+
+The layout sweep went from 153 checks to 280 simply by having nine sizes to
+sweep instead of three. Draw calls moved from 51 to 52 and triangles *down*
+from 1950 to 1906, because the dressing scales spacing with the room rather
+than adding props without bound.
+
+### Three probes that were passing on luck
+
+Widening the sizes moved the generator's random stream, and that shook out
+three weaknesses in the suite that had nothing to do with room size:
+
+- **The chest probe returned the last of four approaches, not the best.**
+  One stand-off landing out of reach reported `null` even when three others
+  had the player at the chest reading its prompt.
+- **The Warden-in-the-spikes probe took whichever trap room seed 1 found
+  first.** Routing the Warden needs it to cross a patch twice, and whether
+  a room affords that depends on where its spikes fell relative to its
+  doorways, not on its size — measured across five trap rooms, two routed
+  it and three did not, and the 20 m room behaved exactly like the 16 m
+  ones. The probe tries several rooms now and fails only if none can.
+- **The Cutpurse probe read the theft by polling afterwards.** At four
+  frames a second one 120 ms interval can hold both the touch that steals
+  the gem and the touch that catches it back, so the run read "a theft
+  happened, nothing was taken". It captures the state at the event now.
+
+None of those three was caused by the change; all three were revealed by
+it.
+
+## 26. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 26. What a human playtest should watch for
+## 27. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2249,7 +2316,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 27. Options and accessibility
+## 28. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2281,7 +2348,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 28. Deeds
+## 29. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2314,7 +2381,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 29. Two harness bugs that read as game bugs
+## 30. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2387,7 +2454,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 30. Tuning knobs
+## 31. Tuning knobs
 
 All in `src/game/world.ts`:
 

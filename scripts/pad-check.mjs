@@ -129,9 +129,25 @@ const focusables = () =>
 
 const focusOn = async (page, pattern, steps) => {
   const limit = steps ?? (await focusables()) + 2;
-  for (let i = 0; i < limit; i++) {
-    if (pattern.test(await focused())) return true;
+  // Counted in stops moved, not in buttons pressed. The pad's rising edges
+  // are computed once per poll, so on a machine drawing four frames a
+  // second a press can land between polls and be lost - and a walk that
+  // spends its whole budget on presses that went nowhere stops short of
+  // the thing it was looking for, which reads as the menu being
+  // unreachable. A press that does not move the focus is retried instead
+  // of counted, and only real movement spends the budget.
+  let moved = 0;
+  let misses = 0;
+  let last = await focused();
+  while (moved < limit && misses < 12) {
+    if (pattern.test(last)) return true;
     await tap(page, BUTTON.down);
+    const now = await focused();
+    if (now === last) misses++;
+    else {
+      moved++;
+      last = now;
+    }
   }
   return pattern.test(await focused());
 };

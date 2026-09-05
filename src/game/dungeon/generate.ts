@@ -3,8 +3,10 @@ import { createRng, pick, shuffle } from "../rng";
 import { templatesForKind } from "../rooms/templates";
 import {
   ROOM_SIZE_DEFAULT,
+  ROOM_SIZE_HUGE,
   ROOM_SIZE_LARGE,
   ROOM_SIZE_SMALL,
+  ROOM_SIZES,
   floorRules,
 } from "../world";
 import {
@@ -39,20 +41,54 @@ export interface GenerateOptions {
 const ONCE_PER_RUN: RoomKind[] = ["shop", "memory", "challenge", "library", "arena"];
 const COMMON: RoomKind[] = ["treasure", "trap", "normal", "treasure", "normal"];
 
-const SIZE_FOR: Partial<Record<RoomKind, number>> = {
-  start: ROOM_SIZE_DEFAULT,
-  end: ROOM_SIZE_LARGE,
-  arena: ROOM_SIZE_LARGE,
+/**
+ * How big a room of each kind may be, low to high, in metres.
+ *
+ * This was one number per kind, so every room of a kind was the same room:
+ * over 13,996 generated rooms there were three distinct sizes in the whole
+ * game and 65.7% of them were the same sixteen-metre box. A range makes two
+ * treasure rooms on one floor different places to walk into, and it is what
+ * lets the pointier shapes exist at all - a diamond needs twenty metres to
+ * hold its outer ring of props and a triangle twenty-eight, so both were
+ * declared in `SHAPES_FOR` and neither had ever once been built.
+ *
+ * The bounds are what each kind's own content needs, not taste: the shop
+ * and the library are small because a counter and a lectern read better
+ * close to; the trap room needs floor between the gem and the door lanes;
+ * the arena has to hold a sweep its arms can turn through.
+ */
+const SIZE_RANGE: Record<RoomKind, readonly [number, number]> = {
+  start: [ROOM_SIZE_DEFAULT, 18],
+  end: [22, 28],
+  arena: [ROOM_SIZE_LARGE, ROOM_SIZE_HUGE],
   // Spikes need room between the gem and the lanes.
-  trap: ROOM_SIZE_DEFAULT,
-  shop: ROOM_SIZE_SMALL,
-  library: ROOM_SIZE_SMALL,
+  trap: [ROOM_SIZE_DEFAULT, 20],
+  shop: [ROOM_SIZE_SMALL, 18],
+  library: [ROOM_SIZE_SMALL, 18],
+  treasure: [ROOM_SIZE_DEFAULT, ROOM_SIZE_LARGE],
+  memory: [ROOM_SIZE_DEFAULT, 22],
+  challenge: [ROOM_SIZE_DEFAULT, 22],
+  normal: [ROOM_SIZE_SMALL, 22],
 };
 
+/** The sizes on the ladder a kind may be built at. */
+const sizesFor = (kind: RoomKind): number[] => {
+  const [lo, hi] = SIZE_RANGE[kind];
+  return ROOM_SIZES.filter((s) => s >= lo && s <= hi);
+};
+
+/**
+ * The shapes a kind may be drawn as, before `shapeFits` has its say.
+ *
+ * Every entry here is filtered against the size the room actually rolled,
+ * so a kind may list a shape it can only have at the top of its range -
+ * which is the point. The triangle needs twenty-eight metres and was in no
+ * kind's list at all, so the game declared six shapes and built four.
+ */
 const SHAPES_FOR: Partial<Record<RoomKind, readonly Shape[]>> = {
-  arena: ["circle", "octagon"],
+  arena: ["circle", "octagon", "triangle"],
   memory: ["hexagon", "octagon"],
-  end: ["circle", "octagon", "square"],
+  end: ["circle", "octagon", "square", "triangle"],
   treasure: ["square", "diamond", "hexagon"],
 };
 
@@ -97,7 +133,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // seeded treasure arrangements became code nothing could reach.
     const authored = templatesForKind(kind);
     const template = authored.length ? pick(rng, [undefined, ...authored]) : undefined;
-    const size = template?.size ?? SIZE_FOR[kind] ?? ROOM_SIZE_DEFAULT;
+    const size = template?.size ?? pick(rng, sizesFor(kind));
     // Only shapes with the floor to hold their props at this size.
     const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>
       shapeFits(s, size)
@@ -176,7 +212,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     endId = end.id;
   } else {
     farthest.kind = "end";
-    farthest.size = SIZE_FOR.end ?? ROOM_SIZE_LARGE;
+    farthest.size = pick(rng, sizesFor("end"));
     farthest.shape = pick(
       rng,
       (SHAPES_FOR.end ?? ["square"]).filter((s) => shapeFits(s, farthest.size)) ?? ["square"]

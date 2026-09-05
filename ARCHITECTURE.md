@@ -257,6 +257,20 @@ Two stores that both claimed the player's stats. So:
   satchel empty. The three places that still name the terms themselves are
   the pause toggles and the pointer, and they are the ones that should
   still work while the screen is dark.
+- How big a room is comes from `SIZE_RANGE` in
+  `src/game/dungeon/generate.ts`, rolled per room from the ladder in
+  `ROOM_SIZES`, and how it is shaped from `SHAPES_FOR` filtered by
+  `shapeFits`. Size used to be one constant per kind, which meant every
+  room of a kind was the same room: over 13,996 generated rooms there were
+  three distinct sizes in the whole game and 65.7% of them were the same
+  sixteen-metre box. It is nine sizes now and no kind is pinned to one.
+  The two facts are not independent - a shape has to have the floor to hold
+  its own outer ring of props, so a diamond needs twenty metres and a
+  triangle twenty-eight - which is why the game declared six shapes and
+  built four: nothing was ever big enough for the other two. `yarn
+  test:layout` sweeps every size on the ladder and holds the output rather
+  than the table: no kind always the same size, no single size most of the
+  dungeon, and no shape declared that a player cannot walk into.
 - How long a run took is `runSeconds` in `src/game/state/run.ts`, and it is
   on `runClock` like everything else the game times. It was neither: the
   sum `endedAt - startedAt` was written out twice, in the records and on the
