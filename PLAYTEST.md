@@ -2214,7 +2214,40 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 27. Tuning knobs
+## 27. Deeds
+
+Ten achievements, listed at the title screen with what each is for whether
+or not it has been earned. They change nothing about a run - every delver
+and every system is available from the first game - and they are chosen to
+do the job achievements are actually good at: naming the plays a system
+supports that a player might not think to try. "Rout it on the floor's own
+spikes" tells a player who has only ever run from the Warden that running
+is not the only thing; "take a floor without raising the lantern" tells
+them the dark is playable.
+
+| Deed | Steam API name | What it is for |
+| --- | --- | --- |
+| Out | `ESCAPE` | Climb out with anything at all |
+| Worth the Walk | `HAUL_FIFTEEN` | Get out with fifteen gems or more |
+| It Bleeds | `WARDEN_ROUTED` | Rout the Warden on the floor's own spikes |
+| Wire Work | `SNARE_SPRUNG` | Catch it in a snare you set yourself |
+| Not Today | `THIEF_CAUGHT` | Catch the Cutpurse with your gem still on it |
+| Reclaimed | `NEST_EMPTIED` | Walk to the nest and take back what was stolen |
+| Shut Out | `BAR_BROKEN` | Bar a doorway and have it come through anyway |
+| Dark Runner | `FLOOR_UNLIT` | Take a whole floor without raising the lantern |
+| Unspent | `NO_LIVES_LOST` | Escape without losing a life |
+| All Five | `ALL_DELVERS` | Escape as every delver |
+
+One watcher earns all of them (`src/game/deeds/watch.ts`) and one store
+reports them (`src/game/state/deeds.ts`); nothing else in the game knows
+achievements exist. The Steam side is a single call in
+`electron/preload.cjs` that currently only logs, and `steam/README.md`
+says exactly what to put in it - including the two things that are easy
+to lose: it must never throw, and `steamworks.js` is a native module that
+has to be unpacked from the asar or every achievement silently does
+nothing on exactly the builds that matter.
+
+## 28. Tuning knobs
 
 All in `src/game/world.ts`:
 

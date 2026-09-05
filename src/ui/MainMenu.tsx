@@ -1,6 +1,8 @@
 import { Fragment, useCallback, useRef, useState } from "react";
 
+import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
+import { useDeeds } from "../game/state/deeds";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { FLOORS, tollForFloor } from "../game/world";
@@ -13,7 +15,7 @@ const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
 export function MainMenu() {
-  const [page, setPage] = useState<"menu" | "controls" | "records" | "delvers">("menu");
+  const [page, setPage] = useState<"menu" | "controls" | "records" | "delvers" | "deeds">("menu");
   const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
   // The one last taken down, so a player who has settled on a delver is
@@ -64,12 +66,17 @@ export function MainMenu() {
             <button style={secondaryButton} data-testid="menu-records" onClick={() => setPage("records")}>
               Records
             </button>
+            <button style={secondaryButton} data-testid="menu-deeds" onClick={() => setPage("deeds")}>
+              Deeds
+            </button>
             {isElectron() && (
               <button style={secondaryButton} onClick={() => window.close()}>
                 Quit
               </button>
             )}
           </>
+        ) : page === "deeds" ? (
+          <Deeds onBack={() => setPage("menu")} />
         ) : page === "delvers" ? (
           <Delvers chosen={delver} onChoose={setDelver} onBack={() => setPage("menu")} />
         ) : page === "records" ? (
@@ -113,6 +120,56 @@ export function MainMenu() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The deeds, done and not yet done.
+ *
+ * Every one is shown with what it is for whether or not it has been
+ * earned, because that is the job they are actually good at: naming the
+ * plays the systems support that a player might not think to try. A list
+ * of question marks would be a list of chores.
+ */
+function Deeds({ onBack }: { onBack: () => void }) {
+  const done = useDeeds((s) => s.done);
+  return (
+    <>
+      <p style={{ ...body, marginBottom: 14 }}>
+        <span style={{ color: colors.gold }}>{done.length}</span>
+        <span style={{ color: colors.dim }}> of {DEED_IDS.length} done.</span> None of
+        them changes a run - everything the game has is available from the first one.
+      </p>
+      <div style={{ display: "grid", gap: 6, marginBottom: 14, textAlign: "left" }}>
+        {DEED_IDS.map((id) => {
+          const deed = DEEDS[id];
+          const earned = done.includes(id);
+          return (
+            <div
+              key={id}
+              data-testid={`deed-${id}`}
+              data-earned={earned ? "yes" : "no"}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 4,
+                border: `1px solid ${earned ? colors.gold : colors.line}`,
+                opacity: earned ? 1 : 0.6,
+              }}
+            >
+              <div style={{ fontSize: text.body, color: earned ? colors.gold : colors.ink }}>
+                {deed.name}
+              </div>
+              <div style={{ fontSize: text.small, color: colors.dim, lineHeight: 1.5 }}>
+                {deed.blurb}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <button style={button} data-testid="deeds-back" onClick={onBack}>
+        Back
+      </button>
+    </>
   );
 }
 

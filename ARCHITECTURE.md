@@ -386,6 +386,9 @@ src/
       catalog.ts         twelve consumables in three families, and the
                          appearance shuffle that hides which is which
       charge.ts          blessed / plain / cursed, per kind, per run
+    deeds/
+      catalog.ts         ten achievements, with the Steam names they map to
+      watch.ts           the only thing in the game that earns one
     state/run.ts         the run: phase, lives, gems, current room, visited
     input/               keyboard (edge presses), gamepad, mouse look
     player/

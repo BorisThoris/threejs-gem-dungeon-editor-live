@@ -66,7 +66,73 @@ it is always fullscreen.
 - Suspend/resume: nothing is time-based except the damage cooldown and
   puzzle timers, which use wall-clock time and tolerate a suspend.
 
-## 5. Store page checklist
+## 5. Achievements
+
+The game has ten deeds and reports them to the shell the first time each
+is earned. `src/game/deeds/catalog.ts` is the list, and every entry
+carries the Steam API name it maps to - written down there rather than
+derived from the game's own id, because the two live in different places
+and renaming one must not silently rename the other.
+
+Create these ten in **Steamworks > Stats & Achievements**, with these
+exact API names:
+
+| API name | Display name | What it is for |
+| --- | --- | --- |
+| `ESCAPE` | Out | Climb out of the dungeon with anything at all |
+| `HAUL_FIFTEEN` | Worth the Walk | Get out with fifteen gems or more |
+| `WARDEN_ROUTED` | It Bleeds | Rout the Warden on the floor's own spikes |
+| `SNARE_SPRUNG` | Wire Work | Catch the Warden in a snare you set yourself |
+| `THIEF_CAUGHT` | Not Today | Catch the Cutpurse with your gem still on it |
+| `NEST_EMPTIED` | Reclaimed | Walk to the nest and take back what was stolen |
+| `BAR_BROKEN` | Shut Out | Bar a doorway and have the Warden come through it |
+| `FLOOR_UNLIT` | Dark Runner | Take a whole floor without raising the lantern |
+| `NO_LIVES_LOST` | Unspent | Escape without losing a single life |
+| `ALL_DELVERS` | All Five | Escape the dungeon as every delver |
+
+Each also wants a 64x64 icon, earned and unearned.
+
+### Wiring it up
+
+There is exactly one place to change. `electron/preload.cjs` exposes
+`window.desktop.achievement(name)`, which currently only logs when
+`GEM_DUNGEON_LOG_ACHIEVEMENTS` is set. Put the real client inside it:
+
+```
+yarn add steamworks.js
+```
+
+```js
+// electron/preload.cjs, at the top
+let steam = null;
+try {
+  steam = require("steamworks.js").init(REPLACE_APP_ID);
+} catch {
+  // Not launched through Steam, or the module is missing. The game runs.
+}
+
+function reportAchievement(name) {
+  try {
+    if (typeof name !== "string" || !name) return;
+    steam?.achievement.activate(name);
+  } catch {}
+}
+```
+
+Two things that are load-bearing and easy to lose:
+
+- **It must never throw.** The game wraps the call as well, so a broken
+  binding costs an achievement rather than a run. Keep both guards.
+- **`steamworks.js` is a native module** and has to be unpacked from the
+  asar. Add `"asarUnpack": ["**/*.node"]` to the `build` block in
+  `package.json`, or the packaged app will fail to load it and every
+  achievement will silently do nothing on exactly the builds that matter.
+
+Nothing else in the game knows achievements exist: `src/game/deeds/watch.ts`
+is the only thing that earns one, and `src/game/state/deeds.ts` the only
+thing that reports it.
+
+## 6. Store page checklist
 
 - Capsule art: header 460x215, small 231x87, main 616x353, vertical
   374x448, library 600x900 and 3840x1240 hero. Nothing exists yet.

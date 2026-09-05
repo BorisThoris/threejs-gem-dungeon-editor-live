@@ -30,6 +30,7 @@ writeFileSync(
    export * from "${root}src/game/items/charge";
    export * from "${root}src/game/thief/nest";
    export * from "${root}src/game/delvers/catalog";
+   export * from "${root}src/game/deeds/catalog";
    export * from "${root}src/game/rooms/layouts";
    export * from "${root}src/game/props/specs";
    export * from "${root}src/game/rooms/anchors";
@@ -1624,6 +1625,49 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- Deeds ------------------------------------------------------------------
+//
+// Ten achievements, and the two things about them that can silently rot:
+// a Steam API name that drifts from the one the store page was set up
+// with, and a deed nothing in the game can earn. The first is checked
+// against `steam/README.md`, which is the document somebody will actually
+// type those names out of; the second is checked against the watcher.
+{
+  const ids = L.DEED_IDS;
+  check("there are ten deeds and every one has a name and a line", 
+    ids.length === 10 && ids.every((id) => L.DEEDS[id].name && L.DEEDS[id].blurb),
+    `${ids.length} deeds`
+  );
+  const steamNames = ids.map((id) => L.DEEDS[id].steam);
+  check(
+    "and a Steam API name, all different",
+    steamNames.every((n) => /^[A-Z0-9_]+$/.test(n)) && new Set(steamNames).size === ids.length,
+    steamNames.join(", ")
+  );
+  const readme = readFileSync(join(root, "steam/README.md"), "utf8");
+  const missing = steamNames.filter((n) => !readme.includes("`" + n + "`"));
+  check(
+    "every one of them is in the Steam instructions somebody will type them out of",
+    missing.length === 0,
+    missing.length ? missing.join(", ") : `${steamNames.length} names`
+  );
+  const watcher = readFileSync(join(root, "src/game/deeds/watch.ts"), "utf8");
+  const unearnable = ids.filter((id) => !watcher.includes(`"${id}"`));
+  check(
+    "and every deed is one something in the game can actually earn",
+    unearnable.length === 0,
+    unearnable.length ? unearnable.join(", ") : `${ids.length} earnable`
+  );
+  // The seam to Steam is one call, in one file, and the README tells
+  // somebody to change that file. If it moves, the instructions are wrong.
+  const preload = readFileSync(join(root, "electron/preload.cjs"), "utf8");
+  check(
+    "the desktop shell still exposes the one call the deeds report through",
+    /achievement:\s*reportAchievement/.test(preload) && readme.includes("electron/preload.cjs"),
+    ""
   );
 }
 

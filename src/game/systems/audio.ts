@@ -534,6 +534,19 @@ export const sfx = {
     later(80, () => noiseBurst(0.2, 0.24, 3200, pan));
     later(170, () => tone(820, 0.22, "triangle", 0.2, 1180, pan));
   },
+  /**
+   * A deed: a small rising figure, quiet enough to be heard over a chase.
+   *
+   * Deliberately not a fanfare. The moment a player earns "It Bleeds" they
+   * are standing next to a wounded Warden with three seconds to decide
+   * something, and a triumphant sting there would be the game applauding
+   * over the top of its own best moment.
+   */
+  deed() {
+    tone(660, 0.12, "triangle", 0.16);
+    later(90, () => tone(880, 0.14, "triangle", 0.15));
+    later(210, () => tone(1320, 0.3, "triangle", 0.12));
+  },
   /** Hammering: three heavy strikes on wood, loud and slow. */
   barDoor() {
     const hit = (at: number) =>

@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
+import { useDeedWatch } from "./game/deeds/watch";
 import { useWardenWarning } from "./game/warden/warning";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
@@ -17,6 +18,7 @@ import { PauseMenu } from "./ui/PauseMenu";
 import { Prompt } from "./ui/Prompt";
 import { PuzzleOverlay } from "./ui/PuzzleOverlay";
 import { RunSummary } from "./ui/RunSummary";
+import { DeedToast } from "./ui/Deed";
 import { ItemLog, Satchel } from "./ui/Satchel";
 import { Transitions } from "./ui/Transitions";
 
@@ -84,6 +86,10 @@ export default function App() {
   usePauseKeys();
   useSatchelKeys();
   useWardenWarning();
+  // What earns a deed, in one place. Nothing else in the game knows deeds
+  // exist, which is the only way a list of achievements stays a list of
+  // sentences about the game rather than bookkeeping smeared across it.
+  useDeedWatch();
 
   useEffect(() => installKeyboard(), []);
 
@@ -95,6 +101,7 @@ export default function App() {
     w.__keyboard = keyboard;
     w.__settings = useSettings;
     w.__records = useRecords;
+    void import("./game/state/deeds").then((m) => (w.__deeds = m.useDeeds));
     // The numbers themselves, so a check never keeps its own copy of one.
     // A check that hardcodes 1.05 for the Warden's reach is a second owner
     // of it, and passes for years after the constant moves.
@@ -186,6 +193,7 @@ export default function App() {
       <Prompt />
       <Satchel />
       <ItemLog />
+      <DeedToast />
       <PuzzleOverlay />
       {paused && phase === "playing" && <PauseMenu />}
       {(phase === "won" || phase === "lost") && <RunSummary />}

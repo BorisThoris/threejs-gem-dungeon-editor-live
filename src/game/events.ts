@@ -97,6 +97,8 @@ export interface BusEvents {
   /** The exit was taken and a deeper floor begins. */
   floorDescended: { floor: number };
   runLost: undefined;
+  /** A deed was done for the first time. */
+  deedEarned: { id: string };
   gemCollected: { roomId: string };
   damaged: undefined;
   lifeBought: undefined;

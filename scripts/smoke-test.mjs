@@ -2844,14 +2844,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      */
     await page.evaluate(() => {
       const run = window.__run;
-      // Full health and nothing left to name: neither counter trigger can
-      // be used, so the nearest one wins and says so.
+      // Full health, nothing to name and nothing to bless: none of the
+      // three counter triggers can be used, so the nearest one wins and
+      // says so. There were two of these when this was written; the shop
+      // gained a blessing, and what the check is about - that a blocked
+      // reason surfaces at all - is the same for any of them.
       run.setState({ lives: 3, gems: 9, satchel: [], identified: [] });
     });
     const blocked = await stepTo(counter, 2.0);
     ok(
       "a blocked counter still says why, when nothing better is in reach",
-      /full health|know what everything/i.test(String(blocked)),
+      /full health|know what everything|could be better/i.test(String(blocked)),
       String(blocked)
     );
 
@@ -3379,6 +3382,153 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
   }
 }
+}
+
+/**
+ * Deeds, and the seam they report through.
+ *
+ * Every one of them is earned by something that happens in a run, from
+ * one watcher listening to the bus - so what is checked here is that the
+ * events the game already publishes reach it, that a deed is earned once
+ * and remembered, and that the toast and the page say so. The Steam side
+ * cannot be checked from a browser and is held to `steam/README.md` in
+ * `yarn test:layout` instead.
+ */
+{
+  const deeds = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    window.__deeds.getState().clear();
+    run.getState().startRun(53, "vagrant");
+    await sleep(1400);
+    const out = { earned: [] };
+    const off = window.__bus.on("deedEarned", ({ id }) => out.earned.push(id));
+
+    // Routing the Warden on the floor's spikes.
+    const s = run.getState();
+    run.setState({
+      wardenRoomId: s.dungeon.rooms[1].id,
+      wardenWounds: 1,
+      wardenStaggerUntil: 0,
+      alarm: 4,
+      lives: 99,
+    });
+    run.getState().wardenWounded();
+    await sleep(200);
+
+    // A snare springing: the store spends the wire, and the watcher can
+    // tell that from a spike because a spent snare is on the floor.
+    run.setState({
+      placed: [{ key: "k", id: "snare", roomId: s.currentRoomId, x: 0, z: 0, live: true }],
+      wardenRoomId: s.dungeon.rooms[1].id,
+      wardenWounds: 0,
+      wardenStaggerUntil: 0,
+    });
+    run.getState().springSnare("k");
+    await sleep(200);
+
+    // Catching the Cutpurse with a gem on it, and emptying a nest.
+    run.setState({ thiefPhase: "fleeing", thiefHolding: 1, gems: 2 });
+    run.getState().thiefCaught();
+    await sleep(150);
+    run.setState({ nestGems: 2 });
+    run.getState().emptyNest();
+    await sleep(150);
+
+    // The Warden coming through a bar.
+    run.setState({ barredDoor: "a|b", barUntil: 1e9 });
+    run.getState().breakBar(true);
+    await sleep(150);
+    // And the player lifting one, which must not earn it.
+    run.setState({ barredDoor: "a|b", barUntil: 1e9 });
+    run.getState().breakBar(false);
+    await sleep(150);
+    out.afterLift = [...out.earned];
+
+    // Winning: out, the haul, no lives lost, and the floor taken dark.
+    run.setState({ gems: 16, lives: 3, maxLives: 3, floor: 3 });
+    const end = run.getState().dungeon.endId;
+    const doorway = run.getState().dungeon.rooms
+      .map((r) => ({ room: r, dir: Object.keys(r.links).find((d) => r.links[d] === end) }))
+      .find((x) => x.dir);
+    run.setState({ currentRoomId: doorway.room.id, transitioning: false });
+    run.getState().travel(doorway.dir);
+    await sleep(2200);
+    off();
+    out.phase = run.getState().phase;
+    out.done = [...window.__deeds.getState().done];
+
+    // Earned once, not twice: earn a done one again and nothing happens.
+    const again = window.__deeds.getState().earn("escape");
+    out.again = again;
+    return out;
+  });
+
+  ok(
+    "routing the Warden on the floor's spikes is a deed",
+    deeds.earned.includes("routed"),
+    JSON.stringify(deeds.earned)
+  );
+  ok(
+    "and so is catching it in a snare you set, which is a different deed",
+    deeds.earned.includes("wirework")
+  );
+  ok(
+    "catching the Cutpurse with your gem on it, and walking to the nest",
+    deeds.earned.includes("nottoday") && deeds.earned.includes("reclaimed")
+  );
+  ok(
+    "the Warden coming through a bar is a deed; lifting your own is not",
+    deeds.afterLift.filter((id) => id === "shutout").length === 1,
+    JSON.stringify(deeds.afterLift)
+  );
+  ok(
+    "getting out earns the escape, the haul and the unspent lives",
+    deeds.phase === "won" &&
+      deeds.done.includes("escape") &&
+      deeds.done.includes("haul") &&
+      deeds.done.includes("unspent"),
+    JSON.stringify({ phase: deeds.phase, done: deeds.done })
+  );
+  ok(
+    "and taking a floor without ever raising the lantern",
+    deeds.done.includes("darkrunner"),
+    JSON.stringify(deeds.done)
+  );
+  ok("a deed is earned once and only once", deeds.again === false);
+
+  // The page, and that it says what an unearned deed is for.
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(600);
+  const open = await page.$('[data-testid="menu-deeds"]');
+  if (open) await open.click();
+  await page.waitForTimeout(400);
+  const page8 = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('[data-testid^="deed-"]')];
+    const unreachable = [];
+    for (const el of cards) {
+      el.scrollIntoView({ block: "nearest" });
+      const r = el.getBoundingClientRect();
+      if (r.bottom > window.innerHeight || r.top < 0) unreachable.push(el.getAttribute("data-testid"));
+    }
+    return {
+      count: cards.length,
+      earned: cards.filter((el) => el.dataset.earned === "yes").length,
+      text: document.body.innerText,
+      unreachable,
+    };
+  });
+  ok("the title screen lists every deed", page8.count === 10, `${page8.count} cards`);
+  ok(
+    "with the earned ones marked, and the rest saying what they are for",
+    page8.earned > 0 && /Rout the Warden on the floor's own spikes/.test(page8.text),
+    `${page8.earned} earned`
+  );
+  ok(
+    "and every card reachable on a Steam Deck's screen",
+    page8.unreachable.length === 0,
+    JSON.stringify(page8.unreachable)
+  );
 }
 
 /**
