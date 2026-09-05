@@ -79,7 +79,23 @@ function tone(
   osc.type = type;
   osc.frequency.setValueAtTime(frequency, ctx.currentTime);
   if (sweepTo !== undefined) {
-    osc.frequency.exponentialRampToValueAtTime(sweepTo, ctx.currentTime + duration);
+    /**
+     * Never to zero or below.
+     *
+     * `exponentialRampToValueAtTime` throws on a target of zero or a
+     * negative one, and this argument sits in the position a reader
+     * reasonably expects a pan in - the cue above it takes one, and half
+     * the cues in this file end with a number between -1 and 1. Two new
+     * cues were written with a pan there and both threw, which in a bus
+     * that dispatches to a set of handlers took every listener after the
+     * audio one down with them. A frequency floor an octave below the
+     * lowest note here costs nothing and turns a crash into a cue that
+     * sweeps somewhere slightly wrong.
+     */
+    osc.frequency.exponentialRampToValueAtTime(
+      Math.max(20, sweepTo),
+      ctx.currentTime + duration
+    );
   }
   envelope(ctx, osc, 0.008, duration, peak, pan);
   osc.start();
@@ -466,6 +482,25 @@ export const sfx = {
    * you. Lower and longer than anything else, because it is the one event
    * in a run that a player should feel in their chest.
    */
+  /**
+   * The floor's spikes finding it: metal, then a long broken-off snarl.
+   *
+   * Deliberately not `hurt`. That cue means "you were hit", and this is the
+   * one moment in a run when something else was, so it has to be legible as
+   * a different thing happening or the player reads the window they just
+   * bought as damage they just took.
+   */
+  wardenWound() {
+    tone(660, 0.09, "square", 0.22, 880);
+    later(30, () => noiseBurst(0.18, 0.3, 2600));
+    later(90, () => tone(126, 0.7, "sawtooth", 0.34, 74));
+  },
+  /** It gives up on the room: the snarl falls away rather than stopping. */
+  wardenRout() {
+    tone(150, 1.1, "sawtooth", 0.4, 60);
+    later(60, () => tone(98, 1.4, "square", 0.26, 44));
+    later(240, () => noiseBurst(0.5, 0.3, 700));
+  },
   wardenStrike() {
     tone(55, 1.2, "sawtooth", 0.5, 30);
     later(70, () => tone(82.4, 0.9, "square", 0.32, 48));

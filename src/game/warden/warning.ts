@@ -19,10 +19,12 @@ const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
 const SEEN = "The watcher called out. Stay out of the light - it tells the Warden where you are.";
 const LOUD = "It heard that. Running carries down here; walking does not.";
 const THROWN = "Something clatters a long way off. It has gone to look, and it is not listening for you.";
+const BIT = "The spikes do not care which of you stands on them. Put another patch between you.";
+const ROUTED = "It will not cross those again. Whatever else this floor gives you, that trick is spent.";
 
 export function useWardenWarning() {
   useEffect(() => {
-    let told = { woke: false, here: false, seen: false, loud: false };
+    let told = { woke: false, here: false, seen: false, loud: false, bit: false };
     /**
      * These go in the notice slot, which they own and nothing else writes.
      *
@@ -60,9 +62,18 @@ export function useWardenWarning() {
       // Not a one-off: this one is feedback for an action the player just
       // took, and it says what the scroll bought them.
       bus.on("wardenLured", () => say(THROWN)),
+      // The first wound teaches what just happened; the rout says the
+      // lesson has been learned by the other side, which is a rule change
+      // and so worth saying every time it happens.
+      bus.on("wardenWounded", () => {
+        if (told.bit) return;
+        told.bit = true;
+        say(BIT);
+      }),
+      bus.on("wardenRouted", () => say(ROUTED)),
       bus.on("floorDescended", ({ floor }) => say(floorRules(floor).blurb)),
       bus.on("runStarted", () => {
-        told = { woke: false, here: false, seen: false, loud: false };
+        told = { woke: false, here: false, seen: false, loud: false, bit: false };
         say(floorRules(1).blurb);
       }),
     ];

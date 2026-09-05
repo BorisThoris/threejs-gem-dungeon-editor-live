@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
-import { trapHazards } from "../dungeon/layout";
+import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -13,6 +13,7 @@ import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Warden } from "../warden/Warden";
+import type { Patch } from "../warden/steer";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
 import { gemFor, keyFor, KIND_CONTENT, KIND_TINT } from "./kinds";
 import { Walls } from "./Walls";
@@ -40,9 +41,9 @@ interface RoomProps {
  * stepped through a doorway - every four to nine seconds, for a subtree of
  * a hundred elements. Here the subscription costs one component.
  */
-function RoomWarden({ room }: { room: RoomData }) {
+function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
   const here = useRun((s) => s.wardenRoomId === room.id);
-  return here ? <Warden room={room} /> : null;
+  return here ? <Warden room={room} hazards={hazards} /> : null;
 }
 
 export function Room({ room, seed }: RoomProps) {
@@ -74,6 +75,26 @@ export function Room({ room, seed }: RoomProps) {
   const light = floorRules(floor).light;
   const sentry = sentryFor(room, seed, floor);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
+  // The same patches the player is charged for, in the shape the Warden's
+  // steering reads. One list: a second opinion about where the spikes are
+  // is exactly the class of bug this tree was rebuilt to make impossible.
+  const wardenHazards = useMemo<Patch[]>(
+    () => hazards.map(([x, , z]) => ({ x, z, r: HAZARD_RADIUS })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [room.id, hazards.length]
+  );
+
+  // Where this room's spikes are, for the checks. The Warden walking round
+  // them is a behaviour no probe could see otherwise: the store knows there
+  // was a wound and the bus says so, and between those two there was no way
+  // to ask whether it went round or simply missed.
+  useEffect(() => {
+    if (!import.meta.env.DEV || typeof window === "undefined") return;
+    (window as unknown as Record<string, unknown>).__roomHazards = {
+      roomId: room.id,
+      patches: wardenHazards,
+    };
+  }, [room.id, wardenHazards]);
 
   return (
     <group>
@@ -128,7 +149,7 @@ export function Room({ room, seed }: RoomProps) {
           position={keyFor(room, seed)}
         />
       )}
-      <RoomWarden room={room} />
+      <RoomWarden room={room} hazards={wardenHazards} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

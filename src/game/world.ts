@@ -245,6 +245,45 @@ export const WARDEN_MAX_STEP = WARDEN_TOUCH_RADIUS / 4;
  * which is the same bargain the rest of the floor makes.
  */
 export const WARDEN_ARRIVAL_GRACE_S = 0.5;
+/**
+ * The floor's own spikes do not care which of you stands on them.
+ *
+ * The Warden could not be fought, and that was the whole design: the only
+ * answer to it was to leave, and every relic, potion and scroll that
+ * touched it bought distance rather than a fight. That reading held right
+ * up until a player walked backwards into a trap room and watched it come
+ * straight through three patches of spikes without breaking stride, and
+ * what it says there is not "it cannot be fought" but "the room is not
+ * real". A dungeon whose hazards apply to one of the two things in it is
+ * a stage set.
+ *
+ * So the spikes bite it, and the design pillar survives intact, because a
+ * wound is not a fight: it is thrown back and slowed, never killed. What
+ * the player gains is a reason to fight on chosen ground - to walk to the
+ * trap room rather than away from it, and to put a patch between
+ * themselves and the thing coming - and what they pay is that the trap
+ * room's spikes are still spikes, and standing where the line crosses one
+ * means standing very near it.
+ *
+ * It learns, which is what stops this becoming the answer to the floor
+ * rather than an answer on it. Two wounds rout it; after that it walks
+ * round what hurt it for the rest of the floor, and the player is back to
+ * running. Two, not one, because one is an accident and the second is the
+ * player proving they meant it.
+ */
+export const WARDEN_STAGGER_S = 3.5;
+export const WARDEN_WOUNDS_TO_ROUT = 2;
+/** How much a rout takes off the floor's alarm. Never below its baseline. */
+export const WARDEN_ROUT_CALM = 1;
+/**
+ * How wide a berth a wary Warden gives a patch it has been bitten by.
+ *
+ * The patch's own reach plus the room it needs to turn: steering at the
+ * edge of the reach means clipping it on the frame the turn begins, which
+ * reads as the avoidance not working rather than as a near miss.
+ */
+export const WARDEN_HAZARD_BERTH = 0.9;
+
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
 /**

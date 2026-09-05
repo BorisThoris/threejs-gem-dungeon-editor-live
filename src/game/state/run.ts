@@ -34,6 +34,9 @@ import {
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
+  WARDEN_ROUT_CALM,
+  WARDEN_STAGGER_S,
+  WARDEN_WOUNDS_TO_ROUT,
   floorRules,
   tollForFloor,
 } from "../world";
@@ -137,6 +140,19 @@ export interface RunState {
   wardenRoomId: string | null;
   /** The room it walked in from, so wandering does not just pace a corridor. */
   wardenCameFrom: string | null;
+  /**
+   * Wounds the Warden has taken from the floor's own spikes since it was
+   * last routed, and the run-clock second it stops reeling from the last
+   * one. Per floor, like everything else about it.
+   */
+  wardenWounds: number;
+  wardenStaggerUntil: number;
+  /**
+   * Whether it has learned. Set by a rout and never unset on the floor it
+   * happened on: from then on it walks round what bit it, and the trap
+   * room is a trap room again rather than the answer to the Warden.
+   */
+  wardenWary: boolean;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -201,6 +217,8 @@ export interface RunState {
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
   wardenStrike: () => void;
+  /** It walked into a patch of the floor's spikes. */
+  wardenWounded: () => void;
   /** Take a hit. Returns false if inside the invulnerability window. */
   damage: () => boolean;
   gainLife: () => boolean;
@@ -299,6 +317,9 @@ export const useRun = create<RunState>()(
     floorRooms: 1,
     wardenRoomId: null,
     wardenCameFrom: null,
+    wardenWounds: 0,
+    wardenStaggerUntil: 0,
+    wardenWary: false,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -351,6 +372,9 @@ export const useRun = create<RunState>()(
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
+        wardenWounds: 0,
+        wardenStaggerUntil: 0,
+        wardenWary: false,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -475,6 +499,9 @@ export const useRun = create<RunState>()(
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
+          wardenWounds: 0,
+          wardenStaggerUntil: 0,
+          wardenWary: false,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -761,6 +788,42 @@ export const useRun = create<RunState>()(
       bus.emit("wardenStruck");
     },
 
+    wardenWounded: () => {
+      const s = get();
+      if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
+      const now = runClock(s);
+      // One wound per stagger. Without this the patch it is standing in
+      // charges it again every frame it reels there, and two wounds - the
+      // whole cost of a rout - are spent in a third of a second by a
+      // player who did nothing but stand still.
+      if (now < s.wardenStaggerUntil) return;
+
+      const wounds = s.wardenWounds + 1;
+      if (wounds < WARDEN_WOUNDS_TO_ROUT) {
+        set({ wardenWounds: wounds, wardenStaggerUntil: now + WARDEN_STAGGER_S });
+        bus.emit("wardenWounded", { wounds });
+        return;
+      }
+
+      // Routed: thrown across the floor, the count reset, and from here on
+      // it knows better. The floor calms, but never below its own baseline
+      // - the bottom floor is the bottom floor however well you fought on
+      // it.
+      const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
+      set({
+        wardenWounds: 0,
+        wardenWary: true,
+        wardenStaggerUntil: 0,
+        wardenRoomId: away ?? s.wardenRoomId,
+        wardenCameFrom: null,
+        wardenLure: null,
+        lureUntil: 0,
+        alarm: Math.max(floorRules(s.floor).startingAlarm, s.alarm - WARDEN_ROUT_CALM),
+      });
+      bus.emit("wardenWounded", { wounds });
+      bus.emit("wardenRouted");
+    },
+
     clearRoom: (roomId) => {
       const s = get();
       if (!s.cleared.includes(roomId)) set({ cleared: [...s.cleared, roomId] });
@@ -832,6 +895,13 @@ export function lureNow(s: RunState): string | null {
  */
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 
+/**
+ * Whether the Warden is still reeling from the spikes. While it is, it
+ * neither walks nor strikes nor steps between rooms - which is the window
+ * the player bought, and the only thing in the game that stops it.
+ */
+export const wardenStaggered = (s: RunState): boolean => running(s, s.wardenStaggerUntil);
+
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
 
@@ -874,6 +944,16 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     hears: () => wardenHears(useRun.getState()),
     lure: () => lureNow(useRun.getState()),
     items: () => ITEM_IDS.slice(),
+    warden: () => {
+      const s = useRun.getState();
+      return {
+        room: s.wardenRoomId,
+        wounds: s.wardenWounds,
+        wary: s.wardenWary,
+        staggered: wardenStaggered(s),
+        alarm: s.alarm,
+      };
+    },
     hunts: () => {
       const s = useRun.getState();
       return behaviourFor(s.alarm, !lureNow(s) && wardenHears(s)).hunts;

@@ -3334,6 +3334,158 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 }
 
+/**
+ * The floor's own spikes, and the one thing in the dungeon they stop.
+ *
+ * The Warden could not be fought, and the spikes walking straight through
+ * it made the trap room a stage set. Now a wound reels it, two rout it, and
+ * a routed Warden walks round what bit it for the rest of the floor - which
+ * is the part that has to be checked in the real game rather than on paper,
+ * because "it went round" and "it happened to miss" look identical from the
+ * store and the bus.
+ */
+{
+  const trapped = await page.evaluate(async () => {
+    const run = window.__run;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    // A floor with a trap room on it. Seeded rather than hoped for: the
+    // first floor of a random run has one about half the time.
+    let trap = null;
+    for (let seed = 1; seed <= 40 && !trap; seed++) {
+      run.getState().startRun(seed);
+      await sleep(220);
+      trap = run.getState().dungeon.rooms.find((r) => r.kind === "trap") || null;
+    }
+    if (!trap) return { error: "no trap room in forty seeds" };
+    await sleep(1200);
+    run.setState({
+      transitioning: true,
+      currentRoomId: trap.id,
+      lives: 99,
+      alarm: 6,
+      wardenRoomId: null,
+      wardenWounds: 0,
+      wardenWary: false,
+      wardenStaggerUntil: 0,
+    });
+    run.getState().roomReady(trap.id);
+    await sleep(1500);
+    const hz = window.__roomHazards;
+    if (!hz || hz.roomId !== trap.id || !hz.patches.length) return { error: "room has no spikes" };
+
+    const half = trap.size / 2;
+    const limit = half - 0.6;
+    const clamp = (v) => Math.max(-limit, Math.min(limit, v));
+    const inPatch = (x, z, m = 0) => hz.patches.some((q) => Math.hypot(x - q.x, z - q.z) <= q.r + m);
+    const STEP = { north: { x: 0, z: -1 }, south: { x: 0, z: 1 }, east: { x: 1, z: 0 }, west: { x: -1, z: 0 } };
+
+    // Somewhere to stand with a patch between the player and the doorway it
+    // will come in by: the trick the room is meant to offer.
+    let plan = null;
+    for (const dir of Object.keys(trap.links).filter((d) => trap.links[d])) {
+      const entry = { x: STEP[dir].x * half * 0.86, z: STEP[dir].z * half * 0.86 };
+      for (const q of hz.patches) {
+        for (const back of [1.6, 2.2, 3.0]) {
+          const ux = q.x - entry.x;
+          const uz = q.z - entry.z;
+          const len = Math.hypot(ux, uz) || 1;
+          const sx = clamp(q.x + (ux / len) * back);
+          const sz = clamp(q.z + (uz / len) * back);
+          if (inPatch(sx, sz, 0.4)) continue;
+          let crosses = false;
+          for (let i = 0; i <= 60 && !crosses; i++) {
+            const t = i / 60;
+            if (inPatch(entry.x + (sx - entry.x) * t, entry.z + (sz - entry.z) * t)) crosses = true;
+          }
+          if (crosses) plan = { dir, entry, stand: { x: sx, z: sz }, cameFrom: trap.links[dir] };
+          if (plan) break;
+        }
+        if (plan) break;
+      }
+      if (plan) break;
+    }
+    if (!plan) return { error: "no line from any door across a patch" };
+
+    window.__bus.emit("teleport", { position: [plan.stand.x, 1.5, plan.stand.z] });
+    await sleep(400);
+    let routed = 0;
+    let wounded = 0;
+    const offs = [
+      window.__bus.on("wardenRouted", () => routed++),
+      window.__bus.on("wardenWounded", () => wounded++),
+    ];
+    run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
+
+    // Watch it come in. Every frame it is inside a patch is a frame the
+    // steering failed to keep it out of one, so both halves are sampled
+    // from the same walk.
+    let reeledWhileWounded = false;
+    let insideAfterRout = 0;
+    let samplesAfterRout = 0;
+    const alarmBefore = run.getState().alarm;
+    for (let i = 0; i < 90; i++) {
+      await sleep(200);
+      const st = run.getState();
+      if (st.wardenRoomId !== trap.id && !routed) {
+        run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
+      }
+      if (window.__derived.warden().staggered) reeledWhileWounded = true;
+      if (routed && st.wardenRoomId === trap.id && window.__warden) {
+        samplesAfterRout++;
+        if (inPatch(window.__warden.x, window.__warden.z)) insideAfterRout++;
+      }
+      // Once it has learned, put it back in the room to prove it goes round
+      // rather than simply having been thrown away from the spikes.
+      if (routed && st.wardenRoomId !== trap.id) {
+        run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
+      }
+      if (routed && samplesAfterRout > 40) break;
+    }
+    offs.forEach((off) => off());
+    const after = run.getState();
+    return {
+      wounded,
+      routed,
+      reeledWhileWounded,
+      wary: after.wardenWary,
+      woundsAfter: after.wardenWounds,
+      alarmBefore,
+      alarmAfter: after.alarm,
+      insideAfterRout,
+      samplesAfterRout,
+      floorBaseline: window.__derived.rules().startingAlarm,
+    };
+  });
+
+  ok("a trap room can be set up with the Warden walking into its spikes", !trapped.error, trapped.error || "");
+  if (!trapped.error) {
+    ok(
+      "the floor's spikes wound the Warden, not only the player",
+      trapped.wounded >= 1,
+      `${trapped.wounded} wounds`
+    );
+    ok(
+      "and a wound reels it: for a few seconds nothing in the room is coming",
+      trapped.reeledWhileWounded
+    );
+    ok(
+      "two wounds rout it, and the count goes back to none",
+      trapped.routed >= 1 && trapped.woundsAfter === 0,
+      `${trapped.routed} routs, ${trapped.woundsAfter} wounds held`
+    );
+    ok(
+      "a rout calms the floor without taking it below its own baseline",
+      trapped.alarmAfter < trapped.alarmBefore && trapped.alarmAfter >= trapped.floorBaseline,
+      `${trapped.alarmBefore} to ${trapped.alarmAfter}, floor starts at ${trapped.floorBaseline}`
+    );
+    ok(
+      "and it has learned: put back in the room it walks round the spikes",
+      trapped.wary && trapped.samplesAfterRout > 0 && trapped.insideAfterRout === 0,
+      `wary ${trapped.wary}, in the spikes on ${trapped.insideAfterRout} of ${trapped.samplesAfterRout} samples after`
+    );
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

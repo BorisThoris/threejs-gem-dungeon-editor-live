@@ -5,14 +5,26 @@ import { Group, Vector3 } from "three";
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
-import { canControl, runClock, useRun } from "../state/run";
+import { canControl, runClock, useRun, wardenStaggered } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { GROUND_Y, WARDEN_ARRIVAL_GRACE_S, WARDEN_MAX_STEP, WARDEN_TOUCH_RADIUS } from "../world";
+import {
+  GROUND_Y,
+  WARDEN_ARRIVAL_GRACE_S,
+  WARDEN_HAZARD_BERTH,
+  WARDEN_MAX_STEP,
+  WARDEN_TOUCH_RADIUS,
+} from "../world";
+import { inPatch, steerAround, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 
 interface WardenProps {
   room: Room;
+  /**
+   * The room's own hazards, in room-local coordinates. The floor does not
+   * care which of you stands on it: walking into one of these wounds it.
+   */
+  hazards?: readonly Patch[];
 }
 
 /** Proximity bands the DOM draws a vignette from: none, near, close, upon you. */
@@ -36,11 +48,14 @@ const bandFor = (distance: number): number => {
  * level, so it never wins a straight race - it wins by being between you
  * and the door, and by arriving while you are deciding whether to be greedy.
  */
-export function Warden({ room }: WardenProps) {
+export function Warden({ room, hazards = [] }: WardenProps) {
   const group = useRef<Group>(null);
   const eyes = useRef<Group>(null);
   const alarm = useRun((s) => s.alarm);
   const cameFrom = useRun((s) => s.wardenCameFrom);
+  // Once it has been routed it walks round what hurt it. Read as state
+  // rather than in the frame loop: it changes twice a floor at most.
+  const wary = useRun((s) => s.wardenWary);
   const band = useRef(-1);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
 
@@ -72,6 +87,12 @@ export function Warden({ room }: WardenProps) {
    */
   const arrivedIn = useRef<string | null>(null);
   const arrivedAt = useRef(0);
+  /**
+   * Whether it is currently standing in a patch, latched the same way the
+   * player's own hazard does it: a patch bites on entry, not every frame,
+   * and walking off and back on is a second bite.
+   */
+  const inHazard = useRef(false);
 
   useEffect(() => {
     bus.emit("wardenProximity", { level: 0 });
@@ -145,6 +166,16 @@ export function Warden({ room }: WardenProps) {
       return;
     }
 
+    // Reeling from the spikes: it neither walks nor strikes. This is the
+    // only thing in the dungeon that stops it, and it is the floor's own
+    // furniture that does it rather than anything the player carries.
+    if (wardenStaggered(useRun.getState())) {
+      // A shudder in place, so a player who bought this window can see they
+      // bought it rather than guessing from a Warden that merely looks slow.
+      g.position.y = GROUND_Y + 0.02 + Math.sin(t * 22) * 0.035;
+      return;
+    }
+
     if (distance <= WARDEN_TOUCH_RADIUS) {
       /**
        * Not on the frame it walked in on.
@@ -170,10 +201,27 @@ export function Warden({ room }: WardenProps) {
       WARDEN_MAX_STEP,
       Math.max(0, distance - WARDEN_TOUCH_RADIUS * 0.5)
     );
-    scratch.to.set(dx / distance, 0, dz / distance).multiplyScalar(step);
+    // Straight at the player until the spikes have taught it otherwise.
+    const heading = wary
+      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, hazards, WARDEN_HAZARD_BERTH)
+      : { dx: dx / distance, dz: dz / distance };
+    scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     const limit = halfSize(room) - 0.6;
     g.position.x = Math.max(-limit, Math.min(limit, g.position.x + scratch.to.x));
     g.position.z = Math.max(-limit, Math.min(limit, g.position.z + scratch.to.z));
+
+    // What it just walked into. Tested after the step, against the position
+    // it actually ended the frame at, so a patch it was steered round is
+    // never charged and one it was cornered into always is.
+    const standing = inPatch(hazards, g.position.x, g.position.z);
+    if (!standing) inHazard.current = false;
+    else if (!inHazard.current) {
+      inHazard.current = true;
+      // The store decides whether that is actually a wound - it refuses one
+      // while it is still reeling from the last - and the sound and the line
+      // hang off the event it emits, so nothing here has a second opinion.
+      useRun.getState().wardenWounded();
+    }
   });
 
   const rouse = behaviourFor(alarm).rouse;

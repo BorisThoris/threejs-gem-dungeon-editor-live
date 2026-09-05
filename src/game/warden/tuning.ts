@@ -41,7 +41,15 @@ export function behaviourFor(alarm: number, heard = false): WardenBehaviour {
 }
 
 /** What the HUD calls the current state of the floor. */
-export function alarmLabel(alarm: number, heard = false, lured = false): string {
+export function alarmLabel(
+  alarm: number,
+  heard = false,
+  lured = false,
+  reeling = false
+): string {
+  // Outranks everything else it could be doing: whatever the floor's alarm
+  // says, for these few seconds it is not coming.
+  if (reeling) return "Reeling";
   if (lured) return "Following a noise";
   if (heard) return "Heard you";
   if (alarm <= 0) return "Still";

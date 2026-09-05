@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
-import { lureNow, spareGems, tollNow, useCurrentRoom, useRun, wardenHears } from "../game/state/run";
+import {
+  lureNow,
+  spareGems,
+  tollNow,
+  useCurrentRoom,
+  useRun,
+  wardenHears,
+  wardenStaggered,
+} from "../game/state/run";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
@@ -32,11 +40,14 @@ export function Hud() {
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
 
-  const { heard, lured } = useWardenSense();
+  const { heard, lured, reeling } = useWardenSense();
+  const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
   const rouse = behaviourFor(alarm, heard).rouse;
-  const alarmColour = lured
+  const alarmColour = reeling
+    ? colors.gold
+    : lured
     ? colors.accent
     : heard
       ? colors.danger
@@ -88,7 +99,13 @@ export function Hud() {
       {wardenAwake && (
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>
-          <span style={{ color: alarmColour }}>{alarmLabel(alarm, heard, lured)}</span>
+          <span style={{ color: alarmColour }}>
+            {alarmLabel(alarm, heard, lured, reeling)}
+          </span>
+          {/* Said once it is true, because it changes what the trap room is
+              worth walking to - and a rule the player is not told has
+              changed reads as the trick simply having stopped working. */}
+          {wary && !reeling && <span style={{ color: colors.dim }}> · wary of spikes</span>}
         </div>
       )}
       {relics.length > 0 && (
@@ -110,18 +127,20 @@ export function Hud() {
  * otherwise the HUD would keep saying "Heard you" until something else
  * happened to change the store.
  */
-function useWardenSense(): { heard: boolean; lured: boolean } {
+function useWardenSense(): { heard: boolean; lured: boolean; reeling: boolean } {
   const read = () => {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
-    return { heard: !lured && wardenHears(s), lured };
+    return { heard: !lured && wardenHears(s), lured, reeling: wardenStaggered(s) };
   };
   const [sense, setSense] = useState(read);
   useEffect(() => {
     const t = window.setInterval(
       () => setSense((was) => {
         const now = read();
-        return was.heard === now.heard && was.lured === now.lured ? was : now;
+        return was.heard === now.heard && was.lured === now.lured && was.reeling === now.reeling
+          ? was
+          : now;
       }),
       250
     );

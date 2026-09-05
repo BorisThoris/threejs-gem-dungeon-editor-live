@@ -31,6 +31,13 @@ export interface BusEvents {
   wardenNearby: { roomId: string };
   /** It reached the player. */
   wardenStruck: undefined;
+  /** The floor's own spikes bit it. `wounds` is how many it has taken. */
+  wardenWounded: { wounds: number };
+  /**
+   * Wounded once too often: thrown across the floor, and from now on it
+   * walks round what hurt it.
+   */
+  wardenRouted: undefined;
   /** A sprint gave the player away: it knows which room they are in. */
   wardenHeard: undefined;
   /** A thrown sound has sent it somewhere that is not where the player is. */
@@ -117,6 +124,30 @@ export const bus = {
     if (!set) return;
     const payload = args[0] as BusEvents[K];
     // Copy: a handler may unsubscribe itself mid-dispatch.
-    for (const handler of [...set]) (handler as Handler<BusEvents[K]>)(payload);
+    for (const handler of [...set]) {
+      /**
+       * One handler throwing must not silence the rest.
+       *
+       * This dispatched bare, so the first listener to throw ended the
+       * loop and every listener registered after it never ran. It cost a
+       * real afternoon: a new sound cue passed a pan where the oscillator
+       * wanted a sweep target, the audio listener threw, and what the
+       * player saw was not a missing sound - it was the Warden being
+       * routed with no line on screen, because the teaching line's
+       * listener was registered after the audio one and never got the
+       * event. A bus whose subscribers can take each other down couples
+       * every system on it to the buggiest one.
+       *
+       * Still loud: the error is reported, and in dev it is rethrown out
+       * of band so it reaches the page and the checks that watch for page
+       * errors, rather than being quietly swallowed.
+       */
+      try {
+        (handler as Handler<BusEvents[K]>)(payload);
+      } catch (error) {
+        console.error(`bus handler for "${String(event)}" threw`, error);
+        if (import.meta.env.DEV) setTimeout(() => { throw error; }, 0);
+      }
+    }
   },
 };

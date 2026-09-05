@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { canControl, lureNow, useRun, wardenHears } from "../state/run";
+import { canControl, lureNow, useRun, wardenHears, wardenStaggered } from "../state/run";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
 
@@ -22,6 +22,12 @@ export function WardenDriver() {
     const run = useRun.getState();
     if (!run.wardenRoomId || !run.dungeon || !run.currentRoomId) return;
     if (!canControl(run)) return;
+    // Reeling from the floor's spikes: it is not going anywhere, and the
+    // timer does not run while it is down - otherwise a stagger that
+    // straddled a step boundary was spent the instant it ended, and the
+    // window the player bought was three seconds of nothing followed by it
+    // walking straight back in.
+    if (wardenStaggered(run)) return;
 
     // A thrown sound is what it is walking to, if there is one: it is
     // following a noise it already heard rather than listening for the

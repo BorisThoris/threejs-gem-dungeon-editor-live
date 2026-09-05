@@ -42,6 +42,7 @@ writeFileSync(
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
+   export * from "${root}src/game/warden/steer";
    export * from "${root}src/game/world";`
 );
 const out = join(dir, "bundle.mjs");
@@ -1510,6 +1511,170 @@ check("the shipped room templates reach the floors the game generates", authored
     "nor in a room only reachable through it",
     keyBehind === 0,
     `${keyBehind} of ${lockedFloors} floors`
+  );
+}
+
+// --- The Warden and the floor's own spikes ---------------------------------
+//
+// Traps bite it as well as the player, which is a real answer to it and so
+// has to be a real answer on every trap room the generator makes rather
+// than on the one it was designed against. Two halves: the room has to
+// offer the trick at all - somewhere to stand with a patch between you and
+// the way in - and, once it has learned, the walk round has to actually
+// work rather than mire it in the doorway or march it through anyway.
+{
+  const patchesOf = (r, gem) =>
+    L.trapHazards(r, gem).map(([x, , z]) => ({ x, z, r: L.HAZARD_RADIUS }));
+  /** Does the straight line a to b pass within a patch? */
+  const lineHitsPatch = (patches, ax, az, bx, bz) => {
+    const steps = 60;
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      if (L.inPatch(patches, ax + (bx - ax) * t, az + (bz - az) * t)) return true;
+    }
+    return false;
+  };
+
+  let noTrick = 0;
+  let trapRooms = 0;
+  let bitten = 0;
+  let walked = 0;
+  let stalled = 0;
+  for (const size of L.ROOM_SIZES) {
+    for (const dir of ["north", "south", "east", "west"]) {
+      const r = { id: "r", kind: "trap", seed: 0, grid: { x: 0, z: 0 }, size, shape: "square", links: { [dir]: "a" } };
+      const half = size / 2;
+      const limit = half - 0.6;
+      const [dx, , dz] = L.doorPosition(r, dir);
+      // Where the Warden stands the frame it walks in, from Warden.tsx.
+      const wx0 = dx * 0.86;
+      const wz0 = dz * 0.86;
+      for (let seed = 1; seed <= 40; seed++) {
+        trapRooms++;
+        const gem = L.gemPosition(r, seed);
+        const patches = patchesOf(r, gem);
+        // A place to stand - anywhere in the room, not only by the gem -
+        // that puts a patch between the player and the doorway the Warden
+        // comes in by, without standing in one. Swept on a grid rather
+        // than on rings around the gem: the first version of this asked
+        // only about spots within four units of the reward and called
+        // eighty rooms of four hundred and eighty broken, when what was
+        // broken was the question. The player may stand where they like.
+        let trick = null;
+        const span = limit * 2;
+        for (let ix = 0; ix <= 24 && !trick; ix++) {
+          for (let iz = 0; iz <= 24 && !trick; iz++) {
+            const px = -limit + (span * ix) / 24;
+            const pz = -limit + (span * iz) / 24;
+            if (L.inPatch(patches, px, pz, 0.4)) continue;
+            // Standing on the doorstep is not the trick: it has to be a
+            // spot with room to have walked to it.
+            if (Math.hypot(px - wx0, pz - wz0) < 3) continue;
+            if (lineHitsPatch(patches, wx0, wz0, px, pz)) trick = [px, pz];
+          }
+        }
+        if (!trick) {
+          noTrick++;
+          continue;
+        }
+        // Having learned, it walks the same approach without being bitten.
+        walked++;
+        let wx = wx0;
+        let wz = wz0;
+        const dt = 1 / 60;
+        let arrived = false;
+        let hit = false;
+        for (let step = 0; step < 1200 && !arrived; step++) {
+          const gap = Math.hypot(trick[0] - wx, trick[1] - wz);
+          if (gap <= L.WARDEN_TOUCH_RADIUS) {
+            arrived = true;
+            break;
+          }
+          const h = L.steerAround(wx, wz, trick[0], trick[1], patches, L.WARDEN_HAZARD_BERTH);
+          const len = Math.min(
+            L.WARDEN_SPEED_ROUSED * dt,
+            L.WARDEN_MAX_STEP,
+            Math.max(0, gap - L.WARDEN_TOUCH_RADIUS * 0.5)
+          );
+          wx = Math.max(-limit, Math.min(limit, wx + h.dx * len));
+          wz = Math.max(-limit, Math.min(limit, wz + h.dz * len));
+          if (L.inPatch(patches, wx, wz)) hit = true;
+        }
+        if (hit) bitten++;
+        if (!arrived) stalled++;
+      }
+    }
+  }
+  check(
+    "every trap room offers somewhere to stand with spikes between you and the door",
+    noTrick === 0,
+    `${noTrick} of ${trapRooms} trap rooms had nowhere`
+  );
+  check(
+    "a Warden that has learned walks round the spikes rather than through them",
+    bitten === 0,
+    `${bitten} of ${walked} approaches took a wound`
+  );
+  check(
+    "and still arrives: going round is not a way of never coming",
+    stalled === 0,
+    `${stalled} of ${walked} approaches never closed`
+  );
+  // The other half of the bargain: before it has learned, the same walk
+  // does take the wound. A trick nobody can pull off the first time is not
+  // a trick, and this is the check that would have caught a berth so wide
+  // the straight walk missed the patches by itself.
+  let naiveBitten = 0;
+  let naiveWalks = 0;
+  for (const size of L.ROOM_SIZES) {
+    const r = { id: "r", kind: "trap", seed: 0, grid: { x: 0, z: 0 }, size, shape: "square", links: { north: "a" } };
+    const half = size / 2;
+    const limit = half - 0.6;
+    const [dx, , dz] = L.doorPosition(r, "north");
+    for (let seed = 1; seed <= 40; seed++) {
+      const gem = L.gemPosition(r, seed);
+      const patches = patchesOf(r, gem);
+      let target = null;
+      for (let a = 0; a < 72 && !target; a++) {
+        for (const reach of [1.6, 2.4, 3.2]) {
+          const px = gem[0] + Math.cos((a / 72) * Math.PI * 2) * reach;
+          const pz = gem[2] + Math.sin((a / 72) * Math.PI * 2) * reach;
+          if (Math.abs(px) > limit || Math.abs(pz) > limit) continue;
+          if (L.inPatch(patches, px, pz, 0.4)) continue;
+          if (lineHitsPatch(patches, dx * 0.86, dz * 0.86, px, pz)) {
+            target = [px, pz];
+            break;
+          }
+        }
+      }
+      if (!target) continue;
+      naiveWalks++;
+      let wx = dx * 0.86;
+      let wz = dz * 0.86;
+      let hit = false;
+      for (let step = 0; step < 1200; step++) {
+        const gap = Math.hypot(target[0] - wx, target[1] - wz);
+        if (gap <= L.WARDEN_TOUCH_RADIUS) break;
+        const len = Math.min(L.WARDEN_SPEED_ROUSED / 60, L.WARDEN_MAX_STEP, Math.max(0, gap - L.WARDEN_TOUCH_RADIUS * 0.5));
+        wx += ((target[0] - wx) / gap) * len;
+        wz += ((target[1] - wz) / gap) * len;
+        if (L.inPatch(patches, wx, wz)) hit = true;
+      }
+      if (hit) naiveBitten++;
+    }
+  }
+  check(
+    "and before it has learned, that same walk takes the wound",
+    naiveWalks > 0 && naiveBitten === naiveWalks,
+    `${naiveBitten} of ${naiveWalks} straight walks were bitten`
+  );
+  // Two wounds rout it, and a rout is the last one the floor gets: the
+  // trick has to be finite or it is the answer to the Warden rather than an
+  // answer on one floor.
+  check(
+    "two wounds rout it, and the stagger outlasts nothing else that stops it",
+    L.WARDEN_WOUNDS_TO_ROUT === 2 && L.WARDEN_STAGGER_S > L.WARDEN_ARRIVAL_GRACE_S,
+    `${L.WARDEN_WOUNDS_TO_ROUT} wounds, ${L.WARDEN_STAGGER_S}s reeling`
   );
 }
 
