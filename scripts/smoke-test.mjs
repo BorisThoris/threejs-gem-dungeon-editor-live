@@ -100,6 +100,35 @@ const browser = await chromium.launch({
 });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
 const errors = [];
+// A heartbeat for React's commits. The store is not the screen: a tree
+// that has stopped committing leaves the last painted DOM in place while
+// the run store carries on being written to, and every DOM check after
+// that point fails for a reason that is not its own. Counting mutations
+// under the root says where it stopped.
+await page.addInitScript(() => {
+  window.__domBeat = 0;
+  const start = () => {
+    const root = document.getElementById("root");
+    if (!root) return setTimeout(start, 50);
+    new MutationObserver((ms) => {
+      window.__domBeat += ms.length;
+    }).observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
+  };
+  start();
+});
+const mark = async (label) => {
+  const seen = await page
+    .evaluate(() => {
+      const s = window.__run.getState();
+      return {
+        beat: window.__domBeat,
+        store: `f${s.floor} ${s.currentRoomId} g${s.gems} ${s.phase}`,
+        screen: document.body.innerText.slice(0, 90).replace(/\n/g, " | "),
+      };
+    })
+    .catch((e) => ({ error: String(e).slice(0, 120) }));
+  console.log(`MARK  ${label}  ${JSON.stringify(seen)}`);
+};
 // Say it where it happened. The tally at the bottom of the run is the
 // wrong place to learn that the screen died four hundred lines earlier:
 // every check after the exception fails for a reason that is not its own,
@@ -268,6 +297,7 @@ ok("control returned after every transition", !explored.transitioning && explore
   );
 }
 
+await mark("The exit refuses E without the toll, ");
 // The exit refuses E without the toll, and takes it once paid.
 const exitDoor = await page.evaluate(() => {
   const s = window.__run.getState();
@@ -377,6 +407,7 @@ if (exitDoor) {
 }
 if (!exitChecked) ok("reached the exit's neighbour to test the toll", false, "path not walked");
 
+await mark("Start over, lose every life, and rest");
 // Start over, lose every life, and restart from the summary.
 const again = await page.$('button:has-text("Run again")');
 ok("restart button offered", !!again);
@@ -442,6 +473,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 
+await mark("The satchel: chests hold something, i");
 // The satchel: chests hold something, its look is a lie until you use it,
 // and using it does what the item says.
 {
@@ -629,6 +661,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+await mark("The arena is a set piece: taking its ");
 // The arena is a set piece: taking its gem bars the doors and starts the
 // arms, and the room lets go again when they stop.
 {
@@ -693,6 +726,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+await mark("The shop will name something you are ");
 // The shop will name something you are carrying, for a gem.
 {
   const named = await page.evaluate(() => {
@@ -745,6 +779,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+await mark("Settings are remembered, and turning ");
 // Settings are remembered, and turning head bob off actually stops the head
 // moving - the one setting somebody might need in order to play at all.
 {
@@ -775,6 +810,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   await page.evaluate(() => window.__settings.getState().setCameraBob(true));
 }
 
+await mark("A locked vault, and the key that open");
 // A locked vault, and the key that opens it.
 {
   let seed = 3;
@@ -814,6 +850,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+await mark("Runs leave a record behind, and a see");
 // Runs leave a record behind, and a seed can be walked again.
 {
   await page.evaluate(() => window.__records.getState().clear());
