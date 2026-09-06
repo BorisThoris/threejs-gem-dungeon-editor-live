@@ -714,3 +714,23 @@ export const REAPER_TOUCH_RADIUS = WARDEN_TOUCH_RADIUS;
 export const REAPER_MAX_STEP = REAPER_TOUCH_RADIUS / 2;
 export const REAPER_STALL_S = 6;
 export const REAPER_STRIKE_GRACE_S = 1.5;
+
+/**
+ * The floor's ambient life: none of it a threat, all of it a tell.
+ *
+ * Rats flee anything with feet - the player, and the Warden, so rats
+ * pouring out of a doorway mean it is behind them - slower than a walk so
+ * they are a thing you can chase, and they spring a snare set across their
+ * run for nothing. A moth comes to a raised lantern and, when the lantern
+ * goes down, carries the light in the Warden's eye for MOTH_HOLD_S: longer
+ * than the lantern's own afterglow, or the moth would be scenery. Bats
+ * roost in some large rooms and a dash beneath them startles the roost for
+ * BATS_ROUSED_S, and the noise carries BATS_NOISE_FACTOR times as far as
+ * the ground alone would carry it.
+ */
+export const RAT_FLEE_RADIUS = 3.5;
+export const RAT_SPEED = 4;
+export const MOTH_SPEED = 3;
+export const MOTH_HOLD_S = 6;
+export const BATS_ROUSED_S = 5;
+export const BATS_NOISE_FACTOR = 2;

@@ -162,6 +162,8 @@ export default function App() {
     // creature walk round the furniture rather than trust that it does.
     void import("./game/rooms/Dressing").then((m) => (w.__placements = m.placementsFor));
     void import("./game/props/specs").then((m) => (w.__propSpecs = m.PROP_SPECS));
+    // Where the floor's rats, roost and moth are, from the one owner of it.
+    void import("./game/mobs/ambient").then((m) => (w.__ambient = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft

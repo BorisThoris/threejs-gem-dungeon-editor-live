@@ -100,6 +100,12 @@ export function Audio() {
       bus.on("reaperWoke", () => sfx.wardenHere()),
       bus.on("reaperStruck", () => sfx.wardenStrike()),
       bus.on("reaperStalled", () => sfx.wardenWound()),
+      bus.on("snareSprung", ({ by }) => {
+        if (by === "rat") sfx.clatter();
+      }),
+      bus.on("mothLanded", () => sfx.named()),
+      bus.on("mothLeft", () => sfx.take()),
+      bus.on("batsRoused", () => sfx.thiefFled()),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),

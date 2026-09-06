@@ -59,6 +59,12 @@ export function Captions() {
       bus.on("reaperWoke", () => say("Something that was not here is here")),
       bus.on("reaperStruck", () => say("It passes through you")),
       bus.on("reaperStalled", () => say("The blast holds it")),
+      bus.on("snareSprung", ({ by }) => {
+        if (by === "rat") say("Something small springs your snare");
+      }),
+      bus.on("mothLanded", () => say("A moth settles on the lantern")),
+      bus.on("mothLeft", () => say("The moth carries the light away")),
+      bus.on("batsRoused", () => say("Bats burst from the roost")),
       bus.on("wardenLured", () => say("A clatter, far off")),
       bus.on("sentrySaw", ({ pan }) => say(`A watcher calls out${side(pan)}`)),
       bus.on("thiefCame", () => say("Something small skitters in")),

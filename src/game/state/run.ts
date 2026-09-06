@@ -41,6 +41,9 @@ import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
   FLOOR_PATIENCE_S,
+  BATS_NOISE_FACTOR,
+  BATS_ROUSED_S,
+  MOTH_HOLD_S,
   REAPER_STALL_S,
   REAPER_STRIKE_GRACE_S,
   DAMAGE_COOLDOWN_S,
@@ -90,6 +93,9 @@ export interface PlacedDevice {
   /** A bomb's deadline on the run's clock. Only bombs have one. */
   fuseAt?: number;
 }
+
+/** What can set a snare off: the thing it was set for, or something small. */
+export type SnareSpringer = "warden" | "rat";
 
 export interface RunState {
   phase: Phase;
@@ -286,6 +292,10 @@ export interface RunState {
   reaperStalledUntil: number;
   /** Run-clock second of the Reaper's last strike, for the grace between two. */
   reaperLastStrikeAt: number;
+  /** The moth is on the raised lantern, and the Warden can see it. */
+  mothOn: boolean;
+  /** Run-clock second the startled roost settles. */
+  batsRousedUntil: number;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -343,7 +353,7 @@ export interface RunState {
    */
   blessSlot: (slot: number) => boolean;
   /** A snare caught something and is spent. */
-  springSnare: (key: string) => void;
+  springSnare: (key: string, by?: SnareSpringer) => void;
   /** The Cutpurse comes into the room the player is standing in. */
   thiefArrives: () => boolean;
   /** It reached the player and took a gem. False if there was nothing to take. */
@@ -424,6 +434,12 @@ export interface RunState {
   reaperStrike: () => void;
   /** A blast in the Reaper's room holds it where it stands for a while. */
   stallReaper: () => void;
+  /** The moth settled on the raised lantern. */
+  mothLands: () => void;
+  /** The moth left the lantern: the light stays in the Warden's eye a while. */
+  mothLeaves: () => void;
+  /** Something startled the roost: the noise carries further than the ground would. */
+  rouseBats: () => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -552,6 +568,8 @@ export const useRun = create<RunState>()(
     reaperAwake: false,
     reaperStalledUntil: 0,
     reaperLastStrikeAt: 0,
+    mothOn: false,
+    batsRousedUntil: 0,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -643,6 +661,8 @@ export const useRun = create<RunState>()(
         reaperAwake: false,
         reaperStalledUntil: 0,
         reaperLastStrikeAt: 0,
+        mothOn: false,
+        batsRousedUntil: 0,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -819,6 +839,8 @@ export const useRun = create<RunState>()(
           reaperAwake: false,
           reaperStalledUntil: 0,
           reaperLastStrikeAt: 0,
+          mothOn: false,
+          batsRousedUntil: 0,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1140,11 +1162,15 @@ export const useRun = create<RunState>()(
       return true;
     },
 
-    springSnare: (key) => {
+    springSnare: (key, by = "warden") => {
       const s = get();
       const device = s.placed.find((d) => d.key === key);
       if (!device || !device.live) return;
       set({ placed: s.placed.map((d) => (d.key === key ? { ...d, live: false } : d)) });
+      bus.emit("snareSprung", { by });
+      // Something small sprang it: the wire is spent and nothing is wounded.
+      // That is the whole cost of setting a snare where the rats run.
+      if (by !== "warden") return;
       // Through the same door the floor's own spikes use, so the wound, the
       // count towards a rout and the reeling all stay in one place - and a
       // snare cannot be a second, quietly different way of hurting it.
@@ -1409,6 +1435,34 @@ export const useRun = create<RunState>()(
       bus.emit("wardenStruck");
     },
 
+    mothLands: () => {
+      if (get().mothOn) return;
+      set({ mothOn: true });
+      bus.emit("mothLanded");
+    },
+
+    mothLeaves: () => {
+      const s = get();
+      if (!s.mothOn) return;
+      // It carried the light a while: the Warden's eye holds it after the
+      // lantern is down, for longer than the lantern's own afterglow.
+      set({ mothOn: false, litUntil: Math.max(s.litUntil, runClock(s) + MOTH_HOLD_S) });
+      bus.emit("mothLeft");
+    },
+
+    rouseBats: () => {
+      const s = get();
+      const now = runClock(s);
+      if (now < s.batsRousedUntil) return;
+      const heard = wardenHears(s);
+      set({
+        batsRousedUntil: now + BATS_ROUSED_S,
+        noisyUntil: Math.max(s.noisyUntil, now + noiseHoldFor(s) * BATS_NOISE_FACTOR),
+      });
+      bus.emit("batsRoused");
+      if (!heard) bus.emit("wardenHeard");
+    },
+
     wakeReaper: () => {
       const s = get();
       if (s.reaperAwake || s.phase !== "playing") return;
@@ -1496,6 +1550,9 @@ export const useRun = create<RunState>()(
       // The Reaper, which is always in the room the player is in: a blast
       // there is the one thing on the floor that holds it.
       if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
+      // The moth, if it was on the lantern: scattered, and the light it
+      // carried goes with it. The roost hears the blast from its own room.
+      if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();
       // The thief, likewise: it drops what it holds. It is only ever in the
       // room the player is in - it comes for them and runs from them - so
       // "in this room" is "the player is".
@@ -1642,7 +1699,7 @@ export const lanternLit = (s: RunState): boolean => s.lanternRaised && s.oil > 0
  * game makes with the player - fast or unnoticed, seeing or unseen - are
  * the same shape and are kept the same way.
  */
-export const wardenSeesLight = (s: RunState): boolean => running(s, s.litUntil);
+export const wardenSeesLight = (s: RunState): boolean => s.mothOn || running(s, s.litUntil);
 
 /**
  * Whether it knows where the player is at all, by either sense.

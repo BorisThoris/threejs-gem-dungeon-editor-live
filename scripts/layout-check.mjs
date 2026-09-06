@@ -39,6 +39,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
+   export * from "${root}src/game/mobs/ambient";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1315,7 +1316,7 @@ check("the shipped room templates reach the floors the game generates", authored
 // the catalogue said SNARE_RADIUS - and the two would have drifted the
 // first time either moved. Neither creature may build a bite list now.
 {
-  const creatures = ["src/game/warden/Warden.tsx", "src/game/thief/Cutpurse.tsx"];
+  const creatures = ["src/game/warden/Warden.tsx", "src/game/thief/Cutpurse.tsx", "src/game/mobs/Rats.tsx", "src/game/mobs/Moth.tsx", "src/game/mobs/Bats.tsx"];
   const offenders = creatures.filter((f) => {
     const s = readFileSync(join(root, f), "utf8");
     return /snaresIn|SNARE_RADIUS|trapHazards|r:\s*1\.0\b/.test(s);
@@ -1362,6 +1363,54 @@ check("the shipped room templates reach the floors the game generates", authored
   const owners = ["src/game/state/run.ts", "src/ui/Hud.tsx", "src/game/systems/Audio.tsx", "src/game/reaper/ReaperDriver.tsx", "src/game/reaper/Reaper.tsx"]
     .filter((f) => { try { return /(PATIENCE_S|REAPER_[A-Z_]+)\s*=\s*\d/.test(readFileSync(join(root, f), "utf8")); } catch { return false; } });
   check("and only world.ts spells the patience out", owners.length === 0, owners.join(", ") || "one owner");
+}
+
+// --- Floors that are alive ----------------------------------------------------
+//
+// Run 11: three ambient creatures, none a threat by itself, each with a
+// body in the table and each touching a system the player already
+// reasons about. Rats scatter from footsteps and spring snares; a moth
+// comes to a raised lantern and holds the light in the Warden's eye; bats
+// burst from a roost when you dash beneath them and the noise carries
+// twice as far. These hold where they are placed, how many, and that the
+// numbers make each one a tell rather than a nuisance.
+{
+  const B = L.BODIES ?? {};
+  check("rats walk, moths and bats fly", B.rat === "ground" && B.moth === "flying" && B.bat === "flying", JSON.stringify({ rat: B.rat, moth: B.moth, bat: B.bat }));
+  check("a startled roost carries a dash further than the ground alone", (L.BATS_NOISE_FACTOR ?? 0) > 1 && (L.BATS_ROUSED_S ?? 0) > 0, `factor ${L.BATS_NOISE_FACTOR}, roused ${L.BATS_ROUSED_S}s`);
+  check("a moth on the lantern holds the light longer than the lantern itself does", (L.MOTH_HOLD_S ?? 0) > (L.LANTERN_SEEN_HOLD_S ?? Infinity), `${L.MOTH_HOLD_S}s against ${L.LANTERN_SEEN_HOLD_S}s`);
+  check("a rat is slower than a walk - a thing you can chase - and flees before you are on it", (L.RAT_SPEED ?? 99) < L.WALK_SPEED && (L.RAT_FLEE_RADIUS ?? 0) > L.CLOSE_REACH, `speed ${L.RAT_SPEED}, flees at ${L.RAT_FLEE_RADIUS}`);
+
+  if (L.ratsFor && L.roostFor && L.mothRoom) {
+    const NEVER = new Set(["start", "end", "shop", "library", "memory", "challenge", "secret"]);
+    let rooms = 0, withRats = 0, tooMany = 0, wrongKind = 0, inProp = 0, floors = 0, withRoost = 0, withMoth = 0, badMoth = 0, badRoost = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      const moth = L.mothRoom(d);
+      if (moth) { withMoth++; if (moth === d.startId || moth === d.endId) badMoth++; }
+      let roosts = 0;
+      for (const r of d.rooms) {
+        rooms++;
+        const rats = L.ratsFor(r, d.seed);
+        if (rats.length) withRats++;
+        if (rats.length > 3) tooMany++;
+        if (rats.length && NEVER.has(r.kind)) wrongKind++;
+        const solid = L.placementsFor(r, d.seed).filter((p) => L.PROP_SPECS[p.kind].solid);
+        for (const rat of rats) if (solid.some((p) => Math.hypot(rat.x - p.x, rat.z - p.z) < L.PROP_SPECS[p.kind].radius)) inProp++;
+        const roost = L.roostFor(r, d.seed);
+        if (roost) { roosts++; if (r.id === d.startId || r.id === d.endId) badRoost++; }
+      }
+      if (roosts) withRoost++;
+    }
+    check("rats live where the floor says and nowhere a puzzle is being played", wrongKind === 0 && tooMany === 0, `${wrongKind} in the wrong kind, ${tooMany} rooms over three, ${withRats} of ${rooms} rooms with rats`);
+    check("and a rat's hole is never inside the furniture", inProp === 0, `${inProp} of ${rooms} rooms`);
+    check("most floors have somewhere the rats live", withRats / rooms > 0.15, `${((withRats / rooms) * 100).toFixed(0)}% of rooms`);
+    check("most floors have a moth, and never in the start or the exit", withMoth / floors >= 0.6 && badMoth === 0, `${withMoth} of ${floors} floors, ${badMoth} misplaced`);
+    check("and most have a roost, likewise", withRoost / floors >= 0.6 && badRoost === 0, `${withRoost} of ${floors} floors, ${badRoost} misplaced`);
+  } else {
+    check("the floor knows where its rats, moth and bats are", false, "no ratsFor/roostFor/mothRoom");
+  }
 }
 
 // --- The Sentry's question --------------------------------------------------

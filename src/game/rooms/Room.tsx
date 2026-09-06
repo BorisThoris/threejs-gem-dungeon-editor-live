@@ -20,7 +20,11 @@ import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
+import { mothRoom, ratsFor, roostFor } from "../mobs/ambient";
+import { Bats } from "../mobs/Bats";
 import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
+import { Moth } from "../mobs/Moth";
+import { Rats } from "../mobs/Rats";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Walls } from "./Walls";
@@ -85,6 +89,30 @@ function RoomReaper({ room }: { room: RoomData }) {
   const awake = useRun((s) => s.reaperAwake);
   const here = useRun((s) => s.currentRoomId === room.id);
   return awake && here ? <Reaper room={room} /> : null;
+}
+
+/**
+ * The floor's ambient life, in the room the player is standing in: the
+ * rats at their holes, the roost, and the moth if this is its room. Each
+ * reads the body table for what it walks round and what bites it.
+ */
+function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const isMothRoom = useRun((s) => (s.dungeon ? mothRoom(s.dungeon) === room.id : false));
+  const placed = useRun((s) => s.placed);
+  const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
+  const roost = useMemo(() => roostFor(room, seed), [room, seed]);
+  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed), [room, seed, placed]);
+  const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed), [room, seed, placed]);
+  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed), [room, seed, placed]);
+  if (!here) return null;
+  return (
+    <>
+      {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
+      {roost && <Bats room={room} at={roost} />}
+      {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
+    </>
+  );
 }
 
 /** The heap, in the one room on the floor that has one. */
@@ -203,6 +231,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomWarden room={room} hazards={wardenHazards} seed={seed} />
       <RoomThief room={room} seed={seed} />
       <RoomReaper room={room} />
+      <RoomAmbient room={room} seed={seed} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

@@ -15,6 +15,7 @@ import {
   WARDEN_MAX_STEP,
   WARDEN_TOUCH_RADIUS,
 } from "../world";
+import { wardenAt } from "./position";
 import { patchAt, steerAround, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 
@@ -108,8 +109,10 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     bus.emit("wardenProximity", { level: 0 });
     return () => {
       bus.emit("wardenProximity", { level: 0 });
-      // It left the room, or the run ended: the held sound goes with it.
+      // It left the room, or the run ended: the held sound goes with it,
+      // and nothing is fleeing it any more.
       sfx.stalkStop();
+      wardenAt.roomId = null;
     };
   }, []);
 
@@ -131,6 +134,9 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
+    wardenAt.x = g.position.x;
+    wardenAt.z = g.position.z;
+    wardenAt.roomId = room.id;
 
     if (import.meta.env.DEV) {
       /**

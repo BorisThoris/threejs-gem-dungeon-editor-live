@@ -17,6 +17,7 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
+import { roostFor } from "../game/mobs/ambient";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
@@ -64,6 +65,9 @@ export function Hud() {
     return { name: b.ground, says: "dead", tone: colors.dim };
   })();
 
+  // Said where the ground is said, because it is the same kind of fact: a
+  // dash in here is louder than the ground alone makes it.
+  const roost = room ? roostFor(room, dungeonSeed) !== null : false;
   const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
@@ -135,6 +139,7 @@ export function Hud() {
           {ground.name}
           <span style={{ color: colors.dim }}> · </span>
           <span style={{ color: ground.tone }}>{ground.says}</span>
+          {roost && <span style={{ color: colors.gold }}> · bats roost here</span>}
         </div>
       )}
       {/* The floor's patience, once it is short, and what came when it ran

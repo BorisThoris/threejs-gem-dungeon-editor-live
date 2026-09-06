@@ -134,6 +134,14 @@ export interface BusEvents {
   reaperStruck: undefined;
   /** A blast is holding it where it stands. */
   reaperStalled: undefined;
+  /** A snare on the floor went off, and what set it off. */
+  snareSprung: { by: "warden" | "rat" };
+  /** The moth settled on the raised lantern. */
+  mothLanded: undefined;
+  /** And left it, carrying the light in the Warden's eye a while. */
+  mothLeft: undefined;
+  /** A roost burst: the noise of it carries. */
+  batsRoused: undefined;
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

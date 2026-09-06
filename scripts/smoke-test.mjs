@@ -5937,6 +5937,110 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 11: floors that are alive. Rats scatter from the player and spring
+// a snare for nothing; a moth comes to a raised lantern and holds the
+// light in the Warden's eye after it is lowered; bats burst from a roost
+// under a dash and the noise carries twice as far. Each is played rather
+// than trusted, in the room the floor put it in.
+{
+  const alive = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const A = window.__ambient;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!A) return { error: "no ambient probe" };
+    const out = {};
+    // A room with rats, from the floor's own answer.
+    let ratRoom = null;
+    for (let seed = 5; seed < 90 && !ratRoom; seed += 3) {
+      run.getState().startRun(seed);
+      await wait(800);
+      const d = run.getState().dungeon;
+      ratRoom = d.rooms.find((r) => A.ratsFor(r, d.seed).length >= 2) ?? null;
+      if (ratRoom) out.seed = seed;
+    }
+    if (!ratRoom) return { error: "no room with two rats in 30 seeds" };
+    const d = run.getState().dungeon;
+    run.setState({ transitioning: true, currentRoomId: ratRoom.id, lives: 3, satchel: ["snare"], identified: [] });
+    run.getState().roomReady(ratRoom.id);
+    await wait(1400);
+    // Stand on a rat's hole: they scatter.
+    const holes = A.ratsFor(ratRoom, d.seed);
+    window.__bus.emit("teleport", { position: [holes[0].x, 1.5, holes[0].z] });
+    await wait(300);
+    const dist = () => (window.__rats ?? []).filter((r) => r.room === ratRoom.id).map((r) => Math.hypot(r.x - holes[0].x, r.z - holes[0].z));
+    const near0 = dist();
+    await wait(3000);
+    const near1 = dist();
+    out.ratsSeen = near1.length;
+    out.scattered = near1.length > 0 && near0.length === near1.length && near1.reduce((a, b) => a + b, 0) / near1.length > near0.reduce((a, b) => a + b, 0) / near0.length + 0.8;
+    // A snare on a rat's path is a snare spent, and the Warden untouched.
+    window.__bus.emit("teleport", { position: [holes[1].x, 1.5, holes[1].z] });
+    await wait(400);
+    const placed = run.getState().placeDevice(0);
+    let sprungBy = null;
+    const off = window.__bus.on("snareSprung", (e) => (sprungBy = e.by));
+    const woundsBefore = run.getState().wardenWounds;
+    // Walk away so the rats come home across it.
+    window.__bus.emit("teleport", { position: [-holes[1].x * 0.3, 1.5, -holes[1].z * 0.3] });
+    const t0 = performance.now();
+    while (!sprungBy && performance.now() - t0 < 12000) await wait(200);
+    off();
+    out.snarePlaced = placed;
+    out.sprungBy = sprungBy;
+    out.wardenUntouched = run.getState().wardenWounds === woundsBefore;
+    // The moth: raise the lantern in its room, it comes; lower it, the
+    // light is still in the Warden's eye for longer than the lantern's own hold.
+    const mothRoomId = A.mothRoom(d);
+    out.mothRoom = mothRoomId;
+    if (mothRoomId) {
+      run.setState({ transitioning: true, currentRoomId: mothRoomId, oil: 999 });
+      run.getState().roomReady(mothRoomId);
+      await wait(1400);
+      if (!run.getState().lanternRaised) run.getState().toggleLantern();
+      const t1 = performance.now();
+      while (!run.getState().mothOn && performance.now() - t1 < 12000) await wait(200);
+      out.mothCame = run.getState().mothOn;
+      run.getState().toggleLantern();
+      // The moth notices on its next frame, which is a third of a second here.
+      await wait(900);
+      out.heldByMoth = run.getState().litUntil - D.clock() > W.LANTERN_SEEN_HOLD_S + 0.5;
+    }
+    // Bats: the roost room, stood in; the dash itself is pressed from
+    // outside the page, as the other dashes in this suite are.
+    const roostRoomId = d.rooms.find((r) => A.roostFor(r, d.seed))?.id ?? null;
+    out.roostRoom = roostRoomId;
+    if (roostRoomId) {
+      run.setState({ transitioning: true, currentRoomId: roostRoomId });
+      run.getState().roomReady(roostRoomId);
+      await wait(1400);
+      out.noiseAlone = D.noiseHold();
+    }
+    return out;
+  });
+  if (!alive.error && alive.roostRoom) {
+    await page.evaluate(() => { window.__batsRoused = false; window.__bus.on("batsRoused", () => (window.__batsRoused = true)); });
+    await page.keyboard.down("ShiftLeft");
+    await page.keyboard.down("KeyW");
+    await page.waitForTimeout(1500);
+    await page.keyboard.up("KeyW");
+    await page.keyboard.up("ShiftLeft");
+    await page.waitForTimeout(300);
+    const bats = await page.evaluate(() => ({ roused: window.__batsRoused, withBats: window.__run.getState().noisyUntil - window.__derived.clock() }));
+    alive.batsRoused = bats.roused;
+    alive.noiseWithBats = bats.withBats;
+    alive.louder = bats.withBats > alive.noiseAlone + 0.5;
+  }
+  ok("a floor has rats, and they scatter from where you stand", !alive.error && alive.scattered, alive.error || JSON.stringify({ seed: alive.seed, rats: alive.ratsSeen, scattered: alive.scattered }));
+  if (!alive.error) {
+    ok("a rat springs a snare for nothing, and the Warden is untouched", alive.snarePlaced && alive.sprungBy === "rat" && alive.wardenUntouched, JSON.stringify({ placed: alive.snarePlaced, by: alive.sprungBy, untouched: alive.wardenUntouched }));
+    ok("a moth comes to a raised lantern", !!alive.mothRoom && alive.mothCame, JSON.stringify({ room: alive.mothRoom, came: alive.mothCame }));
+    ok("and holds the light in the Warden's eye after it is lowered", alive.heldByMoth === true, JSON.stringify({ held: alive.heldByMoth }));
+    ok("a dash under a roost rouses the bats, and carries further", !!alive.roostRoom && alive.batsRoused && alive.louder, JSON.stringify({ room: alive.roostRoom, roused: alive.batsRoused, alone: alive.noiseAlone, withBats: alive.noiseWithBats }));
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to
