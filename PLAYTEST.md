@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §39 asks a human
+  moment it can afford to. That is precisely the behaviour §40 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §39.
+for a person, not for this document, and it is on the list in §40.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2946,14 +2946,67 @@ and not from the middle of the room; and behind it, once opened and
 walked into, is a stand that says free, a font that offers a kneel, or
 a chest that offers to open.
 
-## 38. Steam Deck
+## 38. Breakables
+
+Isaac's rocks and pots. A bomb was a weapon and a key; this makes it a
+tool as well: barrels, crates and urns burst in a blast, now and then
+there is a gem in the wreck, and a barrel is the one thing on a floor a
+player can put between themselves and a bomb.
+
+### What breaks, and what that changes
+
+`props/breakable.ts` is the one owner: `BREAKABLE` is barrels, crates and
+urns - all of them solid, which is the point, because breaking one
+changes what a body walks round. A burst prop is keyed by where it
+stood, not by its index in a list that a vault or a hoard draws with
+extra chests in it, so nobody's index shifts. The store keeps `broken`
+for the floor, the dressing draws a wreck where the prop was and leaves
+it out of the colliders, and `obstaclesFor` leaves it out of every
+creature's list: a rat, the Warden and the moth all go through where
+the barrel was.
+
+To let the store ask what stood in the blast without importing a React
+tree, the pure half of the dressing - `placementsFor` and its rules -
+moved out of `Dressing.tsx` into `rooms/placements.ts`. The body table,
+the ambient life and the traps read it from there now, which is where
+they should always have read it.
+
+### The spill
+
+`spillFor(seed, key)` says whether a wreck has a gem in it:
+`SPILL_CHANCE`, three in ten, by the run's seed, so the same barrel on
+the same seed always holds the same thing. Not an item - a satchel slot
+is a decision and a wreck is not - but a gem, through the same count the
+score reads. Over 2,000 keys the seed spills 585 of them.
+
+### The shield
+
+`shielded(from, to, props)` finds a breakable standing on the straight
+line from the blast to the player, within its own radius and
+`SHIELD_SLACK`, and not at either end: a barrel the bomb was set against
+shields nothing, and neither does one the player is standing on. The
+barrel takes the blast - it bursts - and the player is spared. The
+Warden is not shielded; it is what the blast is for.
+
+### Held and played
+
+Five layout checks: everything that breaks was solid; the spill is a
+chance and not a certainty and the seed honours it; the shield is a
+line - a barrel between shields, one beside, one behind or a pillar does
+not; a burst barrel is out of a ground body's way. Five smoke checks on
+one floor: a bomb beside a barrel bursts it and the store knows; the
+obstacle list is one shorter; the player behind it keeps their life; the
+wreck pays what the seed says; and with the barrel gone the same spot
+costs a life.
+
+## 39. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 39. What a human playtest should watch for
+## 40. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3079,7 +3132,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 40. Options and accessibility
+## 41. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3111,7 +3164,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 41. Deeds
+## 42. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3144,7 +3197,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 42. Harness bugs that read as game bugs
+## 43. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3233,7 +3286,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 43. Tuning knobs
+## 44. Tuning knobs
 
 All in `src/game/world.ts`:
 

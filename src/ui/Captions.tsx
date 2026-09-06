@@ -66,6 +66,7 @@ export function Captions() {
       bus.on("mothLeft", () => say("The moth carries the light away")),
       bus.on("batsRoused", () => say("Bats burst from the roost")),
       bus.on("draftFelt", () => say("A draft of cold air, from the wall")),
+      bus.on("propBroken", ({ kind }) => say(`The ${kind} bursts`)),
       bus.on("trapSprung", ({ kind, by }) =>
         say(
           kind === "grate"

@@ -2,7 +2,8 @@ import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import type { Room } from "../dungeon/types";
 import { SNARE_RADIUS } from "../items/catalog";
 import { PROP_SPECS } from "../props/specs";
-import { placementsFor } from "../rooms/Dressing";
+import { BREAKABLE, breakKey } from "../props/breakable";
+import { placementsFor } from "../rooms/placements";
 import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
 import { trapsFor } from "../traps/placement";
@@ -47,11 +48,18 @@ export const BODIES: Record<MobId, Body> = {
 const BODY_HALF_WIDTH = 0.35;
 
 /** What this body has to walk round: the room's solid furniture, or nothing. */
-export function obstaclesFor(body: Body, room: Room, seed: number, placed: readonly PlacedDevice[]): Patch[] {
+export function obstaclesFor(
+  body: Body,
+  room: Room,
+  seed: number,
+  placed: readonly PlacedDevice[],
+  broken: readonly string[] = []
+): Patch[] {
   void placed;
   if (body === "ghost") return [];
+  // A barrel that has burst is not in anyone's way any more.
   return placementsFor(room, seed)
-    .filter((p) => PROP_SPECS[p.kind].solid)
+    .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
     .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius + BODY_HALF_WIDTH, berth: 0 }));
 }
 

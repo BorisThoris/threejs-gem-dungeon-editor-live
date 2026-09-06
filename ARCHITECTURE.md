@@ -262,6 +262,17 @@ Two stores that both claimed the player's stats. So:
   trigger at the counter and one flag in the store (`bombBought`, reset
   with the floor), because the counter already owned how a purchase is
   refused.
+- What a blast does to the furniture is `src/game/props/breakable.ts`:
+  which kinds burst, the key a burst prop is remembered by (where it
+  stood, not an index), whether a wreck holds a gem, and whether a
+  breakable stands between a blast and a body. `detonate` asks it; the
+  store keeps `broken` for the floor; the dressing draws wrecks and
+  leaves burst props out of the colliders; `obstaclesFor` leaves them out
+  of every creature's list. The pure half of the dressing -
+  `placementsFor` - lives in `src/game/rooms/placements.ts` now, out of
+  the component module, so the store, the body table, the ambient life
+  and the traps can read the list the room draws without a React tree
+  or a cycle.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

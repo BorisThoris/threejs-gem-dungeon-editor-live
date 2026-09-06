@@ -65,11 +65,12 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
   // the floor is why setting one is still worth a satchel slot afterwards.
   const placed = useRun((s) => s.placed);
   const sprung = useRun((s) => s.sprung);
+  const broken = useRun((s) => s.broken);
   // Both lists from the one owner of what a body meets on a floor. The
   // spikes it steers round once wary are still `hazards`; what bites it
   // and what it always walks round are the body's own answers.
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed), [room, seed, placed]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken), [room, seed, placed, broken]);
   return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
 
@@ -83,8 +84,9 @@ function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const here = useRun((s) => s.currentRoomId === room.id);
   const placed = useRun((s) => s.placed);
   const sprung = useRun((s) => s.sprung);
+  const broken = useRun((s) => s.broken);
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken), [room, seed, placed, broken]);
   return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
 }
 
@@ -107,12 +109,13 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
   const here = useRun((s) => s.currentRoomId === room.id);
   const isMothRoom = useRun((s) => (s.dungeon ? mothRoom(s.dungeon) === room.id : false));
   const placed = useRun((s) => s.placed);
+  const broken = useRun((s) => s.broken);
   const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
   const roost = useMemo(() => roostFor(room, seed), [room, seed]);
-  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed), [room, seed, placed]);
+  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken), [room, seed, placed, broken]);
   const sprung = useRun((s) => s.sprung);
   const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed), [room, seed, placed]);
+  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken), [room, seed, placed, broken]);
   if (!here) return null;
   return (
     <>

@@ -169,6 +169,8 @@ export default function App() {
     void import("./game/mobs/body").then((m) => (w.__body = m));
     // What is behind the cracked wall, from the one owner of it.
     void import("./game/dungeon/secret").then((m) => (w.__secret = m));
+    // What a blast does to the furniture, from the one owner of it.
+    void import("./game/props/breakable").then((m) => (w.__breakable = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft

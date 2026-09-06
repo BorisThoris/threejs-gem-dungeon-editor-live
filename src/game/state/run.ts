@@ -33,6 +33,8 @@ import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
+import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
+import { placementsFor } from "../rooms/placements";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
 import { barKey } from "../warden/bars";
@@ -312,6 +314,8 @@ export interface RunState {
   sprung: Record<string, number>;
   /** The shop's one bomb this floor has been bought. */
   bombBought: boolean;
+  /** Breakables that have burst this floor, by `breakKey`. */
+  broken: string[];
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -599,6 +603,7 @@ export const useRun = create<RunState>()(
     batsRousedUntil: 0,
     sprung: {},
     bombBought: false,
+    broken: [],
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -695,6 +700,7 @@ export const useRun = create<RunState>()(
         batsRousedUntil: 0,
         sprung: {},
         bombBought: false,
+        broken: [],
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -877,6 +883,7 @@ export const useRun = create<RunState>()(
           batsRousedUntil: 0,
           sprung: {},
           bombBought: false,
+          broken: [],
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1602,8 +1609,35 @@ export const useRun = create<RunState>()(
       const { roomId, x, z } = bomb;
       const inBlast = (px: number, pz: number) => (px - x) ** 2 + (pz - z) ** 2 <= BOMB_RADIUS * BOMB_RADIUS;
       bus.emit("bombBurst", { roomId, x, z });
-      // The player, if they did not walk.
-      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z)) get().damage();
+      // What stood in the blast: barrels, crates and urns burst - one of
+      // them between the bomb and the player takes it for them - and now
+      // and then there is a gem in the wreck. The list is the one the room
+      // draws, and the key is where a thing stood, so a vault's extra
+      // chests do not shift anybody's index.
+      const blastRoom = roomById(s.dungeon, roomId);
+      const standing = blastRoom
+        ? placementsFor(blastRoom, s.dungeon.seed)
+            .filter((p) => BREAKABLE.has(p.kind))
+            .map((p) => ({ kind: p.kind, x: p.x, z: p.z, key: breakKey(blastRoom, p) }))
+            .filter((p) => !s.broken.includes(p.key))
+        : [];
+      const shield = s.currentRoomId === roomId ? shielded({ x, z }, playerAt, standing) : null;
+      const burst = standing.filter((p) => p === shield || inBlast(p.x, p.z));
+      if (burst.length) {
+        let spilled = 0;
+        for (const p of burst) {
+          bus.emit("propBroken", { roomId, kind: p.kind, key: p.key });
+          if (spillFor(s.dungeon.seed, p.key)) spilled++;
+        }
+        set({
+          broken: [...get().broken, ...burst.map((p) => p.key)],
+          gems: get().gems + spilled,
+          gemsTotal: get().gemsTotal + spilled,
+        });
+        if (spilled) bus.emit("notice", spilled === 1 ? "Something glints in the wreck." : `${spilled} gems glint in the wreck.`);
+      }
+      // The player, if they did not walk - and nothing stood between.
+      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage();
       // The Warden, if it is in the room - whether or not the player is.
       // A bomb left behind in a room the Warden later walks into is a
       // trap, and a trap that only works while you stand in it is a dud.

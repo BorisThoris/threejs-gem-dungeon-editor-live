@@ -3,7 +3,7 @@ import { DIRS, halfSize, type Dir, type Room, type RoomKind } from "../dungeon/t
 import type { Body } from "../mobs/body";
 import { PROP_SPECS } from "../props/specs";
 import { createRng } from "../rng";
-import { placementsFor } from "../rooms/Dressing";
+import { placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
 import { PIT_RADIUS } from "../world";
 

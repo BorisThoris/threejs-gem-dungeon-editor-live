@@ -42,6 +42,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/ambient";
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
+   export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1500,6 +1501,44 @@ check("the shipped room templates reach the floors the game generates", authored
     check("and a hoard has a chest in it nearly every time", hoards > 0 && thinHoards / hoards < 0.1, `${thinHoards} of ${hoards} hoards with no chest`);
   } else {
     check("the wall knows what it hides", false, "no secretFlavour");
+  }
+}
+
+// --- Breakables --------------------------------------------------------------------
+//
+// Run 14: barrels, crates and urns burst in a blast, now and then with a
+// gem in the wreck, and one between the bomb and the player takes the
+// blast for them. These hold the rules to what they say: everything that
+// breaks was solid, the spill is a real chance and not a certainty, the
+// shield is a line and not a radius, and a burst prop is out of every
+// body's way.
+{
+  const B = L.BREAKABLE;
+  check("everything that breaks was solid, so breaking it changes what a body walks round", !!B && [...B].every((k) => L.PROP_SPECS[k]?.solid), B ? [...B].join(", ") : "no BREAKABLE");
+  check("a wreck has a gem in it sometimes, and not usually", L.SPILL_CHANCE > 0.1 && L.SPILL_CHANCE < 0.5, `${L.SPILL_CHANCE}`);
+  if (L.spillFor) {
+    let spills = 0;
+    for (let i = 0; i < 2000; i++) if (L.spillFor(7, `room_${i % 9}:barrel@${(i * 0.7).toFixed(1)},${(i * 0.3).toFixed(1)}`)) spills++;
+    check("and the seed decides which, at about the chance it says", Math.abs(spills / 2000 - L.SPILL_CHANCE) < 0.05, `${spills} of 2000`);
+  }
+  if (L.shielded) {
+    const between = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 2, z: 0.2 }]);
+    const beside = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 2, z: 1.5 }]);
+    const behind = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 5, z: 0 }]);
+    const notBreakable = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "pillar", x: 2, z: 0 }]);
+    check("a barrel on the line between the bomb and the player shields them; one beside it, behind them, or a pillar does not", !!between && !beside && !behind && !notBreakable, JSON.stringify({ between: !!between, beside: !!beside, behind: !!behind, pillar: !!notBreakable }));
+  }
+  if (L.obstaclesFor && L.breakKey) {
+    const d = L.generateDungeon({ seed: 21, minRooms: 8, maxRooms: 16 });
+    const room = d.rooms.find((r) => L.placementsFor(r, d.seed).some((p) => L.BREAKABLE.has(p.kind)));
+    if (room) {
+      const target = L.placementsFor(room, d.seed).find((p) => L.BREAKABLE.has(p.kind));
+      const before = L.obstaclesFor("ground", room, d.seed, []).length;
+      const after = L.obstaclesFor("ground", room, d.seed, [], [L.breakKey(room, target)]).length;
+      check("a burst barrel is out of a ground body's way", after === before - 1, `${before} then ${after}`);
+    } else {
+      check("a burst barrel is out of a ground body's way", false, "no room with a breakable on seed 21");
+    }
   }
 }
 

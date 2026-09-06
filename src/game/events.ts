@@ -142,6 +142,8 @@ export interface BusEvents {
   mothLeft: undefined;
   /** A roost burst: the noise of it carries. */
   batsRoused: undefined;
+  /** A barrel, crate or urn burst in a blast. */
+  propBroken: { roomId: string; kind: string; key: string };
   /** A draft of air from a cracked wall, felt for the first time this visit. */
   draftFelt: { roomId: string };
   /** One of the floor's own traps went off, and what set it off. */

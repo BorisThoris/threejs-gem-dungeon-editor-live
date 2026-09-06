@@ -2,7 +2,7 @@ import type { Dungeon, Room, RoomKind } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { createRng } from "../rng";
 import { biomeIdFor, type BiomeId } from "../rooms/biomes";
-import { placementsFor } from "../rooms/Dressing";
+import { placementsFor } from "../rooms/placements";
 
 /**
  * Where the floor's ambient life is. One owner, derived from the room and

@@ -761,3 +761,13 @@ export const GRATE_HOLD_S = 20;
  */
 export const BOMB_PRICE = 2;
 export const DRAFT_REACH = 3;
+
+/**
+ * Breakables. A barrel, a crate or an urn in a blast bursts, and now and
+ * then - SPILL_CHANCE of the time, by the seed - there is a gem in the
+ * wreck. A breakable standing on the line from the bomb to the player,
+ * within its own radius and SHIELD_SLACK, takes the blast for them: the
+ * one thing on a floor you can put between yourself and a bomb.
+ */
+export const SPILL_CHANCE = 0.3;
+export const SHIELD_SLACK = 0.3;

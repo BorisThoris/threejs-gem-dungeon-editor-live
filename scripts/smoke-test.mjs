@@ -6252,6 +6252,86 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 14: a bomb beside a barrel bursts it - the barrel is gone from the
+// room, out of every body's way, and sometimes there was a gem in it -
+// and a barrel between you and the bomb takes the blast for you.
+{
+  const burst = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const K = window.__breakable;
+    const B = window.__body;
+    const P = window.__placements;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!K || !P) return { error: "no breakable probe" };
+    const out = {};
+    let d = null, room = null, barrel = null;
+    for (let seed = 21; seed < 90 && !room; seed += 3) {
+      run.getState().startRun(seed);
+      await wait(800);
+      d = run.getState().dungeon;
+      for (const r of d.rooms) {
+        if (["start", "end", "shop"].includes(r.kind)) continue;
+        const b = P(r, d.seed).find((p) => K.BREAKABLE.has(p.kind) && Math.hypot(p.x, p.z) < r.size / 2 - 3);
+        if (b) { room = r; barrel = b; break; }
+      }
+      if (room) out.seed = seed;
+    }
+    if (!room) return { error: "no breakable in a reachable spot in 23 seeds" };
+    const key = K.breakKey(room, barrel);
+    out.kind = barrel.kind;
+    run.setState({ transitioning: true, currentRoomId: room.id, lives: 9, satchel: ["bomb", "bomb"], identified: [], wardenRoomId: null, gems: 0 });
+    run.getState().roomReady(room.id);
+    await wait(1400);
+    // The shield: bomb on one side of the barrel, player on the other.
+    const len = Math.hypot(barrel.x, barrel.z) || 1;
+    const ux = barrel.x / len, uz = barrel.z / len;
+    const bombAt = [barrel.x - ux * 1.2, barrel.z - uz * 1.2];
+    const behind = [barrel.x + ux * 1.4, barrel.z + uz * 1.4];
+    window.__bus.emit("teleport", { position: [bombAt[0], 1.5, bombAt[1]] });
+    await wait(400);
+    out.placed = run.getState().placeDevice(0);
+    window.__bus.emit("teleport", { position: [behind[0], 1.5, behind[1]] });
+    const obstaclesBefore = B.obstaclesFor("ground", room, d.seed, run.getState().placed, run.getState().broken).length;
+    const livesBefore = run.getState().lives;
+    const gemsBefore = run.getState().gems;
+    let broke = null;
+    const off = window.__bus.on("propBroken", (e) => (broke = e.key));
+    const t0 = performance.now();
+    while (!broke && performance.now() - t0 < (W.BOMB_FUSE_S + 4) * 1000) await wait(100);
+    off();
+    await wait(300);
+    out.broke = broke === key;
+    out.inStore = run.getState().broken.includes(key);
+    out.shielded = run.getState().lives === livesBefore;
+    out.obstaclesAfter = B.obstaclesFor("ground", room, d.seed, run.getState().placed, run.getState().broken).length;
+    out.obstaclesBefore = obstaclesBefore;
+    out.spill = K.spillFor(d.seed, key);
+    out.gemsPaid = run.getState().gems - gemsBefore;
+    // And with nothing between: the same spot, the barrel gone, costs a life.
+    window.__bus.emit("teleport", { position: [bombAt[0], 1.5, bombAt[1]] });
+    await wait(400);
+    run.getState().placeDevice(0);
+    window.__bus.emit("teleport", { position: [behind[0], 1.5, behind[1]] });
+    const lives2 = run.getState().lives;
+    let burst2 = false;
+    const off2 = window.__bus.on("bombBurst", () => (burst2 = true));
+    const t1 = performance.now();
+    while (!burst2 && performance.now() - t1 < (W.BOMB_FUSE_S + 4) * 1000) await wait(100);
+    off2();
+    await wait(300);
+    out.hurtWithoutIt = run.getState().lives === lives2 - 1;
+    return out;
+  });
+  ok("a bomb beside a barrel bursts it", !burst.error && burst.placed && burst.broke && burst.inStore, burst.error || JSON.stringify({ seed: burst.seed, kind: burst.kind, broke: burst.broke, inStore: burst.inStore }));
+  if (!burst.error) {
+    ok("and it is out of every body's way from then on", burst.obstaclesAfter === burst.obstaclesBefore - 1, `${burst.obstaclesBefore} then ${burst.obstaclesAfter}`);
+    ok("the barrel between you and the bomb took the blast for you", burst.shielded, JSON.stringify({ shielded: burst.shielded }));
+    ok("and the wreck pays what the seed says it holds", burst.gemsPaid === (burst.spill ? 1 : 0), JSON.stringify({ spill: burst.spill, paid: burst.gemsPaid }));
+    ok("with the barrel gone, the same spot costs a life", burst.hurtWithoutIt, JSON.stringify({ hurt: burst.hurtWithoutIt }));
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to
