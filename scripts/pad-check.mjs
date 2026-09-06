@@ -157,7 +157,13 @@ const focusOn = async (page, pattern, steps) => {
   let where = await focusAt();
   while (moved < limit && misses < 12) {
     if (pattern.test(await focused())) return true;
-    await tap(page, BUTTON.down);
+    // Held for one frame, not the usual four. A frame here is 300ms to a
+    // second, so four of them is a direction held for longer than the
+    // game's own repeat delay (420ms) - and the game repeated it, as it
+    // should, so one "tap" moved the focus four to six stops and leapt
+    // clean over "Quit to menu" on the way round. The pad polls once a
+    // frame, so a press that spans one is seen exactly once.
+    await tap(page, BUTTON.down, 1);
     const now = await focusAt();
     if (now === where) misses++;
     else {

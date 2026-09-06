@@ -2767,7 +2767,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 36. Two harness bugs that read as game bugs
+## 36. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2832,6 +2832,22 @@ for a bug in the dungeon. It is also worth fixing properly, and the way to
 fix it is not more timeouts: it is for the harness to wait on a condition
 the game publishes rather than on a clock. That is the next round's work,
 and it is written down here rather than left as folklore.
+
+**And a tap that was a hold.** Two runs in, the pad suite stopped being
+able to walk the pause menu's focus to "Quit to menu": it ended on
+"Captions" once and on "Satchel 2" the next time, and the tome's keypad
+check failed beside it. The keypad was the harness being a run behind the
+game - the tome's numbers are single digits that commit themselves now,
+and the check still pressed OK after each one, so the OK after the last
+digit had no keypad to land on. The menu walk was subtler, and a probe
+that logged the focus press by press was the only way to see it: every
+"tap" moved the focus four to six stops. The harness holds a button for
+four frames, which is a tap at sixty frames a second and a direction held
+for over a second on this machine - longer than the game's own 420ms
+repeat delay, so the game repeated the step exactly as a held d-pad
+should, and the walk leapt clean over the last item on the way round.
+Menu taps hold one frame now; the pad polls once a frame, so a press that
+spans one is seen exactly once. Neither was the game.
 
 None of the first three was a change to the game. All three were checks whose
 failure mode was "the game is broken" when the truth was "the harness
