@@ -731,13 +731,16 @@ const standAtLectern = () =>
       let reached = true;
       let presses = 0;
       const startedAt = Date.now();
+      // One key a number, and no OK after it: each of the tome's numbers
+      // is a single digit and a digit commits itself the moment it is
+      // pressed (run 7 - "hard to input" was three presses a number).
+      // The last digit closes the tome, so an OK pressed after it had no
+      // keypad to land on and read as the answer being unreachable.
       for (const n of sequence) {
         for (const digit of String(n)) {
           reached = (await pressKey(digit)) && reached;
           presses++;
         }
-        reached = (await pressKey("OK")) && reached;
-        presses++;
       }
       const took = (Date.now() - startedAt) / 1000;
       ok("every key the answer needs can be reached with the d-pad", reached, `${presses} keys in ${took.toFixed(1)}s`);
