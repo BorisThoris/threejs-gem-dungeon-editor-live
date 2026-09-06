@@ -12,7 +12,8 @@ import type { Trap } from "./placement";
 const PLATE_HALF = 0.6;
 
 /**
- * A dart plate a stride inside a doorway. Stepped on by anything with
+ * A dart plate partway down the lane to a doorway - past the middle,
+ * where whoever is on it has committed to the lane. Stepped on by anything with
  * feet, it looses a volley across the lane for DART_FLIGHT_S: whatever is
  * in the lane at chest height then is hit - the player, or the Warden,
  * which is the point of knowing where it is. A rat runs under them and a

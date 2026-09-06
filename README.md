@@ -81,8 +81,8 @@ dash. Every creature declares a body - ground, flying or ghost - and the
 floor reads it: spikes and snares bite anything with feet, solid props
 are walked round by anything with a body, and a ghost passes through all
 of it. That table is the whole reason the rest of this works. The
-Warden has feet, so the floor's own traps are yours to use: a plate a
-stride inside a doorway looses darts at whatever is in the lane, a
+Warden has feet, so the floor's own traps are yours to use: a plate
+partway down the lane to a doorway looses darts at whatever is in the lane, a
 cracked flagstone gives way under whoever steps on it and is a spike
 patch from then on, and a grate drops behind you and bars the doorway
 you came in by. Walk the Warden over a plate. Drop a grate with it at
