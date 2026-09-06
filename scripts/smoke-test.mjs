@@ -5763,6 +5763,63 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 9: the Warden has a body, and the furniture is in its way. It used to
+// walk through barrels and pillars by design; now it goes round them from
+// its first step, wary or not. Put it in a furnished room with the player
+// on the far side of the furniture and watch where it actually stands.
+{
+  const furnished = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (let seed = 3; seed < 60; seed += 7) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const d = run.getState().dungeon;
+      // A room with something big in it, and not one whose own mechanism
+      // has an opinion about where the Warden walks.
+      const room = d.rooms.find((r) => ["normal", "treasure", "library"].includes(r.kind) && r.size >= 16 &&
+        window.__placements(r, d.seed).some((p) => window.__propSpecs[p.kind].solid && window.__propSpecs[p.kind].radius >= 0.5));
+      if (!room) continue;
+      const solid = window.__placements(room, d.seed).filter((p) => window.__propSpecs[p.kind].solid)
+        .map((p) => ({ x: p.x, z: p.z, r: window.__propSpecs[p.kind].radius }));
+      const big = solid.reduce((a, b) => (b.r > a.r ? b : a));
+      run.setState({ transitioning: true, currentRoomId: room.id, lives: 3 });
+      run.getState().roomReady(room.id);
+      await wait(1200);
+      // The player just beyond the biggest prop from the room's middle, so
+      // a straight line from the doorway runs through it.
+      const len = Math.hypot(big.x, big.z) || 1;
+      const px = big.x + (big.x / len) * (big.r + 1.3);
+      const pz = big.z + (big.z / len) * (big.r + 1.3);
+      window.__bus.emit("teleport", { position: [px, 1.5, pz] });
+      await wait(400);
+      const from = Object.keys(room.links)[0];
+      run.setState({ wardenRoomId: room.id, wardenCameFrom: room.links[from], alarm: 4 });
+      await wait(600);
+      const inside = (x, z) => solid.some((p) => Math.hypot(x - p.x, z - p.z) < p.r - 0.05);
+      let samples = 0, stood = 0, first = null, last = null;
+      const t0 = performance.now();
+      while (performance.now() - t0 < 9000) {
+        await wait(120);
+        const w = window.__warden;
+        if (!w || run.getState().wardenRoomId !== room.id) continue;
+        samples++;
+        if (first === null) first = w.distance;
+        last = w.distance;
+        if (inside(w.x, w.z)) stood++;
+        if (run.getState().lives < 3) break;
+      }
+      return { seed, room: room.id, kind: room.kind, size: room.size, props: solid.length, big: big.r, samples, stood, first, last, struck: run.getState().lives < 3 };
+    }
+    return { error: "no furnished room found" };
+  });
+  ok("a furnished room can be set up with the Warden coming through its furniture", !furnished.error, furnished.error || JSON.stringify(furnished));
+  if (!furnished.error) {
+    ok("the Warden never stands inside a piece of furniture", furnished.samples > 10 && furnished.stood === 0, `inside on ${furnished.stood} of ${furnished.samples} samples`);
+    ok("and going round it still gets there", furnished.struck || (furnished.last !== null && furnished.last < furnished.first * 0.6), `${furnished.first?.toFixed(1)}m to ${furnished.last?.toFixed(1)}m${furnished.struck ? ", and it struck" : ""}`);
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to
