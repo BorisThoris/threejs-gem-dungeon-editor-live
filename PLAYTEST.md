@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §40 asks a human
+  moment it can afford to. That is precisely the behaviour §41 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §40.
+for a person, not for this document, and it is on the list in §41.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2999,14 +2999,64 @@ obstacle list is one shorter; the player behind it keeps their life; the
 wreck pays what the seed says; and with the barrel gone the same spot
 costs a life.
 
-## 39. Steam Deck
+## 39. The map that lies
+
+"Nothing marks the map; the player marks it." Run 13 gave the cracked
+wall a draft. This gives the player a pen, the wall a pulse, and the
+draft a voice - three tells, none of them a marker, all of them
+learnable.
+
+### The player's mark
+
+`M`, or d-pad up, marks the room the player is standing in on the map -
+a "?" on its cell in the ink colour - and unmarks it. `marks` is state,
+kept for the floor and cleared with it, and nothing in the game reads
+it: not the Warden, not the deeds, not the summary. That is what makes
+it worth making. A player can write "the draft was here" or "I did not
+open this" and read it back from the far side of the floor, and what it
+means is theirs. The key is rebindable like every other, sits in the
+options beside the lantern and the bar, and the README's controls name
+it.
+
+### The wall breathes
+
+The seam that hides a room is no longer a flat dark box: `Crack` in
+`Walls.tsx` pulses its emissive over about two and a half seconds,
+visible from close and not from the doorway. The plan asked for a
+brazier that gutters; the thing that flickers is the wall itself, which
+is the thing a player should be looking at.
+
+### A sound through the wall
+
+While the player stands in the draft, every `WALL_SOUND_EVERY_S` -
+four seconds - the wall lets through what is behind it: two soft clinks
+for a hoard, a faint chime for a reliquary, a drip for a shrine, and a
+caption that says which. The draft says *there is a room*; the sound
+says *what is in it*. A player learns to bomb for a chime and walk past
+a drip when the shrine would be wasted, which is the difference between
+a secret and a lottery ticket. `Draft.tsx` emits it on the run's clock,
+reading the flavour from `dungeon/secret.ts`, the one owner of it.
+
+### Held and played
+
+Four layout checks: marking is a real, bound, labelled action the README
+names; the through-wall cadence sits between a breath and the floor's
+warning; every flavour has a caption and a sound. Four smoke checks: the
+store's toggle draws one mark and clears it; a mark stays on the room it
+was made in when the player walks on; the key does what the store does;
+and the wall speaks the floor's flavour while the player stands in the
+draft - at least once in five and a half seconds, which is one
+cadence and a bit - and not once from
+the middle of the room.
+
+## 40. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 40. What a human playtest should watch for
+## 41. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3132,7 +3182,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 41. Options and accessibility
+## 42. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3164,7 +3214,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 42. Deeds
+## 43. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3197,7 +3247,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 43. Harness bugs that read as game bugs
+## 44. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3286,7 +3336,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 44. Tuning knobs
+## 45. Tuning knobs
 
 All in `src/game/world.ts`:
 
