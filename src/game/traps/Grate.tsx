@@ -3,10 +3,13 @@ import { useFrame } from "@react-three/fiber";
 
 import { doorPosition } from "../dungeon/layout";
 import type { Room } from "../dungeon/types";
-import { barredNow, canControl, useRun } from "../state/run";
+import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
 import { DOOR_HEIGHT, GROUND_Y } from "../world";
 import type { Trap } from "./placement";
+
+/** How long after coming in under it the grate drops, on the run's clock: behind you, not on you. */
+const DROP_AFTER_S = 0.4;
 
 /**
  * A portcullis over one doorway. It drops behind a player who comes in
@@ -15,29 +18,27 @@ import type { Trap } from "./placement";
  * and they cannot go back that way until it lifts. Coming in under it
  * with the Warden at your heels buys the room; coming in under it with
  * the Warden already inside shuts you in with it.
+ *
+ * Which doorway the player came in by is the store's (`enteredBy`),
+ * written by `travel`: the arrival spawn is already a stride inside the
+ * doorway, so there is no line here for a body to cross.
  */
 export function Grate({ room, trap }: { room: Room; trap: Trap }) {
-  const outside = useRef<boolean | null>(null);
+  const arrivedAt = useRef<number | null>(null);
   const dir = trap.dir ?? "north";
   const [dx, , dz] = doorPosition(room, dir);
   const alongX = Math.abs(dx) > Math.abs(dz);
   const to = room.links[dir];
+  const cameUnderIt = useRun((s) => s.currentRoomId === room.id && s.enteredBy === dir);
   const down = useRun((s) => (to ? barredNow(s) === barKey(room.id, to) : false));
 
-  useFrame((state) => {
+  useFrame(() => {
     const run = useRun.getState();
-    if (!canControl(run) || !to) return;
-    const cam = state.camera.position;
-    // Which side of the grate line the player is on: the doorway's side,
-    // or the room's. It drops on the crossing inward.
-    const along = alongX ? cam.x / dx : cam.z / dz;
-    const isOutside = along > 0.9;
-    if (outside.current === null) {
-      outside.current = isOutside;
-      return;
-    }
-    if (outside.current && !isOutside) run.dropGrate(to);
-    outside.current = isOutside;
+    if (!cameUnderIt || !to || down) return;
+    if (!canControl(run)) return;
+    const now = runClock(run);
+    if (arrivedAt.current === null) arrivedAt.current = now;
+    if (now - arrivedAt.current >= DROP_AFTER_S) run.dropGrate(to);
   });
 
   return (

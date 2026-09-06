@@ -270,6 +270,12 @@ export interface RunState {
   /** The room it walked in from, so wandering does not just pace a corridor. */
   wardenCameFrom: string | null;
   /**
+   * The doorway the player came into this room by, or null at a floor's
+   * start. The one fact a grate needs: it drops behind whoever came in
+   * under it, and "under it" is this.
+   */
+  enteredBy: Dir | null;
+  /**
    * Wounds the Warden has taken from the floor's own spikes since it was
    * last routed, and the run-clock second it stops reeling from the last
    * one. Per floor, like everything else about it.
@@ -577,6 +583,7 @@ export const useRun = create<RunState>()(
     floorRooms: 1,
     wardenRoomId: null,
     wardenCameFrom: null,
+    enteredBy: null,
     wardenWounds: 0,
     wardenStaggerUntil: 0,
     wardenWary: false,
@@ -669,6 +676,7 @@ export const useRun = create<RunState>()(
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
+        enteredBy: null,
         wardenWounds: 0,
         wardenStaggerUntil: 0,
         wardenWary: false,
@@ -750,6 +758,7 @@ export const useRun = create<RunState>()(
         visited: seen ? s.visited : [...s.visited, toId],
         roomsSeen: seen ? s.roomsSeen : s.roomsSeen + 1,
         floorRooms: s.floorRooms + 1,
+        enteredBy: OPPOSITE[dir],
       });
       const spawn = spawnAfterTravel(to, dir);
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
@@ -848,6 +857,7 @@ export const useRun = create<RunState>()(
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
+          enteredBy: null,
           wardenWounds: 0,
           wardenStaggerUntil: 0,
           wardenWary: false,

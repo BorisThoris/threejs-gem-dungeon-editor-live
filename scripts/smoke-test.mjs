@@ -6096,14 +6096,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.setState({ transitioning: true, currentRoomId: pitRoom.id, wardenRoomId: null, lives: 9 });
     run.getState().roomReady(pitRoom.id);
     await wait(1400);
-    // Stand across the pit from a doorway so the Warden's straight line crosses it.
-    const px = pit.x * 1.6, pz = pit.z * 1.6;
+    // The Warden comes in at a doorway and walks straight at the player:
+    // stand on the far side of the pit along that line, so the line
+    // crosses it. The doorway is whichever puts the pit best between.
     const half = pitRoom.size / 2 - 0.8;
-    window.__bus.emit("teleport", { position: [Math.max(-half, Math.min(half, px)), 1.5, Math.max(-half, Math.min(half, pz))] });
+    const doors = Object.keys(pitRoom.links).map((k) => { const [ex, , ez] = window.__layout.doorPosition(pitRoom, k); return { k, x: ex * 0.86, z: ez * 0.86 }; });
+    const from = doors.reduce((a, b) => (Math.hypot(b.x - pit.x, b.z - pit.z) > Math.hypot(a.x - pit.x, a.z - pit.z) ? b : a));
+    const len = Math.hypot(pit.x - from.x, pit.z - from.z) || 1;
+    const ux = (pit.x - from.x) / len, uz = (pit.z - from.z) / len;
+    const px = Math.max(-half, Math.min(half, pit.x + ux * 1.8));
+    const pz = Math.max(-half, Math.min(half, pit.z + uz * 1.8));
+    window.__bus.emit("teleport", { position: [px, 1.5, pz] });
     await wait(400);
     const bitesBefore = B.bitesFor("ground", pitRoom, d.seed, run.getState().placed, D.sprung()).length;
-    const from = Object.keys(pitRoom.links).find((k) => { const [dx, , dz] = window.__layout.doorPosition(pitRoom, k); return Math.sign(dx) * Math.sign(pit.x) <= 0 && Math.sign(dz) * Math.sign(pit.z) <= 0; }) ?? Object.keys(pitRoom.links)[0];
-    run.setState({ wardenRoomId: pitRoom.id, wardenCameFrom: pitRoom.links[from], alarm: 4 });
+    run.setState({ wardenRoomId: pitRoom.id, wardenCameFrom: pitRoom.links[from.k], alarm: 4 });
     const t1 = performance.now();
     while (D.sprung()[pit.key] === undefined && performance.now() - t1 < 14000) await wait(150);
     out.pitOpen = D.sprung()[pit.key] !== undefined;
