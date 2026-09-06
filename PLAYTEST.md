@@ -3105,6 +3105,14 @@ a metre and a half of the crack, then lowers the lantern and finds it
 gone after the light's afterglow, with the HUD's word coming and going
 with it.
 
+The first smoke found a real one. The lead was checked before the step
+and not after, so one slow frame - a second, on this machine - carried
+the wisp from inside its lead to six and a half metres ahead of a player
+who was standing still, where it waited for ever. The step is capped by
+the lead that is left now, the same promise the Warden's step cap makes,
+and the check asserts the rule rather than a direction: ahead of the
+player, toward the doorway, never further than the lead.
+
 ## 41. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the

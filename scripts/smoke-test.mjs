@@ -6413,10 +6413,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
     if (!seen) return { error: "no wisp within 4 s of raising the lantern" };
     const hudOut = /a wisp/i.test(document.body.innerText);
-    const d0 = Math.hypot(seen.tx - seen.x, seen.tz - seen.z);
     await wait(2500);
+    // Where it settles for a player who does not move: ahead of them,
+    // toward the doorway, and no further than its lead - not sitting on
+    // them, and not gone on without them either.
     const later = { ...window.__wisp };
-    const d1 = Math.hypot(later.tx - later.x, later.tz - later.z);
+    const cam = window.__playerDebug;
+    const wispToDoor = Math.hypot(later.tx - later.x, later.tz - later.z);
+    const playerToDoor = Math.hypot(later.tx - cam.x, later.tz - cam.z);
+    const ahead = Math.hypot(later.x - cam.x, later.z - cam.z);
     // Into the host room, if there is one on this floor: it goes for the crack.
     const host = d.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
     let settled = null;
@@ -6433,10 +6438,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await wait((W.LANTERN_SEEN_HOLD_S + 1.5) * 1000);
     const gone = !window.__wispAt.out && !run.getState().wispOut;
     const hudGone = !/a wisp/i.test(document.body.innerText);
-    return { before, target: target && { goal: target.roomId, via: target.via }, seen: { goal: seen.goal, via: seen.via }, hudOut, d0, d1, settled, gone, hudGone };
+    return { before, target: target && { goal: target.roomId, via: target.via }, seen: { goal: seen.goal, via: seen.via }, hudOut, wispToDoor, playerToDoor, ahead, lead: W.WISP_LEAD, settled, gone, hudGone };
   });
   ok("raising the lantern brings the wisp, and it leads where the one owner says", !wisp.error && !wisp.before && wisp.seen.goal === wisp.target.goal && wisp.seen.via === wisp.target.via, wisp.error || JSON.stringify({ before: wisp.before, target: wisp.target, seen: wisp.seen }));
-  ok("it drifts toward the doorway rather than sitting on the player", !wisp.error && wisp.d1 < wisp.d0, wisp.error || `${wisp.d0?.toFixed(2)} -> ${wisp.d1?.toFixed(2)} m from its door`);
+  ok("it waits ahead of the player, toward the doorway, and never further than its lead", !wisp.error && wisp.wispToDoor < wisp.playerToDoor - 0.5 && wisp.ahead <= wisp.lead + 0.3, wisp.error || `wisp ${wisp.wispToDoor?.toFixed(2)} m from the door, player ${wisp.playerToDoor?.toFixed(2)}; ${wisp.ahead?.toFixed(2)} m ahead of a lead of ${wisp.lead}`);
   ok("in the host room it settles on the crack", !wisp.error && (!wisp.settled || (wisp.settled.via === null && wisp.settled.off < 1.5)), wisp.error || JSON.stringify(wisp.settled ?? "no cracked wall on this floor"));
   ok("the HUD says it is out, and lowering the lantern puts it out with the light", !wisp.error && wisp.hudOut && wisp.gone && wisp.hudGone, wisp.error || JSON.stringify({ hudOut: wisp.hudOut, gone: wisp.gone, hudGone: wisp.hudGone }));
 }

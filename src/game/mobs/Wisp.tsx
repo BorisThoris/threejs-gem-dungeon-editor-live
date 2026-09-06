@@ -42,10 +42,15 @@ export function Wisp({ room }: { room: Room }) {
       const dz = target.z - p.z;
       const left = Math.hypot(dx, dz);
       // Ahead of the player, never out of their reach: it waits at the
-      // doorway rather than going through without them.
+      // doorway rather than going through without them. The step is
+      // capped by the lead that is left as well as by the speed, because
+      // one slow frame is long enough to carry it from inside the lead
+      // to well past it - and a wisp that waits six metres away for a
+      // player who is standing still waits for ever.
       const ahead = Math.hypot(p.x - cam.x, p.z - cam.z);
-      if (left > 0.2 && ahead < WISP_LEAD) {
-        const step = Math.min(WISP_SPEED * delta, left);
+      const lead = Math.max(0, WISP_LEAD - ahead);
+      if (left > 0.2 && lead > 0) {
+        const step = Math.min(WISP_SPEED * delta, left, lead);
         p.x += (dx / left) * step;
         p.z += (dz / left) * step;
       }
