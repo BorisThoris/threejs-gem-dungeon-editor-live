@@ -71,6 +71,8 @@ const SIZE_RANGE: Record<RoomKind, readonly [number, number]> = {
   normal: [ROOM_SIZE_SMALL, 22],
   // Small and close: a shrine is a place you kneel at, not a hall.
   shrine: [ROOM_SIZE_SMALL, 18],
+  // Small: a hole in the wall with something in it, not a hall.
+  secret: [ROOM_SIZE_SMALL, 16],
 };
 
 /** The sizes on the ladder a kind may be built at. */
@@ -94,6 +96,7 @@ const SHAPES_FOR: Partial<Record<RoomKind, readonly Shape[]>> = {
   treasure: ["square", "diamond", "hexagon"],
   // Round or many-sided, so it reads as built for something.
   shrine: ["hexagon", "octagon", "circle"],
+  secret: ["square", "square", "octagon"],
 };
 
 const key = (x: number, z: number) => `${x},${z}`;
@@ -258,6 +261,35 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
       )
     : null;
 
+  /**
+   * One room the map does not show.
+   *
+   * Placed after the vault and the key, because both of those reason
+   * about what the floor can be walked without and a room with no
+   * doorway would count as a room nobody can reach. Hung off a host that
+   * is not the start, the exit or the vault, in a free cell on a side
+   * with no doorway, and not linked: `host.secret` names it and a blast
+   * turns that into a link. A floor with no host that qualifies simply
+   * has no secret, and says so with null.
+   */
+  let secretId: string | null = null;
+  const hosts = shuffle(
+    rng,
+    rooms.filter((room) => room.id !== "start" && room.id !== endId && room.id !== vault?.id)
+  );
+  for (const host of hosts) {
+    const dir = shuffle(rng, DIRS).find((d) => {
+      const step = DIR_STEP[d];
+      return !host.links[d] && !occupied.has(key(host.grid.x + step.x, host.grid.z + step.z));
+    });
+    if (!dir) continue;
+    const step = DIR_STEP[dir];
+    const secret = place(host.grid.x + step.x, host.grid.z + step.z, "secret");
+    host.secret = { dir, to: secret.id };
+    secretId = secret.id;
+    break;
+  }
+
   return {
     seed,
     rooms,
@@ -265,6 +297,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     endId,
     vaultId: vault?.id ?? null,
     keyRoomId: keyRoom?.id ?? null,
+    secretId,
   };
 }
 

@@ -122,6 +122,10 @@ export interface BusEvents {
    */
   notice: string | null;
   /** A gem given at a shrine, and the floor let go of the player. */
+  /** A bomb went off, here. */
+  bombBurst: { roomId: string; x: number; z: number };
+  /** A cracked wall opened onto the room behind it. */
+  secretRevealed: { roomId: string; to: string };
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

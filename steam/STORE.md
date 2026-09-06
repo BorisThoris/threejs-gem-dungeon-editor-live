@@ -47,13 +47,15 @@ burns oil while it is up.
 
 **Bring your own answers.**
 
-Twelve kinds of thing hide in the chests, and which look means which is
+Thirteen kinds of thing hide in the chests, and which look means which is
 shuffled every run - the only way to learn what a cloudy potion does is to
 drink one. A fifth of them are blessed and a fifth cursed, and that much
 you can see from across the room. Three of them are set down on the floor
 rather than used on yourself, and they are still there when you come back
 through: a snare, a ward stone, and a knot of loose iron you will only
-drop once.
+drop once. A fourth is set down and is gone three seconds later, with
+whatever stood near it - you, the thing hunting you, or a wall that was
+hiding a room.
 
 **Five ways to go down.**
 

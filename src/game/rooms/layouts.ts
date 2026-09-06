@@ -364,6 +364,11 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
    * furniture stands back from it so a player walks towards the one thing
    * there is to do here.
    */
+  // What was walled up: a chest, and the dust of whoever did it.
+  secret: [
+    ({ far, corners, rng }) => [at("chest", far[0], askew(rng)), at("skull", corners[1]), at("web", corners[2])],
+    ({ far, corners, rng }) => [at("chest", far[1], askew(rng)), at("urn", far[2]), at("web", corners[0])],
+  ],
   shrine: [
     ({ far, corners }) => [
       at("pillar", far[0]),

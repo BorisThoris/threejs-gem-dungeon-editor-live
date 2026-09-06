@@ -303,6 +303,17 @@ export const WARDEN_HAZARD_BERTH = 0.9;
 
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
+
+/**
+ * The bomb: set down, a fuse, a blast.
+ *
+ * No combat, but leverage. Long enough to walk out of and short enough to
+ * matter; wide enough to reach the wall it is set against at arm's length
+ * and never as wide as half the smallest room, or every bomb would be a
+ * skeleton key that opens the room's own doorways from its middle.
+ */
+export const BOMB_FUSE_S = 3;
+export const BOMB_RADIUS = 3.2;
 /**
  * How long a sprint keeps the Warden pointed at you after you stop.
  *

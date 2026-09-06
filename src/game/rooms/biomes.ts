@@ -134,6 +134,8 @@ export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   memory: ["crystal", "catacomb"],
   challenge: ["catacomb", "hewn", "flooded"],
   shrine: ["catacomb", "bone", "crystal"],
+  // Walled up for a reason: dry, and older than the rest of the floor.
+  secret: ["catacomb", "bone", "hewn"],
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */

@@ -622,6 +622,12 @@ export const sfx = {
     later(60, () => tone(98, 1.4, "square", 0.26, 44));
     later(240, () => noiseBurst(0.5, 0.3, 700));
   },
+  /** A bomb going off. The loudest thing in the game, and meant to be. */
+  boom() {
+    tone(48, 1.6, "sawtooth", 0.7, 0);
+    later(20, () => noiseBurst(0.9, 0.9, 220));
+    later(90, () => tone(36, 1.2, "square", 0.4, 0));
+  },
   wardenStrike() {
     tone(55, 1.2, "sawtooth", 0.5, 30);
     later(70, () => tone(82.4, 0.9, "square", 0.32, 48));

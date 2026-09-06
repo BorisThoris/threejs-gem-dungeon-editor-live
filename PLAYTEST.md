@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §33 asks a human
+  moment it can afford to. That is precisely the behaviour §34 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §33.
+for a person, not for this document, and it is on the list in §34.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2569,14 +2569,69 @@ the keyboard; Escape and B still work.
 The pad still answers it: the keypad's OK is kept, and with nothing left
 uncommitted after a digit it is harmless to press.
 
-## 32. Steam Deck
+## 32. Bombs, and what they are for
+
+The arc's brief, in its own words: "lets not have combat, not yet, but
+lets have bombs and stuff, bombs can stop enemies." And Isaac's secret
+rooms. The two are one feature, because a bomb that only hurts things is
+a weapon, and this game does not hand out weapons; a bomb that also opens
+walls is leverage.
+
+### A fourth family
+
+Potions happen to the player, scrolls to the floor, devices to the room.
+A bomb is set down like a device and is over in three seconds like a
+potion, and what it does is done to everything in reach at once - the
+player included. `BOMB_FUSE_S` is 3 and `BOMB_RADIUS` is 3.2: long enough
+to walk out of and short enough to matter; wide enough to reach the wall
+it is set against at arm's length and never as wide as half the smallest
+room, or every bomb would open the room's own doorways from its middle.
+A bomb always looks like a bomb. It comes out of chests like everything
+else, at 34 in 400 rolls, and it is not for sale yet - the shop's
+counter is full, and §6 of the plan lists the second pass.
+
+Inside the blast: the player loses a life; the Warden, if it is in the
+room, is routed exactly as a second spike wound routs it - one owner,
+`routWarden`, so the difference between a bomb and the spikes can never
+become a rule; the thief drops what it holds. And a cracked wall gives.
+
+### One room the map does not show
+
+Every floor hides a room, hung off a host in a free cell on a side with no
+doorway. It is an *edge* on the host - `room.secret = { dir, to }` - and
+deliberately not a link: links are what the walls cut doorways for, what
+the minimap draws and what the Warden walks, and a secret is none of
+those until it is opened. The wall shows a dark seam down its middle, on
+the inside face. A blast within reach of it calls `revealSecret`, which
+moves the edge into `links` on both rooms; from then on it is a doorway
+like any other, the map draws it, and the room behind it - small, dry,
+older than the floor, with a chest in it - can be walked into.
+
+Placed after the vault and the key, because both of those reason about
+what the floor can be walked without, and a room with no doorway would
+have counted as a room nobody can reach.
+
+Measured over 200 floors: 200 of 200 hide a room; every one is sealed;
+exactly one room cracks onto each; the crack is always in a wall with no
+doorway.
+
+### What the checks are
+
+Fourteen new ones, written first and red on purpose. Eight in
+`yarn test:layout` on the generator and the two numbers; six in
+`yarn test:smoke` that set a bomb down at the crack with the Warden
+beside the player and watch it go off: the fuse runs on the run's clock,
+the player is hurt, the Warden is routed and learns, the crack opens onto
+the secret room, and the secret room can be walked into through it.
+
+## 33. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 33. What a human playtest should watch for
+## 34. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2702,7 +2757,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 34. Options and accessibility
+## 35. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2734,7 +2789,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 35. Deeds
+## 36. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2767,7 +2822,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 36. Harness bugs that read as game bugs
+## 37. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2856,7 +2911,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 37. Tuning knobs
+## 38. Tuning knobs
 
 All in `src/game/world.ts`:
 

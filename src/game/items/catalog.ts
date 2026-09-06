@@ -35,6 +35,7 @@ export const ITEM_IDS = [
   "snare",
   "rattle",
   "wardstone",
+  "bomb",
 ] as const;
 export type ItemId = (typeof ITEM_IDS)[number];
 
@@ -45,7 +46,12 @@ export type ItemId = (typeof ITEM_IDS)[number];
  * player and lasted as long as a timer; a device happens to the room, and
  * the question it asks is not "is now the moment" but "is this the room".
  */
-export type ItemFamily = "potion" | "scroll" | "device";
+/**
+ * And a bomb is neither: it is set down like a device and it is over in
+ * three seconds like a potion, and what it does is done to everything in
+ * reach at once - the player included. A bomb always looks like a bomb.
+ */
+export type ItemFamily = "potion" | "scroll" | "device" | "bomb";
 
 export interface Item {
   id: ItemId;
@@ -143,6 +149,13 @@ export const ITEMS: Record<ItemId, Item> = {
     blurb: "While it lies here the Warden will not come into this room.",
     cruel: false,
   },
+  bomb: {
+    id: "bomb",
+    family: "bomb",
+    name: "Black Powder Bomb",
+    blurb: "Set it down and walk. Three seconds. It hurts whatever is near it, and cracked walls do not survive it.",
+    cruel: false,
+  },
 };
 
 /**
@@ -202,11 +215,15 @@ export function appearancesFor(seed: number): Appearances {
     const look = deviceLooks[i].label;
     out[id] = { unknown: `${/^[aeiou]/i.test(look) ? "an" : "a"} ${look}`, colour: deviceLooks[i].colour };
   });
+  // A bomb looks like a bomb. Nobody has to drink one to find out.
+  out.bomb = { unknown: "a bomb", colour: "#2a2a2e" };
   return out;
 }
 
 /** Whether an item is put down in the room rather than used on yourself. */
 export const isDevice = (id: ItemId): boolean => ITEMS[id].family === "device";
+/** Whether an item is a bomb: set down like a device, and then gone. */
+export const isBomb = (id: ItemId): boolean => ITEMS[id].family === "bomb";
 
 /** What to call an item, given what the player has worked out so far. */
 export const nameOf = (id: ItemId, appearances: Appearances, known: boolean): string =>

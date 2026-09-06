@@ -13,6 +13,7 @@ import { Perf } from "./systems/Perf";
 import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { canControl, useCurrentRoom, useRun } from "./state/run";
+import { BombDriver } from "./systems/BombDriver";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
@@ -109,6 +110,7 @@ export function Scene() {
           in - both of them need a frame loop that outlives a room. */}
       <WardenDriver />
       <CutpurseDriver />
+      <BombDriver />
       {/* The light the player carries. Outside the physics tree because it
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}

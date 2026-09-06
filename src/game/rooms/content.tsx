@@ -338,6 +338,7 @@ function Shrine({ room }: RoomKindProps) {
 }
 
 registerRoomKind("shrine", Shrine);
+registerRoomKind("secret", Dressed);
 registerRoomKind("start", Dressed);
 registerRoomKind("end", Dressed);
 registerRoomKind("normal", Dressed);

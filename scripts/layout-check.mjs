@@ -691,9 +691,15 @@ let authored = 0;
 for (let seed = 1; seed <= 500; seed++) {
   const rules = L.floorRules((seed % L.FLOORS) + 1);
   const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
-  if (d.rooms.length < rules.minRooms || d.rooms.length > rules.maxRooms) bad++;
+  // The hidden room is extra to the floor, not of it: it is not on the
+  // map, not linked, and not a room until a blast opens the wall - so it
+  // is outside the room count and outside what a walk from the start can
+  // reach. The run 8 checks below hold it to being exactly that.
+  const sealed = d.secretId ? 1 : 0;
+  const floorRooms = d.rooms.length - sealed;
+  if (floorRooms < rules.minRooms || floorRooms > rules.maxRooms) bad++;
   const depth = L.bfsDepth(d.rooms, d.startId);
-  if (!depth.has(d.endId) || depth.size !== d.rooms.length) bad++;
+  if (!depth.has(d.endId) || depth.size !== floorRooms) bad++;
   if (d.rooms.some((r) => !L.ROOM_SIZES.includes(r.size))) bad++;
   if (d.rooms.some((r) => !L.shapeFits(r.shape, r.size))) bad++;
   // The vault must never be the only way onward, and its key must never be
@@ -708,7 +714,7 @@ for (let seed = 1; seed <= 500; seed++) {
     const open = L.reachableWithout(d.rooms, d.startId, d.vaultId);
     if (!open.has(d.endId)) bad++;
     if (d.keyRoomId && !open.has(d.keyRoomId)) bad++;
-    if (open.size !== d.rooms.length - 1) bad++;
+    if (open.size !== floorRooms - 1) bad++;
   }
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
@@ -1697,7 +1703,18 @@ check("the shipped room templates reach the floors the game generates", authored
   /** The gem's own trigger reaches this far; anything less is not the game. */
   const GEM_REACH = 2.4;
 
-  const routeToGem = (room, seed) => {
+  /**
+   * The doorways a room has - or, for a hidden room, the one it will have
+   * once its host's wall is opened. It has no link until then, and a route
+   * that starts from its links starts nowhere.
+   */
+  const doorsOf = (d, room) => {
+    const doors = ["north", "south", "east", "west"].filter((dir) => room.links[dir]);
+    const host = d.rooms.find((r) => r.secret?.to === room.id);
+    if (host) doors.push(L.OPPOSITE[host.secret.dir]);
+    return doors;
+  };
+  const routeToGem = (room, seed, doors = Object.keys(room.links)) => {
     const half = room.size / 2;
     const gem = L.gemFor(room, seed);
     if (!gem) return null;
@@ -1716,8 +1733,7 @@ check("the shipped room templates reach the floors the game generates", authored
     const key = (i, j) => i * 1000 + j;
     const seen = new Set();
     const queue = [];
-    for (const dir of ["north", "south", "east", "west"]) {
-      if (!room.links[dir]) continue;
+    for (const dir of doors) {
       const [dx, , dz] = L.doorPosition(room, dir);
       // A stride inside the doorway, which is where travel puts the player.
       const i = Math.round((dx * 0.82 + half) / CELL);
@@ -1755,7 +1771,7 @@ check("the shipped room templates reach the floors the game generates", authored
   for (let seed = 1; seed <= 120; seed++) {
     const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
     for (const room of d.rooms) {
-      const r = routeToGem(room, d.seed);
+      const r = routeToGem(room, d.seed, doorsOf(d, room));
       if (!r) continue;
       const bucket = room.kind === "trap" ? "trap" : "other";
       counted[bucket]++;
@@ -1987,7 +2003,7 @@ check("the shipped room templates reach the floors the game generates", authored
    */
   const WORDS = [
     "zero", "one", "two", "three", "four", "five", "six",
-    "seven", "eight", "nine", "ten", "eleven", "twelve",
+    "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
   ];
   const word = (n) => WORDS[n] ?? String(n);
   /** Said in words or in digits; the page may phrase it either way. */

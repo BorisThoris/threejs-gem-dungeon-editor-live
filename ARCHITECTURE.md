@@ -186,6 +186,23 @@ Two stores that both claimed the player's stats. So:
   what a key press was. Which buttons the satchel's slots sit on is
   `src/game/input/gamepad.ts`, as a list as long as `SATCHEL_SLOTS` - it
   was two fields for a satchel of four.
+- A bomb is the fourth item family, and the first thing in the game that
+  is done to everything in reach at once, the player included. It is set
+  down through `placeDevice` like a device, carries a `fuseAt` on the
+  run's clock, and `systems/BombDriver.tsx` calls `detonate` from the
+  frame loop when it is due - never a timer, because a fuse lit and then
+  paused is a fuse that has not burned. What the blast does is decided
+  in one place, `detonate`: the player in reach is hurt, the Warden in the
+  room is routed through `routWarden` (the same owner a second spike wound
+  uses, so a bomb and the spikes can never come to differ), the thief
+  drops what it holds, and a cracked wall in reach gives.
+- A secret is an edge, not a link. `room.secret = { dir, to }` names the
+  room behind a cracked wall; `links` are what the walls cut doorways
+  for, what the minimap draws and what the Warden walks, and a secret is
+  none of those until `revealSecret` moves it into `links` on both rooms.
+  The generator places it after the vault and the key, because those
+  reason about what the floor can be walked without and a room with no
+  doorway would count as a room nobody can reach.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

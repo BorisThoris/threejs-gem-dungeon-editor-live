@@ -4,7 +4,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
 import { spawnAfterTravel, spawnAtStart } from "../dungeon/layout";
-import { roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
+import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
   AVARICE_GEMS,
@@ -22,6 +22,7 @@ import {
   SWIFTNESS_S,
   WARD_S,
   appearancesFor,
+  isBomb,
   isDevice,
   type Appearances,
   type ItemId,
@@ -46,6 +47,9 @@ import {
   TRANSITION_FALLBACK_MS,
   CUTPURSE_FROM_FLOOR,
   BAR_NOISE_S,
+  BOMB_FUSE_S,
+  BOMB_RADIUS,
+  CLOSE_REACH,
   BAR_S,
   LANTERN_FULL_S,
   LANTERN_SEEN_HOLD_S,
@@ -80,6 +84,8 @@ export interface PlacedDevice {
   z: number;
   /** False once a snare has caught something: it stays as wreckage. */
   live: boolean;
+  /** A bomb's deadline on the run's clock. Only bombs have one. */
+  fuseAt?: number;
 }
 
 export interface RunState {
@@ -344,6 +350,16 @@ export interface RunState {
    * trigger says which before the press.
    */
   kneelAtShrine: (roomId: string) => boolean;
+  /** A bomb whose fuse has run out goes off. Called from the frame loop. */
+  detonate: (key: string) => void;
+  /** The blast opened a cracked wall: the secret becomes a doorway. */
+  revealSecret: (hostId: string) => void;
+  /**
+   * Throw the Warden across the floor and calm the floor, as a second
+   * wound does. One owner, because a bomb and the spikes rout it the
+   * same way and the difference between them must never be a rule.
+   */
+  routWarden: () => void;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -1025,7 +1041,7 @@ export const useRun = create<RunState>()(
     placeDevice: (slot) => {
       const s = get();
       const id = s.satchel[slot];
-      if (!id || !isDevice(id) || !s.currentRoomId || !canControl(s)) return false;
+      if (!id || !(isDevice(id) || isBomb(id)) || !s.currentRoomId || !canControl(s)) return false;
       const now = runClock(s);
       const roomId = s.currentRoomId;
       const key = `${roomId}:${id}:${s.placed.length}:${Math.round(now * 100)}`;
@@ -1042,7 +1058,15 @@ export const useRun = create<RunState>()(
           // It stays on the floor either way, because a player who cannot
           // see where they dropped the loud thing cannot learn to avoid
           // dropping it there.
-          { key, id, roomId, x: at.x, z: at.z, live: id !== "rattle" },
+          {
+            key,
+            id,
+            roomId,
+            x: at.x,
+            z: at.z,
+            live: id !== "rattle",
+            ...(isBomb(id) ? { fuseAt: now + BOMB_FUSE_S } : {}),
+          },
         ],
       });
 
@@ -1069,6 +1093,9 @@ export const useRun = create<RunState>()(
           break;
         }
         case "snare":
+          break;
+        case "bomb":
+          bus.emit("notice", "The fuse is lit.");
           break;
       }
       bus.emit("devicePlaced", { id, cruel: ITEMS[id].cruel });
@@ -1363,9 +1390,16 @@ export const useRun = create<RunState>()(
       }
 
       // Routed: thrown across the floor, the count reset, and from here on
-      // it knows better. The floor calms, but never below its own baseline
-      // - the bottom floor is the bottom floor however well you fought on
-      // it.
+      // it knows better.
+      bus.emit("wardenWounded", { wounds });
+      get().routWarden();
+    },
+
+    routWarden: () => {
+      const s = get();
+      if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
+      // The floor calms, but never below its own baseline - the bottom
+      // floor is the bottom floor however well you fought on it.
       const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
       set({
         wardenWounds: 0,
@@ -1377,8 +1411,54 @@ export const useRun = create<RunState>()(
         lureUntil: 0,
         alarm: Math.max(alarmFloorFor(s), s.alarm - WARDEN_ROUT_CALM),
       });
-      bus.emit("wardenWounded", { wounds });
       bus.emit("wardenRouted");
+    },
+
+    detonate: (key) => {
+      const s = get();
+      const bomb = s.placed.find((d) => d.key === key && d.live && isBomb(d.id));
+      if (!bomb || !s.dungeon) return;
+      // Spent first, so nothing below can go off twice.
+      set({ placed: s.placed.filter((d) => d.key !== key) });
+      const { roomId, x, z } = bomb;
+      const inBlast = (px: number, pz: number) => (px - x) ** 2 + (pz - z) ** 2 <= BOMB_RADIUS * BOMB_RADIUS;
+      bus.emit("bombBurst", { roomId, x, z });
+      // The player, if they did not walk.
+      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z)) get().damage();
+      // The Warden, if it is in the room: a bomb in a room with the Warden
+      // is the whole point of carrying one.
+      if (get().wardenRoomId === roomId && get().currentRoomId === roomId) get().routWarden();
+      // The thief, likewise: it drops what it holds. It is only ever in the
+      // room the player is in - it comes for them and runs from them - so
+      // "in this room" is "the player is".
+      if (get().currentRoomId === roomId && get().thiefPhase !== "away") get().thiefCaught();
+      // The wall, if this room has a crack in one and the blast reached it.
+      const host = roomById(s.dungeon, roomId);
+      if (host?.secret) {
+        const half = host.size / 2;
+        const step = DIR_STEP[host.secret.dir];
+        const wx = step.x * half;
+        const wz = step.z * half;
+        if (inBlast(wx, wz)) get().revealSecret(roomId);
+      }
+    },
+
+    revealSecret: (hostId) => {
+      const s = get();
+      if (!s.dungeon) return;
+      const host = roomById(s.dungeon, hostId);
+      if (!host?.secret || host.links[host.secret.dir]) return;
+      const { dir, to } = host.secret;
+      // New room objects, not mutated ones: the walls and the map are
+      // rendered from these and have to see the change.
+      const rooms = s.dungeon.rooms.map((r) => {
+        if (r.id === hostId) return { ...r, links: { ...r.links, [dir]: to } };
+        if (r.id === to) return { ...r, links: { ...r.links, [OPPOSITE[dir]]: hostId } };
+        return r;
+      });
+      set({ dungeon: { ...s.dungeon, rooms } });
+      bus.emit("secretRevealed", { roomId: hostId, to });
+      bus.emit("notice", "The wall gives. There is a room behind it.");
     },
 
     clearRoom: (roomId) => {
@@ -1627,6 +1707,17 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // module from the page is a second copy of it.
     canSpend: (price: number) => canSpend(useRun.getState(), price),
     hears: () => wardenHears(useRun.getState()),
+    // Where to stand to set a bomb against this room's cracked wall: at
+    // arm's length from the middle of that wall, inside the room.
+    crackSpot: () => {
+      const s = useRun.getState();
+      const room = roomNow(s);
+      if (!room?.secret) return null;
+      const half = room.size / 2;
+      const step = DIR_STEP[room.secret.dir];
+      return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
+    },
+    bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
     // How long a sprint in this room keeps the Warden coming.
     noiseHold: () => noiseHoldFor(useRun.getState()),
     // The run's own clock, which every deadline in the store is kept on.
