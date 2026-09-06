@@ -37,35 +37,38 @@ import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { placementsFor } from "../rooms/placements";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
+import { BODIES, type Body } from "../mobs/body";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
-  FLOOR_PATIENCE_S,
-  BATS_NOISE_FACTOR,
-  DART_REARM_S,
-  GRATE_HOLD_S,
-  BATS_ROUSED_S,
-  MOTH_HOLD_S,
-  REAPER_STALL_S,
-  REAPER_STRIKE_GRACE_S,
-  DAMAGE_COOLDOWN_S,
-  FLOORS,
-  NOISE_HOLD_S,
-  STARTING_LIVES,
-  TRANSITION_FALLBACK_MS,
-  CUTPURSE_FROM_FLOOR,
   BAR_NOISE_S,
+  BAR_S,
+  BATS_NOISE_FACTOR,
+  BATS_ROUSED_S,
   BOMB_FUSE_S,
   BOMB_RADIUS,
   CLOSE_REACH,
-  BAR_S,
-  LANTERN_FULL_S,
-  LANTERN_SEEN_HOLD_S,
+  CUTPURSE_FROM_FLOOR,
   CUTPURSE_GRACE_ROOMS,
   CUTPURSE_REST_S,
   CUTPURSE_SHY_S,
+  DAMAGE_COOLDOWN_S,
+  DART_REARM_S,
+  FLOORS,
+  FLOOR_PATIENCE_S,
+  GRATE_HOLD_S,
+  HARRIER_DOWN_S,
+  HARRIER_RETREAT_S,
+  LANTERN_FULL_S,
+  LANTERN_SEEN_HOLD_S,
+  MOTH_HOLD_S,
+  NOISE_HOLD_S,
+  REAPER_STALL_S,
+  REAPER_STRIKE_GRACE_S,
+  STARTING_LIVES,
+  TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
   WARDEN_ROUT_CALM,
   WARDEN_STAGGER_S,
@@ -302,6 +305,14 @@ export interface RunState {
   reaperStalledUntil: number;
   /** Run-clock second of the Reaper's last strike, for the grace between two. */
   reaperLastStrikeAt: number;
+  /** The floor's Harrier is up and hunting. */
+  harrierAwake: boolean;
+  /** It was downed over something that bites, and is gone for the floor. */
+  harrierSlain: boolean;
+  /** Run-clock second it gets back off the floor after a blast. */
+  harrierDownedUntil: number;
+  /** Run-clock second it comes back after a strike. */
+  harrierRetreatUntil: number;
   /** The moth is on the raised lantern, and the Warden can see it. */
   mothOn: boolean;
   /** Run-clock second the startled roost settles. */
@@ -455,6 +466,14 @@ export interface RunState {
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
   wardenStrike: () => void;
+  /** The floor's Harrier wakes: the alarm reached its level, or the player is in its roost. */
+  wakeHarrier: () => void;
+  /** It reached the player: the ordinary damage, then it wheels away a while. */
+  harrierStrike: () => void;
+  /** A blast in its room: it drops, and is a ground body until it is up. */
+  downHarrier: () => void;
+  /** Down over something that bites: gone for the floor. */
+  slayHarrier: () => void;
   /** The floor's patience ran out. Called from the frame loop. */
   wakeReaper: () => void;
   /** The Reaper reached the player. */
@@ -608,6 +627,10 @@ export const useRun = create<RunState>()(
     wardenWary: false,
     floorEnteredAt: 0,
     reaperAwake: false,
+    harrierAwake: false,
+    harrierSlain: false,
+    harrierDownedUntil: 0,
+    harrierRetreatUntil: 0,
     reaperStalledUntil: 0,
     reaperLastStrikeAt: 0,
     mothOn: false,
@@ -707,6 +730,10 @@ export const useRun = create<RunState>()(
         // `startedAt`, and cleared with it.
         floorEnteredAt: performance.now() / 1000,
         reaperAwake: false,
+        harrierAwake: false,
+        harrierSlain: false,
+        harrierDownedUntil: 0,
+        harrierRetreatUntil: 0,
         reaperStalledUntil: 0,
         reaperLastStrikeAt: 0,
         mothOn: false,
@@ -892,6 +919,10 @@ export const useRun = create<RunState>()(
           // the last one stays there. Going down is the way out of it.
           floorEnteredAt: runClock(s),
           reaperAwake: false,
+          harrierAwake: false,
+          harrierSlain: false,
+          harrierDownedUntil: 0,
+          harrierRetreatUntil: 0,
           reaperStalledUntil: 0,
           reaperLastStrikeAt: 0,
           mothOn: false,
@@ -1566,6 +1597,42 @@ export const useRun = create<RunState>()(
       bus.emit("mapMarked", { roomId: id, marked: !marked });
     },
 
+    wakeHarrier: () => {
+      const s = get();
+      if (s.harrierAwake || s.harrierSlain || s.phase !== "playing") return;
+      set({ harrierAwake: true });
+      bus.emit("harrierWoke");
+      bus.emit("notice", "Something takes wing.");
+    },
+
+    harrierStrike: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      const now = runClock(s);
+      if (now < s.harrierRetreatUntil || now < s.harrierDownedUntil) return;
+      // Hit and run: it wheels away whether or not the hit landed, so a
+      // player inside the invulnerability window is not hovered over.
+      set({ harrierRetreatUntil: now + HARRIER_RETREAT_S });
+      if (get().damage()) bus.emit("harrierStruck");
+    },
+
+    downHarrier: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      const now = runClock(s);
+      if (now < s.harrierRetreatUntil) return;
+      set({ harrierDownedUntil: now + HARRIER_DOWN_S });
+      bus.emit("harrierDowned");
+    },
+
+    slayHarrier: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      set({ harrierSlain: true, harrierDownedUntil: 0 });
+      bus.emit("harrierSlain");
+      bus.emit("notice", "The harrier is spiked. The floor is quieter.");
+    },
+
     wakeReaper: () => {
       const s = get();
       if (s.reaperAwake || s.phase !== "playing") return;
@@ -1680,6 +1747,9 @@ export const useRun = create<RunState>()(
       // The Reaper, which is always in the room the player is in: a blast
       // there is the one thing on the floor that holds it.
       if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
+      // The Harrier, if it is in the room rather than wheeling away from
+      // it: knocked out of the air, and a ground body until it is up.
+      if (get().harrierAwake && get().currentRoomId === roomId && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
       // The moth, if it was on the lantern: scattered, and the light it
       // carried goes with it. The roost hears the blast from its own room.
       if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();
@@ -1759,6 +1829,13 @@ export const patienceLeft = (s: RunState): number =>
   FLOOR_PATIENCE_S - (runClock(s) - s.floorEnteredAt);
 
 /** True while a blast is holding the Reaper where it stands. */
+/** It is on the floor after a blast. */
+export const harrierDowned = (s: RunState): boolean => s.harrierAwake && !s.harrierSlain && running(s, s.harrierDownedUntil);
+/** It has struck and is wheeling away. */
+export const harrierAway = (s: RunState): boolean => s.harrierAwake && !s.harrierSlain && running(s, s.harrierRetreatUntil);
+/** What the floor's rules treat it as right now: a flier, or - downed - a thing with feet. */
+export const harrierBody = (s: RunState): Body => (harrierDowned(s) ? "ground" : BODIES.harrier);
+
 export const reaperStalled = (s: RunState): boolean =>
   s.reaperAwake && running(s, s.reaperStalledUntil);
 
@@ -1985,6 +2062,11 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     reaper: () => {
       const s = useRun.getState();
       return { awake: s.reaperAwake, stalled: reaperStalled(s), enteredAt: s.floorEnteredAt };
+    },
+    // The floor's Harrier, as the store has it.
+    harrier: () => {
+      const s = useRun.getState();
+      return { awake: s.harrierAwake, slain: s.harrierSlain, down: harrierDowned(s), away: harrierAway(s) };
     },
     // How long a sprint in this room keeps the Warden coming.
     noiseHold: () => noiseHoldFor(useRun.getState()),

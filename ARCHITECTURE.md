@@ -287,6 +287,16 @@ Two stores that both claimed the player's stats. So:
   the first doorway of the shortest path; the crack itself in the host)
   and where it is (`wispAt`, module data). The braziers read `wispAt`
   to flare; the store never hears of it.
+- The Harrier is the second thing on the floor with a body, and the
+  first flier: `mobs/harrierRoost.ts` owns where it roosts (`harrierRoostFor`)
+  and comes in (`harrierEntryFor`, the wisp's path logic pointed the
+  other way) and where it is (`harrierAt`, module data). The store owns
+  whether it is awake, away, down or slain and the three things that
+  change that (`wakeHarrier`, `harrierStrike`, `downHarrier`,
+  `slayHarrier`), and `harrierBody` says what the floor treats it as
+  right now - a flier, or downed, a thing with feet. `body.ts` decides
+  what a flier clears (`clearedInFlight`: anything whose collider stops
+  under `FLIGHT_HEIGHT`); the Harrier, the moth and the bats all read it.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

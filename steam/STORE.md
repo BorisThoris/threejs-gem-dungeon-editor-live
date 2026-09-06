@@ -37,6 +37,10 @@ Trap rooms are somewhere you can choose to fight from - the spikes wound
 whatever walks into them, and two wounds throw it across the floor. It
 learns, though. After that it walks round anything that has bitten it, so
 the trick is worth exactly twice and then the room is a trap room again.
+From the second floor down something with wings hunts by the alarm too:
+the spikes cannot touch it and the furniture does not slow it, but a blast
+knocks it out of the air, and a flier on the ground is just another thing
+the floor can bite.
 
 **Light is a decision, not a setting.**
 

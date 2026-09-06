@@ -1,13 +1,13 @@
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import type { Room } from "../dungeon/types";
 import { SNARE_RADIUS } from "../items/catalog";
-import { PROP_SPECS } from "../props/specs";
+import { PROP_SPECS, type PropSpec } from "../props/specs";
 import { BREAKABLE, breakKey } from "../props/breakable";
 import { placementsFor } from "../rooms/placements";
 import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
 import { trapsFor } from "../traps/placement";
-import { PIT_RADIUS } from "../world";
+import { FLIGHT_HEIGHT, PIT_RADIUS } from "../world";
 import type { Patch } from "../warden/steer";
 
 /**
@@ -20,8 +20,9 @@ import type { Patch } from "../warden/steer";
  * the floor's rules read it here and nowhere else:
  *
  *   ground  - walks round the furniture; spikes and snares bite it.
- *   flying  - walks round the furniture (it is in the way at any height);
- *             nothing on the floor bites it.
+ *   flying  - over the low furniture and round the tall - anything whose
+ *             top reaches FLIGHT_HEIGHT is in its way; nothing on the
+ *             floor bites it.
  *   ghost   - passes through all of it, and nothing bites it.
  *
  * Two questions, two functions. Whatever is added to the floor later - a
@@ -29,7 +30,7 @@ import type { Patch } from "../warden/steer";
  */
 export type Body = "ground" | "flying" | "ghost";
 
-export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp";
+export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier";
 
 export const BODIES: Record<MobId, Body> = {
   warden: "ground",
@@ -39,6 +40,7 @@ export const BODIES: Record<MobId, Body> = {
   moth: "flying",
   bat: "flying",
   wisp: "ghost",
+  harrier: "flying",
 };
 
 /**
@@ -48,7 +50,14 @@ export const BODIES: Record<MobId, Body> = {
  */
 const BODY_HALF_WIDTH = 0.35;
 
-/** What this body has to walk round: the room's solid furniture, or nothing. */
+/** How high a prop's collider reaches, which is what decides whether a flier clears it. */
+const colliderTop = (spec: PropSpec): number =>
+  spec.collider ? spec.collider.y + (spec.collider.shape === "cylinder" ? spec.collider.args[0] : spec.collider.args[1]) : 0;
+
+/** Whether a flying body passes over this prop rather than round it. */
+export const clearedInFlight = (spec: PropSpec): boolean => colliderTop(spec) < FLIGHT_HEIGHT;
+
+/** What this body has to walk round: the room's solid furniture - the tall pieces of it, for a flier - or nothing. */
 export function obstaclesFor(
   body: Body,
   room: Room,
@@ -61,6 +70,7 @@ export function obstaclesFor(
   // A barrel that has burst is not in anyone's way any more.
   return placementsFor(room, seed)
     .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
+    .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind]))
     .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius + BODY_HALF_WIDTH, berth: 0 }));
 }
 

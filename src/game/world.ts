@@ -790,3 +790,33 @@ export const WALL_SOUND_EVERY_S = 4;
 export const WISP_SPEED = 3.5;
 export const WISP_LEAD = 4;
 export const WISP_FLARE_REACH = 2.5;
+
+/**
+ * The Harrier: the floor's second threat, and the first with wings.
+ *
+ * From HARRIER_FROM_FLOOR down, one roosts on every floor and sleeps until
+ * the alarm reaches HARRIER_ALARM_LEVEL - taking gems wakes it, as it
+ * wakes the Warden - or until the player walks into its roost. Awake, it
+ * comes for the room the player is in, through the doorway on the shortest
+ * path from its roost, at FLIGHT_HEIGHT: over the low furniture and round
+ * the tall, and nothing on the floor bites it. It is faster than a walk
+ * and slower than a dash, so a dash is the loud way out of it; it cannot
+ * be walked from. Hit and run: a touch costs a life through the ordinary
+ * damage path, then it wheels away for HARRIER_RETREAT_S and comes again.
+ * A doorway the grate has barred keeps it out.
+ *
+ * A blast in its room downs it for HARRIER_DOWN_S, and a downed flier is a
+ * ground body: whatever bites feet bites it, and one downed over the trap
+ * room's ring - or an open pit - is slain, the floor's one kill in a game
+ * without a weapon. HARRIER_MAX_STEP is the same promise the Warden's cap
+ * makes: never further in one frame than its own reach, whatever the frame
+ * cost, so there is always a frame between "close" and "on you".
+ */
+export const HARRIER_FROM_FLOOR = 2;
+export const HARRIER_ALARM_LEVEL = 2;
+export const FLIGHT_HEIGHT = 2.2;
+export const HARRIER_SPEED = 7;
+export const HARRIER_TOUCH_RADIUS = 0.9;
+export const HARRIER_MAX_STEP = HARRIER_TOUCH_RADIUS;
+export const HARRIER_RETREAT_S = 8;
+export const HARRIER_DOWN_S = 6;

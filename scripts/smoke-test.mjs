@@ -6446,6 +6446,98 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the HUD says it is out, and lowering the lantern puts it out with the light", !wisp.error && wisp.hudOut && wisp.gone && wisp.hudGone, wisp.error || JSON.stringify({ hudOut: wisp.hudOut, gone: wisp.gone, hudGone: wisp.hudGone }));
 }
 
+// Run 17: the Harrier, played. It sleeps until the alarm reaches its level,
+// comes in by the doorway the one owner names, costs a life and wheels
+// away, is knocked down by a blast, and - down over the trap room's ring -
+// is spiked.
+{
+  const hunted = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!window.__harrierRoost) return { error: "no harrier probe" };
+    run.getState().startRun(31);
+    await wait(1000);
+    // The floor below the first: the Harrier does not roost above it.
+    run.setState({ floor: W.HARRIER_FROM_FLOOR, lives: 3, satchel: ["bomb"], identified: [] });
+    await wait(400);
+    const d = run.getState().dungeon;
+    const roost = window.__harrierRoost(d, W.HARRIER_FROM_FLOOR);
+    if (!roost) return { error: "no roost on this floor" };
+    const asleep = !run.getState().harrierAwake;
+    const events = [];
+    const off = window.__bus.on("harrierWoke", () => events.push("woke"));
+    const off2 = window.__bus.on("harrierStruck", () => events.push("struck"));
+    const off3 = window.__bus.on("harrierDowned", () => events.push("downed"));
+    const off4 = window.__bus.on("harrierSlain", () => events.push("slain"));
+    // Stand in the middle of a room that is not its roost, and wake it the way gems do.
+    const here = run.getState().currentRoomId;
+    const room = d.rooms.find((r) => r.id === here);
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    await wait(300);
+    run.setState({ alarm: W.HARRIER_ALARM_LEVEL });
+    let woke = false;
+    for (let i = 0; i < 12 && !woke; i++) { await wait(250); woke = run.getState().harrierAwake; }
+    const expectVia = window.__harrierEntry(d, roost, here);
+    let seen = null;
+    for (let i = 0; i < 16 && !seen; i++) { await wait(250); if (window.__harrier && window.__harrier.room === here) seen = { ...window.__harrier }; }
+    const hudHunts = /harrier/i.test(document.body.innerText);
+    // It closes on a standing player and takes a life, then is away.
+    const livesBefore = run.getState().lives;
+    const budget = ((room.size / 2) / (W.HARRIER_MAX_STEP * 3) + 6) * 1000;
+    const t0 = performance.now();
+    while (run.getState().lives === livesBefore && performance.now() - t0 < budget) await wait(150);
+    const struck = run.getState().lives === livesBefore - 1;
+    await wait(400);
+    const away = window.__harrier && window.__harrier.away === true && D.harrier().away;
+    // Wait out the retreat, then a bomb: the blast downs it wherever it is in the room.
+    await wait((W.HARRIER_RETREAT_S + 1) * 1000);
+    run.setState({ lives: 9 });
+    const placed = run.getState().placeDevice(0);
+    const t1 = D.clock();
+    while (!events.includes("downed") && D.clock() - t1 < W.BOMB_FUSE_S + 3) await wait(150);
+    const down = events.includes("downed") && D.harrier().down && window.__harrier.down === true;
+    const downFor = D.harrier().down ? run.getState().harrierDownedUntil - D.clock() : 0;
+    // Slain: in a trap room, standing on the gem so its line to you crosses
+    // the ring, it is downed the moment it is over a spike - by the store,
+    // which is what a bomb does - and the floor does the rest.
+    await wait((W.HARRIER_DOWN_S + 1) * 1000);
+    const trapRoom = d.rooms.find((r) => r.kind === "trap");
+    let slain = null;
+    if (trapRoom) {
+      run.setState({ transitioning: true, currentRoomId: trapRoom.id, lives: 9, harrierRetreatUntil: 0, harrierDownedUntil: 0 });
+      run.getState().roomReady(trapRoom.id);
+      await wait(1400);
+      const gem = window.__gemFor(trapRoom, d.seed);
+      const bites = window.__body.bitesFor("ground", trapRoom, d.seed, run.getState().placed, D.sprung());
+      if (!bites.length) slain = { error: "no spikes in the trap room" };
+      else {
+        const g = gem ?? [0, 0, 0];
+        window.__bus.emit("teleport", { position: [g[0], 1.5, g[2]] });
+        await wait(300);
+        const t2 = performance.now();
+        let over = false;
+        while (!over && performance.now() - t2 < 40000) {
+          await wait(80);
+          const h = window.__harrier;
+          if (!h || h.room !== trapRoom.id || h.away || h.down) continue;
+          if (bites.some((b) => Math.hypot(h.x - b.x, h.z - b.z) < b.r * 0.9)) { over = true; run.getState().downHarrier(); }
+        }
+        for (let i = 0; i < 12 && !events.includes("slain"); i++) await wait(250);
+        slain = { over, slain: events.includes("slain"), gone: run.getState().harrierSlain && !window.__harrierAt.roomId, hud: /harrier/i.test(document.body.innerText) };
+      }
+    }
+    off(); off2(); off3(); off4();
+    return { asleep, woke, expectVia, seen: seen && { via: seen.via, roost: seen.roost }, roost, hudHunts, struck, away, placed, down, downFor, slain, events };
+  });
+  ok("the Harrier sleeps until the alarm reaches its level, then wakes", !hunted.error && hunted.asleep && hunted.woke && hunted.events[0] === "woke", hunted.error || JSON.stringify({ asleep: hunted.asleep, woke: hunted.woke, events: hunted.events }));
+  ok("it comes in by the doorway the one owner names, and the HUD says so", !hunted.error && !!hunted.seen && hunted.seen.via === hunted.expectVia && hunted.seen.roost === hunted.roost && hunted.hudHunts, hunted.error || JSON.stringify({ seen: hunted.seen, expected: hunted.expectVia, hud: hunted.hudHunts }));
+  ok("it takes a life and wheels away", !hunted.error && hunted.struck && hunted.away, hunted.error || JSON.stringify({ struck: hunted.struck, away: hunted.away, events: hunted.events }));
+  ok("a blast in its room knocks it down", !hunted.error && hunted.placed && hunted.down && hunted.downFor > 0, hunted.error || JSON.stringify({ placed: hunted.placed, down: hunted.down, downFor: hunted.downFor, events: hunted.events }));
+  ok("down over the trap room's spikes, it is slain and gone for the floor", !hunted.error && (!hunted.slain || (!hunted.slain.error && hunted.slain.over && hunted.slain.slain && hunted.slain.gone && !hunted.slain.hud)), hunted.error || JSON.stringify(hunted.slain ?? "no trap room on this floor"));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

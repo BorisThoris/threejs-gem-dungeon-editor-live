@@ -146,6 +146,14 @@ export interface BusEvents {
   wispCame: undefined;
   /** And went out with the light. */
   wispLeft: undefined;
+  /** The floor's Harrier is up. */
+  harrierWoke: undefined;
+  /** It reached the player. */
+  harrierStruck: undefined;
+  /** A blast knocked it out of the air. */
+  harrierDowned: undefined;
+  /** Downed over something that bites: gone for the floor. */
+  harrierSlain: undefined;
   /** The player marked a room on the map, or unmarked it. */
   mapMarked: { roomId: string; marked: boolean };
   /** A sound through a thin wall, and what it says is behind it. */

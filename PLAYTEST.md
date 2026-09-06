@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §42 asks a human
+  moment it can afford to. That is precisely the behaviour §43 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §42.
+for a person, not for this document, and it is on the list in §43.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3113,14 +3113,77 @@ the lead that is left now, the same promise the Warden's step cap makes,
 and the check asserts the rule rather than a direction: ahead of the
 player, toward the doorway, never further than the lead.
 
-## 41. Steam Deck
+## 41. A second threat with a different body
+
+"Something that flies: spikes do not bite it, snares do not hold it,
+props do not stop it - and a blast does." Run 9 wrote the body table so
+that the next creature would not re-invent the floor's rules. This is
+the next creature, and the first whose body is not the Warden's.
+
+### The Harrier
+
+From the second floor down one roosts on every floor, in the room
+farthest from the stairs that is not the exit, the shop or the hidden
+room - `harrierRoostFor` in `mobs/harrierRoost.ts`, the one owner of where.
+It sleeps until the alarm reaches `HARRIER_ALARM_LEVEL` or the player
+walks into its roost, and the HUD says "a harrier roosts here" in that
+room so the tiptoe out is a choice. Awake, it comes for the room the
+player is in by the doorway on the shortest path from its roost - the
+same answer the wisp gives, from the same path - at `FLIGHT_HEIGHT`, and
+dives as it closes.
+
+It is faster than a walk and slower than a dash: it cannot be walked
+from, and a dash is the loud way out. Hit and run: a touch is the
+ordinary damage, invulnerability window and all, then it wheels away
+for `HARRIER_RETREAT_S` and comes again. A grate the player dropped
+across its doorway keeps it out; the room is theirs until the bar lifts.
+
+### What "flying" now means
+
+The body table's "flying" was "walks round the furniture, and nothing
+bites it". A creature that actually flies made the first half wrong: a
+harrier does not walk round a barrel. So a flying body now steers round
+only the furniture whose collider reaches `FLIGHT_HEIGHT` - pillars,
+bookshelves, statues, authored walls - and passes over the rest, and
+the layout suite holds that list to a subset of the walker's. The moth
+and the bats read the same rule and never noticed; that is what one
+owner of a rule is for.
+
+### The one kill
+
+A blast in its room knocks it out of the air for `HARRIER_DOWN_S`, and
+a downed flier is a ground body - `harrierBody` in the store says so -
+so whatever bites feet bites it. Down over the trap room's ring, or
+over a pit that has already opened, it is slain and gone for the floor.
+The game still has no weapon; the floor did it, and the player set it
+up: bring it into the trap room, stand on the gem so its dive crosses
+the ring, and set the bomb. That is Spelunky's kind of kill, and the
+first thing in the demo a player can be proud of that is not an escape.
+
+### Said
+
+"Something takes wing" when it wakes; the ABOVE line reads "a harrier
+hunts you · a blast downs it", "wheels away", or "is down · 4s · spikes
+would end it", so the answer is on screen the first time the question
+is asked. The store page has its sentence.
+
+### Held and played
+
+Twelve layout checks hold the body, the speeds against the walk and
+the dash, the step cap, the down against the walk to the spikes, the
+furniture split, and - over 120 floors - the roost and the entry
+doorway from every room. Five smoke checks wake it by the alarm, watch
+it come in by the doorway the owner named, lose a life to it and see it
+wheel away, knock it down with a bomb, and spike it in the trap room.
+
+## 42. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 42. What a human playtest should watch for
+## 43. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3246,7 +3309,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 43. Options and accessibility
+## 44. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3278,7 +3341,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 44. Deeds
+## 45. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3311,7 +3374,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 45. Harness bugs that read as game bugs
+## 46. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3400,7 +3463,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 46. Tuning knobs
+## 47. Tuning knobs
 
 All in `src/game/world.ts`:
 

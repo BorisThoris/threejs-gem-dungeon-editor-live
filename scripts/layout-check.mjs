@@ -44,6 +44,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/mobs/lamplighter";
+   export * from "${root}src/game/mobs/harrierRoost";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1260,7 +1261,11 @@ check("the shipped room templates reach the floors the game generates", authored
     !!g && !!gh && g.length >= solid.length && gh.length === 0,
     g ? `ground ${g.length} of ${solid.length} solid props, ghost ${gh.length}` : "no obstaclesFor"
   );
-  check("a flying body walks round the furniture too - it is in the way at any height", !!f && f.length >= solid.length, f ? String(f.length) : "-");
+  // Since run 17 a flier clears the low furniture and steers round only
+  // what reaches its height, so its list is the walker's list filtered,
+  // never something the walker does not have.
+  const tallOnly = !!f && !!g && f.every((o) => g.some((w) => w.x === o.x && w.z === o.z)) && f.length === solid.filter((q) => !L.clearedInFlight(L.PROP_SPECS[q.kind])).length;
+  check("a flying body walks round the tall furniture and over the low, and nothing a walker does not", tallOnly, f ? `${f.length} of ${solid.length} solid props reach flight height` : "-");
   const bg = bites("ground"), bf = bites("flying"), bgh = bites("ghost");
   check(
     "spikes bite a ground body and nothing that flies or passes through",
@@ -1614,6 +1619,57 @@ check("the shipped room templates reach the floors the game generates", authored
   const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
   const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   check("the HUD and the captions say so when it is out", /a wisp/.test(hud) && /wispCame/.test(cap) && /wispLeft/.test(cap));
+}
+
+// --- A second threat with a different body ------------------------------------------
+//
+// Run 17: the Harrier flies. These hold the body table to what "flying"
+// now means on the floor - over the low furniture, round the tall, bitten
+// by nothing - hold the Harrier's numbers to a thing that can be dashed
+// from but not walked from and downed for long enough to matter, and ask
+// the one owner of where it roosts and comes in on every floor.
+{
+  check("the Harrier is a flying body", L.BODIES?.harrier === "flying", `${L.BODIES?.harrier}`);
+  check("faster than a walk, slower than a dash: a dash is the loud way out", L.HARRIER_SPEED > L.WALK_SPEED && L.HARRIER_SPEED < L.DASH_SPEED, `${L.HARRIER_SPEED} between ${L.WALK_SPEED} and ${L.DASH_SPEED}`);
+  check("never further in one frame than its own reach", L.HARRIER_MAX_STEP <= L.HARRIER_TOUCH_RADIUS, `${L.HARRIER_MAX_STEP} against ${L.HARRIER_TOUCH_RADIUS}`);
+  check("downed long enough to walk it to the spikes and back", L.HARRIER_DOWN_S * L.WALK_SPEED >= 2 * (L.CLOSE_REACH + L.BOMB_RADIUS), `${L.HARRIER_DOWN_S}s at ${L.WALK_SPEED} m/s`);
+  check("it sleeps through the first floor and wakes before the Warden hunts", L.HARRIER_FROM_FLOOR >= 2 && L.HARRIER_ALARM_LEVEL >= 1 && L.HARRIER_ALARM_LEVEL <= L.ALARM_HUNTS_AT, `floor ${L.HARRIER_FROM_FLOOR}, alarm ${L.HARRIER_ALARM_LEVEL}`);
+  const specs = Object.entries(L.PROP_SPECS).filter(([, s]) => s.solid && !s.authored);
+  const tall = specs.filter(([, s]) => !L.clearedInFlight(s)).map(([k]) => k);
+  const low = specs.filter(([, s]) => L.clearedInFlight(s)).map(([k]) => k);
+  check("a flier clears some of the furniture and not all of it", tall.length > 0 && low.length > 0, `round ${tall.join(", ")}; over ${low.join(", ")}`);
+  if (L.harrierRoostFor && L.harrierEntryFor) {
+    let floors = 0, none = 0, badRoost = 0, badEntry = 0, notSubset = 0, bitten = 0, floorOne = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      if (L.harrierRoostFor(d, 1) !== null) floorOne++;
+      const roost = L.harrierRoostFor(d, 2);
+      if (!roost) { none++; continue; }
+      const r = d.rooms.find((x) => x.id === roost);
+      if (!r || roost === d.startId || roost === d.endId || roost === d.secretId || r.kind === "shop") badRoost++;
+      for (const room of d.rooms) {
+        if (room.id === d.secretId) continue;
+        const via = L.harrierEntryFor(d, roost, room.id);
+        if (room.id === roost) { if (via !== null) badEntry++; continue; }
+        const path = L.shortestPath(d.rooms, room.id, roost) ?? [];
+        if (!via || room.links[via] !== path[1]) badEntry++;
+        const ground = L.obstaclesFor("ground", room, d.seed, []);
+        const flying = L.obstaclesFor("flying", room, d.seed, []);
+        if (!flying.every((f) => ground.some((g) => g.x === f.x && g.z === f.z))) notSubset++;
+        if (L.bitesFor("flying", room, d.seed, []).length > 0) bitten++;
+      }
+    }
+    check("every floor from the second down has a roost, and the first has none", floors > 0 && none === 0 && floorOne === 0, `${none} without, ${floorOne} on floor one, of ${floors}`);
+    check("the roost is never the start, the exit, the shop or the hidden room", badRoost === 0, `${badRoost} of ${floors}`);
+    check("from every room it comes in by the first doorway of the shortest path to its roost", badEntry === 0, `${badEntry} wrong doorways`);
+    check("what a flier steers round is some of what a walker does, and nothing bites it", notSubset === 0 && bitten === 0, `${notSubset} rooms with extra obstacles, ${bitten} rooms that bite a flier`);
+  } else {
+    check("the Harrier knows where it roosts", false, "no harrierRoostFor");
+  }
+  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  check("the HUD names where it roosts and what downs it, and the captions say the rest", /roosts here/.test(hud) && /a blast downs it/.test(hud) && /harrierWoke/.test(cap) && /harrierSlain/.test(cap));
 }
 
 // --- The Sentry's question --------------------------------------------------

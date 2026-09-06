@@ -26,6 +26,7 @@ import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
 import { Wisp } from "../mobs/Wisp";
+import { Harrier } from "../mobs/Harrier";
 import { Darts } from "../traps/Darts";
 import { Grate } from "../traps/Grate";
 import { Pit } from "../traps/Pit";
@@ -128,6 +129,13 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
 }
 
 /** The lamplighter wisp, in the player's room, while their light can be seen. */
+/** The Harrier, in the player's room while it is awake and not slain: it comes for you wherever you are. */
+function RoomHarrier({ room }: { room: RoomData }) {
+  const awake = useRun((s) => s.harrierAwake && !s.harrierSlain);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return awake && here ? <Harrier room={room} /> : null;
+}
+
 function RoomWisp({ room }: { room: RoomData }) {
   const out = useRun((s) => s.wispOut);
   const here = useRun((s) => s.currentRoomId === room.id);
@@ -281,6 +289,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomTraps room={room} seed={seed} />
       <RoomDraft room={room} />
       <RoomWisp room={room} />
+      <RoomHarrier room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (
