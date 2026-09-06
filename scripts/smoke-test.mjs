@@ -6457,12 +6457,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const D = window.__derived;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     if (!window.__harrierRoost) return { error: "no harrier probe" };
-    run.getState().startRun(31);
-    await wait(1000);
+    // A floor with a trap room on it, so the kill at the end is played
+    // rather than excused: the first seed tried had none.
+    let d = null;
+    for (let seed = 31; seed < 80 && !(d && d.rooms.some((r) => r.kind === "trap")); seed += 3) {
+      run.getState().startRun(seed);
+      await wait(1000);
+      d = run.getState().dungeon;
+    }
+    if (!d.rooms.some((r) => r.kind === "trap")) return { error: "no floor with a trap room in 17 seeds" };
     // The floor below the first: the Harrier does not roost above it.
     run.setState({ floor: W.HARRIER_FROM_FLOOR, lives: 3, satchel: ["bomb"], identified: [] });
     await wait(400);
-    const d = run.getState().dungeon;
     const roost = window.__harrierRoost(d, W.HARRIER_FROM_FLOOR);
     if (!roost) return { error: "no roost on this floor" };
     const asleep = !run.getState().harrierAwake;
