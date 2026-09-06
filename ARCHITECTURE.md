@@ -561,6 +561,18 @@ second model for it to be written in.
 
 ## Verification
 
+A note that cost a day to learn. **Nothing in a test may `import()` a
+module the app has already loaded.** On a dev server the app's copy of a
+source file can be served under a URL the bare path does not match, and
+the import then executes a second copy of the module. For most modules
+that is only waste; for `state/run.ts`, which publishes `window.__run`, it
+was a second store that nothing rendered from - the screen froze on its
+last commit and forty checks failed for reasons that were not their own,
+with no exception raised. The store now publishes its dev handles only if
+nothing holds them, anything a test needs is exposed on `__derived`, and
+the smoke suite asks twice per run whether the screen is still drawn from
+the store it is writing to.
+
 - `yarn typecheck` must be clean. There is no error budget.
 - `yarn lint` must be clean.
 - The three puzzles are played by `yarn test:smoke`, not merely mounted: the

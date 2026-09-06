@@ -2349,32 +2349,77 @@ circle that corner is outside the room, or inside a door lane. It now walks
 centre spots, then far quadrants, then near ones, and takes the first that
 is inside `diagonalReach` and out of every lane - 360 of 360.
 
-### Nine failures that were a stale dev server
+### The tests were writing to a store nothing was rendering from
 
-Partway through verifying this, `yarn test:smoke` came back with nine
-failures in a run that had been green: the victory summary would not
-render, the Warden could not hear a sprint, and a Scroll of Banishment
-threw nothing anywhere. The store was fine in every case - `phase` was
-`won`, the Warden was in `room_1` - and no page error was ever raised.
+Verifying the shrine turned up nine failures in a suite that had been
+green: the victory summary would not appear, the Warden could not hear a
+sprint, a thrown scroll went nowhere. The store said the run was won on
+floor three. The screen said floor one, in the arena, two gems - frozen on
+its last commit while the canvas carried on drawing at three frames a
+second, with no exception raised anywhere.
 
-The failures reproduced **with the shrine stashed**, on the commit that is
-live on `main`. The dev server had been up across two dozen source edits,
-and its log showed HMR updates covering thirty-three modules at once; React
-was subscribed to one copy of the run store while `window.__run` pointed at
-another, so writes landed somewhere nothing was rendering from. A restart
-of `vite` made the same suite green on the same code.
+**My first two explanations were both wrong.** A stale dev server was one
+(the failures came back on a fresh one). A React commit sampled too early
+on a 300 ms sleep was the other (it polls now, and that was not it
+either). What settled it was asking the page what it looked like at the
+moment the panel did not appear, rather than asking whether the panel was
+there: phase `won`, canvas drawing, and a HUD reading `FLOOR 1/3 · Arena`.
+A DOM heartbeat and eight section marks then placed the last commit inside
+one block.
 
-Two things came out of it. The suite now prints a page exception **where it
-happens** rather than tallying it four hundred lines later, after the
-checks it poisoned have all failed for reasons that are not their own; and
-the two summary readings that sampled a React commit on a 300 ms sleep -
-under two frames on this machine - poll for it instead. Neither was the
-cause. Both were reading a screen they had no reason to believe had been
-drawn yet.
+The block borrowed one pure function:
 
-The operational rule, which nothing enforces: **restart the dev server
-before a browser suite that is judging a source change.** It is the fourth
-time this session that an instrument, not the game, produced the failure.
+```js
+const { canSpend } = await import("/src/game/state/run.ts");
+```
+
+On a dev server that has already served that file under a different URL -
+the app's copy carries an HMR query, a bare path does not - that executes
+a **second copy of the module**. And this module publishes `window.__run`
+on load. From that line on, every write the tests made landed in a store
+React was not subscribed to: the screen froze, the run went on being
+played where nobody could see it, and forty checks failed for reasons that
+were not their own.
+
+Measured both ways. On a server with nothing changed since it started, the
+import is a module-map hit and `m.useRun === window.__run`. After any
+edit, it is a miss, `window.__run` is replaced, and a write no longer
+reaches the screen.
+
+Three changes:
+
+- The dev handles are built first and published only if nothing holds them
+  yet; a second copy warns and keeps its hands off. Re-probed under the
+  duplicating condition: the copy still happens, the handle survives, and
+  a write still reaches the screen.
+- The shop's guard asks `__derived.canSpend`. That was the only dynamic
+  import of a module that publishes anything.
+- Two standing checks, at the line the duplicate used to be born on and at
+  the end of the run: **the screen is still drawn from the store these
+  checks write to.** A frozen screen is one failure that says what it is
+  rather than forty that do not. The suite also prints a page exception
+  where it happens rather than tallying it four hundred lines later.
+
+### And two probes finer than a frame
+
+`a rout calms the floor without taking it below its own baseline` read
+`6 to 6`. The calm is one point, and the two readings were eighteen
+seconds apart - a fight during which the player stands still where a
+watcher can see them. The floor had gone to **seven** and the rout brought
+it back to six: the calm worked and the check could not see it. It watches
+the store now, recording the alarm either side of every write that moves
+it, and the rout emits straight after its own write.
+
+`a walk close to the post gets away from it` failed by 160 ms. The post
+cannot notice a player has left the beam sooner than its next frame, and a
+frame here is 240 ms, so 0.9 s of patience resolves to plus or minus a
+frame - the same concession the far spot beside it already carries.
+Likewise the arena's drift bound, a flat quarter-circle of 0.80 against a
+measured 0.82: steering corrects once a frame, so the line can only be
+held to within how far the player travels between corrections, which at
+3.7 m/s and 246 ms frames is 0.9 m. Both are unchanged on a machine that
+renders at sixty, and `yarn test:layout` still holds the beam to the
+promise at full precision by asking `beam.ts` rather than a rasteriser.
 
 ## 29. Steam Deck
 
