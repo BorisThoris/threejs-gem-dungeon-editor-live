@@ -2,6 +2,7 @@ import { Fragment, useCallback, useRef, useState } from "react";
 
 import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
+import { enterImmersive, useTouchControls } from "../game/input/device";
 import { useDeeds } from "../game/state/deeds";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
@@ -34,6 +35,14 @@ export function MainMenu() {
   const panelRef = useRef<HTMLDivElement>(null);
   const back = useCallback(() => setPage("menu"), []);
   usePadMenu({ container: panelRef, onBack: back });
+  // The controls page describes whichever is in the player's hands.
+  const touch = useTouchControls();
+  // A phone wants the whole screen and wants it sideways, and the tap that
+  // starts the run is the gesture the browser needs to be asked on.
+  const begin = (seed?: number) => {
+    enterImmersive();
+    startRun(seed, delver);
+  };
 
   return (
     <div style={{ ...fullscreen, background: "#050608" }}>
@@ -60,7 +69,7 @@ export function MainMenu() {
               You have {chosen.lives} lives. Each floor down is larger, more closely
               watched, and wakes sooner than the one above it.
             </p>
-            <button style={button} data-testid="menu-start" onClick={() => startRun(undefined, delver)}>
+            <button style={button} data-testid="menu-start" onClick={() => begin()}>
               Start as the {chosen.name}
             </button>
             <button
@@ -95,7 +104,19 @@ export function MainMenu() {
         ) : page === "delvers" ? (
           <Delvers chosen={delver} onChoose={setDelver} onBack={() => setPage("menu")} />
         ) : page === "records" ? (
-          <Records seed={seed} setSeed={setSeed} onBack={() => setPage("menu")} />
+          <Records seed={seed} setSeed={setSeed} start={begin} onBack={() => setPage("menu")} />
+        ) : touch ? (
+          <>
+            <TouchHelp />
+            <Options />
+            <button
+              style={secondaryButton}
+              data-testid="controls-back"
+              onClick={() => setPage("menu")}
+            >
+              Back
+            </button>
+          </>
         ) : (
           <>
             <dl style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}>
@@ -139,6 +160,48 @@ export function MainMenu() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The same page for two thumbs.
+ *
+ * Nothing on it is a key. The rows are the on-screen controls in the
+ * order a hand meets them, and the rules that go with each are the same
+ * sentences the keyboard page says, because the game is the same game.
+ */
+function TouchHelp() {
+  const rows: [string, string][] = [
+    ["Walk", "Drag anywhere on your walking half of the screen. The stick appears under your thumb."],
+    ["Look", "Drag on the other half."],
+    ["Use", "USE at a door, counter, chest or lectern. It lights when something is in reach."],
+    ["Satchel", "Tap a slot to drink, read, or set down what is in it."],
+    [
+      "Run",
+      "Shove the stick past its rim, or tap RUN. It ends when you let the stick go. The Warden is slower than you are - but running is loud, and while it can hear you it walks straight for you.",
+    ],
+    [
+      "Lantern",
+      "LAMP. Up, you see the room and everything down here sees you; down, you have a hand's worth of glow and nothing knows where you are. It only burns oil while it is up, and braziers fill it.",
+    ],
+    [
+      "Bar a door",
+      "BAR at a doorway. It goes off the Warden's map for forty-five seconds and it walks round - and hammering it up is the loudest thing you can do down here.",
+    ],
+    ["Pause", "The II by the map."],
+  ];
+  return (
+    <dl
+      data-testid="controls-touch"
+      style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}
+    >
+      {rows.map(([label, value]) => (
+        <Fragment key={label}>
+          <dt style={{ color: colors.accent }}>{label}</dt>
+          <dd style={{ margin: 0 }}>{value}</dd>
+        </Fragment>
+      ))}
+    </dl>
   );
 }
 
@@ -329,14 +392,16 @@ function Delvers({
 function Records({
   seed,
   setSeed,
+  start,
   onBack,
 }: {
   seed: string;
   setSeed: (v: string) => void;
+  /** Starts a run, as the title's own button does. */
+  start: (seed: number) => void;
   onBack: () => void;
 }) {
   const records = useRecords();
-  const startRun = useRun((s) => s.startRun);
   const typed = Number.parseInt(seed, 10);
   const usable = Number.isFinite(typed) && typed >= 0;
 
@@ -411,7 +476,7 @@ function Records({
         style={{ ...button, opacity: usable ? 1 : 0.4 }}
         disabled={!usable}
         data-testid="records-run-seed"
-        onClick={() => startRun(typed)}
+        onClick={() => start(typed)}
       >
         Run it
       </button>

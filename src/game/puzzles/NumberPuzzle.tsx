@@ -4,6 +4,7 @@ import { createRng } from "../rng";
 import { colors, FONT } from "../../ui/overlay";
 import { Keypad } from "../../ui/Keypad";
 import { usePadMenu } from "../../ui/padMenu";
+import { useTouchControls } from "../input/device";
 
 export interface NumberPuzzleProps {
   difficulty: "easy" | "medium" | "hard";
@@ -181,6 +182,10 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
   const sheet = useRef<HTMLDivElement>(null);
   usePadMenu({ container: sheet, onBack: onExit, active: phase === "showing" });
 
+  // "Esc or B leaves" is a promise a touchscreen cannot keep: it has
+  // neither. A button that says so, for as long as leaving is possible.
+  const touch = useTouchControls();
+
   // Typing. Attached to the window so no input element needs focus.
   useEffect(() => {
     if (phase !== "typing") return;
@@ -256,12 +261,33 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
           />
         </div>
       )}
+      {touch && open && (
+        <button
+          type="button"
+          data-testid="tome-leave"
+          onClick={onExit}
+          style={{
+            fontFamily: FONT,
+            fontSize: 10,
+            letterSpacing: "0.05em",
+            color: colors.ink,
+            background: "transparent",
+            border: `1px solid ${colors.line}`,
+            borderRadius: 4,
+            padding: "10px 16px",
+            marginBottom: 14,
+            cursor: "pointer",
+          }}
+        >
+          Leave the tome
+        </button>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: colors.dim }}>
         <span>
           Misses {misses}/{rules.misses}
         </span>
         <span style={{ color: timeLeft < 10 ? colors.danger : colors.dim }}>{Math.ceil(timeLeft)}s</span>
-        <span>Esc or B leaves</span>
+        <span>{touch ? "Leave closes it" : "Esc or B leaves"}</span>
       </div>
     </div>
   );

@@ -23,6 +23,7 @@ import { Captions } from "./ui/Captions";
 import { UI_SCALE_VAR } from "./ui/overlay";
 import { DeedToast } from "./ui/Deed";
 import { ItemLog, Satchel } from "./ui/Satchel";
+import { TouchControls } from "./ui/TouchControls";
 import { Transitions } from "./ui/Transitions";
 
 /**
@@ -152,6 +153,10 @@ export default function App() {
     // controls. Deliberately not store state - it changes every frame a
     // mouse moves - so a check has no other way to read it.
     void import("./game/input/look").then((m) => (w.__look = m.look));
+    // What the on-screen stick is doing, for the check that plays by
+    // touch: module data written by pointer handlers, and the frame loop
+    // is the only other reader.
+    void import("./game/input/touch").then((m) => (w.__touch = m.readTouch));
     // Where every carryable is and which one is in the player's hands.
     // Module data rather than store state, because it changes every frame
     // something is carried and nothing re-renders for it - so a check that
@@ -223,6 +228,9 @@ export default function App() {
       <Prompt />
       <Satchel />
       <ItemLog />
+      {/* The stick, the look drag and the buttons, on anything held in
+          the hands. Renders nothing on a desktop until it is touched. */}
+      <TouchControls />
       <Captions />
       <DeedToast />
       <PuzzleOverlay />

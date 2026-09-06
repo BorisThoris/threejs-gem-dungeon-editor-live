@@ -166,6 +166,17 @@ Two stores that both claimed the player's stats. So:
   frame by the look controls. The minimap turns with it. It is deliberately
   not store state: it changes every frame a mouse moves, and the HUD would
   re-render at that rate.
+- What the game is being played on is `src/game/input/device.ts`: a
+  desktop, a phone or a tablet, decided once from what the platform says
+  about its pointer and the short side of its screen, and whether the
+  on-screen controls are drawn - the player's setting, with `auto` meaning
+  anything held in the hands and a desktop once it is touched. Everything
+  that lays out differently for a phone asks it. The on-screen stick and
+  the look drag are `src/game/input/touch.ts`, module data written by the
+  layer's pointer handlers and read from the frame loop like the pad; the
+  on-screen buttons are not there, because a button is a key whose code is
+  the action's name (`keyboard.pressAction`), so the trigger that consumes
+  E consumes USE without knowing the difference.
 - How roused the Warden is comes from `src/game/warden/tuning.ts`. The
   driver, the figure itself, the audio and the HUD all read the same
   function, so "Hunting" in the corner and the thing in the doorway can
@@ -427,8 +438,12 @@ src/
       watch.ts           the only thing in the game that earns one
     state/run.ts         the run: phase, lives, gems, current room, visited
     input/
-      keyboard.ts        edge presses, asked by action rather than by key
+      keyboard.ts        edge presses, asked by action rather than by key;
+                         an on-screen button is a key named for its action
       bindings.ts        which key does what, and what a player may change
+      device.ts          desktop, phone or tablet, and whether the on-screen
+                         controls are drawn
+      touch.ts           the on-screen stick and the look drag, per frame
       gamepad.ts, mouseLook.ts, look.ts
     player/
       Player.tsx         the capsule the camera rides on
@@ -466,7 +481,8 @@ src/
     systems/             audio (synthesised), bus-driven
     Scene.tsx            the canvas, physics, ground, player, current room
   ui/                    DOM overlays: HUD, minimap, prompt, hint, menus,
-                         summary, puzzle overlay
+                         summary, puzzle overlay, and TouchControls - the
+                         stick, the look drag and the buttons for two thumbs
   editor/                dev only: rooms, props, surfaces, mosaic
 ```
 
@@ -758,6 +774,13 @@ the store it is writing to.
   the packaged Linux build, which is what a Steam Deck runs. It drives the
   game's own reading of a pad, not the browser's gamepad driver, and says
   so.
+- `yarn test:touch` plays the game with two thumbs, on an emulated phone,
+  the same phone held upright, a tablet, and a desktop that is never
+  touched. It sends real touch events through the debugger rather than
+  synthetic pointer events, so it drives the game's own reading of a touch:
+  the capture, the stick's throw, the rim that starts the run, two fingers
+  down at once. What it cannot say is how a thumb feels about the sizes,
+  or what iOS Safari does with the full-screen request.
 - `yarn test:smoke` drives the real game in a browser: start, stand on the
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this

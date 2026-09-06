@@ -8,7 +8,9 @@ import {
   unbound,
   type Action,
 } from "../game/input/bindings";
+import { device } from "../game/input/device";
 import { useRun } from "../game/state/run";
+import type { TouchControls } from "../game/state/settings";
 import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
@@ -125,8 +127,89 @@ export function Options({ showBindings = true }: { showBindings?: boolean }) {
         testId="opt-uiscale"
       />
 
-      {showBindings && <Bindings />}
+      {/* Only where a screen can be touched at all. On a desktop with no
+          touchscreen these are three rows about a thing that cannot
+          happen, and the gamepad walk through this menu is three stops
+          longer for it. */}
+      {touchable() && (
+        <>
+          <Group label="Touch" />
+          <Cycle
+            label="On-screen controls"
+            value={s.touchControls}
+            options={TOUCH_MODES}
+            onChange={s.setTouchControls}
+            testId="opt-touch"
+          />
+          <Slider
+            label="Touch look"
+            value={s.touchLook}
+            onChange={s.setTouchLook}
+            min={0.25}
+            max={3}
+            testId="opt-touchlook"
+          />
+          <Toggle
+            label="Walking thumb"
+            on={s.stickSide === "right"}
+            onChange={(on) => s.setStickSide(on ? "right" : "left")}
+            testId="opt-stick"
+            onWord="right"
+            offWord="left"
+          />
+        </>
+      )}
+
+      {/* Not on a phone: twelve rows of keys it does not have, on the
+          screen least able to spare the room. A tablet may well have a
+          keyboard clipped to it, and keeps them. */}
+      {showBindings && device !== "phone" && <Bindings />}
     </div>
+  );
+}
+
+const TOUCH_MODES: readonly TouchControls[] = ["auto", "on", "off"];
+
+/** Whether this screen can be touched, which is when the touch rows are worth showing. */
+const touchable = (): boolean =>
+  typeof navigator !== "undefined" && (navigator.maxTouchPoints ?? 0) > 0;
+
+/**
+ * One of a few words, stepped through by pressing. The shape of the
+ * toggle for a setting with three answers rather than two, so it is still
+ * a button and the pad still walks it.
+ */
+function Cycle<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  testId,
+}: {
+  label: string;
+  value: T;
+  options: readonly T[];
+  onChange: (v: T) => void;
+  testId: string;
+}) {
+  const next = options[(options.indexOf(value) + 1) % options.length];
+  return (
+    <button
+      style={{
+        ...secondaryButton,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        fontSize: text.small,
+      }}
+      data-testid={testId}
+      onClick={() => onChange(next)}
+    >
+      <span>{label}</span>
+      <span data-value={value} style={{ color: colors.accent }}>
+        {value}
+      </span>
+    </button>
   );
 }
 

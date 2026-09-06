@@ -13,6 +13,7 @@ import { bus } from "../events";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
+import { readTouch } from "../input/touch";
 import { canControl, speedNow, useRun } from "../state/run";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
@@ -151,6 +152,7 @@ export function Player() {
     const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
+    const stick = readTouch();
     const forward = keyboard.actionDown("forward");
     const back = keyboard.actionDown("back");
     const left = keyboard.actionDown("left");
@@ -162,16 +164,20 @@ export function Player() {
      * chase is most of this game. Nothing about the sprint changes when
      * this is on - it is still loud, it still costs what it costs - only
      * how the key is asked for. The pad's own hold works either way,
-     * because a stick click is not the thing that is hard to hold.
+     * because a stick click is not the thing that is hard to hold. The
+     * on-screen stick's run is its own as well: it is pushed on and it
+     * ends when the thumb comes off, which is the only hold a thumb that
+     * is also steering can manage.
      */
     const dash = toggleSprint
       ? (keyboard.consumeAction("sprint") ? (sprinting.current = !sprinting.current) : sprinting.current) ||
-        pad.dash
-      : keyboard.actionDown("sprint") || pad.dash;
+        pad.dash ||
+        stick.sprint
+      : keyboard.actionDown("sprint") || pad.dash || stick.sprint;
 
     // Clamp rather than normalise, so a half-deflected stick walks slower.
-    const inputZ = clampUnit(+back - +forward + pad.moveY);
-    const inputX = clampUnit(+right - +left + pad.moveX);
+    const inputZ = clampUnit(+back - +forward + pad.moveY + stick.moveY);
+    const inputX = clampUnit(+right - +left + pad.moveX + stick.moveX);
 
     const { dir, euler, yawQ } = scratch;
     dir.set(inputX, 0, inputZ);

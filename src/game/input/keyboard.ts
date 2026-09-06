@@ -15,6 +15,14 @@
  * chance to read it. A second is long enough that a press slightly before
  * reaching a door still opens it, and short enough that one does not fire
  * a room later.
+ *
+ * An on-screen button is a key whose code is the action's name. The touch
+ * layer calls `pressAction("interact")` and that lands in the same map a
+ * keydown of E lands in, under the code "interact", so the trigger that
+ * asks `consumeAction("interact")` finds it without knowing it was a
+ * thumb. No key code can collide with one: every code the browser sends
+ * starts with Key, Digit, Arrow and the like (`bindable` in bindings.ts is
+ * the list), and no action is called that.
  */
 
 import type { Action } from "./bindings";
@@ -92,10 +100,22 @@ export const keyboard = {
    */
   actionDown: (action: Action): boolean => keysFor(action).some((code) => held.has(code)),
   consumeAction: (action: Action): boolean => {
+    if (fresh(action) && pressed.delete(action)) return true;
     for (const code of keysFor(action)) {
       if (fresh(code) && pressed.delete(code)) return true;
     }
     return false;
   },
-  peekAction: (action: Action): boolean => keysFor(action).some((code) => fresh(code)),
+  peekAction: (action: Action): boolean =>
+    fresh(action) || keysFor(action).some((code) => fresh(code)),
+
+  /**
+   * An action pressed by something that is not a key - the on-screen
+   * controls. Edge-triggered and consumed once, exactly as a keydown is.
+   * There is no held equivalent: the one thing a thumb holds is the
+   * stick, and that is `touch.ts`.
+   */
+  pressAction: (action: Action): void => {
+    pressed.set(action, performance.now());
+  },
 };

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
 import { bus } from "../game/events";
+import { device, useTouchControls } from "../game/input/device";
+import { readTouch } from "../game/input/touch";
 import { canControl, runClock, useRun } from "../game/state/run";
+import { useSettings } from "../game/state/settings";
 import { NOTICE_HOLD_S } from "../game/world";
 import { colors, FONT, text as textSize } from "./overlay";
 
@@ -41,7 +44,19 @@ export function Hint() {
   }, [notice]);
   const captured = usePointerCaptured();
   const inControl = useRun(canControl);
-  const lines = [notice, text, inControl && !captured ? "Click the game to look around" : null].filter(Boolean);
+  // Which of the two first-time lines applies: the mouse can be taken on a
+  // desktop unless the player has asked for the on-screen scheme, and the
+  // thumbs are taught until both have been used once.
+  const touch = useTouchControls();
+  const touchMode = useSettings((s) => s.touchControls);
+  const lockable = device === "desktop" && touchMode !== "on";
+  const tutored = useTouchTutored(touch && inControl);
+  const lines = [
+    notice,
+    text,
+    inControl && !captured && lockable ? "Click the game to look around" : null,
+    inControl && touch && !tutored ? "One thumb walks, the other looks" : null,
+  ].filter(Boolean);
   if (lines.length === 0) return null;
   return (
     <div
@@ -81,4 +96,23 @@ function usePointerCaptured(): boolean {
     return () => document.removeEventListener("pointerlockchange", update);
   }, []);
   return captured;
+}
+
+/**
+ * Whether the stick and the look drag have each been used once, polled:
+ * they are module data written from pointer handlers, and the line that
+ * teaches them should go the moment they are learned rather than on a
+ * timer that outlasts a quick study or cuts a slow one short.
+ */
+function useTouchTutored(watch: boolean): boolean {
+  const done = () => readTouch().everMoved && readTouch().everLooked;
+  const [tutored, setTutored] = useState(done);
+  useEffect(() => {
+    if (!watch || tutored) return;
+    const t = window.setInterval(() => {
+      if (done()) setTutored(true);
+    }, 300);
+    return () => window.clearInterval(t);
+  }, [watch, tutored]);
+  return tutored;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
+import { device, useTouchControls } from "../game/input/device";
 import { ITEMS, nameOf } from "../game/items/catalog";
 import { CHARGE_COLOUR, chargeWord } from "../game/items/charge";
 import { satchelSlots, useRun } from "../game/state/run";
@@ -30,6 +31,14 @@ export function Satchel() {
   // Drawn from the run rather than the constant, so a two-slot satchel
   // shows two slots instead of two full ones and two that can never fill.
   const slots = useRun(satchelSlots);
+  // On a touchscreen the slot is the button: there is no 1 to 4, and a
+  // row of four things to tap is what a satchel looks like anyway. The
+  // store still refuses whenever the player is not in control. A click,
+  // not a press: the row sits on the walking half of a phone's screen, a
+  // thumb that lands on it and drags is walking rather than drinking, and
+  // a click is the one gesture a drag never makes.
+  const touch = useTouchControls();
+  const phone = device === "phone";
 
   if (satchel.length === 0) return null;
 
@@ -38,12 +47,12 @@ export function Satchel() {
       style={{
         position: "fixed",
         left: "50%",
-        bottom: 22,
+        bottom: phone ? 12 : 22,
         transform: "translateX(-50%)",
         display: "flex",
-        gap: 8,
+        gap: phone ? 6 : 8,
         fontFamily: FONT,
-        pointerEvents: "none",
+        pointerEvents: touch ? "auto" : "none",
         zIndex: 900,
       }}
     >
@@ -54,13 +63,19 @@ export function Satchel() {
         return (
           <div
             key={i}
+            data-testid={`satchel-${i}`}
+            onClick={touch && id ? () => useRun.getState().useItem(i) : undefined}
             style={{
-              width: 128,
-              padding: "8px 10px",
+              width: phone ? 80 : 128,
+              padding: phone ? "6px 8px" : "8px 10px",
               borderRadius: 6,
               background: colors.panel,
               border: `1px solid ${id ? colors.line : "rgba(255,255,255,0.05)"}`,
               opacity: id ? 1 : 0.35,
+              cursor: touch && id ? "pointer" : undefined,
+              touchAction: "manipulation",
+              userSelect: "none",
+              WebkitUserSelect: "none",
             }}
           >
             <div style={{ fontSize: text.small, color: colors.dim, marginBottom: 6 }}>
@@ -170,7 +185,7 @@ export function ItemLog() {
       style={{
         position: "fixed",
         left: "50%",
-        bottom: 118,
+        bottom: device === "phone" ? 128 : 118,
         transform: "translateX(-50%)",
         maxWidth: 560,
         padding: "9px 15px",

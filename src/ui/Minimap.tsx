@@ -3,9 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
 import { mapIsDark, useRun } from "../game/state/run";
-import { colors, FONT, text } from "./overlay";
+import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
 
-const SIZE = 190;
+const SIZE = MINIMAP_SIZE;
 const CELL = 26;
 const GAP = 9;
 const SPACING = CELL + GAP;
@@ -155,6 +155,8 @@ export function Minimap() {
         fontFamily: FONT,
         pointerEvents: "none",
         zIndex: 900,
+        transform: MINIMAP_SCALE === 1 ? undefined : `scale(${MINIMAP_SCALE})`,
+        transformOrigin: "top right",
       }}
     >
       {/* The dial fades at its rim, so rooms leave the map rather than being

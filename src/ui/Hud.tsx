@@ -20,6 +20,7 @@ import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
+import { device } from "../game/input/device";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
@@ -76,19 +77,23 @@ export function Hud() {
       ? colors.danger
       : ALARM_COLOUR[Math.min(3, Math.floor(rouse * 3.99))];
 
+  // Eight lines at a monitor's spacing is more than half of a phone held
+  // sideways. Closer together and a size down there, so the room is still
+  // the thing on the screen.
+  const compact = device === "phone";
   return (
     <div
       style={{
         position: "fixed",
-        top: 20,
-        left: 20,
-        padding: "14px 16px",
+        top: compact ? 12 : 20,
+        left: compact ? 12 : 20,
+        padding: compact ? "8px 10px" : "14px 16px",
         background: colors.panel,
         border: `1px solid ${colors.line}`,
         borderRadius: 6,
         fontFamily: FONT,
-        fontSize: text.body,
-        lineHeight: 2,
+        fontSize: compact ? text.small : text.body,
+        lineHeight: compact ? 1.6 : 2,
         color: colors.ink,
         pointerEvents: "none",
         zIndex: 900,

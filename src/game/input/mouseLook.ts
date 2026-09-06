@@ -6,9 +6,17 @@ import { spawnAtStart } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, useRun, type RunState } from "../state/run";
 import { useSettings } from "../state/settings";
-import { CAMERA_FOV, GAMEPAD_LOOK_SPEED, MAX_FRAME_S, MOUSE_SENSITIVITY } from "../world";
+import {
+  CAMERA_FOV,
+  GAMEPAD_LOOK_SPEED,
+  MAX_FRAME_S,
+  MOUSE_SENSITIVITY,
+  TOUCH_LOOK_SENSITIVITY,
+} from "../world";
+import { pointerLockWanted } from "./device";
 import { readGamepad } from "./gamepad";
 import { look } from "./look";
+import { takeTouchLook } from "./touch";
 
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
 
@@ -34,7 +42,10 @@ const wantsCursor = (s: RunState): boolean =>
  * honoured on a user gesture, and closing a menu is one.
  *
  * Yaw and pitch live in refs and are written straight onto the camera:
- * nothing here ever re-renders anything. The right stick looks too.
+ * nothing here ever re-renders anything. The right stick looks too, and
+ * so does a thumb dragged across a touchscreen (`touch.ts`), which asks
+ * for no lock at all: on a phone the API is missing or refused, and the
+ * layer that reads the drag sits over the canvas in any case.
  */
 export function useMouseLook() {
   const { camera, gl } = useThree();
@@ -61,6 +72,7 @@ export function useMouseLook() {
 
     const requestLock = () => {
       if (document.pointerLockElement === canvas) return;
+      if (!pointerLockWanted()) return;
       try {
         const request = canvas.requestPointerLock() as Promise<void> | undefined;
         request?.catch(() => {
@@ -95,7 +107,15 @@ export function useMouseLook() {
       pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
       apply();
     };
-    const onMouseDown = () => {
+    /**
+     * On the document rather than the canvas, because the touch layer
+     * sits over the canvas whenever it is drawn and a mouse click on a
+     * touchscreen laptop would otherwise land on it and do nothing. A
+     * press on a button is that button's, and a menu's buttons are the
+     * reason the run has released the pointer in the first place.
+     */
+    const onMouseDown = (event: MouseEvent) => {
+      if ((event.target as Element | null)?.closest?.("button, input, a, select")) return;
       if (canControl(useRun.getState())) requestLock();
     };
     const onLockChange = () => {
@@ -119,14 +139,14 @@ export function useMouseLook() {
     });
 
     document.addEventListener("mousemove", onMouseMove);
-    canvas.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mousedown", onMouseDown);
     document.addEventListener("pointerlockchange", onLockChange);
     document.addEventListener("contextmenu", onContextMenu);
     return () => {
       offLook();
       unsubscribe();
       document.removeEventListener("mousemove", onMouseMove);
-      canvas.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("mousedown", onMouseDown);
       document.removeEventListener("pointerlockchange", onLockChange);
       document.removeEventListener("contextmenu", onContextMenu);
       releaseLock();
@@ -154,13 +174,29 @@ export function useMouseLook() {
    * not decide that a frame it never rendered counts in full.
    */
   useFrame((_, delta) => {
+    // The drag is taken whether or not the player is in control, so a
+    // thumb that moved while a menu was up does not swing the view the
+    // moment the menu closes.
+    const drag = takeTouchLook();
     if (!canControl(useRun.getState())) return;
+    const { padLook, touchLook, invertY } = useSettings.getState();
+    const upDown = invertY ? -1 : 1;
+    let turned = false;
+    if (drag.x !== 0 || drag.y !== 0) {
+      // Pixels, like the mouse: a long frame carries more of them, which
+      // is what the thumb did, so there is nothing here to cap.
+      yaw.current -= drag.x * TOUCH_LOOK_SENSITIVITY * touchLook;
+      pitch.current -= drag.y * TOUCH_LOOK_SENSITIVITY * touchLook * upDown;
+      turned = true;
+    }
     const pad = readGamepad();
-    if (!pad.connected || (pad.lookX === 0 && pad.lookY === 0)) return;
-    const step = Math.min(delta, MAX_FRAME_S);
-    const { padLook, invertY } = useSettings.getState();
-    yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * padLook * step;
-    pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * padLook * step * (invertY ? -1 : 1);
+    if (pad.connected && (pad.lookX !== 0 || pad.lookY !== 0)) {
+      const step = Math.min(delta, MAX_FRAME_S);
+      yaw.current -= pad.lookX * GAMEPAD_LOOK_SPEED * padLook * step;
+      pitch.current -= pad.lookY * GAMEPAD_LOOK_SPEED * padLook * step * upDown;
+      turned = true;
+    }
+    if (!turned) return;
     pitch.current = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, pitch.current));
     camera.rotation.set(pitch.current, yaw.current, 0, "YXZ");
     look.yaw = yaw.current;

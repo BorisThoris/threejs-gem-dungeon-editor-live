@@ -39,10 +39,22 @@ export interface Settings extends Stored {
   setCaptions: (on: boolean) => void;
   setHighContrast: (on: boolean) => void;
   setUiScale: (v: number) => void;
+  setTouchControls: (mode: TouchControls) => void;
+  setTouchLook: (v: number) => void;
+  setStickSide: (side: StickSide) => void;
   /** Bind an action to a key, taking it off whatever else held it. */
   bind: (action: Action, code: string) => void;
   resetBindings: () => void;
 }
+
+/**
+ * Whether the on-screen controls are drawn. `auto` is the device's call
+ * (`input/device.ts`): a phone or a tablet always, a desktop once its
+ * screen has been touched.
+ */
+export type TouchControls = "auto" | "on" | "off";
+/** Which thumb walks. The other one looks and has the buttons. */
+export type StickSide = "left" | "right";
 
 interface Stored {
   /** Head bob while walking. Off for anyone it makes ill. */
@@ -86,6 +98,10 @@ interface Stored {
   highContrast: boolean;
   /** Overlay text and panels, as a multiplier. Bigger for a Deck. */
   uiScale: number;
+  touchControls: TouchControls;
+  /** The look drag on a touchscreen, as a multiplier on the game's own figure. */
+  touchLook: number;
+  stickSide: StickSide;
   bindings: Bindings;
 }
 
@@ -101,6 +117,9 @@ const DEFAULTS: Stored = {
   captions: false,
   highContrast: false,
   uiScale: 1,
+  touchControls: "auto",
+  touchLook: 1,
+  stickSide: "left",
   bindings: DEFAULT_BINDINGS,
 };
 
@@ -109,6 +128,9 @@ const bool = (v: unknown, fallback: boolean): boolean =>
 /** A number, in range, or the default. NaN and Infinity are not numbers here. */
 const ranged = (v: unknown, lo: number, hi: number, fallback: number): number =>
   typeof v === "number" && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : fallback;
+/** One of a fixed set of words, or the default. */
+const oneOf = <T extends string>(v: unknown, options: readonly T[], fallback: T): T =>
+  typeof v === "string" && (options as readonly string[]).includes(v) ? (v as T) : fallback;
 
 function loadBindings(v: unknown): Bindings {
   const out = { ...DEFAULT_BINDINGS } as Bindings;
@@ -143,6 +165,9 @@ function load(): Stored {
       captions: bool(p.captions, DEFAULTS.captions),
       highContrast: bool(p.highContrast, DEFAULTS.highContrast),
       uiScale: ranged(p.uiScale, 0.8, 1.6, DEFAULTS.uiScale),
+      touchControls: oneOf(p.touchControls, ["auto", "on", "off"], DEFAULTS.touchControls),
+      touchLook: ranged(p.touchLook, 0.25, 3, DEFAULTS.touchLook),
+      stickSide: oneOf(p.stickSide, ["left", "right"], DEFAULTS.stickSide),
       bindings: loadBindings(p.bindings),
     };
   } catch {
@@ -178,6 +203,9 @@ const write = (set: (p: Partial<Stored>) => void, get: () => Settings, patch: Pa
     captions: s.captions,
     highContrast: s.highContrast,
     uiScale: s.uiScale,
+    touchControls: s.touchControls,
+    touchLook: s.touchLook,
+    stickSide: s.stickSide,
     bindings: s.bindings,
   });
 };
@@ -195,6 +223,9 @@ export const useSettings = create<Settings>()((set, get) => ({
   setCaptions: (on) => write(set, get, { captions: on }),
   setHighContrast: (on) => write(set, get, { highContrast: on }),
   setUiScale: (v) => write(set, get, { uiScale: ranged(v, 0.8, 1.6, 1) }),
+  setTouchControls: (mode) => write(set, get, { touchControls: mode }),
+  setTouchLook: (v) => write(set, get, { touchLook: ranged(v, 0.25, 3, 1) }),
+  setStickSide: (side) => write(set, get, { stickSide: side }),
   bind: (action, code) => write(set, get, { bindings: bindTo(get().bindings, action, code) }),
   resetBindings: () => write(set, get, { bindings: DEFAULT_BINDINGS }),
 }));
