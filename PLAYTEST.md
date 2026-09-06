@@ -2594,6 +2594,10 @@ Inside the blast: the player loses a life; the Warden, if it is in the
 room, is routed exactly as a second spike wound routs it - one owner,
 `routWarden`, so the difference between a bomb and the spikes can never
 become a rule; the thief drops what it holds. And a cracked wall gives.
+"If it is in the room" and not "if you are": the first draft routed it
+only while the player stood there too, which made the one way to use a
+bomb without being hurt - set it down and walk - a dud against the thing
+it was for. A bomb left in a room the Warden later walks into is a trap.
 
 ### One room the map does not show
 
