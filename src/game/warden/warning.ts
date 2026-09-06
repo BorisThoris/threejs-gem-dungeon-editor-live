@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { bus } from "../events";
+import { touchControlsActive } from "../input/device";
 import { useRun } from "../state/run";
 import { floorRules } from "../world";
 
@@ -15,17 +16,29 @@ import { floorRules } from "../world";
  * a player who is not told that only finds out by being caught by it.
  */
 const WOKE = "Something woke below. It walks the floor now, and every gem you take makes it worse.";
-const HERE = "It is in this room. You cannot fight it. Hold Shift and go.";
+// Three of these name a key, and on a touchscreen there is no key: they
+// name the button instead, decided when they are said rather than when
+// the module loads, because the controls can appear at the first touch.
+const HERE = () =>
+  touchControlsActive()
+    ? "It is in this room. You cannot fight it. Press RUN and go."
+    : "It is in this room. You cannot fight it. Hold Shift and go.";
 const SEEN = "The watcher called out. Stay out of the light - it tells the Warden where you are.";
 const LOUD = "It heard that. Running carries down here; walking does not.";
 const THROWN = "Something clatters a long way off. It has gone to look, and it is not listening for you.";
 const BIT = "The spikes do not care which of you stands on them. Put another patch between you.";
 const ROUTED = "It will not cross those again. Whatever else this floor gives you, that trick is spent.";
 const SET = "It stays where you left it, and it is still there when you come back through.";
-const THIEF = "Something small is in here with you, and it wants what you are carrying. Shift, now.";
+const THIEF = () =>
+  touchControlsActive()
+    ? "Something small is in here with you, and it wants what you are carrying. RUN, now."
+    : "Something small is in here with you, and it wants what you are carrying. Shift, now.";
 const ROBBED = "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere.";
 const DRY = "The lantern is out. Fill it at a brazier - though a brazier is the brightest place to stand.";
-const LIGHT = "Your lantern is up, and it is the brightest thing on this floor. F puts it down.";
+const LIGHT = () =>
+  touchControlsActive()
+    ? "Your lantern is up, and it is the brightest thing on this floor. LAMP puts it down."
+    : "Your lantern is up, and it is the brightest thing on this floor. F puts it down.";
 const BARRED = "That doorway is shut to it. It will walk round - and everything down here heard you shut it.";
 const SMASHED = "It came through the bar. There was no way round, and now it knows exactly where you are.";
 
@@ -63,7 +76,7 @@ export function useWardenWarning() {
       bus.on("wardenEntered", () => {
         if (told.here) return;
         told.here = true;
-        say(HERE);
+        say(HERE());
       }),
       bus.on("sentrySaw", () => {
         if (told.seen) return;
@@ -95,7 +108,7 @@ export function useWardenWarning() {
       bus.on("thiefCame", () => {
         if (told.thief) return;
         told.thief = true;
-        say(THIEF);
+        say(THIEF());
       }),
       // Not a one-off: running out is a thing to be told about every time
       // it happens, because the answer to it is somewhere else in the room.
@@ -116,7 +129,7 @@ export function useWardenWarning() {
       bus.on("lanternToggled", ({ raised }) => {
         if (!raised || told.light) return;
         told.light = true;
-        say(LIGHT);
+        say(LIGHT());
       }),
       bus.on("thiefFled", () => {
         if (told.robbed) return;

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 
 import { DEEDS, type DeedId } from "../game/deeds/catalog";
 import { bus } from "../game/events";
-import { FONT, colors, text } from "./overlay";
+import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
+import { useTouchControls } from "../game/input/device";
 
 /**
  * The card that says a deed was done.
@@ -36,6 +37,9 @@ export function DeedToast() {
     };
   }, []);
 
+  // The bottom corner is where the thumb's buttons are on a touchscreen,
+  // so the toast goes under the minimap instead.
+  const touch = useTouchControls();
   if (!shown || !DEEDS[shown]) return null;
   const deed = DEEDS[shown];
 
@@ -44,7 +48,7 @@ export function DeedToast() {
       style={{
         position: "fixed",
         right: 20,
-        bottom: 20,
+        ...(touch ? { top: 20 + MINIMAP_SIZE * MINIMAP_SCALE + 14 } : { bottom: 20 }),
         maxWidth: 300,
         padding: "12px 16px",
         background: colors.panel,

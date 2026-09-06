@@ -110,6 +110,14 @@ export const MAX_RISE_SPEED = 2;
 export const GRAVITY_SCALE = 2;
 export const MOUSE_SENSITIVITY = 0.0016;
 export const GAMEPAD_LOOK_SPEED = 2.4;
+/**
+ * Radians per CSS pixel of drag on a touchscreen. Pixels, like the mouse,
+ * not seconds, like the stick: a drag is a distance the thumb covered.
+ * Nearly three times the mouse's figure, because a thumb has half a
+ * screen to work with where a mouse has a desk - at this rate a drag
+ * across the width of a phone held sideways turns the player right round.
+ */
+export const TOUCH_LOOK_SENSITIVITY = 0.0042;
 export const CAMERA_FOV = 90;
 
 // --- Room sizes -------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { doorPosition } from "../dungeon/layout";
+import { useTouchControls } from "../input/device";
 import { roomById, type Dir, type Room } from "../dungeon/types";
 import { barredNow, keeperHolds, keeperStalled, tollNow, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
@@ -65,6 +66,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   // in `travel` are one fact.
   const held = useRun(keeperHolds);
   const knelt = useRun(keeperStalled);
+  const touch = useTouchControls();
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
@@ -118,7 +120,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
                 // locked vault do not carry a hint about a thing they will
                 // refuse.
                 (isExit && knelt ? "Pay the toll and go - now" : `Open ${KIND_LABEL[target.kind] ?? "the door"}`) +
-                (isExit || locked ? "" : "   ·   B bars it")
+                (isExit || locked ? "" : touch ? "   ·   BAR shuts it" : "   ·   B bars it")
         }
         enabled={enabled}
         blockedReason={

@@ -146,7 +146,9 @@ and screen shake off independently, sprint on a hold or a press, mouse and
 stick sensitivity, inverted look, volume, captions for the sounds that
 carry information, high-contrast marks so nothing is said in colour alone,
 overlay size, and every key rebindable. There is not one drag control on
-it, because a gamepad cannot drag and the Steam Deck is a gamepad.
+it, because a gamepad cannot drag and the Steam Deck is a gamepad. On a
+touchscreen it carries three more rows: the on-screen controls on auto,
+on or off, how far a drag turns the view, and which thumb walks.
 
 Ten deeds are listed at the title screen, with what each is for whether or
 not you have done it. None of them changes a run - everything the game has
@@ -192,6 +194,35 @@ menu, the end of a run - so the game can be played on a machine with no
 keyboard. `yarn test:pad` plays it that way. The one thing that still wants
 a keyboard is typing a seed and answering the library's tome; on a Deck
 those go through Steam's on-screen keyboard.
+
+### On a phone or a tablet
+
+The same game, with two thumbs. Anything held in the hands - a coarse
+pointer, touch points, no hover, which is what the platform says rather
+than what the user agent claims - gets the on-screen controls; a desktop
+gets them the first time its screen is touched, and can turn them on or
+off in the options.
+
+| Touch | Action |
+| --- | --- |
+| Drag on the walking half of the screen | Move. The stick appears under the thumb. |
+| Drag on the other half | Look |
+| Shove the stick past its rim, or `RUN` | Run, until the stick is let go |
+| `USE` | Use what you are standing at. It lights when something is in reach. |
+| Tap a satchel slot | Drink, read, or set down what is in it |
+| `LAMP` | Raise or lower the lantern |
+| `BAR` | Bar the doorway you are standing at |
+| `II`, by the map | Pause |
+
+Which is a phone and which is a tablet is the short side of the screen,
+and the two are laid out differently. A phone held sideways is under four
+hundred pixels tall, so it gets a tighter HUD, a smaller minimap, a
+narrower satchel, a stick and buttons a thumb can find without looking,
+the whole screen and a landscape lock where the browser allows it, and a
+line asking to be turned sideways where it does not. A tablet keeps the
+monitor's layout and gets the controls at a size for hands held further
+apart. The tome has a `Leave` button on a touchscreen, because "Esc or B"
+is a promise it cannot keep there. `yarn test:touch` plays all three.
 
 ## Rooms
 
@@ -319,6 +350,15 @@ speakers and measures samples, so a cue that runs without making a sound
 fails. Every cue heard over the room, the ones you are meant to notice well
 clear of it, muting silent, and the ambient bed opening up as the floor is
 roused.
+
+`yarn test:touch` plays it with two thumbs, on an emulated phone, the same
+phone held upright, a tablet, and a desktop that is never touched: the
+stick appears under the thumb and walks, the rim runs, the other thumb
+looks, both at once, USE opens a door, a tap on the satchel drinks, LAMP
+and the pause answer, the options' touch rows work and switching the
+controls off takes them away, and the desktop never grows a stick. It
+sends real touch events through the debugger, so it drives the game's own
+reading of a touch and not a stand-in for one.
 
 `yarn test:perf` walks every room of every floor and holds what it costs to
 the budget above. It also walks one floor four times over to catch a room

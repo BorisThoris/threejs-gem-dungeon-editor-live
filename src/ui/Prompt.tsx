@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { bus, type Prompt as PromptData } from "../game/events";
+import { device, useTouchControls } from "../game/input/device";
 import { FONT, chip, colors, text } from "./overlay";
 
 /**
@@ -12,14 +13,19 @@ import { FONT, chip, colors, text } from "./overlay";
 export function Prompt() {
   const [prompt, setPrompt] = useState<PromptData | null>(null);
   useEffect(() => bus.on("prompt", setPrompt), []);
+  // The chip says what to press, and on a touchscreen that is the USE
+  // button, not a key. Higher on a phone, where eighteen percent of the
+  // height is inside the satchel.
+  const touch = useTouchControls();
   if (!prompt) return null;
 
   return (
     <div
+      data-testid="prompt"
       style={{
         position: "fixed",
         left: "50%",
-        bottom: "18%",
+        bottom: device === "phone" ? "36%" : "18%",
         transform: "translateX(-50%)",
         display: "flex",
         alignItems: "center",
@@ -36,10 +42,12 @@ export function Prompt() {
         zIndex: 950,
       }}
     >
-      <span style={{ ...chip, background: prompt.enabled ? colors.accent : "#5a5f6e" }}>
-        {prompt.key}
+      <span data-testid="prompt-key" style={{ ...chip, background: prompt.enabled ? colors.accent : "#5a5f6e" }}>
+        {touch ? "USE" : prompt.key}
       </span>
-      <span style={{ color: prompt.enabled ? colors.ink : colors.danger }}>{prompt.text}</span>
+      <span data-testid="prompt-text" style={{ color: prompt.enabled ? colors.ink : colors.danger }}>
+        {prompt.text}
+      </span>
     </div>
   );
 }

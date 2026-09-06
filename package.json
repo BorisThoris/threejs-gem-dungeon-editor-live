@@ -26,6 +26,7 @@
         "test:prod": "yarn build && node scripts/prod-check.mjs",
         "test:desktop": "node scripts/desktop-check.mjs",
         "test:pad": "node scripts/pad-check.mjs",
+        "test:touch": "node scripts/touch-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
         "test:run": "node scripts/run-through.mjs",
         "tour": "node scripts/tour.mjs"

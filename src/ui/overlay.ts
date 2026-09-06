@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { device } from "../game/input/device";
+
 /**
  * Shared look for every DOM overlay: one font, one palette, one set of
  * button styles. The old tree had a 200-colour theme system for a game
@@ -41,6 +43,18 @@ export const text = {
   title: scale(18, 1.9, 26),
   chip: scale(12, 1.2, 16),
 };
+
+/**
+ * How big the minimap's dial is, and how much smaller it is drawn on a
+ * phone, for the things that have to sit beside it: the pause button and
+ * the deed toast. Here rather than in Minimap.tsx so that file exports
+ * only a component. Scaled rather than rebuilt - the cells and the rim
+ * are worked out from the size and are right at any scale - because a
+ * phone held sideways is under four hundred pixels tall and a dial of a
+ * hundred and ninety is half of it.
+ */
+export const MINIMAP_SIZE = 190;
+export const MINIMAP_SCALE = device === "phone" ? 0.68 : 1;
 
 export const colors = {
   ink: "#f2f4f8",

@@ -6,6 +6,7 @@ import { runSeconds, useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
 import { body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
+import { enterImmersive } from "../game/input/device";
 
 /**
  * The end of a run: what happened, what it beat, and the two ways out.
@@ -99,13 +100,23 @@ export function RunSummary() {
           <span style={{ color: colors.dim }}> · SEED </span>
           {seed}
         </p>
-        <button style={button} data-testid="summary-again" onClick={() => startRun()}>
+        <button
+          style={button}
+          data-testid="summary-again"
+          onClick={() => {
+            enterImmersive();
+            startRun();
+          }}
+        >
           Run again
         </button>
         <button
           style={secondaryButton}
           data-testid="summary-same-seed"
-          onClick={() => startRun(seed)}
+          onClick={() => {
+            enterImmersive();
+            startRun(seed);
+          }}
         >
           Same dungeon again
         </button>
