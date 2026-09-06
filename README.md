@@ -98,7 +98,10 @@ for the player who wants to remember where the draft was. Raise the
 lantern and a wisp gathers to lead you toward the crack - and the wisp
 is light, so the Warden sees you for exactly as long as it is out.
 
-A blast does more than open walls. Barrels, crates and urns burst, and
+A blast is seen as well as heard - a flash, embers thrown out and pulled
+back down, dust across the floor, the view knocked harder the nearer it
+was - and the wall it opens is left with its stone at the gap. It does
+more than open walls. Barrels, crates and urns burst, and
 one standing between the bomb and you takes the blast for you; now and
 then a gem glints in the wreck. The Warden inside a blast is routed. And
 from the second floor down something with wings hunts by the alarm: the

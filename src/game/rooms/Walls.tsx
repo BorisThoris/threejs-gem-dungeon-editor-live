@@ -4,6 +4,7 @@ import type { MeshStandardMaterial } from "three";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
+import { Prop } from "../props/catalog";
 import { useSurface } from "../textures/registry";
 import {
   DOOR_HEIGHT,
@@ -38,6 +39,9 @@ export function Walls({ room, color }: WallsProps) {
   const slabs: Slab[] = [];
   const gaps: Slab[] = [];
   const cracks: Slab[] = [];
+  // Where a cracked wall has been opened, the stone it was made of lies
+  // either side of the gap: a doorway that looks blown rather than built.
+  const rubble: [number, number, number][] = [];
 
   for (const dir of DIRS) {
     const along: "x" | "z" = dir === "north" || dir === "south" ? "x" : "z";
@@ -64,6 +68,13 @@ export function Walls({ room, color }: WallsProps) {
         position: along === "x" ? [0, GROUND_Y + DOOR_HEIGHT / 2, offset] : [offset, GROUND_Y + DOOR_HEIGHT / 2, 0],
         size: along === "x" ? [DOOR_WIDTH, DOOR_HEIGHT, WALL_THICKNESS] : [WALL_THICKNESS, DOOR_HEIGHT, DOOR_WIDTH],
       });
+      if (room.secret && room.secret.dir === dir) {
+        const inward = dir === "north" || dir === "west" ? 0.7 : -0.7;
+        for (const side of [-1, 1]) {
+          const a = side * (DOOR_WIDTH / 2 + 0.35);
+          rubble.push(along === "x" ? [a, GROUND_Y, offset + inward] : [offset + inward, GROUND_Y, a]);
+        }
+      }
     } else {
       place(0, room.size + WALL_THICKNESS, midY, WALL_HEIGHT);
       // The crack: a darker seam down the middle of the wall that hides a
@@ -80,30 +91,35 @@ export function Walls({ room, color }: WallsProps) {
   }
 
   return (
-    <RigidBody type="fixed" colliders={false}>
-      {slabs.map((slab, i) => (
-        <group key={i}>
-          <mesh position={slab.position} castShadow receiveShadow>
-            <boxGeometry args={slab.size} />
-            <meshStandardMaterial color={color} map={surface} roughness={0.9} />
-          </mesh>
+    <group>
+      {rubble.map((at, i) => (
+        <Prop key={`rubble-${i}`} kind="rubble" position={at} rotation={i * 2.1} scale={0.9} />
+      ))}
+      <RigidBody type="fixed" colliders={false}>
+        {slabs.map((slab, i) => (
+          <group key={i}>
+            <mesh position={slab.position} castShadow receiveShadow>
+              <boxGeometry args={slab.size} />
+              <meshStandardMaterial color={color} map={surface} roughness={0.9} />
+            </mesh>
+            <CuboidCollider
+              args={[slab.size[0] / 2, slab.size[1] / 2, slab.size[2] / 2]}
+              position={slab.position}
+            />
+          </group>
+        ))}
+        {cracks.map((crack, i) => (
+          <Crack key={`crack-${i}`} position={crack.position} size={crack.size} />
+        ))}
+        {gaps.map((gap, i) => (
           <CuboidCollider
-            args={[slab.size[0] / 2, slab.size[1] / 2, slab.size[2] / 2]}
-            position={slab.position}
+            key={`gap-${i}`}
+            args={[gap.size[0] / 2, gap.size[1] / 2, gap.size[2] / 2]}
+            position={gap.position}
           />
-        </group>
-      ))}
-      {cracks.map((crack, i) => (
-        <Crack key={`crack-${i}`} position={crack.position} size={crack.size} />
-      ))}
-      {gaps.map((gap, i) => (
-        <CuboidCollider
-          key={`gap-${i}`}
-          args={[gap.size[0] / 2, gap.size[1] / 2, gap.size[2] / 2]}
-          position={gap.position}
-        />
-      ))}
-    </RigidBody>
+        ))}
+      </RigidBody>
+    </group>
   );
 }
 

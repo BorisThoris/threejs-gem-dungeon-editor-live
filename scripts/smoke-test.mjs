@@ -1333,15 +1333,33 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const fuse = window.__world.BOMB_FUSE_S;
     let burst = false;
     const off = window.__bus.on("bombBurst", () => (burst = true));
+    // And the blast's body, read off the effect's own probe while it plays:
+    // the light on, the embers in the air, and then all of it gone.
+    let seenLit = false;
+    let embersFlew = false;
     // Well past the fuse, in rendered frames rather than wall time.
     const t0 = window.__derived.clock();
-    for (let i = 0; i < 80 && window.__derived.clock() - t0 < fuse + 2.5; i++) await wait(150);
+    for (let i = 0; i < 80 && window.__derived.clock() - t0 < fuse + 2.5; i++) {
+      await wait(150);
+      const b = window.__burst;
+      if (b && b.active) {
+        if (b.light > 0) seenLit = true;
+        if (b.embers > 0) embersFlew = true;
+      }
+    }
     off();
+    // The effect paces on rendered frames (eighteen of them), so on a slow
+    // machine it outlives the seconds above: wait for its end in frames.
+    for (let i = 0; i < 80 && window.__burst && window.__burst.active; i++) await wait(150);
+    const burstGone = !window.__burst || !window.__burst.active;
     const after = run.getState();
     const hostAfter = after.dungeon.rooms.find((r) => r.id === host.id);
     return {
       placed,
       burst,
+      seenLit,
+      embersFlew,
+      burstGone,
       hurt: after.lives < before.lives,
       wardenRouted: after.wardenRoomId !== host.id && after.wardenWary,
       opened: !!hostAfter.links[host.secret.dir] && hostAfter.links[host.secret.dir] === d.secretId,
@@ -1351,6 +1369,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   });
   ok("a bomb can be set down from the satchel", !bombed.error && bombed.placed === true, bombed.error || JSON.stringify(bombed));
   ok("and it goes off after its fuse", bombed.burst === true, JSON.stringify(bombed));
+  ok(
+    "the blast is seen: the room lights and embers fly, and then it is over",
+    bombed.seenLit && bombed.embersFlew && bombed.burstGone,
+    JSON.stringify({ seenLit: bombed.seenLit, embersFlew: bombed.embersFlew, gone: bombed.burstGone })
+  );
   ok("standing inside the blast costs a life", bombed.hurt === true, JSON.stringify(bombed));
   ok("the Warden inside it is routed, and learns", bombed.wardenRouted === true, JSON.stringify(bombed));
   ok("and the cracked wall opens onto the secret room", bombed.opened === true, JSON.stringify(bombed));

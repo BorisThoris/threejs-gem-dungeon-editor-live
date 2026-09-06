@@ -322,6 +322,10 @@ Two stores that both claimed the player's stats. So:
   was missing the event grew it (`floorDescended.left`) rather than the
   watcher reaching into the store to count. `earnedThisRun` in the deeds
   store is the summary's list, cleared on `runStarted`.
+- Effects listen and own nothing: `props/Burst.tsx` gives the blast a body
+  (a flash, embers, dust) off the same `bombBurst` the sound plays on, and
+  the player's shake reads the same event. The store never learns the
+  light exists; the checks read the effect's probe rather than the scene.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

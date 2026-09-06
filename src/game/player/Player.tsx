@@ -18,6 +18,7 @@ import { canControl, speedNow, useRun } from "../state/run";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
 import {
+  BOMB_RADIUS,
   EYE_OFFSET,
   GRAVITY_SCALE,
   MAX_FALL_SPEED,
@@ -64,6 +65,10 @@ export function Player() {
   // GC pauses are exactly what "random stutters" feels like.
   const bob = useRef({ distance: 0, strength: 0, nextStep: STRIDE, strong: true });
   const shake = useRef(0);
+  // How long this shake was to begin with and how hard it knocks: a hit is
+  // one size, a blast is a size that depends on how close it was.
+  const shakeLen = useRef(SHAKE_S);
+  const shakeGain = useRef(1);
   const cameraBob = useSettings((s) => s.cameraBob);
   const shakeOn = useSettings((s) => s.shake);
   const toggleSprint = useSettings((s) => s.toggleSprint);
@@ -91,7 +96,34 @@ export function Player() {
 
   // A hit knocks the view about for a third of a second. It is the only
   // feedback the player gets that is not in a corner of the screen.
-  useEffect(() => bus.on("damaged", () => (shake.current = SHAKE_S)), []);
+  useEffect(
+    () =>
+      bus.on("damaged", () => {
+        shake.current = SHAKE_S;
+        shakeLen.current = SHAKE_S;
+        shakeGain.current = 1;
+      }),
+    []
+  );
+  /**
+   * A blast in this room shakes the view whether or not it hurt: harder
+   * and longer the nearer it was, down to a tremor at three radii. The
+   * bomb is the loudest thing a player can do down here, and it is felt
+   * as well as heard.
+   */
+  useEffect(
+    () =>
+      bus.on("bombBurst", ({ roomId, x, z }) => {
+        if (useRun.getState().currentRoomId !== roomId) return;
+        const near = Math.max(0, 1 - Math.hypot(camera.position.x - x, camera.position.z - z) / (BOMB_RADIUS * 3));
+        const len = SHAKE_S * (1 + near);
+        if (len <= shake.current) return;
+        shake.current = len;
+        shakeLen.current = len;
+        shakeGain.current = 1 + near * 0.8;
+      }),
+    [camera]
+  );
 
   useEffect(() => {
     return bus.on("teleport", ({ position }) => {
@@ -123,7 +155,7 @@ export function Player() {
     let knockX = 0;
     if (shakeOn && shake.current > 0) {
       shake.current = Math.max(0, shake.current - delta);
-      const falling = (shake.current / SHAKE_S) ** 2;
+      const falling = (shake.current / shakeLen.current) ** 2 * shakeGain.current;
       knock = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
       knockX = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
     }

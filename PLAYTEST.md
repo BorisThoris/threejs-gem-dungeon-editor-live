@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §46 asks a human
+  moment it can afford to. That is precisely the behaviour §47 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §46.
+for a person, not for this document, and it is on the list in §47.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§49), again, and it
+the thing they asked for now. Cycle 56's lesson (§50), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,16 +3400,63 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §46, one per system the loops added.
+Eight new questions, in §47, one per system the loops added.
 
-## 45. Steam Deck
+## 45. The blast is seen
+
+The first refinement, and the rule the refinements run on: every
+moment the systems share gets a body. The bomb is the arc's centrepiece
+- it routs the Warden, downs the Harrier, kneels the Keeper, opens the
+cracked wall, bursts the barrels - and for eight runs the burst was a
+boom and a set of facts changing. Nothing drew it. The store acted, the
+sound played, the deed landed, and the room looked exactly as it had.
+
+### What it looks like now
+
+A flash that dies in half a second, forty embers thrown out and up and
+pulled back down, a disc of dust spreading at the floor, and the view
+knocked harder the nearer the blast was - down to a tremor at three
+radii, so a bomb left for the Warden two rooms away is still felt. The
+wall it opens is left with its stone at the gap: a doorway that looks
+blown rather than built, and reads as one from across the room.
+
+All of it listens to the one event the sound already played on
+(`bombBurst`), and none of it is state. The store does not know the
+light exists. The embers are one instanced mesh and one draw call, the
+light and the dust one mesh each, mounted once and invisible between
+blasts: a burst allocates nothing and the room's budget pays nothing it
+did not already pay.
+
+### What the picture taught
+
+The first version played on the run's clock, like the fuse and the
+Keeper's kneel, so that a pause would freeze it. On this machine, drawing
+a frame a second while a wall is being rebuilt, half a second of light
+was one frame: the check saw it (the probe is written every frame) and
+the screenshot did not, three times running, because the frame after
+the burst came a second and a half later and the effect had already
+ended. It paces on rendered frames now, each capped at a twentieth of a
+second the way the look and the wisp are, so a slow machine draws every
+stage of it rather than the first and none of the rest - and a pause
+still freezes it mid-air. A visual effect is measured in frames and
+not in seconds; a rule for run 24's moments before they are written.
+
+### Checks
+
+`test:smoke` gains one: the blast is seen - the room lights and embers
+fly, read off the effect's own probe while it plays, and then it is
+over, waited for in frames rather than seconds for the reason above. Red on the old tree, where the probe did not exist.
+Perf budgets are unchanged; the effect's two geometries sit within the
+room's headroom.
+
+## 46. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 46. What a human playtest should watch for
+## 47. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3590,7 +3637,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 47. Options and accessibility
+## 48. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3622,7 +3669,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 48. Deeds
+## 49. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3661,7 +3708,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 49. Harness bugs that read as game bugs
+## 50. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3750,7 +3797,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 50. Tuning knobs
+## 51. Tuning knobs
 
 All in `src/game/world.ts`:
 

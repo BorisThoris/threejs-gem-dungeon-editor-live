@@ -853,3 +853,15 @@ export const KEEPER_STRIKE_GRACE_S = 1.5;
  * only be earned by a player who heard the floor tire and stayed anyway.
  */
 export const LAST_BREATH_S = 15;
+
+/**
+ * The blast's body. The burst is a store action - it hurts, routs, downs,
+ * kneels and opens - and for eight runs it was also nothing to look at:
+ * a sound and a state change. These are what it looks like: the light's
+ * life, the embers' flight, how many of them, and how bright the flash is
+ * against a room whose fill light is three or four.
+ */
+export const BURST_LIGHT_S = 0.5;
+export const BURST_EMBER_S = 0.9;
+export const BURST_EMBERS = 40;
+export const BURST_LIGHT = 30;

@@ -18,6 +18,7 @@ import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WispDriver } from "./mobs/WispDriver";
 import { HarrierDriver } from "./mobs/HarrierDriver";
 import { KeeperDriver } from "./keeper/KeeperDriver";
+import { Burst } from "./props/Burst";
 import { ReaperDriver } from "./reaper/ReaperDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
@@ -124,6 +125,7 @@ export function Scene() {
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}
       <Lantern />
+      <Burst />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />
