@@ -590,22 +590,29 @@ ok(
   // phrase. Nothing else in the mix lives that low but the drone, which
   // does not change.
   //
-  // The score's own contribution to that band, not the band itself. The
-  // bed's drone is at 55Hz and its fifth at 82Hz, both inside it and both
-  // far louder than a heartbeat - measuring the band flat put 0.63
-  // against 0.59 and could not have told a missing pulse from a present
-  // one. So each reading is taken twice, with the score running and with
-  // it stopped, and what is compared is the difference the score makes.
+  // Eighty-eight to a hundred and thirty, and the score's own contribution
+  // to it rather than the band itself.
+  //
+  // Two mistakes were made getting here. Measuring the band flat put 0.63
+  // against 0.59 - the bed's drone at 55Hz and its fifth at 82Hz are in
+  // any band wide enough to hold a heartbeat and are far louder than one -
+  // so each reading is now taken twice, with the score running and with it
+  // stopped, and what is compared is the difference the score makes. And
+  // 40-110Hz still straddled that fifth: once the score was mixed down to
+  // where it belongs it separated a hunted floor from a calm one by 0.005,
+  // which is the analyser's noise. The pulse's attack is at 96Hz, above
+  // the fifth and below the phrase, and measured there the same difference
+  // is 0.018.
   const beat = async (tension) => {
     await page.evaluate((t) => {
       window.__music.start("delve");
       window.__music.setTension(t);
     }, tension);
     await page.waitForTimeout(3000);
-    const on = await page.evaluate(async () => window.__band(40, 110, 3000));
+    const on = await page.evaluate(async () => window.__band(88, 130, 3000));
     await page.evaluate(() => window.__music.stop());
     await page.waitForTimeout(1800);
-    const off = await page.evaluate(async () => window.__band(40, 110, 3000));
+    const off = await page.evaluate(async () => window.__band(88, 130, 3000));
     return on - off;
   };
   await page.evaluate(async () => {
@@ -616,7 +623,7 @@ ok(
   const huntedBeat = await beat(1);
   ok(
     "a floor that is hunting gets a heartbeat the calm one does not",
-    huntedBeat > calmBeat + 0.01,
+    huntedBeat > calmBeat + 0.008,
     `the score adds ${huntedBeat.toFixed(4)} down there when hunted against ${calmBeat.toFixed(4)} when calm`
   );
 
