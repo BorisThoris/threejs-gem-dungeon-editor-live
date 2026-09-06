@@ -1315,7 +1315,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // Stand at the cracked wall, inside the blast, with the Warden beside you.
     const spot = window.__derived.crackSpot();
     window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
-    await wait(500);
+    // Until the body is there, in frames rather than a fixed wait. The
+    // bomb is set where the player stands as of the frame it is set, and
+    // half a second was two frames on this machine and none on a loaded
+    // one: the bomb went down at the spawn, and a blast at the spawn
+    // hurts nobody and opens nothing while still routing a Warden that
+    // is merely in the room - which is exactly the trio this read as.
+    const near = () => {
+      const p = window.__playerDebug;
+      return Math.hypot(p.x - spot[0], p.z - spot[2]) < 0.6;
+    };
+    for (let i = 0; i < 40 && !near(); i++) await wait(150);
+    await wait(200);
     run.setState({ wardenRoomId: host.id, wardenCameFrom: null, alarm: 4 });
     const before = run.getState();
     const placed = run.getState().placeDevice(0);
@@ -6683,7 +6694,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await wait(1400);
     const spot = D.crackSpot();
     window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
-    await wait(400);
+    // Until the body is there, in frames rather than a fixed wait. The
+    // bomb is set where the player stands as of the frame it is set, and
+    // half a second was two frames on this machine and none on a loaded
+    // one: the bomb went down at the spawn, and a blast at the spawn
+    // hurts nobody and opens nothing while still routing a Warden that
+    // is merely in the room - which is exactly the trio this read as.
+    const near = () => {
+      const p = window.__playerDebug;
+      return Math.hypot(p.x - spot[0], p.z - spot[2]) < 0.6;
+    };
+    for (let i = 0; i < 40 && !near(); i++) await wait(150);
+    await wait(200);
     run.setState({ wardenRoomId: host.id, wardenCameFrom: null, alarm: 4 });
     run.getState().placeDevice(0);
     const t0 = D.clock();
