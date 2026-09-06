@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §34 asks a human
+  moment it can afford to. That is precisely the behaviour §35 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §34.
+for a person, not for this document, and it is on the list in §35.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2628,14 +2628,90 @@ beside the player and watch it go off: the fuse runs on the run's clock,
 the player is hurt, the Warden is routed and learns, the crack opens onto
 the secret room, and the secret room can be walked into through it.
 
-## 33. Steam Deck
+## 33. The environment treats mobs as it treats the player
+
+The brief: "make sure all environmental things impact enemies/mobs such as
+they would the player, appropriately. If on ground affect all ground
+mobs, if anything flying not affected by spikes. Also mobs should collide
+with objects the player collides with as well, if they're physical."
+
+### What the floor did to a mob before
+
+Two lists per creature, each built by the creature itself. The Warden
+took the trap room's spikes from `Room.tsx` and added the snares to them;
+the Cutpurse took the same spikes and added the snares again - with its
+own copy of the snare's radius, `1.0`, while the catalogue said
+`SNARE_RADIUS`. Two owners of one number, and neither list had a table in
+it: both walked through the furniture the player has to walk round. The
+Warden is written, in its own doc comment, as a thing "with no collider"
+that "walks through barrels and pillars" on purpose - a threat you cannot
+pin behind a crate. That reasoning was right when the room was a box with
+four props in it. With rooms furnished at 98% distinct and a body of
+rules about what is solid, a thing that ignores all of it reads as
+unfinished, not relentless. It comes on anyway; it just goes round.
+
+### One owner, two questions
+
+`mobs/body.ts` is the floor's whole opinion of a creature, and a
+creature has one property the floor reads: a body. `ground` walks round
+the furniture and is bitten by spikes and snares. `flying` walks round the
+furniture - it is in the way at any height - and nothing on the floor
+bites it. `ghost` passes through all of it and nothing bites it. Two
+functions answer the two questions - `obstaclesFor` and `bitesFor` - from
+the room, the seed and the placed devices, and `Room.tsx` asks them for
+the Warden and the Cutpurse alike. Neither creature builds a list any
+more; the Cutpurse's `1.0` is gone. Both are `ground` today. Run 17 in the
+plan adds the first thing that is not.
+
+The Warden's steering, which it learned only after the spikes had hurt
+it twice, now runs from its first step for the furniture, and adds the
+spikes only once it is wary - the lesson is still a lesson. The Cutpurse
+never steered at all and now does, at a tighter berth, because it is
+smaller and faster and a thief that swings wide round a table is a thief
+you catch.
+
+### The berth a chest asks for
+
+The first flood fill stranded 30 of 1,099 doorways, every one of them
+the same shape: a treasure room's corner hoard, two chests three metres
+apart beside the gem, sealed against a body that gave furniture the
+spikes' berth. The Warden keeps `WARDEN_HAZARD_BERTH` - nearly a metre -
+from anything that wounds it, and a body that kept a metre from a chest
+could not get between two of them. Furniture only ever asks a body's
+half-width, so a patch may now name its own berth: a spike patch keeps
+the wide one, a chest carries a tight one from `body.ts`, and the fill
+walks with exactly the list the game steers by. Zero stranded after.
+
+### Measured
+
+Over 60 seeds, from every doorway of every room with a gem -
+1099 doorways - a ground body's obstacle list never strands it: a
+flood fill over the room's floor at the Warden's own reach gets from the
+doorway to the gem past the furniture, so a Warden steered round a table
+can always still reach the place you are standing to take it. A flying body
+gets the same list; a ghost gets none. Spikes and snares are in the
+ground body's bites and nobody else's.
+
+### What the checks are
+
+Seven in `yarn test:layout`: the body table names every mob and both walk
+on the ground; the three bodies' obstacle and bite lists differ as the
+doc says; the Cutpurse's copy of the snare radius is gone (a grep, so it
+cannot come back); and the flood fill above. Three in `yarn test:smoke`
+that put the Warden in a furnished room with the player on the far side
+of the biggest thing in it and watch where it actually stands - inside a
+prop on 0 of 75 samples, and still closing - beside the
+existing walks, which still arrive, strike and steal on a furnished floor
+at 300 ms frames.
+
+## 34. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 34. What a human playtest should watch for
+## 35. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2761,7 +2837,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 35. Options and accessibility
+## 36. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2793,7 +2869,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 36. Deeds
+## 37. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2826,7 +2902,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 37. Harness bugs that read as game bugs
+## 38. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2915,7 +2991,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 38. Tuning knobs
+## 39. Tuning knobs
 
 All in `src/game/world.ts`:
 

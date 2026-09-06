@@ -203,6 +203,19 @@ Two stores that both claimed the player's stats. So:
   The generator places it after the vault and the key, because those
   reason about what the floor can be walked without and a room with no
   doorway would count as a room nobody can reach.
+- A creature has a body, and the floor reads it in one place.
+  `mobs/body.ts` owns what a `ground`, `flying` or `ghost` body walks
+  round (`obstaclesFor`) and what bites it (`bitesFor`), from the room,
+  the seed and the placed devices. `Room.tsx` asks it for the Warden and
+  the Cutpurse; neither creature builds its own list. Before this the
+  Cutpurse carried its own copy of the snare's radius, and both walked
+  through the furniture the player has to walk round. Anything added to
+  a floor later - a trap, a creature - reads these two functions rather
+  than inventing a third answer.
+  A patch a body steers round may name its own berth (`Patch.berth`):
+  spikes keep the Warden's wide margin, furniture asks only a body's
+  half-width, and a chest given the spikes' berth sealed the treasure
+  room's corner hoard against it.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus
