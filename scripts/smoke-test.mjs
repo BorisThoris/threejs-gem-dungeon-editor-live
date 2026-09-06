@@ -43,6 +43,27 @@ const ok = (label, cond, detail = "") => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${detail ? "  - " + detail : ""}`);
 };
 
+/**
+ * Wait for something the DOM has to draw before reading it.
+ *
+ * A React commit is not on the wall clock. This machine rasterises in
+ * software at three to six frames a second, so a fixed 300ms sleep after
+ * a store change is under two frames: the store says the run is won and
+ * the summary panel has not been committed yet. Reading once at that
+ * moment fails on a timing accident rather than on the game - and worse,
+ * the check after it then matches against a screen that is still the HUD
+ * and crashes on a null match. Poll instead, and give up only after a
+ * budget long enough that an empty screen is a real absence.
+ */
+const domReady = async (fn, budget = 8000) => {
+  const until = Date.now() + budget;
+  for (;;) {
+    if (await page.evaluate(fn)) return true;
+    if (Date.now() > until) return false;
+    await page.waitForTimeout(200);
+  }
+};
+
 const browser = await chromium.launch({
   executablePath: CHROMIUM,
   args: [
@@ -55,7 +76,14 @@ const browser = await chromium.launch({
 });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
 const errors = [];
-page.on("pageerror", (e) => errors.push(String(e).slice(0, 160)));
+// Say it where it happened. The tally at the bottom of the run is the
+// wrong place to learn that the screen died four hundred lines earlier:
+// every check after the exception fails for a reason that is not its own,
+// and the suite often crashes before it ever reads the tally.
+page.on("pageerror", (e) => {
+  errors.push(String(e).slice(0, 160));
+  console.log(`PAGE ERROR  ${String(e).slice(0, 300)}`);
+});
 
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(2000);
@@ -796,7 +824,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   });
   ok("an escape is recorded with its haul and its seed", escaped.phase === "won" && escaped.runs === 2 && escaped.escapes === 1 && escaped.haul === 9 && escaped.seed === 78, JSON.stringify(escaped));
   ok("the summary says what the run beat", escaped.bests && escaped.bests.haul === true, JSON.stringify(escaped.bests));
-  ok("the summary offers the seed again", await page.evaluate(() => !!document.querySelector('[data-testid="summary-same-seed"]')));
+  ok(
+    "the summary offers the seed again",
+    await domReady(() => !!document.querySelector('[data-testid="summary-same-seed"]'))
+  );
 
   /**
    * The counts read as English at one of a thing.
@@ -811,10 +842,21 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const run = window.__run;
     run.setState({ gemsTotal: 1, roomsSeen: 1 });
     await new Promise((r) => setTimeout(r, 200));
-    const one = document.body.innerText.match(/[^\n]*named[^\n]*/)[0];
+    // Poll for the line rather than sleeping at it: a React commit is not
+    // on the wall clock, and `not what it said before` is the only way to
+    // know the second reading is the second render and not the first one
+    // read twice.
+    const line = async (not) => {
+      for (let i = 0; i < 40; i++) {
+        const m = document.body.innerText.match(/[^\n]*named[^\n]*/);
+        if (m && m[0] !== not) return m[0];
+        await new Promise((r) => setTimeout(r, 200));
+      }
+      return "";
+    };
+    const one = await line(null);
     run.setState({ gemsTotal: 2, roomsSeen: 2 });
-    await new Promise((r) => setTimeout(r, 200));
-    return { one, two: document.body.innerText.match(/[^\n]*named[^\n]*/)[0] };
+    return { one, two: await line(one) };
   });
   ok(
     "the summary counts read as English at one of a thing",
@@ -1277,6 +1319,88 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     banished.roused.ready && banished.roused.held === 0 && banished.roused.alarm < banished.roused.base,
     JSON.stringify(banished.roused)
   );
+}
+
+/**
+ * The shrine: the one thing in the game that spends a spare gem on
+ * something other than the exit.
+ *
+ * A floor holds between 1.2 and 2.3 times what its exit charges, so a
+ * player who takes what is lying about arrives at the door with gems left
+ * over and nothing to do with them. Both refusals are checked as well as
+ * the purchase, because a trigger that can refuse has to say which reason
+ * before the press rather than doing nothing after it.
+ */
+{
+  const shrine = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    let room = null;
+    for (let seed = 1; seed <= 40 && !room; seed++) {
+      run.getState().startRun(seed);
+      await wait(220);
+      room = run.getState().dungeon.rooms.find((r) => r.kind === "shrine") || null;
+    }
+    if (!room) return { error: "no shrine in forty seeds" };
+    run.setState({ transitioning: true, currentRoomId: room.id });
+    run.getState().roomReady(room.id);
+    let ready = false;
+    for (let i = 0; i < 60 && !ready; i++) {
+      await wait(150);
+      ready = !run.getState().transitioning && run.getState().phase === "playing";
+    }
+    const base = window.__derived.rules().startingAlarm;
+
+    // Nothing to buy: the floor is already as quiet as it starts.
+    run.setState({ gems: 3, alarm: base, cleared: [] });
+    const whenQuiet = run.getState().kneelAtShrine(room.id);
+
+    // Nothing to pay with.
+    run.setState({ gems: 0, alarm: base + 4, cleared: [] });
+    const whenBroke = run.getState().kneelAtShrine(room.id);
+
+    // The purchase.
+    run.setState({ gems: 3, alarm: base + 4, cleared: [], wardenLure: "room_1", lureUntil: 1e9 });
+    let heard = 0;
+    const off = window.__bus.on("shrineKept", () => heard++);
+    const bought = run.getState().kneelAtShrine(room.id);
+    const after = run.getState();
+    // And only once.
+    const twice = run.getState().kneelAtShrine(room.id);
+    off();
+    return {
+      ready,
+      size: room.size,
+      base,
+      whenQuiet,
+      whenBroke,
+      bought,
+      twice,
+      heard,
+      gems: after.gems,
+      alarm: after.alarm,
+      lure: after.wardenLure,
+    };
+  });
+  ok("a floor has a shrine to kneel at", !shrine.error, shrine.error || `${shrine.size}m`);
+  if (!shrine.error) {
+    ok(
+      "kneeling costs a gem and takes the floor back to its own baseline",
+      shrine.ready && shrine.bought === true && shrine.gems === 2 && shrine.alarm === shrine.base,
+      JSON.stringify(shrine)
+    );
+    ok(
+      "and being forgotten drops the noise it was walking towards",
+      shrine.lure === null,
+      String(shrine.lure)
+    );
+    ok("the font is heard, not only felt", shrine.heard === 1, `${shrine.heard} sounded`);
+    ok(
+      "it refuses with nothing to pay and nothing to buy, and gives once",
+      shrine.whenQuiet === false && shrine.whenBroke === false && shrine.twice === false,
+      JSON.stringify({ quiet: shrine.whenQuiet, broke: shrine.whenBroke, twice: shrine.twice })
+    );
+  }
 }
 
 // A floor's starting alarm is its baseline, not just its opening value: a
@@ -5141,6 +5265,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     let insideAfterRout = 0;
     let samplesAfterRout = 0;
     const alarmBefore = run.getState().alarm;
+    // What the rout left the floor at, read at the rout rather than at the
+    // end of the watch. The loop runs on for another eight seconds after
+    // the rout to prove the Warden goes round the spikes, and the player
+    // is standing still in a room on a floor deep enough to have a watcher
+    // on it - so anything that rouses the floor in those eight seconds
+    // erases the calm before it is ever read, and the check fails saying
+    // six to six.
+    let alarmAtRout = null;
     // How long to watch, in frames of two hundred milliseconds. This was a
     // flat ninety, which was eighteen seconds and enough while every trap
     // room in the game was sixteen metres across. They are rolled from a
@@ -5157,6 +5289,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
       }
       if (window.__derived.warden().staggered) reeledWhileWounded = true;
+      if (routed && alarmAtRout === null) alarmAtRout = st.alarm;
       if (routed && st.wardenRoomId === trap.id && window.__warden) {
         samplesAfterRout++;
         if (inPatch(window.__warden.x, window.__warden.z)) insideAfterRout++;
@@ -5178,10 +5311,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       wary: after.wardenWary,
       woundsAfter: after.wardenWounds,
       alarmBefore,
-      alarmAfter: after.alarm,
+      alarmAfter: alarmAtRout === null ? after.alarm : alarmAtRout,
       insideAfterRout,
       samplesAfterRout,
-      floorBaseline: window.__derived.rules().startingAlarm,
+      // The game's own answer, not `rules().startingAlarm`, which leaves
+      // out the delver's share of it.
+      floorBaseline: window.__derived.alarmFloor(),
     };
   }, seed0);
 

@@ -121,6 +121,8 @@ export interface BusEvents {
    * screen at all.
    */
   notice: string | null;
+  /** A gem given at a shrine, and the floor let go of the player. */
+  shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };
   /** Snap the camera to a heading, e.g. after travelling. */

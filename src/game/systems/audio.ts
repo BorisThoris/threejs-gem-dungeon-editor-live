@@ -595,6 +595,17 @@ export const sfx = {
     noiseBurst(0.35, 0.16, 1400);
     later(120, () => tone(360, 0.28, "triangle", 0.16, 540));
   },
+  /**
+   * A gem given at the shrine: the coin going in, then the water settling
+   * and the floor letting go. Low and long rather than bright, because
+   * what it buys is quiet.
+   */
+  shrineKept() {
+    tone(520, 0.1, "sine", 0.16, 700);
+    later(110, () => noiseBurst(0.5, 0.1, 700));
+    later(260, () => tone(196, 0.9, "sine", 0.2, 150));
+    later(300, () => tone(147, 1.1, "sine", 0.14, 110));
+  },
   /** Something small set on stone: a scrape and a click. */
   setDown() {
     noiseBurst(0.09, 0.16, 1400);

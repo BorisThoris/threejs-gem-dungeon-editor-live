@@ -105,6 +105,7 @@ export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
   challenge: ["catacomb", "hewn", "flooded"],
+  shrine: ["catacomb", "bone", "crystal"],
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */

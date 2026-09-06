@@ -342,6 +342,25 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
       at("banner", corners[3]),
     ],
   ],
+  /**
+   * The shrine keeps its middle clear: the font is the room, and the
+   * furniture stands back from it so a player walks towards the one thing
+   * there is to do here.
+   */
+  shrine: [
+    ({ far, corners }) => [
+      at("pillar", far[0]),
+      at("pillar", far[1]),
+      at("candle", corners[1]),
+      at("candle", corners[2]),
+    ],
+    ({ far, corners, rng }) => [
+      at("statue", far[2], facing(far[2])),
+      at("urn", far[3], askew(rng)),
+      at("skull", corners[0]),
+      at("candle", corners[3]),
+    ],
+  ],
 };
 
 /**

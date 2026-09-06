@@ -41,6 +41,7 @@ export function Audio() {
       bus.on("runLost", () => sfx.lose()),
       bus.on("puzzleResult", ({ completed }) => (completed ? sfx.solved() : sfx.wrong())),
       bus.on("relicTaken", () => sfx.relic()),
+      bus.on("shrineKept", () => sfx.shrineKept()),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("keyTaken", () => sfx.key()),

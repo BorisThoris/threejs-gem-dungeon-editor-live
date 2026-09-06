@@ -10,8 +10,8 @@ import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import type { ItemId } from "../items/catalog";
 import type { Charges } from "../items/charge";
-import { canSpend, tollNow, useRun } from "../state/run";
-import { GEMS_PER_LIFE } from "../world";
+import { alarmFloorFor, canSpend, tollNow, useRun } from "../state/run";
+import { CLOSE_REACH, GEMS_PER_LIFE } from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
 const NAMING_PRICE = 1;
@@ -27,7 +27,7 @@ const NAMING_PRICE = 1;
  */
 const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
-import { libraryLectern, shopAnchors } from "./anchors";
+import { libraryLectern, shopAnchors, shrineAnchor } from "./anchors";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 // Room layouts that ship with the game register themselves.
 import "./shipped";
@@ -282,6 +282,62 @@ function Library({ room }: RoomKindProps) {
   );
 }
 
+/**
+ * The shrine: a font that buys the floor's attention back for one gem.
+ *
+ * The one thing in the game that spends a spare gem on something other
+ * than the exit. It says which of the two reasons it cannot be used before
+ * the press, rather than doing nothing and dropping a hint after it - the
+ * rule every trigger that can refuse is held to.
+ */
+function Shrine({ room }: RoomKindProps) {
+  const at = shrineAnchor(room);
+  const used = useRun((s) => s.cleared.includes(room.id));
+  const gems = useRun((s) => s.gems);
+  const alarm = useRun((s) => s.alarm);
+  // The same floor the store clamps to, delver bonus included, so the
+  // prompt cannot offer what the press would refuse.
+  const baseline = useRun(alarmFloorFor);
+  const quiet = alarm <= baseline;
+  const why = used
+    ? "The font is dry. It gave what it had."
+    : gems < 1
+      ? "The font wants a gem, and you have none."
+      : "Nothing down here is looking for you yet.";
+  return (
+    <>
+      <Dressed room={room} />
+      {/* A low basin on a stepped plinth. */}
+      <mesh position={[at[0], 0.18, at[2]]} castShadow receiveShadow>
+        <boxGeometry args={[1.9, 0.36, 1.9]} />
+        <meshStandardMaterial color="#5b5750" roughness={0.95} />
+      </mesh>
+      <mesh position={[at[0], 0.62, at[2]]} castShadow>
+        <cylinderGeometry args={[0.62, 0.72, 0.52, 16]} />
+        <meshStandardMaterial color="#6d6860" roughness={0.9} />
+      </mesh>
+      {/* The water, which goes flat and dark once the font has been used. */}
+      <mesh position={[at[0], 0.88, at[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.58, 24]} />
+        <meshStandardMaterial
+          color={used ? "#2b2f31" : "#5fb0c4"}
+          emissive={used ? "#000000" : "#1d5c68"}
+          roughness={0.25}
+        />
+      </mesh>
+      <InteractTrigger
+        position={[at[0], 0, at[2]]}
+        label="Kneel at the shrine - a gem, and the floor forgets you"
+        enabled={!used && gems >= 1 && !quiet}
+        blockedReason={why}
+        radius={CLOSE_REACH}
+        onInteract={() => useRun.getState().kneelAtShrine(room.id)}
+      />
+    </>
+  );
+}
+
+registerRoomKind("shrine", Shrine);
 registerRoomKind("start", Dressed);
 registerRoomKind("end", Dressed);
 registerRoomKind("normal", Dressed);

@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §29 asks a human
+  moment it can afford to. That is precisely the behaviour §30 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §29.
+for a person, not for this document, and it is on the list in §30.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2303,14 +2303,87 @@ That is the third instrument this session to be defeated by the same thing
 — sampling a frame-driven value on a wall clock — after the lantern and the
 Cutpurse.
 
-## 28. Steam Deck
+## 28. A use for the gem you were not going to spend
+
+The exit takes a toll and every gem above it is score. A floor that hands
+out six gems and asks three back leaves three of them doing nothing at all
+until the summary screen counts them, and §22 recorded the other half of
+the same gap: a player who runs for the exit can pay every toll off the
+gems lying in the corridors and never meet a set piece on the way.
+
+The **shrine** spends one of them. Kneel at the font and the floor's alarm
+drops back to the baseline it arrived at - one gem buys back everything
+the last four gems woke up. It also drops whatever noise the Warden was
+walking towards, because being forgotten means being forgotten: a sound it
+was crossing the floor for is no longer worth crossing the floor for. Once
+per floor. The basin's water goes flat and dark, and the room is marked
+`cleared` like any other room that has given what it had.
+
+It refuses out loud rather than doing nothing, which is the rule every
+trigger that can refuse is held to, and it has three different things to
+say: the font is dry, the font wants a gem and you have none, or nothing
+down here is looking for you yet. That last one matters more than it
+looks - the shrine is worthless on a quiet floor, so the decision is
+*when*, not whether, and a gem spent early on an alarm of two is a gem
+wasted.
+
+It is a once-per-run room like the shop and the library, and the generator
+puts one on **every floor measured - 360 of 360**. Small (14 to 18), only
+in the round shapes - hexagon, octagon, circle - and only in the three
+grave biomes: catacomb, bone, crystal. Its two arrangements keep the
+middle clear, because the font is the room.
+
+### The two checks that caught it before anyone played it
+
+Both of the layout checks written for the shrine went red on the shrine's
+own first draft.
+
+`shrineKept` was emitted by the store and **listened to by nobody** - the
+one event in the game with no sound on the other end, which is exactly the
+fault cycle 34 wrote that check for, walking straight back in through a new
+feature. `Audio.tsx` subscribes now.
+
+And the font was placed legally in only **272 of 360** floors. The first
+`shrineAnchor` took the far quadrant and hoped; in a small hexagon or a
+circle that corner is outside the room, or inside a door lane. It now walks
+centre spots, then far quadrants, then near ones, and takes the first that
+is inside `diagonalReach` and out of every lane - 360 of 360.
+
+### Nine failures that were a stale dev server
+
+Partway through verifying this, `yarn test:smoke` came back with nine
+failures in a run that had been green: the victory summary would not
+render, the Warden could not hear a sprint, and a Scroll of Banishment
+threw nothing anywhere. The store was fine in every case - `phase` was
+`won`, the Warden was in `room_1` - and no page error was ever raised.
+
+The failures reproduced **with the shrine stashed**, on the commit that is
+live on `main`. The dev server had been up across two dozen source edits,
+and its log showed HMR updates covering thirty-three modules at once; React
+was subscribed to one copy of the run store while `window.__run` pointed at
+another, so writes landed somewhere nothing was rendering from. A restart
+of `vite` made the same suite green on the same code.
+
+Two things came out of it. The suite now prints a page exception **where it
+happens** rather than tallying it four hundred lines later, after the
+checks it poisoned have all failed for reasons that are not their own; and
+the two summary readings that sampled a React commit on a 300 ms sleep -
+under two frames on this machine - poll for it instead. Neither was the
+cause. Both were reading a screen they had no reason to believe had been
+drawn yet.
+
+The operational rule, which nothing enforces: **restart the dev server
+before a browser suite that is judging a source change.** It is the fourth
+time this session that an instrument, not the game, produced the failure.
+
+## 29. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 29. What a human playtest should watch for
+## 30. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2436,7 +2509,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 30. Options and accessibility
+## 31. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2468,7 +2541,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 31. Deeds
+## 32. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2501,7 +2574,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 32. Two harness bugs that read as game bugs
+## 33. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2574,7 +2647,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 33. Tuning knobs
+## 34. Tuning knobs
 
 All in `src/game/world.ts`:
 

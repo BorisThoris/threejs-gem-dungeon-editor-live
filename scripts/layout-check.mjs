@@ -960,6 +960,42 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the bus declares no event that neither end uses", orphans.length === 0, orphans.join(", ") || "none orphaned");
 }
 
+// The lowest the alarm can go is one fact, and it has been written out by
+// hand three times now.
+//
+// `floorRules(floor).startingAlarm` is only half of it: a delver's
+// `alarmBonus` is part of the floor too, so a Tomb Robber whose floor
+// starts at two must never be calmed to one. Cycle work found the first
+// two copies and made `alarmFloorFor`; the shrine walked in and wrote a
+// third, which would quietly have handed that delver an easier run every
+// time it was knelt at. Grep for the arithmetic rather than for a symbol:
+// the fault is the expression, wherever it is spelled out.
+{
+  const src = execFileSync(
+    "grep",
+    ["-rn", "-E", "startingAlarm", join(root, "src")],
+    { encoding: "utf8" }
+  )
+    .trim()
+    .split("\n");
+  // The definition in world.ts and the one owner in run.ts are the only
+  // places the number itself is allowed to appear. Comments are prose.
+  const offenders = src.filter((line) => {
+    const [file, , ...rest] = line.split(":");
+    const text = rest.join(":").trim();
+    if (text.startsWith("*") || text.startsWith("//")) return false;
+    if (file.endsWith("src/game/world.ts")) return false;
+    if (text.includes("alarmFloorOn") || text.includes("alarmFloorFor")) return false;
+    // The one owner, spelled out once.
+    return !/floorRules\(floor\)\.startingAlarm \+ DELVERS\[delver\]\.alarmBonus/.test(text);
+  });
+  check(
+    "the lowest the alarm can go is asked in one place",
+    offenders.length === 0,
+    offenders.map((l) => l.replace(root + "/", "")).join(" | ") || "one owner"
+  );
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,
@@ -2505,6 +2541,46 @@ check("the shipped room templates reach the floors the game generates", authored
       "and no biome scatters a prop a room uses to mean something",
       clashes.length === 0,
       clashes.length ? clashes.join(", ") : `${L.NEVER_LITTER.join(", ")} kept out of the litter`
+    );
+  }
+
+  /**
+   * The shrine is a room the generator will actually build, and its font
+   * has somewhere to stand.
+   *
+   * A kind can be declared, sized, shaped, tinted and given an arrangement
+   * and still never appear, because the deck it is drawn from decides
+   * that - which is exactly how the diamond and the triangle spent the
+   * whole project unbuilt.
+   */
+  {
+    let floors = 0;
+    let withShrine = 0;
+    let anchorInside = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      for (const floor of [1, 2, 3]) {
+        const rules = L.floorRules(floor);
+        const d = L.generateDungeon({ seed: seed * 31 + floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+        floors++;
+        const shrines = d.rooms.filter((r) => r.kind === "shrine");
+        if (shrines.length) withShrine++;
+        // Never two on a floor: it is a once-per-run room.
+        if (shrines.length > 1) anchorInside = -1e9;
+        for (const r of shrines) {
+          const [x, , z] = L.shrineAnchor(r);
+          if (Math.hypot(x, z) <= L.diagonalReach(r) && !L.inDoorLane(x, z, r)) anchorInside++;
+        }
+      }
+    }
+    check(
+      "the shrine is a room the generator actually builds",
+      withShrine / floors > 0.75,
+      `${withShrine} of ${floors} floors have one`
+    );
+    check(
+      "and its font stands on the floor, out of every doorway",
+      anchorInside === withShrine,
+      `${anchorInside} of ${withShrine} fonts placed legally`
     );
   }
 

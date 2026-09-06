@@ -475,7 +475,8 @@ src/
 1. `startRun(seed)` generates a dungeon: a random walk on a grid, every room
    linked to the one it was dug from, extra doorways between neighbours for
    loops, the exit hung off the room farthest from the start. Each of shop,
-   library, memory chamber, challenge room and arena appears at most once.
+   library, memory chamber, challenge room, arena and shrine appears at most
+   once.
 2. One room is mounted at a time, at the world origin. `Room` reports
    `roomReady` once its colliders exist; until then `transitioning` holds
    the player still over an invisible ground plane that always exists.
@@ -503,7 +504,12 @@ src/
    the dash a decision rather than a free upgrade. A Scroll of Echoes sets a
    lure room instead: the Warden walks there rather than towards the player
    and stops listening for footsteps until it arrives or the sound goes
-   cold, which is the one thing in the run that buys the right to sprint. It cannot be fought and is
+   cold, which is the one thing in the run that buys the right to sprint.
+   The shrine is the other, and the slower one: kneel at the font for a gem
+   and the alarm goes back to the floor's own baseline and the lure with it,
+   once per floor. It is the only thing in the game a spare gem buys that is
+   not the exit, and it is worthless on a quiet floor, so the question it
+   asks is when. It cannot be fought and is
    slower than a walk at every level: it wins by being between the player
    and the door. Touching the player costs a life and throws it three
    doorways away.

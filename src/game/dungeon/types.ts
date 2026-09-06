@@ -19,6 +19,7 @@ export const ROOM_KINDS = [
   "arena",
   "memory",
   "challenge",
+  "shrine",
 ] as const;
 export type RoomKind = (typeof ROOM_KINDS)[number];
 

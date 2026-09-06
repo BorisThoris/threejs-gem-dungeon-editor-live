@@ -38,7 +38,7 @@ export interface GenerateOptions {
  * dungeon gets the first few; a large one gets them all and fills the rest
  * with the common kinds.
  */
-const ONCE_PER_RUN: RoomKind[] = ["shop", "memory", "challenge", "library", "arena"];
+const ONCE_PER_RUN: RoomKind[] = ["shop", "shrine", "memory", "challenge", "library", "arena"];
 const COMMON: RoomKind[] = ["treasure", "trap", "normal", "treasure", "normal"];
 
 /**
@@ -69,6 +69,8 @@ const SIZE_RANGE: Record<RoomKind, readonly [number, number]> = {
   memory: [ROOM_SIZE_DEFAULT, 22],
   challenge: [ROOM_SIZE_DEFAULT, 22],
   normal: [ROOM_SIZE_SMALL, 22],
+  // Small and close: a shrine is a place you kneel at, not a hall.
+  shrine: [ROOM_SIZE_SMALL, 18],
 };
 
 /** The sizes on the ladder a kind may be built at. */
@@ -90,6 +92,8 @@ const SHAPES_FOR: Partial<Record<RoomKind, readonly Shape[]>> = {
   memory: ["hexagon", "octagon"],
   end: ["circle", "octagon", "square", "triangle"],
   treasure: ["square", "diamond", "hexagon"],
+  // Round or many-sided, so it reads as built for something.
+  shrine: ["hexagon", "octagon", "circle"],
 };
 
 const key = (x: number, z: number) => `${x},${z}`;

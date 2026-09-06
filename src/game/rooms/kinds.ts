@@ -24,6 +24,7 @@ export const KIND_TITLE: Record<RoomKind, string> = {
   arena: "Arena",
   memory: "Memory Chamber",
   challenge: "Challenge Room",
+  shrine: "Shrine",
 };
 
 /**

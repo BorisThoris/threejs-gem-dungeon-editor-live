@@ -1,5 +1,5 @@
-import { quadrantSpots, type Vec3 } from "../dungeon/layout";
-import type { Room, RoomKind } from "../dungeon/types";
+import { centreSpots, inDoorLane, quadrantSpots, type Vec3 } from "../dungeon/layout";
+import { diagonalReach, type Room, type RoomKind } from "../dungeon/types";
 import { challengeAnchors, memoryAnchors } from "../puzzles/anchors";
 
 /**
@@ -24,6 +24,27 @@ export const shopAnchors = (room: Room): Vec3[] => [
   quadrantSpots(room, "far")[1],
 ];
 
+/**
+ * Where the shrine stands: the middle of the room if its doors leave one,
+ * and the far quadrant otherwise. It is the only thing in the room, so it
+ * gets the spot a player walks towards.
+ */
+export const shrineAnchor = (room: Room): Vec3 => {
+  // The first spot that is actually on the floor and out of every doorway.
+  // Taking the middle when there was one and the far quadrant otherwise put
+  // a quarter of the fonts in a door lane or off the edge of a shaped
+  // room - 272 of 360 placed legally - because neither spot is guaranteed
+  // to be either. The room's own geometry decides, the same way the gem's
+  // does.
+  const half = diagonalReach(room);
+  for (const spot of [...centreSpots(room), ...quadrantSpots(room, "far"), ...quadrantSpots(room, "near")]) {
+    if (Math.hypot(spot[0], spot[2]) > half) continue;
+    if (inDoorLane(spot[0], spot[2], room)) continue;
+    return spot;
+  }
+  return quadrantSpots(room, "far")[0];
+};
+
 /** The lectern the number puzzle is read from. */
 export const libraryLectern = (room: Room): Vec3 => quadrantSpots(room, "near")[3];
 
@@ -32,6 +53,7 @@ export const RESERVED_ANCHORS: Partial<Record<RoomKind, (room: Room) => Vec3[]>>
   library: (room) => [libraryLectern(room)],
   memory: memoryAnchors,
   challenge: challengeAnchors,
+  shrine: (room) => [shrineAnchor(room)],
 };
 
 /** The anchors this room's kind has claimed for its own content. */

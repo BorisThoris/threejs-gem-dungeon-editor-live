@@ -335,6 +335,14 @@ export interface RunState {
   thiefCaught: () => void;
   /** The player walked into the nest and took back what was in it. */
   emptyNest: () => boolean;
+  /**
+   * Kneel at a floor's shrine: one gem, and the floor forgets you.
+   *
+   * Returns false, without spending anything, when there is nothing to buy
+   * - no gem to pay with, or a floor already as quiet as it starts. The
+   * trigger says which before the press.
+   */
+  kneelAtShrine: (roomId: string) => boolean;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -580,7 +588,7 @@ export const useRun = create<RunState>()(
         keys: 0,
         unlocked: [],
         keyTakenIn: null,
-        alarm: rules.startingAlarm + delver.alarmBonus,
+        alarm: alarmFloorOn(floor, delver.id),
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
@@ -750,7 +758,7 @@ export const useRun = create<RunState>()(
           // dungeon, and `wardenWounded` and a Scroll of Banishment both
           // clamp the alarm to the floor's baseline, so a bonus that only
           // applied on arrival would be scrubbed off by the first rout.
-          alarm: rules.startingAlarm + DELVERS[get().delver].alarmBonus,
+          alarm: alarmFloorOn(floor, get().delver),
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
@@ -1170,6 +1178,41 @@ export const useRun = create<RunState>()(
       return true;
     },
 
+    /**
+     * The shrine.
+     *
+     * A floor holds between 1.2 and 2.3 times what its exit charges, so a
+     * player who takes what is lying about arrives at the door with gems
+     * left over and nothing to do with them but bank the score. This is
+     * the something: a gem buys the floor's attention back.
+     *
+     * It never takes the floor below the baseline it arrived at, for the
+     * reason the Scroll of Banishment does not either - a floor's opening
+     * alarm is its character, and the third floor must not be made calmer
+     * than the first by kneeling twice. Once per shrine, and the shrine is
+     * a once-per-run room, so this is one gem's worth of quiet a floor.
+     */
+    kneelAtShrine: (roomId) => {
+      const s = get();
+      if (!canControl(s) || s.cleared.includes(roomId)) return false;
+      // `alarmFloorFor`, not `floorRules(...).startingAlarm`: the delver's
+      // own bonus is part of the floor this run cannot go below, and the
+      // shrine is the third place that clamps to it.
+      const floor = alarmFloorFor(s);
+      if (s.gems < 1 || s.alarm <= floor) return false;
+      set({
+        gems: s.gems - 1,
+        alarm: floor,
+        cleared: [...s.cleared, roomId],
+        // Being forgotten means being forgotten: a noise it was walking
+        // towards is no longer worth walking towards.
+        wardenLure: null,
+        lureUntil: 0,
+      });
+      bus.emit("shrineKept", { roomId });
+      return true;
+    },
+
     sealRoom: (roomId) => set({ sealedRoomId: roomId }),
 
     raiseAlarm: (amount) => {
@@ -1460,8 +1503,11 @@ export const snaresIn = (placed: readonly PlacedDevice[], roomId: string): Place
  * Tomb Robber's floor starts at 2 and either of those would have taken it
  * to 1, quietly making the run easier than the character it chose.
  */
-export const alarmFloorFor = (s: RunState): number =>
-  floorRules(s.floor).startingAlarm + DELVERS[s.delver].alarmBonus;
+export const alarmFloorOn = (floor: number, delver: DelverId): number =>
+  floorRules(floor).startingAlarm + DELVERS[delver].alarmBonus;
+
+/** The same question asked of the run as it stands. */
+export const alarmFloorFor = (s: RunState): number => alarmFloorOn(s.floor, s.delver);
 
 /**
  * The doorway currently barred, or null. A bar is a deadline like every
@@ -1539,6 +1585,10 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     walk: () => speedNow(useRun.getState()).walk,
     slots: () => satchelSlots(useRun.getState()),
     rules: () => floorRules(useRun.getState().floor),
+    // The floor's own lowest alarm, delver bonus included - `rules()`
+    // alone is half the fact, and a probe that reads half of it agrees
+    // with the game only for the delver whose bonus is zero.
+    alarmFloor: () => alarmFloorFor(useRun.getState()),
     hears: () => wardenHears(useRun.getState()),
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
