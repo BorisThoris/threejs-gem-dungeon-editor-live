@@ -38,6 +38,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
+   export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
@@ -1111,6 +1112,53 @@ check("the shipped room templates reach the floors the game generates", authored
     thin.length === 0,
     thin.join(" ") ||
       Object.entries(perKind).map(([k, v]) => `${k}:${v.size}`).join(" ")
+  );
+}
+
+// The memory trial can be watched from where it is started.
+//
+// "The pattern matching one is difficult, there's pillars that block your
+// vision." The trial's first arrangement stands three pillars on the near
+// quadrant - between the lectern, which is the fourth near spot, and the
+// four crystals on the far ones - and the biome's litter can land on the
+// same spots. A player who begins the trial and then cannot see two of
+// the four crystals it lights is not being tested on memory. Nothing had
+// asked whether the line from the lectern to each pedestal was clear,
+// because reachability was the question the furniture had always been
+// held to, and a pillar you can walk round is still a pillar you cannot
+// see through.
+{
+  const EYE_CLEAR = 0.9;
+  const hidden = [];
+  let lines = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    for (const room of d.rooms) {
+      if (room.kind !== "memory") continue;
+      const anchors = L.memoryAnchors(room);
+      const lectern = anchors[4];
+      const props = L.placementsFor(room, d.seed).filter((q) => L.PROP_SPECS[q.kind].solid && L.PROP_SPECS[q.kind].radius > 0.2);
+      for (const p of anchors.slice(0, 4)) {
+        lines++;
+        const dx = p[0] - lectern[0];
+        const dz = p[2] - lectern[2];
+        const len = Math.hypot(dx, dz) || 1;
+        const blocker = props.find((q) => {
+          // Distance from the prop to the lectern->pedestal segment.
+          const t = Math.max(0, Math.min(1, ((q.x - lectern[0]) * dx + (q.z - lectern[2]) * dz) / (len * len)));
+          const cx = lectern[0] + dx * t;
+          const cz = lectern[2] + dz * t;
+          return Math.hypot(q.x - cx, q.z - cz) < L.PROP_SPECS[q.kind].radius + EYE_CLEAR;
+        });
+        if (blocker && hidden.length < 4) hidden.push(`${room.id}@${d.seed} ${blocker.kind}`);
+        if (blocker) hidden.blocked = (hidden.blocked ?? 0) + 1;
+      }
+    }
+  }
+  check(
+    "every crystal of the memory trial can be seen from the lectern",
+    (hidden.blocked ?? 0) === 0,
+    `${hidden.blocked ?? 0} of ${lines} sightlines blocked  ${hidden.join(" | ")}`
   );
 }
 

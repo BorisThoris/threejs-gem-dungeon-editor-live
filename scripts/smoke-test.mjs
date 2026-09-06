@@ -2634,11 +2634,64 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const s = window.__run.getState();
         return { cleared: s.cleared.includes(s.currentRoomId), gems: s.gems, failed: s.failed.length };
       });
+      /**
+       * Every number is one digit and a slot commits on the keypress.
+       *
+       * "Slow to start, hard to input": two-digit numbers meant a slot
+       * took a digit, a digit and a commit, and the commit was Space,
+       * which nobody is told. Every number the tome asks for is now a
+       * single digit - the difficulty is how many, not how big - so the
+       * sequence above was answered by the digits alone; the Space the
+       * loop still presses commits nothing, because there is nothing
+       * left uncommitted after a keypress.
+       */
+      ok(
+        "every number the tome asks for is a single digit, so a slot is one keypress",
+        opened.sequence.every((n) => n >= 1 && n <= 9),
+        JSON.stringify(opened.sequence)
+      );
       ok("typing the sequence back solves it and pays a gem", solved.cleared && solved.gems > 0, JSON.stringify(solved));
     }
   }
 
   // The same room, typed wrong until the tome closes.
+  /**
+   * The two things the tome would not do: start when you were ready, and
+   * let you leave.
+   *
+   * It showed its numbers for five to seven seconds whether or not you
+   * had them, and the only way out it named was Escape - which, when the
+   * pointer lock has not yet let go, the browser eats before the page
+   * sees it. "Can't exit the book" was that. Enter says you have them and
+   * starts the answering at once; a key on screen leaves, under any
+   * pointer state, and Q does the same from the keyboard.
+   */
+  const libraryEarly = await standIn("library");
+  if (libraryEarly) {
+    await stepTo(libraryEarly.anchors[0], 1.9);
+    await act();
+    const shown = await page.evaluate(() => window.__numberSequence ?? null);
+    if (shown) {
+      await page.waitForTimeout(600);
+      await page.keyboard.press("Enter");
+      const early = await domReady(() => !!document.querySelector('[data-testid="keypad"]'), 3000);
+      ok("Enter while the numbers are still showing says 'I have them' and starts the answering", early);
+      const leave = await page.$('[data-testid="tome-leave"]');
+      ok("the tome draws a key that leaves it", !!leave);
+      if (leave) await leave.click();
+      const gone = await domReady(() => !window.__numberSequence || !/THE TOME OF NUMBERS/.test(document.body.innerText), 3000);
+      const after = await page.evaluate(() => {
+        const s = window.__run.getState();
+        return { failed: s.failed.includes(s.currentRoomId), locks: s.inputLocks };
+      });
+      ok(
+        "and leaving it is neither solving nor failing - the book can be read again",
+        gone && !after.failed && after.locks === 0,
+        JSON.stringify(after)
+      );
+    }
+  }
+
   const library2 = await standIn("library");
   if (library2) {
     await stepTo(library2.anchors[0], 1.9);
