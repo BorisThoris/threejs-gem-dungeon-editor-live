@@ -10,7 +10,7 @@ import { Gem } from "../props/Gem";
 import { IronKey } from "../props/IronKey";
 import { Hazard } from "../props/Hazard";
 import { PlacedDevices } from "../props/Placed";
-import { snaresIn, useRun } from "../state/run";
+import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
@@ -18,8 +18,8 @@ import { Cutpurse } from "../thief/Cutpurse";
 import { Hoard } from "../thief/Hoard";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
-import { SNARE_RADIUS } from "../items/catalog";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
+import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Walls } from "./Walls";
@@ -47,26 +47,19 @@ interface RoomProps {
  * stepped through a doorway - every four to nine seconds, for a subtree of
  * a hundred elements. Here the subscription costs one component.
  */
-function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
+function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[]; seed: number }) {
   const here = useRun((s) => s.wardenRoomId === room.id);
   // Snares the player has set in this room wound it as the floor's own
   // spikes do, and are deliberately not in the list it steers round: a
   // routed Warden has learned about the spikes it can see, and a wire on
   // the floor is why setting one is still worth a satchel slot afterwards.
-  const snares = useRun((s) => s.placed);
-  const wounding = useMemo<Patch[]>(
-    () => [
-      ...hazards,
-      ...snaresIn(snares, room.id).map((d) => ({
-        x: d.x,
-        z: d.z,
-        r: SNARE_RADIUS,
-        key: d.key,
-      })),
-    ],
-    [hazards, snares, room.id]
-  );
-  return here ? <Warden room={room} hazards={wounding} avoid={hazards} /> : null;
+  const placed = useRun((s) => s.placed);
+  // Both lists from the one owner of what a body meets on a floor. The
+  // spikes it steers round once wary are still `hazards`; what bites it
+  // and what it always walks round are the body's own answers.
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed), [room, seed, placed]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed), [room, seed, placed]);
+  return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
 
 /**
@@ -74,10 +67,13 @@ function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
  * reason RoomWarden is: it comes and goes every twenty seconds and the
  * room around it should not re-render when it does.
  */
-function RoomThief({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
+function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const visiting = useRun((s) => s.thiefPhase !== "away");
   const here = useRun((s) => s.currentRoomId === room.id);
-  return visiting && here ? <Cutpurse room={room} hazards={hazards} /> : null;
+  const placed = useRun((s) => s.placed);
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
+  return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
 }
 
 /** The heap, in the one room on the floor that has one. */
@@ -193,8 +189,8 @@ export function Room({ room, seed }: RoomProps) {
           position={keyFor(room, seed)}
         />
       )}
-      <RoomWarden room={room} hazards={wardenHazards} />
-      <RoomThief room={room} hazards={wardenHazards} />
+      <RoomWarden room={room} hazards={wardenHazards} seed={seed} />
+      <RoomThief room={room} seed={seed} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

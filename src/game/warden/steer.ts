@@ -26,6 +26,14 @@ export interface Patch {
    * down under, so springing it can find it again.
    */
   key?: string;
+  /**
+   * The berth this patch demands, when it is not the caller's. A spike
+   * patch wants the wide margin the Warden keeps from anything that
+   * wounds it; a table wants only the body's own half-width, and a body
+   * that gave a chest the spikes' berth could not get between two of them
+   * to the gem they guard.
+   */
+  berth?: number;
 }
 
 /** How far ahead it looks when deciding whether the straight line is clear. */
@@ -43,7 +51,7 @@ export function patchAt(
   for (const p of patches) {
     const dx = x - p.x;
     const dz = z - p.z;
-    const reach = p.r + margin;
+    const reach = p.r + (p.berth ?? margin);
     if (dx * dx + dz * dz <= reach * reach) return p;
   }
   return null;

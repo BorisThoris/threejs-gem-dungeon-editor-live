@@ -38,6 +38,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
+   export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1274,11 +1275,18 @@ check("the shipped room templates reach the floors the game generates", authored
         if (!target) continue;
         const half = r.size / 2;
         const obs = L.obstaclesFor("ground", r, dd.seed, []);
-        const R = L.WARDEN_TOUCH_RADIUS ?? 0.6;
-        const blocked = (x, z) => Math.abs(x) > half - R || Math.abs(z) > half - R || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + R);
+        // The obstacle list already carries the body's width - `obstaclesFor`
+        // is the one owner of it, and each patch names its own berth - so
+        // the fill adds nothing, and clamps 0.6 inside the walls as the
+        // Warden does. A fill at any other width tests a creature that does
+        // not exist.
+        const WALL = 0.6;
+        const blocked = (x, z) => Math.abs(x) > half - WALL || Math.abs(z) > half - WALL || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
         for (const dir of Object.keys(r.links)) {
           walked++;
-          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir) : null;
+          // Where travel puts a body that came in this way - a position,
+          // not a triple.
+          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir)?.position : null;
           if (!start) { walked--; continue; }
           // Coarse flood fill on a half-metre grid.
           const step = 0.5, seen = new Set(), queue = [[start[0], start[2]]];
@@ -1300,6 +1308,19 @@ check("the shipped room templates reach the floors the game generates", authored
     }
     check("and respecting the furniture never strands a ground body short of the gem", stranded === 0, `${stranded} of ${walked} doorways  ${examples.join(" | ")}`);
   }
+}
+
+// One owner of what bites a creature. The Cutpurse once kept its own
+// list of the snares with its own copy of their radius - `r: 1.0` while
+// the catalogue said SNARE_RADIUS - and the two would have drifted the
+// first time either moved. Neither creature may build a bite list now.
+{
+  const creatures = ["src/game/warden/Warden.tsx", "src/game/thief/Cutpurse.tsx"];
+  const offenders = creatures.filter((f) => {
+    const s = readFileSync(join(root, f), "utf8");
+    return /snaresIn|SNARE_RADIUS|trapHazards|r:\s*1\.0\b/.test(s);
+  });
+  check("no creature builds its own list of what bites it", offenders.length === 0, offenders.join(", ") || "Warden and Cutpurse read mobs/body.ts");
 }
 
 // --- The Sentry's question --------------------------------------------------

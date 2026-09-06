@@ -158,6 +158,10 @@ export default function App() {
     // wants to know whether a candle actually landed on the plate has no
     // other way to ask.
     void import("./game/puzzles/Carryable").then((m) => (w.__carry = m.carry));
+    // What stands in a room and how wide it is, so a check can watch a
+    // creature walk round the furniture rather than trust that it does.
+    void import("./game/rooms/Dressing").then((m) => (w.__placements = m.placementsFor));
+    void import("./game/props/specs").then((m) => (w.__propSpecs = m.PROP_SPECS));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft
