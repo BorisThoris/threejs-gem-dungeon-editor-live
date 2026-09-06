@@ -3365,12 +3365,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       // says so. There were two of these when this was written; the shop
       // gained a blessing, and what the check is about - that a blocked
       // reason surfaces at all - is the same for any of them.
-      run.setState({ lives: 3, gems: 9, satchel: [], identified: [] });
+      // The floor's one bomb already bought, since run 13: the fourth
+      // thing the counter sells, and the one this state could afford.
+      run.setState({ lives: 3, gems: 9, satchel: [], identified: [], bombBought: true });
     });
     const blocked = await stepTo(counter, 2.0);
     ok(
       "a blocked counter still says why, when nothing better is in reach",
-      /full health|know what everything|could be better/i.test(String(blocked)),
+      /full health|know what everything|could be better|bomb is sold/i.test(String(blocked)),
       String(blocked)
     );
 
