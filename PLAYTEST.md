@@ -3243,6 +3243,15 @@ prompt and the store; lose a life within its reach; set a bomb outside
 its reach and watch it kneel; and take the stairs while it kneels, which
 on the last floor is the run won.
 
+Two older checks met the Keeper and had to learn about it, which is the
+point of it. The deeds check walked the last stairs by the store and was
+refused; it kneels the Keeper first now, the way a blast would. And the
+run suite's walker - the thing that finishes the game on three seeds -
+could no longer finish it: it now does what the KEEPER line tells a
+player to do, gathers the bomb's price on top of the toll, walks to the
+shop, buys the floor's one bomb, walks to the Keeper's room, sets it
+from the middle of the floor and takes the stairs while it kneels.
+
 ## 43. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the

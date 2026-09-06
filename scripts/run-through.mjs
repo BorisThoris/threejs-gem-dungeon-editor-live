@@ -165,10 +165,19 @@ const playFloor = (page, budget) =>
       return { ...notes, rooms: notes.rooms.size, ...extra };
     };
 
+    // The last floor's stairs are kept since run 18, and only a blast
+    // moves the Keeper: the walker does what a player does - reads the
+    // KEEPER line, buys the shop's one bomb on top of the toll, sets it in
+    // the room the Keeper stands in from outside its reach, and takes the
+    // stairs while it kneels.
+    const kept = () => (window.__keeperPosts ? window.__keeperPosts(state().dungeon, state().floor) : []);
+    const hasBomb = () => state().satchel.includes("bomb");
+    const bombToBuy = () => (kept().length > 0 && !hasBomb() ? window.__world.BOMB_PRICE : 0);
+
     while (notes.steps < budget) {
       keepStanding();
       const toll = window.__derived.toll();
-      if (state().gems >= toll) break;
+      if (state().gems >= toll + bombToBuy()) break;
       // The nearest room with a gem in it, by rooms walked rather than by
       // distance: a player reads the map the same way.
       const options = gemRooms()
@@ -188,6 +197,34 @@ const playFloor = (page, budget) =>
     // Afford it: now go and pay. The exit is the doorway into the last
     // room, so the walker has to reach one of its neighbours first.
     const d = state().dungeon;
+    if (kept().length > 0) {
+      if (!hasBomb()) {
+        const shop = d.rooms.find((r) => r.kind === "shop");
+        if (!shop) return done({ stuck: "the Keeper holds the stairs and there is no shop" });
+        const toShop = route(state().currentRoomId, shop.id);
+        if (!toShop || !(await walkRoute(toShop))) return done({ stuck: "a door would not open, on the way to the shop" });
+        // At the counter: the shop's one bomb, through the store the counter's
+        // own trigger calls.
+        if (!state().spendGems(window.__world.BOMB_PRICE)) return done({ stuck: "could not afford the bomb" });
+        state().takeItem("bomb", "shop");
+        state().markBombBought();
+        notes.boughtBomb = true;
+      }
+      const post = kept()[0];
+      const toPost = route(state().currentRoomId, post.roomId);
+      if (!toPost || !(await walkRoute(toPost))) return done({ stuck: "a door would not open, on the way to the Keeper" });
+      // The middle of its room is outside its reach and inside its room.
+      window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+      await wait(500);
+      keepStanding();
+      const slot = state().satchel.indexOf("bomb");
+      if (slot < 0 || !state().placeDevice(slot)) return done({ stuck: "could not set the bomb" });
+      const t0 = window.__derived.clock();
+      while (!window.__derived.keeper().stalled && window.__derived.clock() - t0 < window.__world.BOMB_FUSE_S + 4) await wait(150);
+      if (!window.__derived.keeper().stalled) return done({ stuck: "the Keeper did not kneel" });
+      keepStanding();
+      notes.keeperKnelt = true;
+    }
     const path = route(state().currentRoomId, d.endId);
     if (!path) return done({ stuck: "no way to the exit" });
     const paid = await walkRoute(path);

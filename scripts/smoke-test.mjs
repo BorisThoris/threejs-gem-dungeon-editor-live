@@ -4326,7 +4326,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.afterLift = [...out.earned];
 
     // Winning: out, the haul, no lives lost, and the floor taken dark.
-    run.setState({ gems: 16, lives: 3, maxLives: 3, floor: 3 });
+    // The last floor's stairs are kept since run 18: the Keeper kneels
+    // for the walk, the way a blast would make it.
+    run.setState({ gems: 16, lives: 3, maxLives: 3, floor: 3, keeperStalledUntil: window.__derived.clock() + 30 });
     const end = run.getState().dungeon.endId;
     const doorway = run.getState().dungeon.rooms
       .map((r) => ({ room: r, dir: Object.keys(r.links).find((d) => r.links[d] === end) }))
