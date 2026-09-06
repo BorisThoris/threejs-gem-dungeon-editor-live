@@ -216,6 +216,19 @@ Two stores that both claimed the player's stats. So:
   spikes keep the Warden's wide margin, furniture asks only a body's
   half-width, and a chest given the spikes' berth sealed the treasure
   room's corner hoard against it.
+- A floor's patience is one number in `world.ts` and one field in the
+  store - `floorEnteredAt`, the run-clock second the floor began - and
+  `patienceLeft(s)` is the only arithmetic on them. `reaper/ReaperDriver.tsx`
+  counts it from the frame loop, never a timer, because the run's clock is
+  the one the pause menu stops; it warns once and wakes the Reaper once,
+  both keyed on the second the floor began so a new run's first floor is
+  warned about again. The Reaper is a `ghost` in the body table and
+  `reaper/Reaper.tsx` is what ghost means: it asks the floor for nothing.
+  It has no room of its own - it is mounted with whichever room the player
+  is in, which is how it follows - and the store owns the three things
+  that can happen to it: waking, striking (through the ordinary damage
+  path, like the Warden's strike) and being held by a blast, which
+  `detonate` calls the same way it routs the Warden.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

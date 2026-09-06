@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §35 asks a human
+  moment it can afford to. That is precisely the behaviour §36 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §35.
+for a person, not for this document, and it is on the list in §36.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2704,14 +2704,75 @@ prop on 0 of 75 samples, and still closing - beside the
 existing walks, which still arrive, strike and steal on a furnished floor
 at 300 ms frames.
 
-## 34. Steam Deck
+## 34. The one you cannot escape if you linger
+
+The brief: "sometimes you shouldn't be able to escape some bot if you
+linger on the level far tooooo long, should be like Spelunky / Barony /
+Binding of Isaac." Spelunky's ghost, Barony's minotaur - and the shape a
+run was missing. The Warden is a threat you manage: it can be outrun,
+lured, warded, barred, wounded and routed, and a patient player can
+clear a floor around it. Nothing said *stop being patient*.
+
+### A floor has a patience
+
+Every floor puts up with the player for `FLOOR_PATIENCE_S` - five
+minutes, on the run's clock, so the pause menu does not spend it - and
+then the Reaper is on it. A ghost body: `BODIES.reaper` is `ghost`, so
+`obstaclesFor` gives it nothing to walk round and `bitesFor` nothing that
+bites it, and its component asks the floor for neither. It has no room,
+no alarm and no lure. It is always in the room the player is in - it is
+mounted with the room, which is how it follows through every doorway they
+take - and it goes straight at them at `REAPER_SPEED`, 6.5: faster than a
+walk (5) and slower than a dash (8), so lingering cannot be walked away
+from and the exit can still be run for. The dash is the loud thing the
+Warden hears, which is the risk that pays for the escape.
+
+It cannot be fought, lured, warded or barred. A blast holds it for
+`REAPER_STALL_S`, six seconds - longer than a fuse, so a bomb set under
+it is worth the walk - and the exit is the only other answer. Being
+caught costs a life and then `REAPER_STRIKE_GRACE_S` of grace over the
+ordinary damage cooldown, so a strike is a chance lost, not the run. The
+floor below starts patient again, without it: going down is the way out.
+
+### Never a surprise
+
+`REAPER_WARNING_S` before the end the HUD's FLOOR line starts counting -
+"tires of you · 44s", in words and a number and a high-contrast mark, so
+the one thing in the game you cannot outwalk is never told in colour -
+and the score closes up as if the floor were fully roused, heartbeat and
+all, for as long as it is here. A caption and a notice say it in
+English at both moments.
+
+### The numbers, held to the promise
+
+Nine layout checks hold the constants to the shape of the design rather
+than to their values: patience is minutes not moments; the warning comes
+well before the end and is not most of it; the Reaper is faster than a
+walk, slower than a dash, and faster than the Warden at its most roused;
+a blast holds it longer than its own fuse; it is a ghost to the floor with
+nothing in its way and nothing that bites it; and the longest floor over
+200 seeds - 10 rooms on the shortest path from the start to the
+exit, at a generous 7.8 s a room - is walkable in under half its
+patience. And one owner: `world.ts` names the numbers and every other
+file reads them, held by a grep.
+
+### Played
+
+Seven smoke checks: the clock starts full and the pause menu holds it;
+the warning arrives on the HUD and over the bus; when it runs out the
+Reaper wakes, the HUD says so, and it is drawn in the player's room; it
+closes on a standing player from 6.8 m to 0.9 m and takes a
+life; a bomb set at its feet holds it where it stands; it is in the next
+room the moment the player is; and the floor below starts patient, alone.
+
+## 35. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 35. What a human playtest should watch for
+## 36. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2837,7 +2898,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 36. Options and accessibility
+## 37. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2869,7 +2930,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 37. Deeds
+## 38. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2902,7 +2963,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 38. Harness bugs that read as game bugs
+## 39. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2991,7 +3052,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 39. Tuning knobs
+## 40. Tuning knobs
 
 All in `src/game/world.ts`:
 
