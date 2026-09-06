@@ -3176,6 +3176,14 @@ doorway from every room. Five smoke checks wake it by the alarm, watch
 it come in by the doorway the owner named, lose a life to it and see it
 wheel away, knock it down with a bomb, and spike it in the trap room.
 
+Three tries, three lessons. A blast while it is wheeling away downs
+nothing, because it is not in the room - so the check times the bomb to
+burst a stride after it is back. The first floor tried had no trap room,
+so the kill passed by being excused; the check now finds a floor with
+one. And its probe was written before its step, so a check that downed
+it "over the spikes" downed it up to a stride past them: where a thing
+is means where it ends the frame, and the probe says so now.
+
 ## 42. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the

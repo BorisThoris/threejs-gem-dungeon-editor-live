@@ -76,35 +76,46 @@ export function Harrier({ room }: { room: Room }) {
     const dz = cam.z - p.z;
     const distance = Math.hypot(dx, dz);
 
-    harrierAt.x = p.x;
-    harrierAt.z = p.z;
-    harrierAt.roomId = room.id;
-    harrierAt.down = down;
-    harrierAt.away = kept;
-    if (import.meta.env.DEV) {
-      const w = window as unknown as { __harrier?: Record<string, unknown> };
-      w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance, down, away, barred };
-    }
+    // Where it is, written at the end of the frame - after the step - so
+    // what a check reads is where it will be downed, not where it was a
+    // stride ago.
+    const report = () => {
+      harrierAt.x = p.x;
+      harrierAt.z = p.z;
+      harrierAt.roomId = room.id;
+      harrierAt.down = down;
+      harrierAt.away = kept;
+      if (import.meta.env.DEV) {
+        const w = window as unknown as { __harrier?: Record<string, unknown> };
+        w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance: Math.hypot(cam.x - p.x, cam.z - p.z), down, away, barred };
+      }
+    };
 
     g.visible = !kept;
     if (kept) {
       p.x = startX;
       p.z = startZ;
+      report();
       return;
     }
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      report();
+      return;
+    }
 
     if (down) {
       // On the floor, twitching. The floor decides what happens to it here.
       g.position.set(p.x, GROUND_Y + 0.22 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
       g.rotation.z = Math.PI / 2 + Math.sin(t * 9) * 0.1;
       if (patchAt(bites, p.x, p.z)) run.slayHarrier();
+      report();
       return;
     }
     g.rotation.z = 0;
     g.rotation.y = Math.atan2(dx, dz);
     if (distance <= HARRIER_TOUCH_RADIUS) {
       run.harrierStrike();
+      report();
       return;
     }
     const step = Math.min(HARRIER_SPEED * delta, HARRIER_MAX_STEP, Math.max(0, distance - HARRIER_TOUCH_RADIUS * 0.5));
@@ -120,6 +131,7 @@ export function Harrier({ room }: { room: Room }) {
     g.position.set(p.x, y, p.z);
     const wings = g.children;
     for (let i = 1; i < wings.length && i <= 2; i++) wings[i].rotation.z = (i === 1 ? 1 : -1) * Math.sin(t * 14) * 0.7;
+    report();
   });
 
   return (
