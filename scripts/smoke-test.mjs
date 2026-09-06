@@ -5581,7 +5581,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // early once it has what it came for, so a small room costs no more
     // than it used to.
     const rounds = Math.ceil(90 * (trap.size / 16) * 1.3);
-    for (let i = 0; i < rounds; i++) {
+    // The watch after the rout has its own budget. It used to share the
+    // rounds above with the wait for the rout itself, so a rout that came
+    // on the last round left zero samples of what the Warden does next and
+    // the check reported "in the spikes on 0 of 0 samples" - a finding
+    // about the clock, not the Warden, which had in fact learned.
+    const AFTER = 60;
+    for (let i = 0; i < rounds || (routed && samplesAfterRout <= 40 && i < rounds + AFTER); i++) {
       await sleep(200);
       const st = run.getState();
       if (st.wardenRoomId !== trap.id && !routed) {
