@@ -508,7 +508,7 @@ loops. Each run below is shipped the same way as the sixty-odd cycles before it:
 a check that goes red on the old code, the change, the docs, the eight
 suites, `main`, and the live site. In order:
 
-Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11.
+Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11, and run 11 has shipped.
 
 | Run | What | Why this order |
 | --- | --- | --- |
