@@ -1578,8 +1578,17 @@ export const useCurrentRoom = (): Room | undefined =>
 // React's render timing.
 if (import.meta.env.DEV && typeof window !== "undefined") {
   const w = window as unknown as Record<string, unknown>;
-  w.__run = useRun;
-  w.__derived = {
+  // Built first, published last, and only by the copy of this module that
+  // gets here first.
+  //
+  // A dev server can serve this file twice - the app's copy carrying an
+  // HMR query, a bare `import("/src/game/state/run.ts")` from a test not -
+  // and the second copy's store is one nothing renders from. Assigning
+  // over the handle pointed every later write at that store: the screen
+  // froze on its last painted frame while the run went on being played
+  // where nobody could see it, and forty checks failed for reasons that
+  // were not their own. The app's copy loads first, and it keeps them.
+  const derived = {
     toll: () => tollNow(useRun.getState()),
     spare: () => spareGems(useRun.getState()),
     walk: () => speedNow(useRun.getState()).walk,
@@ -1589,6 +1598,9 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // alone is half the fact, and a probe that reads half of it agrees
     // with the game only for the delver whose bonus is zero.
     alarmFloor: () => alarmFloorFor(useRun.getState()),
+    // Asked here rather than imported by a test: a bare import of this
+    // module from the page is a second copy of it.
+    canSpend: (price: number) => canSpend(useRun.getState(), price),
     hears: () => wardenHears(useRun.getState()),
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
@@ -1624,4 +1636,10 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
       return behaviourFor(s.alarm, !lureNow(s) && wardenSenses(s)).hunts;
     },
   };
+  if (w.__run) {
+    console.warn("[run] a second copy of the run store loaded; the first keeps __run");
+  } else {
+    w.__run = useRun;
+    w.__derived = derived;
+  }
 }

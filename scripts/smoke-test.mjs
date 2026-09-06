@@ -100,34 +100,23 @@ const browser = await chromium.launch({
 });
 const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
 const errors = [];
-// A heartbeat for React's commits. The store is not the screen: a tree
-// that has stopped committing leaves the last painted DOM in place while
-// the run store carries on being written to, and every DOM check after
-// that point fails for a reason that is not its own. Counting mutations
-// under the root says where it stopped.
-await page.addInitScript(() => {
-  window.__domBeat = 0;
-  const start = () => {
-    const root = document.getElementById("root");
-    if (!root) return setTimeout(start, 50);
-    new MutationObserver((ms) => {
-      window.__domBeat += ms.length;
-    }).observe(root, { subtree: true, childList: true, characterData: true, attributes: true });
-  };
-  start();
-});
-const mark = async (label) => {
-  const seen = await page
-    .evaluate(() => {
-      const s = window.__run.getState();
-      return {
-        beat: window.__domBeat,
-        store: `f${s.floor} ${s.currentRoomId} g${s.gems} ${s.phase}`,
-        screen: document.body.innerText.slice(0, 90).replace(/\n/g, " | "),
-      };
-    })
-    .catch((e) => ({ error: String(e).slice(0, 120) }));
-  console.log(`MARK  ${label}  ${JSON.stringify(seen)}`);
+/**
+ * Is the screen drawn from the store these checks are writing to?
+ *
+ * On a dev server this is not a given. A bare `import("/src/...")` of a
+ * module the app has already loaded under a different URL executes a
+ * SECOND copy of it, and the run store's copy publishes itself over
+ * `window.__run` - so every write after that lands in a store nothing
+ * renders from. The screen freezes on its last commit and forty checks
+ * fail one after another for reasons that are not their own. Ask the
+ * question outright rather than reading forty wrong answers.
+ */
+const screenShowsStore = async () => {
+  const held = await page.evaluate(() => window.__run.getState().gems);
+  await page.evaluate(() => window.__run.setState({ gems: 4242 }));
+  const live = await domReady(() => /GEMS 4242/.test(document.body.innerText), 6000);
+  await page.evaluate((g) => window.__run.setState({ gems: g }), held);
+  return live;
 };
 // Say it where it happened. The tally at the bottom of the run is the
 // wrong place to learn that the screen died four hundred lines earlier:
@@ -297,7 +286,6 @@ ok("control returned after every transition", !explored.transitioning && explore
   );
 }
 
-await mark("The exit refuses E without the toll, ");
 // The exit refuses E without the toll, and takes it once paid.
 const exitDoor = await page.evaluate(() => {
   const s = window.__run.getState();
@@ -407,7 +395,6 @@ if (exitDoor) {
 }
 if (!exitChecked) ok("reached the exit's neighbour to test the toll", false, "path not walked");
 
-await mark("Start over, lose every life, and rest");
 // Start over, lose every life, and restart from the summary.
 const again = await page.$('button:has-text("Run again")');
 ok("restart button offered", !!again);
@@ -473,7 +460,6 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 
-await mark("The satchel: chests hold something, i");
 // The satchel: chests hold something, its look is a lie until you use it,
 // and using it does what the item says.
 {
@@ -661,7 +647,6 @@ await mark("The satchel: chests hold something, i");
   }
 }
 
-await mark("The arena is a set piece: taking its ");
 // The arena is a set piece: taking its gem bars the doors and starts the
 // arms, and the room lets go again when they stop.
 {
@@ -726,7 +711,6 @@ await mark("The arena is a set piece: taking its ");
   }
 }
 
-await mark("The shop will name something you are ");
 // The shop will name something you are carrying, for a gem.
 {
   const named = await page.evaluate(() => {
@@ -753,18 +737,21 @@ await mark("The shop will name something you are ");
  */
 {
   const guard = await page.evaluate(async () => {
-    const { canSpend } = await import("/src/game/state/run.ts");
     const run = window.__run;
     run.setState({ gems: 5, floor: 1, relics: [] });
-    const s = run.getState();
-    // The one owner of the rule, asked directly: a purchase that would
-    // leave less than the toll is refused whatever it costs.
+    // The one owner of the rule, asked through the probe the game itself
+    // publishes. This used to `import("/src/game/state/run.ts")`, which on
+    // a dev server that has served the file once already is a SECOND copy
+    // of the module - a second store, published over `window.__run`, that
+    // nothing renders from. Every check after this point then read a
+    // screen frozen on its last commit.
+    const can = window.__derived.canSpend;
     return {
       toll: 3,
-      spendOne: canSpend(s, 1),
-      spendTwo: canSpend(s, 2),
-      spendThree: canSpend(s, 3),
-      spendMore: canSpend(s, 4),
+      spendOne: can(1),
+      spendTwo: can(2),
+      spendThree: can(3),
+      spendMore: can(4),
     };
   });
   ok(
@@ -777,9 +764,9 @@ await mark("The shop will name something you are ");
     !guard.spendThree && !guard.spendMore,
     JSON.stringify(guard)
   );
+  ok("and the screen is still drawn from the store these checks write to", await screenShowsStore());
 }
 
-await mark("Settings are remembered, and turning ");
 // Settings are remembered, and turning head bob off actually stops the head
 // moving - the one setting somebody might need in order to play at all.
 {
@@ -810,7 +797,6 @@ await mark("Settings are remembered, and turning ");
   await page.evaluate(() => window.__settings.getState().setCameraBob(true));
 }
 
-await mark("A locked vault, and the key that open");
 // A locked vault, and the key that opens it.
 {
   let seed = 3;
@@ -850,7 +836,6 @@ await mark("A locked vault, and the key that open");
   }
 }
 
-await mark("Runs leave a record behind, and a see");
 // Runs leave a record behind, and a seed can be walked again.
 {
   await page.evaluate(() => window.__records.getState().clear());
@@ -5512,6 +5497,7 @@ await mark("Runs leave a record behind, and a see");
   });
 }
 
+ok("the screen was still the store's at the end of the run", await screenShowsStore());
 ok("no uncaught page errors", errors.length === 0, errors.slice(0, 2).join(" | "));
 await browser.close();
 console.log(failures === 0 ? "\nAll checks passed." : `\n${failures} check(s) failed.`);
