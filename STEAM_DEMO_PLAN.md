@@ -502,7 +502,9 @@ to linger, and a reason to.
 
 No combat yet. What the player gets is not a weapon but leverage.
 
-Each run below is shipped the same way as the sixty-odd cycles before it:
+Ten loops on the brief after the ten runs before it - runs 7 to 10 finish
+the current goal on the brief's first four items, and 11 to 20 are the ten
+loops. Each run below is shipped the same way as the sixty-odd cycles before it:
 a check that goes red on the old code, the change, the docs, the eight
 suites, `main`, and the live site. In order:
 
@@ -515,7 +517,13 @@ suites, `main`, and the live site. In order:
 | 11 | **Floors that are alive.** Two or three ambient creatures with bodies: rats that scatter from footsteps and spring snares, a moth that drifts to a raised lantern and gives it away, a wisp that lights braziers ahead of you. Each one reads the run 9 rules rather than its own. | The brief's "each level should feel alive", built on run 9 so it costs nothing to add a creature. |
 | 12 | **Environmental traps.** Plates that loose darts across a doorway, a grate that drops behind you, a floor that gives way over spikes - each one a body-aware hazard, so a ground mob triggers it and a ghost does not. | Traps a player can *use*, which is the Spelunky half of the brief. |
 | 13 | **Secrets, deeper.** Cracked walls in more kinds; alcoves behind them holding a relic, a key, a shrine; a draft of air where a wall is thin. | The second pass on run 8 once bombs have been played with. |
-| 14 | **Review and polish.** Play the arc end to end, fix what it finds, refresh the docs, re-measure the suites. | The same closing pass every arc has had. |
+| 14 | **Breakables.** Urns, crates and barrels smash - under a blast, or by a bomb set beside them - and sometimes there is something inside. And a barrel is the one thing on a floor a player can put between themselves and a bomb. | Isaac's rocks and pots: the bomb becomes a tool as well as a weapon. |
+| 15 | **The map that lies.** A floor that hides a room says so, if you listen: a draft of air across a doorway near the crack, a sound through the wall, a brazier that gutters. Nothing marks the map; the player marks it. | Secrets are only secrets if there is a way to suspect them. |
+| 16 | **A helper that costs something.** A lamplighter wisp that drifts ahead of a raised lantern and lights the braziers on the way - and, because it is light, gives the player away to the Warden exactly as the lantern does. Follow it to the secret; or put the lantern down and lose it. | The brief's helper mob, built on run 9's bodies and run 11's creatures, with a price. |
+| 17 | **A second threat with a different body.** Something that flies: spikes do not bite it, snares do not hold it, props do not stop it - and a blast does. It is what makes the body rules a fact a player can use rather than a table. | Run 9 has to pay off in play, not only in a check. |
+| 18 | **The Keeper.** Floor three's exit is watched by a thing that does not wander and cannot be evaded by walking. It is stalled by a bomb and by nothing else, for long enough to pay the toll and go. The last floor gets an ending; the game still has no weapon. | A boss for a game without combat: the door is the fight. |
+| 19 | **Deeds and the run summary catch up.** New deeds for the arc - the first secret found, a Warden bombed, a floor left with seconds to spare, the Keeper stalled - and a summary that says which of them this run earned. | The records are the reason to run again. |
+| 20 | **Review and polish.** Play the arc end to end, fix what it finds, refresh the docs, re-measure the suites, and the human-playtest list in PLAYTEST for the arc. | The same closing pass every arc has had. |
 
 What this arc deliberately does not do: give the player a weapon. The
 Warden stays the thing you cannot fight, because that is the hook. Bombs
