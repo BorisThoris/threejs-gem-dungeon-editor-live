@@ -3596,11 +3596,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
       ok("the circle walked is ground the arms sweep, not a hole in them",
          swept > 0, `${swept} of the rings reach a circle of ${ORBIT}`);
+      // A quarter of the circle, or one frame of travel, whichever is
+      // larger. Steering corrects once a frame, so the line can only be
+      // held to within how far the player moves between corrections:
+      // 3.7 m/s at 246ms frames is 0.9m of drift that no amount of
+      // steering could have taken out. On a machine that renders at sixty
+      // that term is six centimetres and the quarter-circle is the bound,
+      // so this is slack for the rasteriser and nothing else.
+      const line = Math.max(ORBIT * 0.25, walk.speed * walk.frame);
       ok(
         "the walk holds its line rather than wandering off it",
-        walk.drift < ORBIT * 0.25,
-        `drifted at most ${walk.drift} off a circle of ${ORBIT}, at ${walk.speed} m/s ` +
-          `(which needs ${walk.needs}), frames of ${(walk.frame * 1000).toFixed(0)}ms`
+        walk.drift < line,
+        `drifted at most ${walk.drift} of ${line.toFixed(2)} allowed off a circle of ${ORBIT}, ` +
+          `at ${walk.speed} m/s (which needs ${walk.needs}), frames of ${(walk.frame * 1000).toFixed(0)}ms`
       );
       /**
        * Not "no hits". The arms test the camera's point once a frame, and
@@ -5308,22 +5316,30 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await sleep(400);
     let routed = 0;
     let wounded = 0;
-    // What the rout left the floor at. The watch runs on for another eight
-    // seconds after the rout to prove the Warden goes round the spikes,
-    // and the player is standing still where a watcher can see them, so
-    // reading the alarm at the end of it reads a floor that has been
-    // roused again since.
-    let alarmAtRout = null;
+    // The rout's own write, both sides of it.
+    //
+    // Reading the alarm before the watch and again after it compares two
+    // numbers eighteen seconds apart, and a great deal happens in between:
+    // the player stands still where a watcher can see them, so the floor
+    // is roused while the Warden is being fought. "6 to 6" was a floor
+    // that went to seven and was calmed back to six - the calm worked and
+    // the check could not see it. Sampling in the routed listener was not
+    // enough either, because the loop turn before it is a whole frame
+    // wide. So watch the store: every write records the alarm either side
+    // of it, and the rout emits immediately after its own write, which
+    // makes the last recorded pair the rout's.
+    let lastWrite = { from: run.getState().alarm, to: run.getState().alarm };
+    let rout = null;
     const offs = [
-      // Read the alarm in the listener, not on the next loop turn. The
-      // store calms the floor and then emits, so this is the calmed value
-      // exactly - and one turn of this loop is 200ms, which at four frames
-      // a second is a whole frame, long enough for a watcher to see the
-      // player standing still and put the one point back. That is what
-      // "6 to 6" was: a calm of one, undone inside the sampling gap.
+      run.subscribe((now, was) => {
+        // Only writes that move the alarm, so the two emits the rout makes
+        // - and anything listening to the first of them - cannot overwrite
+        // the pair before the second is read.
+        if (now.alarm !== was.alarm) lastWrite = { from: was.alarm, to: now.alarm };
+      }),
       window.__bus.on("wardenRouted", () => {
         routed++;
-        if (alarmAtRout === null) alarmAtRout = run.getState().alarm;
+        if (rout === null) rout = lastWrite;
       }),
       window.__bus.on("wardenWounded", () => wounded++),
     ];
@@ -5372,8 +5388,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       reeledWhileWounded,
       wary: after.wardenWary,
       woundsAfter: after.wardenWounds,
-      alarmBefore,
-      alarmAfter: alarmAtRout === null ? after.alarm : alarmAtRout,
+      alarmBefore: rout ? rout.from : alarmBefore,
+      alarmAfter: rout ? rout.to : after.alarm,
       insideAfterRout,
       samplesAfterRout,
       // The game's own answer, not `rules().startingAlarm`, which leaves
