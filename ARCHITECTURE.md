@@ -229,6 +229,20 @@ Two stores that both claimed the player's stats. So:
   that can happen to it: waking, striking (through the ordinary damage
   path, like the Warden's strike) and being held by a blast, which
   `detonate` calls the same way it routs the Warden.
+- Where the floor's ambient life is comes from `src/game/mobs/ambient.ts`
+  - `ratsFor`, `roostFor`, `mothRoom` - derived from the room and the
+  seed the way the furniture is, so the rats a check counts are the rats
+  the room draws and the roost the HUD names is the roost the bats burst
+  from. Each creature is a body in the table and a component that reads
+  `obstaclesFor`/`bitesFor` for it; none owns a rule. Where the Warden
+  stands is `src/game/warden/position.ts`, module data written by the
+  Warden and read by what flees it; `__warden` is the dev copy, not a
+  second owner. A snare says who sprang it (`springSnare(key, by)`): a
+  rat spends the wire and wounds nothing. The moth holds the light in
+  the Warden's eye through `mothLeaves` writing `litUntil`, and a roused
+  roost carries a dash through `rouseBats` writing `noisyUntil` - the
+  same two deadlines the lantern and the sprint write, so `wardenSenses`
+  did not learn a third sense.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

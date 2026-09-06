@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §36 asks a human
+  moment it can afford to. That is precisely the behaviour §37 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §36.
+for a person, not for this document, and it is on the list in §37.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2765,14 +2765,77 @@ closes on a standing player from 6.8 m to 0.9 m and takes a
 life; a bomb set at its feet holds it where it stands; it is in the next
 room the moment the player is; and the floor below starts patient, alone.
 
-## 35. Steam Deck
+## 35. Floors that are alive
+
+The brief: "Should have some ambient or helpers mobs as well, that
+roam. Each level should feel alive." The first of the ten loops, and the
+first thing run 9 was for: three creatures, none a threat by itself,
+each with a body in the table, and the cost of adding each one was a
+placement rule and a component - nothing about what bites it or what it
+walks round, because the floor already knew.
+
+### None of it is scenery
+
+A creature that only moves is a screensaver. Each of these touches a
+system the player already reasons about, so "alive" is also a tell and a
+price:
+
+**Rats** (`ground`) live in the dry, old and wet places - catacomb, bone,
+timber, flooded - up to three to a room at holes in the corners clear of
+the furniture, and never where a puzzle is played. They wander near
+home and flee anything with feet within `RAT_FLEE_RADIUS`, slower than a
+walk so they are a thing you can chase. "Anything with feet" includes
+the Warden: `warden/position.ts` is the one owner of where it stands,
+and rats pouring out of a doorway is how a player learns it is behind
+them. They read the same lists the Warden does, so a rat goes round a
+table - and into a snare. `springSnare(key, by)` now says who sprang
+it; a rat spends the wire for nothing, the Warden is untouched, and a
+caption says so. A snare set where the rats run is a snare wasted, which
+is the first thing the rats teach.
+
+**The moth** (`flying`) perches in one room a floor. A raised lantern
+draws it; it settles on the light; and when the lantern goes down it
+carries the light in the Warden's eye for `MOTH_HOLD_S` - six seconds,
+twice the lantern's own afterglow, or the moth would be decoration.
+Nothing on the floor bites it and it goes round the furniture, because
+`bitesFor("flying")` is empty and `obstaclesFor("flying")` is not. A
+blast scatters it. Lighting the moth's room costs more than lighting
+any other, and the HUD's WARDEN line already says "seen" for as long as
+it does.
+
+**Bats** (`flying`) roost in some of the big crystal and catacomb rooms.
+A dash beneath them - the player's own noise, freshly made - bursts the
+roost for `BATS_ROUSED_S` and the noise carries `BATS_NOISE_FACTOR`
+times as far as the ground alone would carry it, through the same
+`noisyUntil` the sprint writes. So does a blast in the room. The GROUND
+line says "bats roost here" on the way in, so the risk is read before
+it is taken, and a player who wants to dash through a roost room can -
+knowing what it costs.
+
+### Measured
+
+Over 120 floors: 16% of rooms have rats and none of them a
+start, exit, shop or puzzle; no hole is inside a prop; 120 of
+120 floors have a moth room and 73 a roost, neither ever the
+start or the exit.
+
+### Played
+
+Five smoke checks: rats scatter from where you stand (two of
+them, mean distance up by more than 0.8 m in three seconds); a rat springs
+a snare and the Warden's wounds are unchanged; the moth comes to a
+raised lantern; the light is still in the Warden's eye longer than the
+lantern's own hold after it is lowered; and a dash under a roost rouses
+the bats and leaves the noise further out than the ground's own hold.
+
+## 36. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 36. What a human playtest should watch for
+## 37. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2898,7 +2961,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 37. Options and accessibility
+## 38. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2930,7 +2993,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 38. Deeds
+## 39. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2963,7 +3026,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 39. Harness bugs that read as game bugs
+## 40. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3052,7 +3115,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 40. Tuning knobs
+## 41. Tuning knobs
 
 All in `src/game/world.ts`:
 
