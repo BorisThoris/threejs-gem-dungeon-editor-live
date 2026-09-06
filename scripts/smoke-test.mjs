@@ -2517,9 +2517,21 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * past them. Dead centre leaves 0.42 either side, which is wider than
      * anything the pause can leak, so the check that follows is measuring
      * the pause rather than the placement.
+     *
+     * Dead centre as of when the teleport lands, not when it is asked
+     * for: the beam keeps turning through the settle, and 0.22 seconds of
+     * it is 0.12 radians the player ends up behind centre - on the
+     * trailing edge's side, where every radian the pause leaks counts
+     * against them. Alone, that left 0.3 of margin. In a batch, a long
+     * frame on the way back leaked 0.25 and put them just past the edge:
+     * "still lit false", on a pause that had held the beam. Lead the
+     * settle by what the beam turns during it, as the first placement
+     * does, so the pause is measured from the centre and not from a
+     * spot 0.12 short of it.
      */
-    standAt(window.__sentry.facing);
-    await wait(220);
+    const SETTLE_S = 0.22;
+    standAt(window.__sentry.facing + turning * W.SENTRY_SPIN * SETTLE_S);
+    await wait(SETTLE_S * 1000);
     const before = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit };
     let called = 0;
     const off = window.__bus.on("sentrySaw", () => { called++; });
