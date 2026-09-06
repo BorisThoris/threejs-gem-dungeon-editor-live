@@ -6041,6 +6041,100 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 12: the floor's own traps, played. A dart plate costs the player a
+// life and wounds the Warden that walks over it after them; a pit opens
+// under the Warden and is a spike patch from then on; a grate drops
+// behind the player and bars the doorway, without their hammering.
+{
+  const trapped = await page.evaluate(async () => {
+    const run = window.__run;
+    const T = window.__traps;
+    const B = window.__body;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!T || !B) return { error: "no traps probe" };
+    const out = {};
+    let d = null, dartRoom = null, dart = null, pitRoom = null, pit = null, grateRoom = null, grate = null;
+    for (let seed = 7; seed < 100 && !(dartRoom && pitRoom && grateRoom); seed += 3) {
+      run.getState().startRun(seed);
+      await wait(800);
+      d = run.getState().dungeon;
+      dartRoom = pitRoom = grateRoom = null;
+      for (const r of d.rooms) {
+        for (const t of T.trapsFor(r, d.seed, d.endId)) {
+          if (t.kind === "darts" && !dartRoom) { dartRoom = r; dart = t; }
+          if (t.kind === "pit" && !pitRoom) { pitRoom = r; pit = t; }
+          if (t.kind === "grate" && !grateRoom && r.id !== d.startId) { grateRoom = r; grate = t; }
+        }
+      }
+      if (dartRoom && pitRoom && grateRoom) out.seed = seed;
+    }
+    if (!dartRoom || !pitRoom || !grateRoom) return { error: `no floor with all three in 31 seeds (darts ${!!dartRoom}, pit ${!!pitRoom}, grate ${!!grateRoom})` };
+    const sprungBy = [];
+    const off = window.__bus.on("trapSprung", (e) => sprungBy.push(`${e.kind}:${e.by}`));
+    // The dart plate, under the player.
+    run.setState({ transitioning: true, currentRoomId: dartRoom.id, lives: 3, wardenRoomId: null });
+    run.getState().roomReady(dartRoom.id);
+    await wait(1400);
+    window.__bus.emit("teleport", { position: [dart.x, 1.5, dart.z] });
+    await wait(1200);
+    out.dartLives = run.getState().lives;
+    // Then the Warden, walking in through that doorway at a player standing beyond the plate.
+    const inward = [-Math.sign(dart.x) || 0, -Math.sign(dart.z) || 0];
+    window.__bus.emit("teleport", { position: [dart.x * 0.15, 1.5, dart.z * 0.15] });
+    await wait(400);
+    const woundsBefore = run.getState().wardenWounds;
+    run.setState({ wardenRoomId: dartRoom.id, wardenCameFrom: dartRoom.links[dart.dir], alarm: 4, lives: 9 });
+    const t0 = performance.now();
+    let wardenWounded = false;
+    const off2 = window.__bus.on("wardenWounded", () => (wardenWounded = true));
+    while (!wardenWounded && performance.now() - t0 < 12000) await wait(150);
+    off2();
+    out.wardenWounded = wardenWounded || run.getState().wardenWounds > woundsBefore;
+    out.inward = inward;
+    // The pit, under the Warden: it opens, and the body table lists it.
+    run.setState({ transitioning: true, currentRoomId: pitRoom.id, wardenRoomId: null, lives: 9 });
+    run.getState().roomReady(pitRoom.id);
+    await wait(1400);
+    // Stand across the pit from a doorway so the Warden's straight line crosses it.
+    const px = pit.x * 1.6, pz = pit.z * 1.6;
+    const half = pitRoom.size / 2 - 0.8;
+    window.__bus.emit("teleport", { position: [Math.max(-half, Math.min(half, px)), 1.5, Math.max(-half, Math.min(half, pz))] });
+    await wait(400);
+    const bitesBefore = B.bitesFor("ground", pitRoom, d.seed, run.getState().placed, D.sprung()).length;
+    const from = Object.keys(pitRoom.links).find((k) => { const [dx, , dz] = window.__layout.doorPosition(pitRoom, k); return Math.sign(dx) * Math.sign(pit.x) <= 0 && Math.sign(dz) * Math.sign(pit.z) <= 0; }) ?? Object.keys(pitRoom.links)[0];
+    run.setState({ wardenRoomId: pitRoom.id, wardenCameFrom: pitRoom.links[from], alarm: 4 });
+    const t1 = performance.now();
+    while (D.sprung()[pit.key] === undefined && performance.now() - t1 < 14000) await wait(150);
+    out.pitOpen = D.sprung()[pit.key] !== undefined;
+    out.pitListed = B.bitesFor("ground", pitRoom, d.seed, run.getState().placed, D.sprung()).length === bitesBefore + 1;
+    // The grate: come in through its doorway, and the way back is barred.
+    const other = grateRoom.links[grate.dir];
+    run.setState({ transitioning: true, currentRoomId: other, wardenRoomId: null });
+    run.getState().roomReady(other);
+    await wait(1200);
+    const back = Object.keys(d.rooms.find((r) => r.id === other).links).find((k) => d.rooms.find((r) => r.id === other).links[k] === grateRoom.id);
+    run.getState().travel(back);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await wait(600);
+    // Walk inward off the doorway, under the grate.
+    window.__bus.emit("teleport", { position: [grate.x * 0.6, 1.5, grate.z * 0.6] });
+    await wait(900);
+    out.grateBarred = D.bars() === (grateRoom.id < other ? `${grateRoom.id}|${other}` : `${other}|${grateRoom.id}`);
+    out.hudBarred = /barred/i.test(document.body.innerText);
+    off();
+    out.sprung = sprungBy;
+    return out;
+  });
+  ok("a floor can be found with a dart plate, a pit and a grate on it", !trapped.error, trapped.error || `seed ${trapped.seed}`);
+  if (!trapped.error) {
+    ok("stepping on a dart plate costs a life", trapped.dartLives === 2 && trapped.sprung.includes("darts:player"), `lives ${trapped.dartLives}, sprung ${trapped.sprung.join(" ")}`);
+    ok("and the Warden that walks over it after you is wounded by the volley", trapped.wardenWounded, JSON.stringify({ wounded: trapped.wardenWounded, sprung: trapped.sprung }));
+    ok("a pit gives way under the Warden and is a spike patch from then on", trapped.pitOpen && trapped.pitListed, JSON.stringify({ open: trapped.pitOpen, listed: trapped.pitListed, sprung: trapped.sprung }));
+    ok("a grate drops behind you and the doorway is barred, and the HUD says so", trapped.grateBarred && trapped.hudBarred, JSON.stringify({ barred: trapped.grateBarred, hud: trapped.hudBarred }));
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

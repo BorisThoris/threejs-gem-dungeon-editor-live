@@ -142,6 +142,8 @@ export interface BusEvents {
   mothLeft: undefined;
   /** A roost burst: the noise of it carries. */
   batsRoused: undefined;
+  /** One of the floor's own traps went off, and what set it off. */
+  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden" };
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

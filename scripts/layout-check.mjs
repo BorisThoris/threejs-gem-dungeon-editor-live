@@ -40,6 +40,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/mobs/ambient";
+   export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1410,6 +1411,61 @@ check("the shipped room templates reach the floors the game generates", authored
     check("and most have a roost, likewise", withRoost / floors >= 0.6 && badRoost === 0, `${withRoost} of ${floors} floors, ${badRoost} misplaced`);
   } else {
     check("the floor knows where its rats, moth and bats are", false, "no ratsFor/roostFor/mothRoom");
+  }
+}
+
+// --- The floor's own traps ------------------------------------------------------
+//
+// Run 12: a dart plate a stride inside a doorway, a pit that gives way
+// once, a grate that drops behind you. Each declares which bodies spring
+// it and which it hurts in the body table's terms, and each is placed by
+// one owner. These hold the placement rules, the numbers, and that a room
+// with a pit in it is still a room you can cross.
+{
+  const T = L.TRAPS;
+  check("every trap says who springs it and who it hurts, in the body table's words", !!T && ["darts", "pit", "grate"].every((k) => T[k] && T[k].springs.every((b) => ["ground", "flying", "ghost"].includes(b))), T ? JSON.stringify(T) : "no TRAPS");
+  check("a ghost springs nothing and is hurt by nothing", !!T && Object.values(T).every((t) => !t.springs.includes("ghost") && !t.hurts.includes("ghost")));
+  check("darts fly over a rat and through a ghost: they hurt what has feet or wings", !!T && T.darts.hurts.includes("ground") && T.darts.hurts.includes("flying"));
+  check("a dart plate re-arms after its volley, not during it", L.DART_REARM_S > L.DART_FLIGHT_S, `${L.DART_REARM_S}s against ${L.DART_FLIGHT_S}s`);
+  check("a grate the player did not make holds for less than a bar they did", L.GRATE_HOLD_S > 0 && L.GRATE_HOLD_S < L.BAR_S, `${L.GRATE_HOLD_S}s against ${L.BAR_S}s`);
+  if (L.trapsFor) {
+    const NEVER = new Set(["start", "end", "shop", "library", "memory", "challenge", "secret"]);
+    let rooms = 0, withTraps = 0, wrongKind = 0, tooMany = 0, badDarts = 0, badGrate = 0, pitInLane = 0, pitOnGem = 0, pitInProp = 0, pits = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      for (const r of d.rooms) {
+        rooms++;
+        const traps = L.trapsFor(r, d.seed, d.endId);
+        if (traps.length) withTraps++;
+        if (traps.length > 2) tooMany++;
+        if (traps.length && NEVER.has(r.kind)) wrongKind++;
+        const solid = L.placementsFor(r, d.seed).filter((p) => L.PROP_SPECS[p.kind].solid);
+        const gem = L.gemFor(r, d.seed);
+        for (const t of traps) {
+          if (t.kind === "darts" && (!t.dir || !r.links[t.dir])) badDarts++;
+          if (t.kind === "grate" && (!t.dir || !r.links[t.dir] || r.links[t.dir] === d.endId)) badGrate++;
+          if (t.kind === "pit") {
+            pits++;
+            const half = r.size / 2;
+            for (const dir of Object.keys(r.links)) {
+              const [dx, , dz] = L.doorPosition(r, dir);
+              const alongX = Math.abs(dx) > Math.abs(dz);
+              const inLane = alongX ? Math.abs(t.z) < L.LANE_HALF_WIDTH && Math.sign(t.x) === Math.sign(dx) : Math.abs(t.x) < L.LANE_HALF_WIDTH && Math.sign(t.z) === Math.sign(dz);
+              if (inLane) { pitInLane++; break; }
+            }
+            if (gem && Math.hypot(t.x - gem[0], t.z - gem[2]) < L.HAZARD_RADIUS + L.PIT_RADIUS) pitOnGem++;
+            if (solid.some((p) => Math.hypot(t.x - p.x, t.z - p.z) < L.PROP_SPECS[p.kind].radius + L.PIT_RADIUS)) pitInProp++;
+            if (Math.abs(t.x) > half - 1 || Math.abs(t.z) > half - 1) pitInProp++;
+          }
+        }
+      }
+    }
+    check("traps are where the floor says and never where a puzzle is played", wrongKind === 0 && tooMany === 0, `${wrongKind} in the wrong kind, ${tooMany} rooms over two, ${withTraps} of ${rooms} rooms trapped`);
+    check("a dart plate guards a doorway that exists, and a grate one that is not the exit's", badDarts === 0 && badGrate === 0, `${badDarts} plates, ${badGrate} grates misplaced`);
+    check("a pit is never in a lane, on the gem, or under the furniture", pitInLane === 0 && pitOnGem === 0 && pitInProp === 0, `${pitInLane} in a lane, ${pitOnGem} on a gem, ${pitInProp} in a prop, of ${pits} pits`);
+    check("about half the rooms that can be trapped are", withTraps / rooms > 0.2, `${((withTraps / rooms) * 100).toFixed(0)}% of rooms`);
+  } else {
+    check("the floor knows where its traps are", false, "no trapsFor");
   }
 }
 

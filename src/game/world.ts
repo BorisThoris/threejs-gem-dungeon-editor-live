@@ -734,3 +734,19 @@ export const MOTH_SPEED = 3;
 export const MOTH_HOLD_S = 6;
 export const BATS_ROUSED_S = 5;
 export const BATS_NOISE_FACTOR = 2;
+
+/**
+ * The floor's own traps, which are the Spelunky half of the brief: a
+ * hazard the player can read, avoid, and lead the thing hunting them
+ * through. A dart plate a stride inside a doorway looses a volley across
+ * the lane for DART_FLIGHT_S and is armed again DART_REARM_S later, so a
+ * player who knows it is there can time the Warden onto it twice. A
+ * pitfall gives way once, under whatever walks on it, and is a spike
+ * patch from then on. A grate drops behind a player who comes in under it
+ * and bars that doorway for GRATE_HOLD_S - shorter than a bar the player
+ * makes, because they did not choose it.
+ */
+export const DART_FLIGHT_S = 0.6;
+export const DART_REARM_S = 4;
+export const PIT_RADIUS = 0.9;
+export const GRATE_HOLD_S = 20;

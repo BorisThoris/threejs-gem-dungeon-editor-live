@@ -5,6 +5,8 @@ import { PROP_SPECS } from "../props/specs";
 import { placementsFor } from "../rooms/Dressing";
 import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
+import { trapsFor } from "../traps/placement";
+import { PIT_RADIUS } from "../world";
 import type { Patch } from "../warden/steer";
 
 /**
@@ -54,12 +56,23 @@ export function obstaclesFor(body: Body, room: Room, seed: number, placed: reado
 }
 
 /** What bites this body here: the floor's spikes and any live snare, or nothing. */
-export function bitesFor(body: Body, room: Room, seed: number, placed: readonly PlacedDevice[]): Patch[] {
+export function bitesFor(
+  body: Body,
+  room: Room,
+  seed: number,
+  placed: readonly PlacedDevice[],
+  sprung: Readonly<Record<string, number>> = {}
+): Patch[] {
   if (body !== "ground") return [];
   const gem = gemFor(room, seed);
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
+  // A pit that has given way is a spike patch from then on, to everything
+  // with feet. Which pits are open is the store's; where they are is the
+  // floor's.
+  const pits = trapsFor(room, seed, null).filter((t) => t.kind === "pit" && sprung[t.key] !== undefined);
   return [
     ...spikes.map(([x, , z]) => ({ x, z, r: HAZARD_RADIUS })),
+    ...pits.map((t) => ({ x: t.x, z: t.z, r: PIT_RADIUS })),
     ...snaresIn(placed, room.id).map((d) => ({ x: d.x, z: d.z, r: SNARE_RADIUS, key: d.key })),
   ];
 }

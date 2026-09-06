@@ -25,6 +25,10 @@ import { Bats } from "../mobs/Bats";
 import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
+import { Darts } from "../traps/Darts";
+import { Grate } from "../traps/Grate";
+import { Pit } from "../traps/Pit";
+import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Walls } from "./Walls";
@@ -59,10 +63,11 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
   // routed Warden has learned about the spikes it can see, and a wire on
   // the floor is why setting one is still worth a satchel slot afterwards.
   const placed = useRun((s) => s.placed);
+  const sprung = useRun((s) => s.sprung);
   // Both lists from the one owner of what a body meets on a floor. The
   // spikes it steers round once wary are still `hazards`; what bites it
   // and what it always walks round are the body's own answers.
-  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed), [room, seed, placed]);
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed, sprung), [room, seed, placed, sprung]);
   const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed), [room, seed, placed]);
   return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
@@ -76,7 +81,8 @@ function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const visiting = useRun((s) => s.thiefPhase !== "away");
   const here = useRun((s) => s.currentRoomId === room.id);
   const placed = useRun((s) => s.placed);
-  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
+  const sprung = useRun((s) => s.sprung);
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed, sprung), [room, seed, placed, sprung]);
   const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
   return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
 }
@@ -103,7 +109,8 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
   const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
   const roost = useMemo(() => roostFor(room, seed), [room, seed]);
   const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed), [room, seed, placed]);
-  const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed), [room, seed, placed]);
+  const sprung = useRun((s) => s.sprung);
+  const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
   const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed), [room, seed, placed]);
   if (!here) return null;
   return (
@@ -111,6 +118,27 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
       {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
       {roost && <Bats room={room} at={roost} />}
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
+    </>
+  );
+}
+
+/** The floor's own traps, in the room the player is standing in. */
+function RoomTraps({ room, seed }: { room: RoomData; seed: number }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const endId = useRun((s) => s.dungeon?.endId ?? null);
+  const traps = useMemo(() => trapsFor(room, seed, endId), [room, seed, endId]);
+  if (!here || traps.length === 0) return null;
+  return (
+    <>
+      {traps.map((t) =>
+        t.kind === "darts" ? (
+          <Darts key={t.key} room={room} trap={t} />
+        ) : t.kind === "pit" ? (
+          <Pit key={t.key} room={room} trap={t} />
+        ) : (
+          <Grate key={t.key} room={room} trap={t} />
+        )
+      )}
     </>
   );
 }
@@ -232,6 +260,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomThief room={room} seed={seed} />
       <RoomReaper room={room} />
       <RoomAmbient room={room} seed={seed} />
+      <RoomTraps room={room} seed={seed} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

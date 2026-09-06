@@ -65,6 +65,19 @@ export function Captions() {
       bus.on("mothLanded", () => say("A moth settles on the lantern")),
       bus.on("mothLeft", () => say("The moth carries the light away")),
       bus.on("batsRoused", () => say("Bats burst from the roost")),
+      bus.on("trapSprung", ({ kind, by }) =>
+        say(
+          kind === "grate"
+            ? "A grate drops behind you"
+            : kind === "darts"
+              ? by === "warden"
+                ? "A plate clicks under it - darts"
+                : "A plate clicks underfoot - darts"
+              : by === "warden"
+                ? "The floor gives way under it"
+                : "The floor gives way"
+        )
+      ),
       bus.on("wardenLured", () => say("A clatter, far off")),
       bus.on("sentrySaw", ({ pan }) => say(`A watcher calls out${side(pan)}`)),
       bus.on("thiefCame", () => say("Something small skitters in")),

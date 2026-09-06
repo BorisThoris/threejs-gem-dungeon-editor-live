@@ -42,6 +42,8 @@ import {
   ALARM_PER_GEM,
   FLOOR_PATIENCE_S,
   BATS_NOISE_FACTOR,
+  DART_REARM_S,
+  GRATE_HOLD_S,
   BATS_ROUSED_S,
   MOTH_HOLD_S,
   REAPER_STALL_S,
@@ -296,6 +298,12 @@ export interface RunState {
   mothOn: boolean;
   /** Run-clock second the startled roost settles. */
   batsRousedUntil: number;
+  /**
+   * The floor's traps that have gone off, by key, and when. A dart plate
+   * re-arms after a while; a pit stays open; both are the floor's and go
+   * with it, like the devices.
+   */
+  sprung: Record<string, number>;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -441,6 +449,14 @@ export interface RunState {
   /** Something startled the roost: the noise carries further than the ground would. */
   rouseBats: () => void;
   /**
+   * A dart plate or a pit went off under something. Returns false when it
+   * was not armed - a plate still re-arming, a pit already open - so the
+   * thing that stepped on it knows whether anything happened.
+   */
+  springTrap: (key: string, kind: "darts" | "pit", by: "player" | "warden") => boolean;
+  /** A grate dropped behind the player: that doorway is barred, briefly, and not by them. */
+  dropGrate: (toRoomId: string) => void;
+  /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
    * thing the two differ in.
@@ -570,6 +586,7 @@ export const useRun = create<RunState>()(
     reaperLastStrikeAt: 0,
     mothOn: false,
     batsRousedUntil: 0,
+    sprung: {},
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -663,6 +680,7 @@ export const useRun = create<RunState>()(
         reaperLastStrikeAt: 0,
         mothOn: false,
         batsRousedUntil: 0,
+        sprung: {},
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -841,6 +859,7 @@ export const useRun = create<RunState>()(
           reaperLastStrikeAt: 0,
           mothOn: false,
           batsRousedUntil: 0,
+          sprung: {},
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1463,6 +1482,29 @@ export const useRun = create<RunState>()(
       if (!heard) bus.emit("wardenHeard");
     },
 
+    springTrap: (key, kind, by) => {
+      const s = get();
+      const now = runClock(s);
+      const was = s.sprung[key];
+      if (was !== undefined && (kind === "pit" || now - was < DART_REARM_S)) return false;
+      set({ sprung: { ...s.sprung, [key]: now } });
+      bus.emit("trapSprung", { key, kind, by });
+      return true;
+    },
+
+    dropGrate: (toRoomId) => {
+      const s = get();
+      if (!s.currentRoomId || !s.dungeon) return;
+      const key = barKey(s.currentRoomId, toRoomId);
+      if (key === barredNow(s)) return;
+      // A bar the player did not make: shorter, and silent - nobody
+      // hammered anything - but the Warden breaks it the same way, and is
+      // heard doing it.
+      set({ barredDoor: key, barUntil: runClock(s) + GRATE_HOLD_S });
+      bus.emit("trapSprung", { key: `${s.currentRoomId}:grate`, kind: "grate", by: "player" });
+      bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
+    },
+
     wakeReaper: () => {
       const s = get();
       if (s.reaperAwake || s.phase !== "playing") return;
@@ -1851,6 +1893,8 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
       return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
     },
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
+    // What has gone off, by key: a probe reads it beside where the traps are.
+    sprung: () => ({ ...useRun.getState().sprung }),
     // How long the floor will put up with the player, and what woke when it
     // stopped. On the run's clock, like every deadline in here.
     patienceLeft: () => patienceLeft(useRun.getState()),
