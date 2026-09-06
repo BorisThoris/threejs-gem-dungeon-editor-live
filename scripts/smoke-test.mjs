@@ -2190,9 +2190,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * of the reach and nowhere else, which `yarn test:layout` measures.
      */
     const close = await cross(await stand(spot.near, false), true);
+    // Within one frame, because the post cannot notice the player has left
+    // the beam any sooner than its next one. A span read at 240ms frames
+    // resolves the 0.9s of patience to plus or minus a frame, so a call
+    // that overshoots by less than that is this machine's sampling and not
+    // the game: the same reason the far spot above is stated the way it
+    // is. Held to the promise at full precision by `yarn test:layout`,
+    // which asks `beam.ts` rather than a rasteriser. A real regression -
+    // a beam that holds a close walk for half a second longer than it may
+    // - still fails here.
+    const escaped = !close.called || close.maxLit - patience <= close.frame;
     ok(
       "a walk close to the post gets away from it, which is the whole promise",
-      close.everLit && !close.called && fair(close),
+      close.everLit && escaped && fair(close),
       say(close, await predicted(spot.near.r, close.speed))
     );
 
@@ -5298,8 +5308,23 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await sleep(400);
     let routed = 0;
     let wounded = 0;
+    // What the rout left the floor at. The watch runs on for another eight
+    // seconds after the rout to prove the Warden goes round the spikes,
+    // and the player is standing still where a watcher can see them, so
+    // reading the alarm at the end of it reads a floor that has been
+    // roused again since.
+    let alarmAtRout = null;
     const offs = [
-      window.__bus.on("wardenRouted", () => routed++),
+      // Read the alarm in the listener, not on the next loop turn. The
+      // store calms the floor and then emits, so this is the calmed value
+      // exactly - and one turn of this loop is 200ms, which at four frames
+      // a second is a whole frame, long enough for a watcher to see the
+      // player standing still and put the one point back. That is what
+      // "6 to 6" was: a calm of one, undone inside the sampling gap.
+      window.__bus.on("wardenRouted", () => {
+        routed++;
+        if (alarmAtRout === null) alarmAtRout = run.getState().alarm;
+      }),
       window.__bus.on("wardenWounded", () => wounded++),
     ];
     run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
@@ -5311,14 +5336,6 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     let insideAfterRout = 0;
     let samplesAfterRout = 0;
     const alarmBefore = run.getState().alarm;
-    // What the rout left the floor at, read at the rout rather than at the
-    // end of the watch. The loop runs on for another eight seconds after
-    // the rout to prove the Warden goes round the spikes, and the player
-    // is standing still in a room on a floor deep enough to have a watcher
-    // on it - so anything that rouses the floor in those eight seconds
-    // erases the calm before it is ever read, and the check fails saying
-    // six to six.
-    let alarmAtRout = null;
     // How long to watch, in frames of two hundred milliseconds. This was a
     // flat ninety, which was eighteen seconds and enough while every trap
     // room in the game was sixteen metres across. They are rolled from a
@@ -5335,7 +5352,6 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         run.setState({ wardenRoomId: trap.id, wardenCameFrom: plan.cameFrom });
       }
       if (window.__derived.warden().staggered) reeledWhileWounded = true;
-      if (routed && alarmAtRout === null) alarmAtRout = st.alarm;
       if (routed && st.wardenRoomId === trap.id && window.__warden) {
         samplesAfterRout++;
         if (inPatch(window.__warden.x, window.__warden.z)) insideAfterRout++;
