@@ -1162,6 +1162,61 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// Secrets, and the thing that opens them.
+//
+// Every floor hides one room the map does not show, behind a wall with a
+// crack in it, and the only way through the crack is a blast. The secret
+// is an edge on the room that hides it - `room.secret = { dir, to }` - and
+// deliberately not a link: links are what the walls cut doorways for, what
+// the minimap draws and what the Warden walks, and a secret is none of
+// those until it is opened. These hold the generator to that, and hold
+// the bomb to reaching the wall it is set against and no further than the
+// room it is set in.
+{
+  let floors = 0;
+  let hidden = 0;
+  let sealed = 0;
+  let cracked = 0;
+  let hostHasNoDoorThere = 0;
+  const bad = [];
+  for (let seed = 1; seed <= 200; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    floors++;
+    if (!d.secretId) continue;
+    const secret = d.rooms.find((r) => r.id === d.secretId);
+    if (!secret) { bad.push(`${seed}: secretId names no room`); continue; }
+    hidden++;
+    if (Object.values(secret.links).every((v) => !v)) sealed++;
+    const hosts = d.rooms.filter((r) => r.secret && r.secret.to === d.secretId);
+    if (hosts.length === 1) {
+      cracked++;
+      if (!hosts[0].links[hosts[0].secret.dir]) hostHasNoDoorThere++;
+    } else if (bad.length < 3) bad.push(`${seed}: ${hosts.length} rooms crack onto the secret`);
+  }
+  check("every floor hides a secret room", hidden === floors, `${hidden} of ${floors} floors  ${bad.join(" | ")}`);
+  // `hidden > 0` on each, or a generator that makes no secrets at all
+  // passes three of the four by having nothing to get wrong.
+  check("the secret room has no doorway - it is reached through its crack or not at all", hidden > 0 && sealed === hidden, `${sealed} of ${hidden}`);
+  check("exactly one room cracks onto it", hidden > 0 && cracked === hidden, `${cracked} of ${hidden}  ${bad.join(" | ")}`);
+  check("and the crack is in a wall with no doorway in it", cracked > 0 && hostHasNoDoorThere === cracked, `${hostHasNoDoorThere} of ${cracked}`);
+
+  // The bomb itself.
+  const bomb = L.ITEMS.bomb;
+  check("a bomb is an item, of its own family", !!bomb && bomb.family === "bomb", bomb ? bomb.family : "no bomb");
+  let rolled = 0;
+  for (let i = 0; i < 400; i++) if (L.rollItem(7, `probe:${i}`, 1 + (i % 3)) === "bomb") rolled++;
+  check("and the floor hands them out, but not often", rolled > 8 && rolled < 120, `${rolled} of 400 rolls`);
+  // Set down at arm's length from a wall, the blast has to reach the wall;
+  // set down in the middle of the smallest room, it must not reach the
+  // room's own doorways, or every bomb is a skeleton key.
+  check(
+    "the blast reaches the wall it is set against and no further than the room",
+    L.BOMB_RADIUS >= L.CLOSE_REACH && L.BOMB_RADIUS < L.ROOM_SIZE_SMALL / 2,
+    `radius ${L.BOMB_RADIUS}, reach ${L.CLOSE_REACH}, smallest room half ${L.ROOM_SIZE_SMALL / 2}`
+  );
+  check("a fuse is long enough to walk away from and short enough to matter", L.BOMB_FUSE_S >= 2 && L.BOMB_FUSE_S <= 4, `${L.BOMB_FUSE_S}s`);
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,

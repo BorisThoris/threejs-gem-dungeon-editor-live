@@ -1291,6 +1291,75 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+/**
+ * Bombs, and what they are for.
+ *
+ * No combat, but leverage: a bomb set down with a short fuse. Inside the
+ * blast the player is hurt, the Warden is routed, and a cracked wall
+ * opens onto the room the map does not show. Driven through the store
+ * and the frame loop, since a fuse is a deadline on the run's clock and
+ * the blast is something the room does, not something a test computes.
+ */
+{
+  const bombed = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(23);
+    await wait(1200);
+    const d = run.getState().dungeon;
+    const host = d.rooms.find((r) => r.secret);
+    if (!host) return { error: "no room cracks onto a secret" };
+    run.setState({ transitioning: true, currentRoomId: host.id, lives: 3, satchel: ["bomb"], identified: [] });
+    run.getState().roomReady(host.id);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    // Stand at the cracked wall, inside the blast, with the Warden beside you.
+    const spot = window.__derived.crackSpot();
+    window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
+    await wait(500);
+    run.setState({ wardenRoomId: host.id, wardenCameFrom: null, alarm: 4 });
+    const before = run.getState();
+    const placed = run.getState().placeDevice(0);
+    const fuse = window.__world.BOMB_FUSE_S;
+    let burst = false;
+    const off = window.__bus.on("bombBurst", () => (burst = true));
+    // Well past the fuse, in rendered frames rather than wall time.
+    const t0 = window.__derived.clock();
+    for (let i = 0; i < 80 && window.__derived.clock() - t0 < fuse + 2.5; i++) await wait(150);
+    off();
+    const after = run.getState();
+    const hostAfter = after.dungeon.rooms.find((r) => r.id === host.id);
+    return {
+      placed,
+      burst,
+      hurt: after.lives < before.lives,
+      wardenRouted: after.wardenRoomId !== host.id && after.wardenWary,
+      opened: !!hostAfter.links[host.secret.dir] && hostAfter.links[host.secret.dir] === d.secretId,
+      satchelEmpty: after.satchel.length === 0,
+      secretId: d.secretId,
+    };
+  });
+  ok("a bomb can be set down from the satchel", !bombed.error && bombed.placed === true, bombed.error || JSON.stringify(bombed));
+  ok("and it goes off after its fuse", bombed.burst === true, JSON.stringify(bombed));
+  ok("standing inside the blast costs a life", bombed.hurt === true, JSON.stringify(bombed));
+  ok("the Warden inside it is routed, and learns", bombed.wardenRouted === true, JSON.stringify(bombed));
+  ok("and the cracked wall opens onto the secret room", bombed.opened === true, JSON.stringify(bombed));
+
+  // The opened crack is a doorway like any other: it can be walked.
+  const through = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const s = run.getState();
+    const host = s.dungeon.rooms.find((r) => r.secret);
+    const to = host.links[host.secret.dir];
+    if (!to) return { error: "not open" };
+    run.getState().travel(to);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    const now = run.getState();
+    return { room: now.currentRoomId, kind: now.dungeon.rooms.find((r) => r.id === now.currentRoomId).kind, visited: now.visited.includes(to) };
+  });
+  ok("and the secret room can be walked into", !through.error && through.room === bombed.secretId, through.error || JSON.stringify(through));
+}
+
   ok("a calm floor is not hunting anyone", !quiet.hears && !quiet.hunts, JSON.stringify(quiet));
   ok("running gives the player away", loud.hears && loud.hunts, JSON.stringify(loud));
   ok("and stopping lets it lose them again", !after.hears && !after.hunts, JSON.stringify(after));
