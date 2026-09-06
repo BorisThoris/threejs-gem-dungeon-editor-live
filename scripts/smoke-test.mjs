@@ -6061,9 +6061,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       d = run.getState().dungeon;
       dartRoom = pitRoom = grateRoom = null;
       for (const r of d.rooms) {
-        for (const t of T.trapsFor(r, d.seed, d.endId)) {
+        const traps = T.trapsFor(r, d.seed, d.endId);
+        for (const t of traps) {
           if (t.kind === "darts" && !dartRoom) { dartRoom = r; dart = t; }
-          if (t.kind === "pit" && !pitRoom) { pitRoom = r; pit = t; }
+          // A pit in a room with no dart plate: a Warden walking in over a
+          // plate is wounded and routed before it reaches anything, which
+          // is the floor working, and not what this is measuring.
+          if (t.kind === "pit" && !pitRoom && !traps.some((o) => o.kind === "darts")) { pitRoom = r; pit = t; }
           if (t.kind === "grate" && !grateRoom && r.id !== d.startId) { grateRoom = r; grate = t; }
         }
       }
@@ -6110,8 +6114,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await wait(400);
     const bitesBefore = B.bitesFor("ground", pitRoom, d.seed, run.getState().placed, D.sprung()).length;
     run.setState({ wardenRoomId: pitRoom.id, wardenCameFrom: pitRoom.links[from.k], alarm: 4 });
+    // The Warden's stride is capped per frame, so on a slow machine it
+    // crosses a big room at a metre a second: wait for it as long as the
+    // walk from that doorway needs, and stop early once it has the player.
+    const walkS = Math.hypot(pit.x - from.x, pit.z - from.z) / (window.__world.WARDEN_MAX_STEP * 3) + 6;
     const t1 = performance.now();
-    while (D.sprung()[pit.key] === undefined && performance.now() - t1 < 14000) await wait(150);
+    while (D.sprung()[pit.key] === undefined && performance.now() - t1 < walkS * 1000) {
+      await wait(150);
+      const w = window.__warden;
+      if (w && run.getState().wardenRoomId === pitRoom.id && Math.hypot(w.x - px, w.z - pz) < 0.8) break;
+    }
+    out.pitWalk = { budgetS: Math.round(walkS), warden: window.__warden && { x: +window.__warden.x.toFixed(1), z: +window.__warden.z.toFixed(1) }, pit: { x: +pit.x.toFixed(1), z: +pit.z.toFixed(1) }, player: { x: +px.toFixed(1), z: +pz.toFixed(1) } };
     out.pitOpen = D.sprung()[pit.key] !== undefined;
     out.pitListed = B.bitesFor("ground", pitRoom, d.seed, run.getState().placed, D.sprung()).length === bitesBefore + 1;
     // The grate: come in through its doorway, and the way back is barred.
@@ -6126,7 +6139,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // Walk inward off the doorway, under the grate.
     window.__bus.emit("teleport", { position: [grate.x * 0.6, 1.5, grate.z * 0.6] });
     await wait(900);
-    out.grateBarred = D.bars() === (grateRoom.id < other ? `${grateRoom.id}|${other}` : `${other}|${grateRoom.id}`);
+    out.grateBarred = D.bars().has(grateRoom.id < other ? `${grateRoom.id}|${other}` : `${other}|${grateRoom.id}`);
     out.hudBarred = /barred/i.test(document.body.innerText);
     off();
     out.sprung = sprungBy;
@@ -6136,7 +6149,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   if (!trapped.error) {
     ok("stepping on a dart plate costs a life", trapped.dartLives === 2 && trapped.sprung.includes("darts:player"), `lives ${trapped.dartLives}, sprung ${trapped.sprung.join(" ")}`);
     ok("and the Warden that walks over it after you is wounded by the volley", trapped.wardenWounded, JSON.stringify({ wounded: trapped.wardenWounded, sprung: trapped.sprung }));
-    ok("a pit gives way under the Warden and is a spike patch from then on", trapped.pitOpen && trapped.pitListed, JSON.stringify({ open: trapped.pitOpen, listed: trapped.pitListed, sprung: trapped.sprung }));
+    ok("a pit gives way under the Warden and is a spike patch from then on", trapped.pitOpen && trapped.pitListed, JSON.stringify({ open: trapped.pitOpen, listed: trapped.pitListed, sprung: trapped.sprung, walk: trapped.pitWalk }));
     ok("a grate drops behind you and the doorway is barred, and the HUD says so", trapped.grateBarred && trapped.hudBarred, JSON.stringify({ barred: trapped.grateBarred, hud: trapped.hudBarred }));
   }
 }

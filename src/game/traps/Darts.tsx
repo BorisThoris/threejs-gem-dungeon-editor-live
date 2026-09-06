@@ -35,14 +35,19 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
     const run = useRun.getState();
     if (!canControl(run)) return;
     const now = runClock(run);
-    const at = run.sprung[trap.key];
-    const flying = at !== undefined && now - at < DART_FLIGHT_S;
+    let at = run.sprung[trap.key];
     const cam = state.camera.position;
     const wardenHere = wardenAt.roomId === room.id;
-    if (!flying) {
-      if (onPlate(cam.x, cam.z)) run.springTrap(trap.key, "darts", "player");
-      else if (wardenHere && onPlate(wardenAt.x, wardenAt.z)) run.springTrap(trap.key, "darts", "warden");
-      return;
+    if (at === undefined || now - at >= DART_FLIGHT_S) {
+      // Pressed and loosed in the same instant: whoever is on the plate
+      // the frame it springs is hit that frame. A slow frame can be longer
+      // than the whole flight, and a volley that only looked for targets
+      // from the next frame on could miss the one who set it off.
+      const playerOn = onPlate(cam.x, cam.z);
+      const wardenOn = wardenHere && onPlate(wardenAt.x, wardenAt.z);
+      if (!playerOn && !wardenOn) return;
+      if (!run.springTrap(trap.key, "darts", playerOn ? "player" : "warden")) return;
+      at = useRun.getState().sprung[trap.key];
     }
     if (volley.current !== at) {
       volley.current = at;
