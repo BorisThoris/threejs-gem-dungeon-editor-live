@@ -6551,8 +6551,16 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
           if (bites.some((b) => Math.hypot(h.x - b.x, h.z - b.z) < b.r * 0.9)) { over = true; run.getState().downHarrier(); }
         }
         for (let i = 0; i < 12 && !events.includes("slain"); i++) await wait(250);
-        // The ABOVE line, not the word: the caption "The harrier is spiked" lingers on screen after the line is gone.
-        slain = { over, slain: events.includes("slain"), gone: run.getState().harrierSlain && !window.__harrierAt.roomId, hud: /ABOVE/.test(document.body.innerText) };
+        // The ABOVE line, not the word: the caption "The harrier is spiked"
+        // lingers on screen after the line is gone. And the line goes on the
+        // HUD's own poll, a quarter-second and a render after the store
+        // changed - read in frames.
+        let hudLine = true;
+        for (let i = 0; i < 16 && hudLine; i++) {
+          await wait(250);
+          hudLine = /ABOVE/.test(document.body.innerText);
+        }
+        slain = { over, slain: events.includes("slain"), gone: run.getState().harrierSlain && !window.__harrierAt.roomId, hud: hudLine };
       }
     }
     off(); off2(); off3(); off4();
