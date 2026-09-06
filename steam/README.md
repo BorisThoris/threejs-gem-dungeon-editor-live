@@ -68,7 +68,7 @@ it is always fullscreen.
 
 ## 5. Achievements
 
-The game has ten deeds and reports them to the shell the first time each
+The game has fifteen deeds and reports them to the shell the first time each
 is earned. `src/game/deeds/catalog.ts` is the list, and every entry
 carries the Steam API name it maps to - written down there rather than
 derived from the game's own id, because the two live in different places

@@ -74,6 +74,41 @@ stereo field as it comes round a pillar. You can shut your eyes and still
 know which way to go, which is the point of a threat you are only ever
 allowed to run from.
 
+The floor is alive, and it plays by one set of rules. Rats scatter from
+your footsteps and spring the snares you set; a moth settles on a raised
+lantern and carries the light away; bats burst from a roost when you
+dash. Every creature declares a body - ground, flying or ghost - and the
+floor reads it: spikes and snares bite anything with feet, solid props
+are walked round by anything with a body, and a ghost passes through all
+of it. That table is the whole reason the rest of this works. The
+Warden has feet, so the floor's own traps are yours to use: a plate a
+stride inside a doorway looses darts at whatever is in the lane, a
+cracked flagstone gives way under whoever steps on it and is a spike
+patch from then on, and a grate drops behind you and bars the doorway
+you came in by. Walk the Warden over a plate. Drop a grate with it at
+your heels.
+
+Every floor hides a room the map does not show, behind a wall with a
+crack in it, and the only way through is a bomb - one a floor at the
+shop, more in chests. Nothing marks the wall; the floor tells you, if
+you listen. A draft of cold air near it. A clink, a chime or a drip
+through it, saying what is behind. A gap on the map the shape of a room.
+`M` marks the room you are in with a "?" that nothing in the game reads,
+for the player who wants to remember where the draft was. Raise the
+lantern and a wisp gathers to lead you toward the crack - and the wisp
+is light, so the Warden sees you for exactly as long as it is out.
+
+A blast does more than open walls. Barrels, crates and urns burst, and
+one standing between the bomb and you takes the blast for you; now and
+then a gem glints in the wreck. The Warden inside a blast is routed. And
+from the second floor down something with wings hunts by the alarm: the
+Harrier, which the spikes cannot touch and the furniture does not slow,
+which cannot be walked from and can be dashed from, and which a blast
+knocks out of the air - and a flier on the ground is just another thing
+the floor can bite. On the last floor the stairs are kept. The Keeper
+stands in that doorway, cannot be walked past, and kneels for nine
+seconds when a bomb goes off in its room. Bring one.
+
 From the second floor down there is also something small in the dark that
 wants what you are carrying. The Cutpurse cannot hurt you. It waits until
 you have stopped moving with gems on you, comes in at a doorway, takes

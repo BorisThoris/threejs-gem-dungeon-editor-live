@@ -53,6 +53,12 @@ const SHOTS = [
   // Warden in the room with you.
   { kind: "normal", floor: 3, file: "sentry.png", want: "sentry" },
   { kind: "normal", floor: 1, file: "warden.png", want: "warden" },
+  // The ten loops: a dart plate in a doorway, the wisp at a raised
+  // lantern, the Harrier in the room, and the Keeper at the last stairs.
+  { kind: "normal", floor: 1, file: "darts.png", want: "darts" },
+  { kind: "normal", floor: 1, file: "wisp.png", want: "wisp" },
+  { kind: "normal", floor: 2, file: "harrier.png", want: "harrier" },
+  { kind: "normal", floor: 3, file: "keeper.png", want: "keeper" },
 ];
 
 const browser = await chromium.launch({
@@ -83,8 +89,19 @@ for (const shot of SHOTS) {
         }
         const d = run.getState().dungeon;
         const rooms = d.rooms.filter((r) => r.kind === kind);
-        const room = want === "sentry" ? rooms.find((r) => window.__sentryFor(r, d.seed, floor)) : rooms[0];
+        const posts = want === "keeper" ? window.__keeperPosts(d, floor) : [];
+        const room =
+          want === "sentry"
+            ? rooms.find((r) => window.__sentryFor(r, d.seed, floor))
+            : want === "darts"
+              ? rooms.find((r) => window.__traps.trapsFor(r, d.seed, d.endId).some((t) => t.kind === "darts"))
+              : want === "keeper"
+                ? d.rooms.find((r) => posts.some((p) => p.roomId === r.id))
+                : want === "harrier"
+                  ? rooms.find((r) => r.id !== window.__harrierRoost(d, floor))
+                  : rooms[0];
         if (!room) continue;
+        if (want === "harrier" && !window.__harrierRoost(d, floor)) continue;
         run.setState({ transitioning: true, currentRoomId: room.id, lives: 3 });
         run.getState().roomReady(room.id);
         await wait(1600);
@@ -143,11 +160,49 @@ for (const shot of SHOTS) {
           x = from.x;
           z = from.z;
         }
+        // The Keeper and a dart plate stand in a doorway: photographed from
+        // across the room, looking at the doorway they stand in.
+        // The Keeper stands in a doorway: photographed from across the
+        // room, looking at the doorway it stands in. The plate lies a
+        // stride inside one, a shade darker than the floor on purpose -
+        // from across the room the first shot showed a doorway and no
+        // plate at all - so it is photographed from three strides back,
+        // looking down at it, the way a player who has learned the tell
+        // looks at a doorway.
+        let pitch = -0.10;
+        if (want === "keeper" || want === "darts") {
+          const post = want === "keeper" ? posts.find((p) => p.roomId === room.id) : window.__traps.trapsFor(room, d.seed, d.endId).find((t) => t.kind === "darts");
+          const at = want === "keeper" ? window.__layout.doorPosition(room, post.dir).map((v) => v * 0.72) : [post.x, 0, post.z];
+          const len = Math.hypot(at[0], at[2]) || 1;
+          const back = want === "keeper" ? half - 1.2 : Math.max(1, len - 3.2);
+          x = (at[0] / len) * back;
+          z = (at[2] / len) * back;
+          if (want === "keeper") { x = -x; z = -z; }
+          look = at;
+          if (want === "darts") pitch = -0.42;
+        }
         const yaw = Math.atan2(-(look[0] - x), -(look[2] - z));
         window.__bus.emit("teleport", { position: [x, 1.5, z], yaw });
-        window.__bus.emit("lookSet", { yaw, pitch: -0.10 });
+        window.__bus.emit("lookSet", { yaw, pitch });
         if (want === "warden") run.setState({ wardenRoomId: room.id, alarm: 5 });
+        if (want === "wisp" && !run.getState().lanternRaised) run.getState().toggleLantern();
+        if (want === "harrier") run.setState({ alarm: window.__world.HARRIER_ALARM_LEVEL });
         await wait(1400);
+        // The Harrier comes in from its doorway: wait until it is in the
+        // room and close enough to be more than a dot.
+        // Seven metres, and the shutter straight after: it dives at seven
+        // a second, so the first shot, taken after the settle every other
+        // shot gets, was of its strike - a brown wedge over the corner of
+        // the frame and a red screen, which is what being hit looks like
+        // and not what a Harrier looks like.
+        if (want === "harrier") {
+          for (let i = 0; i < 80; i++) {
+            const h = window.__harrier;
+            if (h && h.room === room.id && !h.away && h.distance < 7) break;
+            await wait(150);
+          }
+        }
+        if (want === "wisp") await wait(2000);
         /**
          * Wait for the beam to be pointing this way.
          *
@@ -187,7 +242,7 @@ for (const shot of SHOTS) {
     console.log(`MISS  ${shot.file} - no ${shot.kind} found`);
     continue;
   }
-  await page.waitForTimeout(600);
+  if (shot.want !== "harrier") await page.waitForTimeout(600);
   await page.screenshot({ path: join(OUT, shot.file) });
   taken++;
   console.log(`shot  ${shot.file}  ${shot.kind} ${found.size} ${found.shape}, seed ${found.seed}`);
@@ -220,7 +275,7 @@ const SCREENS = [
   {
     file: "screen-records.png",
     setUp: async () => {
-      await page.click('button:has-text("Back")');
+      await page.click('button:text-is("Back")');
       await page.waitForTimeout(500);
       await page.click('button:has-text("Records")');
       await page.waitForTimeout(600);

@@ -78,7 +78,16 @@ them is the easy one, and all of them are there from the first run.
 - Three floors, each larger, darker and more awake than the last
 - A Warden that hunts by sound and light, and can be wounded but never killed
 - A Cutpurse that takes what you carry to a nest you can walk to
-- Twelve items whose names are hidden and whose blessings are not
+- Floors that are alive: rats, a moth, bats, and a wisp that leads you to
+  the room the map does not show - for exactly as long as the Warden can
+  see your light
+- The floor's own traps - dart plates, pits, grates - that spring under
+  anything with feet, and the Warden has feet
+- One bomb a floor at the shop, more in chests: it opens walls, bursts
+  barrels, routs the Warden, downs the Harrier and kneels the Keeper
+- A Harrier from the second floor down that the spikes cannot touch, and
+  a Keeper at the last stairs that only a blast moves
+- Thirteen items whose names are hidden and whose blessings are not
 - Five delvers, all available from the first run
 - Fifteen deeds, and a seed on every run so you can walk the same dungeon again
 - Full gamepad support, key rebinding, captions, and high-contrast marks

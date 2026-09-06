@@ -1105,6 +1105,10 @@ software renderer; a real GPU is brighter and smoother.
 | Kind | What the player finds |
 | --- | --- |
 | ![start](docs/playtest/room-start.png) | **Start.** Where a floor begins: furniture, braziers in the corners, and the doorways lit blue. The line across the top says what floor this is and how awake it is. |
+| ![darts](docs/playtest/darts.png) | **A dart plate.** A stride inside a doorway, a shade darker than the floor, two holes in the jambs: anything with feet that steps on it looses a volley across the lane. The Warden has feet. |
+| ![wisp](docs/playtest/wisp.png) | **The wisp.** Raise the lantern and it gathers, and drifts toward the room the map does not show - and it is the brightest thing on the floor for exactly as long as the Warden can see your light. |
+| ![harrier](docs/playtest/harrier.png) | **The Harrier.** From the second floor down, woken by the alarm, in by the doorway on the shortest path from its roost. The spikes cannot touch it; a blast knocks it down, and down it is a thing with feet. |
+| ![keeper](docs/playtest/keeper.png) | **The Keeper.** The last stairs are kept. It does not move, it cannot be walked past, and a blast in its room makes it kneel for nine seconds - the window to pay the toll and go. |
 | ![normal](docs/playtest/room-normal.png) | **Chamber.** The commonest room. A gem, a chest or two with something unidentified in them, and whatever the arrangement put down. |
 | ![treasure](docs/playtest/room-treasure.png) | **Vault.** More chests than an ordinary chamber - and if it is the floor's locked room, it is furnished as a vault whatever kind it was drawn as. |
 | ![shop](docs/playtest/room-shop.png) | **Shop.** A counter that sells a life for a gem, names what you are carrying for a gem, and keeps two relics on pedestals. |
@@ -1940,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §45 asks a human
+  moment it can afford to. That is precisely the behaviour §46 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §45.
+for a person, not for this document, and it is on the list in §46.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3306,14 +3310,96 @@ patience left; spike the Harrier and slip the Keeper through the events
 their own checks prove the game publishes; and read the summary naming
 what this run earned, then "none new" on a fresh one.
 
-## 44. Steam Deck
+## 44. The ten loops, reviewed
+
+Runs 11 to 19 shipped the brief: floors that are alive, traps the
+player can use, secrets worth a bomb, breakables, a map that tells
+without marking, a helper that costs something, a second threat with a
+different body, a boss without combat, and deeds that name all of it.
+This run is the tenth loop: the walker played the arc end to end, the
+screens were read, what that found was fixed, and every document was
+brought up to what the game now is.
+
+### What the arc adds up to
+
+One rule underneath all of it: every creature declares a body and the
+floor reads it. That table is why a dart plate, a pit, a grate, a burst
+barrel, a spike ring and an open pit each work on the Warden, the rats
+and a downed Harrier without any of them being told, and why the
+Harrier, the moth, the bats, the Reaper and the wisp are not. The bomb
+is the other rule: one thing that stops enemies - routs the Warden,
+holds the Reaper, downs the Harrier, kneels the Keeper - and opens
+walls and barrels, sold one a floor, and the reason the last stairs are
+a fight without a weapon.
+
+Risk and reward run through every loop. A trap room is worth exactly
+twice; a raised lantern brings a guide and the Warden's eye; a floor's
+patience is long and then it is a Reaper; the hidden room costs the
+bomb you might want at the stairs; the Harrier can be dashed from, and a
+dash is heard.
+
+### What the walker and the screens found
+
+The walker, three seeds, first room to the victory screen: 22 to 27
+rooms entered, 29 to 46 doors taken, 17 gems picked up against 15 owed
+over three floors, and on the last floor it bought the shop's one bomb,
+set it in the Keeper's room from outside its reach and took the stairs
+while the Keeper knelt. That is the arc played by something with no
+taste, and it can be finished.
+
+The four new pictures found three things, all in the tour and none in
+the game:
+
+- **The dart plate was not in its picture.** The tour stood across the
+  room looking at the doorway, which is how every other room is shot,
+  and the plate is a shade darker than the floor on purpose - it is a
+  tell, not a sign. From twelve metres it is a doorway. It is
+  photographed now from three strides back, looking down, the way a
+  player who has learned the tell looks at a doorway.
+- **The Harrier's picture was of its strike.** Every shot settles for
+  six tenths of a second before the shutter; the Harrier dives at seven
+  metres a second, so a shot taken once it was within six metres was of
+  a brown wedge over the corner of the frame and a red screen. That is
+  what being hit looks like and not what a Harrier looks like. It is
+  shot at seven metres now, straight away.
+- **The tour could not reach the Records page.** It left the controls
+  page by clicking the first button whose text contained "Back", and
+  since the key rows joined that page the first such button is
+  "Backward" - the binding went into capture and the menu never came.
+  A selector bug in the harness and not a screen a player can reach by
+  accident, but the first pass of the tour since run 10 could not finish
+  until it was an exact match.
+
+And in the batch, three checks that had passed for cycles failed on a
+loaded machine and passed alone - the pause check's second placement on
+the beam, the bomb set at the cracked wall, the shop's sale - and each
+was a fixed wall-time wait standing in for a frame. All three wait for
+the thing they asked for now. Cycle 56's lesson (§49), again, and it
+will be again: a wait in milliseconds is a guess about the machine.
+
+### Counts
+
+| Suite | Checks |
+| --- | --- |
+| `yarn test:layout` | 385 |
+| `yarn test:smoke` | 347 |
+
+Fifteen deeds, nineteen kinds of thing on the floor with a body or a
+trigger, four screens more in the tour: a dart plate, the wisp, the
+Harrier and the Keeper.
+
+### What a human playtest should watch for
+
+Eight new questions, in §46, one per system the loops added.
+
+## 45. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 45. What a human playtest should watch for
+## 46. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3439,7 +3525,62 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 46. Options and accessibility
+And for the ten loops, one question per system they added - the
+sections from §34 on say what each is meant to do, these ask whether a
+person can tell:
+
+- **Does anyone use a trap on purpose?** The floor's own plates, pits and
+  grates spring under anything with feet, and the Warden has feet. The
+  play is to walk it over a plate or drop a grate behind you with it at
+  your heels; the failure is a player who only ever springs them on
+  themselves and learns to hate doorways. Watch whether the first plate
+  a player steps on is the last one they step on by accident.
+
+- **Is the bomb a key or a weapon?** One a floor from the shop, more from
+  chests; it opens a wall, bursts a barrel, routs the Warden, downs the
+  Harrier and kneels the Keeper. If players hoard it for the last stairs
+  the shop is selling a key; if they spend it on the first Warden they
+  meet and arrive at the Keeper empty-handed, the HUD's "a blast makes it
+  kneel" is not early enough. `BOMB_PRICE` is the dial.
+
+- **Do the tells work without a marker?** A draft near a thin wall, a
+  clink or a chime through it, a gap on the map the shape of a room, a
+  breathing seam. Nothing points. Watch whether a first-time player ever
+  finds the hidden room, and whether a second-time player finds it faster
+  - that gap is the whole design. If nobody ever does, `DRAFT_REACH` is
+  too short or the map's gap is too subtle.
+
+- **Does anyone mark the map?** `M` writes a "?" nothing in the game
+  reads. It exists for the player who wants to remember "the draft was
+  here". If nobody presses it, that is fine; if people press it and expect
+  something to happen, the label needs to say it is theirs.
+
+- **Is the wisp worth being seen for?** It comes with the raised lantern
+  and leads to the hidden room, and it is the brightest thing on the
+  floor. Watch whether a player follows it or puts the lantern down to be
+  rid of it - both are the design working - and whether they understand
+  that it and the Warden's "seen" are the same fact.
+
+- **Is the Harrier a second Warden or a different question?** It flies:
+  the furniture and the spikes that handle the Warden do nothing, and a
+  dash outruns it. Watch whether a player who has learned the trap room
+  tries it on the Harrier and what they do when it fails, and whether
+  anyone ever downs it over the spikes on purpose. `HARRIER_SPEED`
+  against `DASH_SPEED` is the dial.
+
+- **Does the Keeper feel like a boss or a locked door?** It cannot be
+  walked past and only a blast kneels it. The best outcome is a player
+  who bought the bomb three rooms earlier because the HUD told them to;
+  the worst is one who arrives with none and has to walk back to the
+  shop with the floor tiring. Watch for the second, and whether the
+  KEEPER line was read.
+
+- **Do the new deeds name anything anyone did?** Five sentences for the
+  arc, and the summary names the ones this run earned. Watch whether a
+  player reads the summary's DEEDS line, and whether "Behind the Wall"
+  or "Past the Keeper" sends anyone back down to try.
+
+## 47. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3471,7 +3612,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 47. Deeds
+## 48. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3510,7 +3651,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 48. Harness bugs that read as game bugs
+## 49. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3599,7 +3740,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 49. Tuning knobs
+## 50. Tuning knobs
 
 All in `src/game/world.ts`:
 

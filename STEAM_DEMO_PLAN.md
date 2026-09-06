@@ -166,7 +166,7 @@ overlays, and on this machine - a software rasteriser at three to five
 frames a second - it now fails two to four checks intermittently, never
 the same ones twice, always in the same shape: the harness read a prompt
 too early, or stood a little wrong. Three of them were tracked down and
-fixed properly this round; the rest are described in PLAYTEST §45 along
+fixed properly this round; the rest are described in PLAYTEST §46 along
 with what would actually fix them, which is waiting on a condition the
 game publishes rather than on a clock. The checks that cover the new
 mechanics pass on every run.
@@ -510,7 +510,7 @@ a check that goes red on the old code, the change, the docs, the nine
 suites (eight until the touch suite joined at run 18), `main`, and the
 live site. In order:
 
-Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11, and runs 11 to 19 have shipped.
+Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11, and runs 11 to 20 have shipped.
 
 | Run | What | Why this order |
 | --- | --- | --- |
