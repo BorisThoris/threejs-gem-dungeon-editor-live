@@ -11,6 +11,7 @@ import {
   trapHazards,
   type Vec3,
 } from "../dungeon/layout";
+import { memoryAnchors } from "../puzzles/anchors";
 import { createRng, shuffle } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -43,6 +44,8 @@ const CLEAR_OF_SENTRY = 1.3;
 const CLEAR_OF_KEY = 1.2;
 /** How far the biome's own litter stands off anything already placed. */
 const CLEAR_OF_LITTER = 1.2;
+/** How far anything tall stands off a line from the lectern to a crystal. */
+const CLEAR_OF_SIGHT = 0.9;
 
 const near2 = (p: PropPlacement, a: Vec3, r: number) =>
   (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
@@ -108,6 +111,32 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   const near = quadrantSpots(room, "near");
   const far = quadrantSpots(room, "far");
   const corners = cornerSpots(room);
+  /**
+   * The memory trial's lines of sight: lectern to each crystal.
+   *
+   * Reachability was the question the furniture had always been held to,
+   * and a pillar you can walk round is still a pillar you cannot see
+   * through. Anything tall enough to hide a crystal - which is anything
+   * solid wider than a candle - keeps off these lines, and litter goes
+   * through the same filter as everything else, so a biome cannot put an
+   * urn where the arrangement was forbidden to.
+   */
+  const sight = room.kind === "memory" ? memoryAnchors(room) : null;
+  const hidesACrystal = (p: PropPlacement): boolean => {
+    if (!sight) return false;
+    const [lx, , lz] = sight[4];
+    const reach = CATALOG[p.kind].radius + CLEAR_OF_SIGHT;
+    for (const [px, , pz] of sight.slice(0, 4)) {
+      const dx = px - lx;
+      const dz = pz - lz;
+      const len2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((p.x - lx) * dx + (p.z - lz) * dz) / len2));
+      const cx = lx + dx * t;
+      const cz = lz + dz * t;
+      if ((p.x - cx) ** 2 + (p.z - cz) ** 2 < reach * reach) return true;
+    }
+    return false;
+  };
   // Empty in a room whose doors cross its middle, which is why every
   // arrangement has to place these by spreading rather than by index.
   const centre = centreSpots(room);
@@ -116,6 +145,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   const allowed = (p: PropPlacement): boolean => {
     const solid = CATALOG[p.kind].solid;
     if (solid && inDoorLane(p.x, p.z, room)) return false;
+    if (solid && CATALOG[p.kind].radius > 0.2 && hidesACrystal(p)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
     if (opts.sentry && near2(p, opts.sentry, CLEAR_OF_SENTRY)) return false;
     if (opts.key && near2(p, opts.key, CLEAR_OF_KEY)) return false;

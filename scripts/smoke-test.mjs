@@ -3289,7 +3289,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // --- A relic, off its pedestal ----------------------------------------
     await page.evaluate(() => window.__run.setState({ gems: 40, relics: [] }));
     const relicOffer = await stepTo(shelf, 2.0);
-    ok("a pedestal offers its relic, with what it does", /gems? -/.test(String(relicOffer)), String(relicOffer));
+    // The same diagnostic the counter got: when the prompt in reach is the
+    // wrong one, say which triggers were in reach and how far, rather than
+    // guessing at it afterwards.
+    const relicOffered = /gems? -/.test(String(relicOffer));
+    const relicNear = relicOffered
+      ? ""
+      : await page.evaluate(() => {
+          const p = window.__playerDebug;
+          const rows = Object.entries(window.__triggers || {})
+            .map(([label, t]) => `${label} ${t.dist.toFixed(2)}m ${t.enabled ? "on" : "off"}`)
+            .join("; ");
+          return ` | player ${p.x.toFixed(2)},${p.z.toFixed(2)} | ${rows}`;
+        });
+    ok("a pedestal offers its relic, with what it does", relicOffered, String(relicOffer) + relicNear);
     await act();
     const took = await page.evaluate(() => {
       const s = window.__run.getState();

@@ -316,14 +316,31 @@ export const LAYOUTS: Record<RoomKind, Arrangement[]> = {
     ],
   ],
   // The pedestals hold the far anchors and the lectern near[3].
+  /**
+   * Nothing between the lectern and the crystals.
+   *
+   * The first arrangement stood three pillars on the near quadrant - which
+   * is between the lectern, the fourth near spot, and the four crystals on
+   * the far ones - and the second put a statue there. A trial that lights
+   * four crystals and hides two of them behind stone is not a test of
+   * memory. Whatever this room holds stands in its corners now, and the
+   * placement filter keeps everything else, litter included, off the
+   * lines of sight.
+   */
   memory: [
-    ({ near }) => [at("pillar", near[0]), at("pillar", near[1]), at("pillar", near[2])],
-    ({ near, corners }) => [
-      at("statue", near[0], facing(near[0])),
-      at("urn", near[1]),
-      at("urn", near[2]),
+    // Nothing solid, because every corner already holds a brazier and a
+    // solid prop on the same spot stands inside it. Cloth, bone and dust.
+    ({ corners }) => [
       at("banner", corners[0]),
+      at("web", corners[1]),
       at("banner", corners[2]),
+      at("skull", corners[3]),
+    ],
+    ({ corners, rng }) => [
+      at("skull", corners[0]),
+      at("web", corners[1]),
+      at("rubble", corners[2], rng() * Math.PI),
+      at("banner", corners[3]),
     ],
   ],
   // The plate holds near[0] and the candles near[1] and near[2].

@@ -16,10 +16,29 @@ export interface NumberPuzzleProps {
   onExit: () => void;
 }
 
+/**
+ * Every number is one digit. The difficulty is how many, not how big.
+ *
+ * Medium and hard asked for numbers up to twenty and fifty, so a slot was
+ * a digit, a digit and a commit - and the commit was Space, which nobody
+ * is told. "Hard to input" was exactly that. With every number under ten
+ * a slot is one keypress and the sequence is typed the way it is read.
+ */
+const softKey = {
+  fontFamily: FONT,
+  fontSize: 11,
+  color: colors.ink,
+  background: "rgba(255,255,255,0.06)",
+  border: `1px solid ${colors.line}`,
+  borderRadius: 6,
+  padding: "6px 12px",
+  cursor: "pointer",
+} as const;
+
 const RULES = {
   easy: { length: 4, range: 9, showFor: 5, timeLimit: 45, misses: 3 },
-  medium: { length: 5, range: 20, showFor: 6, timeLimit: 45, misses: 3 },
-  hard: { length: 6, range: 50, showFor: 7, timeLimit: 40, misses: 2 },
+  medium: { length: 5, range: 9, showFor: 6, timeLimit: 45, misses: 3 },
+  hard: { length: 6, range: 9, showFor: 7, timeLimit: 40, misses: 2 },
 } as const;
 
 /**
@@ -74,17 +93,23 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
    */
   const startedAt = useRef(performance.now());
 
-  // Show, then hide, and start the clock at the moment they go.
+  /**
+   * Show, then hide, and start the clock at the moment they go - or the
+   * moment the player says they have them. "Slow to start" was five to
+   * seven seconds of looking at numbers you already had, with no way to
+   * say so.
+   */
+  const ready = useCallback(() => {
+    setPhase((p) => {
+      if (p !== "showing") return p;
+      startedAt.current = performance.now();
+      return "typing";
+    });
+  }, []);
   useEffect(() => {
-    const t = window.setTimeout(() => {
-      setPhase((p) => {
-        if (p !== "showing") return p;
-        startedAt.current = performance.now();
-        return "typing";
-      });
-    }, rules.showFor * 1000);
+    const t = window.setTimeout(ready, rules.showFor * 1000);
     return () => window.clearTimeout(t);
-  }, [rules.showFor]);
+  }, [rules.showFor, ready]);
 
   // The clock.
   useEffect(() => {
@@ -115,9 +140,34 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
 
   // What a digit, a commit and a backspace do. One description each, so a
   // key on the keyboard and a key on the screen cannot come to disagree.
-  const digit = useCallback((d: string) => {
-    setCurrent((c) => (c.length < 2 ? c + d : c));
-  }, []);
+  const settle = useCallback(
+    (value: string) => {
+      const next = [...entries, value];
+      setCurrent("");
+      if (next.length < sequence.length) {
+        setEntries(next);
+        return;
+      }
+      const correct = next.every((v, i) => Number(v) === sequence[i]);
+      if (correct) {
+        setEntries(next);
+        setPhase("solved");
+        return;
+      }
+      setShake(true);
+      window.setTimeout(() => setShake(false), 500);
+      setEntries([]);
+      const m = misses + 1;
+      setMisses(m);
+      if (m >= rules.misses) setPhase("failed");
+    },
+    [entries, sequence, misses, rules.misses]
+  );
+
+  // One keypress, one slot. Nothing is left uncommitted after a digit, so
+  // the commit below has nothing to do unless a key was typed by some
+  // other route - it is kept for the keypad's OK, which is harmless.
+  const digit = useCallback((d: string) => settle(d), [settle]);
 
   const commit = useCallback(() => {
     if (!current) return;
@@ -168,13 +218,22 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      onExit();
+      // Escape, or Q: the first Escape under a pointer lock that has not
+      // yet let go is eaten by the browser before the page sees it, which
+      // is what "can't exit the book" was. Q is never eaten.
+      if (event.key === "Escape" || event.code === "KeyQ") {
+        event.preventDefault();
+        onExit();
+        return;
+      }
+      if (phase === "showing" && (event.key === "Enter" || event.key === " ")) {
+        event.preventDefault();
+        ready();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onExit]);
+  }, [open, onExit, phase, ready]);
 
   // The pad's way out while there are no keys to press yet. The keypad
   // carries B once it is drawn, and takes the pad from this when it mounts.
@@ -224,7 +283,7 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
     <div ref={sheet} style={{ fontFamily: FONT, textAlign: "center", color: colors.ink }}>
       <div style={{ fontSize: 12, letterSpacing: "0.06em", marginBottom: 6 }}>THE TOME OF NUMBERS</div>
       <div style={{ fontSize: 10, color: colors.dim, marginBottom: 22 }}>
-        {phase === "showing" && "Remember these."}
+        {phase === "showing" && "Remember these. Enter when you have them."}
         {phase === "typing" && "Type them back, or use the keys. Space or OK commits a number."}
         {phase === "solved" && <span style={{ color: colors.gold }}>Correct. The tome yields a gem.</span>}
         {phase === "failed" && <span style={{ color: colors.danger }}>The tome closes.</span>}
@@ -246,6 +305,13 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
           return slot("", "empty", i);
         })}
       </div>
+      {phase === "showing" && (
+        <div style={{ marginBottom: 18 }}>
+          <button style={softKey} data-testid="tome-ready" onClick={ready}>
+            I have them
+          </button>
+        </div>
+      )}
       {phase === "typing" && (
         <div style={{ marginBottom: 18 }}>
           <Keypad
@@ -256,12 +322,20 @@ export function NumberPuzzle({ difficulty, seed, onComplete, onFail, onExit }: N
           />
         </div>
       )}
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: colors.dim }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, color: colors.dim }}>
         <span>
           Misses {misses}/{rules.misses}
         </span>
         <span style={{ color: timeLeft < 10 ? colors.danger : colors.dim }}>{Math.ceil(timeLeft)}s</span>
-        <span>Esc or B leaves</span>
+        {/* A key that leaves, on screen, under any pointer state. Esc and B
+            still work; this is the one that always does. */}
+        {open ? (
+          <button style={softKey} data-testid="tome-leave" onClick={onExit}>
+            Leave (Q)
+          </button>
+        ) : (
+          <span />
+        )}
       </div>
     </div>
   );
