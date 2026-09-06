@@ -6605,8 +6605,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const hudKneels = /kneels/i.test(document.body.innerText);
     // And while it kneels the stairs can be taken: the last floor's exit is the run won.
     window.__bus.emit("teleport", { position: [door[0] * 0.5, 1.5, door[2] * 0.5] });
-    await wait(1200);
-    const promptGo = /Pay the toll and go/i.test(document.body.innerText);
+    // The prompt is republished a frame after the trigger re-renders, and
+    // a frame here can be most of a second: read it in frames, not once.
+    let promptGo = false;
+    for (let i = 0; i < 16 && !promptGo; i++) {
+      await wait(250);
+      promptGo = /Pay the toll and go/i.test(document.body.innerText);
+    }
     const enabled = Object.entries(window.__triggers || {}).some(([label, t]) => /Pay the toll and go/.test(label) && t.enabled);
     run.getState().travel(post.dir);
     for (let i = 0; i < 30 && run.getState().transitioning; i++) await wait(150);
