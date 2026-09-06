@@ -5823,8 +5823,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       await wait(600);
       const inside = (x, z) => solid.some((p) => Math.hypot(x - p.x, z - p.z) < p.r - 0.05);
       let samples = 0, stood = 0, first = null, last = null;
+      // The Warden's stride is capped per frame, so how far it gets in
+      // nine seconds is a fact about this machine's frame rate: a budget
+      // that ended at 7.4 m one run and 8.6 m the next, either side of the
+      // line. It stops once it has closed the distance the check asks for,
+      // and waits long enough for the slowest frames seen here to get it
+      // there.
       const t0 = performance.now();
-      while (performance.now() - t0 < 9000) {
+      while (performance.now() - t0 < 16000) {
         await wait(120);
         const w = window.__warden;
         if (!w || run.getState().wardenRoomId !== room.id) continue;
@@ -5833,6 +5839,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         last = w.distance;
         if (inside(w.x, w.z)) stood++;
         if (run.getState().lives < 3) break;
+        if (samples > 10 && last < first * 0.6) break;
       }
       return { seed, room: room.id, kind: room.kind, size: room.size, props: solid.length, big: big.r, samples, stood, first, last, struck: run.getState().lives < 3 };
     }
