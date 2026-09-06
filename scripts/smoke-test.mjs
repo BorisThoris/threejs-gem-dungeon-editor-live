@@ -3369,10 +3369,16 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       // thing the counter sells, and the one this state could afford.
       run.setState({ lives: 3, gems: 9, satchel: [], identified: [], bombBought: true });
     });
+    // The bomb's offer was the prompt on screen a moment ago - the naming
+    // just bought made it the nearest usable thing - and it stays on
+    // screen until React has re-rendered the trigger and its frame loop
+    // has published again, which on this machine can be longer than two
+    // reads. Wait for the old offer to go before reading the reason.
+    await page.waitForFunction(() => !/Buy a bomb/.test(document.body.innerText), null, { timeout: 8000 }).catch(() => null);
     const blocked = await stepTo(counter, 2.0);
     ok(
       "a blocked counter still says why, when nothing better is in reach",
-      /full health|know what everything|could be better|bomb is sold/i.test(String(blocked)),
+      /full health|know what everything|could be better|it is sold/i.test(String(blocked)),
       String(blocked)
     );
 
