@@ -59,7 +59,31 @@ const domReady = async (fn, budget = 8000) => {
   const until = Date.now() + budget;
   for (;;) {
     if (await page.evaluate(fn)) return true;
-    if (Date.now() > until) return false;
+    if (Date.now() > until) {
+      // Say what the page looked like when it gave up. "The panel was not
+      // there" is not a finding; whether the run had ended, whether the
+      // canvas was still drawing and what was on the screen instead is.
+      const seen = await page
+        .evaluate(async () => {
+          const s = window.__run.getState();
+          const first = window.__perf ? window.__perf.frames : null;
+          await new Promise((r) => setTimeout(r, 600));
+          return {
+            phase: s.phase,
+            paused: s.paused,
+            transitioning: s.transitioning,
+            locks: s.inputLocks,
+            room: s.currentRoomId,
+            canvases: document.querySelectorAll("canvas").length,
+            rootKids: document.getElementById("root")?.childElementCount ?? -1,
+            drewFrames: window.__perf ? window.__perf.frames - first : null,
+            text: document.body.innerText.slice(0, 220).replace(/\n/g, " | "),
+          };
+        })
+        .catch((e) => ({ error: String(e).slice(0, 160) }));
+      console.log(`      nothing drawn: ${JSON.stringify(seen)}`);
+      return false;
+    }
     await page.waitForTimeout(200);
   }
 };
