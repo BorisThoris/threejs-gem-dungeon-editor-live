@@ -166,7 +166,7 @@ overlays, and on this machine - a software rasteriser at three to five
 frames a second - it now fails two to four checks intermittently, never
 the same ones twice, always in the same shape: the harness read a prompt
 too early, or stood a little wrong. Three of them were tracked down and
-fixed properly this round; the rest are described in PLAYTEST §37 along
+fixed properly this round; the rest are described in PLAYTEST §38 along
 with what would actually fix them, which is waiting on a condition the
 game publishes rather than on a clock. The checks that cover the new
 mechanics pass on every run.
