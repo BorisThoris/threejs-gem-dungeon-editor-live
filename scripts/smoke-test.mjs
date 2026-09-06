@@ -4412,7 +4412,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       unreachable,
     };
   });
-  ok("the title screen lists every deed", page8.count === 10, `${page8.count} cards`);
+  ok("the title screen lists every deed", page8.count === 15, `${page8.count} cards, fifteen since run 19`);
   ok(
     "with the earned ones marked, and the rest saying what they are for",
     page8.earned > 0 && /Rout the Warden on the floor's own spikes/.test(page8.text),
