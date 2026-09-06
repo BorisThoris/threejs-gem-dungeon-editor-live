@@ -1352,7 +1352,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const host = s.dungeon.rooms.find((r) => r.secret);
     const to = host.links[host.secret.dir];
     if (!to) return { error: "not open" };
-    run.getState().travel(to);
+    // Through the doorway, by its direction: `travel` takes the way out
+    // of the room the player is in, the same as walking up to the door.
+    run.getState().travel(host.secret.dir);
     for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
     const now = run.getState();
     return { room: now.currentRoomId, kind: now.dungeon.rooms.find((r) => r.id === now.currentRoomId).kind, visited: now.visited.includes(to) };
