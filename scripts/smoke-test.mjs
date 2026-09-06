@@ -6491,8 +6491,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const struck = run.getState().lives === livesBefore - 1;
     await wait(400);
     const away = window.__harrier && window.__harrier.away === true && D.harrier().away;
-    // Wait out the retreat, then a bomb: the blast downs it wherever it is in the room.
-    await wait((W.HARRIER_RETREAT_S + 1) * 1000);
+    // It has struck and is wheeling away, and a blast while it is away
+    // downs nothing - it is not in the room. Time the bomb so the burst
+    // lands just after it is back at its doorway and before it can cross
+    // the room to strike again: the fuse, on the run's clock, ending a
+    // stride after the retreat does.
+    const back = run.getState().harrierRetreatUntil;
+    while (D.clock() < back - W.BOMB_FUSE_S + 0.6) await wait(100);
     run.setState({ lives: 9 });
     const placed = run.getState().placeDevice(0);
     const t1 = D.clock();
