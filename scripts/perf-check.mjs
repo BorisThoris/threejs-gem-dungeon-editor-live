@@ -222,16 +222,28 @@ const drift = await page.evaluate(async () => {
     return row;
   };
 
-  // One lap to build every shape the floor needs, then a baseline, then
-  // three more. The first lap is the only one that climbs.
+  // One lap to build every shape the floor needs, then four more.
+  //
+  // The comparison is between the last two laps, not between the first and
+  // the last. A room settles when three consecutive rendered frames agree,
+  // and at four frames a second that can latch while the room is still
+  // building - so a single early lap reads low and a first-to-last
+  // comparison reports the difference as growth. The exit room of seed
+  // 4242 reads 49 on its first visit and 54 on every visit after: five
+  // geometries built once and cached, which is not a leak and which a
+  // first-to-last comparison called one.
+  //
+  // A leak piles up. Whatever builds and never disposes does it on every
+  // lap, so it shows between two consecutive settled laps - and a lap that
+  // under-read cannot poison that, because the next lap is compared with
+  // the one beside it rather than with the low one.
   await walk();
-  const first = await walk();
-  let last = first;
-  for (let lap = 0; lap < 3; lap++) last = await walk();
+  const laps = [];
+  for (let lap = 0; lap < 4; lap++) laps.push(await walk());
   // Kept for a second opinion on any room that appears to have grown,
   // without paying for a whole floor again.
   window.__settleIn = settleIn;
-  return { ids, first, last, laps: 3, rooms: ids.length };
+  return { ids, laps, first: laps[0], last: laps[laps.length - 1], rooms: ids.length };
 });
 
 /**
@@ -247,10 +259,14 @@ const drift = await page.evaluate(async () => {
  * still above where it started. A real leak - a room that builds and
  * never disposes - grows on every lap and cannot come back clean.
  */
+const prev = drift.laps[drift.laps.length - 2];
 let grew = drift.ids
-  .map((id, i) => ({ id, by: drift.last[i] - drift.first[i] }))
+  .map((id, i) => ({ id, by: drift.last[i] - prev[i] }))
   .filter((r) => r.by > 0);
 if (grew.length) {
+  // And ask the room once more before calling it. A settle that latched a
+  // frame early reads low; a room that leaks reads higher every time it is
+  // asked.
   const again = await page.evaluate(
     async ([ids, base]) => {
       const out = {};
@@ -259,7 +275,7 @@ if (grew.length) {
     },
     [
       grew.map((r) => r.id),
-      Object.fromEntries(grew.map((r) => [r.id, drift.first[drift.ids.indexOf(r.id)]])),
+      Object.fromEntries(grew.map((r) => [r.id, drift.last[drift.ids.indexOf(r.id)]])),
     ]
   );
   const before = grew.map((r) => `${r.id} +${r.by}`).join(", ");
@@ -272,8 +288,8 @@ ok(
   "walking the floor over and over does not pile up geometries, room by room",
   grew.length === 0,
   grew.length
-    ? `${grew.map((r) => `${r.id} +${r.by}`).join(", ")} over ${drift.laps} laps`
-    : `${drift.rooms} rooms, none grew over ${drift.laps} laps: ${drift.first.join(" ")}`
+    ? `${grew.map((r) => `${r.id} +${r.by}`).join(", ")} lap on lap`
+    : `${drift.rooms} rooms, none grew from one settled lap to the next: ${drift.last.join(" ")}`
 );
 
 // Sprinting is the frame loop at its busiest: input, physics, footsteps,
