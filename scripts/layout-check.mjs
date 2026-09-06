@@ -996,6 +996,55 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// The ground a room is made of, and what running on it costs.
+//
+// Eight biomes were a paint job until this: a flooded cistern and a bed of
+// moss furnished differently, lit differently, and played identically.
+// Each one now scales how long a sprint keeps the Warden coming, which is
+// the only cost running has - so the numbers have to be a real spread, and
+// the room has to say which it is before the player commits to the dash.
+{
+  const carries = L.BIOMES.map((id) => L.BIOME[id].carry);
+  check(
+    "every biome says how far a run through it carries",
+    carries.every((c) => typeof c === "number" && c > 0),
+    L.BIOMES.map((id) => `${id}:${L.BIOME[id].carry}`).join(" ")
+  );
+  check(
+    "and every biome names the floor the player is standing on",
+    L.BIOMES.every((id) => typeof L.BIOME[id].ground === "string" && L.BIOME[id].ground.length > 3),
+    L.BIOMES.map((id) => L.BIOME[id].ground).join(", ")
+  );
+  // Not "they differ": two biomes a tenth apart differ and play the same.
+  // The quietest has to be worth crossing at a run and the loudest has to
+  // be worth walking, which is a factor of two or it is decoration.
+  const low = Math.min(...carries);
+  const high = Math.max(...carries);
+  check(
+    "the quietest ground is worth a run and the loudest is worth a walk",
+    high / low >= 2,
+    `${low} to ${high}, a factor of ${(high / low).toFixed(2)}`
+  );
+  check(
+    "bare stone is the figure the others are read against",
+    L.BIOME.hewn.carry === 1,
+    String(L.BIOME.hewn.carry)
+  );
+  // A kind whose biomes all carry the same amount asks the player nothing.
+  // Only the set pieces are allowed to be uniform - their rooms are about
+  // the thing in them - and the ordinary rooms a run is mostly made of
+  // must offer a choice.
+  const flat = ["normal", "trap", "treasure"].filter((kind) => {
+    const cs = L.BIOMES_FOR[kind].map((id) => L.BIOME[id].carry);
+    return Math.max(...cs) / Math.min(...cs) < 1.4;
+  });
+  check(
+    "the rooms a run is mostly made of are not all the same underfoot",
+    flat.length === 0,
+    flat.join(", ") || "normal, trap and treasure all vary"
+  );
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,

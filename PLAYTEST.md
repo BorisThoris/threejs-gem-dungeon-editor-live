@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §30 asks a human
+  moment it can afford to. That is precisely the behaviour §31 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §30.
+for a person, not for this document, and it is on the list in §31.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2421,14 +2421,57 @@ held to within how far the player travels between corrections, which at
 renders at sixty, and `yarn test:layout` still holds the beam to the
 promise at full precision by asking `beam.ts` rather than a rasteriser.
 
-## 29. Steam Deck
+## 29. The ground decides how far you are heard
+
+Eight biomes, and until this run they were a paint job. A flooded cistern
+and a bed of moss were furnished differently, lit differently, and played
+*identically* - §27 gave them their own litter and §26 their own stone,
+and neither changed a single decision a player makes.
+
+Running is the one speed in this game that costs something. It tells the
+Warden which room you are in and keeps telling it for `NOISE_HOLD_S`
+after you stop, which was four seconds everywhere. It is the biome's
+number now:
+
+| Ground | Carries | A dash costs |
+| --- | --- | --- |
+| Deep moss | 0.5 | 2.0s |
+| Bare stone, dry brick, swept stone | 1 | 4.0s |
+| Iron grating, loose boards | 1.25 | 5.0s |
+| Old bone | 1.5 | 6.0s |
+| Standing water | 1.75 | 7.0s |
+
+Measured through the store over every room of twelve floors: **2s to 7s**,
+and the bare four between floors, where there is no room to be standing
+in. The dash stops being one answer the player memorises and becomes a
+question the room asks - cross the moss at a run, and think at the
+water's edge.
+
+The HUD says which it is, because the decision has to be makeable *before*
+the dash rather than learned by being caught: `GROUND standing water ·
+carries`, `GROUND deep moss · swallows sound`. Named as well as judged, so
+a reader who cannot tell gold from red has both halves.
+
+### And the check found a room I had left flat
+
+`the rooms a run is mostly made of are not all the same underfoot` went
+red on `treasure`. Its three biomes were catacomb, foundry and hewn - 1,
+1.25 and 1 - which is one room in three coats, and a check that only
+asked "do the numbers differ" would have passed it.
+
+A treasure room is now flooded as often as it is dry. It is the room that
+most tempts a player to grab and run, so it is the one where running
+should sometimes be the worst thing available: the haul becomes a decision
+rather than a pickup.
+
+## 30. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 30. What a human playtest should watch for
+## 31. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2554,7 +2597,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 31. Options and accessibility
+## 32. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2586,7 +2629,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 32. Deeds
+## 33. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2619,7 +2662,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 33. Two harness bugs that read as game bugs
+## 34. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2692,7 +2735,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 34. Tuning knobs
+## 35. Tuning knobs
 
 All in `src/game/world.ts`:
 

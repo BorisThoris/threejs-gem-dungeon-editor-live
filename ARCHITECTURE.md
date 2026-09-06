@@ -505,6 +505,11 @@ src/
    lure room instead: the Warden walks there rather than towards the player
    and stops listening for footsteps until it arrives or the sound goes
    cold, which is the one thing in the run that buys the right to sprint.
+   How long that giveaway lasts is the room's, not a constant: `noiseHoldFor`
+   scales `NOISE_HOLD_S` by the biome's `carry`, so the same dash is two
+   seconds across deep moss and seven through standing water, and the HUD
+   names the ground so the choice can be made before the dash rather than
+   learned by being caught.
    The shrine is the other, and the slower one: kneel at the font for a gem
    and the alarm goes back to the floor's own baseline and the lure with it,
    once per floor. It is the only thing in the game a spare gem buys that is

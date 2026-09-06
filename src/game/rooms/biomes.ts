@@ -59,6 +59,30 @@ export interface Biome {
    * blue and a room that reads as flooded.
    */
   litter: readonly PropKind[];
+  /**
+   * How far a sprint through this room carries, as a share of
+   * `NOISE_HOLD_S`.
+   *
+   * Running is the one speed in the game that costs something: it tells
+   * the Warden which room you are in and keeps telling it for a few
+   * seconds after you stop. That was the same few seconds everywhere,
+   * which meant the eight biomes were a paint job - a flooded cistern and
+   * a bed of moss played identically and only looked different.
+   *
+   * They do not sound the same. Moss swallows a footfall, standing water
+   * throws it down every corridor, and a floor of old bone announces you
+   * whatever you do. One number per biome, and the dash becomes a
+   * question the room asks rather than one answer the player memorises:
+   * cross the moss at a run, and think twice at the water's edge.
+   */
+  carry: number;
+  /**
+   * What the HUD calls the floor of this room, and what that floor does
+   * to a run. The player has to be able to make the decision *before* the
+   * dash, so the room says what it is made of rather than leaving it to
+   * be learned by being caught.
+   */
+  ground: string;
 }
 
 /**
@@ -75,14 +99,14 @@ export interface Biome {
 export const NEVER_LITTER: readonly PropKind[] = ["crystal", "candle", "spikes", "chest"];
 
 export const BIOME: Record<BiomeId, Biome> = {
-  hewn: { name: "Hewn stone", floor: "#a9a9b3", wall: "#65656d", surface: "stone", glow: "#8790a8", light: 1, litter: ["rubble", "pillar"] },
-  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"] },
-  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"] },
-  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"] },
-  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"] },
-  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"] },
-  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"] },
-  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"] },
+  hewn: { name: "Hewn stone", floor: "#a9a9b3", wall: "#65656d", surface: "stone", glow: "#8790a8", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone" },
+  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss" },
+  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick" },
+  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water" },
+  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating" },
+  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"], carry: 1.25, ground: "loose boards" },
+  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"], carry: 1.5, ground: "old bone" },
+  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"], carry: 1, ground: "swept stone" },
 };
 
 /**
@@ -98,7 +122,11 @@ export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
   normal: ["hewn", "mossy", "catacomb", "flooded", "bone"],
-  treasure: ["catacomb", "foundry", "hewn"],
+  // Flooded as well as dry, because the room that most tempts a player to
+  // grab and run is the one where running is loudest: a drowned strongroom
+  // makes the haul a decision rather than a pickup. Without it the three
+  // treasure biomes were 1, 1.25 and 1, which is one room in three coats.
+  treasure: ["catacomb", "foundry", "hewn", "flooded"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
   trap: ["hewn", "flooded", "foundry"],

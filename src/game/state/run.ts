@@ -33,6 +33,7 @@ import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
 import { nestRoom } from "../thief/nest";
+import { biomeFor } from "../rooms/biomes";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
@@ -1226,7 +1227,7 @@ export const useRun = create<RunState>()(
 
     makeNoise: () => {
       const s = get();
-      const until = runClock(s) + NOISE_HOLD_S;
+      const until = runClock(s) + noiseHoldFor(s);
       // Called from the frame loop while a sprint is held, so it must be
       // cheap and must not write on every frame: every write re-runs every
       // selector in the store. The deadline is seconds long, so refreshing
@@ -1449,6 +1450,31 @@ export function lureNow(s: RunState): string | null {
  * taken rouses the floor for good; a sprint only gives you away while it
  * lasts, which is what makes the two different costs.
  */
+/**
+ * The room the player is standing in, or undefined between floors.
+ *
+ * Asked here rather than through `useCurrentRoom`, which is a hook: the
+ * store has to answer this from inside `makeNoise`, on the frame loop.
+ */
+const roomNow = (s: RunState): Room | undefined =>
+  s.dungeon && s.currentRoomId ? roomById(s.dungeon, s.currentRoomId) : undefined;
+
+/**
+ * How long a sprint keeps the Warden coming, in this room.
+ *
+ * `NOISE_HOLD_S` is the bare-stone figure; the biome scales it. Standing
+ * water throws a footfall down every corridor and moss swallows it, so
+ * the same dash is a seven-second confession in one room and a
+ * two-second one in another. Between floors, where there is no room to
+ * stand in, it is the bare figure - a noise made through a black screen
+ * is one the game should not be inventing a floor for.
+ */
+export const noiseHoldFor = (s: RunState): number => {
+  const room = roomNow(s);
+  if (!room || !s.dungeon) return NOISE_HOLD_S;
+  return NOISE_HOLD_S * biomeFor(room.kind, room.id, s.dungeon.seed).carry;
+};
+
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 
 /** Whether the lantern is up and still has oil in it. */
@@ -1570,8 +1596,7 @@ export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s
 export const canSpend = (s: RunState, price: number): boolean =>
   s.gems >= price && s.gems - price >= tollNow(s);
 
-export const useCurrentRoom = (): Room | undefined =>
-  useRun((s) => (s.dungeon && s.currentRoomId ? roomById(s.dungeon, s.currentRoomId) : undefined));
+export const useCurrentRoom = (): Room | undefined => useRun(roomNow);
 
 // Dev-only handle for the smoke test and the console. The derived numbers
 // go with it: a test that reads the toll off the HUD is really testing
@@ -1602,6 +1627,12 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // module from the page is a second copy of it.
     canSpend: (price: number) => canSpend(useRun.getState(), price),
     hears: () => wardenHears(useRun.getState()),
+    // How long a sprint in this room keeps the Warden coming.
+    noiseHold: () => noiseHoldFor(useRun.getState()),
+    // The run's own clock, which every deadline in the store is kept on.
+    // A probe that reads a deadline needs the clock it was set against;
+    // `performance.now()` is not it once the pause menu has been opened.
+    clock: () => runClock(useRun.getState()),
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();

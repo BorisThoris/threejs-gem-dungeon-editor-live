@@ -16,6 +16,7 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
+import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { FLOORS } from "../game/world";
@@ -50,6 +51,17 @@ export function Hud() {
   const marks = useSettings((s) => s.highContrast);
   const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
+  const dungeonSeed = useRun((s) => s.dungeon?.seed ?? 0);
+  // Loud, quiet, or neither, off the one number the store runs the sprint
+  // on. Nothing here decides anything: `noiseHoldFor` does, and this reads
+  // the same `carry` it reads.
+  const ground = (() => {
+    if (!room) return null;
+    const b = biomeFor(room.kind, room.id, dungeonSeed);
+    if (b.carry > 1.1) return { name: b.ground, says: "carries", tone: colors.danger };
+    if (b.carry < 0.9) return { name: b.ground, says: "swallows sound", tone: colors.gold };
+    return { name: b.ground, says: "dead", tone: colors.dim };
+  })();
 
   const { heard, seen, lit, oil, lured, reeling, warded, barSeconds } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
@@ -110,6 +122,20 @@ export function Hud() {
         <span style={{ color: colors.dim }}>/{FLOORS} · </span>
         {room ? KIND_TITLE[room.kind] : ""}
       </div>
+      {/* What the floor is made of, and what running on it costs.
+          The dash is the one speed that gives the player away, and the
+          biome decides for how long - so the room has to say what it is
+          before the decision, not after being caught. Named as well as
+          judged: "standing water" is why, "loud" is what it means, and a
+          reader who cannot tell the colours apart has both. */}
+      {ground && (
+        <div>
+          <span style={{ color: colors.dim }}>GROUND </span>
+          {ground.name}
+          <span style={{ color: colors.dim }}> · </span>
+          <span style={{ color: ground.tone }}>{ground.says}</span>
+        </div>
+      )}
       {wardenAwake && (
         <div>
           <span style={{ color: colors.dim }}>WARDEN </span>

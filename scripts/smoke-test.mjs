@@ -1186,6 +1186,111 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   // Walking is quiet, so what it heard has to run out on its own.
   await page.waitForTimeout(5200);
   const after = await page.evaluate(() => ({ hears: window.__derived.hears(), hunts: window.__derived.hunts() }));
+/**
+ * What the floor is made of decides how far a run through it carries.
+ *
+ * Running is the only speed that costs anything - it tells the Warden
+ * which room you are in and keeps telling it for a few seconds after you
+ * stop - and that was the same few seconds in every room in the game, so
+ * eight biomes were a paint job. Moss swallows a footfall, standing water
+ * throws it down every corridor. Driven through the store rather than
+ * computed here: the check must not own a second copy of the arithmetic
+ * it is checking, and importing the module that owns it would be a second
+ * copy of the store as well.
+ */
+{
+  const ground = await page.evaluate(async () => {
+    const run = window.__run;
+    const seen = {};
+    // Enough floors that every biome a room may be built in turns up.
+    for (let seed = 1; seed <= 12; seed++) {
+      run.getState().startRun(seed);
+      await new Promise((r) => setTimeout(r, 400));
+      const d = run.getState().dungeon;
+      for (const room of d.rooms) {
+        run.setState({ currentRoomId: room.id });
+        const hold = window.__derived.noiseHold();
+        (seen[room.kind] ??= new Set()).add(hold);
+      }
+    }
+    const holds = Object.values(seen).flatMap((set) => [...set]);
+    // No room at all - the black frame between two floors.
+    run.setState({ currentRoomId: null });
+    const between = window.__derived.noiseHold();
+    return {
+      low: Math.min(...holds),
+      high: Math.max(...holds),
+      between,
+      varies: Object.entries(seen)
+        .filter(([, set]) => set.size > 1)
+        .map(([kind]) => kind),
+    };
+  });
+  ok(
+    "the ground a room is made of changes how long a run gives you away",
+    ground.high / ground.low >= 2,
+    `${ground.low}s to ${ground.high}s across every room of twelve floors`
+  );
+  // Whether the generator *can* vary a given kind is `yarn test:layout`'s
+  // question and it asks it of every kind; twelve floors here is a sample
+  // of that rather than a statement about it. What this asks is that the
+  // variety reaches a played run at all.
+  ok(
+    "and more than one kind of room comes in more than one ground",
+    ground.varies.length >= 4,
+    ground.varies.join(", ")
+  );
+  ok(
+    "between floors, where there is no room to stand in, it is the bare figure",
+    ground.between === 4,
+    `${ground.between}s`
+  );
+
+  // And the same dash, actually held, in the quietest room and the
+  // loudest: the store's own deadline, not a number read off a table.
+  const dash = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(7);
+    await wait(900);
+    const d = run.getState().dungeon;
+    const held = [];
+    for (const room of d.rooms) {
+      run.setState({ currentRoomId: room.id, noisyUntil: 0 });
+      const hold = window.__derived.noiseHold();
+      run.getState().makeNoise();
+      const s = run.getState();
+      held.push({ id: room.id, hold, left: +(s.noisyUntil - window.__derived.clock()).toFixed(1) });
+    }
+    held.sort((a, b) => a.hold - b.hold);
+    return { softest: held[0], loudest: held[held.length - 1] };
+  });
+  ok(
+    "a dash on the softest ground is spent sooner than the same dash on the loudest",
+    dash.softest.left < dash.loudest.left,
+    `${dash.softest.left}s in ${dash.softest.id} against ${dash.loudest.left}s in ${dash.loudest.id}`
+  );
+
+  // And the player can see which it is before committing to the dash.
+  const said = await page.evaluate(async () => {
+    const run = window.__run;
+    const d = run.getState().dungeon;
+    const lines = [];
+    for (const room of d.rooms.slice(0, 6)) {
+      run.setState({ currentRoomId: room.id, transitioning: false });
+      await new Promise((r) => setTimeout(r, 300));
+      const m = document.body.innerText.match(/GROUND[^\n]*/);
+      if (m) lines.push(m[0]);
+    }
+    return lines;
+  });
+  ok(
+    "the HUD says what the floor is made of, so the dash is a decision",
+    said.length > 0 && said.every((l) => /carries|swallows sound|dead/.test(l)),
+    said.slice(0, 3).join(" | ") || "no GROUND line"
+  );
+}
+
   ok("a calm floor is not hunting anyone", !quiet.hears && !quiet.hunts, JSON.stringify(quiet));
   ok("running gives the player away", loud.hears && loud.hunts, JSON.stringify(loud));
   ok("and stopping lets it lose them again", !after.hears && !after.hunts, JSON.stringify(after));
