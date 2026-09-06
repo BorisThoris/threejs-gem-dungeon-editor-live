@@ -1217,6 +1217,85 @@ check("the shipped room templates reach the floors the game generates", authored
   check("a fuse is long enough to walk away from and short enough to matter", L.BOMB_FUSE_S >= 2 && L.BOMB_FUSE_S <= 4, `${L.BOMB_FUSE_S}s`);
 }
 
+// Bodies: the floor treats what lives on it as it treats the player.
+//
+// The Warden and the Cutpurse each built their own list of what to walk
+// round and what bites them, and neither list had a table in it: both
+// walked through the furniture the player has to walk round. Every mob
+// now declares a body - ground, flying or ghost - and one owner,
+// `mobs/body.ts`, answers two questions from it: what this body steers
+// round, and what bites it. Spikes and snares bite a ground body and
+// nothing else; solid props are in the way of anything that is not a
+// ghost; a ghost passes through all of it. These hold the table and the
+// two functions to that, and hold a ground body to still being able to
+// get from a doorway to the gem past the furniture it now respects.
+{
+  const bodies = L.BODIES;
+  const MOBS = ["warden", "cutpurse"];
+  check("every mob declares a body", !!bodies && MOBS.every((m) => ["ground", "flying", "ghost"].includes(bodies[m])), bodies ? JSON.stringify(bodies) : "no BODIES");
+  check("the Warden and the Cutpurse walk on the ground", !!bodies && bodies.warden === "ground" && bodies.cutpurse === "ground", bodies ? `${bodies.warden}, ${bodies.cutpurse}` : "-");
+
+  const d = L.generateDungeon({ seed: 4242, minRooms: 8, maxRooms: 16 });
+  const room = d.rooms.find((r) => r.kind === "trap") ?? d.rooms[2];
+  const gem = L.gemFor(room, d.seed);
+  const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
+  const solid = L.placementsFor(room, d.seed).filter((q) => L.PROP_SPECS[q.kind].solid);
+  const walls = (body) => (L.obstaclesFor ? L.obstaclesFor(body, room, d.seed, []) : null);
+  const bites = (body) => (L.bitesFor ? L.bitesFor(body, room, d.seed, []) : null);
+  const g = walls("ground"), f = walls("flying"), gh = walls("ghost");
+  check(
+    "a ground body walks round every solid prop, and a ghost round nothing",
+    !!g && !!gh && g.length >= solid.length && gh.length === 0,
+    g ? `ground ${g.length} of ${solid.length} solid props, ghost ${gh.length}` : "no obstaclesFor"
+  );
+  check("a flying body walks round the furniture too - it is in the way at any height", !!f && f.length >= solid.length, f ? String(f.length) : "-");
+  const bg = bites("ground"), bf = bites("flying"), bgh = bites("ghost");
+  check(
+    "spikes bite a ground body and nothing that flies or passes through",
+    !!bg && !!bf && !!bgh && bg.length >= spikes.length && bf.length === 0 && bgh.length === 0,
+    bg ? `ground ${bg.length} of ${spikes.length} patches, flying ${bf.length}, ghost ${bgh.length}` : "no bitesFor"
+  );
+
+  // Respecting the furniture must not strand it: from every doorway of
+  // every room, a ground body its own size across can still reach the gem.
+  if (L.obstaclesFor) {
+    let stranded = 0, walked = 0;
+    const examples = [];
+    for (let seed = 1; seed <= 60; seed++) {
+      const dd = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      for (const r of dd.rooms) {
+        const target = L.gemFor(r, dd.seed);
+        if (!target) continue;
+        const half = r.size / 2;
+        const obs = L.obstaclesFor("ground", r, dd.seed, []);
+        const R = L.WARDEN_TOUCH_RADIUS ?? 0.6;
+        const blocked = (x, z) => Math.abs(x) > half - R || Math.abs(z) > half - R || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + R);
+        for (const dir of Object.keys(r.links)) {
+          walked++;
+          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir) : null;
+          if (!start) { walked--; continue; }
+          // Coarse flood fill on a half-metre grid.
+          const step = 0.5, seen = new Set(), queue = [[start[0], start[2]]];
+          const k = (x, z) => `${Math.round(x / step)},${Math.round(z / step)}`;
+          seen.add(k(start[0], start[2]));
+          let found = false;
+          while (queue.length && !found) {
+            const [x, z] = queue.shift();
+            if (Math.hypot(x - target[0], z - target[2]) < 1.2) { found = true; break; }
+            for (const [dx, dz] of [[step,0],[-step,0],[0,step],[0,-step]]) {
+              const nx = x + dx, nz = z + dz, kk = k(nx, nz);
+              if (seen.has(kk) || blocked(nx, nz)) continue;
+              seen.add(kk); queue.push([nx, nz]);
+            }
+          }
+          if (!found) { stranded++; if (examples.length < 3) examples.push(`${r.kind} ${r.id}@${dd.seed} from ${dir}`); }
+        }
+      }
+    }
+    check("and respecting the furniture never strands a ground body short of the gem", stranded === 0, `${stranded} of ${walked} doorways  ${examples.join(" | ")}`);
+  }
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,
