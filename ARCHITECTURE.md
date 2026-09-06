@@ -243,6 +243,15 @@ Two stores that both claimed the player's stats. So:
   roost carries a dash through `rouseBats` writing `noisyUntil` - the
   same two deadlines the lantern and the sprint write, so `wardenSenses`
   did not learn a third sense.
+- Where the floor's traps are is `src/game/traps/placement.ts` -
+  `trapsFor(room, seed, endId)` - and what each is to a body is `TRAPS`,
+  in the body table's own words (`springs`, `hurts`). The store owns
+  what has gone off (`sprung`, by key and run-clock second: a plate
+  re-arms, a pit stays open) and the two things a trap can do to the
+  run: `springTrap` and `dropGrate`, the latter a bar the player did not
+  make. An open pit reaches every creature through `bitesFor`, which
+  reads `sprung` beside `placed` - the one list of what bites a ground
+  body, now with the floor's own holes in it.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

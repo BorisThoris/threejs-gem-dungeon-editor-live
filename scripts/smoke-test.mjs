@@ -2695,10 +2695,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const atLectern = await stepTo(library.anchors[0], 1.9);
     ok("the lectern offers the tome, when the prompt can be read", atLectern === null || /tome/i.test(atLectern), String(atLectern));
     await act();
-    const opened = await page.evaluate(() => ({
-      overlay: /remember|sequence|tome/i.test(document.body.innerText),
-      sequence: window.__numberSequence ?? null,
-    }));
+    // The sequence is published from the tome's own effect, a frame or two
+    // after the overlay is drawn - and a frame here can be most of a
+    // second when the machine is busy. Read it the way the prompt is read:
+    // in frames, not in one wall-clock guess.
+    let opened = { overlay: false, sequence: null };
+    for (let i = 0; i < 12 && !opened.sequence; i++) {
+      opened = await page.evaluate(() => ({
+        overlay: /remember|sequence|tome/i.test(document.body.innerText),
+        sequence: window.__numberSequence ?? null,
+      }));
+      if (!opened.sequence) await page.waitForTimeout(250);
+    }
     ok("standing at the lectern and pressing E opens the tome", !!opened.sequence, JSON.stringify(opened));
     if (opened.sequence) {
       // It hides the numbers first - five to seven seconds by difficulty,

@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §37 asks a human
+  moment it can afford to. That is precisely the behaviour §38 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §37.
+for a person, not for this document, and it is on the list in §38.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2828,14 +2828,82 @@ raised lantern; the light is still in the Warden's eye longer than the
 lantern's own hold after it is lowered; and a dash under a roost rouses
 the bats and leaves the noise further out than the ground's own hold.
 
-## 36. Steam Deck
+## 36. The floor's own traps
+
+The brief: "Maybe we need environmental traps etc." - and the half of
+it that is Spelunky rather than Barony: a hazard is only interesting if
+the thing hunting you is subject to it too. Run 9 made that a rule
+rather than a wish. This is the first floor furniture written against
+it: three traps, each declaring who springs it and who it hurts in the
+body table's own words, so a ground mob triggers what the player would
+and a ghost walks through all of it.
+
+### Three traps, one owner
+
+`traps/placement.ts` says where they are, derived from the room and the
+seed the way the furniture and the rats are - never in the start, the
+exit, a shop or a puzzle room, at most two to a room, and about
+28% of rooms carry one.
+
+**A dart plate** sits a stride inside a doorway, in the lane. Anything
+with feet that steps on it looses a volley across the lane for
+`DART_FLIGHT_S`, and whatever is in the lane at chest height then is
+hit: the player loses a life, the Warden takes a wound through the same
+door the spikes use. It re-arms `DART_REARM_S` later. A rat runs under
+the darts and a ghost through them, which is what `TRAPS.darts.hurts`
+says. The use: stand beyond the plate. The Warden walks straight at you,
+through the lane.
+
+**A pit** is a crack in the flagstones off every lane, clear of the
+furniture and never on the gem. It gives way once, under whatever walks
+on it - the player loses a life, the Warden is wounded - and from then
+on it is a spike patch in `bitesFor("ground")` for everything with
+feet, so the same Warden that fell through it steers round it once wary,
+and a rat that runs over it dies. The use: lead the Warden over it.
+
+**A grate** hangs over one doorway of a room with at least two, never
+the exit's. Come in under it and it drops behind you: that doorway is
+barred as a bar you made would be, for `GRATE_HOLD_S` - shorter than
+your own forty-five seconds, because you did not choose it, and silent,
+because nobody hammered anything. The Warden behind you has to break it,
+and is heard doing it. The risk is the same grate with the Warden
+already inside.
+
+### Held to the shape of it
+
+Nine layout checks: every trap speaks the body table's language and none
+of them touches a ghost; darts hurt what has feet or wings; a plate
+re-arms after its volley and not during it; a grate holds for less than a
+bar; over 120 floors every plate guards a doorway that exists, every
+grate one that is not the exit's, and no pit is in a lane, on the gem
+or under the furniture.
+
+### Played
+
+Five smoke checks on one floor with all three: stepping on the plate
+costs a life; the Warden walking in through that doorway after you is
+wounded by the volley; a pit opens under the Warden and the body table
+lists it from then on; a grate drops behind you and the HUD says the
+doorway is barred.
+
+Two of those took three tries, and both lessons are worth keeping. A
+volley that only looked for targets from the frame after the plate
+sprang missed the one who set it off whenever that frame was longer
+than the flight, which on this machine is often: now whoever is on the
+plate the frame it springs is hit that frame. And the pit check's first
+Warden never reached the pit because the room also had a dart plate in
+its entry lane - it walked in over it, was wounded twice and routed. That
+is the floor working exactly as designed, and a thing a player can do
+on purpose; the check now measures the pit in a room with only a pit.
+
+## 37. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 37. What a human playtest should watch for
+## 38. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2961,7 +3029,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 38. Options and accessibility
+## 39. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2993,7 +3061,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 39. Deeds
+## 40. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3026,7 +3094,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 40. Harness bugs that read as game bugs
+## 41. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3115,7 +3183,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 41. Tuning knobs
+## 42. Tuning knobs
 
 All in `src/game/world.ts`:
 
