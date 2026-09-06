@@ -1425,9 +1425,10 @@ export const useRun = create<RunState>()(
       bus.emit("bombBurst", { roomId, x, z });
       // The player, if they did not walk.
       if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z)) get().damage();
-      // The Warden, if it is in the room: a bomb in a room with the Warden
-      // is the whole point of carrying one.
-      if (get().wardenRoomId === roomId && get().currentRoomId === roomId) get().routWarden();
+      // The Warden, if it is in the room - whether or not the player is.
+      // A bomb left behind in a room the Warden later walks into is a
+      // trap, and a trap that only works while you stand in it is a dud.
+      if (get().wardenRoomId === roomId) get().routWarden();
       // The thief, likewise: it drops what it holds. It is only ever in the
       // room the player is in - it comes for them and runs from them - so
       // "in this room" is "the player is".
