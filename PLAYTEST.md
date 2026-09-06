@@ -3045,8 +3045,8 @@ warning; every flavour has a caption and a sound. Four smoke checks: the
 store's toggle draws one mark and clears it; a mark stays on the room it
 was made in when the player walks on; the key does what the store does;
 and the wall speaks the floor's flavour while the player stands in the
-draft - at least once in five and a half seconds, which is one
-cadence and a bit - and not once from
+draft - twice in five and a half seconds, on the four-second
+cadence - and not once from
 the middle of the room.
 
 ## 40. Steam Deck
