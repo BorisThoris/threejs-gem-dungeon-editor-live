@@ -228,12 +228,46 @@ const drift = await page.evaluate(async () => {
   const first = await walk();
   let last = first;
   for (let lap = 0; lap < 3; lap++) last = await walk();
+  // Kept for a second opinion on any room that appears to have grown,
+  // without paying for a whole floor again.
+  window.__settleIn = settleIn;
   return { ids, first, last, laps: 3, rooms: ids.length };
 });
 
-const grew = drift.ids
+/**
+ * A leak is growth that keeps happening, so ask the room twice.
+ *
+ * A room settles when three consecutive rendered frames report the same
+ * count, and on a rasteriser drawing four frames a second a room can
+ * occasionally report one geometry more on the lap it was read than on
+ * the lap it was built - a single geometry, which is the smallest reading
+ * this check can take. It has twice now named a room that did not grow
+ * when asked again. So a first reading of growth is a question rather
+ * than a finding: walk that room again, and only call it a leak if it is
+ * still above where it started. A real leak - a room that builds and
+ * never disposes - grows on every lap and cannot come back clean.
+ */
+let grew = drift.ids
   .map((id, i) => ({ id, by: drift.last[i] - drift.first[i] }))
   .filter((r) => r.by > 0);
+if (grew.length) {
+  const again = await page.evaluate(
+    async ([ids, base]) => {
+      const out = {};
+      for (const id of ids) out[id] = (await window.__settleIn(id)) - base[id];
+      return out;
+    },
+    [
+      grew.map((r) => r.id),
+      Object.fromEntries(grew.map((r) => [r.id, drift.first[drift.ids.indexOf(r.id)]])),
+    ]
+  );
+  const before = grew.map((r) => `${r.id} +${r.by}`).join(", ");
+  grew = grew.filter((r) => again[r.id] > 0).map((r) => ({ ...r, by: again[r.id] }));
+  console.log(
+    `      asked again: ${before} -> ${grew.length ? grew.map((r) => `${r.id} +${r.by}`).join(", ") : "clean"}`
+  );
+}
 ok(
   "walking the floor over and over does not pile up geometries, room by room",
   grew.length === 0,
