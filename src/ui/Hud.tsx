@@ -18,6 +18,7 @@ import {
   wardenStaggered,
 } from "../game/state/run";
 import { roostFor } from "../game/mobs/ambient";
+import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
@@ -68,7 +69,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
@@ -140,6 +141,7 @@ export function Hud() {
           <span style={{ color: colors.dim }}> · </span>
           <span style={{ color: ground.tone }}>{ground.says}</span>
           {roost && <span style={{ color: colors.gold }}> · bats roost here</span>}
+          {drafty && <span style={{ color: colors.gold }}> · a draft</span>}
         </div>
       )}
       {/* The floor's patience, once it is short, and what came when it ran
@@ -230,6 +232,8 @@ function useWardenSense(): {
   /** Whole seconds of the floor's patience left, and whether it ran out. */
   patience: number;
   reaper: boolean;
+  /** Standing in the draft from a cracked wall. */
+  drafty: boolean;
 } {
   const read = () => {
     const s = useRun.getState();
@@ -247,6 +251,7 @@ function useWardenSense(): {
       barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
       patience: Math.ceil(patienceLeft(s)),
       reaper: s.reaperAwake,
+      drafty: draft.near && draft.roomId === s.currentRoomId,
     };
   };
   const [sense, setSense] = useState(read);
@@ -263,7 +268,8 @@ function useWardenSense(): {
           was.warded === now.warded &&
           was.barSeconds === now.barSeconds &&
           was.patience === now.patience &&
-          was.reaper === now.reaper
+          was.reaper === now.reaper &&
+          was.drafty === now.drafty
           ? was
           : now;
       }),

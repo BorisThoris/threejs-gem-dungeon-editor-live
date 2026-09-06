@@ -252,6 +252,16 @@ Two stores that both claimed the player's stats. So:
   make. An open pit reaches every creature through `bitesFor`, which
   reads `sprung` beside `placed` - the one list of what bites a ground
   body, now with the floor's own holes in it.
+- What is behind the cracked wall is `src/game/dungeon/secret.ts` -
+  `secretFlavour(d)` - one owner beside `secretId`; the content
+  (`Secret` in `rooms/content.tsx`) asks it and draws a hoard, a
+  reliquary or a shrine, reusing the vault's dressing, the relic stand
+  with a price the floor set, and the shrine's own component rather
+  than copies. The draft is `rooms/Draft.tsx`, reading `room.secret` and
+  writing one module flag the HUD polls. The shop's bomb is one more
+  trigger at the counter and one flag in the store (`bombBought`, reset
+  with the floor), because the counter already owned how a purchase is
+  refused.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

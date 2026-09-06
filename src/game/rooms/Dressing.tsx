@@ -29,6 +29,8 @@ import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
 
 interface DressingProps {
+  /** Dress it as a vault - a treasure room's chests - whatever it is. */
+  hoard?: boolean;
   room: Room;
   seed: number;
 }
@@ -234,8 +236,8 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
 }
 
 /** Seeded per room, so it is the same every time you walk back in. */
-export function Dressing({ room, seed }: DressingProps) {
-  const asVault = useRun((s) => s.dungeon?.vaultId === room.id);
+export function Dressing({ room, seed, hoard = false }: DressingProps) {
+  const asVault = useRun((s) => s.dungeon?.vaultId === room.id) || hoard;
   const hasKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
   const floor = useRun((s) => s.floor);
   // The order a room is assembled in: the gem, then the key, then the

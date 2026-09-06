@@ -6162,6 +6162,81 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 13: the shop sells one bomb a floor; the wall breathes; and what is
+// behind it is worth the bomb - a hoard, a reliquary or a shrine.
+{
+  const atCounter = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!window.__secret) return { error: "no secret probe" };
+    let d = null, shop = null, seed = 0;
+    for (seed = 11; seed < 80 && !shop; seed += 3) {
+      run.getState().startRun(seed);
+      await wait(800);
+      d = run.getState().dungeon;
+      shop = d.rooms.find((r) => r.kind === "shop") ?? null;
+    }
+    if (!shop) return { error: "no shop in 23 seeds" };
+    run.setState({ transitioning: true, currentRoomId: shop.id, gems: 20, satchel: [], identified: [] });
+    run.getState().roomReady(shop.id);
+    await wait(1400);
+    const counter = window.__anchorsFor("shop", shop)[0];
+    window.__bus.emit("teleport", { position: [counter[0] + 1.1, 1.5, counter[2] + 1.6] });
+    await wait(900);
+    const rows = Object.entries(window.__triggers ?? {}).filter(([l]) => /bomb/i.test(l));
+    return { seed: seed - 3, gems: run.getState().gems, offered: rows.some(([, t]) => t.enabled && t.dist < 1.5), prompt: document.body.innerText.match(/buy a bomb[^\n]*/i)?.[0] ?? null };
+  });
+  ok("the shop offers a bomb", !atCounter.error && atCounter.offered, atCounter.error || JSON.stringify(atCounter));
+  if (!atCounter.error) {
+    await page.keyboard.press("KeyE");
+    await page.waitForTimeout(500);
+    const bought = await page.evaluate((gems) => {
+      const s = window.__run.getState();
+      const sold = Object.keys(window.__triggers ?? {}).some((l) => /sold/i.test(l));
+      return { has: s.satchel.includes("bomb"), gems: s.gems, paid: gems - s.gems, sold };
+    }, atCounter.gems);
+    ok("and sells exactly one a floor", bought.has && bought.paid === (await page.evaluate(() => window.__world.BOMB_PRICE)) && bought.sold, JSON.stringify(bought));
+    const deeper = await page.evaluate(async () => {
+      const run = window.__run;
+      const D = window.__derived;
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const d = run.getState().dungeon;
+      const host = d.rooms.find((r) => r.secret);
+      if (!host) return { error: "no cracked wall on this floor" };
+      run.setState({ transitioning: true, currentRoomId: host.id });
+      run.getState().roomReady(host.id);
+      await wait(1400);
+      let felt = false;
+      const off = window.__bus.on("draftFelt", () => (felt = true));
+      window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+      await wait(700);
+      const draftAway = !/a draft/i.test(document.body.innerText);
+      const spot = D.crackSpot();
+      window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
+      await wait(900);
+      const draftNear = /a draft/i.test(document.body.innerText);
+      off();
+      const flavour = window.__secret.secretFlavour(d);
+      run.getState().revealSecret(host.id);
+      await wait(200);
+      run.getState().travel(host.secret.dir);
+      for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+      await wait(1200);
+      const labels = Object.keys(window.__triggers ?? {});
+      const inside = run.getState().currentRoomId === d.secretId;
+      const worth =
+        flavour === "reliquary"
+          ? labels.some((l) => /free/i.test(l))
+          : flavour === "shrine"
+            ? labels.some((l) => /kneel/i.test(l))
+            : labels.filter((l) => /open the chest/i.test(l)).length >= 1;
+      return { draftAway, draftNear, felt, flavour, inside, worth, labels: labels.filter((l) => /free|kneel|chest/i.test(l)).slice(0, 4) };
+    });
+    ok("a cracked wall breathes when you stand at it, and not from the middle of the room", !deeper.error && deeper.draftAway && deeper.draftNear && deeper.felt, deeper.error || JSON.stringify({ away: deeper.draftAway, near: deeper.draftNear, felt: deeper.felt }));
+    ok("and what is behind it is worth the bomb", !deeper.error && deeper.inside && deeper.worth, deeper.error || JSON.stringify({ flavour: deeper.flavour, inside: deeper.inside, worth: deeper.worth, labels: deeper.labels }));
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

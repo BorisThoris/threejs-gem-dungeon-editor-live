@@ -310,6 +310,8 @@ export interface RunState {
    * with it, like the devices.
    */
   sprung: Record<string, number>;
+  /** The shop's one bomb this floor has been bought. */
+  bombBought: boolean;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -462,6 +464,8 @@ export interface RunState {
   springTrap: (key: string, kind: "darts" | "pit", by: "player" | "warden") => boolean;
   /** A grate dropped behind the player: that doorway is barred, briefly, and not by them. */
   dropGrate: (toRoomId: string) => void;
+  /** The shop's bomb for this floor is sold. */
+  markBombBought: () => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -594,6 +598,7 @@ export const useRun = create<RunState>()(
     mothOn: false,
     batsRousedUntil: 0,
     sprung: {},
+    bombBought: false,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -689,6 +694,7 @@ export const useRun = create<RunState>()(
         mothOn: false,
         batsRousedUntil: 0,
         sprung: {},
+        bombBought: false,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -870,6 +876,7 @@ export const useRun = create<RunState>()(
           mothOn: false,
           batsRousedUntil: 0,
           sprung: {},
+          bombBought: false,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1514,6 +1521,8 @@ export const useRun = create<RunState>()(
       bus.emit("trapSprung", { key: `${s.currentRoomId}:grate`, kind: "grate", by: "player" });
       bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
     },
+
+    markBombBought: () => set({ bombBought: true }),
 
     wakeReaper: () => {
       const s = get();

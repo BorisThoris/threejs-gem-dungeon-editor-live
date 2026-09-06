@@ -31,6 +31,7 @@ import { Pit } from "../traps/Pit";
 import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
+import { Draft } from "./Draft";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -120,6 +121,12 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
     </>
   );
+}
+
+/** The draft from a cracked wall, in the room that has one, while the player is in it. */
+function RoomDraft({ room }: { room: RoomData }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return here && room.secret ? <Draft room={room} /> : null;
 }
 
 /** The floor's own traps, in the room the player is standing in. */
@@ -261,6 +268,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomReaper room={room} />
       <RoomAmbient room={room} seed={seed} />
       <RoomTraps room={room} seed={seed} />
+      <RoomDraft room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

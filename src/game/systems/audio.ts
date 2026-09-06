@@ -607,6 +607,10 @@ export const sfx = {
     later(300, () => tone(147, 1.1, "sine", 0.14, 110));
   },
   /** Something small set on stone: a scrape and a click. */
+  /** A draft from a cracked wall: a long, low breath of air. */
+  draft() {
+    noiseBurst(1.1, 0.07, 420);
+  },
   setDown() {
     noiseBurst(0.09, 0.16, 1400);
     later(60, () => tone(320, 0.07, "square", 0.14, 260));

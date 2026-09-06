@@ -750,3 +750,14 @@ export const DART_FLIGHT_S = 0.6;
 export const DART_REARM_S = 4;
 export const PIT_RADIUS = 0.9;
 export const GRATE_HOLD_S = 20;
+
+/**
+ * What the shop asks for a bomb, and how close to a cracked wall a draft
+ * can be felt. One bomb a floor at the counter: the shop is not a bomb
+ * dispenser, and a player who wants more finds them in chests. The draft
+ * reaches DRAFT_REACH from the middle of the wall, on the host's side - far
+ * enough that walking the walls finds it, and not so far that the middle
+ * of the room does.
+ */
+export const BOMB_PRICE = 2;
+export const DRAFT_REACH = 3;

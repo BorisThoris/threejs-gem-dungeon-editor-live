@@ -41,6 +41,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/mobs/ambient";
    export * from "${root}src/game/traps/placement";
+   export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1466,6 +1467,39 @@ check("the shipped room templates reach the floors the game generates", authored
     check("about half the rooms that can be trapped are", withTraps / rooms > 0.2, `${((withTraps / rooms) * 100).toFixed(0)}% of rooms`);
   } else {
     check("the floor knows where its traps are", false, "no trapsFor");
+  }
+}
+
+// --- Secrets, deeper ----------------------------------------------------------------
+//
+// Run 13: the room behind the cracked wall is worth the bomb every time -
+// a hoard, a reliquary or a shrine, by the seed, from one owner - the
+// shop sells one bomb a floor, and a thin wall breathes. These hold the
+// flavours to a fair spread and each to what it promises, and the two
+// numbers to their meaning.
+{
+  check("a bomb costs more than a life's worth of nothing and less than the exit", L.BOMB_PRICE >= 1 && L.BOMB_PRICE < L.tollForFloor(1), `${L.BOMB_PRICE} gems against a toll of ${L.tollForFloor(1)}`);
+  check("a draft reaches past arm's length and not to the middle of a small room", L.DRAFT_REACH > L.CLOSE_REACH && L.DRAFT_REACH < L.ROOM_SIZE_SMALL / 2, `${L.DRAFT_REACH} against reach ${L.CLOSE_REACH}, half a small room ${L.ROOM_SIZE_SMALL / 2}`);
+  if (L.secretFlavour) {
+    const counts = { hoard: 0, reliquary: 0, shrine: 0 };
+    let floors = 0, thinHoards = 0, hoards = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      const f = L.secretFlavour(d);
+      if (!f) continue;
+      floors++;
+      counts[f]++;
+      if (f === "hoard") {
+        hoards++;
+        const room = d.rooms.find((r) => r.id === d.secretId);
+        const chests = L.placementsFor(room, d.seed, { asVault: true }).filter((p) => p.kind === "chest").length;
+        if (chests < 1) thinHoards++;
+      }
+    }
+    check("the wall hides each of the three about as often", floors > 0 && Object.values(counts).every((n) => n / floors >= 0.2), `${JSON.stringify(counts)} of ${floors}`);
+    check("and a hoard has a chest in it nearly every time", hoards > 0 && thinHoards / hoards < 0.1, `${thinHoards} of ${hoards} hoards with no chest`);
+  } else {
+    check("the wall knows what it hides", false, "no secretFlavour");
   }
 }
 

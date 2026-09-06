@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §38 asks a human
+  moment it can afford to. That is precisely the behaviour §39 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §38.
+for a person, not for this document, and it is on the list in §39.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2896,14 +2896,64 @@ its entry lane - it walked in over it, was wounded twice and routed. That
 is the floor working exactly as designed, and a thing a player can do
 on purpose; the check now measures the pit in a room with only a pit.
 
-## 37. Steam Deck
+## 37. Secrets, deeper
+
+Run 8 hid a room and gave the player a way in. It was a dressed room
+with a gem - worth a bomb only just, and a bomb was a thing you found
+or did not. This is the second pass the plan promised once bombs had
+been played with: the room is worth the bomb every time, the shop sells
+one, and the wall gives itself away to a player who walks the walls.
+
+### What is behind the wall
+
+`dungeon/secret.ts` is the one owner of it: by the seed, one of three.
+A **hoard** is dressed as the vault is - a treasure room's chests, each
+holding a consumable, and a chest in it 100% of the time. A
+**reliquary** is one relic on a stand for nothing: the strongest thing in
+the game, behind a wall, which is Isaac's item room. A **shrine** is the
+font, for a floor that had none. Over 200 floors the wall hides each
+about as often (65 hoards, 71 reliquaries and 64 shrines over 200 floors). The generator does not know which - it
+places a room - and the content asks.
+
+### One bomb a floor, for two gems
+
+A fourth thing at the shop's counter. `BOMB_PRICE` is two gems - more
+than nothing and less than the first floor's toll - and the shop sells
+exactly one a floor, so it is not a bomb dispenser; a player who wants
+more finds them in chests, at thirty-four in four hundred rolls. It is
+refused before the gems go rather than after when the satchel is full,
+and refused like everything else when it would leave less than the exit
+wants.
+
+### The draft
+
+A thin wall breathes. Within `DRAFT_REACH` of the crack's middle - three
+metres, past arm's length and short of the middle of a small room - a
+caption says "A draft of cold air, from the wall", a breath of low noise
+plays, and the GROUND line says "a draft" for as long as the player
+stands in it. Never a marker. `rooms/Draft.tsx` reads `room.secret`, the
+one owner of where the crack is, and writes one module flag the HUD
+polls. Once the wall is opened there is nothing to find, and it says
+nothing.
+
+### Held and played
+
+Four layout checks: the two numbers mean what they say; the three
+flavours are each at least a fifth of floors; a hoard has a chest in it
+nearly every time. Four smoke checks: the shop offers a bomb; sells one,
+takes two gems, and then says it is sold; the wall breathes at the crack
+and not from the middle of the room; and behind it, once opened and
+walked into, is a stand that says free, a font that offers a kneel, or
+a chest that offers to open.
+
+## 38. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 38. What a human playtest should watch for
+## 39. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3029,7 +3079,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 39. Options and accessibility
+## 40. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3061,7 +3111,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 40. Deeds
+## 41. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3094,7 +3144,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 41. Harness bugs that read as game bugs
+## 42. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3183,7 +3233,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 42. Tuning knobs
+## 43. Tuning knobs
 
 All in `src/game/world.ts`:
 

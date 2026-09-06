@@ -167,6 +167,8 @@ export default function App() {
     // Where the floor's traps are and what each is to a body, likewise.
     void import("./game/traps/placement").then((m) => (w.__traps = m));
     void import("./game/mobs/body").then((m) => (w.__body = m));
+    // What is behind the cracked wall, from the one owner of it.
+    void import("./game/dungeon/secret").then((m) => (w.__secret = m));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft

@@ -106,6 +106,7 @@ export function Audio() {
       bus.on("mothLanded", () => sfx.named()),
       bus.on("mothLeft", () => sfx.take()),
       bus.on("batsRoused", () => sfx.thiefFled()),
+      bus.on("draftFelt", () => sfx.draft()),
       bus.on("trapSprung", ({ kind }) => (kind === "grate" ? sfx.barDoor() : kind === "darts" ? sfx.clatter() : sfx.grind())),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),

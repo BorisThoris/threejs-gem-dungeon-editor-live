@@ -3,15 +3,16 @@
 import { useMemo } from "react";
 
 import { quadrantSpots, type Vec3 } from "../dungeon/layout";
+import { secretFlavour } from "../dungeon/secret";
 import type { Room } from "../dungeon/types";
 import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import type { ItemId } from "../items/catalog";
+import { SATCHEL_SLOTS, type ItemId } from "../items/catalog";
 import type { Charges } from "../items/charge";
 import { alarmFloorFor, canSpend, tollNow, useRun } from "../state/run";
-import { CLOSE_REACH, GEMS_PER_LIFE } from "../world";
+import { BOMB_PRICE, CLOSE_REACH, GEMS_PER_LIFE } from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
 const NAMING_PRICE = 1;
@@ -91,6 +92,9 @@ function Shop({ room }: RoomKindProps) {
   const canBuyName = useRun((s) => canSpend(s, NAMING_PRICE));
 
   // The first thing in the satchel nobody has put a name to yet.
+  const bombBought = useRun((s) => s.bombBought);
+  const canBuyBomb = useRun((s) => canSpend(s, BOMB_PRICE));
+  const satchelFull = satchel.length >= SATCHEL_SLOTS;
   const puzzling = satchel.findIndex((id) => !identified.includes(id));
   const canAffordName = gems >= NAMING_PRICE;
   const charges = useRun((s) => s.charges);
@@ -122,6 +126,32 @@ function Shop({ room }: RoomKindProps) {
           if (run.lives >= run.maxLives) return;
           if (run.gems - GEMS_PER_LIFE < tollNow(run)) return;
           if (run.spendGems(GEMS_PER_LIFE)) run.gainLife();
+        }}
+      />
+      {/* A bomb, one a floor. The shop is not a bomb dispenser; a player who
+          wants more finds them in chests. Paid for only once there is
+          somewhere to put it, so a full satchel is refused before the gems
+          go rather than after. */}
+      <InteractTrigger
+        position={[counter[0] + 1.1, 0, counter[2] + 1.1]}
+        label={bombBought ? "The shop's bomb is sold" : `Buy a bomb (${BOMB_PRICE} gems)`}
+        enabled={!bombBought && canBuyBomb && !satchelFull}
+        blockedReason={
+          bombBought
+            ? "One a floor, and it is sold"
+            : satchelFull
+              ? "Nowhere to put it: the satchel is full"
+              : gems < BOMB_PRICE
+                ? `Needs ${BOMB_PRICE} gems (${gems}/${BOMB_PRICE})`
+                : `That would leave you short of the ${toll} the exit wants`
+        }
+        onInteract={() => {
+          const run = useRun.getState();
+          if (run.bombBought || run.satchel.length >= SATCHEL_SLOTS || !canSpend(run, BOMB_PRICE)) return;
+          if (run.spendGems(BOMB_PRICE)) {
+            run.takeItem("bomb", "shop");
+            run.markBombBought();
+          }
         }}
       />
       {/* Knowing is worth buying: a second copy of anything is rare enough
@@ -203,11 +233,22 @@ function worstSlot(satchel: readonly ItemId[], charges: Charges): number {
 }
 
 /** One relic on a pedestal, with its price and what it does in the prompt. */
-function RelicStand({ id, position, floor }: { id: RelicId; position: Vec3; floor: number }) {
+function RelicStand({
+  id,
+  position,
+  floor,
+  price: fixed,
+}: {
+  id: RelicId;
+  position: Vec3;
+  floor: number;
+  /** A price the floor set rather than the catalogue: the reliquary's is nothing. */
+  price?: number;
+}) {
   const gems = useRun((s) => s.gems);
   const taken = useRun((s) => s.relics.includes(id));
   const relic = RELICS[id];
-  const price = priceOn(relic, floor);
+  const price = fixed ?? priceOn(relic, floor);
   const affordable = useRun((s) => canSpend(s, price));
   const toll = useRun(tollNow);
 
@@ -234,7 +275,7 @@ function RelicStand({ id, position, floor }: { id: RelicId; position: Vec3; floo
       )}
       <InteractTrigger
         position={[0, 0, 0]}
-        label={`${relic.name}, ${price} gems - ${relic.blurb}`}
+        label={`${relic.name}, ${price === 0 ? "free" : `${price} gems`} - ${relic.blurb}`}
         enabled={!taken && affordable}
         blockedReason={
           taken
@@ -338,7 +379,36 @@ function Shrine({ room }: RoomKindProps) {
 }
 
 registerRoomKind("shrine", Shrine);
-registerRoomKind("secret", Dressed);
+
+/**
+ * The room behind the cracked wall, worth the bomb every time: a hoard
+ * dressed as a vault, a reliquary with one relic for nothing, or a shrine
+ * for a floor that had none. Which one is the seed's, from one owner.
+ */
+function Secret({ room }: RoomKindProps) {
+  const flavour = useRun((s) => (s.dungeon ? secretFlavour(s.dungeon) : null));
+  const seed = useRun((s) => s.dungeon?.seed ?? 0);
+  const floor = useRun((s) => s.floor);
+  // Chosen once, from what the player did not hold when the room was
+  // first drawn: taking it must not roll the stand a second relic.
+  const relic = useMemo(() => {
+    const held = useRun.getState().relics;
+    const rng = createRng(`${seed}:${room.id}:reliquary`);
+    return shuffle(rng, RELIC_IDS.filter((id) => !held.includes(id)))[0] ?? null;
+  }, [seed, room.id]);
+  if (flavour === "shrine") return <Shrine room={room} />;
+  if (flavour === "reliquary") {
+    return (
+      <>
+        <Dressed room={room} />
+        {relic && <RelicStand id={relic} position={quadrantSpots(room, "far")[0]} floor={floor} price={0} />}
+      </>
+    );
+  }
+  return <Dressing room={room} seed={seed} hoard />;
+}
+
+registerRoomKind("secret", Secret);
 registerRoomKind("start", Dressed);
 registerRoomKind("end", Dressed);
 registerRoomKind("normal", Dressed);
