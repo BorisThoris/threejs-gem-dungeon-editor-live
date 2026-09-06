@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
+import { secretFlavour } from "../dungeon/secret";
 import { DIR_STEP, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
-import { canControl, useRun } from "../state/run";
-import { DRAFT_REACH } from "../world";
+import { canControl, runClock, useRun } from "../state/run";
+import { DRAFT_REACH, WALL_SOUND_EVERY_S } from "../world";
 import { draft } from "./draftState";
 
 /**
@@ -16,6 +17,8 @@ import { draft } from "./draftState";
  */
 export function Draft({ room }: { room: Room }) {
   const felt = useRef(false);
+  /** Run-clock second the wall last let a sound through. */
+  const lastSound = useRef(-Infinity);
 
   useEffect(
     () => () => {
@@ -32,7 +35,8 @@ export function Draft({ room }: { room: Room }) {
       draft.near = false;
       return;
     }
-    if (!canControl(useRun.getState())) return;
+    const run = useRun.getState();
+    if (!canControl(run)) return;
     const half = halfSize(room);
     const step = DIR_STEP[secret.dir];
     const cam = state.camera.position;
@@ -42,6 +46,16 @@ export function Draft({ room }: { room: Room }) {
     if (near && !felt.current) {
       felt.current = true;
       bus.emit("draftFelt", { roomId: room.id });
+    }
+    // And what is behind it, faintly, every few seconds while they stand
+    // there: the draft says there is a room, the sound says what is in it.
+    if (near && run.dungeon) {
+      const now = runClock(run);
+      if (now - lastSound.current >= WALL_SOUND_EVERY_S) {
+        lastSound.current = now;
+        const flavour = secretFlavour(run.dungeon);
+        if (flavour) bus.emit("wallSound", { roomId: room.id, flavour });
+      }
     }
   });
 

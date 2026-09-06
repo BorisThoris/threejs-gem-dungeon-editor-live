@@ -316,6 +316,11 @@ export interface RunState {
   bombBought: boolean;
   /** Breakables that have burst this floor, by `breakKey`. */
   broken: string[];
+  /**
+   * Rooms the player has marked on the map. Theirs entirely: nothing in
+   * the game reads a mark, which is what makes it worth making.
+   */
+  marks: string[];
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -470,6 +475,8 @@ export interface RunState {
   dropGrate: (toRoomId: string) => void;
   /** The shop's bomb for this floor is sold. */
   markBombBought: () => void;
+  /** Mark the room the player is in on the map, or unmark it. */
+  toggleMark: () => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -604,6 +611,7 @@ export const useRun = create<RunState>()(
     sprung: {},
     bombBought: false,
     broken: [],
+    marks: [],
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -701,6 +709,7 @@ export const useRun = create<RunState>()(
         sprung: {},
         bombBought: false,
         broken: [],
+        marks: [],
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -884,6 +893,7 @@ export const useRun = create<RunState>()(
           sprung: {},
           bombBought: false,
           broken: [],
+          marks: [],
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1530,6 +1540,15 @@ export const useRun = create<RunState>()(
     },
 
     markBombBought: () => set({ bombBought: true }),
+
+    toggleMark: () => {
+      const s = get();
+      if (!s.currentRoomId || !canControl(s)) return;
+      const id = s.currentRoomId;
+      const marked = s.marks.includes(id);
+      set({ marks: marked ? s.marks.filter((m) => m !== id) : [...s.marks, id] });
+      bus.emit("mapMarked", { roomId: id, marked: !marked });
+    },
 
     wakeReaper: () => {
       const s = get();

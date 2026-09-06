@@ -273,6 +273,13 @@ Two stores that both claimed the player's stats. So:
   the component module, so the store, the body table, the ambient life
   and the traps can read the list the room draws without a React tree
   or a cycle.
+- The player's marks on the map are store state (`marks`, per floor)
+  that nothing in the game reads; `toggleMark` is the one writer, the
+  key and the pad button both call it, and the minimap draws it. The
+  wall's tells are one owner each: `Draft.tsx` knows whether the player
+  is in the draft and paces the sound through the wall on the run's
+  clock; `dungeon/secret.ts` says what is behind it; `Walls.tsx`'s
+  `Crack` breathes. None of them marks anything.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

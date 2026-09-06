@@ -6332,6 +6332,65 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 15: the player marks the map and the mark is theirs; a wall with a
+// room behind it lets through what is behind it while you stand in its
+// draft, and nothing from the middle of the room.
+{
+  const marked = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(23);
+    await wait(1200);
+    const mark = () => document.querySelectorAll('[data-testid="map-mark"]').length;
+    const none = mark();
+    run.getState().toggleMark();
+    await wait(400);
+    const one = mark();
+    run.getState().toggleMark();
+    await wait(400);
+    const cleared = mark();
+    run.getState().toggleMark();
+    await wait(300);
+    const here = run.getState().currentRoomId;
+    const room = run.getState().dungeon.rooms.find((r) => r.id === here);
+    run.getState().travel(Object.keys(room.links)[0]);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await wait(600);
+    const nextDoor = mark();
+    const kept = run.getState().marks.includes(here);
+    return { none, one, cleared, nextDoor, kept };
+  });
+  ok("M marks the room on the map, and M again clears it", marked.none === 0 && marked.one === 1 && marked.cleared === 0, JSON.stringify(marked));
+  ok("and a mark stays on the room it was made in when you walk on", marked.kept && marked.nextDoor === 1, JSON.stringify({ kept: marked.kept, drawn: marked.nextDoor }));
+  await page.keyboard.press("KeyM");
+  await page.waitForTimeout(400);
+  const byKey = await page.evaluate(() => ({ marks: window.__run.getState().marks.length, drawn: document.querySelectorAll('[data-testid="map-mark"]').length }));
+  ok("the key does what the store does", byKey.marks === 2 && byKey.drawn === 2, JSON.stringify(byKey));
+  const heard = await page.evaluate(async () => {
+    const run = window.__run;
+    const D = window.__derived;
+    const W = window.__world;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const d = run.getState().dungeon;
+    const host = d.rooms.find((r) => r.secret);
+    if (!host) return { error: "no cracked wall on this floor" };
+    run.setState({ transitioning: true, currentRoomId: host.id });
+    run.getState().roomReady(host.id);
+    await wait(1400);
+    const sounds = [];
+    const off = window.__bus.on("wallSound", (e) => sounds.push(e.flavour));
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    await wait((W.WALL_SOUND_EVERY_S + 1) * 1000);
+    const away = sounds.length;
+    const spot = D.crackSpot();
+    window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
+    await wait((W.WALL_SOUND_EVERY_S + 1.5) * 1000);
+    off();
+    return { away, near: sounds.length - away, flavour: window.__secret.secretFlavour(d), said: sounds[sounds.length - 1] ?? null, hud: /a draft/i.test(document.body.innerText) };
+  });
+  ok("a thin wall lets through what is behind it while you stand in the draft, and nothing from the middle", !heard.error && heard.away === 0 && heard.near >= 1 && heard.said === heard.flavour, heard.error || JSON.stringify(heard));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

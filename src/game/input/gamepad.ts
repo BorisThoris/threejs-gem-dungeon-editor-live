@@ -47,6 +47,8 @@ export interface GamepadState {
   backPressed: boolean;
   /** R3 / right stick click: raise or lower the lantern. Rising edge. */
   lanternPressed: boolean;
+  /** D-pad up: mark or unmark the room on the map. Rising edge. */
+  markPressed: boolean;
   /**
    * D-pad down: bar the nearest doorway. Rising edge.
    *
@@ -116,6 +118,7 @@ const state: GamepadState = {
   slotPressed: BUTTON_SLOTS.map(() => false),
   backPressed: false,
   lanternPressed: false,
+  markPressed: false,
   barPressed: false,
   menuX: 0,
   menuY: 0,
@@ -130,6 +133,7 @@ function clear(): void {
     state.backPressed =
     state.lanternPressed =
     state.barPressed =
+    state.markPressed =
       false;
   state.slotPressed.fill(false);
   state.menuX = state.menuY = 0;
@@ -185,6 +189,7 @@ function poll(now: number): void {
   state.backPressed = risingEdge(pad, BUTTON_BACK);
   state.lanternPressed = risingEdge(pad, BUTTON_LANTERN);
   state.barPressed = risingEdge(pad, DPAD.down);
+  state.markPressed = risingEdge(pad, DPAD.up);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 

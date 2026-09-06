@@ -611,6 +611,21 @@ export const sfx = {
   draft() {
     noiseBurst(1.1, 0.07, 420);
   },
+  /**
+   * What is behind a thin wall, faintly: coins, a chime, or water. Quiet
+   * enough to be missed from the middle of the room, which is the point.
+   */
+  throughWall(flavour: "hoard" | "reliquary" | "shrine") {
+    if (flavour === "hoard") {
+      tone(1240, 0.06, "square", 0.05, 900);
+      later(110, () => tone(1480, 0.05, "square", 0.04, 1100));
+    } else if (flavour === "reliquary") {
+      tone(880, 0.5, "sine", 0.05, 860);
+    } else {
+      noiseBurst(0.05, 0.06, 2600);
+      later(140, () => tone(520, 0.12, "sine", 0.04, 330));
+    }
+  },
   setDown() {
     noiseBurst(0.09, 0.16, 1400);
     later(60, () => tone(320, 0.07, "square", 0.14, 260));

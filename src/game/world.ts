@@ -771,3 +771,10 @@ export const DRAFT_REACH = 3;
  */
 export const SPILL_CHANCE = 0.3;
 export const SHIELD_SLACK = 0.3;
+
+/**
+ * How often a thin wall lets a sound through to a player standing in
+ * its draft. Longer than a breath, so it reads as something behind the
+ * wall rather than a loop; short enough to be heard before they move on.
+ */
+export const WALL_SOUND_EVERY_S = 4;

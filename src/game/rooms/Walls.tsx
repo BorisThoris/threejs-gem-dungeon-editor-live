@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { MeshStandardMaterial } from "three";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
@@ -91,10 +94,7 @@ export function Walls({ room, color }: WallsProps) {
         </group>
       ))}
       {cracks.map((crack, i) => (
-        <mesh key={`crack-${i}`} position={crack.position}>
-          <boxGeometry args={crack.size} />
-          <meshStandardMaterial color="#0b0a0c" roughness={1} />
-        </mesh>
+        <Crack key={`crack-${i}`} position={crack.position} size={crack.size} />
       ))}
       {gaps.map((gap, i) => (
         <CuboidCollider
@@ -104,5 +104,24 @@ export function Walls({ room, color }: WallsProps) {
         />
       ))}
     </RigidBody>
+  );
+}
+
+/**
+ * The seam that hides a room, breathing: a slow pulse in the dark of it,
+ * visible from close and not from the doorway. The plan asked for a
+ * brazier that gutters; the thing that flickers is the wall itself.
+ */
+function Crack({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
+  const material = useRef<MeshStandardMaterial>(null);
+  useFrame((state) => {
+    const m = material.current;
+    if (m) m.emissiveIntensity = 0.35 + Math.sin(state.clock.elapsedTime * 2.6) * 0.2;
+  });
+  return (
+    <mesh position={position}>
+      <boxGeometry args={size} />
+      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35} roughness={1} />
+    </mesh>
   );
 }

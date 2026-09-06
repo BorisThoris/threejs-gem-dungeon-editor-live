@@ -37,6 +37,7 @@ function PadPause() {
     // whenever the player is not in control - so, like the slots, it has
     // no guard of its own here.
     if (pad.lanternPressed && canControl(run)) run.toggleLantern();
+    if (pad.markPressed) run.toggleMark();
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;
     if (run.paused) run.resume();

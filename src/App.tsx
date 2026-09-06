@@ -84,6 +84,12 @@ function useSatchelKeys() {
         if (canControl(useRun.getState())) useRun.getState().toggleLantern();
         return;
       }
+      // Marking the map is the same kind of thing again, and the store
+      // refuses it out of control the same way.
+      if (bindings.mark.includes(event.code)) {
+        useRun.getState().toggleMark();
+        return;
+      }
       const slot = SLOT_ACTIONS.findIndex((action) => bindings[action].includes(event.code));
       if (slot < 0) return;
       useRun.getState().useItem(slot);

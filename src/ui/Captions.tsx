@@ -67,6 +67,16 @@ export function Captions() {
       bus.on("batsRoused", () => say("Bats burst from the roost")),
       bus.on("draftFelt", () => say("A draft of cold air, from the wall")),
       bus.on("propBroken", ({ kind }) => say(`The ${kind} bursts`)),
+      bus.on("wallSound", ({ flavour }) =>
+        say(
+          flavour === "hoard"
+            ? "Something clinks, through the wall"
+            : flavour === "reliquary"
+              ? "A faint chime, through the wall"
+              : "Water, dripping, through the wall"
+        )
+      ),
+      bus.on("mapMarked", ({ marked }) => say(marked ? "Marked on the map" : "Mark cleared")),
       bus.on("trapSprung", ({ kind, by }) =>
         say(
           kind === "grate"

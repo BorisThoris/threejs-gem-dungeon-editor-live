@@ -1542,6 +1542,25 @@ check("the shipped room templates reach the floors the game generates", authored
   }
 }
 
+// --- The map that lies ---------------------------------------------------------------
+//
+// Run 15: nothing marks the map; the player marks it. A key and a pad
+// button mark the room they are in, the wall with a room behind it
+// breathes, and a thin wall lets through what is behind it. These hold
+// the key to being a real, bound, labelled action the README names, and
+// the through-wall cadence to a rate a player can hear as a thing behind
+// the wall rather than a loop.
+{
+  const has = L.ACTIONS?.includes("mark");
+  check("marking the map is an action, with a default key and a label", !!has && L.DEFAULT_BINDINGS?.mark?.length > 0 && !!L.ACTION_LABEL?.mark, has ? `${L.DEFAULT_BINDINGS.mark} - ${L.ACTION_LABEL.mark}` : "no mark action");
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  check("and the README's controls name it", /mark the room/i.test(readme) && /d-pad up/i.test(readme));
+  check("a thin wall speaks slower than a breath and faster than the floor tires", L.WALL_SOUND_EVERY_S > 1 && L.WALL_SOUND_EVERY_S < L.REAPER_WARNING_S, `${L.WALL_SOUND_EVERY_S}s`);
+  const captions = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
+  check("every flavour behind a wall has a caption and a sound", ["hoard", "reliquary", "shrine"].every((f) => new RegExp(`"${f}"`).test(captions) || /flavour ===/.test(captions)) && /throughWall/.test(audio) && /hoard|reliquary/.test(audio));
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,

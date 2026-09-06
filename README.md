@@ -178,6 +178,7 @@ between here and a Steam demo.
 | `E`, or `A` on a pad | Use what you are standing at: a door, a chest, the shop counter, a lectern, an idol |
 | `1` to `4`, or X and Y on a pad | Drink, read, or set down that satchel slot |
 | `F`, or R3 | Raise or lower the lantern. Seeing, or unseen. |
+| `M`, or d-pad up | Mark the room on the map, or unmark it. Nothing reads the mark but you. |
 | `B`, or d-pad down | Bar the doorway you are standing at. Loud. |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
 | `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
