@@ -128,6 +128,13 @@ Two stores that both claimed the player's stats. So:
   `src/game/items/catalog.ts`; the effect itself is applied in one place,
   `useItem` in the run store. How fast the player moves after drinking one
   is `speedNow(state)`, and it is the only answer to that question.
+- What may stand where in a room is `rooms/Dressing.tsx`'s one `allowed`
+  filter, and every rule about it lives there: out of the door lanes, clear
+  of the kind's own content, the gem, the spikes, the watcher and the key -
+  and, in the memory chamber, off the lines of sight from the lectern to
+  each crystal, because a pillar you can walk round is still a pillar you
+  cannot see through. Litter goes through the same filter, so a biome
+  cannot put something where an arrangement was forbidden to.
 - Which ground the arena's arms sweep is `src/game/arena/sweep.ts` -
   where the rings go, how close to the middle a player can get, and how
   far out. The room draws from it and `yarn test:layout` checks it, which

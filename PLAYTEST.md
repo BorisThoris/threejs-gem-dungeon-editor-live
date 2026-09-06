@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §32 asks a human
+  moment it can afford to. That is precisely the behaviour §33 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §32.
+for a person, not for this document, and it is on the list in §33.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2520,14 +2520,63 @@ furnished unlike the rest of it**, and every kind has dozens of looks. The
 measurement stays in `yarn test:layout` so it cannot quietly regress; the
 note is gone.
 
-## 31. Steam Deck
+## 31. The puzzle rooms, refined
+
+The first thing the brief for the new arc said about what exists: "the
+pattern matching one is difficult, there's pillars that block your vision"
+and "the tome one is glitched, can't exit, slow to start, hard to input."
+Both are polish rather than content, and both were measurable.
+
+### The memory trial could not be watched from where it starts
+
+The trial lights four crystals on the far quadrant and the player watches
+from a lectern on the near one. Its first arrangement stood **three
+pillars on the near quadrant** - directly between the two - and its second
+put a statue there; the biome's litter could land on the same spots. A
+sightline check written before the fix, lectern to each crystal over two
+hundred floors, found **297 of 800 lines blocked** by a pillar or a
+statue. Reachability was the question the furniture had always been held
+to, and a pillar you can walk round is still a pillar you cannot see
+through.
+
+Two changes. The trial's own arrangements keep to the room's corners,
+below eye height. And the placement filter now refuses anything solid
+wider than a candle within 0.9m of a lectern-to-crystal line - litter goes
+through the same filter, so a biome cannot put an urn where the
+arrangement was forbidden to. After: **0 of 800 blocked.**
+
+### The tome: one keypress, start when ready, and a way out that works
+
+Three complaints, three causes.
+
+*Hard to input.* Medium and hard asked for numbers up to twenty and fifty,
+so a slot was a digit, a digit and a commit - and the commit was Space,
+which nobody was told. Every number is a single digit now and a slot
+commits on the keypress; the difficulty is how many, not how big.
+
+*Slow to start.* Five to seven seconds of looking at numbers you already
+had, with no way to say so. Enter, Space, or a key on screen says "I have
+them" and the answering starts at once - the clock with it.
+
+*Can't exit.* The only way out the tome named was Escape. When the pointer
+lock has not yet let go, the browser consumes the first Escape to release
+it and the page never sees the keypress - so the one key the footer
+promised did nothing the first time it was pressed, in a room with the
+Warden walking towards a player who could not move. There is a key on
+screen now that leaves under any pointer state, and Q does the same from
+the keyboard; Escape and B still work.
+
+The pad still answers it: the keypad's OK is kept, and with nothing left
+uncommitted after a digit it is harmless to press.
+
+## 32. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 32. What a human playtest should watch for
+## 33. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2653,7 +2702,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 33. Options and accessibility
+## 34. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2685,7 +2734,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 34. Deeds
+## 35. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2718,7 +2767,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 35. Two harness bugs that read as game bugs
+## 36. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2791,7 +2840,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 36. Tuning knobs
+## 37. Tuning knobs
 
 All in `src/game/world.ts`:
 
