@@ -5997,7 +5997,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await wait(3000);
     const near1 = dist();
     out.ratsSeen = near1.length;
-    out.scattered = near1.length > 0 && near0.length === near1.length && near1.reduce((a, b) => a + b, 0) / near1.length > near0.reduce((a, b) => a + b, 0) / near0.length + 0.8;
+    // Measured against the hole they live at, not against the first
+    // sample: one slow frame after the teleport can carry them off before
+    // the first read, and then the two reads agree and say nothing.
+    const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+    out.restedAt = +mean(near0).toFixed(2);
+    out.fledTo = +mean(near1).toFixed(2);
+    out.scattered = near1.length > 0 && mean(near1) > 2;
     // A snare on a rat's path is a snare spent, and the Warden untouched.
     window.__bus.emit("teleport", { position: [holes[1].x, 1.5, holes[1].z] });
     await wait(400);
@@ -6055,7 +6061,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     alive.noiseWithBats = bats.withBats;
     alive.louder = bats.withBats > alive.noiseAlone + 0.5;
   }
-  ok("a floor has rats, and they scatter from where you stand", !alive.error && alive.scattered, alive.error || JSON.stringify({ seed: alive.seed, rats: alive.ratsSeen, scattered: alive.scattered }));
+  ok("a floor has rats, and they scatter from where you stand", !alive.error && alive.scattered, alive.error || JSON.stringify({ seed: alive.seed, rats: alive.ratsSeen, scattered: alive.scattered, restedAt: alive.restedAt, fledTo: alive.fledTo }));
   if (!alive.error) {
     ok("a rat springs a snare for nothing, and the Warden is untouched", alive.snarePlaced && alive.sprungBy === "rat" && alive.wardenUntouched, JSON.stringify({ placed: alive.snarePlaced, by: alive.sprungBy, untouched: alive.wardenUntouched }));
     ok("a moth comes to a raised lantern", !!alive.mothRoom && alive.mothCame, JSON.stringify({ room: alive.mothRoom, came: alive.mothCame }));
