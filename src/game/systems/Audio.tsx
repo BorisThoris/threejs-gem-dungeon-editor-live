@@ -5,7 +5,7 @@ import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
 import { useRun } from "../state/run";
 import { behaviourFor } from "../warden/tuning";
-import { ambience, sfx } from "./audio";
+import { ambience, music, sfx } from "./audio";
 
 /** The side a neighbouring room lies on, from the run's own map. */
 function towards(roomId: string): number {
@@ -29,6 +29,28 @@ export function Audio() {
   useEffect(() => {
     if (playing) ambience.setTension(rouse);
   }, [playing, rouse]);
+
+  /**
+   * The score, which follows the run rather than the room.
+   *
+   * Two moods and one motif: the title screen gets it stately, a run gets
+   * it sparse and closing up as the floor wakes. The summary screens keep
+   * the title mood, because a run that has just ended is a menu with a
+   * score on it and silence there reads as the sound having broken.
+   */
+  const phase = useRun((s) => s.phase);
+  const paused = useRun((s) => s.paused);
+  useEffect(() => {
+    music.start(phase === "playing" ? "delve" : "title");
+  }, [phase]);
+  useEffect(() => {
+    if (phase === "playing") music.setTension(rouse);
+  }, [phase, rouse]);
+  // A paused game is a quiet one. The phrase holds where it is rather than
+  // running on behind the menu and firing a burst of notes on the way back.
+  useEffect(() => {
+    music.setPaused(paused);
+  }, [paused]);
 
   useEffect(() => {
     const offs = [

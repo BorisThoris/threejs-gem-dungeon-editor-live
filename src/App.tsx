@@ -195,6 +195,7 @@ export default function App() {
       w.__stalking = m.sfx.isStalking;
       w.__sfx = m.sfx;
       w.__ambience = m.ambience;
+      w.__music = m.music;
     });
     // Room drafts marked live in the editor register themselves when the
     // drafts module loads. The game at "/" never loads the editor, so load

@@ -452,8 +452,15 @@ ok(
 {
   const audio = readFileSync(`${root}src/game/systems/audio.ts`, "utf8");
   const exported = [...audio.matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]);
+  // Bounded to the `sfx` object itself, not to everything after it. It
+  // used to scan from `export const sfx` to the end of the file, so the
+  // moment another exported object was declared below it - the score - its
+  // methods were counted as cues nobody plays. The list of names to ignore
+  // was growing for the same reason.
   const sfxStart = audio.indexOf("export const sfx");
-  const cues = exported.filter((name, i) => audio.indexOf(`  ${name}(`, sfxStart) > 0 && i >= 0);
+  const after = audio.indexOf("\nexport const", sfxStart + 1);
+  const sfxBody = audio.slice(sfxStart, after > 0 ? after : audio.length);
+  const cues = exported.filter((name) => sfxBody.includes(`  ${name}(`));
   // The whole tree, not a list of files somebody remembered: the first
   // version of this looked in two and reported the footstep and the
   // Warden's stalk as cues nobody plays, because they are played from the
@@ -510,6 +517,118 @@ ok(
     "the Warden landing a hit is heard, not merely emitted",
     both.withStrike > both.hurtAlone * 1.2,
     `${both.withStrike.toFixed(4)} for a strike against ${both.hurtAlone.toFixed(4)} for the damage alone`
+  );
+}
+
+/**
+ * The score, which is the one part of the sound design that is music.
+ *
+ * There has been an ambient bed since the beginning, and it is weather
+ * rather than music: a drone, a fifth and filtered noise, none of which
+ * moves in pitch. A demo is heard before it is read and this one was heard
+ * as a hum.
+ *
+ * Measured against itself, which is the only honest way: the bed and the
+ * cues occupy the same spectrum, so "is there energy at 300Hz" says
+ * nothing. Every reading below is the same band with the score playing and
+ * with it stopped, in the same conditions, seconds apart.
+ */
+{
+  const NOTES = [200, 460];
+  const stopped = async () => {
+    await page.evaluate(() => window.__music.stop());
+    await page.waitForTimeout(1600);
+    return page.evaluate(async ([lo, hi]) => window.__band(lo, hi, 2200), NOTES);
+  };
+  const playing = async (mood) => {
+    await page.evaluate((m) => window.__music.start(m), mood);
+    await page.waitForTimeout(1800);
+    return page.evaluate(async ([lo, hi]) => window.__band(lo, hi, 2200), NOTES);
+  };
+
+  // The title screen, where there was nothing at all before: the bed only
+  // runs during a run, so a player who had not pressed Start had heard
+  // silence.
+  await page.evaluate(() => window.__run.getState().quitToMenu());
+  await page.waitForTimeout(800);
+  const titleOff = await stopped();
+  const titleOn = await playing("title");
+  ok(
+    "the title screen has a theme where it used to have silence",
+    titleOn > titleOff * 1.25,
+    `${titleOn.toFixed(4)} playing against ${titleOff.toFixed(4)} stopped`
+  );
+
+  // And it is a melody rather than another drone: the phrase is eight
+  // notes and the fifth is one of them, so both bands light up over a
+  // phrase and neither could over a drone.
+  //
+  // Measured over a whole phrase, which is the mistake the first version
+  // made: three seconds is two and a half notes, and the one note in eight
+  // that is the fifth was simply not played inside the window. It read
+  // 0.0076 and looked like a broken score rather than a short look.
+  const low = await page.evaluate(async () => window.__band(200, 250, 11000));
+  const high = await page.evaluate(async () => window.__band(370, 420, 11000));
+  ok(
+    "and it is a melody rather than another drone - it moves in pitch",
+    low > titleOff && high > titleOff,
+    `${low.toFixed(4)} around the root, ${high.toFixed(4)} a fifth up, ${titleOff.toFixed(4)} with it stopped`
+  );
+
+  // A paused game is a quiet one.
+  await page.evaluate(() => window.__music.setPaused(true));
+  await page.waitForTimeout(2600);
+  const held = await page.evaluate(async ([lo, hi]) => window.__band(lo, hi, 2200), NOTES);
+  await page.evaluate(() => window.__music.setPaused(false));
+  ok(
+    "the phrase holds where it is while the game is paused",
+    held < titleOn * 0.85,
+    `${held.toFixed(4)} paused against ${titleOn.toFixed(4)} playing`
+  );
+
+  // Underground, a floor that is hunting gets a heartbeat under the
+  // phrase. Nothing else in the mix lives that low but the drone, which
+  // does not change.
+  //
+  // The score's own contribution to that band, not the band itself. The
+  // bed's drone is at 55Hz and its fifth at 82Hz, both inside it and both
+  // far louder than a heartbeat - measuring the band flat put 0.63
+  // against 0.59 and could not have told a missing pulse from a present
+  // one. So each reading is taken twice, with the score running and with
+  // it stopped, and what is compared is the difference the score makes.
+  const beat = async (tension) => {
+    await page.evaluate((t) => {
+      window.__music.start("delve");
+      window.__music.setTension(t);
+    }, tension);
+    await page.waitForTimeout(3000);
+    const on = await page.evaluate(async () => window.__band(40, 110, 3000));
+    await page.evaluate(() => window.__music.stop());
+    await page.waitForTimeout(1800);
+    const off = await page.evaluate(async () => window.__band(40, 110, 3000));
+    return on - off;
+  };
+  await page.evaluate(async () => {
+    window.__run.getState().startRun(11);
+    await new Promise((r) => setTimeout(r, 1200));
+  });
+  const calmBeat = await beat(0);
+  const huntedBeat = await beat(1);
+  ok(
+    "a floor that is hunting gets a heartbeat the calm one does not",
+    huntedBeat > calmBeat + 0.01,
+    `the score adds ${huntedBeat.toFixed(4)} down there when hunted against ${calmBeat.toFixed(4)} when calm`
+  );
+
+  // And the volume the player set is the volume it plays at.
+  await page.evaluate(() => window.__sfx.setMuted(true));
+  await page.waitForTimeout(2200);
+  const mutedNotes = await page.evaluate(async ([lo, hi]) => window.__band(lo, hi, 2000), NOTES);
+  await page.evaluate(() => window.__sfx.setMuted(false));
+  ok(
+    "and the mute the player set silences the score with everything else",
+    mutedNotes < titleOn * 0.5,
+    `${mutedNotes.toFixed(4)} muted against ${titleOn.toFixed(4)} playing`
   );
 }
 

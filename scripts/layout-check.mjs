@@ -1045,6 +1045,75 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// How much of a run is furnished the same way as the rest of it.
+//
+// The plan's own last outstanding content note: "it is still the same
+// props in the same quadrants, and that is what runs out next." Size,
+// shape, stone, litter and now sound all vary per room - but what a room
+// is *furnished with* comes from its kind's arrangements, and the kinds a
+// player walks through most had between two and four each.
+//
+// The signature is what a player would describe: which props are in the
+// room, and how many of each. Not where they are to the centimetre, which
+// varies with the room's size and would report every room as unique while
+// the player walks through the same three rooms over and over.
+{
+  // Normalised by the room's own half-width, so the same arrangement built
+  // at fourteen metres and at twenty-eight reads as what it is - the same
+  // room again, bigger - rather than as two different ones. Rounded to a
+  // fifth of the room, which is about "which part of it".
+  // Which props stand in which part of the room, in ninths - near, mid and
+  // far by the doorway the player comes in through, left, centre and
+  // right across it. That is the complaint as it was written: the same
+  // props in the same quadrants. A signature finer than this reports two
+  // rooms as different because a chair is rotated differently, which is
+  // not something anybody walking through them would say.
+  const look = (room, seed) => {
+    const third = room.size / 6;
+    const band = (v) => (v < -third ? "-" : v > third ? "+" : "0");
+    return (
+      `${room.kind}|` +
+      L.placementsFor(room, seed, {})
+        .map((p) => `${p.kind}@${band(p.x)}${band(p.z)}`)
+        .sort()
+        .join(" ")
+    );
+  };
+  let rooms = 0;
+  let distinct = 0;
+  const perKind = {};
+  for (let run = 1; run <= 40; run++) {
+    const seen = new Set();
+    let seed = run;
+    for (let floor = 1; floor <= 3; floor++) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const room of d.rooms) {
+        const sig = look(room, d.seed);
+        rooms++;
+        if (!seen.has(sig)) { seen.add(sig); distinct++; }
+        (perKind[room.kind] ??= new Set()).add(sig);
+      }
+      seed = (d.seed * 7919 + floor + 1) >>> 0;
+    }
+  }
+  const share = distinct / rooms;
+  check(
+    "most of the rooms a run walks through are furnished unlike the rest of it",
+    share >= 0.75,
+    `${distinct} of ${rooms} rooms over 40 runs are the first of their look - ${(share * 100).toFixed(1)}%`
+  );
+  const thin = Object.entries(perKind)
+    .filter(([, set]) => set.size < 4)
+    .map(([kind, set]) => `${kind}:${set.size}`);
+  check(
+    "and every kind of room has at least four ways of being furnished",
+    thin.length === 0,
+    thin.join(" ") ||
+      Object.entries(perKind).map(([k, v]) => `${k}:${v.size}`).join(" ")
+  );
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,
