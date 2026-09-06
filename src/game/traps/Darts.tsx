@@ -70,9 +70,15 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
   });
 
   return (
-    <group position={[trap.x, GROUND_Y, trap.z]} rotation={[0, alongX ? Math.PI / 2 : 0, 0]}>
+    <group position={[trap.x, GROUND_Y, trap.z]} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
       {/* The plate: a worn slab, a shade darker than the floor, and two
-          holes in the jambs either side of the lane that say what it is. */}
+          holes in the jambs either side of the lane that say what it is.
+          Local x is along the lane and local z across it, which is the
+          group unturned for a lane along X - it was turned the other way
+          for eight runs, and every plate's holes stood in the lane with
+          the darts drawn flying along it. The hit test above never looked
+          at these meshes, so nothing noticed until a picture was taken
+          from three strides back and one hole filled the frame. */}
       <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[PLATE_HALF * 2, 1.4]} />
         <meshStandardMaterial color="#2a2622" roughness={1} />

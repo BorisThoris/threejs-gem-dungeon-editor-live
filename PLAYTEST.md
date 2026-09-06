@@ -3347,7 +3347,7 @@ set it in the Keeper's room from outside its reach and took the stairs
 while the Keeper knelt. That is the arc played by something with no
 taste, and it can be finished.
 
-The four new pictures found three things, all in the tour and none in
+The four new pictures found three things in the tour, and then one in
 the game:
 
 - **The dart plate was not in its picture.** The tour stood across the
@@ -3370,6 +3370,16 @@ the game:
   accident, but the first pass of the tour since run 10 could not finish
   until it was an exact match.
 
+And one thing in the game, found by the re-shot plate: **its jamb holes
+stood in the lane.** The trap's group was turned for a lane along X
+when the lane ran along Z and the other way round, so on every plate
+since run 12 the two "holes in the jambs either side of the lane" stood
+in the lane itself, at head height, and the darts were drawn flying
+along it. The hit test never looked at the meshes and was right all
+along, which is why nothing had noticed. A smoke check reads the two
+blocks off the scene now and holds them to either side of the lane; it
+went red on the old rotation and green on the fix.
+
 And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
@@ -3382,7 +3392,7 @@ will be again: a wait in milliseconds is a guess about the machine.
 | Suite | Checks |
 | --- | --- |
 | `yarn test:layout` | 385 |
-| `yarn test:smoke` | 347 |
+| `yarn test:smoke` | 348 |
 
 Fifteen deeds, nineteen kinds of thing on the floor with a body or a
 trigger, four screens more in the tour: a dart plate, the wisp, the

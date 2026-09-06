@@ -6215,6 +6215,64 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+/**
+ * The plate's holes are in the jambs, not in the lane.
+ *
+ * Run 20's tour photographed a dart plate from three strides back and got
+ * a tan box at head height filling the frame: one of the two "holes in
+ * the jambs either side of the lane", standing in the middle of the lane
+ * forty centimetres from the camera. The trap's group was turned for a
+ * lane along X when the lane ran along Z and the other way round, so on
+ * every plate the holes stood in the lane and the darts were drawn flying
+ * along it rather than across it. The hit test never looked at the
+ * meshes and was right all along - which is why no check had noticed,
+ * and why a picture was worth taking. Read off the scene: the two jamb
+ * blocks of a plate sit across the lane from it, and not along it.
+ */
+{
+  const jambs = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const LANE = window.__layout.LANE_HALF_WIDTH;
+    let found = null;
+    for (let seed = 2; seed < 40 && !found; seed++) {
+      run.getState().startRun(seed);
+      await wait(700);
+      const d = run.getState().dungeon;
+      for (const room of d.rooms) {
+        const t = window.__traps.trapsFor(room, d.seed, d.endId).find((t) => t.kind === "darts");
+        if (t) { found = { room, t }; break; }
+      }
+    }
+    if (!found) return { error: "no dart plate in 38 seeds" };
+    const { room, t } = found;
+    run.setState({ transitioning: true, currentRoomId: room.id });
+    run.getState().roomReady(room.id);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await wait(600);
+    const [dx, , dz] = window.__layout.doorPosition(room, t.dir);
+    const alongX = Math.abs(dx) > Math.abs(dz);
+    window.__scene.updateMatrixWorld(true);
+    const blocks = [];
+    window.__scene.traverse((o) => {
+      const g = o.isMesh && o.geometry;
+      if (!g || g.type !== "BoxGeometry") return;
+      const q = g.parameters;
+      if (Math.abs(q.width - 0.3) > 0.01 || Math.abs(q.height - 0.3) > 0.01 || Math.abs(q.depth - 0.12) > 0.01) return;
+      const e = o.matrixWorld.elements;
+      const along = alongX ? e[12] - t.x : e[14] - t.z;
+      const across = alongX ? e[14] - t.z : e[12] - t.x;
+      if (Math.hypot(along, across) < LANE * 1.5) blocks.push({ along: +along.toFixed(2), across: +across.toFixed(2) });
+    });
+    return { dir: t.dir, alongX, blocks, laneHalf: LANE };
+  });
+  ok(
+    "a dart plate's jamb holes stand either side of the lane, not in it",
+    !jambs.error && jambs.blocks.length === 2 && jambs.blocks.every((b) => Math.abs(b.along) < 0.15 && Math.abs(Math.abs(b.across) - jambs.laneHalf) < 0.15),
+    jambs.error || JSON.stringify(jambs)
+  );
+}
+
 // Run 13: the shop sells one bomb a floor; the wall breathes; and what is
 // behind it is worth the bomb - a hoard, a reliquary or a shrine.
 {
