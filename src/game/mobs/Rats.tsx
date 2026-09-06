@@ -16,6 +16,8 @@ interface Rat {
   z: number;
   home: Spot;
   fleeing: boolean;
+  /** Walking back to the hole, all the way, once it has strayed. */
+  homing: boolean;
   dead: boolean;
   wander: number;
 }
@@ -38,7 +40,7 @@ interface RatsProps {
 export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
   const groups = useRef<(Group | null)[]>([]);
   const rats = useMemo<Rat[]>(
-    () => holes.map((h) => ({ x: h.x, z: h.z, home: h, fleeing: false, dead: false, wander: Math.random() * Math.PI * 2 })),
+    () => holes.map((h) => ({ x: h.x, z: h.z, home: h, fleeing: false, homing: false, dead: false, wander: Math.random() * Math.PI * 2 })),
     [holes]
   );
 
@@ -67,7 +69,10 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
           td = wd;
         }
       }
-      const threatened = td < RAT_FLEE_RADIUS;
+      // Startled inside the radius, and not calm again until well outside
+      // it: a rat that stopped at the edge and turned round would dither
+      // there, which is neither a scatter nor a tell.
+      const threatened = td < RAT_FLEE_RADIUS || (rat.fleeing && td < RAT_FLEE_RADIUS * 2);
       if (threatened && !rat.fleeing) sfx.skitter(0.35, sideOf(rat.x - cam.x, rat.z - cam.z));
       rat.fleeing = threatened;
       let dx: number;
@@ -86,10 +91,14 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
         const hx = rat.home.x - rat.x;
         const hz = rat.home.z - rat.z;
         const hd = Math.hypot(hx, hz);
-        if (hd > 1.5) {
+        // Home is the hole itself, not its neighbourhood: it walks all the
+        // way back - across whatever was set down there while it was out.
+        if (hd > 0.3 && (hd > 1.5 || rat.homing)) {
+          rat.homing = hd > 0.3;
           dx = hx / hd;
           dz = hz / hd;
         } else {
+          rat.homing = false;
           dx = Math.cos(rat.wander);
           dz = Math.sin(rat.wander);
         }
