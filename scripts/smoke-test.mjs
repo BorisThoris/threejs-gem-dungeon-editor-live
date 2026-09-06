@@ -4416,6 +4416,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const charges = window.__derived.charges();
     out.roll = {
       kinds: Object.keys(charges).length,
+      // Against the catalogue's own count, not a number kept here: twelve
+      // was right until the bomb, and a check that owns a copy of the
+      // catalogue's length fails on every item added for the wrong reason.
+      catalogue: window.__derived.items().length,
       values: [...new Set(Object.values(charges))].sort(),
       seeded: JSON.stringify(charges),
     };
@@ -4508,8 +4512,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
   ok(
     "a run charges its kinds, and they are the seed's",
-    buc.roll.kinds === 12 && buc.roll.values.length >= 2,
-    JSON.stringify({ kinds: buc.roll.kinds, values: buc.roll.values })
+    buc.roll.kinds === buc.roll.catalogue && buc.roll.values.length >= 2,
+    JSON.stringify({ kinds: buc.roll.kinds, catalogue: buc.roll.catalogue, values: buc.roll.values })
   );
   ok(
     "a blessed potion runs longer than a plain one and a cursed one shorter",
