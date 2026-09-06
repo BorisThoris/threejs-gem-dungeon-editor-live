@@ -6600,10 +6600,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const holds = D.keeper().holds;
     const hudHolds = /KEEPER/.test(document.body.innerText) && /holds the stairs/i.test(document.body.innerText);
     const door = window.__layout.doorPosition(room, post.dir);
-    // At the doorway, inside its reach: the prompt says why, and the walk is refused.
-    window.__bus.emit("teleport", { position: [door[0] * 0.5, 1.5, door[2] * 0.5] });
+    // At the doorway, inside its reach and inside the door's: the prompt
+    // says why, and the walk is refused. Its post is at 0.72 of the way to
+    // the door and its reach is over two metres; the door's own prompt
+    // needs the player within arm's reach of the doorway, which the
+    // middle of the room is not.
+    window.__bus.emit("teleport", { position: [door[0] * 0.82, 1.5, door[2] * 0.82] });
     await wait(1500);
-    const promptHolds = /Keeper holds/i.test(document.body.innerText);
+    const promptHolds = (document.body.innerText.match(/E\s+[^\n]+/g) || []).some((l) => /Keeper holds/i.test(l));
     const floorBefore = run.getState().floor;
     run.getState().travel(post.dir);
     await wait(600);
@@ -6621,7 +6625,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const knelt = D.keeper().stalled && events.includes("keeperKnelt");
     const hudKneels = /kneels/i.test(document.body.innerText);
     // And while it kneels the stairs can be taken: the last floor's exit is the run won.
-    window.__bus.emit("teleport", { position: [door[0] * 0.5, 1.5, door[2] * 0.5] });
+    window.__bus.emit("teleport", { position: [door[0] * 0.85, 1.5, door[2] * 0.85] });
     // The prompt is republished a frame after the trigger re-renders, and
     // a frame here can be most of a second: read it in frames, not once.
     let promptGo = false;
