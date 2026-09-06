@@ -40,6 +40,9 @@ import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
+  FLOOR_PATIENCE_S,
+  REAPER_STALL_S,
+  REAPER_STRIKE_GRACE_S,
   DAMAGE_COOLDOWN_S,
   FLOORS,
   NOISE_HOLD_S,
@@ -271,6 +274,18 @@ export interface RunState {
    * room is a trap room again rather than the answer to the Warden.
    */
   wardenWary: boolean;
+  /**
+   * The run-clock second this floor began. The floor's patience runs
+   * from it, and a fresh floor is a fresh one: what you spent upstairs is
+   * not held against you downstairs.
+   */
+  floorEnteredAt: number;
+  /** The floor's patience ran out and the Reaper is on it. */
+  reaperAwake: boolean;
+  /** Run-clock second a blast stops holding the Reaper. */
+  reaperStalledUntil: number;
+  /** Run-clock second of the Reaper's last strike, for the grace between two. */
+  reaperLastStrikeAt: number;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -403,6 +418,12 @@ export interface RunState {
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
   wardenStrike: () => void;
+  /** The floor's patience ran out. Called from the frame loop. */
+  wakeReaper: () => void;
+  /** The Reaper reached the player. */
+  reaperStrike: () => void;
+  /** A blast in the Reaper's room holds it where it stands for a while. */
+  stallReaper: () => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -527,6 +548,10 @@ export const useRun = create<RunState>()(
     wardenWounds: 0,
     wardenStaggerUntil: 0,
     wardenWary: false,
+    floorEnteredAt: 0,
+    reaperAwake: false,
+    reaperStalledUntil: 0,
+    reaperLastStrikeAt: 0,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -612,6 +637,12 @@ export const useRun = create<RunState>()(
         wardenWounds: 0,
         wardenStaggerUntil: 0,
         wardenWary: false,
+        // The floor's patience starts with the run. On the same clock as
+        // `startedAt`, and cleared with it.
+        floorEnteredAt: performance.now() / 1000,
+        reaperAwake: false,
+        reaperStalledUntil: 0,
+        reaperLastStrikeAt: 0,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -782,6 +813,12 @@ export const useRun = create<RunState>()(
           wardenWounds: 0,
           wardenStaggerUntil: 0,
           wardenWary: false,
+          // A new floor is patient again, and whatever was hunting you on
+          // the last one stays there. Going down is the way out of it.
+          floorEnteredAt: runClock(s),
+          reaperAwake: false,
+          reaperStalledUntil: 0,
+          reaperLastStrikeAt: 0,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1372,6 +1409,33 @@ export const useRun = create<RunState>()(
       bus.emit("wardenStruck");
     },
 
+    wakeReaper: () => {
+      const s = get();
+      if (s.reaperAwake || s.phase !== "playing") return;
+      set({ reaperAwake: true });
+      bus.emit("reaperWoke");
+      bus.emit("notice", "The floor has had enough of you. The exit, now.");
+    },
+
+    reaperStrike: () => {
+      const s = get();
+      if (!s.reaperAwake) return;
+      const now = runClock(s);
+      if (now - s.reaperLastStrikeAt < REAPER_STRIKE_GRACE_S) return;
+      // The ordinary damage path, as the Warden's strike is: the charm,
+      // the cooldown and the death check stay in one place.
+      if (!get().damage()) return;
+      set({ reaperLastStrikeAt: now });
+      bus.emit("reaperStruck");
+    },
+
+    stallReaper: () => {
+      const s = get();
+      if (!s.reaperAwake) return;
+      set({ reaperStalledUntil: runClock(s) + REAPER_STALL_S });
+      bus.emit("reaperStalled");
+    },
+
     wardenWounded: (hold = WARDEN_STAGGER_S) => {
       const s = get();
       if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
@@ -1429,6 +1493,9 @@ export const useRun = create<RunState>()(
       // A bomb left behind in a room the Warden later walks into is a
       // trap, and a trap that only works while you stand in it is a dud.
       if (get().wardenRoomId === roomId) get().routWarden();
+      // The Reaper, which is always in the room the player is in: a blast
+      // there is the one thing on the floor that holds it.
+      if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
       // The thief, likewise: it drops what it holds. It is only ever in the
       // room the player is in - it comes for them and runs from them - so
       // "in this room" is "the player is".
@@ -1499,6 +1566,14 @@ export const runClock = (s: RunState): number =>
 
 /** True while a timed effect is still running. */
 const running = (s: RunState, until: number): boolean => until > runClock(s);
+
+/** Seconds of patience the floor has left for the player, on the run's clock. */
+export const patienceLeft = (s: RunState): number =>
+  FLOOR_PATIENCE_S - (runClock(s) - s.floorEnteredAt);
+
+/** True while a blast is holding the Reaper where it stands. */
+export const reaperStalled = (s: RunState): boolean =>
+  s.reaperAwake && running(s, s.reaperStalledUntil);
 
 /** Which timed potion is running, if either. */
 export const paceEffect = (s: RunState): PaceEffect =>
@@ -1719,6 +1794,13 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
       return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
     },
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
+    // How long the floor will put up with the player, and what woke when it
+    // stopped. On the run's clock, like every deadline in here.
+    patienceLeft: () => patienceLeft(useRun.getState()),
+    reaper: () => {
+      const s = useRun.getState();
+      return { awake: s.reaperAwake, stalled: reaperStalled(s), enteredAt: s.floorEnteredAt };
+    },
     // How long a sprint in this room keeps the Warden coming.
     noiseHold: () => noiseHoldFor(useRun.getState()),
     // The run's own clock, which every deadline in the store is kept on.

@@ -16,6 +16,7 @@ import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Cutpurse } from "../thief/Cutpurse";
 import { Hoard } from "../thief/Hoard";
+import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
@@ -74,6 +75,16 @@ function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
   const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed), [room, seed, placed]);
   return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
+}
+
+/**
+ * The Reaper, once the floor has given up on the player. It is always in
+ * their room: mounting it with the room is how it follows.
+ */
+function RoomReaper({ room }: { room: RoomData }) {
+  const awake = useRun((s) => s.reaperAwake);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return awake && here ? <Reaper room={room} /> : null;
 }
 
 /** The heap, in the one room on the floor that has one. */
@@ -191,6 +202,7 @@ export function Room({ room, seed }: RoomProps) {
       )}
       <RoomWarden room={room} hazards={wardenHazards} seed={seed} />
       <RoomThief room={room} seed={seed} />
+      <RoomReaper room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

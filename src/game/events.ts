@@ -126,6 +126,14 @@ export interface BusEvents {
   bombBurst: { roomId: string; x: number; z: number };
   /** A cracked wall opened onto the room behind it. */
   secretRevealed: { roomId: string; to: string };
+  /** The floor's patience is nearly gone: the countdown has begun. */
+  floorTiring: { left: number };
+  /** It ran out, and the Reaper is on the floor. */
+  reaperWoke: undefined;
+  /** It reached the player. */
+  reaperStruck: undefined;
+  /** A blast is holding it where it stands. */
+  reaperStalled: undefined;
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

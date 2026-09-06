@@ -20,7 +20,9 @@ function towards(roomId: string): number {
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
   // The bed runs while a run is on and fades out when it ends or is quit.
-  const rouse = useRun((s) => behaviourFor(s.alarm).rouse);
+  // The Reaper is the floor fully awake, whatever the alarm says: the
+  // score closes up and the heartbeat comes in for as long as it is here.
+  const rouse = useRun((s) => (s.reaperAwake ? 1 : behaviourFor(s.alarm).rouse));
   useEffect(() => {
     if (!playing) return;
     ambience.start();
@@ -94,6 +96,10 @@ export function Audio() {
       bus.on("wardenStruck", () => sfx.wardenStrike()),
       bus.on("wardenWounded", () => sfx.wardenWound()),
       bus.on("wardenRouted", () => sfx.wardenRout()),
+      bus.on("floorTiring", () => sfx.wardenNear()),
+      bus.on("reaperWoke", () => sfx.wardenHere()),
+      bus.on("reaperStruck", () => sfx.wardenStrike()),
+      bus.on("reaperStalled", () => sfx.wardenWound()),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),

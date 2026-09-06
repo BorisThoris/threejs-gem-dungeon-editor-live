@@ -26,11 +26,12 @@ import type { Patch } from "../warden/steer";
  */
 export type Body = "ground" | "flying" | "ghost";
 
-export type MobId = "warden" | "cutpurse";
+export type MobId = "warden" | "cutpurse" | "reaper";
 
 export const BODIES: Record<MobId, Body> = {
   warden: "ground",
   cutpurse: "ground",
+  reaper: "ghost",
 };
 
 /**

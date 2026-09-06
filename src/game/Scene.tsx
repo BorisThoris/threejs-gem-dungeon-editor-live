@@ -15,6 +15,7 @@ import { Room } from "./rooms/Room";
 import { canControl, useCurrentRoom, useRun } from "./state/run";
 import { BombDriver } from "./systems/BombDriver";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
+import { ReaperDriver } from "./reaper/ReaperDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
@@ -111,6 +112,7 @@ export function Scene() {
       <WardenDriver />
       <CutpurseDriver />
       <BombDriver />
+      <ReaperDriver />
       {/* The light the player carries. Outside the physics tree because it
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}

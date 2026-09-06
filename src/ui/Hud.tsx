@@ -11,6 +11,7 @@ import {
   barredNow,
   lanternLit,
   runClock,
+  patienceLeft,
   wardNow,
   wardenSeesLight,
   wardenSenses,
@@ -19,7 +20,7 @@ import {
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
-import { FLOORS } from "../game/world";
+import { FLOORS, REAPER_WARNING_S } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
@@ -63,7 +64,7 @@ export function Hud() {
     return { name: b.ground, says: "dead", tone: colors.dim };
   })();
 
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
 
   const owed = Math.max(0, toll - gems);
@@ -134,6 +135,18 @@ export function Hud() {
           {ground.name}
           <span style={{ color: colors.dim }}> · </span>
           <span style={{ color: ground.tone }}>{ground.says}</span>
+        </div>
+      )}
+      {/* The floor's patience, once it is short, and what came when it ran
+          out. Said in words as well as a number and a mark, so the one
+          thing in the game you cannot outwalk is never told in colour. */}
+      {(reaper || patience <= REAPER_WARNING_S) && (
+        <div>
+          <span style={{ color: colors.dim }}>FLOOR </span>
+          <span style={{ color: colors.danger }}>
+            {marks && (reaper ? "!!!! " : "!! ")}
+            {reaper ? "it is here - the exit, now" : `tires of you · ${Math.max(0, patience)}s`}
+          </span>
         </div>
       )}
       {wardenAwake && (
@@ -209,6 +222,9 @@ function useWardenSense(): {
   reeling: boolean;
   warded: boolean;
   barSeconds: number;
+  /** Whole seconds of the floor's patience left, and whether it ran out. */
+  patience: number;
+  reaper: boolean;
 } {
   const read = () => {
     const s = useRun.getState();
@@ -224,6 +240,8 @@ function useWardenSense(): {
       // Whole seconds: a bar is forty-five of them and the number is only
       // there to say "soon" or "not yet".
       barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
+      patience: Math.ceil(patienceLeft(s)),
+      reaper: s.reaperAwake,
     };
   };
   const [sense, setSense] = useState(read);
@@ -238,7 +256,9 @@ function useWardenSense(): {
           was.lured === now.lured &&
           was.reeling === now.reeling &&
           was.warded === now.warded &&
-          was.barSeconds === now.barSeconds
+          was.barSeconds === now.barSeconds &&
+          was.patience === now.patience &&
+          was.reaper === now.reaper
           ? was
           : now;
       }),
