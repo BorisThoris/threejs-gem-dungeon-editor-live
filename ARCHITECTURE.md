@@ -280,6 +280,13 @@ Two stores that both claimed the player's stats. So:
   is in the draft and paces the sound through the wall on the run's
   clock; `dungeon/secret.ts` says what is behind it; `Walls.tsx`'s
   `Crack` breathes. None of them marks anything.
+- The lamplighter wisp has no state of its own: `wispOut` in the store
+  is written by one driver from `wardenSeesLight`, so the wisp and the
+  Warden's eye agree by construction. `mobs/lamplighter.ts` owns where it leads
+  (`wispTargetFor`: the unopened secret's host, else the exit, through
+  the first doorway of the shortest path; the crack itself in the host)
+  and where it is (`wispAt`, module data). The braziers read `wispAt`
+  to flare; the store never hears of it.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

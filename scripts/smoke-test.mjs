@@ -6391,6 +6391,56 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("a thin wall lets through what is behind it while you stand in the draft, and nothing from the middle", !heard.error && heard.away === 0 && heard.near >= 1 && heard.said === heard.flavour, heard.error || JSON.stringify(heard));
 }
 
+// Run 16: the lamplighter wisp is out exactly while the player's light can
+// be seen, drifts toward the doorway the hidden room is through, settles
+// on the crack in the host room, and goes out with the light.
+{
+  const wisp = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(23);
+    await wait(1200);
+    const s0 = run.getState();
+    const d = s0.dungeon;
+    const target = window.__wispTarget(d, s0.currentRoomId);
+    const before = !!window.__wisp && window.__wispAt.out;
+    if (!s0.lanternRaised) run.getState().toggleLantern();
+    let seen = null;
+    for (let i = 0; i < 20 && !seen; i++) {
+      await wait(200);
+      if (window.__wispAt.out && window.__wispAt.roomId === s0.currentRoomId) seen = { ...window.__wisp };
+    }
+    if (!seen) return { error: "no wisp within 4 s of raising the lantern" };
+    const hudOut = /a wisp/i.test(document.body.innerText);
+    const d0 = Math.hypot(seen.tx - seen.x, seen.tz - seen.z);
+    await wait(2500);
+    const later = { ...window.__wisp };
+    const d1 = Math.hypot(later.tx - later.x, later.tz - later.z);
+    // Into the host room, if there is one on this floor: it goes for the crack.
+    const host = d.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    let settled = null;
+    if (host) {
+      run.setState({ transitioning: true, currentRoomId: host.id });
+      run.getState().roomReady(host.id);
+      const spot = window.__derived.crackSpot();
+      window.__bus.emit("teleport", { position: [spot[0] * 0.6, 1.5, spot[2] * 0.6] });
+      await wait((Math.hypot(spot[0], spot[2]) / W.WISP_SPEED + 3) * 1000);
+      const w = window.__wisp;
+      settled = { room: w.room, via: w.via, off: Math.hypot(w.x - spot[0], w.z - spot[2]) };
+    }
+    run.getState().toggleLantern();
+    await wait((W.LANTERN_SEEN_HOLD_S + 1.5) * 1000);
+    const gone = !window.__wispAt.out && !run.getState().wispOut;
+    const hudGone = !/a wisp/i.test(document.body.innerText);
+    return { before, target: target && { goal: target.roomId, via: target.via }, seen: { goal: seen.goal, via: seen.via }, hudOut, d0, d1, settled, gone, hudGone };
+  });
+  ok("raising the lantern brings the wisp, and it leads where the one owner says", !wisp.error && !wisp.before && wisp.seen.goal === wisp.target.goal && wisp.seen.via === wisp.target.via, wisp.error || JSON.stringify({ before: wisp.before, target: wisp.target, seen: wisp.seen }));
+  ok("it drifts toward the doorway rather than sitting on the player", !wisp.error && wisp.d1 < wisp.d0, wisp.error || `${wisp.d0?.toFixed(2)} -> ${wisp.d1?.toFixed(2)} m from its door`);
+  ok("in the host room it settles on the crack", !wisp.error && (!wisp.settled || (wisp.settled.via === null && wisp.settled.off < 1.5)), wisp.error || JSON.stringify(wisp.settled ?? "no cracked wall on this floor"));
+  ok("the HUD says it is out, and lowering the lantern puts it out with the light", !wisp.error && wisp.hudOut && wisp.gone && wisp.hudGone, wisp.error || JSON.stringify({ hudOut: wisp.hudOut, gone: wisp.gone, hudGone: wisp.hudGone }));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

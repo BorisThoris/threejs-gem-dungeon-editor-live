@@ -778,3 +778,15 @@ export const SHIELD_SLACK = 0.3;
  * wall rather than a loop; short enough to be heard before they move on.
  */
 export const WALL_SOUND_EVERY_S = 4;
+
+/**
+ * The lamplighter wisp: a helper that costs something. It exists exactly
+ * while the Warden can see the player's light and drifts ahead of them
+ * toward the floor's hidden room - or the exit, once the wall is open -
+ * slower than a walk, so it can be followed and never drags. It waits at
+ * a doorway until the player is within WISP_LEAD, and the braziers within
+ * WISP_FLARE_REACH of it burn brighter as it passes: the way is lit.
+ */
+export const WISP_SPEED = 3.5;
+export const WISP_LEAD = 4;
+export const WISP_FLARE_REACH = 2.5;

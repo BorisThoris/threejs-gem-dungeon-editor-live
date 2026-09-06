@@ -25,6 +25,7 @@ import { Bats } from "../mobs/Bats";
 import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
+import { Wisp } from "../mobs/Wisp";
 import { Darts } from "../traps/Darts";
 import { Grate } from "../traps/Grate";
 import { Pit } from "../traps/Pit";
@@ -124,6 +125,13 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
     </>
   );
+}
+
+/** The lamplighter wisp, in the player's room, while their light can be seen. */
+function RoomWisp({ room }: { room: RoomData }) {
+  const out = useRun((s) => s.wispOut);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return out && here ? <Wisp room={room} /> : null;
 }
 
 /** The draft from a cracked wall, in the room that has one, while the player is in it. */
@@ -272,6 +280,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomAmbient room={room} seed={seed} />
       <RoomTraps room={room} seed={seed} />
       <RoomDraft room={room} />
+      <RoomWisp room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

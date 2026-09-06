@@ -89,7 +89,7 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
 
   return (
     <group>
-      <Braziers places={braziers} />
+      <Braziers places={braziers} roomId={room.id} />
       {rest.map((p) => (
         <Prop key={`${p.kind}@${p.x.toFixed(1)},${p.z.toFixed(1)}`} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
       ))}

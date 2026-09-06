@@ -43,6 +43,7 @@ writeFileSync(
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/props/breakable";
+   export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1559,6 +1560,60 @@ check("the shipped room templates reach the floors the game generates", authored
   const captions = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
   check("every flavour behind a wall has a caption and a sound", ["hoard", "reliquary", "shrine"].every((f) => new RegExp(`"${f}"`).test(captions) || /flavour ===/.test(captions)) && /throughWall/.test(audio) && /hoard|reliquary/.test(audio));
+}
+
+// --- A helper that costs something ---------------------------------------------------
+//
+// Run 16: the lamplighter wisp. It is out exactly while the Warden can see
+// the player's light - it *is* that light, and its price is not a second
+// rule - drifts ahead toward the hidden room, else the exit, and flares
+// the braziers it passes. These hold its body to a ghost, its pace to
+// under a walk so it can be followed and never drags, and the one owner
+// of where it leads to naming the right room, through a real doorway on
+// the shortest path, on every floor.
+{
+  check("the wisp is a ghost: it passes everything and nothing bites it", L.BODIES?.wisp === "ghost", `${L.BODIES?.wisp}`);
+  check("it drifts slower than a walk, so it can be followed and cannot drag", L.WISP_SPEED > 0 && L.WISP_SPEED < L.WALK_SPEED, `${L.WISP_SPEED} against ${L.WALK_SPEED}`);
+  check("it waits within a room's width and lights what it passes, not the room", L.WISP_LEAD > L.WISP_FLARE_REACH && L.WISP_LEAD < L.ROOM_SIZE_SMALL && L.WISP_FLARE_REACH > 1, `lead ${L.WISP_LEAD}, flare ${L.WISP_FLARE_REACH}`);
+  if (L.wispTargetFor) {
+    let floors = 0, wrongGoal = 0, badDoor = 0, offPath = 0, wrongAfter = 0, hostSpot = 0, hosts = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      const host = d.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+      const t = L.wispTargetFor(d, d.startId);
+      const goal = host?.id ?? d.endId;
+      if (!t || t.roomId !== goal) { wrongGoal++; continue; }
+      if (goal !== d.startId) {
+        const start = d.rooms.find((r) => r.id === d.startId);
+        if (!t.via || !start.links[t.via]) { badDoor++; continue; }
+        const path = L.shortestPath(d.rooms, d.startId, goal) ?? [];
+        if (path[1] !== start.links[t.via]) offPath++;
+      }
+      if (host) {
+        hosts++;
+        const inHost = L.wispTargetFor(d, host.id);
+        const spot = L.crackSpot(host);
+        if (!inHost || inHost.via !== null || !spot || Math.hypot(inHost.x - spot[0], inHost.z - spot[2]) > 0.01) hostSpot++;
+        // Open the wall the way the store does - new links both ways - and it leads to the exit instead.
+        const { dir, to } = host.secret;
+        const opened = { ...d, rooms: d.rooms.map((r) => r.id === host.id ? { ...r, links: { ...r.links, [dir]: to } } : r.id === to ? { ...r, links: { ...r.links, [L.OPPOSITE[dir]]: host.id } } : r) };
+        const after = L.wispTargetFor(opened, d.startId);
+        if (!after || after.roomId !== d.endId) wrongAfter++;
+      }
+    }
+    check("from the start it leads to the room behind the crack, else the exit, on every floor", floors > 0 && wrongGoal === 0, `${wrongGoal} of ${floors} floors named the wrong room`);
+    check("through a doorway the room really has, the first step of the shortest path", badDoor === 0 && offPath === 0, `${badDoor} not a link, ${offPath} off the path, of ${floors}`);
+    check("in the host room it heads for the crack itself", hosts > 0 && hostSpot === 0, `${hostSpot} of ${hosts} hosts`);
+    check("and once the wall is open it leads to the exit instead", hosts > 0 && wrongAfter === 0, `${wrongAfter} of ${hosts}`);
+  } else {
+    check("the wisp knows where it is going", false, "no wispTargetFor");
+  }
+  const bra = readFileSync(join(root, "src/game/props/Braziers.tsx"), "utf8");
+  check("the braziers read where the wisp is and flare for it, not the other way round", /wispAt/.test(bra) && /WISP_FLARE_REACH/.test(bra) && !/wispAt/.test(readFileSync(join(root, "src/game/state/run.ts"), "utf8")));
+  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  check("the HUD and the captions say so when it is out", /a wisp/.test(hud) && /wispCame/.test(cap) && /wispLeft/.test(cap));
 }
 
 // --- The Sentry's question --------------------------------------------------

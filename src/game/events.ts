@@ -142,6 +142,10 @@ export interface BusEvents {
   mothLeft: undefined;
   /** A roost burst: the noise of it carries. */
   batsRoused: undefined;
+  /** The lamplighter wisp gathered at the raised lantern. */
+  wispCame: undefined;
+  /** And went out with the light. */
+  wispLeft: undefined;
   /** The player marked a room on the map, or unmarked it. */
   mapMarked: { roomId: string; marked: boolean };
   /** A sound through a thin wall, and what it says is behind it. */

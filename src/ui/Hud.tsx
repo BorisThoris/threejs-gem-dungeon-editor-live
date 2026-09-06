@@ -71,6 +71,7 @@ export function Hud() {
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
   const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
+  const wisp = useRun((s) => s.wispOut);
 
   const owed = Math.max(0, toll - gems);
   const rouse = behaviourFor(alarm, heard).rouse;
@@ -178,6 +179,9 @@ export function Hud() {
       <div>
         <span style={{ color: colors.dim }}>LANTERN </span>
         <span style={{ color: lit ? colors.gold : colors.dim }}>{lit ? "up" : "down"}</span>
+        {/* The helper, named beside its price: it is out for exactly as
+            long as the Warden can see the light. */}
+        {wisp && <span style={{ color: colors.gold }}> · a wisp</span>}
         <span style={{ color: colors.dim }}> · </span>
         {/* Oil in whole seconds. It only burns while the lantern is up, so
             a player who keeps it down never watches this number, which is

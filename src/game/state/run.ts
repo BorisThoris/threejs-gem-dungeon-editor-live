@@ -3,7 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
-import { spawnAfterTravel, spawnAtStart } from "../dungeon/layout";
+import { spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
@@ -321,6 +321,8 @@ export interface RunState {
    * the game reads a mark, which is what makes it worth making.
    */
   marks: string[];
+  /** The lamplighter wisp is out: the Warden can see the player's light. */
+  wispOut: boolean;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -477,6 +479,8 @@ export interface RunState {
   markBombBought: () => void;
   /** Mark the room the player is in on the map, or unmark it. */
   toggleMark: () => void;
+  /** The wisp came out, or went out. Called from the frame loop when the light's visibility changes. */
+  setWisp: (out: boolean) => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -612,6 +616,7 @@ export const useRun = create<RunState>()(
     bombBought: false,
     broken: [],
     marks: [],
+    wispOut: false,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -710,6 +715,7 @@ export const useRun = create<RunState>()(
         bombBought: false,
         broken: [],
         marks: [],
+        wispOut: false,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -894,6 +900,7 @@ export const useRun = create<RunState>()(
           bombBought: false,
           broken: [],
           marks: [],
+          wispOut: false,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1541,6 +1548,15 @@ export const useRun = create<RunState>()(
 
     markBombBought: () => set({ bombBought: true }),
 
+    setWisp: (out) => {
+      if (get().wispOut === out) return;
+      set({ wispOut: out });
+      // Two literal emits, not one ternary: the layout suite greps for
+      // every event's emitter by name.
+      if (out) bus.emit("wispCame");
+      else bus.emit("wispLeft");
+    },
+
     toggleMark: () => {
       const s = get();
       if (!s.currentRoomId || !canControl(s)) return;
@@ -1957,12 +1973,8 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // Where to stand to set a bomb against this room's cracked wall: at
     // arm's length from the middle of that wall, inside the room.
     crackSpot: () => {
-      const s = useRun.getState();
-      const room = roomNow(s);
-      if (!room?.secret) return null;
-      const half = room.size / 2;
-      const step = DIR_STEP[room.secret.dir];
-      return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
+      const room = roomNow(useRun.getState());
+      return room ? crackSpot(room) : null;
     },
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
     // What has gone off, by key: a probe reads it beside where the traps are.

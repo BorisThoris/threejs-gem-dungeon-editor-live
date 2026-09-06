@@ -77,6 +77,8 @@ export function Captions() {
         )
       ),
       bus.on("mapMarked", ({ marked }) => say(marked ? "Marked on the map" : "Mark cleared")),
+      bus.on("wispCame", () => say("A wisp gathers at the lantern")),
+      bus.on("wispLeft", () => say("The wisp goes out")),
       bus.on("trapSprung", ({ kind, by }) =>
         say(
           kind === "grate"

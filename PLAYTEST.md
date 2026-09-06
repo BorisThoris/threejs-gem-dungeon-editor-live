@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §41 asks a human
+  moment it can afford to. That is precisely the behaviour §42 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §41.
+for a person, not for this document, and it is on the list in §42.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3049,14 +3049,70 @@ draft - twice in five and a half seconds, on the four-second
 cadence - and not once from
 the middle of the room.
 
-## 40. Steam Deck
+## 40. A helper that costs something
+
+"A wisp that drifts ahead of a raised lantern and lights the braziers
+on the way - and is the brightest thing on the floor." Runs 11 and 13
+gave the floor things that live on it; this gives it a thing that is on
+the player's side, and says exactly what that costs.
+
+### What it is
+
+`mobs/lamplighter.ts` declares the wisp a ghost in the body table: it passes
+through props and mobs, no spike bites it, no snare holds it, no blast
+scatters it. It is out for exactly as long as the Warden can see the
+player's light - `wispOut` in the store is written by one driver from
+`wardenSeesLight`, the same fact the WARDEN line's "seen" reads. The
+wisp *is* the light the Warden sees. Its price is not a second rule
+bolted on; it is the rule that was already there, made visible.
+
+### Where it leads
+
+One function, `wispTargetFor`, owns the question: the room behind an
+unopened cracked wall, else the exit; from anywhere else, the doorway
+out of the current room that is the first step of the shortest path
+there. In the host room the target is the crack itself; once the wall
+is open it leads to the stairs. The layout suite asks it about 120
+floors and every answer names a real doorway on the shortest path.
+
+### How it moves
+
+It drifts at `WISP_SPEED`, 3.5, under a walk, so a player following it
+keeps up and a player who stops is not dragged: it waits, bobbing, at
+the doorway until they are within `WISP_LEAD` of it, and is in the next
+room the moment they are. Braziers within `WISP_FLARE_REACH` of it burn
+at nearly twice their light as it passes - the helper part a player can
+see - and the braziers read where it is from module data, so nothing
+re-renders for a light moving across a room.
+
+### The price, said
+
+The LANTERN line reads "· a wisp" while it is out; "A wisp gathers at
+the lantern" and "The wisp goes out" are captioned. The store page gets
+its sentence. A player who wants the secret and does not want to be
+seen has the same choice they had before, and now a reason to feel it:
+put the lantern up and be led, or keep it down and find the crack by
+the draft and the map's gap.
+
+### Held and played
+
+The layout suite holds the body, the pace, the lead against the flare
+and the answer of `wispTargetFor` on every floor, before and after the
+wall opens. The smoke suite raises the lantern and watches the wisp
+come, checks it drifts toward the doorway the owner named rather than
+sitting on the player, walks it into the host room and finds it within
+a metre and a half of the crack, then lowers the lantern and finds it
+gone after the light's afterglow, with the HUD's word coming and going
+with it.
+
+## 41. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 41. What a human playtest should watch for
+## 42. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3182,7 +3238,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 42. Options and accessibility
+## 43. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3214,7 +3270,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 43. Deeds
+## 44. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3247,7 +3303,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 44. Harness bugs that read as game bugs
+## 45. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3336,7 +3392,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 45. Tuning knobs
+## 46. Tuning knobs
 
 All in `src/game/world.ts`:
 

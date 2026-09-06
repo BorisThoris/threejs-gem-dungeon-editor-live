@@ -43,7 +43,9 @@ the trick is worth exactly twice and then the room is a trap room again.
 Raise your lantern and you can see the room; you are also the brightest
 thing on a dark floor, and everything down here knows it. Put it down and
 you have a hand's worth of glow and nobody knows where you are. It only
-burns oil while it is up.
+burns oil while it is up. Raise it and a wisp gathers to lead you toward
+the room the map does not show - and it is the brightest thing on the
+floor, for exactly as long as the Warden can see your light.
 
 **Bring your own answers.**
 
