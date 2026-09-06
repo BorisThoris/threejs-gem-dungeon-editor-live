@@ -5657,6 +5657,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // makes the last recorded pair the rout's.
     let lastWrite = { from: run.getState().alarm, to: run.getState().alarm };
     let rout = null;
+    let woundsAtRout = null;
     const offs = [
       run.subscribe((now, was) => {
         // Only writes that move the alarm, so the two emits the rout makes
@@ -5667,6 +5668,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       window.__bus.on("wardenRouted", () => {
         routed++;
         if (rout === null) rout = lastWrite;
+        // The count as the rout leaves it. Read here rather than at the
+        // end, because the Warden is put back in the room afterwards to
+        // prove it walks round the spikes - and since run 12 a trap room
+        // can have a dart plate in its doorway, which wounds it again on
+        // the way in. That is the floor working, not the count failing.
+        if (woundsAtRout === null) woundsAtRout = run.getState().wardenWounds;
       }),
       window.__bus.on("wardenWounded", () => wounded++),
     ];
@@ -5720,7 +5727,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       routed,
       reeledWhileWounded,
       wary: after.wardenWary,
-      woundsAfter: after.wardenWounds,
+      woundsAfter: woundsAtRout ?? after.wardenWounds,
       alarmBefore: rout ? rout.from : alarmBefore,
       alarmAfter: rout ? rout.to : after.alarm,
       insideAfterRout,
