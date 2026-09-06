@@ -1,3 +1,6 @@
+import { useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { MeshStandardMaterial } from "three";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
@@ -34,6 +37,7 @@ export function Walls({ room, color }: WallsProps) {
   const surface = useSurface("stone", room.size / 4, WALL_HEIGHT / 4);
   const slabs: Slab[] = [];
   const gaps: Slab[] = [];
+  const cracks: Slab[] = [];
 
   for (const dir of DIRS) {
     const along: "x" | "z" = dir === "north" || dir === "south" ? "x" : "z";
@@ -62,6 +66,16 @@ export function Walls({ room, color }: WallsProps) {
       });
     } else {
       place(0, room.size + WALL_THICKNESS, midY, WALL_HEIGHT);
+      // The crack: a darker seam down the middle of the wall that hides a
+      // room, on the inside face. It is a hint and not a door, so it has no
+      // collider of its own - the wall behind it does the stopping.
+      if (room.secret && room.secret.dir === dir) {
+        const inward = dir === "north" || dir === "west" ? WALL_THICKNESS / 2 + 0.01 : -(WALL_THICKNESS / 2 + 0.01);
+        cracks.push({
+          position: along === "x" ? [0, GROUND_Y + WALL_HEIGHT * 0.42, offset + inward] : [offset + inward, GROUND_Y + WALL_HEIGHT * 0.42, 0],
+          size: along === "x" ? [0.16, WALL_HEIGHT * 0.84, 0.02] : [0.02, WALL_HEIGHT * 0.84, 0.16],
+        });
+      }
     }
   }
 
@@ -79,6 +93,9 @@ export function Walls({ room, color }: WallsProps) {
           />
         </group>
       ))}
+      {cracks.map((crack, i) => (
+        <Crack key={`crack-${i}`} position={crack.position} size={crack.size} />
+      ))}
       {gaps.map((gap, i) => (
         <CuboidCollider
           key={`gap-${i}`}
@@ -87,5 +104,24 @@ export function Walls({ room, color }: WallsProps) {
         />
       ))}
     </RigidBody>
+  );
+}
+
+/**
+ * The seam that hides a room, breathing: a slow pulse in the dark of it,
+ * visible from close and not from the doorway. The plan asked for a
+ * brazier that gutters; the thing that flickers is the wall itself.
+ */
+function Crack({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
+  const material = useRef<MeshStandardMaterial>(null);
+  useFrame((state) => {
+    const m = material.current;
+    if (m) m.emissiveIntensity = 0.35 + Math.sin(state.clock.elapsedTime * 2.6) * 0.2;
+  });
+  return (
+    <mesh position={position}>
+      <boxGeometry args={size} />
+      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35} roughness={1} />
+    </mesh>
   );
 }

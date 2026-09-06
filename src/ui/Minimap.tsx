@@ -45,6 +45,7 @@ export function Minimap() {
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
   const visited = useRun((s) => s.visited);
+  const marks = useRun((s) => s.marks);
   const gemRooms = useRun((s) => s.gemRooms);
   const wardenRoomId = useRun((s) => s.wardenRoomId);
   const unlocked = useRun((s) => s.unlocked);
@@ -123,6 +124,7 @@ export function Minimap() {
       isExit: r.id === dungeon.endId,
       isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
       isNest: r.id === nestRoomId,
+      marked: marks.includes(r.id),
       hasWarden: shows.showsWarden && r.id === wardenRoomId,
       hasGem:
         shows.showsGems &&
@@ -135,7 +137,7 @@ export function Minimap() {
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId]);
+  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId, marks]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -207,6 +209,21 @@ export function Minimap() {
                   strokeDasharray={c.isVault ? "4 3" : undefined}
                 />
                 {c.hasGem && <circle r={3.4} fill={colors.accent} opacity={0.95} />}
+                {/* The player's own mark. Nothing in the game reads it,
+                    which is what makes it worth making: it means whatever
+                    they meant by it. */}
+                {c.marked && (
+                  <text
+                    data-testid="map-mark"
+                    y={4.5}
+                    textAnchor="middle"
+                    fontSize={12}
+                    fontWeight={700}
+                    fill={c.state === "here" ? "#0a0c12" : colors.ink}
+                  >
+                    ?
+                  </text>
+                )}
                 {/* Not the gold of an exit or a vault, and not the ring of
                     the Warden: what is in there is yours, so it is drawn in
                     the colour gems are drawn in everywhere else. */}

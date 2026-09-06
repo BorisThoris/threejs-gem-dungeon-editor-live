@@ -607,6 +607,25 @@ export const sfx = {
     later(300, () => tone(147, 1.1, "sine", 0.14, 110));
   },
   /** Something small set on stone: a scrape and a click. */
+  /** A draft from a cracked wall: a long, low breath of air. */
+  draft() {
+    noiseBurst(1.1, 0.07, 420);
+  },
+  /**
+   * What is behind a thin wall, faintly: coins, a chime, or water. Quiet
+   * enough to be missed from the middle of the room, which is the point.
+   */
+  throughWall(flavour: "hoard" | "reliquary" | "shrine") {
+    if (flavour === "hoard") {
+      tone(1240, 0.06, "square", 0.05, 900);
+      later(110, () => tone(1480, 0.05, "square", 0.04, 1100));
+    } else if (flavour === "reliquary") {
+      tone(880, 0.5, "sine", 0.05, 860);
+    } else {
+      noiseBurst(0.05, 0.06, 2600);
+      later(140, () => tone(520, 0.12, "sine", 0.04, 330));
+    }
+  },
   setDown() {
     noiseBurst(0.09, 0.16, 1400);
     later(60, () => tone(320, 0.07, "square", 0.14, 260));
@@ -621,6 +640,12 @@ export const sfx = {
     tone(150, 1.1, "sawtooth", 0.4, 60);
     later(60, () => tone(98, 1.4, "square", 0.26, 44));
     later(240, () => noiseBurst(0.5, 0.3, 700));
+  },
+  /** A bomb going off. The loudest thing in the game, and meant to be. */
+  boom() {
+    tone(48, 1.6, "sawtooth", 0.7, 0);
+    later(20, () => noiseBurst(0.9, 0.9, 220));
+    later(90, () => tone(36, 1.2, "square", 0.4, 0));
   },
   wardenStrike() {
     tone(55, 1.2, "sawtooth", 0.5, 30);
@@ -672,4 +697,169 @@ export const sfx = {
   volume: () => volume,
   /** Whether the held Warden sound is running. For the smoke test. */
   isStalking: () => stalking !== null,
+};
+
+/**
+ * The score: the one thing in this game that is not a room, a rule or a
+ * cue.
+ *
+ * There has been an ambient bed since the beginning - a drone, a fifth and
+ * a breath of filtered noise that tightens as the floor rouses - and it is
+ * atmosphere rather than music: nothing in it moves in pitch, so it can
+ * only ever say "somewhere underground" and never say anything twice. A
+ * demo on a store page is heard before it is read, and this one was
+ * heard as a hum.
+ *
+ * Five notes of A minor pentatonic, played sparsely over the bed the game
+ * already has. Two moods and one motif: stately on the title screen,
+ * and underground a phrase that tightens as the floor wakes - the gap
+ * between notes closing, the register dropping, and a heartbeat under it
+ * once something is actually hunting. Synthesised like everything else
+ * here, so it ships no files and needs no licence.
+ *
+ * Scheduled on the audio clock, never on the frame loop. Notes are laid
+ * down half a second ahead of themselves from a timer that only has to
+ * wake up often enough to stay ahead - which is what keeps the phrase
+ * even on a machine rendering at four frames a second, where anything
+ * driven per frame would stagger.
+ */
+type Mood = "title" | "delve";
+
+/** A minor pentatonic, low. The bed's drone is the A below all of it. */
+const SCALE = [220, 261.63, 293.66, 329.63, 392];
+/** The phrase, as steps into `SCALE`. It is meant to be hummable. */
+const PHRASE = [0, 2, 1, 4, 3, 1, 2, 0];
+
+interface Score {
+  mood: Mood;
+  gain: GainNode;
+  timer: number;
+  /** The next note's time on the audio clock, and where in the phrase. */
+  at: number;
+  step: number;
+  tension: number;
+  paused: boolean;
+}
+let score: Score | null = null;
+
+/** One note: a soft triangle and its fifth, through a slow filter. */
+function note(ctx: AudioContext, out: GainNode, freq: number, at: number, hold: number) {
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(0.5, at + 0.12);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + hold);
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(700, at);
+  filter.frequency.exponentialRampToValueAtTime(1600, at + hold * 0.4);
+  const voice = ctx.createOscillator();
+  voice.type = "triangle";
+  voice.frequency.value = freq;
+  const under = ctx.createOscillator();
+  under.type = "sine";
+  under.frequency.value = freq / 2;
+  const underGain = ctx.createGain();
+  underGain.gain.value = 0.4;
+  voice.connect(filter);
+  under.connect(underGain).connect(filter);
+  filter.connect(gain).connect(out);
+  voice.start(at);
+  under.start(at);
+  voice.stop(at + hold + 0.1);
+  under.stop(at + hold + 0.1);
+}
+
+/** The heartbeat under a hunted phrase. Nothing but a thump. */
+function pulse(ctx: AudioContext, out: GainNode, at: number) {
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, at);
+  gain.gain.exponentialRampToValueAtTime(0.6, at + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
+  const thump = ctx.createOscillator();
+  thump.type = "sine";
+  thump.frequency.setValueAtTime(96, at);
+  thump.frequency.exponentialRampToValueAtTime(44, at + 0.3);
+  thump.connect(gain).connect(out);
+  thump.start(at);
+  thump.stop(at + 0.4);
+}
+
+export const music = {
+  /**
+   * How roused the floor is, 0 to 1 - the same number the bed takes. The
+   * phrase closes up with it and the heartbeat comes in over half.
+   */
+  setTension(rouse: number) {
+    if (score) score.tension = Math.max(0, Math.min(1, rouse));
+  },
+  /** A paused game is a quiet one: the phrase stops where it is. */
+  setPaused(paused: boolean) {
+    if (score) score.paused = paused;
+  },
+  start(mood: Mood) {
+    const ctx = ensureContext();
+    if (!ctx || !master) return;
+    if (score?.mood === mood) return;
+    if (score) music.stop();
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    // A bed under everything, and quieter than it feels like it should be.
+    //
+    // Mixed at 0.5 and 0.34 this buried ten of the game's twenty-six cues -
+    // a door, a key, a footstep and the Warden's own approach among them.
+    // At 0.22 and 0.13 it still added 0.023 to a room tone of 0.031,
+    // nearly doubling it, and two cues a player must not miss - the death
+    // sting and being seen - no longer stood three times clear of it.
+    //
+    // This is a game whose only verb against the Warden is evasion and
+    // whose warnings are all sounds. The score is the least important
+    // thing in the mix and is mixed like it.
+    gain.gain.exponentialRampToValueAtTime(mood === "title" ? 0.09 : 0.05, ctx.currentTime + 2);
+    gain.connect(master);
+    const state: Score = {
+      mood,
+      gain,
+      timer: 0,
+      at: ctx.currentTime + 0.4,
+      step: 0,
+      tension: 0,
+      paused: false,
+    };
+    // Wake five times a second and lay down whatever falls in the next
+    // second. The phrase's timing is the audio clock's, so a slow frame
+    // cannot make it limp.
+    state.timer = window.setInterval(() => {
+      const now = ctx.currentTime;
+      if (state.paused) {
+        // Keep the cursor with the clock rather than firing a burst of
+        // notes at once when the game comes back.
+        state.at = Math.max(state.at, now + 0.4);
+        return;
+      }
+      while (state.at < now + 1) {
+        const tension = state.tension;
+        const step = PHRASE[state.step % PHRASE.length];
+        const octave = state.mood === "title" ? 1 : tension > 0.6 ? 0.5 : 1;
+        note(ctx, state.gain, SCALE[step] * octave, state.at, state.mood === "title" ? 1.8 : 1.4);
+        if (state.mood === "delve" && tension > 0.5) pulse(ctx, state.gain, state.at);
+        // Sparse when nothing is looking for you, closer when something is.
+        const gap = state.mood === "title" ? 1.15 : 2.4 - tension * 1.3;
+        state.at += gap;
+        state.step++;
+      }
+    }, 200);
+    score = state;
+  },
+  stop() {
+    if (!score || !context) return;
+    const { gain, timer } = score;
+    score = null;
+    window.clearInterval(timer);
+    const now = context.currentTime;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(Math.max(gain.gain.value, 0.0001), now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+  },
+  /** Which mood is playing, or null. For the checks. */
+  playing: (): Mood | null => score?.mood ?? null,
 };

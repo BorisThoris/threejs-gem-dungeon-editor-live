@@ -55,6 +55,47 @@ export function Captions() {
       bus.on("wardenStruck", () => say("It reaches you")),
       bus.on("wardenWounded", () => say("It recoils - the spikes have it")),
       bus.on("wardenRouted", () => say("It flees into the dark")),
+      bus.on("floorTiring", () => say("The floor tires of you")),
+      bus.on("reaperWoke", () => say("Something that was not here is here")),
+      bus.on("reaperStruck", () => say("It passes through you")),
+      bus.on("reaperStalled", () => say("The blast holds it")),
+      bus.on("snareSprung", ({ by }) => {
+        if (by === "rat") say("Something small springs your snare");
+      }),
+      bus.on("mothLanded", () => say("A moth settles on the lantern")),
+      bus.on("mothLeft", () => say("The moth carries the light away")),
+      bus.on("batsRoused", () => say("Bats burst from the roost")),
+      bus.on("draftFelt", () => say("A draft of cold air, from the wall")),
+      bus.on("propBroken", ({ kind }) => say(`The ${kind} bursts`)),
+      bus.on("wallSound", ({ flavour }) =>
+        say(
+          flavour === "hoard"
+            ? "Something clinks, through the wall"
+            : flavour === "reliquary"
+              ? "A faint chime, through the wall"
+              : "Water, dripping, through the wall"
+        )
+      ),
+      bus.on("mapMarked", ({ marked }) => say(marked ? "Marked on the map" : "Mark cleared")),
+      bus.on("wispCame", () => say("A wisp gathers at the lantern")),
+      bus.on("wispLeft", () => say("The wisp goes out")),
+      bus.on("harrierWoke", () => say("Something takes wing")),
+      bus.on("harrierStruck", () => say("Talons - and it wheels away")),
+      bus.on("harrierDowned", () => say("The blast knocks the harrier down")),
+      bus.on("harrierSlain", () => say("The harrier is spiked")),
+      bus.on("trapSprung", ({ kind, by }) =>
+        say(
+          kind === "grate"
+            ? "A grate drops behind you"
+            : kind === "darts"
+              ? by === "warden"
+                ? "A plate clicks under it - darts"
+                : "A plate clicks underfoot - darts"
+              : by === "warden"
+                ? "The floor gives way under it"
+                : "The floor gives way"
+        )
+      ),
       bus.on("wardenLured", () => say("A clatter, far off")),
       bus.on("sentrySaw", ({ pan }) => say(`A watcher calls out${side(pan)}`)),
       bus.on("thiefCame", () => say("Something small skitters in")),

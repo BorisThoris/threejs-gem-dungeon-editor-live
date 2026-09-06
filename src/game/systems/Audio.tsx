@@ -5,7 +5,7 @@ import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
 import { useRun } from "../state/run";
 import { behaviourFor } from "../warden/tuning";
-import { ambience, sfx } from "./audio";
+import { ambience, music, sfx } from "./audio";
 
 /** The side a neighbouring room lies on, from the run's own map. */
 function towards(roomId: string): number {
@@ -20,7 +20,9 @@ function towards(roomId: string): number {
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
   // The bed runs while a run is on and fades out when it ends or is quit.
-  const rouse = useRun((s) => behaviourFor(s.alarm).rouse);
+  // The Reaper is the floor fully awake, whatever the alarm says: the
+  // score closes up and the heartbeat comes in for as long as it is here.
+  const rouse = useRun((s) => (s.reaperAwake ? 1 : behaviourFor(s.alarm).rouse));
   useEffect(() => {
     if (!playing) return;
     ambience.start();
@@ -29,6 +31,28 @@ export function Audio() {
   useEffect(() => {
     if (playing) ambience.setTension(rouse);
   }, [playing, rouse]);
+
+  /**
+   * The score, which follows the run rather than the room.
+   *
+   * Two moods and one motif: the title screen gets it stately, a run gets
+   * it sparse and closing up as the floor wakes. The summary screens keep
+   * the title mood, because a run that has just ended is a menu with a
+   * score on it and silence there reads as the sound having broken.
+   */
+  const phase = useRun((s) => s.phase);
+  const paused = useRun((s) => s.paused);
+  useEffect(() => {
+    music.start(phase === "playing" ? "delve" : "title");
+  }, [phase]);
+  useEffect(() => {
+    if (phase === "playing") music.setTension(rouse);
+  }, [phase, rouse]);
+  // A paused game is a quiet one. The phrase holds where it is rather than
+  // running on behind the menu and firing a burst of notes on the way back.
+  useEffect(() => {
+    music.setPaused(paused);
+  }, [paused]);
 
   useEffect(() => {
     const offs = [
@@ -42,6 +66,8 @@ export function Audio() {
       bus.on("puzzleResult", ({ completed }) => (completed ? sfx.solved() : sfx.wrong())),
       bus.on("relicTaken", () => sfx.relic()),
       bus.on("shrineKept", () => sfx.shrineKept()),
+      bus.on("bombBurst", () => sfx.boom()),
+      bus.on("secretRevealed", () => sfx.unlock2()),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("keyTaken", () => sfx.key()),
@@ -70,6 +96,27 @@ export function Audio() {
       bus.on("wardenStruck", () => sfx.wardenStrike()),
       bus.on("wardenWounded", () => sfx.wardenWound()),
       bus.on("wardenRouted", () => sfx.wardenRout()),
+      bus.on("floorTiring", () => sfx.wardenNear()),
+      bus.on("reaperWoke", () => sfx.wardenHere()),
+      bus.on("reaperStruck", () => sfx.wardenStrike()),
+      bus.on("reaperStalled", () => sfx.wardenWound()),
+      bus.on("snareSprung", ({ by }) => {
+        if (by === "rat") sfx.clatter();
+      }),
+      bus.on("mothLanded", () => sfx.named()),
+      bus.on("mothLeft", () => sfx.take()),
+      bus.on("batsRoused", () => sfx.thiefFled()),
+      bus.on("draftFelt", () => sfx.draft()),
+      bus.on("propBroken", () => sfx.clatter()),
+      bus.on("wallSound", ({ flavour }) => sfx.throughWall(flavour)),
+      bus.on("mapMarked", () => sfx.setDown()),
+      bus.on("wispCame", () => sfx.named()),
+      bus.on("wispLeft", () => sfx.lanternOut()),
+      bus.on("harrierWoke", () => sfx.thiefFled()),
+      bus.on("harrierStruck", () => sfx.wardenStrike()),
+      bus.on("harrierDowned", () => sfx.grind()),
+      bus.on("harrierSlain", () => sfx.clatter()),
+      bus.on("trapSprung", ({ kind }) => (kind === "grate" ? sfx.barDoor() : kind === "darts" ? sfx.clatter() : sfx.grind())),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),

@@ -85,6 +85,12 @@ function useSatchelKeys() {
         if (canControl(useRun.getState())) useRun.getState().toggleLantern();
         return;
       }
+      // Marking the map is the same kind of thing again, and the store
+      // refuses it out of control the same way.
+      if (bindings.mark.includes(event.code)) {
+        useRun.getState().toggleMark();
+        return;
+      }
       const slot = SLOT_ACTIONS.findIndex((action) => bindings[action].includes(event.code));
       if (slot < 0) return;
       useRun.getState().useItem(slot);
@@ -163,6 +169,23 @@ export default function App() {
     // wants to know whether a candle actually landed on the plate has no
     // other way to ask.
     void import("./game/puzzles/Carryable").then((m) => (w.__carry = m.carry));
+    // What stands in a room and how wide it is, so a check can watch a
+    // creature walk round the furniture rather than trust that it does.
+    void import("./game/rooms/Dressing").then((m) => (w.__placements = m.placementsFor));
+    void import("./game/props/specs").then((m) => (w.__propSpecs = m.PROP_SPECS));
+    // Where the floor's rats, roost and moth are, from the one owner of it.
+    void import("./game/mobs/ambient").then((m) => (w.__ambient = m));
+    // Where the floor's traps are and what each is to a body, likewise.
+    void import("./game/traps/placement").then((m) => (w.__traps = m));
+    void import("./game/mobs/body").then((m) => (w.__body = m));
+    // What is behind the cracked wall, from the one owner of it.
+    void import("./game/dungeon/secret").then((m) => (w.__secret = m));
+    // What a blast does to the furniture, from the one owner of it.
+    void import("./game/props/breakable").then((m) => (w.__breakable = m));
+    // Where the wisp is and what it leads to, from the one owner of it.
+    void import("./game/mobs/lamplighter").then((m) => (w.__wispAt = m.wispAt, w.__wispTarget = m.wispTargetFor));
+    // Where the Harrier roosts, comes in, and is, from the one owner of it.
+    void import("./game/mobs/harrierRoost").then((m) => (w.__harrierAt = m.harrierAt, w.__harrierRoost = m.harrierRoostFor, w.__harrierEntry = m.harrierEntryFor));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft
@@ -200,6 +223,7 @@ export default function App() {
       w.__stalking = m.sfx.isStalking;
       w.__sfx = m.sfx;
       w.__ambience = m.ambience;
+      w.__music = m.music;
     });
     // Room drafts marked live in the editor register themselves when the
     // drafts module loads. The game at "/" never loads the editor, so load

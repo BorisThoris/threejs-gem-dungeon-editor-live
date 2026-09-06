@@ -15,6 +15,7 @@ import {
   WARDEN_MAX_STEP,
   WARDEN_TOUCH_RADIUS,
 } from "../world";
+import { wardenAt } from "./position";
 import { patchAt, steerAround, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 
@@ -33,6 +34,8 @@ interface WardenProps {
    * floor of an ordinary room is not one of them.
    */
   avoid?: readonly Patch[];
+  /** The furniture. Walked round from the first step, wary or not. */
+  obstacles?: readonly Patch[];
 }
 
 /** Proximity bands the DOM draws a vignette from: none, near, close, upon you. */
@@ -56,7 +59,7 @@ const bandFor = (distance: number): number => {
  * level, so it never wins a straight race - it wins by being between you
  * and the door, and by arriving while you are deciding whether to be greedy.
  */
-export function Warden({ room, hazards = [], avoid = hazards }: WardenProps) {
+export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: WardenProps) {
   const group = useRef<Group>(null);
   const eyes = useRef<Group>(null);
   const alarm = useRun((s) => s.alarm);
@@ -106,8 +109,10 @@ export function Warden({ room, hazards = [], avoid = hazards }: WardenProps) {
     bus.emit("wardenProximity", { level: 0 });
     return () => {
       bus.emit("wardenProximity", { level: 0 });
-      // It left the room, or the run ended: the held sound goes with it.
+      // It left the room, or the run ended: the held sound goes with it,
+      // and nothing is fleeing it any more.
       sfx.stalkStop();
+      wardenAt.roomId = null;
     };
   }, []);
 
@@ -129,6 +134,9 @@ export function Warden({ room, hazards = [], avoid = hazards }: WardenProps) {
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
+    wardenAt.x = g.position.x;
+    wardenAt.z = g.position.z;
+    wardenAt.roomId = room.id;
 
     if (import.meta.env.DEV) {
       /**
@@ -209,9 +217,11 @@ export function Warden({ room, hazards = [], avoid = hazards }: WardenProps) {
       WARDEN_MAX_STEP,
       Math.max(0, distance - WARDEN_TOUCH_RADIUS * 0.5)
     );
-    // Straight at the player until the spikes have taught it otherwise.
-    const heading = wary
-      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, avoid, WARDEN_HAZARD_BERTH)
+    // Round the furniture from the first step - it has a body, and a table
+    // is a table - and round the spikes only once they have taught it.
+    const round = wary ? [...avoid, ...obstacles] : obstacles;
+    const heading = round.length
+      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, round, WARDEN_HAZARD_BERTH)
       : { dx: dx / distance, dz: dz / distance };
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     const limit = halfSize(room) - 0.6;

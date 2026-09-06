@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { SNARE_RADIUS } from "../items/catalog";
-import { useRun, wardNow, type PlacedDevice } from "../state/run";
+import { runClock, useRun, wardNow, type PlacedDevice } from "../state/run";
 import { GROUND_Y } from "../world";
 
 /**
@@ -33,6 +33,8 @@ function Device({ device }: { device: PlacedDevice }) {
       return <Snare device={device} />;
     case "wardstone":
       return <WardStone device={device} />;
+    case "bomb":
+      return <Bomb device={device} />;
     default:
       return <IronKnot device={device} />;
   }
@@ -118,6 +120,34 @@ function IronKnot({ device }: { device: PlacedDevice }) {
           <meshStandardMaterial color="#6b6f78" metalness={0.8} roughness={0.45} />
         </mesh>
       ))}
+    </group>
+  );
+}
+
+/** A black sphere with a fuse that burns down. It is meant to be walked away from. */
+function Bomb({ device }: { device: PlacedDevice }) {
+  const fuse = useRef<Group>(null);
+  useFrame(() => {
+    const g = fuse.current;
+    if (!g || device.fuseAt === undefined) return;
+    const s = useRun.getState();
+    // The fuse shortens as its time runs out, and flickers.
+    const left = Math.max(0, device.fuseAt - runClock(s));
+    g.scale.y = Math.max(0.05, Math.min(1, left / 3));
+    g.visible = Math.floor(runClock(s) * 14) % 3 !== 0;
+  });
+  return (
+    <group position={[device.x, GROUND_Y, device.z]}>
+      <mesh position={[0, 0.22, 0]} castShadow>
+        <sphereGeometry args={[0.22, 12, 10]} />
+        <meshStandardMaterial color="#1c1c20" roughness={0.6} metalness={0.2} />
+      </mesh>
+      <group ref={fuse} position={[0, 0.44, 0]}>
+        <mesh position={[0, 0.12, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.24, 6]} />
+          <meshStandardMaterial color="#e8b04a" emissive="#ff7a1a" emissiveIntensity={1.6} />
+        </mesh>
+      </group>
     </group>
   );
 }

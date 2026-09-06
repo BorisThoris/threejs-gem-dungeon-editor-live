@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §31 asks a human
+  moment it can afford to. That is precisely the behaviour §43 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §31.
+for a person, not for this document, and it is on the list in §43.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2464,14 +2464,734 @@ most tempts a player to grab and run, so it is the one where running
 should sometimes be the worst thing available: the haul becomes a decision
 rather than a pickup.
 
-## 30. Steam Deck
+## 30. The game had no music
+
+There has been an ambient bed since the first sound went in - a drone at
+55Hz, a fifth above it, and a breath of filtered noise whose low-pass opens
+as the floor rouses - and it is weather rather than music. Nothing in it
+moves in pitch, so it can only ever say "somewhere underground" and never
+say anything twice. A demo on a store page is heard before it is read,
+and this one was heard as a hum. The title screen was silent.
+
+A score, synthesised like everything else here so it ships no files and
+needs no licence. Five notes of A minor pentatonic - the bed's drone is the
+A below all of them - and an eight-note phrase meant to be hummable.
+Stately on the title screen; underground, sparse, and closing up as the
+floor wakes: the gap between notes falls from 2.4 seconds to 1.1, the
+register drops an octave past half alarm, and a heartbeat comes in under
+the phrase once something is actually hunting. Held where it is while the
+game is paused, silenced by the mute with everything else, and scheduled
+on the audio clock rather than the frame loop, so the phrase stays even
+here at four frames a second.
+
+### Mixed three times before it was right
+
+The audio suite taps the real graph at the destination and measures
+samples, and it earned its keep on the first run of this. At a gain of
+0.5 the score raised the room tone every cue is measured against from
+0.031 to 0.094 and **buried ten of the twenty-six cues** - a door, a key,
+a footstep, and the Warden's own approach among them. At 0.22 it still
+nearly doubled the room and two cues a player must not miss, the death
+sting and being seen by a watcher, no longer stood three times clear of
+it. It is 0.09 on the title screen and 0.05 underground now, adding 0.0025
+to a room of 0.031. This is a game whose only verb against the Warden is
+evasion and whose warnings are all sounds; the score is the least
+important thing in the mix, and it is mixed like it.
+
+Two of the five new checks were wrong before they were right, and both in
+ways worth writing down. The melody check sampled three seconds of an
+eight-note phrase and reported no fifth - because the one note in eight
+that *is* the fifth had not been played inside the window. It watches a
+whole phrase now. And the heartbeat was measured in a band that also holds
+the bed's drone and fifth, both far louder than a pulse; measured flat it
+put 0.63 against 0.59 and could not have told a missing heartbeat from a
+present one. It is measured as the score's own contribution now - the
+same band with the score running and stopped - and at 88 to 130Hz, where
+the pulse's attack lives and nothing of the bed does.
+
+### And a plan item retired with a number
+
+STEAM_DEMO_PLAN's last outstanding content note said "it is still the
+same props in the same quadrants, and that is what runs out next." It
+predates §25 to §29. Measured over forty runs of three floors - by which
+props are in a room and how many of each, and again by which ninth of the
+room each prop stands in - **98% of the rooms a run walks through are
+furnished unlike the rest of it**, and every kind has dozens of looks. The
+measurement stays in `yarn test:layout` so it cannot quietly regress; the
+note is gone.
+
+## 31. The puzzle rooms, refined
+
+The first thing the brief for the new arc said about what exists: "the
+pattern matching one is difficult, there's pillars that block your vision"
+and "the tome one is glitched, can't exit, slow to start, hard to input."
+Both are polish rather than content, and both were measurable.
+
+### The memory trial could not be watched from where it starts
+
+The trial lights four crystals on the far quadrant and the player watches
+from a lectern on the near one. Its first arrangement stood **three
+pillars on the near quadrant** - directly between the two - and its second
+put a statue there; the biome's litter could land on the same spots. A
+sightline check written before the fix, lectern to each crystal over two
+hundred floors, found **297 of 800 lines blocked** by a pillar or a
+statue. Reachability was the question the furniture had always been held
+to, and a pillar you can walk round is still a pillar you cannot see
+through.
+
+Two changes. The trial's own arrangements keep to the room's corners,
+below eye height. And the placement filter now refuses anything solid
+wider than a candle within 0.9m of a lectern-to-crystal line - litter goes
+through the same filter, so a biome cannot put an urn where the
+arrangement was forbidden to. After: **0 of 800 blocked.**
+
+### The tome: one keypress, start when ready, and a way out that works
+
+Three complaints, three causes.
+
+*Hard to input.* Medium and hard asked for numbers up to twenty and fifty,
+so a slot was a digit, a digit and a commit - and the commit was Space,
+which nobody was told. Every number is a single digit now and a slot
+commits on the keypress; the difficulty is how many, not how big.
+
+*Slow to start.* Five to seven seconds of looking at numbers you already
+had, with no way to say so. Enter, Space, or a key on screen says "I have
+them" and the answering starts at once - the clock with it.
+
+*Can't exit.* The only way out the tome named was Escape. When the pointer
+lock has not yet let go, the browser consumes the first Escape to release
+it and the page never sees the keypress - so the one key the footer
+promised did nothing the first time it was pressed, in a room with the
+Warden walking towards a player who could not move. There is a key on
+screen now that leaves under any pointer state, and Q does the same from
+the keyboard; Escape and B still work.
+
+The pad still answers it: the keypad's OK is kept, and with nothing left
+uncommitted after a digit it is harmless to press.
+
+## 32. Bombs, and what they are for
+
+The arc's brief, in its own words: "lets not have combat, not yet, but
+lets have bombs and stuff, bombs can stop enemies." And Isaac's secret
+rooms. The two are one feature, because a bomb that only hurts things is
+a weapon, and this game does not hand out weapons; a bomb that also opens
+walls is leverage.
+
+### A fourth family
+
+Potions happen to the player, scrolls to the floor, devices to the room.
+A bomb is set down like a device and is over in three seconds like a
+potion, and what it does is done to everything in reach at once - the
+player included. `BOMB_FUSE_S` is 3 and `BOMB_RADIUS` is 3.2: long enough
+to walk out of and short enough to matter; wide enough to reach the wall
+it is set against at arm's length and never as wide as half the smallest
+room, or every bomb would open the room's own doorways from its middle.
+A bomb always looks like a bomb. It comes out of chests like everything
+else, at 34 in 400 rolls, and it is not for sale yet - the shop's
+counter is full, and §6 of the plan lists the second pass.
+
+Inside the blast: the player loses a life; the Warden, if it is in the
+room, is routed exactly as a second spike wound routs it - one owner,
+`routWarden`, so the difference between a bomb and the spikes can never
+become a rule; the thief drops what it holds. And a cracked wall gives.
+"If it is in the room" and not "if you are": the first draft routed it
+only while the player stood there too, which made the one way to use a
+bomb without being hurt - set it down and walk - a dud against the thing
+it was for. A bomb left in a room the Warden later walks into is a trap.
+
+### One room the map does not show
+
+Every floor hides a room, hung off a host in a free cell on a side with no
+doorway. It is an *edge* on the host - `room.secret = { dir, to }` - and
+deliberately not a link: links are what the walls cut doorways for, what
+the minimap draws and what the Warden walks, and a secret is none of
+those until it is opened. The wall shows a dark seam down its middle, on
+the inside face. A blast within reach of it calls `revealSecret`, which
+moves the edge into `links` on both rooms; from then on it is a doorway
+like any other, the map draws it, and the room behind it - small, dry,
+older than the floor, with a chest in it - can be walked into.
+
+Placed after the vault and the key, because both of those reason about
+what the floor can be walked without, and a room with no doorway would
+have counted as a room nobody can reach.
+
+Measured over 200 floors: 200 of 200 hide a room; every one is sealed;
+exactly one room cracks onto each; the crack is always in a wall with no
+doorway.
+
+### What the checks are
+
+Fourteen new ones, written first and red on purpose. Eight in
+`yarn test:layout` on the generator and the two numbers; six in
+`yarn test:smoke` that set a bomb down at the crack with the Warden
+beside the player and watch it go off: the fuse runs on the run's clock,
+the player is hurt, the Warden is routed and learns, the crack opens onto
+the secret room, and the secret room can be walked into through it.
+
+## 33. The environment treats mobs as it treats the player
+
+The brief: "make sure all environmental things impact enemies/mobs such as
+they would the player, appropriately. If on ground affect all ground
+mobs, if anything flying not affected by spikes. Also mobs should collide
+with objects the player collides with as well, if they're physical."
+
+### What the floor did to a mob before
+
+Two lists per creature, each built by the creature itself. The Warden
+took the trap room's spikes from `Room.tsx` and added the snares to them;
+the Cutpurse took the same spikes and added the snares again - with its
+own copy of the snare's radius, `1.0`, while the catalogue said
+`SNARE_RADIUS`. Two owners of one number, and neither list had a table in
+it: both walked through the furniture the player has to walk round. The
+Warden is written, in its own doc comment, as a thing "with no collider"
+that "walks through barrels and pillars" on purpose - a threat you cannot
+pin behind a crate. That reasoning was right when the room was a box with
+four props in it. With rooms furnished at 98% distinct and a body of
+rules about what is solid, a thing that ignores all of it reads as
+unfinished, not relentless. It comes on anyway; it just goes round.
+
+### One owner, two questions
+
+`mobs/body.ts` is the floor's whole opinion of a creature, and a
+creature has one property the floor reads: a body. `ground` walks round
+the furniture and is bitten by spikes and snares. `flying` walks round the
+furniture - it is in the way at any height - and nothing on the floor
+bites it. `ghost` passes through all of it and nothing bites it. Two
+functions answer the two questions - `obstaclesFor` and `bitesFor` - from
+the room, the seed and the placed devices, and `Room.tsx` asks them for
+the Warden and the Cutpurse alike. Neither creature builds a list any
+more; the Cutpurse's `1.0` is gone. Both are `ground` today. Run 17 in the
+plan adds the first thing that is not.
+
+The Warden's steering, which it learned only after the spikes had hurt
+it twice, now runs from its first step for the furniture, and adds the
+spikes only once it is wary - the lesson is still a lesson. The Cutpurse
+never steered at all and now does, at a tighter berth, because it is
+smaller and faster and a thief that swings wide round a table is a thief
+you catch.
+
+### The berth a chest asks for
+
+The first flood fill stranded 30 of 1,099 doorways, every one of them
+the same shape: a treasure room's corner hoard, two chests three metres
+apart beside the gem, sealed against a body that gave furniture the
+spikes' berth. The Warden keeps `WARDEN_HAZARD_BERTH` - nearly a metre -
+from anything that wounds it, and a body that kept a metre from a chest
+could not get between two of them. Furniture only ever asks a body's
+half-width, so a patch may now name its own berth: a spike patch keeps
+the wide one, a chest carries a tight one from `body.ts`, and the fill
+walks with exactly the list the game steers by. Zero stranded after.
+
+### Measured
+
+Over 60 seeds, from every doorway of every room with a gem -
+1099 doorways - a ground body's obstacle list never strands it: a
+flood fill over the room's floor at the Warden's own reach gets from the
+doorway to the gem past the furniture, so a Warden steered round a table
+can always still reach the place you are standing to take it. A flying body
+gets the same list; a ghost gets none. Spikes and snares are in the
+ground body's bites and nobody else's.
+
+### What the checks are
+
+Seven in `yarn test:layout`: the body table names every mob and both walk
+on the ground; the three bodies' obstacle and bite lists differ as the
+doc says; the Cutpurse's copy of the snare radius is gone (a grep, so it
+cannot come back); and the flood fill above. Three in `yarn test:smoke`
+that put the Warden in a furnished room with the player on the far side
+of the biggest thing in it and watch where it actually stands - inside a
+prop on 0 of 75 samples, and still closing - beside the
+existing walks, which still arrive, strike and steal on a furnished floor
+at 300 ms frames.
+
+## 34. The one you cannot escape if you linger
+
+The brief: "sometimes you shouldn't be able to escape some bot if you
+linger on the level far tooooo long, should be like Spelunky / Barony /
+Binding of Isaac." Spelunky's ghost, Barony's minotaur - and the shape a
+run was missing. The Warden is a threat you manage: it can be outrun,
+lured, warded, barred, wounded and routed, and a patient player can
+clear a floor around it. Nothing said *stop being patient*.
+
+### A floor has a patience
+
+Every floor puts up with the player for `FLOOR_PATIENCE_S` - five
+minutes, on the run's clock, so the pause menu does not spend it - and
+then the Reaper is on it. A ghost body: `BODIES.reaper` is `ghost`, so
+`obstaclesFor` gives it nothing to walk round and `bitesFor` nothing that
+bites it, and its component asks the floor for neither. It has no room,
+no alarm and no lure. It is always in the room the player is in - it is
+mounted with the room, which is how it follows through every doorway they
+take - and it goes straight at them at `REAPER_SPEED`, 6.5: faster than a
+walk (5) and slower than a dash (8), so lingering cannot be walked away
+from and the exit can still be run for. The dash is the loud thing the
+Warden hears, which is the risk that pays for the escape.
+
+It cannot be fought, lured, warded or barred. A blast holds it for
+`REAPER_STALL_S`, six seconds - longer than a fuse, so a bomb set under
+it is worth the walk - and the exit is the only other answer. Being
+caught costs a life and then `REAPER_STRIKE_GRACE_S` of grace over the
+ordinary damage cooldown, so a strike is a chance lost, not the run. The
+floor below starts patient again, without it: going down is the way out.
+
+### Never a surprise
+
+`REAPER_WARNING_S` before the end the HUD's FLOOR line starts counting -
+"tires of you · 44s", in words and a number and a high-contrast mark, so
+the one thing in the game you cannot outwalk is never told in colour -
+and the score closes up as if the floor were fully roused, heartbeat and
+all, for as long as it is here. A caption and a notice say it in
+English at both moments.
+
+### The numbers, held to the promise
+
+Nine layout checks hold the constants to the shape of the design rather
+than to their values: patience is minutes not moments; the warning comes
+well before the end and is not most of it; the Reaper is faster than a
+walk, slower than a dash, and faster than the Warden at its most roused;
+a blast holds it longer than its own fuse; it is a ghost to the floor with
+nothing in its way and nothing that bites it; and the longest floor over
+200 seeds - 10 rooms on the shortest path from the start to the
+exit, at a generous 7.8 s a room - is walkable in under half its
+patience. And one owner: `world.ts` names the numbers and every other
+file reads them, held by a grep.
+
+### Played
+
+Seven smoke checks: the clock starts full and the pause menu holds it;
+the warning arrives on the HUD and over the bus; when it runs out the
+Reaper wakes, the HUD says so, and it is drawn in the player's room; it
+closes on a standing player from 6.8 m to 0.9 m and takes a
+life; a bomb set at its feet holds it where it stands; it is in the next
+room the moment the player is; and the floor below starts patient, alone.
+
+## 35. Floors that are alive
+
+The brief: "Should have some ambient or helpers mobs as well, that
+roam. Each level should feel alive." The first of the ten loops, and the
+first thing run 9 was for: three creatures, none a threat by itself,
+each with a body in the table, and the cost of adding each one was a
+placement rule and a component - nothing about what bites it or what it
+walks round, because the floor already knew.
+
+### None of it is scenery
+
+A creature that only moves is a screensaver. Each of these touches a
+system the player already reasons about, so "alive" is also a tell and a
+price:
+
+**Rats** (`ground`) live in the dry, old and wet places - catacomb, bone,
+timber, flooded - up to three to a room at holes in the corners clear of
+the furniture, and never where a puzzle is played. They wander near
+home and flee anything with feet within `RAT_FLEE_RADIUS`, slower than a
+walk so they are a thing you can chase. "Anything with feet" includes
+the Warden: `warden/position.ts` is the one owner of where it stands,
+and rats pouring out of a doorway is how a player learns it is behind
+them. They read the same lists the Warden does, so a rat goes round a
+table - and into a snare. `springSnare(key, by)` now says who sprang
+it; a rat spends the wire for nothing, the Warden is untouched, and a
+caption says so. A snare set where the rats run is a snare wasted, which
+is the first thing the rats teach.
+
+**The moth** (`flying`) perches in one room a floor. A raised lantern
+draws it; it settles on the light; and when the lantern goes down it
+carries the light in the Warden's eye for `MOTH_HOLD_S` - six seconds,
+twice the lantern's own afterglow, or the moth would be decoration.
+Nothing on the floor bites it and it goes round the furniture, because
+`bitesFor("flying")` is empty and `obstaclesFor("flying")` is not. A
+blast scatters it. Lighting the moth's room costs more than lighting
+any other, and the HUD's WARDEN line already says "seen" for as long as
+it does.
+
+**Bats** (`flying`) roost in some of the big crystal and catacomb rooms.
+A dash beneath them - the player's own noise, freshly made - bursts the
+roost for `BATS_ROUSED_S` and the noise carries `BATS_NOISE_FACTOR`
+times as far as the ground alone would carry it, through the same
+`noisyUntil` the sprint writes. So does a blast in the room. The GROUND
+line says "bats roost here" on the way in, so the risk is read before
+it is taken, and a player who wants to dash through a roost room can -
+knowing what it costs.
+
+### Measured
+
+Over 120 floors: 16% of rooms have rats and none of them a
+start, exit, shop or puzzle; no hole is inside a prop; 120 of
+120 floors have a moth room and 73 a roost, neither ever the
+start or the exit.
+
+### Played
+
+Five smoke checks: rats scatter from where you stand (two of
+them, mean distance up by more than 0.8 m in three seconds); a rat springs
+a snare and the Warden's wounds are unchanged; the moth comes to a
+raised lantern; the light is still in the Warden's eye longer than the
+lantern's own hold after it is lowered; and a dash under a roost rouses
+the bats and leaves the noise further out than the ground's own hold.
+
+## 36. The floor's own traps
+
+The brief: "Maybe we need environmental traps etc." - and the half of
+it that is Spelunky rather than Barony: a hazard is only interesting if
+the thing hunting you is subject to it too. Run 9 made that a rule
+rather than a wish. This is the first floor furniture written against
+it: three traps, each declaring who springs it and who it hurts in the
+body table's own words, so a ground mob triggers what the player would
+and a ghost walks through all of it.
+
+### Three traps, one owner
+
+`traps/placement.ts` says where they are, derived from the room and the
+seed the way the furniture and the rats are - never in the start, the
+exit, a shop or a puzzle room, at most two to a room, and about
+28% of rooms carry one.
+
+**A dart plate** sits a stride inside a doorway, in the lane. Anything
+with feet that steps on it looses a volley across the lane for
+`DART_FLIGHT_S`, and whatever is in the lane at chest height then is
+hit: the player loses a life, the Warden takes a wound through the same
+door the spikes use. It re-arms `DART_REARM_S` later. A rat runs under
+the darts and a ghost through them, which is what `TRAPS.darts.hurts`
+says. The use: stand beyond the plate. The Warden walks straight at you,
+through the lane.
+
+**A pit** is a crack in the flagstones off every lane, clear of the
+furniture and never on the gem. It gives way once, under whatever walks
+on it - the player loses a life, the Warden is wounded - and from then
+on it is a spike patch in `bitesFor("ground")` for everything with
+feet, so the same Warden that fell through it steers round it once wary,
+and a rat that runs over it dies. The use: lead the Warden over it.
+
+**A grate** hangs over one doorway of a room with at least two, never
+the exit's. Come in under it and it drops behind you: that doorway is
+barred as a bar you made would be, for `GRATE_HOLD_S` - shorter than
+your own forty-five seconds, because you did not choose it, and silent,
+because nobody hammered anything. The Warden behind you has to break it,
+and is heard doing it. The risk is the same grate with the Warden
+already inside.
+
+### Held to the shape of it
+
+Nine layout checks: every trap speaks the body table's language and none
+of them touches a ghost; darts hurt what has feet or wings; a plate
+re-arms after its volley and not during it; a grate holds for less than a
+bar; over 120 floors every plate guards a doorway that exists, every
+grate one that is not the exit's, and no pit is in a lane, on the gem
+or under the furniture.
+
+### Played
+
+Five smoke checks on one floor with all three: stepping on the plate
+costs a life; the Warden walking in through that doorway after you is
+wounded by the volley; a pit opens under the Warden and the body table
+lists it from then on; a grate drops behind you and the HUD says the
+doorway is barred.
+
+Two of those took three tries, and both lessons are worth keeping. A
+volley that only looked for targets from the frame after the plate
+sprang missed the one who set it off whenever that frame was longer
+than the flight, which on this machine is often: now whoever is on the
+plate the frame it springs is hit that frame. And the pit check's first
+Warden never reached the pit because the room also had a dart plate in
+its entry lane - it walked in over it, was wounded twice and routed. That
+is the floor working exactly as designed, and a thing a player can do
+on purpose; the check now measures the pit in a room with only a pit.
+
+## 37. Secrets, deeper
+
+Run 8 hid a room and gave the player a way in. It was a dressed room
+with a gem - worth a bomb only just, and a bomb was a thing you found
+or did not. This is the second pass the plan promised once bombs had
+been played with: the room is worth the bomb every time, the shop sells
+one, and the wall gives itself away to a player who walks the walls.
+
+### What is behind the wall
+
+`dungeon/secret.ts` is the one owner of it: by the seed, one of three.
+A **hoard** is dressed as the vault is - a treasure room's chests, each
+holding a consumable, and a chest in it 100% of the time. A
+**reliquary** is one relic on a stand for nothing: the strongest thing in
+the game, behind a wall, which is Isaac's item room. A **shrine** is the
+font, for a floor that had none. Over 200 floors the wall hides each
+about as often (65 hoards, 71 reliquaries and 64 shrines over 200 floors). The generator does not know which - it
+places a room - and the content asks.
+
+### One bomb a floor, for two gems
+
+A fourth thing at the shop's counter. `BOMB_PRICE` is two gems - more
+than nothing and less than the first floor's toll - and the shop sells
+exactly one a floor, so it is not a bomb dispenser; a player who wants
+more finds them in chests, at thirty-four in four hundred rolls. It is
+refused before the gems go rather than after when the satchel is full,
+and refused like everything else when it would leave less than the exit
+wants.
+
+### The draft
+
+A thin wall breathes. Within `DRAFT_REACH` of the crack's middle - three
+metres, past arm's length and short of the middle of a small room - a
+caption says "A draft of cold air, from the wall", a breath of low noise
+plays, and the GROUND line says "a draft" for as long as the player
+stands in it. Never a marker. `rooms/Draft.tsx` reads `room.secret`, the
+one owner of where the crack is, and writes one module flag the HUD
+polls. Once the wall is opened there is nothing to find, and it says
+nothing.
+
+### Held and played
+
+Four layout checks: the two numbers mean what they say; the three
+flavours are each at least a fifth of floors; a hoard has a chest in it
+nearly every time. Four smoke checks: the shop offers a bomb; sells one,
+takes two gems, and then says it is sold; the wall breathes at the crack
+and not from the middle of the room; and behind it, once opened and
+walked into, is a stand that says free, a font that offers a kneel, or
+a chest that offers to open.
+
+## 38. Breakables
+
+Isaac's rocks and pots. A bomb was a weapon and a key; this makes it a
+tool as well: barrels, crates and urns burst in a blast, now and then
+there is a gem in the wreck, and a barrel is the one thing on a floor a
+player can put between themselves and a bomb.
+
+### What breaks, and what that changes
+
+`props/breakable.ts` is the one owner: `BREAKABLE` is barrels, crates and
+urns - all of them solid, which is the point, because breaking one
+changes what a body walks round. A burst prop is keyed by where it
+stood, not by its index in a list that a vault or a hoard draws with
+extra chests in it, so nobody's index shifts. The store keeps `broken`
+for the floor, the dressing draws a wreck where the prop was and leaves
+it out of the colliders, and `obstaclesFor` leaves it out of every
+creature's list: a rat, the Warden and the moth all go through where
+the barrel was.
+
+To let the store ask what stood in the blast without importing a React
+tree, the pure half of the dressing - `placementsFor` and its rules -
+moved out of `Dressing.tsx` into `rooms/placements.ts`. The body table,
+the ambient life and the traps read it from there now, which is where
+they should always have read it.
+
+### The spill
+
+`spillFor(seed, key)` says whether a wreck has a gem in it:
+`SPILL_CHANCE`, three in ten, by the run's seed, so the same barrel on
+the same seed always holds the same thing. Not an item - a satchel slot
+is a decision and a wreck is not - but a gem, through the same count the
+score reads. Over 2,000 keys the seed spills 585 of them.
+
+### The shield
+
+`shielded(from, to, props)` finds a breakable standing on the straight
+line from the blast to the player, within its own radius and
+`SHIELD_SLACK`, and not at either end: a barrel the bomb was set against
+shields nothing, and neither does one the player is standing on. The
+barrel takes the blast - it bursts - and the player is spared. The
+Warden is not shielded; it is what the blast is for.
+
+### Held and played
+
+Five layout checks: everything that breaks was solid; the spill is a
+chance and not a certainty and the seed honours it; the shield is a
+line - a barrel between shields, one beside, one behind or a pillar does
+not; a burst barrel is out of a ground body's way. Five smoke checks on
+one floor: a bomb beside a barrel bursts it and the store knows; the
+obstacle list is one shorter; the player behind it keeps their life; the
+wreck pays what the seed says; and with the barrel gone the same spot
+costs a life.
+
+## 39. The map that lies
+
+"Nothing marks the map; the player marks it." Run 13 gave the cracked
+wall a draft. This gives the player a pen, the wall a pulse, and the
+draft a voice - three tells, none of them a marker, all of them
+learnable.
+
+### The player's mark
+
+`M`, or d-pad up, marks the room the player is standing in on the map -
+a "?" on its cell in the ink colour - and unmarks it. `marks` is state,
+kept for the floor and cleared with it, and nothing in the game reads
+it: not the Warden, not the deeds, not the summary. That is what makes
+it worth making. A player can write "the draft was here" or "I did not
+open this" and read it back from the far side of the floor, and what it
+means is theirs. The key is rebindable like every other, sits in the
+options beside the lantern and the bar, and the README's controls name
+it.
+
+### The wall breathes
+
+The seam that hides a room is no longer a flat dark box: `Crack` in
+`Walls.tsx` pulses its emissive over about two and a half seconds,
+visible from close and not from the doorway. The plan asked for a
+brazier that gutters; the thing that flickers is the wall itself, which
+is the thing a player should be looking at.
+
+### A sound through the wall
+
+While the player stands in the draft, every `WALL_SOUND_EVERY_S` -
+four seconds - the wall lets through what is behind it: two soft clinks
+for a hoard, a faint chime for a reliquary, a drip for a shrine, and a
+caption that says which. The draft says *there is a room*; the sound
+says *what is in it*. A player learns to bomb for a chime and walk past
+a drip when the shrine would be wasted, which is the difference between
+a secret and a lottery ticket. `Draft.tsx` emits it on the run's clock,
+reading the flavour from `dungeon/secret.ts`, the one owner of it.
+
+### Held and played
+
+Four layout checks: marking is a real, bound, labelled action the README
+names; the through-wall cadence sits between a breath and the floor's
+warning; every flavour has a caption and a sound. Four smoke checks: the
+store's toggle draws one mark and clears it; a mark stays on the room it
+was made in when the player walks on; the key does what the store does;
+and the wall speaks the floor's flavour while the player stands in the
+draft - twice in five and a half seconds, on the four-second
+cadence - and not once from
+the middle of the room.
+
+## 40. A helper that costs something
+
+"A wisp that drifts ahead of a raised lantern and lights the braziers
+on the way - and is the brightest thing on the floor." Runs 11 and 13
+gave the floor things that live on it; this gives it a thing that is on
+the player's side, and says exactly what that costs.
+
+### What it is
+
+`mobs/lamplighter.ts` declares the wisp a ghost in the body table: it passes
+through props and mobs, no spike bites it, no snare holds it, no blast
+scatters it. It is out for exactly as long as the Warden can see the
+player's light - `wispOut` in the store is written by one driver from
+`wardenSeesLight`, the same fact the WARDEN line's "seen" reads. The
+wisp *is* the light the Warden sees. Its price is not a second rule
+bolted on; it is the rule that was already there, made visible.
+
+### Where it leads
+
+One function, `wispTargetFor`, owns the question: the room behind an
+unopened cracked wall, else the exit; from anywhere else, the doorway
+out of the current room that is the first step of the shortest path
+there. In the host room the target is the crack itself; once the wall
+is open it leads to the stairs. The layout suite asks it about 120
+floors and every answer names a real doorway on the shortest path.
+
+### How it moves
+
+It drifts at `WISP_SPEED`, 3.5, under a walk, so a player following it
+keeps up and a player who stops is not dragged: it waits, bobbing, at
+the doorway until they are within `WISP_LEAD` of it, and is in the next
+room the moment they are. Braziers within `WISP_FLARE_REACH` of it burn
+at nearly twice their light as it passes - the helper part a player can
+see - and the braziers read where it is from module data, so nothing
+re-renders for a light moving across a room.
+
+### The price, said
+
+The LANTERN line reads "· a wisp" while it is out; "A wisp gathers at
+the lantern" and "The wisp goes out" are captioned. The store page gets
+its sentence. A player who wants the secret and does not want to be
+seen has the same choice they had before, and now a reason to feel it:
+put the lantern up and be led, or keep it down and find the crack by
+the draft and the map's gap.
+
+### Held and played
+
+The layout suite holds the body, the pace, the lead against the flare
+and the answer of `wispTargetFor` on every floor, before and after the
+wall opens. The smoke suite raises the lantern and watches the wisp
+come, checks it drifts toward the doorway the owner named rather than
+sitting on the player, walks it into the host room and finds it within
+a metre and a half of the crack, then lowers the lantern and finds it
+gone after the light's afterglow, with the HUD's word coming and going
+with it.
+
+The first smoke found a real one. The lead was checked before the step
+and not after, so one slow frame - a second, on this machine - carried
+the wisp from inside its lead to six and a half metres ahead of a player
+who was standing still, where it waited for ever. The step is capped by
+the lead that is left now, the same promise the Warden's step cap makes,
+and the check asserts the rule rather than a direction: ahead of the
+player, toward the doorway, never further than the lead.
+
+## 41. A second threat with a different body
+
+"Something that flies: spikes do not bite it, snares do not hold it,
+props do not stop it - and a blast does." Run 9 wrote the body table so
+that the next creature would not re-invent the floor's rules. This is
+the next creature, and the first whose body is not the Warden's.
+
+### The Harrier
+
+From the second floor down one roosts on every floor, in the room
+farthest from the stairs that is not the exit, the shop or the hidden
+room - `harrierRoostFor` in `mobs/harrierRoost.ts`, the one owner of where.
+It sleeps until the alarm reaches `HARRIER_ALARM_LEVEL` or the player
+walks into its roost, and the HUD says "a harrier roosts here" in that
+room so the tiptoe out is a choice. Awake, it comes for the room the
+player is in by the doorway on the shortest path from its roost - the
+same answer the wisp gives, from the same path - at `FLIGHT_HEIGHT`, and
+dives as it closes.
+
+It is faster than a walk and slower than a dash: it cannot be walked
+from, and a dash is the loud way out. Hit and run: a touch is the
+ordinary damage, invulnerability window and all, then it wheels away
+for `HARRIER_RETREAT_S` and comes again. A grate the player dropped
+across its doorway keeps it out; the room is theirs until the bar lifts.
+
+### What "flying" now means
+
+The body table's "flying" was "walks round the furniture, and nothing
+bites it". A creature that actually flies made the first half wrong: a
+harrier does not walk round a barrel. So a flying body now steers round
+only the furniture whose collider reaches `FLIGHT_HEIGHT` - pillars,
+bookshelves, statues, authored walls - and passes over the rest, and
+the layout suite holds that list to a subset of the walker's. The moth
+and the bats read the same rule and never noticed; that is what one
+owner of a rule is for.
+
+### The one kill
+
+A blast in its room knocks it out of the air for `HARRIER_DOWN_S`, and
+a downed flier is a ground body - `harrierBody` in the store says so -
+so whatever bites feet bites it. Down over the trap room's ring, or
+over a pit that has already opened, it is slain and gone for the floor.
+The game still has no weapon; the floor did it, and the player set it
+up: bring it into the trap room, stand on the gem so its dive crosses
+the ring, and set the bomb. That is Spelunky's kind of kill, and the
+first thing in the demo a player can be proud of that is not an escape.
+
+### Said
+
+"Something takes wing" when it wakes; the ABOVE line reads "a harrier
+hunts you · a blast downs it", "wheels away", or "is down · 4s · spikes
+would end it", so the answer is on screen the first time the question
+is asked. The store page has its sentence.
+
+### Held and played
+
+Twelve layout checks hold the body, the speeds against the walk and
+the dash, the step cap, the down against the walk to the spikes, the
+furniture split, and - over 120 floors - the roost and the entry
+doorway from every room. Five smoke checks wake it by the alarm, watch
+it come in by the doorway the owner named, lose a life to it and see it
+wheel away, knock it down with a bomb, and spike it in the trap room.
+
+Three tries, three lessons. A blast while it is wheeling away downs
+nothing, because it is not in the room - so the check times the bomb to
+burst a stride after it is back. The first floor tried had no trap room,
+so the kill passed by being excused; the check now finds a floor with
+one. And its probe was written before its step, so a check that downed
+it "over the spikes" downed it up to a stride past them: where a thing
+is means where it ends the frame, and the probe says so now.
+
+## 42. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 31. What a human playtest should watch for
+## 43. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2597,7 +3317,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 32. Options and accessibility
+## 44. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2629,7 +3349,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 33. Deeds
+## 45. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2662,7 +3382,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 34. Two harness bugs that read as game bugs
+## 46. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2728,6 +3448,22 @@ fix it is not more timeouts: it is for the harness to wait on a condition
 the game publishes rather than on a clock. That is the next round's work,
 and it is written down here rather than left as folklore.
 
+**And a tap that was a hold.** Two runs in, the pad suite stopped being
+able to walk the pause menu's focus to "Quit to menu": it ended on
+"Captions" once and on "Satchel 2" the next time, and the tome's keypad
+check failed beside it. The keypad was the harness being a run behind the
+game - the tome's numbers are single digits that commit themselves now,
+and the check still pressed OK after each one, so the OK after the last
+digit had no keypad to land on. The menu walk was subtler, and a probe
+that logged the focus press by press was the only way to see it: every
+"tap" moved the focus four to six stops. The harness holds a button for
+four frames, which is a tap at sixty frames a second and a direction held
+for over a second on this machine - longer than the game's own 420ms
+repeat delay, so the game repeated the step exactly as a held d-pad
+should, and the walk leapt clean over the last item on the way round.
+Menu taps hold one frame now; the pad polls once a frame, so a press that
+spans one is seen exactly once. Neither was the game.
+
 None of the first three was a change to the game. All three were checks whose
 failure mode was "the game is broken" when the truth was "the harness
 stood in the wrong place" or "the harness was in a hurry", and a check
@@ -2735,7 +3471,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 35. Tuning knobs
+## 47. Tuning knobs
 
 All in `src/game/world.ts`:
 

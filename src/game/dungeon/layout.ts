@@ -1,5 +1,6 @@
 import { createRng } from "../rng";
 import {
+  CLOSE_REACH,
   DOOR_WIDTH,
   GROUND_Y,
   PLAYER_CAPSULE_RADIUS,
@@ -441,6 +442,18 @@ const WALL_CORRIDOR = 0.5;
  * and never so near a wall that it closes the corridor beside it, so the
  * room is always crossable and the gem always has a safe side.
  */
+/**
+ * Where to stand to set a bomb against this room's cracked wall: at arm's
+ * length from the middle of that wall, inside the room. Null for a room
+ * with no crack, or one already opened.
+ */
+export function crackSpot(room: Room): Vec3 | null {
+  if (!room.secret || room.links[room.secret.dir]) return null;
+  const half = halfSize(room);
+  const step = DIR_STEP[room.secret.dir];
+  return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
+}
+
 export function trapHazards(room: Room, gem: Vec3): Vec3[] {
   const sx = Math.sign(gem[0]) || 1;
   const sz = Math.sign(gem[2]) || 1;

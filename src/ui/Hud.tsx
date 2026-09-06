@@ -3,24 +3,30 @@ import { useEffect, useState } from "react";
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
 import {
+  barredNow,
+  harrierAway,
+  harrierDowned,
+  lanternLit,
   lureNow,
+  patienceLeft,
+  runClock,
   spareGems,
   tollNow,
   useCurrentRoom,
   useRun,
-  barredNow,
-  lanternLit,
-  runClock,
   wardNow,
   wardenSeesLight,
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
+import { roostFor } from "../game/mobs/ambient";
+import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
-import { FLOORS } from "../game/world";
 import { device } from "../game/input/device";
+import { harrierRoostFor } from "../game/mobs/harrierRoost";
+import { FLOORS, REAPER_WARNING_S } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
@@ -64,8 +70,12 @@ export function Hud() {
     return { name: b.ground, says: "dead", tone: colors.dim };
   })();
 
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds } = useWardenSense();
+  // Said where the ground is said, because it is the same kind of fact: a
+  // dash in here is louder than the ground alone makes it.
+  const roost = room ? roostFor(room, dungeonSeed) !== null : false;
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty, harrier, harrierUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
+  const wisp = useRun((s) => s.wispOut);
 
   const owed = Math.max(0, toll - gems);
   const rouse = behaviourFor(alarm, heard).rouse;
@@ -139,6 +149,20 @@ export function Hud() {
           {ground.name}
           <span style={{ color: colors.dim }}> · </span>
           <span style={{ color: ground.tone }}>{ground.says}</span>
+          {roost && <span style={{ color: colors.gold }}> · bats roost here</span>}
+          {drafty && <span style={{ color: colors.gold }}> · a draft</span>}
+        </div>
+      )}
+      {/* The floor's patience, once it is short, and what came when it ran
+          out. Said in words as well as a number and a mark, so the one
+          thing in the game you cannot outwalk is never told in colour. */}
+      {(reaper || patience <= REAPER_WARNING_S) && (
+        <div>
+          <span style={{ color: colors.dim }}>FLOOR </span>
+          <span style={{ color: colors.danger }}>
+            {marks && (reaper ? "!!!! " : "!! ")}
+            {reaper ? "it is here - the exit, now" : `tires of you · ${Math.max(0, patience)}s`}
+          </span>
         </div>
       )}
       {wardenAwake && (
@@ -160,9 +184,30 @@ export function Hud() {
           {warded && <span style={{ color: colors.gold }}> · warded out of this room</span>}
         </div>
       )}
+      {/* The thing with wings: named where it sleeps, so a player can tiptoe
+          out; and what to do about it once it is up, because the answer is
+          new - the spikes and the furniture that handle the Warden do not
+          handle this, and a blast does. */}
+      {harrier && (
+        <div>
+          <span style={{ color: colors.dim }}>ABOVE </span>
+          <span style={{ color: harrier === "roosts" ? colors.gold : harrier === "down" ? colors.gold : colors.danger }}>
+            {harrier === "roosts"
+              ? "a harrier roosts here · quietly"
+              : harrier === "hunting"
+                ? "a harrier hunts you · a blast downs it"
+                : harrier === "away"
+                  ? "the harrier wheels away"
+                  : `the harrier is down · ${harrierUp}s · spikes would end it`}
+          </span>
+        </div>
+      )}
       <div>
         <span style={{ color: colors.dim }}>LANTERN </span>
         <span style={{ color: lit ? colors.gold : colors.dim }}>{lit ? "up" : "down"}</span>
+        {/* The helper, named beside its price: it is out for exactly as
+            long as the Warden can see the light. */}
+        {wisp && <span style={{ color: colors.gold }}> · a wisp</span>}
         <span style={{ color: colors.dim }}> · </span>
         {/* Oil in whole seconds. It only burns while the lantern is up, so
             a player who keeps it down never watches this number, which is
@@ -214,10 +259,30 @@ function useWardenSense(): {
   reeling: boolean;
   warded: boolean;
   barSeconds: number;
+  /** Whole seconds of the floor's patience left, and whether it ran out. */
+  patience: number;
+  reaper: boolean;
+  /** Standing in the draft from a cracked wall. */
+  drafty: boolean;
+  /** The floor's Harrier: roosting in this room, hunting, wheeling away, or down. */
+  harrier: "roosts" | "hunting" | "away" | "down" | null;
+  /** Whole seconds until a downed Harrier is up again. */
+  harrierUp: number;
 } {
   const read = () => {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
+    const harrier: "roosts" | "hunting" | "away" | "down" | null = s.harrierSlain
+      ? null
+      : s.harrierAwake
+        ? harrierDowned(s)
+          ? "down"
+          : harrierAway(s)
+            ? "away"
+            : "hunting"
+        : s.dungeon && harrierRoostFor(s.dungeon, s.floor) === s.currentRoomId
+          ? "roosts"
+          : null;
     return {
       heard: !lured && wardenSenses(s),
       seen: !lured && wardenSeesLight(s),
@@ -229,6 +294,11 @@ function useWardenSense(): {
       // Whole seconds: a bar is forty-five of them and the number is only
       // there to say "soon" or "not yet".
       barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
+      patience: Math.ceil(patienceLeft(s)),
+      reaper: s.reaperAwake,
+      drafty: draft.near && draft.roomId === s.currentRoomId,
+      harrier,
+      harrierUp: harrierDowned(s) ? Math.max(0, Math.ceil(s.harrierDownedUntil - runClock(s))) : 0,
     };
   };
   const [sense, setSense] = useState(read);
@@ -243,7 +313,12 @@ function useWardenSense(): {
           was.lured === now.lured &&
           was.reeling === now.reeling &&
           was.warded === now.warded &&
-          was.barSeconds === now.barSeconds
+          was.barSeconds === now.barSeconds &&
+          was.patience === now.patience &&
+          was.reaper === now.reaper &&
+          was.drafty === now.drafty &&
+          was.harrier === now.harrier &&
+          was.harrierUp === now.harrierUp
           ? was
           : now;
       }),

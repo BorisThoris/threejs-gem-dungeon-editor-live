@@ -128,6 +128,13 @@ Two stores that both claimed the player's stats. So:
   `src/game/items/catalog.ts`; the effect itself is applied in one place,
   `useItem` in the run store. How fast the player moves after drinking one
   is `speedNow(state)`, and it is the only answer to that question.
+- What may stand where in a room is `rooms/Dressing.tsx`'s one `allowed`
+  filter, and every rule about it lives there: out of the door lanes, clear
+  of the kind's own content, the gem, the spikes, the watcher and the key -
+  and, in the memory chamber, off the lines of sight from the lectern to
+  each crystal, because a pillar you can walk round is still a pillar you
+  cannot see through. Litter goes through the same filter, so a biome
+  cannot put something where an arrangement was forbidden to.
 - Which ground the arena's arms sweep is `src/game/arena/sweep.ts` -
   where the rings go, how close to the middle a player can get, and how
   far out. The room draws from it and `yarn test:layout` checks it, which
@@ -190,6 +197,117 @@ Two stores that both claimed the player's stats. So:
   what a key press was. Which buttons the satchel's slots sit on is
   `src/game/input/gamepad.ts`, as a list as long as `SATCHEL_SLOTS` - it
   was two fields for a satchel of four.
+- A bomb is the fourth item family, and the first thing in the game that
+  is done to everything in reach at once, the player included. It is set
+  down through `placeDevice` like a device, carries a `fuseAt` on the
+  run's clock, and `systems/BombDriver.tsx` calls `detonate` from the
+  frame loop when it is due - never a timer, because a fuse lit and then
+  paused is a fuse that has not burned. What the blast does is decided
+  in one place, `detonate`: the player in reach is hurt, the Warden in the
+  room is routed through `routWarden` (the same owner a second spike wound
+  uses, so a bomb and the spikes can never come to differ), the thief
+  drops what it holds, and a cracked wall in reach gives.
+- A secret is an edge, not a link. `room.secret = { dir, to }` names the
+  room behind a cracked wall; `links` are what the walls cut doorways
+  for, what the minimap draws and what the Warden walks, and a secret is
+  none of those until `revealSecret` moves it into `links` on both rooms.
+  The generator places it after the vault and the key, because those
+  reason about what the floor can be walked without and a room with no
+  doorway would count as a room nobody can reach.
+- A creature has a body, and the floor reads it in one place.
+  `mobs/body.ts` owns what a `ground`, `flying` or `ghost` body walks
+  round (`obstaclesFor`) and what bites it (`bitesFor`), from the room,
+  the seed and the placed devices. `Room.tsx` asks it for the Warden and
+  the Cutpurse; neither creature builds its own list. Before this the
+  Cutpurse carried its own copy of the snare's radius, and both walked
+  through the furniture the player has to walk round. Anything added to
+  a floor later - a trap, a creature - reads these two functions rather
+  than inventing a third answer.
+  A patch a body steers round may name its own berth (`Patch.berth`):
+  spikes keep the Warden's wide margin, furniture asks only a body's
+  half-width, and a chest given the spikes' berth sealed the treasure
+  room's corner hoard against it.
+- A floor's patience is one number in `world.ts` and one field in the
+  store - `floorEnteredAt`, the run-clock second the floor began - and
+  `patienceLeft(s)` is the only arithmetic on them. `reaper/ReaperDriver.tsx`
+  counts it from the frame loop, never a timer, because the run's clock is
+  the one the pause menu stops; it warns once and wakes the Reaper once,
+  both keyed on the second the floor began so a new run's first floor is
+  warned about again. The Reaper is a `ghost` in the body table and
+  `reaper/Reaper.tsx` is what ghost means: it asks the floor for nothing.
+  It has no room of its own - it is mounted with whichever room the player
+  is in, which is how it follows - and the store owns the three things
+  that can happen to it: waking, striking (through the ordinary damage
+  path, like the Warden's strike) and being held by a blast, which
+  `detonate` calls the same way it routs the Warden.
+- Where the floor's ambient life is comes from `src/game/mobs/ambient.ts`
+  - `ratsFor`, `roostFor`, `mothRoom` - derived from the room and the
+  seed the way the furniture is, so the rats a check counts are the rats
+  the room draws and the roost the HUD names is the roost the bats burst
+  from. Each creature is a body in the table and a component that reads
+  `obstaclesFor`/`bitesFor` for it; none owns a rule. Where the Warden
+  stands is `src/game/warden/position.ts`, module data written by the
+  Warden and read by what flees it; `__warden` is the dev copy, not a
+  second owner. A snare says who sprang it (`springSnare(key, by)`): a
+  rat spends the wire and wounds nothing. The moth holds the light in
+  the Warden's eye through `mothLeaves` writing `litUntil`, and a roused
+  roost carries a dash through `rouseBats` writing `noisyUntil` - the
+  same two deadlines the lantern and the sprint write, so `wardenSenses`
+  did not learn a third sense.
+- Where the floor's traps are is `src/game/traps/placement.ts` -
+  `trapsFor(room, seed, endId)` - and what each is to a body is `TRAPS`,
+  in the body table's own words (`springs`, `hurts`). The store owns
+  what has gone off (`sprung`, by key and run-clock second: a plate
+  re-arms, a pit stays open) and the two things a trap can do to the
+  run: `springTrap` and `dropGrate`, the latter a bar the player did not
+  make. An open pit reaches every creature through `bitesFor`, which
+  reads `sprung` beside `placed` - the one list of what bites a ground
+  body, now with the floor's own holes in it.
+- What is behind the cracked wall is `src/game/dungeon/secret.ts` -
+  `secretFlavour(d)` - one owner beside `secretId`; the content
+  (`Secret` in `rooms/content.tsx`) asks it and draws a hoard, a
+  reliquary or a shrine, reusing the vault's dressing, the relic stand
+  with a price the floor set, and the shrine's own component rather
+  than copies. The draft is `rooms/Draft.tsx`, reading `room.secret` and
+  writing one module flag the HUD polls. The shop's bomb is one more
+  trigger at the counter and one flag in the store (`bombBought`, reset
+  with the floor), because the counter already owned how a purchase is
+  refused.
+- What a blast does to the furniture is `src/game/props/breakable.ts`:
+  which kinds burst, the key a burst prop is remembered by (where it
+  stood, not an index), whether a wreck holds a gem, and whether a
+  breakable stands between a blast and a body. `detonate` asks it; the
+  store keeps `broken` for the floor; the dressing draws wrecks and
+  leaves burst props out of the colliders; `obstaclesFor` leaves them out
+  of every creature's list. The pure half of the dressing -
+  `placementsFor` - lives in `src/game/rooms/placements.ts` now, out of
+  the component module, so the store, the body table, the ambient life
+  and the traps can read the list the room draws without a React tree
+  or a cycle.
+- The player's marks on the map are store state (`marks`, per floor)
+  that nothing in the game reads; `toggleMark` is the one writer, the
+  key and the pad button both call it, and the minimap draws it. The
+  wall's tells are one owner each: `Draft.tsx` knows whether the player
+  is in the draft and paces the sound through the wall on the run's
+  clock; `dungeon/secret.ts` says what is behind it; `Walls.tsx`'s
+  `Crack` breathes. None of them marks anything.
+- The lamplighter wisp has no state of its own: `wispOut` in the store
+  is written by one driver from `wardenSeesLight`, so the wisp and the
+  Warden's eye agree by construction. `mobs/lamplighter.ts` owns where it leads
+  (`wispTargetFor`: the unopened secret's host, else the exit, through
+  the first doorway of the shortest path; the crack itself in the host)
+  and where it is (`wispAt`, module data). The braziers read `wispAt`
+  to flare; the store never hears of it.
+- The Harrier is the second thing on the floor with a body, and the
+  first flier: `mobs/harrierRoost.ts` owns where it roosts (`harrierRoostFor`)
+  and comes in (`harrierEntryFor`, the wisp's path logic pointed the
+  other way) and where it is (`harrierAt`, module data). The store owns
+  whether it is awake, away, down or slain and the three things that
+  change that (`wakeHarrier`, `harrierStrike`, `downHarrier`,
+  `slayHarrier`), and `harrierBody` says what the floor treats it as
+  right now - a flier, or downed, a thing with feet. `body.ts` decides
+  what a flier clears (`clearedInFlight`: anything whose collider stops
+  under `FLIGHT_HEIGHT`); the Harrier, the moth and the bats all read it.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus
@@ -579,6 +697,14 @@ registries the game reads:
 
 Nothing the editor produces can fail to reach a run, because there is no
 second model for it to be written in.
+
+The score lives in `systems/audio.ts` beside the cues and the bed, driven
+from `Audio.tsx` off the run's `phase`, `paused` and alarm. It is
+scheduled on the audio clock from a timer that only has to stay ahead of
+it, never from the frame loop, and it is mixed under every cue: the audio
+suite measures the room tone the cues are heard over with the score
+running, and the score is the one thing in the mix allowed to be turned
+down until they clear it.
 
 ## Verification
 

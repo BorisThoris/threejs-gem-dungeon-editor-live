@@ -20,6 +20,7 @@ export const ROOM_KINDS = [
   "memory",
   "challenge",
   "shrine",
+  "secret",
 ] as const;
 export type RoomKind = (typeof ROOM_KINDS)[number];
 
@@ -149,6 +150,15 @@ export interface Room {
   shape: Shape;
   /** Neighbouring room in each direction that has a doorway. */
   links: Partial<Record<Dir, string>>;
+  /**
+   * A wall with a crack in it, and the room behind it.
+   *
+   * Deliberately not a link. Links are what the walls cut doorways for,
+   * what the minimap draws and what the Warden walks; a secret is none of
+   * those until a blast opens it, at which point `revealSecret` moves it
+   * into `links` and it becomes a doorway like any other.
+   */
+  secret?: { dir: Dir; to: string };
   /** Authored layout, when the generator picked one. */
   template?: string;
 }
@@ -163,6 +173,8 @@ export interface Dungeon {
    * not a wall across the run.
    */
   vaultId: string | null;
+  /** The room the map does not show, or null on a floor with nowhere to hide one. */
+  secretId: string | null;
   keyRoomId: string | null;
   seed: number;
   rooms: Room[];

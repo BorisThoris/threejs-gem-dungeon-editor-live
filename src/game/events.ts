@@ -122,6 +122,48 @@ export interface BusEvents {
    */
   notice: string | null;
   /** A gem given at a shrine, and the floor let go of the player. */
+  /** A bomb went off, here. */
+  bombBurst: { roomId: string; x: number; z: number };
+  /** A cracked wall opened onto the room behind it. */
+  secretRevealed: { roomId: string; to: string };
+  /** The floor's patience is nearly gone: the countdown has begun. */
+  floorTiring: { left: number };
+  /** It ran out, and the Reaper is on the floor. */
+  reaperWoke: undefined;
+  /** It reached the player. */
+  reaperStruck: undefined;
+  /** A blast is holding it where it stands. */
+  reaperStalled: undefined;
+  /** A snare on the floor went off, and what set it off. */
+  snareSprung: { by: "warden" | "rat" };
+  /** The moth settled on the raised lantern. */
+  mothLanded: undefined;
+  /** And left it, carrying the light in the Warden's eye a while. */
+  mothLeft: undefined;
+  /** A roost burst: the noise of it carries. */
+  batsRoused: undefined;
+  /** The lamplighter wisp gathered at the raised lantern. */
+  wispCame: undefined;
+  /** And went out with the light. */
+  wispLeft: undefined;
+  /** The floor's Harrier is up. */
+  harrierWoke: undefined;
+  /** It reached the player. */
+  harrierStruck: undefined;
+  /** A blast knocked it out of the air. */
+  harrierDowned: undefined;
+  /** Downed over something that bites: gone for the floor. */
+  harrierSlain: undefined;
+  /** The player marked a room on the map, or unmarked it. */
+  mapMarked: { roomId: string; marked: boolean };
+  /** A sound through a thin wall, and what it says is behind it. */
+  wallSound: { roomId: string; flavour: "hoard" | "reliquary" | "shrine" };
+  /** A barrel, crate or urn burst in a blast. */
+  propBroken: { roomId: string; kind: string; key: string };
+  /** A draft of air from a cracked wall, felt for the first time this visit. */
+  draftFelt: { roomId: string };
+  /** One of the floor's own traps went off, and what set it off. */
+  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden" };
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

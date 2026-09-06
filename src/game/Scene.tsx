@@ -13,7 +13,11 @@ import { Perf } from "./systems/Perf";
 import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { canControl, useCurrentRoom, useRun } from "./state/run";
+import { BombDriver } from "./systems/BombDriver";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
+import { WispDriver } from "./mobs/WispDriver";
+import { HarrierDriver } from "./mobs/HarrierDriver";
+import { ReaperDriver } from "./reaper/ReaperDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
@@ -35,6 +39,7 @@ function PadPause() {
     // whenever the player is not in control - so, like the slots, it has
     // no guard of its own here.
     if (pad.lanternPressed && canControl(run)) run.toggleLantern();
+    if (pad.markPressed) run.toggleMark();
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || run.inputLocks > 0) return;
     if (run.paused) run.resume();
@@ -109,6 +114,10 @@ export function Scene() {
           in - both of them need a frame loop that outlives a room. */}
       <WardenDriver />
       <CutpurseDriver />
+      <BombDriver />
+      <ReaperDriver />
+      <WispDriver />
+      <HarrierDriver />
       {/* The light the player carries. Outside the physics tree because it
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}

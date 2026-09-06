@@ -311,6 +311,17 @@ export const WARDEN_HAZARD_BERTH = 0.9;
 
 /** Doorways it is thrown back when it lands a hit. */
 export const WARDEN_BANISH_DISTANCE = 3;
+
+/**
+ * The bomb: set down, a fuse, a blast.
+ *
+ * No combat, but leverage. Long enough to walk out of and short enough to
+ * matter; wide enough to reach the wall it is set against at arm's length
+ * and never as wide as half the smallest room, or every bomb would be a
+ * skeleton key that opens the room's own doorways from its middle.
+ */
+export const BOMB_FUSE_S = 3;
+export const BOMB_RADIUS = 3.2;
 /**
  * How long a sprint keeps the Warden pointed at you after you stop.
  *
@@ -682,3 +693,138 @@ export const ARENA_RING_GAP = 2;
 export const ARENA_SPIN = 0.75;
 /** If a room never reports itself mounted, hand control back anyway. */
 export const TRANSITION_FALLBACK_MS = 1500;
+
+/**
+ * The floor's patience, and what wakes when it runs out.
+ *
+ * Every floor puts up with the player for FLOOR_PATIENCE_S on the run's
+ * clock and then the Reaper is on it: a ghost body - through walls, spikes,
+ * wards and furniture - that has no room, no alarm and no lure, does not
+ * leave, and follows through every doorway the player takes. It is faster
+ * than a walk and slower than a dash, so lingering cannot be walked away
+ * from and the exit can still be run for; and a dash is the loud thing
+ * the Warden hears. Spelunky's ghost and Barony's minotaur, and the shape
+ * a run was missing: a reason not to open the last chest.
+ *
+ * REAPER_WARNING_S before the end the HUD starts counting and the score's
+ * heartbeat comes in, so it is never a surprise. A blast holds it for
+ * REAPER_STALL_S - longer than a fuse, so a bomb set under it is worth the
+ * walk. Between two strikes it waits REAPER_STRIKE_GRACE_S, over and above
+ * the damage cooldown, so being caught costs a life and a chance, not a
+ * run. It is stepped no further than REAPER_MAX_STEP in one frame for the
+ * same reason the Warden is not: a slow frame must not put it on top of
+ * you from across the room.
+ */
+export const FLOOR_PATIENCE_S = 300;
+export const REAPER_WARNING_S = 45;
+export const REAPER_SPEED = 6.5;
+export const REAPER_TOUCH_RADIUS = WARDEN_TOUCH_RADIUS;
+export const REAPER_MAX_STEP = REAPER_TOUCH_RADIUS / 2;
+export const REAPER_STALL_S = 6;
+export const REAPER_STRIKE_GRACE_S = 1.5;
+
+/**
+ * The floor's ambient life: none of it a threat, all of it a tell.
+ *
+ * Rats flee anything with feet - the player, and the Warden, so rats
+ * pouring out of a doorway mean it is behind them - slower than a walk so
+ * they are a thing you can chase, and they spring a snare set across their
+ * run for nothing. A moth comes to a raised lantern and, when the lantern
+ * goes down, carries the light in the Warden's eye for MOTH_HOLD_S: longer
+ * than the lantern's own afterglow, or the moth would be scenery. Bats
+ * roost in some large rooms and a dash beneath them startles the roost for
+ * BATS_ROUSED_S, and the noise carries BATS_NOISE_FACTOR times as far as
+ * the ground alone would carry it.
+ */
+export const RAT_FLEE_RADIUS = 3.5;
+export const RAT_SPEED = 4;
+export const MOTH_SPEED = 3;
+export const MOTH_HOLD_S = 6;
+export const BATS_ROUSED_S = 5;
+export const BATS_NOISE_FACTOR = 2;
+
+/**
+ * The floor's own traps, which are the Spelunky half of the brief: a
+ * hazard the player can read, avoid, and lead the thing hunting them
+ * through. A dart plate a stride inside a doorway looses a volley across
+ * the lane for DART_FLIGHT_S and is armed again DART_REARM_S later, so a
+ * player who knows it is there can time the Warden onto it twice. A
+ * pitfall gives way once, under whatever walks on it, and is a spike
+ * patch from then on. A grate drops behind a player who comes in under it
+ * and bars that doorway for GRATE_HOLD_S - shorter than a bar the player
+ * makes, because they did not choose it.
+ */
+export const DART_FLIGHT_S = 0.6;
+export const DART_REARM_S = 4;
+export const PIT_RADIUS = 0.9;
+export const GRATE_HOLD_S = 20;
+
+/**
+ * What the shop asks for a bomb, and how close to a cracked wall a draft
+ * can be felt. One bomb a floor at the counter: the shop is not a bomb
+ * dispenser, and a player who wants more finds them in chests. The draft
+ * reaches DRAFT_REACH from the middle of the wall, on the host's side - far
+ * enough that walking the walls finds it, and not so far that the middle
+ * of the room does.
+ */
+export const BOMB_PRICE = 2;
+export const DRAFT_REACH = 3;
+
+/**
+ * Breakables. A barrel, a crate or an urn in a blast bursts, and now and
+ * then - SPILL_CHANCE of the time, by the seed - there is a gem in the
+ * wreck. A breakable standing on the line from the bomb to the player,
+ * within its own radius and SHIELD_SLACK, takes the blast for them: the
+ * one thing on a floor you can put between yourself and a bomb.
+ */
+export const SPILL_CHANCE = 0.3;
+export const SHIELD_SLACK = 0.3;
+
+/**
+ * How often a thin wall lets a sound through to a player standing in
+ * its draft. Longer than a breath, so it reads as something behind the
+ * wall rather than a loop; short enough to be heard before they move on.
+ */
+export const WALL_SOUND_EVERY_S = 4;
+
+/**
+ * The lamplighter wisp: a helper that costs something. It exists exactly
+ * while the Warden can see the player's light and drifts ahead of them
+ * toward the floor's hidden room - or the exit, once the wall is open -
+ * slower than a walk, so it can be followed and never drags. It waits at
+ * a doorway until the player is within WISP_LEAD, and the braziers within
+ * WISP_FLARE_REACH of it burn brighter as it passes: the way is lit.
+ */
+export const WISP_SPEED = 3.5;
+export const WISP_LEAD = 4;
+export const WISP_FLARE_REACH = 2.5;
+
+/**
+ * The Harrier: the floor's second threat, and the first with wings.
+ *
+ * From HARRIER_FROM_FLOOR down, one roosts on every floor and sleeps until
+ * the alarm reaches HARRIER_ALARM_LEVEL - taking gems wakes it, as it
+ * wakes the Warden - or until the player walks into its roost. Awake, it
+ * comes for the room the player is in, through the doorway on the shortest
+ * path from its roost, at FLIGHT_HEIGHT: over the low furniture and round
+ * the tall, and nothing on the floor bites it. It is faster than a walk
+ * and slower than a dash, so a dash is the loud way out of it; it cannot
+ * be walked from. Hit and run: a touch costs a life through the ordinary
+ * damage path, then it wheels away for HARRIER_RETREAT_S and comes again.
+ * A doorway the grate has barred keeps it out.
+ *
+ * A blast in its room downs it for HARRIER_DOWN_S, and a downed flier is a
+ * ground body: whatever bites feet bites it, and one downed over the trap
+ * room's ring - or an open pit - is slain, the floor's one kill in a game
+ * without a weapon. HARRIER_MAX_STEP is the same promise the Warden's cap
+ * makes: never further in one frame than its own reach, whatever the frame
+ * cost, so there is always a frame between "close" and "on you".
+ */
+export const HARRIER_FROM_FLOOR = 2;
+export const HARRIER_ALARM_LEVEL = 2;
+export const FLIGHT_HEIGHT = 2.2;
+export const HARRIER_SPEED = 7;
+export const HARRIER_TOUCH_RADIUS = 0.9;
+export const HARRIER_MAX_STEP = HARRIER_TOUCH_RADIUS;
+export const HARRIER_RETREAT_S = 8;
+export const HARRIER_DOWN_S = 6;

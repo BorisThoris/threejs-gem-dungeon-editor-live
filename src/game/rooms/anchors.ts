@@ -54,6 +54,7 @@ export const RESERVED_ANCHORS: Partial<Record<RoomKind, (room: Room) => Vec3[]>>
   memory: memoryAnchors,
   challenge: challengeAnchors,
   shrine: (room) => [shrineAnchor(room)],
+  secret: () => [],
 };
 
 /** The anchors this room's kind has claimed for its own content. */

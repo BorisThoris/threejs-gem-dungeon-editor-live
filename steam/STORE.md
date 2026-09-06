@@ -37,23 +37,31 @@ Trap rooms are somewhere you can choose to fight from - the spikes wound
 whatever walks into them, and two wounds throw it across the floor. It
 learns, though. After that it walks round anything that has bitten it, so
 the trick is worth exactly twice and then the room is a trap room again.
+From the second floor down something with wings hunts by the alarm too:
+the spikes cannot touch it and the furniture does not slow it, but a blast
+knocks it out of the air, and a flier on the ground is just another thing
+the floor can bite.
 
 **Light is a decision, not a setting.**
 
 Raise your lantern and you can see the room; you are also the brightest
 thing on a dark floor, and everything down here knows it. Put it down and
 you have a hand's worth of glow and nobody knows where you are. It only
-burns oil while it is up.
+burns oil while it is up. Raise it and a wisp gathers to lead you toward
+the room the map does not show - and it is the brightest thing on the
+floor, for exactly as long as the Warden can see your light.
 
 **Bring your own answers.**
 
-Twelve kinds of thing hide in the chests, and which look means which is
+Thirteen kinds of thing hide in the chests, and which look means which is
 shuffled every run - the only way to learn what a cloudy potion does is to
 drink one. A fifth of them are blessed and a fifth cursed, and that much
 you can see from across the room. Three of them are set down on the floor
 rather than used on yourself, and they are still there when you come back
 through: a snare, a ward stone, and a knot of loose iron you will only
-drop once.
+drop once. A fourth is set down and is gone three seconds later, with
+whatever stood near it - you, the thing hunting you, or a wall that was
+hiding a room.
 
 **Five ways to go down.**
 

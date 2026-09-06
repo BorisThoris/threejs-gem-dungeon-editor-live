@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+
+import { wispAt } from "../mobs/lamplighter";
+import { WISP_FLARE_REACH } from "../world";
 import { Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
@@ -121,12 +124,16 @@ function Part({
 }
 
 /** One flickering light per brazier, out of step with the others. */
-function Flame({ at }: { at: PropPlacement }) {
+function Flame({ at, roomId }: { at: PropPlacement; roomId?: string }) {
   const light = useRef<PointLight>(null);
   useFrame((state) => {
     if (!light.current) return;
     const t = state.clock.elapsedTime * 11 + at.x * 3 + at.z;
-    light.current.intensity = TORCH_INTENSITY * (1 + Math.sin(t) * 0.13 + Math.sin(t * 2.7) * 0.07);
+    // The lamplighter: a brazier the wisp passes burns brighter. The way
+    // is lit as it goes, which is the helper part a player can see.
+    const flare =
+      wispAt.out && wispAt.roomId === roomId && Math.hypot(wispAt.x - at.x, wispAt.z - at.z) < WISP_FLARE_REACH ? 1.8 : 1;
+    light.current.intensity = TORCH_INTENSITY * flare * (1 + Math.sin(t) * 0.13 + Math.sin(t * 2.7) * 0.07);
   });
   return (
     <pointLight
@@ -163,7 +170,7 @@ function Refill({ at }: { at: PropPlacement }) {
   );
 }
 
-export function Braziers({ places }: { places: PropPlacement[] }) {
+export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?: string }) {
   // A stable identity for the list, so the matrices are not rewritten on
   // every render of the room around them.
   const at = useMemo(() => places, [places]);
@@ -174,7 +181,7 @@ export function Braziers({ places }: { places: PropPlacement[] }) {
         <Part key={part.key} part={part} places={at} />
       ))}
       {at.map((place, i) => (
-        <Flame key={i} at={place} />
+        <Flame key={i} at={place} roomId={roomId} />
       ))}
       {at.map((place, i) => (
         <Refill key={`fill-${i}`} at={place} />

@@ -3,8 +3,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
-import { spawnAfterTravel, spawnAtStart } from "../dungeon/layout";
-import { roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
+import { spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
+import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
   AVARICE_GEMS,
@@ -22,6 +22,7 @@ import {
   SWIFTNESS_S,
   WARD_S,
   appearancesFor,
+  isBomb,
   isDevice,
   type Appearances,
   type ItemId,
@@ -32,26 +33,42 @@ import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
+import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
+import { placementsFor } from "../rooms/placements";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
+import { BODIES, type Body } from "../mobs/body";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
-  DAMAGE_COOLDOWN_S,
-  FLOORS,
-  NOISE_HOLD_S,
-  STARTING_LIVES,
-  TRANSITION_FALLBACK_MS,
-  CUTPURSE_FROM_FLOOR,
   BAR_NOISE_S,
   BAR_S,
-  LANTERN_FULL_S,
-  LANTERN_SEEN_HOLD_S,
+  BATS_NOISE_FACTOR,
+  BATS_ROUSED_S,
+  BOMB_FUSE_S,
+  BOMB_RADIUS,
+  CLOSE_REACH,
+  CUTPURSE_FROM_FLOOR,
   CUTPURSE_GRACE_ROOMS,
   CUTPURSE_REST_S,
   CUTPURSE_SHY_S,
+  DAMAGE_COOLDOWN_S,
+  DART_REARM_S,
+  FLOORS,
+  FLOOR_PATIENCE_S,
+  GRATE_HOLD_S,
+  HARRIER_DOWN_S,
+  HARRIER_RETREAT_S,
+  LANTERN_FULL_S,
+  LANTERN_SEEN_HOLD_S,
+  MOTH_HOLD_S,
+  NOISE_HOLD_S,
+  REAPER_STALL_S,
+  REAPER_STRIKE_GRACE_S,
+  STARTING_LIVES,
+  TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
   WARDEN_ROUT_CALM,
   WARDEN_STAGGER_S,
@@ -80,7 +97,12 @@ export interface PlacedDevice {
   z: number;
   /** False once a snare has caught something: it stays as wreckage. */
   live: boolean;
+  /** A bomb's deadline on the run's clock. Only bombs have one. */
+  fuseAt?: number;
 }
+
+/** What can set a snare off: the thing it was set for, or something small. */
+export type SnareSpringer = "warden" | "rat";
 
 export interface RunState {
   phase: Phase;
@@ -253,6 +275,12 @@ export interface RunState {
   /** The room it walked in from, so wandering does not just pace a corridor. */
   wardenCameFrom: string | null;
   /**
+   * The doorway the player came into this room by, or null at a floor's
+   * start. The one fact a grate needs: it drops behind whoever came in
+   * under it, and "under it" is this.
+   */
+  enteredBy: Dir | null;
+  /**
    * Wounds the Warden has taken from the floor's own spikes since it was
    * last routed, and the run-clock second it stops reeling from the last
    * one. Per floor, like everything else about it.
@@ -265,6 +293,47 @@ export interface RunState {
    * room is a trap room again rather than the answer to the Warden.
    */
   wardenWary: boolean;
+  /**
+   * The run-clock second this floor began. The floor's patience runs
+   * from it, and a fresh floor is a fresh one: what you spent upstairs is
+   * not held against you downstairs.
+   */
+  floorEnteredAt: number;
+  /** The floor's patience ran out and the Reaper is on it. */
+  reaperAwake: boolean;
+  /** Run-clock second a blast stops holding the Reaper. */
+  reaperStalledUntil: number;
+  /** Run-clock second of the Reaper's last strike, for the grace between two. */
+  reaperLastStrikeAt: number;
+  /** The floor's Harrier is up and hunting. */
+  harrierAwake: boolean;
+  /** It was downed over something that bites, and is gone for the floor. */
+  harrierSlain: boolean;
+  /** Run-clock second it gets back off the floor after a blast. */
+  harrierDownedUntil: number;
+  /** Run-clock second it comes back after a strike. */
+  harrierRetreatUntil: number;
+  /** The moth is on the raised lantern, and the Warden can see it. */
+  mothOn: boolean;
+  /** Run-clock second the startled roost settles. */
+  batsRousedUntil: number;
+  /**
+   * The floor's traps that have gone off, by key, and when. A dart plate
+   * re-arms after a while; a pit stays open; both are the floor's and go
+   * with it, like the devices.
+   */
+  sprung: Record<string, number>;
+  /** The shop's one bomb this floor has been bought. */
+  bombBought: boolean;
+  /** Breakables that have burst this floor, by `breakKey`. */
+  broken: string[];
+  /**
+   * Rooms the player has marked on the map. Theirs entirely: nothing in
+   * the game reads a mark, which is what makes it worth making.
+   */
+  marks: string[];
+  /** The lamplighter wisp is out: the Warden can see the player's light. */
+  wispOut: boolean;
   /** The Bone Charm's free hit, spent once a floor. */
   freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
@@ -322,7 +391,7 @@ export interface RunState {
    */
   blessSlot: (slot: number) => boolean;
   /** A snare caught something and is spent. */
-  springSnare: (key: string) => void;
+  springSnare: (key: string, by?: SnareSpringer) => void;
   /** The Cutpurse comes into the room the player is standing in. */
   thiefArrives: () => boolean;
   /** It reached the player and took a gem. False if there was nothing to take. */
@@ -344,6 +413,16 @@ export interface RunState {
    * trigger says which before the press.
    */
   kneelAtShrine: (roomId: string) => boolean;
+  /** A bomb whose fuse has run out goes off. Called from the frame loop. */
+  detonate: (key: string) => void;
+  /** The blast opened a cracked wall: the secret becomes a doorway. */
+  revealSecret: (hostId: string) => void;
+  /**
+   * Throw the Warden across the floor and calm the floor, as a second
+   * wound does. One owner, because a bomb and the spikes rout it the
+   * same way and the difference between them must never be a rule.
+   */
+  routWarden: () => void;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -387,6 +466,40 @@ export interface RunState {
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
   wardenStrike: () => void;
+  /** The floor's Harrier wakes: the alarm reached its level, or the player is in its roost. */
+  wakeHarrier: () => void;
+  /** It reached the player: the ordinary damage, then it wheels away a while. */
+  harrierStrike: () => void;
+  /** A blast in its room: it drops, and is a ground body until it is up. */
+  downHarrier: () => void;
+  /** Down over something that bites: gone for the floor. */
+  slayHarrier: () => void;
+  /** The floor's patience ran out. Called from the frame loop. */
+  wakeReaper: () => void;
+  /** The Reaper reached the player. */
+  reaperStrike: () => void;
+  /** A blast in the Reaper's room holds it where it stands for a while. */
+  stallReaper: () => void;
+  /** The moth settled on the raised lantern. */
+  mothLands: () => void;
+  /** The moth left the lantern: the light stays in the Warden's eye a while. */
+  mothLeaves: () => void;
+  /** Something startled the roost: the noise carries further than the ground would. */
+  rouseBats: () => void;
+  /**
+   * A dart plate or a pit went off under something. Returns false when it
+   * was not armed - a plate still re-arming, a pit already open - so the
+   * thing that stepped on it knows whether anything happened.
+   */
+  springTrap: (key: string, kind: "darts" | "pit", by: "player" | "warden") => boolean;
+  /** A grate dropped behind the player: that doorway is barred, briefly, and not by them. */
+  dropGrate: (toRoomId: string) => void;
+  /** The shop's bomb for this floor is sold. */
+  markBombBought: () => void;
+  /** Mark the room the player is in on the map, or unmark it. */
+  toggleMark: () => void;
+  /** The wisp came out, or went out. Called from the frame loop when the light's visibility changes. */
+  setWisp: (out: boolean) => void;
   /**
    * It walked into something that hurt it: the floor's own spikes, or a
    * snare the player set. `hold` is how long it reels, which is the only
@@ -508,9 +621,25 @@ export const useRun = create<RunState>()(
     floorRooms: 1,
     wardenRoomId: null,
     wardenCameFrom: null,
+    enteredBy: null,
     wardenWounds: 0,
     wardenStaggerUntil: 0,
     wardenWary: false,
+    floorEnteredAt: 0,
+    reaperAwake: false,
+    harrierAwake: false,
+    harrierSlain: false,
+    harrierDownedUntil: 0,
+    harrierRetreatUntil: 0,
+    reaperStalledUntil: 0,
+    reaperLastStrikeAt: 0,
+    mothOn: false,
+    batsRousedUntil: 0,
+    sprung: {},
+    bombBought: false,
+    broken: [],
+    marks: [],
+    wispOut: false,
     freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
@@ -593,9 +722,27 @@ export const useRun = create<RunState>()(
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
+        enteredBy: null,
         wardenWounds: 0,
         wardenStaggerUntil: 0,
         wardenWary: false,
+        // The floor's patience starts with the run. On the same clock as
+        // `startedAt`, and cleared with it.
+        floorEnteredAt: performance.now() / 1000,
+        reaperAwake: false,
+        harrierAwake: false,
+        harrierSlain: false,
+        harrierDownedUntil: 0,
+        harrierRetreatUntil: 0,
+        reaperStalledUntil: 0,
+        reaperLastStrikeAt: 0,
+        mothOn: false,
+        batsRousedUntil: 0,
+        sprung: {},
+        bombBought: false,
+        broken: [],
+        marks: [],
+        wispOut: false,
         wardenLure: null,
         lureUntil: 0,
         freeHitUsed: false,
@@ -665,6 +812,7 @@ export const useRun = create<RunState>()(
         visited: seen ? s.visited : [...s.visited, toId],
         roomsSeen: seen ? s.roomsSeen : s.roomsSeen + 1,
         floorRooms: s.floorRooms + 1,
+        enteredBy: OPPOSITE[dir],
       });
       const spawn = spawnAfterTravel(to, dir);
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
@@ -763,9 +911,27 @@ export const useRun = create<RunState>()(
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
+          enteredBy: null,
           wardenWounds: 0,
           wardenStaggerUntil: 0,
           wardenWary: false,
+          // A new floor is patient again, and whatever was hunting you on
+          // the last one stays there. Going down is the way out of it.
+          floorEnteredAt: runClock(s),
+          reaperAwake: false,
+          harrierAwake: false,
+          harrierSlain: false,
+          harrierDownedUntil: 0,
+          harrierRetreatUntil: 0,
+          reaperStalledUntil: 0,
+          reaperLastStrikeAt: 0,
+          mothOn: false,
+          batsRousedUntil: 0,
+          sprung: {},
+          bombBought: false,
+          broken: [],
+          marks: [],
+          wispOut: false,
           wardenLure: null,
           lureUntil: 0,
           freeHitUsed: false,
@@ -1025,7 +1191,7 @@ export const useRun = create<RunState>()(
     placeDevice: (slot) => {
       const s = get();
       const id = s.satchel[slot];
-      if (!id || !isDevice(id) || !s.currentRoomId || !canControl(s)) return false;
+      if (!id || !(isDevice(id) || isBomb(id)) || !s.currentRoomId || !canControl(s)) return false;
       const now = runClock(s);
       const roomId = s.currentRoomId;
       const key = `${roomId}:${id}:${s.placed.length}:${Math.round(now * 100)}`;
@@ -1042,7 +1208,15 @@ export const useRun = create<RunState>()(
           // It stays on the floor either way, because a player who cannot
           // see where they dropped the loud thing cannot learn to avoid
           // dropping it there.
-          { key, id, roomId, x: at.x, z: at.z, live: id !== "rattle" },
+          {
+            key,
+            id,
+            roomId,
+            x: at.x,
+            z: at.z,
+            live: id !== "rattle",
+            ...(isBomb(id) ? { fuseAt: now + BOMB_FUSE_S } : {}),
+          },
         ],
       });
 
@@ -1070,17 +1244,24 @@ export const useRun = create<RunState>()(
         }
         case "snare":
           break;
+        case "bomb":
+          bus.emit("notice", "The fuse is lit.");
+          break;
       }
       bus.emit("devicePlaced", { id, cruel: ITEMS[id].cruel });
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
       return true;
     },
 
-    springSnare: (key) => {
+    springSnare: (key, by = "warden") => {
       const s = get();
       const device = s.placed.find((d) => d.key === key);
       if (!device || !device.live) return;
       set({ placed: s.placed.map((d) => (d.key === key ? { ...d, live: false } : d)) });
+      bus.emit("snareSprung", { by });
+      // Something small sprang it: the wire is spent and nothing is wounded.
+      // That is the whole cost of setting a snare where the rats run.
+      if (by !== "warden") return;
       // Through the same door the floor's own spikes use, so the wound, the
       // count towards a rout and the reeling all stay in one place - and a
       // snare cannot be a second, quietly different way of hurting it.
@@ -1345,6 +1526,140 @@ export const useRun = create<RunState>()(
       bus.emit("wardenStruck");
     },
 
+    mothLands: () => {
+      if (get().mothOn) return;
+      set({ mothOn: true });
+      bus.emit("mothLanded");
+    },
+
+    mothLeaves: () => {
+      const s = get();
+      if (!s.mothOn) return;
+      // It carried the light a while: the Warden's eye holds it after the
+      // lantern is down, for longer than the lantern's own afterglow.
+      set({ mothOn: false, litUntil: Math.max(s.litUntil, runClock(s) + MOTH_HOLD_S) });
+      bus.emit("mothLeft");
+    },
+
+    rouseBats: () => {
+      const s = get();
+      const now = runClock(s);
+      if (now < s.batsRousedUntil) return;
+      const heard = wardenHears(s);
+      set({
+        batsRousedUntil: now + BATS_ROUSED_S,
+        noisyUntil: Math.max(s.noisyUntil, now + noiseHoldFor(s) * BATS_NOISE_FACTOR),
+      });
+      bus.emit("batsRoused");
+      if (!heard) bus.emit("wardenHeard");
+    },
+
+    springTrap: (key, kind, by) => {
+      const s = get();
+      const now = runClock(s);
+      const was = s.sprung[key];
+      if (was !== undefined && (kind === "pit" || now - was < DART_REARM_S)) return false;
+      set({ sprung: { ...s.sprung, [key]: now } });
+      bus.emit("trapSprung", { key, kind, by });
+      return true;
+    },
+
+    dropGrate: (toRoomId) => {
+      const s = get();
+      if (!s.currentRoomId || !s.dungeon) return;
+      const key = barKey(s.currentRoomId, toRoomId);
+      if (key === barredNow(s)) return;
+      // A bar the player did not make: shorter, and silent - nobody
+      // hammered anything - but the Warden breaks it the same way, and is
+      // heard doing it.
+      set({ barredDoor: key, barUntil: runClock(s) + GRATE_HOLD_S });
+      bus.emit("trapSprung", { key: `${s.currentRoomId}:grate`, kind: "grate", by: "player" });
+      bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
+    },
+
+    markBombBought: () => set({ bombBought: true }),
+
+    setWisp: (out) => {
+      if (get().wispOut === out) return;
+      set({ wispOut: out });
+      // Two literal emits, not one ternary: the layout suite greps for
+      // every event's emitter by name.
+      if (out) bus.emit("wispCame");
+      else bus.emit("wispLeft");
+    },
+
+    toggleMark: () => {
+      const s = get();
+      if (!s.currentRoomId || !canControl(s)) return;
+      const id = s.currentRoomId;
+      const marked = s.marks.includes(id);
+      set({ marks: marked ? s.marks.filter((m) => m !== id) : [...s.marks, id] });
+      bus.emit("mapMarked", { roomId: id, marked: !marked });
+    },
+
+    wakeHarrier: () => {
+      const s = get();
+      if (s.harrierAwake || s.harrierSlain || s.phase !== "playing") return;
+      set({ harrierAwake: true });
+      bus.emit("harrierWoke");
+      bus.emit("notice", "Something takes wing.");
+    },
+
+    harrierStrike: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      const now = runClock(s);
+      if (now < s.harrierRetreatUntil || now < s.harrierDownedUntil) return;
+      // Hit and run: it wheels away whether or not the hit landed, so a
+      // player inside the invulnerability window is not hovered over.
+      set({ harrierRetreatUntil: now + HARRIER_RETREAT_S });
+      if (get().damage()) bus.emit("harrierStruck");
+    },
+
+    downHarrier: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      const now = runClock(s);
+      if (now < s.harrierRetreatUntil) return;
+      set({ harrierDownedUntil: now + HARRIER_DOWN_S });
+      bus.emit("harrierDowned");
+    },
+
+    slayHarrier: () => {
+      const s = get();
+      if (!s.harrierAwake || s.harrierSlain) return;
+      set({ harrierSlain: true, harrierDownedUntil: 0 });
+      bus.emit("harrierSlain");
+      bus.emit("notice", "The harrier is spiked. The floor is quieter.");
+    },
+
+    wakeReaper: () => {
+      const s = get();
+      if (s.reaperAwake || s.phase !== "playing") return;
+      set({ reaperAwake: true });
+      bus.emit("reaperWoke");
+      bus.emit("notice", "The floor has had enough of you. The exit, now.");
+    },
+
+    reaperStrike: () => {
+      const s = get();
+      if (!s.reaperAwake) return;
+      const now = runClock(s);
+      if (now - s.reaperLastStrikeAt < REAPER_STRIKE_GRACE_S) return;
+      // The ordinary damage path, as the Warden's strike is: the charm,
+      // the cooldown and the death check stay in one place.
+      if (!get().damage()) return;
+      set({ reaperLastStrikeAt: now });
+      bus.emit("reaperStruck");
+    },
+
+    stallReaper: () => {
+      const s = get();
+      if (!s.reaperAwake) return;
+      set({ reaperStalledUntil: runClock(s) + REAPER_STALL_S });
+      bus.emit("reaperStalled");
+    },
+
     wardenWounded: (hold = WARDEN_STAGGER_S) => {
       const s = get();
       if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
@@ -1363,9 +1678,16 @@ export const useRun = create<RunState>()(
       }
 
       // Routed: thrown across the floor, the count reset, and from here on
-      // it knows better. The floor calms, but never below its own baseline
-      // - the bottom floor is the bottom floor however well you fought on
-      // it.
+      // it knows better.
+      bus.emit("wardenWounded", { wounds });
+      get().routWarden();
+    },
+
+    routWarden: () => {
+      const s = get();
+      if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
+      // The floor calms, but never below its own baseline - the bottom
+      // floor is the bottom floor however well you fought on it.
       const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
       set({
         wardenWounds: 0,
@@ -1377,8 +1699,91 @@ export const useRun = create<RunState>()(
         lureUntil: 0,
         alarm: Math.max(alarmFloorFor(s), s.alarm - WARDEN_ROUT_CALM),
       });
-      bus.emit("wardenWounded", { wounds });
       bus.emit("wardenRouted");
+    },
+
+    detonate: (key) => {
+      const s = get();
+      const bomb = s.placed.find((d) => d.key === key && d.live && isBomb(d.id));
+      if (!bomb || !s.dungeon) return;
+      // Spent first, so nothing below can go off twice.
+      set({ placed: s.placed.filter((d) => d.key !== key) });
+      const { roomId, x, z } = bomb;
+      const inBlast = (px: number, pz: number) => (px - x) ** 2 + (pz - z) ** 2 <= BOMB_RADIUS * BOMB_RADIUS;
+      bus.emit("bombBurst", { roomId, x, z });
+      // What stood in the blast: barrels, crates and urns burst - one of
+      // them between the bomb and the player takes it for them - and now
+      // and then there is a gem in the wreck. The list is the one the room
+      // draws, and the key is where a thing stood, so a vault's extra
+      // chests do not shift anybody's index.
+      const blastRoom = roomById(s.dungeon, roomId);
+      const standing = blastRoom
+        ? placementsFor(blastRoom, s.dungeon.seed)
+            .filter((p) => BREAKABLE.has(p.kind))
+            .map((p) => ({ kind: p.kind, x: p.x, z: p.z, key: breakKey(blastRoom, p) }))
+            .filter((p) => !s.broken.includes(p.key))
+        : [];
+      const shield = s.currentRoomId === roomId ? shielded({ x, z }, playerAt, standing) : null;
+      const burst = standing.filter((p) => p === shield || inBlast(p.x, p.z));
+      if (burst.length) {
+        let spilled = 0;
+        for (const p of burst) {
+          bus.emit("propBroken", { roomId, kind: p.kind, key: p.key });
+          if (spillFor(s.dungeon.seed, p.key)) spilled++;
+        }
+        set({
+          broken: [...get().broken, ...burst.map((p) => p.key)],
+          gems: get().gems + spilled,
+          gemsTotal: get().gemsTotal + spilled,
+        });
+        if (spilled) bus.emit("notice", spilled === 1 ? "Something glints in the wreck." : `${spilled} gems glint in the wreck.`);
+      }
+      // The player, if they did not walk - and nothing stood between.
+      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage();
+      // The Warden, if it is in the room - whether or not the player is.
+      // A bomb left behind in a room the Warden later walks into is a
+      // trap, and a trap that only works while you stand in it is a dud.
+      if (get().wardenRoomId === roomId) get().routWarden();
+      // The Reaper, which is always in the room the player is in: a blast
+      // there is the one thing on the floor that holds it.
+      if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
+      // The Harrier, if it is in the room rather than wheeling away from
+      // it: knocked out of the air, and a ground body until it is up.
+      if (get().harrierAwake && get().currentRoomId === roomId && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
+      // The moth, if it was on the lantern: scattered, and the light it
+      // carried goes with it. The roost hears the blast from its own room.
+      if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();
+      // The thief, likewise: it drops what it holds. It is only ever in the
+      // room the player is in - it comes for them and runs from them - so
+      // "in this room" is "the player is".
+      if (get().currentRoomId === roomId && get().thiefPhase !== "away") get().thiefCaught();
+      // The wall, if this room has a crack in one and the blast reached it.
+      const host = roomById(s.dungeon, roomId);
+      if (host?.secret) {
+        const half = host.size / 2;
+        const step = DIR_STEP[host.secret.dir];
+        const wx = step.x * half;
+        const wz = step.z * half;
+        if (inBlast(wx, wz)) get().revealSecret(roomId);
+      }
+    },
+
+    revealSecret: (hostId) => {
+      const s = get();
+      if (!s.dungeon) return;
+      const host = roomById(s.dungeon, hostId);
+      if (!host?.secret || host.links[host.secret.dir]) return;
+      const { dir, to } = host.secret;
+      // New room objects, not mutated ones: the walls and the map are
+      // rendered from these and have to see the change.
+      const rooms = s.dungeon.rooms.map((r) => {
+        if (r.id === hostId) return { ...r, links: { ...r.links, [dir]: to } };
+        if (r.id === to) return { ...r, links: { ...r.links, [OPPOSITE[dir]]: hostId } };
+        return r;
+      });
+      set({ dungeon: { ...s.dungeon, rooms } });
+      bus.emit("secretRevealed", { roomId: hostId, to });
+      bus.emit("notice", "The wall gives. There is a room behind it.");
     },
 
     clearRoom: (roomId) => {
@@ -1418,6 +1823,21 @@ export const runClock = (s: RunState): number =>
 
 /** True while a timed effect is still running. */
 const running = (s: RunState, until: number): boolean => until > runClock(s);
+
+/** Seconds of patience the floor has left for the player, on the run's clock. */
+export const patienceLeft = (s: RunState): number =>
+  FLOOR_PATIENCE_S - (runClock(s) - s.floorEnteredAt);
+
+/** True while a blast is holding the Reaper where it stands. */
+/** It is on the floor after a blast. */
+export const harrierDowned = (s: RunState): boolean => s.harrierAwake && !s.harrierSlain && running(s, s.harrierDownedUntil);
+/** It has struck and is wheeling away. */
+export const harrierAway = (s: RunState): boolean => s.harrierAwake && !s.harrierSlain && running(s, s.harrierRetreatUntil);
+/** What the floor's rules treat it as right now: a flier, or - downed - a thing with feet. */
+export const harrierBody = (s: RunState): Body => (harrierDowned(s) ? "ground" : BODIES.harrier);
+
+export const reaperStalled = (s: RunState): boolean =>
+  s.reaperAwake && running(s, s.reaperStalledUntil);
 
 /** Which timed potion is running, if either. */
 export const paceEffect = (s: RunState): PaceEffect =>
@@ -1486,7 +1906,7 @@ export const lanternLit = (s: RunState): boolean => s.lanternRaised && s.oil > 0
  * game makes with the player - fast or unnoticed, seeing or unseen - are
  * the same shape and are kept the same way.
  */
-export const wardenSeesLight = (s: RunState): boolean => running(s, s.litUntil);
+export const wardenSeesLight = (s: RunState): boolean => s.mothOn || running(s, s.litUntil);
 
 /**
  * Whether it knows where the player is at all, by either sense.
@@ -1627,6 +2047,27 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // module from the page is a second copy of it.
     canSpend: (price: number) => canSpend(useRun.getState(), price),
     hears: () => wardenHears(useRun.getState()),
+    // Where to stand to set a bomb against this room's cracked wall: at
+    // arm's length from the middle of that wall, inside the room.
+    crackSpot: () => {
+      const room = roomNow(useRun.getState());
+      return room ? crackSpot(room) : null;
+    },
+    bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
+    // What has gone off, by key: a probe reads it beside where the traps are.
+    sprung: () => ({ ...useRun.getState().sprung }),
+    // How long the floor will put up with the player, and what woke when it
+    // stopped. On the run's clock, like every deadline in here.
+    patienceLeft: () => patienceLeft(useRun.getState()),
+    reaper: () => {
+      const s = useRun.getState();
+      return { awake: s.reaperAwake, stalled: reaperStalled(s), enteredAt: s.floorEnteredAt };
+    },
+    // The floor's Harrier, as the store has it.
+    harrier: () => {
+      const s = useRun.getState();
+      return { awake: s.harrierAwake, slain: s.harrierSlain, down: harrierDowned(s), away: harrierAway(s) };
+    },
     // How long a sprint in this room keeps the Warden coming.
     noiseHold: () => noiseHoldFor(useRun.getState()),
     // The run's own clock, which every deadline in the store is kept on.

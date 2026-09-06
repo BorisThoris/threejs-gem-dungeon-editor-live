@@ -4,10 +4,10 @@ import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
-import { canControl, snaresIn, useRun } from "../state/run";
+import { canControl, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { patchAt, type Patch } from "../warden/steer";
+import { patchAt, steerAround, type Patch } from "../warden/steer";
 import {
   CUTPURSE_SPEED,
   CUTPURSE_TOUCH_RADIUS,
@@ -19,6 +19,8 @@ interface CutpurseProps {
   room: Room;
   /** Everything on this floor that hurts things that walk into it. */
   hazards?: readonly Patch[];
+  /** The furniture, which it goes round. */
+  obstacles?: readonly Patch[];
 }
 
 /**
@@ -41,11 +43,10 @@ interface CutpurseProps {
  * everything. That is not a special case in here - it is the same patch
  * list the Warden is given, asked the same question.
  */
-export function Cutpurse({ room, hazards = [] }: CutpurseProps) {
+export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) {
   const group = useRef<Group>(null);
   const phase = useRun((s) => s.thiefPhase);
   const holding = useRun((s) => s.thiefHolding);
-  const snares = useRun((s) => s.placed);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
 
   /** The doorway it came in by, which is also the one it leaves by. */
@@ -59,13 +60,9 @@ export function Cutpurse({ room, hazards = [] }: CutpurseProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.id]);
 
-  const wounding = useMemo<Patch[]>(
-    () => [
-      ...hazards,
-      ...snaresIn(snares, room.id).map((d) => ({ x: d.x, z: d.z, r: 1.0, key: d.key })),
-    ],
-    [hazards, snares, room.id]
-  );
+  // What bites it comes in whole from `mobs/body.ts` - it kept its own
+  // list of the snares once, with its own copy of their radius, and that
+  // is two owners of one number.
   const inHazard = useRef(false);
 
   useEffect(() => {
@@ -117,13 +114,18 @@ export function Cutpurse({ room, hazards = [] }: CutpurseProps) {
     );
 
     const step = Math.min(CUTPURSE_SPEED * delta, distance);
-    scratch.to.set(dx / distance, 0, dz / distance).multiplyScalar(step);
+    // It has a body: it goes round the furniture rather than through it.
+    // The spikes it runs into like anything else on the floor.
+    const heading = obstacles.length
+      ? steerAround(g.position.x, g.position.z, target.x, target.z, obstacles, 0.2)
+      : { dx: dx / distance, dz: dz / distance };
+    scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     g.position.x += scratch.to.x;
     g.position.z += scratch.to.z;
 
     // The floor does not care what walks into it. Latched on entry, like
     // every other thing in this game that stands on spikes.
-    const standing = patchAt(wounding, g.position.x, g.position.z);
+    const standing = patchAt(hazards, g.position.x, g.position.z);
     if (!standing) inHazard.current = false;
     else if (!inHazard.current) {
       inHazard.current = true;

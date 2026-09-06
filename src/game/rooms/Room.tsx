@@ -10,18 +10,30 @@ import { Gem } from "../props/Gem";
 import { IronKey } from "../props/IronKey";
 import { Hazard } from "../props/Hazard";
 import { PlacedDevices } from "../props/Placed";
-import { snaresIn, useRun } from "../state/run";
+import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Cutpurse } from "../thief/Cutpurse";
 import { Hoard } from "../thief/Hoard";
+import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
-import { SNARE_RADIUS } from "../items/catalog";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
+import { mothRoom, ratsFor, roostFor } from "../mobs/ambient";
+import { Bats } from "../mobs/Bats";
+import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
+import { Moth } from "../mobs/Moth";
+import { Rats } from "../mobs/Rats";
+import { Wisp } from "../mobs/Wisp";
+import { Harrier } from "../mobs/Harrier";
+import { Darts } from "../traps/Darts";
+import { Grate } from "../traps/Grate";
+import { Pit } from "../traps/Pit";
+import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
+import { Draft } from "./Draft";
 import { Walls } from "./Walls";
 
 interface RoomProps {
@@ -47,26 +59,21 @@ interface RoomProps {
  * stepped through a doorway - every four to nine seconds, for a subtree of
  * a hundred elements. Here the subscription costs one component.
  */
-function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
+function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[]; seed: number }) {
   const here = useRun((s) => s.wardenRoomId === room.id);
   // Snares the player has set in this room wound it as the floor's own
   // spikes do, and are deliberately not in the list it steers round: a
   // routed Warden has learned about the spikes it can see, and a wire on
   // the floor is why setting one is still worth a satchel slot afterwards.
-  const snares = useRun((s) => s.placed);
-  const wounding = useMemo<Patch[]>(
-    () => [
-      ...hazards,
-      ...snaresIn(snares, room.id).map((d) => ({
-        x: d.x,
-        z: d.z,
-        r: SNARE_RADIUS,
-        key: d.key,
-      })),
-    ],
-    [hazards, snares, room.id]
-  );
-  return here ? <Warden room={room} hazards={wounding} avoid={hazards} /> : null;
+  const placed = useRun((s) => s.placed);
+  const sprung = useRun((s) => s.sprung);
+  const broken = useRun((s) => s.broken);
+  // Both lists from the one owner of what a body meets on a floor. The
+  // spikes it steers round once wary are still `hazards`; what bites it
+  // and what it always walks round are the body's own answers.
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed, sprung), [room, seed, placed, sprung]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken), [room, seed, placed, broken]);
+  return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
 
 /**
@@ -74,10 +81,92 @@ function RoomWarden({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
  * reason RoomWarden is: it comes and goes every twenty seconds and the
  * room around it should not re-render when it does.
  */
-function RoomThief({ room, hazards }: { room: RoomData; hazards: Patch[] }) {
+function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const visiting = useRun((s) => s.thiefPhase !== "away");
   const here = useRun((s) => s.currentRoomId === room.id);
-  return visiting && here ? <Cutpurse room={room} hazards={hazards} /> : null;
+  const placed = useRun((s) => s.placed);
+  const sprung = useRun((s) => s.sprung);
+  const broken = useRun((s) => s.broken);
+  const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed, sprung), [room, seed, placed, sprung]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken), [room, seed, placed, broken]);
+  return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
+}
+
+/**
+ * The Reaper, once the floor has given up on the player. It is always in
+ * their room: mounting it with the room is how it follows.
+ */
+function RoomReaper({ room }: { room: RoomData }) {
+  const awake = useRun((s) => s.reaperAwake);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return awake && here ? <Reaper room={room} /> : null;
+}
+
+/**
+ * The floor's ambient life, in the room the player is standing in: the
+ * rats at their holes, the roost, and the moth if this is its room. Each
+ * reads the body table for what it walks round and what bites it.
+ */
+function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const isMothRoom = useRun((s) => (s.dungeon ? mothRoom(s.dungeon) === room.id : false));
+  const placed = useRun((s) => s.placed);
+  const broken = useRun((s) => s.broken);
+  const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
+  const roost = useMemo(() => roostFor(room, seed), [room, seed]);
+  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken), [room, seed, placed, broken]);
+  const sprung = useRun((s) => s.sprung);
+  const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
+  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken), [room, seed, placed, broken]);
+  if (!here) return null;
+  return (
+    <>
+      {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
+      {roost && <Bats room={room} at={roost} />}
+      {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
+    </>
+  );
+}
+
+/** The lamplighter wisp, in the player's room, while their light can be seen. */
+/** The Harrier, in the player's room while it is awake and not slain: it comes for you wherever you are. */
+function RoomHarrier({ room }: { room: RoomData }) {
+  const awake = useRun((s) => s.harrierAwake && !s.harrierSlain);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return awake && here ? <Harrier room={room} /> : null;
+}
+
+function RoomWisp({ room }: { room: RoomData }) {
+  const out = useRun((s) => s.wispOut);
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return out && here ? <Wisp room={room} /> : null;
+}
+
+/** The draft from a cracked wall, in the room that has one, while the player is in it. */
+function RoomDraft({ room }: { room: RoomData }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  return here && room.secret ? <Draft room={room} /> : null;
+}
+
+/** The floor's own traps, in the room the player is standing in. */
+function RoomTraps({ room, seed }: { room: RoomData; seed: number }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const endId = useRun((s) => s.dungeon?.endId ?? null);
+  const traps = useMemo(() => trapsFor(room, seed, endId), [room, seed, endId]);
+  if (!here || traps.length === 0) return null;
+  return (
+    <>
+      {traps.map((t) =>
+        t.kind === "darts" ? (
+          <Darts key={t.key} room={room} trap={t} />
+        ) : t.kind === "pit" ? (
+          <Pit key={t.key} room={room} trap={t} />
+        ) : (
+          <Grate key={t.key} room={room} trap={t} />
+        )
+      )}
+    </>
+  );
 }
 
 /** The heap, in the one room on the floor that has one. */
@@ -193,8 +282,14 @@ export function Room({ room, seed }: RoomProps) {
           position={keyFor(room, seed)}
         />
       )}
-      <RoomWarden room={room} hazards={wardenHazards} />
-      <RoomThief room={room} hazards={wardenHazards} />
+      <RoomWarden room={room} hazards={wardenHazards} seed={seed} />
+      <RoomThief room={room} seed={seed} />
+      <RoomReaper room={room} />
+      <RoomAmbient room={room} seed={seed} />
+      <RoomTraps room={room} seed={seed} />
+      <RoomDraft room={room} />
+      <RoomWisp room={room} />
+      <RoomHarrier room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

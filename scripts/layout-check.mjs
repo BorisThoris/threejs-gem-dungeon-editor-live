@@ -38,6 +38,14 @@ writeFileSync(
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
+   export * from "${root}src/game/mobs/body";
+   export * from "${root}src/game/mobs/ambient";
+   export * from "${root}src/game/traps/placement";
+   export * from "${root}src/game/dungeon/secret";
+   export * from "${root}src/game/props/breakable";
+   export * from "${root}src/game/mobs/lamplighter";
+   export * from "${root}src/game/mobs/harrierRoost";
+   export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
    export * from "${root}src/game/systems/bearing";
@@ -690,9 +698,15 @@ let authored = 0;
 for (let seed = 1; seed <= 500; seed++) {
   const rules = L.floorRules((seed % L.FLOORS) + 1);
   const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
-  if (d.rooms.length < rules.minRooms || d.rooms.length > rules.maxRooms) bad++;
+  // The hidden room is extra to the floor, not of it: it is not on the
+  // map, not linked, and not a room until a blast opens the wall - so it
+  // is outside the room count and outside what a walk from the start can
+  // reach. The run 8 checks below hold it to being exactly that.
+  const sealed = d.secretId ? 1 : 0;
+  const floorRooms = d.rooms.length - sealed;
+  if (floorRooms < rules.minRooms || floorRooms > rules.maxRooms) bad++;
   const depth = L.bfsDepth(d.rooms, d.startId);
-  if (!depth.has(d.endId) || depth.size !== d.rooms.length) bad++;
+  if (!depth.has(d.endId) || depth.size !== floorRooms) bad++;
   if (d.rooms.some((r) => !L.ROOM_SIZES.includes(r.size))) bad++;
   if (d.rooms.some((r) => !L.shapeFits(r.shape, r.size))) bad++;
   // The vault must never be the only way onward, and its key must never be
@@ -707,7 +721,7 @@ for (let seed = 1; seed <= 500; seed++) {
     const open = L.reachableWithout(d.rooms, d.startId, d.vaultId);
     if (!open.has(d.endId)) bad++;
     if (d.keyRoomId && !open.has(d.keyRoomId)) bad++;
-    if (open.size !== d.rooms.length - 1) bad++;
+    if (open.size !== floorRooms - 1) bad++;
   }
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
@@ -1043,6 +1057,619 @@ check("the shipped room templates reach the floors the game generates", authored
     flat.length === 0,
     flat.join(", ") || "normal, trap and treasure all vary"
   );
+}
+
+// How much of a run is furnished the same way as the rest of it.
+//
+// The plan's own last outstanding content note: "it is still the same
+// props in the same quadrants, and that is what runs out next." Size,
+// shape, stone, litter and now sound all vary per room - but what a room
+// is *furnished with* comes from its kind's arrangements, and the kinds a
+// player walks through most had between two and four each.
+//
+// The signature is what a player would describe: which props are in the
+// room, and how many of each. Not where they are to the centimetre, which
+// varies with the room's size and would report every room as unique while
+// the player walks through the same three rooms over and over.
+{
+  // Normalised by the room's own half-width, so the same arrangement built
+  // at fourteen metres and at twenty-eight reads as what it is - the same
+  // room again, bigger - rather than as two different ones. Rounded to a
+  // fifth of the room, which is about "which part of it".
+  // Which props stand in which part of the room, in ninths - near, mid and
+  // far by the doorway the player comes in through, left, centre and
+  // right across it. That is the complaint as it was written: the same
+  // props in the same quadrants. A signature finer than this reports two
+  // rooms as different because a chair is rotated differently, which is
+  // not something anybody walking through them would say.
+  const look = (room, seed) => {
+    const third = room.size / 6;
+    const band = (v) => (v < -third ? "-" : v > third ? "+" : "0");
+    return (
+      `${room.kind}|` +
+      L.placementsFor(room, seed, {})
+        .map((p) => `${p.kind}@${band(p.x)}${band(p.z)}`)
+        .sort()
+        .join(" ")
+    );
+  };
+  let rooms = 0;
+  let distinct = 0;
+  const perKind = {};
+  for (let run = 1; run <= 40; run++) {
+    const seen = new Set();
+    let seed = run;
+    for (let floor = 1; floor <= 3; floor++) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const room of d.rooms) {
+        const sig = look(room, d.seed);
+        rooms++;
+        if (!seen.has(sig)) { seen.add(sig); distinct++; }
+        (perKind[room.kind] ??= new Set()).add(sig);
+      }
+      seed = (d.seed * 7919 + floor + 1) >>> 0;
+    }
+  }
+  const share = distinct / rooms;
+  check(
+    "most of the rooms a run walks through are furnished unlike the rest of it",
+    share >= 0.75,
+    `${distinct} of ${rooms} rooms over 40 runs are the first of their look - ${(share * 100).toFixed(1)}%`
+  );
+  const thin = Object.entries(perKind)
+    .filter(([, set]) => set.size < 4)
+    .map(([kind, set]) => `${kind}:${set.size}`);
+  check(
+    "and every kind of room has at least four ways of being furnished",
+    thin.length === 0,
+    thin.join(" ") ||
+      Object.entries(perKind).map(([k, v]) => `${k}:${v.size}`).join(" ")
+  );
+}
+
+// The memory trial can be watched from where it is started.
+//
+// "The pattern matching one is difficult, there's pillars that block your
+// vision." The trial's first arrangement stands three pillars on the near
+// quadrant - between the lectern, which is the fourth near spot, and the
+// four crystals on the far ones - and the biome's litter can land on the
+// same spots. A player who begins the trial and then cannot see two of
+// the four crystals it lights is not being tested on memory. Nothing had
+// asked whether the line from the lectern to each pedestal was clear,
+// because reachability was the question the furniture had always been
+// held to, and a pillar you can walk round is still a pillar you cannot
+// see through.
+{
+  const EYE_CLEAR = 0.9;
+  const hidden = [];
+  let lines = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    for (const room of d.rooms) {
+      if (room.kind !== "memory") continue;
+      const anchors = L.memoryAnchors(room);
+      const lectern = anchors[4];
+      const props = L.placementsFor(room, d.seed).filter((q) => L.PROP_SPECS[q.kind].solid && L.PROP_SPECS[q.kind].radius > 0.2);
+      for (const p of anchors.slice(0, 4)) {
+        lines++;
+        const dx = p[0] - lectern[0];
+        const dz = p[2] - lectern[2];
+        const len = Math.hypot(dx, dz) || 1;
+        const blocker = props.find((q) => {
+          // Distance from the prop to the lectern->pedestal segment.
+          const t = Math.max(0, Math.min(1, ((q.x - lectern[0]) * dx + (q.z - lectern[2]) * dz) / (len * len)));
+          const cx = lectern[0] + dx * t;
+          const cz = lectern[2] + dz * t;
+          return Math.hypot(q.x - cx, q.z - cz) < L.PROP_SPECS[q.kind].radius + EYE_CLEAR;
+        });
+        if (blocker && hidden.length < 4) hidden.push(`${room.id}@${d.seed} ${blocker.kind}`);
+        if (blocker) hidden.blocked = (hidden.blocked ?? 0) + 1;
+      }
+    }
+  }
+  check(
+    "every crystal of the memory trial can be seen from the lectern",
+    (hidden.blocked ?? 0) === 0,
+    `${hidden.blocked ?? 0} of ${lines} sightlines blocked  ${hidden.join(" | ")}`
+  );
+}
+
+// Secrets, and the thing that opens them.
+//
+// Every floor hides one room the map does not show, behind a wall with a
+// crack in it, and the only way through the crack is a blast. The secret
+// is an edge on the room that hides it - `room.secret = { dir, to }` - and
+// deliberately not a link: links are what the walls cut doorways for, what
+// the minimap draws and what the Warden walks, and a secret is none of
+// those until it is opened. These hold the generator to that, and hold
+// the bomb to reaching the wall it is set against and no further than the
+// room it is set in.
+{
+  let floors = 0;
+  let hidden = 0;
+  let sealed = 0;
+  let cracked = 0;
+  let hostHasNoDoorThere = 0;
+  const bad = [];
+  for (let seed = 1; seed <= 200; seed++) {
+    const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+    floors++;
+    if (!d.secretId) continue;
+    const secret = d.rooms.find((r) => r.id === d.secretId);
+    if (!secret) { bad.push(`${seed}: secretId names no room`); continue; }
+    hidden++;
+    if (Object.values(secret.links).every((v) => !v)) sealed++;
+    const hosts = d.rooms.filter((r) => r.secret && r.secret.to === d.secretId);
+    if (hosts.length === 1) {
+      cracked++;
+      if (!hosts[0].links[hosts[0].secret.dir]) hostHasNoDoorThere++;
+    } else if (bad.length < 3) bad.push(`${seed}: ${hosts.length} rooms crack onto the secret`);
+  }
+  check("every floor hides a secret room", hidden === floors, `${hidden} of ${floors} floors  ${bad.join(" | ")}`);
+  // `hidden > 0` on each, or a generator that makes no secrets at all
+  // passes three of the four by having nothing to get wrong.
+  check("the secret room has no doorway - it is reached through its crack or not at all", hidden > 0 && sealed === hidden, `${sealed} of ${hidden}`);
+  check("exactly one room cracks onto it", hidden > 0 && cracked === hidden, `${cracked} of ${hidden}  ${bad.join(" | ")}`);
+  check("and the crack is in a wall with no doorway in it", cracked > 0 && hostHasNoDoorThere === cracked, `${hostHasNoDoorThere} of ${cracked}`);
+
+  // The bomb itself.
+  const bomb = L.ITEMS.bomb;
+  check("a bomb is an item, of its own family", !!bomb && bomb.family === "bomb", bomb ? bomb.family : "no bomb");
+  let rolled = 0;
+  for (let i = 0; i < 400; i++) if (L.rollItem(7, `probe:${i}`, 1 + (i % 3)) === "bomb") rolled++;
+  check("and the floor hands them out, but not often", rolled > 8 && rolled < 120, `${rolled} of 400 rolls`);
+  // Set down at arm's length from a wall, the blast has to reach the wall;
+  // set down in the middle of the smallest room, it must not reach the
+  // room's own doorways, or every bomb is a skeleton key.
+  check(
+    "the blast reaches the wall it is set against and no further than the room",
+    L.BOMB_RADIUS >= L.CLOSE_REACH && L.BOMB_RADIUS < L.ROOM_SIZE_SMALL / 2,
+    `radius ${L.BOMB_RADIUS}, reach ${L.CLOSE_REACH}, smallest room half ${L.ROOM_SIZE_SMALL / 2}`
+  );
+  check("a fuse is long enough to walk away from and short enough to matter", L.BOMB_FUSE_S >= 2 && L.BOMB_FUSE_S <= 4, `${L.BOMB_FUSE_S}s`);
+}
+
+// Bodies: the floor treats what lives on it as it treats the player.
+//
+// The Warden and the Cutpurse each built their own list of what to walk
+// round and what bites them, and neither list had a table in it: both
+// walked through the furniture the player has to walk round. Every mob
+// now declares a body - ground, flying or ghost - and one owner,
+// `mobs/body.ts`, answers two questions from it: what this body steers
+// round, and what bites it. Spikes and snares bite a ground body and
+// nothing else; solid props are in the way of anything that is not a
+// ghost; a ghost passes through all of it. These hold the table and the
+// two functions to that, and hold a ground body to still being able to
+// get from a doorway to the gem past the furniture it now respects.
+{
+  const bodies = L.BODIES;
+  const MOBS = ["warden", "cutpurse"];
+  check("every mob declares a body", !!bodies && MOBS.every((m) => ["ground", "flying", "ghost"].includes(bodies[m])), bodies ? JSON.stringify(bodies) : "no BODIES");
+  check("the Warden and the Cutpurse walk on the ground", !!bodies && bodies.warden === "ground" && bodies.cutpurse === "ground", bodies ? `${bodies.warden}, ${bodies.cutpurse}` : "-");
+
+  const d = L.generateDungeon({ seed: 4242, minRooms: 8, maxRooms: 16 });
+  const room = d.rooms.find((r) => r.kind === "trap") ?? d.rooms[2];
+  const gem = L.gemFor(room, d.seed);
+  const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
+  const solid = L.placementsFor(room, d.seed).filter((q) => L.PROP_SPECS[q.kind].solid);
+  const walls = (body) => (L.obstaclesFor ? L.obstaclesFor(body, room, d.seed, []) : null);
+  const bites = (body) => (L.bitesFor ? L.bitesFor(body, room, d.seed, []) : null);
+  const g = walls("ground"), f = walls("flying"), gh = walls("ghost");
+  check(
+    "a ground body walks round every solid prop, and a ghost round nothing",
+    !!g && !!gh && g.length >= solid.length && gh.length === 0,
+    g ? `ground ${g.length} of ${solid.length} solid props, ghost ${gh.length}` : "no obstaclesFor"
+  );
+  // Since run 17 a flier clears the low furniture and steers round only
+  // what reaches its height, so its list is the walker's list filtered,
+  // never something the walker does not have.
+  const tallOnly = !!f && !!g && f.every((o) => g.some((w) => w.x === o.x && w.z === o.z)) && f.length === solid.filter((q) => !L.clearedInFlight(L.PROP_SPECS[q.kind])).length;
+  check("a flying body walks round the tall furniture and over the low, and nothing a walker does not", tallOnly, f ? `${f.length} of ${solid.length} solid props reach flight height` : "-");
+  const bg = bites("ground"), bf = bites("flying"), bgh = bites("ghost");
+  check(
+    "spikes bite a ground body and nothing that flies or passes through",
+    !!bg && !!bf && !!bgh && bg.length >= spikes.length && bf.length === 0 && bgh.length === 0,
+    bg ? `ground ${bg.length} of ${spikes.length} patches, flying ${bf.length}, ghost ${bgh.length}` : "no bitesFor"
+  );
+
+  // Respecting the furniture must not strand it: from every doorway of
+  // every room, a ground body its own size across can still reach the gem.
+  if (L.obstaclesFor) {
+    let stranded = 0, walked = 0;
+    const examples = [];
+    for (let seed = 1; seed <= 60; seed++) {
+      const dd = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      for (const r of dd.rooms) {
+        const target = L.gemFor(r, dd.seed);
+        if (!target) continue;
+        const half = r.size / 2;
+        const obs = L.obstaclesFor("ground", r, dd.seed, []);
+        // The obstacle list already carries the body's width - `obstaclesFor`
+        // is the one owner of it, and each patch names its own berth - so
+        // the fill adds nothing, and clamps 0.6 inside the walls as the
+        // Warden does. A fill at any other width tests a creature that does
+        // not exist.
+        const WALL = 0.6;
+        const blocked = (x, z) => Math.abs(x) > half - WALL || Math.abs(z) > half - WALL || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
+        for (const dir of Object.keys(r.links)) {
+          walked++;
+          // Where travel puts a body that came in this way - a position,
+          // not a triple.
+          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir)?.position : null;
+          if (!start) { walked--; continue; }
+          // Coarse flood fill on a half-metre grid.
+          const step = 0.5, seen = new Set(), queue = [[start[0], start[2]]];
+          const k = (x, z) => `${Math.round(x / step)},${Math.round(z / step)}`;
+          seen.add(k(start[0], start[2]));
+          let found = false;
+          while (queue.length && !found) {
+            const [x, z] = queue.shift();
+            if (Math.hypot(x - target[0], z - target[2]) < 1.2) { found = true; break; }
+            for (const [dx, dz] of [[step,0],[-step,0],[0,step],[0,-step]]) {
+              const nx = x + dx, nz = z + dz, kk = k(nx, nz);
+              if (seen.has(kk) || blocked(nx, nz)) continue;
+              seen.add(kk); queue.push([nx, nz]);
+            }
+          }
+          if (!found) { stranded++; if (examples.length < 3) examples.push(`${r.kind} ${r.id}@${dd.seed} from ${dir}`); }
+        }
+      }
+    }
+    check("and respecting the furniture never strands a ground body short of the gem", stranded === 0, `${stranded} of ${walked} doorways  ${examples.join(" | ")}`);
+  }
+}
+
+// One owner of what bites a creature. The Cutpurse once kept its own
+// list of the snares with its own copy of their radius - `r: 1.0` while
+// the catalogue said SNARE_RADIUS - and the two would have drifted the
+// first time either moved. Neither creature may build a bite list now.
+{
+  const creatures = ["src/game/warden/Warden.tsx", "src/game/thief/Cutpurse.tsx", "src/game/mobs/Rats.tsx", "src/game/mobs/Moth.tsx", "src/game/mobs/Bats.tsx"];
+  const offenders = creatures.filter((f) => {
+    const s = readFileSync(join(root, f), "utf8");
+    return /snaresIn|SNARE_RADIUS|trapHazards|r:\s*1\.0\b/.test(s);
+  });
+  check("no creature builds its own list of what bites it", offenders.length === 0, offenders.join(", ") || "Warden and Cutpurse read mobs/body.ts");
+}
+
+// --- The floor's patience -----------------------------------------------------
+//
+// Run 10: every floor puts up with the player for so long, and then
+// something wakes that has no room, no alarm and no lure - a ghost body,
+// through walls and spikes and wards, faster than a walk and slower than a
+// dash, and it does not leave. These hold the numbers to the shape of the
+// promise: a floor is finishable at a walk inside its patience, the warning
+// comes before the end, a walk cannot get away and a dash can, a bomb holds
+// it for a real length of time, and the floor's rules read it as a ghost.
+{
+  const P = L.FLOOR_PATIENCE_S, W = L.REAPER_WARNING_S, V = L.REAPER_SPEED;
+  check("a floor has a patience, in seconds, and it is minutes not moments", typeof P === "number" && P >= 180 && P <= 600, `${P}s`);
+  check("the warning comes well before the end and is not most of it", typeof W === "number" && W >= 20 && W <= P / 3, `${W}s of ${P}s`);
+  check("the one that wakes is faster than a walk and slower than a dash", V > L.WALK_SPEED && V < L.DASH_SPEED, `${V} against walk ${L.WALK_SPEED}, dash ${L.DASH_SPEED}`);
+  check("and faster than the Warden at its most roused - it is the bigger threat", V > L.WARDEN_SPEED_ROUSED, `${V} against ${L.WARDEN_SPEED_ROUSED}`);
+  check("a blast holds it for longer than its own fuse, so setting one under it is worth the walk", L.REAPER_STALL_S > L.BOMB_FUSE_S, `${L.REAPER_STALL_S}s against a ${L.BOMB_FUSE_S}s fuse`);
+  check("it is a ghost to the floor", L.BODIES?.reaper === "ghost", String(L.BODIES?.reaper));
+  if (L.obstaclesFor && L.bitesFor) {
+    const d = L.generateDungeon({ seed: 77, minRooms: 8, maxRooms: 16 });
+    const trap = d.rooms.find((r) => r.kind === "trap") ?? d.rooms[1];
+    check("so nothing on the floor is in its way and nothing bites it", L.obstaclesFor("ghost", trap, d.seed, []).length === 0 && L.bitesFor("ghost", trap, d.seed, []).length === 0);
+  }
+  // A floor at a walk: the longest shortest path from the start to the exit
+  // over 200 seeds, in rooms, times a generous crossing per room, must fit
+  // inside the patience with room to open a chest or two. This is the
+  // promise "you can always finish if you do not linger" as a number.
+  let longest = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const rules = L.floorRules((seed % L.FLOORS) + 1);
+    const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+    const path = L.shortestPath(d.rooms, d.startId, d.endId) ?? [];
+    longest = Math.max(longest, path.length);
+  }
+  const CROSS_S = (L.ROOM_SIZE_LARGE ?? 24) / L.WALK_SPEED + 3;
+  check("the longest floor can be walked start to exit in under half its patience", longest * CROSS_S < P / 2, `${longest} rooms at ${CROSS_S.toFixed(1)}s each = ${(longest * CROSS_S).toFixed(0)}s of ${P}s`);
+  // One owner of the numbers: world.ts names them, everything else reads.
+  const owners = ["src/game/state/run.ts", "src/ui/Hud.tsx", "src/game/systems/Audio.tsx", "src/game/reaper/ReaperDriver.tsx", "src/game/reaper/Reaper.tsx"]
+    .filter((f) => { try { return /(PATIENCE_S|REAPER_[A-Z_]+)\s*=\s*\d/.test(readFileSync(join(root, f), "utf8")); } catch { return false; } });
+  check("and only world.ts spells the patience out", owners.length === 0, owners.join(", ") || "one owner");
+}
+
+// --- Floors that are alive ----------------------------------------------------
+//
+// Run 11: three ambient creatures, none a threat by itself, each with a
+// body in the table and each touching a system the player already
+// reasons about. Rats scatter from footsteps and spring snares; a moth
+// comes to a raised lantern and holds the light in the Warden's eye; bats
+// burst from a roost when you dash beneath them and the noise carries
+// twice as far. These hold where they are placed, how many, and that the
+// numbers make each one a tell rather than a nuisance.
+{
+  const B = L.BODIES ?? {};
+  check("rats walk, moths and bats fly", B.rat === "ground" && B.moth === "flying" && B.bat === "flying", JSON.stringify({ rat: B.rat, moth: B.moth, bat: B.bat }));
+  check("a startled roost carries a dash further than the ground alone", (L.BATS_NOISE_FACTOR ?? 0) > 1 && (L.BATS_ROUSED_S ?? 0) > 0, `factor ${L.BATS_NOISE_FACTOR}, roused ${L.BATS_ROUSED_S}s`);
+  check("a moth on the lantern holds the light longer than the lantern itself does", (L.MOTH_HOLD_S ?? 0) > (L.LANTERN_SEEN_HOLD_S ?? Infinity), `${L.MOTH_HOLD_S}s against ${L.LANTERN_SEEN_HOLD_S}s`);
+  check("a rat is slower than a walk - a thing you can chase - and flees before you are on it", (L.RAT_SPEED ?? 99) < L.WALK_SPEED && (L.RAT_FLEE_RADIUS ?? 0) > L.CLOSE_REACH, `speed ${L.RAT_SPEED}, flees at ${L.RAT_FLEE_RADIUS}`);
+
+  if (L.ratsFor && L.roostFor && L.mothRoom) {
+    const NEVER = new Set(["start", "end", "shop", "library", "memory", "challenge", "secret"]);
+    let rooms = 0, withRats = 0, tooMany = 0, wrongKind = 0, inProp = 0, floors = 0, withRoost = 0, withMoth = 0, badMoth = 0, badRoost = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      const moth = L.mothRoom(d);
+      if (moth) { withMoth++; if (moth === d.startId || moth === d.endId) badMoth++; }
+      let roosts = 0;
+      for (const r of d.rooms) {
+        rooms++;
+        const rats = L.ratsFor(r, d.seed);
+        if (rats.length) withRats++;
+        if (rats.length > 3) tooMany++;
+        if (rats.length && NEVER.has(r.kind)) wrongKind++;
+        const solid = L.placementsFor(r, d.seed).filter((p) => L.PROP_SPECS[p.kind].solid);
+        for (const rat of rats) if (solid.some((p) => Math.hypot(rat.x - p.x, rat.z - p.z) < L.PROP_SPECS[p.kind].radius)) inProp++;
+        const roost = L.roostFor(r, d.seed);
+        if (roost) { roosts++; if (r.id === d.startId || r.id === d.endId) badRoost++; }
+      }
+      if (roosts) withRoost++;
+    }
+    check("rats live where the floor says and nowhere a puzzle is being played", wrongKind === 0 && tooMany === 0, `${wrongKind} in the wrong kind, ${tooMany} rooms over three, ${withRats} of ${rooms} rooms with rats`);
+    check("and a rat's hole is never inside the furniture", inProp === 0, `${inProp} of ${rooms} rooms`);
+    check("most floors have somewhere the rats live", withRats / rooms > 0.15, `${((withRats / rooms) * 100).toFixed(0)}% of rooms`);
+    check("most floors have a moth, and never in the start or the exit", withMoth / floors >= 0.6 && badMoth === 0, `${withMoth} of ${floors} floors, ${badMoth} misplaced`);
+    check("and most have a roost, likewise", withRoost / floors >= 0.6 && badRoost === 0, `${withRoost} of ${floors} floors, ${badRoost} misplaced`);
+  } else {
+    check("the floor knows where its rats, moth and bats are", false, "no ratsFor/roostFor/mothRoom");
+  }
+}
+
+// --- The floor's own traps ------------------------------------------------------
+//
+// Run 12: a dart plate a stride inside a doorway, a pit that gives way
+// once, a grate that drops behind you. Each declares which bodies spring
+// it and which it hurts in the body table's terms, and each is placed by
+// one owner. These hold the placement rules, the numbers, and that a room
+// with a pit in it is still a room you can cross.
+{
+  const T = L.TRAPS;
+  check("every trap says who springs it and who it hurts, in the body table's words", !!T && ["darts", "pit", "grate"].every((k) => T[k] && T[k].springs.every((b) => ["ground", "flying", "ghost"].includes(b))), T ? JSON.stringify(T) : "no TRAPS");
+  check("a ghost springs nothing and is hurt by nothing", !!T && Object.values(T).every((t) => !t.springs.includes("ghost") && !t.hurts.includes("ghost")));
+  check("darts fly over a rat and through a ghost: they hurt what has feet or wings", !!T && T.darts.hurts.includes("ground") && T.darts.hurts.includes("flying"));
+  check("a dart plate re-arms after its volley, not during it", L.DART_REARM_S > L.DART_FLIGHT_S, `${L.DART_REARM_S}s against ${L.DART_FLIGHT_S}s`);
+  check("a grate the player did not make holds for less than a bar they did", L.GRATE_HOLD_S > 0 && L.GRATE_HOLD_S < L.BAR_S, `${L.GRATE_HOLD_S}s against ${L.BAR_S}s`);
+  if (L.trapsFor) {
+    const NEVER = new Set(["start", "end", "shop", "library", "memory", "challenge", "secret"]);
+    let rooms = 0, withTraps = 0, wrongKind = 0, tooMany = 0, badDarts = 0, badGrate = 0, pitInLane = 0, pitOnGem = 0, pitInProp = 0, pits = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      for (const r of d.rooms) {
+        rooms++;
+        const traps = L.trapsFor(r, d.seed, d.endId);
+        if (traps.length) withTraps++;
+        if (traps.length > 2) tooMany++;
+        if (traps.length && NEVER.has(r.kind)) wrongKind++;
+        const solid = L.placementsFor(r, d.seed).filter((p) => L.PROP_SPECS[p.kind].solid);
+        const gem = L.gemFor(r, d.seed);
+        for (const t of traps) {
+          if (t.kind === "darts" && (!t.dir || !r.links[t.dir])) badDarts++;
+          if (t.kind === "grate" && (!t.dir || !r.links[t.dir] || r.links[t.dir] === d.endId)) badGrate++;
+          if (t.kind === "pit") {
+            pits++;
+            const half = r.size / 2;
+            for (const dir of Object.keys(r.links)) {
+              const [dx, , dz] = L.doorPosition(r, dir);
+              const alongX = Math.abs(dx) > Math.abs(dz);
+              const inLane = alongX ? Math.abs(t.z) < L.LANE_HALF_WIDTH && Math.sign(t.x) === Math.sign(dx) : Math.abs(t.x) < L.LANE_HALF_WIDTH && Math.sign(t.z) === Math.sign(dz);
+              if (inLane) { pitInLane++; break; }
+            }
+            if (gem && Math.hypot(t.x - gem[0], t.z - gem[2]) < L.HAZARD_RADIUS + L.PIT_RADIUS) pitOnGem++;
+            if (solid.some((p) => Math.hypot(t.x - p.x, t.z - p.z) < L.PROP_SPECS[p.kind].radius + L.PIT_RADIUS)) pitInProp++;
+            if (Math.abs(t.x) > half - 1 || Math.abs(t.z) > half - 1) pitInProp++;
+          }
+        }
+      }
+    }
+    check("traps are where the floor says and never where a puzzle is played", wrongKind === 0 && tooMany === 0, `${wrongKind} in the wrong kind, ${tooMany} rooms over two, ${withTraps} of ${rooms} rooms trapped`);
+    check("a dart plate guards a doorway that exists, and a grate one that is not the exit's", badDarts === 0 && badGrate === 0, `${badDarts} plates, ${badGrate} grates misplaced`);
+    check("a pit is never in a lane, on the gem, or under the furniture", pitInLane === 0 && pitOnGem === 0 && pitInProp === 0, `${pitInLane} in a lane, ${pitOnGem} on a gem, ${pitInProp} in a prop, of ${pits} pits`);
+    check("about half the rooms that can be trapped are", withTraps / rooms > 0.2, `${((withTraps / rooms) * 100).toFixed(0)}% of rooms`);
+  } else {
+    check("the floor knows where its traps are", false, "no trapsFor");
+  }
+}
+
+// --- Secrets, deeper ----------------------------------------------------------------
+//
+// Run 13: the room behind the cracked wall is worth the bomb every time -
+// a hoard, a reliquary or a shrine, by the seed, from one owner - the
+// shop sells one bomb a floor, and a thin wall breathes. These hold the
+// flavours to a fair spread and each to what it promises, and the two
+// numbers to their meaning.
+{
+  check("a bomb costs more than a life's worth of nothing and less than the exit", L.BOMB_PRICE >= 1 && L.BOMB_PRICE < L.tollForFloor(1), `${L.BOMB_PRICE} gems against a toll of ${L.tollForFloor(1)}`);
+  check("a draft reaches past arm's length and not to the middle of a small room", L.DRAFT_REACH > L.CLOSE_REACH && L.DRAFT_REACH < L.ROOM_SIZE_SMALL / 2, `${L.DRAFT_REACH} against reach ${L.CLOSE_REACH}, half a small room ${L.ROOM_SIZE_SMALL / 2}`);
+  if (L.secretFlavour) {
+    const counts = { hoard: 0, reliquary: 0, shrine: 0 };
+    let floors = 0, thinHoards = 0, hoards = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      const f = L.secretFlavour(d);
+      if (!f) continue;
+      floors++;
+      counts[f]++;
+      if (f === "hoard") {
+        hoards++;
+        const room = d.rooms.find((r) => r.id === d.secretId);
+        const chests = L.placementsFor(room, d.seed, { asVault: true }).filter((p) => p.kind === "chest").length;
+        if (chests < 1) thinHoards++;
+      }
+    }
+    check("the wall hides each of the three about as often", floors > 0 && Object.values(counts).every((n) => n / floors >= 0.2), `${JSON.stringify(counts)} of ${floors}`);
+    check("and a hoard has a chest in it nearly every time", hoards > 0 && thinHoards / hoards < 0.1, `${thinHoards} of ${hoards} hoards with no chest`);
+  } else {
+    check("the wall knows what it hides", false, "no secretFlavour");
+  }
+}
+
+// --- Breakables --------------------------------------------------------------------
+//
+// Run 14: barrels, crates and urns burst in a blast, now and then with a
+// gem in the wreck, and one between the bomb and the player takes the
+// blast for them. These hold the rules to what they say: everything that
+// breaks was solid, the spill is a real chance and not a certainty, the
+// shield is a line and not a radius, and a burst prop is out of every
+// body's way.
+{
+  const B = L.BREAKABLE;
+  check("everything that breaks was solid, so breaking it changes what a body walks round", !!B && [...B].every((k) => L.PROP_SPECS[k]?.solid), B ? [...B].join(", ") : "no BREAKABLE");
+  check("a wreck has a gem in it sometimes, and not usually", L.SPILL_CHANCE > 0.1 && L.SPILL_CHANCE < 0.5, `${L.SPILL_CHANCE}`);
+  if (L.spillFor) {
+    let spills = 0;
+    for (let i = 0; i < 2000; i++) if (L.spillFor(7, `room_${i % 9}:barrel@${(i * 0.7).toFixed(1)},${(i * 0.3).toFixed(1)}`)) spills++;
+    check("and the seed decides which, at about the chance it says", Math.abs(spills / 2000 - L.SPILL_CHANCE) < 0.05, `${spills} of 2000`);
+  }
+  if (L.shielded) {
+    const between = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 2, z: 0.2 }]);
+    const beside = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 2, z: 1.5 }]);
+    const behind = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "barrel", x: 5, z: 0 }]);
+    const notBreakable = L.shielded({ x: 0, z: 0 }, { x: 4, z: 0 }, [{ kind: "pillar", x: 2, z: 0 }]);
+    check("a barrel on the line between the bomb and the player shields them; one beside it, behind them, or a pillar does not", !!between && !beside && !behind && !notBreakable, JSON.stringify({ between: !!between, beside: !!beside, behind: !!behind, pillar: !!notBreakable }));
+  }
+  if (L.obstaclesFor && L.breakKey) {
+    const d = L.generateDungeon({ seed: 21, minRooms: 8, maxRooms: 16 });
+    const room = d.rooms.find((r) => L.placementsFor(r, d.seed).some((p) => L.BREAKABLE.has(p.kind)));
+    if (room) {
+      const target = L.placementsFor(room, d.seed).find((p) => L.BREAKABLE.has(p.kind));
+      const before = L.obstaclesFor("ground", room, d.seed, []).length;
+      const after = L.obstaclesFor("ground", room, d.seed, [], [L.breakKey(room, target)]).length;
+      check("a burst barrel is out of a ground body's way", after === before - 1, `${before} then ${after}`);
+    } else {
+      check("a burst barrel is out of a ground body's way", false, "no room with a breakable on seed 21");
+    }
+  }
+}
+
+// --- The map that lies ---------------------------------------------------------------
+//
+// Run 15: nothing marks the map; the player marks it. A key and a pad
+// button mark the room they are in, the wall with a room behind it
+// breathes, and a thin wall lets through what is behind it. These hold
+// the key to being a real, bound, labelled action the README names, and
+// the through-wall cadence to a rate a player can hear as a thing behind
+// the wall rather than a loop.
+{
+  const has = L.ACTIONS?.includes("mark");
+  check("marking the map is an action, with a default key and a label", !!has && L.DEFAULT_BINDINGS?.mark?.length > 0 && !!L.ACTION_LABEL?.mark, has ? `${L.DEFAULT_BINDINGS.mark} - ${L.ACTION_LABEL.mark}` : "no mark action");
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  check("and the README's controls name it", /mark the room/i.test(readme) && /d-pad up/i.test(readme));
+  check("a thin wall speaks slower than a breath and faster than the floor tires", L.WALL_SOUND_EVERY_S > 1 && L.WALL_SOUND_EVERY_S < L.REAPER_WARNING_S, `${L.WALL_SOUND_EVERY_S}s`);
+  const captions = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
+  check("every flavour behind a wall has a caption and a sound", ["hoard", "reliquary", "shrine"].every((f) => new RegExp(`"${f}"`).test(captions) || /flavour ===/.test(captions)) && /throughWall/.test(audio) && /hoard|reliquary/.test(audio));
+}
+
+// --- A helper that costs something ---------------------------------------------------
+//
+// Run 16: the lamplighter wisp. It is out exactly while the Warden can see
+// the player's light - it *is* that light, and its price is not a second
+// rule - drifts ahead toward the hidden room, else the exit, and flares
+// the braziers it passes. These hold its body to a ghost, its pace to
+// under a walk so it can be followed and never drags, and the one owner
+// of where it leads to naming the right room, through a real doorway on
+// the shortest path, on every floor.
+{
+  check("the wisp is a ghost: it passes everything and nothing bites it", L.BODIES?.wisp === "ghost", `${L.BODIES?.wisp}`);
+  check("it drifts slower than a walk, so it can be followed and cannot drag", L.WISP_SPEED > 0 && L.WISP_SPEED < L.WALK_SPEED, `${L.WISP_SPEED} against ${L.WALK_SPEED}`);
+  check("it waits within a room's width and lights what it passes, not the room", L.WISP_LEAD > L.WISP_FLARE_REACH && L.WISP_LEAD < L.ROOM_SIZE_SMALL && L.WISP_FLARE_REACH > 1, `lead ${L.WISP_LEAD}, flare ${L.WISP_FLARE_REACH}`);
+  if (L.wispTargetFor) {
+    let floors = 0, wrongGoal = 0, badDoor = 0, offPath = 0, wrongAfter = 0, hostSpot = 0, hosts = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      const host = d.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+      const t = L.wispTargetFor(d, d.startId);
+      const goal = host?.id ?? d.endId;
+      if (!t || t.roomId !== goal) { wrongGoal++; continue; }
+      if (goal !== d.startId) {
+        const start = d.rooms.find((r) => r.id === d.startId);
+        if (!t.via || !start.links[t.via]) { badDoor++; continue; }
+        const path = L.shortestPath(d.rooms, d.startId, goal) ?? [];
+        if (path[1] !== start.links[t.via]) offPath++;
+      }
+      if (host) {
+        hosts++;
+        const inHost = L.wispTargetFor(d, host.id);
+        const spot = L.crackSpot(host);
+        if (!inHost || inHost.via !== null || !spot || Math.hypot(inHost.x - spot[0], inHost.z - spot[2]) > 0.01) hostSpot++;
+        // Open the wall the way the store does - new links both ways - and it leads to the exit instead.
+        const { dir, to } = host.secret;
+        const opened = { ...d, rooms: d.rooms.map((r) => r.id === host.id ? { ...r, links: { ...r.links, [dir]: to } } : r.id === to ? { ...r, links: { ...r.links, [L.OPPOSITE[dir]]: host.id } } : r) };
+        const after = L.wispTargetFor(opened, d.startId);
+        if (!after || after.roomId !== d.endId) wrongAfter++;
+      }
+    }
+    check("from the start it leads to the room behind the crack, else the exit, on every floor", floors > 0 && wrongGoal === 0, `${wrongGoal} of ${floors} floors named the wrong room`);
+    check("through a doorway the room really has, the first step of the shortest path", badDoor === 0 && offPath === 0, `${badDoor} not a link, ${offPath} off the path, of ${floors}`);
+    check("in the host room it heads for the crack itself", hosts > 0 && hostSpot === 0, `${hostSpot} of ${hosts} hosts`);
+    check("and once the wall is open it leads to the exit instead", hosts > 0 && wrongAfter === 0, `${wrongAfter} of ${hosts}`);
+  } else {
+    check("the wisp knows where it is going", false, "no wispTargetFor");
+  }
+  const bra = readFileSync(join(root, "src/game/props/Braziers.tsx"), "utf8");
+  check("the braziers read where the wisp is and flare for it, not the other way round", /wispAt/.test(bra) && /WISP_FLARE_REACH/.test(bra) && !/wispAt/.test(readFileSync(join(root, "src/game/state/run.ts"), "utf8")));
+  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  check("the HUD and the captions say so when it is out", /a wisp/.test(hud) && /wispCame/.test(cap) && /wispLeft/.test(cap));
+}
+
+// --- A second threat with a different body ------------------------------------------
+//
+// Run 17: the Harrier flies. These hold the body table to what "flying"
+// now means on the floor - over the low furniture, round the tall, bitten
+// by nothing - hold the Harrier's numbers to a thing that can be dashed
+// from but not walked from and downed for long enough to matter, and ask
+// the one owner of where it roosts and comes in on every floor.
+{
+  check("the Harrier is a flying body", L.BODIES?.harrier === "flying", `${L.BODIES?.harrier}`);
+  check("faster than a walk, slower than a dash: a dash is the loud way out", L.HARRIER_SPEED > L.WALK_SPEED && L.HARRIER_SPEED < L.DASH_SPEED, `${L.HARRIER_SPEED} between ${L.WALK_SPEED} and ${L.DASH_SPEED}`);
+  check("never further in one frame than its own reach", L.HARRIER_MAX_STEP <= L.HARRIER_TOUCH_RADIUS, `${L.HARRIER_MAX_STEP} against ${L.HARRIER_TOUCH_RADIUS}`);
+  check("downed long enough to walk it to the spikes and back", L.HARRIER_DOWN_S * L.WALK_SPEED >= 2 * (L.CLOSE_REACH + L.BOMB_RADIUS), `${L.HARRIER_DOWN_S}s at ${L.WALK_SPEED} m/s`);
+  check("it sleeps through the first floor and wakes before the Warden hunts", L.HARRIER_FROM_FLOOR >= 2 && L.HARRIER_ALARM_LEVEL >= 1 && L.HARRIER_ALARM_LEVEL <= L.ALARM_HUNTS_AT, `floor ${L.HARRIER_FROM_FLOOR}, alarm ${L.HARRIER_ALARM_LEVEL}`);
+  const specs = Object.entries(L.PROP_SPECS).filter(([, s]) => s.solid && !s.authored);
+  const tall = specs.filter(([, s]) => !L.clearedInFlight(s)).map(([k]) => k);
+  const low = specs.filter(([, s]) => L.clearedInFlight(s)).map(([k]) => k);
+  check("a flier clears some of the furniture and not all of it", tall.length > 0 && low.length > 0, `round ${tall.join(", ")}; over ${low.join(", ")}`);
+  if (L.harrierRoostFor && L.harrierEntryFor) {
+    let floors = 0, none = 0, badRoost = 0, badEntry = 0, notSubset = 0, bitten = 0, floorOne = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      if (L.harrierRoostFor(d, 1) !== null) floorOne++;
+      const roost = L.harrierRoostFor(d, 2);
+      if (!roost) { none++; continue; }
+      const r = d.rooms.find((x) => x.id === roost);
+      if (!r || roost === d.startId || roost === d.endId || roost === d.secretId || r.kind === "shop") badRoost++;
+      for (const room of d.rooms) {
+        if (room.id === d.secretId) continue;
+        const via = L.harrierEntryFor(d, roost, room.id);
+        if (room.id === roost) { if (via !== null) badEntry++; continue; }
+        const path = L.shortestPath(d.rooms, room.id, roost) ?? [];
+        if (!via || room.links[via] !== path[1]) badEntry++;
+        const ground = L.obstaclesFor("ground", room, d.seed, []);
+        const flying = L.obstaclesFor("flying", room, d.seed, []);
+        if (!flying.every((f) => ground.some((g) => g.x === f.x && g.z === f.z))) notSubset++;
+        if (L.bitesFor("flying", room, d.seed, []).length > 0) bitten++;
+      }
+    }
+    check("every floor from the second down has a roost, and the first has none", floors > 0 && none === 0 && floorOne === 0, `${none} without, ${floorOne} on floor one, of ${floors}`);
+    check("the roost is never the start, the exit, the shop or the hidden room", badRoost === 0, `${badRoost} of ${floors}`);
+    check("from every room it comes in by the first doorway of the shortest path to its roost", badEntry === 0, `${badEntry} wrong doorways`);
+    check("what a flier steers round is some of what a walker does, and nothing bites it", notSubset === 0 && bitten === 0, `${notSubset} rooms with extra obstacles, ${bitten} rooms that bite a flier`);
+  } else {
+    check("the Harrier knows where it roosts", false, "no harrierRoostFor");
+  }
+  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
+  check("the HUD names where it roosts and what downs it, and the captions say the rest", /roosts here/.test(hud) && /a blast downs it/.test(hud) && /harrierWoke/.test(cap) && /harrierSlain/.test(cap));
 }
 
 // --- The Sentry's question --------------------------------------------------
@@ -1446,7 +2073,18 @@ check("the shipped room templates reach the floors the game generates", authored
   /** The gem's own trigger reaches this far; anything less is not the game. */
   const GEM_REACH = 2.4;
 
-  const routeToGem = (room, seed) => {
+  /**
+   * The doorways a room has - or, for a hidden room, the one it will have
+   * once its host's wall is opened. It has no link until then, and a route
+   * that starts from its links starts nowhere.
+   */
+  const doorsOf = (d, room) => {
+    const doors = ["north", "south", "east", "west"].filter((dir) => room.links[dir]);
+    const host = d.rooms.find((r) => r.secret?.to === room.id);
+    if (host) doors.push(L.OPPOSITE[host.secret.dir]);
+    return doors;
+  };
+  const routeToGem = (room, seed, doors = Object.keys(room.links)) => {
     const half = room.size / 2;
     const gem = L.gemFor(room, seed);
     if (!gem) return null;
@@ -1465,8 +2103,7 @@ check("the shipped room templates reach the floors the game generates", authored
     const key = (i, j) => i * 1000 + j;
     const seen = new Set();
     const queue = [];
-    for (const dir of ["north", "south", "east", "west"]) {
-      if (!room.links[dir]) continue;
+    for (const dir of doors) {
       const [dx, , dz] = L.doorPosition(room, dir);
       // A stride inside the doorway, which is where travel puts the player.
       const i = Math.round((dx * 0.82 + half) / CELL);
@@ -1504,7 +2141,7 @@ check("the shipped room templates reach the floors the game generates", authored
   for (let seed = 1; seed <= 120; seed++) {
     const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
     for (const room of d.rooms) {
-      const r = routeToGem(room, d.seed);
+      const r = routeToGem(room, d.seed, doorsOf(d, room));
       if (!r) continue;
       const bucket = room.kind === "trap" ? "trap" : "other";
       counted[bucket]++;
@@ -1736,7 +2373,7 @@ check("the shipped room templates reach the floors the game generates", authored
    */
   const WORDS = [
     "zero", "one", "two", "three", "four", "five", "six",
-    "seven", "eight", "nine", "ten", "eleven", "twelve",
+    "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
   ];
   const word = (n) => WORDS[n] ?? String(n);
   /** Said in words or in digits; the page may phrase it either way. */
