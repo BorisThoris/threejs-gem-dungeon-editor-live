@@ -6242,7 +6242,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the shop offers a bomb", !atCounter.error && atCounter.offered, atCounter.error || JSON.stringify(atCounter));
   if (!atCounter.error) {
     await page.keyboard.press("KeyE");
-    await page.waitForTimeout(500);
+    // The sale is the store's on the press; the label is the frame loop's,
+    // and half a second of wall time is no frames at all on a loaded
+    // machine - "has true, paid 2, sold false" was the counter still
+    // wearing its old offer. Wait for the label the sale earns, in frames.
+    await page
+      .waitForFunction(() => Object.keys(window.__triggers ?? {}).some((l) => /sold/i.test(l)), null, { timeout: 8000 })
+      .catch(() => {});
     const bought = await page.evaluate((gems) => {
       const s = window.__run.getState();
       const sold = Object.keys(window.__triggers ?? {}).some((l) => /sold/i.test(l));
