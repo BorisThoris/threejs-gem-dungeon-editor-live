@@ -154,6 +154,14 @@ export interface BusEvents {
   harrierDowned: undefined;
   /** Downed over something that bites: gone for the floor. */
   harrierSlain: undefined;
+  /** The player walked into a room the Keeper stands in. */
+  keeperBars: undefined;
+  /** It reached the player. */
+  keeperStruck: undefined;
+  /** A blast made it kneel: the last stairs are open a while. */
+  keeperKnelt: undefined;
+  /** It got back up. */
+  keeperRose: undefined;
   /** The player marked a room on the map, or unmarked it. */
   mapMarked: { roomId: string; marked: boolean };
   /** A sound through a thin wall, and what it says is behind it. */

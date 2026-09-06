@@ -45,6 +45,7 @@ writeFileSync(
    export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/mobs/harrierRoost";
+   export * from "${root}src/game/keeper/posts";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -1670,6 +1671,49 @@ check("the shipped room templates reach the floors the game generates", authored
   const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
   const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   check("the HUD names where it roosts and what downs it, and the captions say the rest", /roosts here/.test(hud) && /a blast downs it/.test(hud) && /harrierWoke/.test(cap) && /harrierSlain/.test(cap));
+}
+
+// --- The Keeper --------------------------------------------------------------------
+//
+// Run 18: the last stairs are kept. These hold the Keeper to a body in the
+// table, its reach to inside a blast's radius so a bomb can be set
+// outside it and still be in its room, its kneel to long enough to walk
+// to the door and pay, its posts to every doorway into the exit on its
+// floor and none anywhere else - and a shop, which is where the bomb
+// comes from, on every floor it could be needed.
+{
+  check("the Keeper is in the body table", L.BODIES?.keeper === "ground", `${L.BODIES?.keeper}`);
+  check("its reach is inside a blast's radius", L.KEEPER_REACH < L.BOMB_RADIUS && L.KEEPER_REACH > L.CLOSE_REACH * 0.8, `${L.KEEPER_REACH} against ${L.BOMB_RADIUS}`);
+  check("it kneels long enough to walk in from outside its reach, pay and go", L.KEEPER_STALL_S * L.WALK_SPEED >= 2 * (L.BOMB_RADIUS + L.CLOSE_REACH) + 4, `${L.KEEPER_STALL_S}s at ${L.WALK_SPEED} m/s`);
+  check("it keeps the last floor", L.KEEPER_FLOOR === L.FLOORS, `${L.KEEPER_FLOOR} of ${L.FLOORS}`);
+  if (L.keeperPostsFor) {
+    let floors = 0, none = 0, bad = 0, above = 0, noShop = 0, multi = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
+      floors++;
+      const posts = L.keeperPostsFor(d, L.KEEPER_FLOOR);
+      if (posts.length === 0) none++;
+      if (posts.length > 1) multi++;
+      for (const p of posts) {
+        const r = d.rooms.find((x) => x.id === p.roomId);
+        if (!r || r.links[p.dir] !== d.endId) bad++;
+      }
+      const doors = d.rooms.reduce((n, r) => n + Object.values(r.links).filter((v) => v === d.endId).length, 0);
+      if (posts.length !== doors) bad++;
+      if (L.keeperPostsFor(d, 1).length > 0 || L.keeperPostsFor(d, L.KEEPER_FLOOR - 1).length > 0) above++;
+      if (!d.rooms.some((r) => r.kind === "shop")) noShop++;
+    }
+    check("on its floor it stands at every doorway into the exit, and at no other", floors > 0 && none === 0 && bad === 0, `${none} floors unkept, ${bad} bad posts, ${multi} floors with more than one door in`);
+    check("and on no floor above it", above === 0, `${above} of ${floors}`);
+    check("a shop, and so a bomb, on every floor", noShop === 0, `${noShop} floors without`);
+  } else {
+    check("the Keeper knows where it stands", false, "no keeperPostsFor");
+  }
+  const door = readFileSync(join(root, "src/game/interact/DoorTrigger.tsx"), "utf8");
+  const run = readFileSync(join(root, "src/game/state/run.ts"), "utf8");
+  check("the door and the walk both ask the store whether it holds", /keeperHolds/.test(door) && /keeperHolds\(s\)/.test(run) && /stallKeeper/.test(run.split("detonate:")[1] ?? ""));
+  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  check("the HUD says what makes it kneel", /a blast makes it kneel/.test(hud));
 }
 
 // --- The Sentry's question --------------------------------------------------

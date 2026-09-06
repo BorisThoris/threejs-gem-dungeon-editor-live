@@ -6,6 +6,8 @@ import {
   barredNow,
   harrierAway,
   harrierDowned,
+  keeperHolds,
+  keeperStalled,
   lanternLit,
   lureNow,
   patienceLeft,
@@ -72,7 +74,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty, harrier, harrierUp } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -179,6 +181,17 @@ export function Hud() {
           {warded && <span style={{ color: colors.gold }}> · warded out of this room</span>}
         </div>
       )}
+      {/* The last stairs are kept, and the floor says so from the moment
+          you are on it - the answer is a bomb, and a player who learns that
+          at the door with none left has been ambushed by the rules. */}
+      {keeper && (
+        <div>
+          <span style={{ color: colors.dim }}>KEEPER </span>
+          <span style={{ color: keeper === "kneels" ? colors.gold : colors.danger }}>
+            {keeper === "kneels" ? `kneels · ${keeperUp}s · go` : "holds the stairs · a blast makes it kneel"}
+          </span>
+        </div>
+      )}
       {/* The thing with wings: named where it sleeps, so a player can tiptoe
           out; and what to do about it once it is up, because the answer is
           new - the spikes and the furniture that handle the Warden do not
@@ -263,10 +276,15 @@ function useWardenSense(): {
   harrier: "roosts" | "hunting" | "away" | "down" | null;
   /** Whole seconds until a downed Harrier is up again. */
   harrierUp: number;
+  /** The Keeper: holding the last stairs, or kneeling. */
+  keeper: "holds" | "kneels" | null;
+  /** Whole seconds until a kneeling Keeper is up again. */
+  keeperUp: number;
 } {
   const read = () => {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
+    const keeper: "holds" | "kneels" | null = keeperStalled(s) ? "kneels" : keeperHolds(s) ? "holds" : null;
     const harrier: "roosts" | "hunting" | "away" | "down" | null = s.harrierSlain
       ? null
       : s.harrierAwake
@@ -294,6 +312,8 @@ function useWardenSense(): {
       drafty: draft.near && draft.roomId === s.currentRoomId,
       harrier,
       harrierUp: harrierDowned(s) ? Math.max(0, Math.ceil(s.harrierDownedUntil - runClock(s))) : 0,
+      keeper,
+      keeperUp: keeperStalled(s) ? Math.max(0, Math.ceil(s.keeperStalledUntil - runClock(s))) : 0,
     };
   };
   const [sense, setSense] = useState(read);
@@ -313,7 +333,9 @@ function useWardenSense(): {
           was.reaper === now.reaper &&
           was.drafty === now.drafty &&
           was.harrier === now.harrier &&
-          was.harrierUp === now.harrierUp
+          was.harrierUp === now.harrierUp &&
+          was.keeper === now.keeper &&
+          was.keeperUp === now.keeperUp
           ? was
           : now;
       }),

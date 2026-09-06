@@ -37,6 +37,7 @@ import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { placementsFor } from "../rooms/placements";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
+import { keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
@@ -61,6 +62,9 @@ import {
   GRATE_HOLD_S,
   HARRIER_DOWN_S,
   HARRIER_RETREAT_S,
+  KEEPER_FLOOR,
+  KEEPER_STALL_S,
+  KEEPER_STRIKE_GRACE_S,
   LANTERN_FULL_S,
   LANTERN_SEEN_HOLD_S,
   MOTH_HOLD_S,
@@ -313,6 +317,10 @@ export interface RunState {
   harrierDownedUntil: number;
   /** Run-clock second it comes back after a strike. */
   harrierRetreatUntil: number;
+  /** Run-clock second the Keeper gets back up after a blast. */
+  keeperStalledUntil: number;
+  /** Run-clock second of the Keeper's last strike, for the grace between two. */
+  keeperLastStrikeAt: number;
   /** The moth is on the raised lantern, and the Warden can see it. */
   mothOn: boolean;
   /** Run-clock second the startled roost settles. */
@@ -474,6 +482,10 @@ export interface RunState {
   downHarrier: () => void;
   /** Down over something that bites: gone for the floor. */
   slayHarrier: () => void;
+  /** A blast in a room the Keeper stands in: it kneels, and the stairs are open a while. */
+  stallKeeper: () => void;
+  /** Someone within its reach: the ordinary damage, once per grace. */
+  keeperStrike: () => void;
   /** The floor's patience ran out. Called from the frame loop. */
   wakeReaper: () => void;
   /** The Reaper reached the player. */
@@ -628,6 +640,8 @@ export const useRun = create<RunState>()(
     floorEnteredAt: 0,
     reaperAwake: false,
     harrierAwake: false,
+    keeperStalledUntil: 0,
+    keeperLastStrikeAt: 0,
     harrierSlain: false,
     harrierDownedUntil: 0,
     harrierRetreatUntil: 0,
@@ -731,6 +745,8 @@ export const useRun = create<RunState>()(
         floorEnteredAt: performance.now() / 1000,
         reaperAwake: false,
         harrierAwake: false,
+        keeperStalledUntil: 0,
+        keeperLastStrikeAt: 0,
         harrierSlain: false,
         harrierDownedUntil: 0,
         harrierRetreatUntil: 0,
@@ -791,6 +807,12 @@ export const useRun = create<RunState>()(
       if (!s.dungeon || !room || !toId || !canControl(s)) return;
       const to = roomById(s.dungeon, toId);
       if (!to) return;
+      // The Keeper holds the stairs: the store refuses the exit while it
+      // stands, so the door's prompt and the walk cannot disagree.
+      if (to.kind === "end" && keeperHolds(s)) {
+        bus.emit("notice", "The Keeper holds the stairs.");
+        return;
+      }
 
       /**
        * Walking out through your own bar lifts it.
@@ -920,6 +942,8 @@ export const useRun = create<RunState>()(
           floorEnteredAt: runClock(s),
           reaperAwake: false,
           harrierAwake: false,
+          keeperStalledUntil: 0,
+          keeperLastStrikeAt: 0,
           harrierSlain: false,
           harrierDownedUntil: 0,
           harrierRetreatUntil: 0,
@@ -1633,6 +1657,23 @@ export const useRun = create<RunState>()(
       bus.emit("notice", "The harrier is spiked. The floor is quieter.");
     },
 
+    stallKeeper: () => {
+      const s = get();
+      if (s.floor !== KEEPER_FLOOR || s.phase !== "playing") return;
+      set({ keeperStalledUntil: runClock(s) + KEEPER_STALL_S });
+      bus.emit("keeperKnelt");
+      bus.emit("notice", "The Keeper kneels. The stairs, now.");
+    },
+
+    keeperStrike: () => {
+      const s = get();
+      if (!keeperHolds(s)) return;
+      const now = runClock(s);
+      if (now - s.keeperLastStrikeAt < KEEPER_STRIKE_GRACE_S) return;
+      set({ keeperLastStrikeAt: now });
+      if (get().damage()) bus.emit("keeperStruck");
+    },
+
     wakeReaper: () => {
       const s = get();
       if (s.reaperAwake || s.phase !== "playing") return;
@@ -1750,6 +1791,9 @@ export const useRun = create<RunState>()(
       // The Harrier, if it is in the room rather than wheeling away from
       // it: knocked out of the air, and a ground body until it is up.
       if (get().harrierAwake && get().currentRoomId === roomId && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
+      // The Keeper, if this is a room it stands in: it kneels. The one
+      // thing on the floor that opens the last stairs.
+      if (keeperPostsFor(s.dungeon, s.floor).some((p) => p.roomId === roomId)) get().stallKeeper();
       // The moth, if it was on the lantern: scattered, and the light it
       // carried goes with it. The roost hears the blast from its own room.
       if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();
@@ -1835,6 +1879,12 @@ export const harrierDowned = (s: RunState): boolean => s.harrierAwake && !s.harr
 export const harrierAway = (s: RunState): boolean => s.harrierAwake && !s.harrierSlain && running(s, s.harrierRetreatUntil);
 /** What the floor's rules treat it as right now: a flier, or - downed - a thing with feet. */
 export const harrierBody = (s: RunState): Body => (harrierDowned(s) ? "ground" : BODIES.harrier);
+
+/** The Keeper is kneeling after a blast: the last stairs are open. */
+export const keeperStalled = (s: RunState): boolean => s.floor === KEEPER_FLOOR && running(s, s.keeperStalledUntil);
+/** The Keeper stands at the last stairs and the store refuses them. */
+export const keeperHolds = (s: RunState): boolean =>
+  s.phase === "playing" && s.floor === KEEPER_FLOOR && !running(s, s.keeperStalledUntil);
 
 export const reaperStalled = (s: RunState): boolean =>
   s.reaperAwake && running(s, s.reaperStalledUntil);
@@ -2062,6 +2112,11 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     reaper: () => {
       const s = useRun.getState();
       return { awake: s.reaperAwake, stalled: reaperStalled(s), enteredAt: s.floorEnteredAt };
+    },
+    // The Keeper, as the store has it, and where it stands.
+    keeper: () => {
+      const s = useRun.getState();
+      return { holds: keeperHolds(s), stalled: keeperStalled(s), posts: s.dungeon ? keeperPostsFor(s.dungeon, s.floor) : [] };
     },
     // The floor's Harrier, as the store has it.
     harrier: () => {

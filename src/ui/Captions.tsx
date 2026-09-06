@@ -83,6 +83,10 @@ export function Captions() {
       bus.on("harrierStruck", () => say("Talons - and it wheels away")),
       bus.on("harrierDowned", () => say("The blast knocks the harrier down")),
       bus.on("harrierSlain", () => say("The harrier is spiked")),
+      bus.on("keeperBars", () => say("The Keeper bars the stairs")),
+      bus.on("keeperStruck", () => say("The Keeper's halberd")),
+      bus.on("keeperKnelt", () => say("The Keeper kneels")),
+      bus.on("keeperRose", () => say("The Keeper rises")),
       bus.on("trapSprung", ({ kind, by }) =>
         say(
           kind === "grate"

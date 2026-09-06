@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §43 asks a human
+  moment it can afford to. That is precisely the behaviour §44 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §43.
+for a person, not for this document, and it is on the list in §44.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3184,14 +3184,73 @@ one. And its probe was written before its step, so a check that downed
 it "over the spikes" downed it up to a stride past them: where a thing
 is means where it ends the frame, and the probe says so now.
 
-## 42. Steam Deck
+## 42. The Keeper
+
+"Floor three's exit is watched by a thing that does not wander and
+cannot be evaded by walking. It is stalled by a bomb and by nothing
+else, for long enough to pay the toll and go." A boss for a game
+without combat: the door is the fight.
+
+### What it is
+
+On the last floor the Keeper stands a stride inside every doorway into
+the exit room, on the player's side - `keeperPostsFor` in
+`keeper/posts.ts` names the posts, one for every door the exit has,
+and there is one Keeper however many that is: one state in the store,
+drawn at each post. It does not move. It turns to face the player,
+and anyone within `KEEPER_REACH` of its post takes the ordinary damage,
+once per `KEEPER_STRIKE_GRACE_S`.
+
+The stairs are refused while it stands. The store refuses them in
+`travel` - `keeperHolds` - and the door reads the same selector for its
+prompt, so the frame, the words and the walk cannot disagree: "The
+Keeper holds the stairs. A blast would make it kneel." Nothing else
+moves it: not the spikes, which it never walks into; not a snare, a
+ward or a bar; not the lantern, which it does not hunt by. A blast in a
+room it stands in makes it kneel for `KEEPER_STALL_S`, eyes out, and
+the same door then reads "Pay the toll and go - now".
+
+### Why a bomb, and where one comes from
+
+The demo has no weapon and is not getting one. What it has is a thing
+that stops enemies - run 8's bomb, which routs the Warden, holds the
+Reaper, downs the Harrier and now opens the last door. `KEEPER_REACH`
+is under `BOMB_RADIUS`, so the bomb can be set outside its halberd and
+still be in its room; the kneel is long enough to walk in from there,
+pay, and go, twice over. Every floor has a shop and the shop sells one
+bomb a floor; chests carry more. A player who arrives at the last
+stairs with none has been told twice - the HUD's KEEPER line says "a
+blast makes it kneel" from the moment the floor begins, and the store
+page says "bring one" - and the floor's shop is still there.
+
+### Said
+
+"The Keeper bars the stairs" on walking into a post room; "The
+Keeper's halberd" on a strike; "The Keeper kneels" and "The Keeper
+rises" at the edges of the window, the second from a driver that
+watches the deadline pass, because nothing is called when a deadline
+does. The KEEPER line reads "holds the stairs · a blast makes it kneel"
+or "kneels · 7s · go".
+
+### Held and played
+
+Nine layout checks hold the body, the reach against the blast, the
+kneel against the walk, the floor, the posts on every one of 120 floors
+at every doorway into the exit and at none above, a shop on every
+floor, and the door and the walk both asking the store. Four smoke
+checks stand at the last stairs and find them refused by the HUD, the
+prompt and the store; lose a life within its reach; set a bomb outside
+its reach and watch it kneel; and take the stairs while it kneels, which
+on the last floor is the run won.
+
+## 43. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 43. What a human playtest should watch for
+## 44. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3317,7 +3376,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 44. Options and accessibility
+## 45. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3349,7 +3408,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 45. Deeds
+## 46. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3382,7 +3441,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 46. Harness bugs that read as game bugs
+## 47. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3471,7 +3530,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 47. Tuning knobs
+## 48. Tuning knobs
 
 All in `src/game/world.ts`:
 

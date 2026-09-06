@@ -820,3 +820,21 @@ export const HARRIER_TOUCH_RADIUS = 0.9;
 export const HARRIER_MAX_STEP = HARRIER_TOUCH_RADIUS;
 export const HARRIER_RETREAT_S = 8;
 export const HARRIER_DOWN_S = 6;
+
+/**
+ * The Keeper: the last floor's stairs are kept.
+ *
+ * On KEEPER_FLOOR a thing that does not wander stands a stride inside
+ * every doorway into the exit room, on the player's side, and the store
+ * refuses the exit while it stands. Anyone within KEEPER_REACH of its post
+ * is struck - the ordinary damage, once per KEEPER_STRIKE_GRACE_S. It
+ * cannot be walked past, lured, warded, barred or lit out of the way: a
+ * blast in its room makes it kneel for KEEPER_STALL_S, and that is the
+ * window to pay the toll and go. KEEPER_REACH is under BOMB_RADIUS so a
+ * bomb can be set outside its reach and still be in its room. A boss for
+ * a game without combat: the door is the fight.
+ */
+export const KEEPER_FLOOR = FLOORS;
+export const KEEPER_REACH = 2.2;
+export const KEEPER_STALL_S = 9;
+export const KEEPER_STRIKE_GRACE_S = 1.5;

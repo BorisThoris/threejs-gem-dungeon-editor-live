@@ -40,7 +40,9 @@ the trick is worth exactly twice and then the room is a trap room again.
 From the second floor down something with wings hunts by the alarm too:
 the spikes cannot touch it and the furniture does not slow it, but a blast
 knocks it out of the air, and a flier on the ground is just another thing
-the floor can bite.
+the floor can bite. And the last stairs down are kept: something stands
+in that doorway that cannot be walked past, and the only thing that
+makes it kneel is a blast. Bring one.
 
 **Light is a decision, not a setting.**
 

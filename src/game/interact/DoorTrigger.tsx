@@ -1,6 +1,6 @@
 import { doorPosition } from "../dungeon/layout";
 import { roomById, type Dir, type Room } from "../dungeon/types";
-import { barredNow, tollNow, useRun } from "../state/run";
+import { barredNow, keeperHolds, keeperStalled, tollNow, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
 import { DOOR_HEIGHT, DOOR_WIDTH, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
@@ -60,13 +60,19 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const barred = useRun((s) =>
     toId && s.currentRoomId ? barredNow(s) === barKey(s.currentRoomId, toId) : false
   );
+  // The Keeper: whether it holds the last stairs, and whether it is
+  // kneeling - both the store's, so the prompt, the frame and the refusal
+  // in `travel` are one fact.
+  const held = useRun(keeperHolds);
+  const knelt = useRun(keeperStalled);
   const target = dungeon && toId ? roomById(dungeon, toId) : undefined;
   if (!target) return null;
 
   const isExit = target.kind === "end";
+  const kept = isExit && held;
   // A vault stays locked until a key is spent on it, and then stays open.
   const locked = target.id === vaultId && !unlocked;
-  const enabled = (!isExit || gems >= toll) && !sealed && (!locked || keys > 0);
+  const enabled = (!isExit || gems >= toll) && !kept && !sealed && (!locked || keys > 0);
   const color = locked
     ? FRAME_COLOR.vault
     : isExit
@@ -111,12 +117,14 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
                 // uses - but only where it can be used, so an exit and a
                 // locked vault do not carry a hint about a thing they will
                 // refuse.
-                `Open ${KIND_LABEL[target.kind] ?? "the door"}` +
+                (isExit && knelt ? "Pay the toll and go - now" : `Open ${KIND_LABEL[target.kind] ?? "the door"}`) +
                 (isExit || locked ? "" : "   ·   B bars it")
         }
         enabled={enabled}
         blockedReason={
-          sealed
+          kept
+            ? "The Keeper holds the stairs. A blast would make it kneel."
+            : sealed
             ? "The door will not move"
             : locked
               ? "The vault is locked. Its key is somewhere on this floor."

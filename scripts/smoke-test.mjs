@@ -6556,6 +6556,71 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("down over the trap room's spikes, it is slain and gone for the floor", !hunted.error && (!hunted.slain || (!hunted.slain.error && hunted.slain.over && hunted.slain.slain && hunted.slain.gone && !hunted.slain.hud)), hunted.error || JSON.stringify(hunted.slain ?? "no trap room on this floor"));
 }
 
+// Run 18: the Keeper, played. On the last floor the exit is refused while
+// it stands, standing within its reach costs a life, a bomb in its room
+// makes it kneel, and the stairs can be taken while it kneels.
+{
+  const kept = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!window.__keeperPosts) return { error: "no keeper probe" };
+    run.getState().startRun(37);
+    await wait(1000);
+    run.setState({ floor: W.KEEPER_FLOOR, lives: 3, gems: 30, satchel: ["bomb"], identified: [] });
+    await wait(300);
+    const d = run.getState().dungeon;
+    const posts = window.__keeperPosts(d, W.KEEPER_FLOOR);
+    if (!posts.length) return { error: "no post on this floor" };
+    const post = posts[0];
+    const room = d.rooms.find((r) => r.id === post.roomId);
+    const events = [];
+    const offs = ["keeperBars", "keeperStruck", "keeperKnelt", "keeperRose"].map((e) => window.__bus.on(e, () => events.push(e)));
+    run.setState({ transitioning: true, currentRoomId: room.id, wardenRoomId: null });
+    run.getState().roomReady(room.id);
+    await wait(1400);
+    const holds = D.keeper().holds;
+    const hudHolds = /KEEPER/.test(document.body.innerText) && /holds the stairs/i.test(document.body.innerText);
+    const door = window.__layout.doorPosition(room, post.dir);
+    // At the doorway, inside its reach: the prompt says why, and the walk is refused.
+    window.__bus.emit("teleport", { position: [door[0] * 0.5, 1.5, door[2] * 0.5] });
+    await wait(1500);
+    const promptHolds = /Keeper holds/i.test(document.body.innerText);
+    const floorBefore = run.getState().floor;
+    run.getState().travel(post.dir);
+    await wait(600);
+    const refused = run.getState().floor === floorBefore && run.getState().phase === "playing" && run.getState().currentRoomId === room.id;
+    const livesBefore = 3;
+    for (let i = 0; i < 20 && run.getState().lives === livesBefore; i++) await wait(200);
+    const struck = run.getState().lives < livesBefore && events.includes("keeperStruck");
+    // Out of its reach, in its room: a bomb. It kneels.
+    window.__bus.emit("teleport", { position: [door[0] * 0.1, 1.5, door[2] * 0.1] });
+    await wait(400);
+    run.setState({ lives: 9 });
+    const placed = run.getState().placeDevice(0);
+    const t0 = D.clock();
+    while (!events.includes("keeperKnelt") && D.clock() - t0 < W.BOMB_FUSE_S + 3) await wait(150);
+    const knelt = D.keeper().stalled && events.includes("keeperKnelt");
+    const hudKneels = /kneels/i.test(document.body.innerText);
+    // And while it kneels the stairs can be taken: the last floor's exit is the run won.
+    window.__bus.emit("teleport", { position: [door[0] * 0.5, 1.5, door[2] * 0.5] });
+    await wait(1200);
+    const promptGo = /Pay the toll and go/i.test(document.body.innerText);
+    const enabled = Object.entries(window.__triggers || {}).some(([label, t]) => /Pay the toll and go/.test(label) && t.enabled);
+    run.getState().travel(post.dir);
+    for (let i = 0; i < 30 && run.getState().transitioning; i++) await wait(150);
+    await wait(400);
+    const after = run.getState();
+    offs.forEach((off) => off());
+    return { holds, hudHolds, promptHolds, refused, struck, placed, knelt, hudKneels, promptGo, enabled, phase: after.phase, events };
+  });
+  ok("the last floor's exit is kept: the HUD and the prompt say so, and the walk is refused", !kept.error && kept.holds && kept.hudHolds && kept.promptHolds && kept.refused, kept.error || JSON.stringify({ holds: kept.holds, hud: kept.hudHolds, prompt: kept.promptHolds, refused: kept.refused }));
+  ok("standing within its reach costs a life", !kept.error && kept.struck, kept.error || JSON.stringify({ struck: kept.struck, events: kept.events }));
+  ok("a bomb in its room makes it kneel, and the HUD counts the window", !kept.error && kept.placed && kept.knelt && kept.hudKneels, kept.error || JSON.stringify({ placed: kept.placed, knelt: kept.knelt, hud: kept.hudKneels, events: kept.events }));
+  ok("and while it kneels the stairs are offered and taken: the run is won", !kept.error && kept.promptGo && kept.enabled && kept.phase === "won", kept.error || JSON.stringify({ prompt: kept.promptGo, enabled: kept.enabled, phase: kept.phase }));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

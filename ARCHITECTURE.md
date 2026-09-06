@@ -297,6 +297,15 @@ Two stores that both claimed the player's stats. So:
   right now - a flier, or downed, a thing with feet. `body.ts` decides
   what a flier clears (`clearedInFlight`: anything whose collider stops
   under `FLIGHT_HEIGHT`); the Harrier, the moth and the bats all read it.
+- The Keeper is one state and many posts: `keeper/posts.ts` owns where
+  it stands (`keeperPostsFor`: every doorway into the exit room on the
+  Keeper's floor), the store owns whether it holds the stairs
+  (`keeperHolds`, `keeperStalled`, `stallKeeper`, `keeperStrike`) and
+  refuses the exit in `travel` from the same selector the door's prompt
+  reads. `detonate` asks the posts whether the blast's room is one it
+  stands in; `KeeperDriver` says when the kneel ends. It never walks, so
+  nothing on the floor bites it, and it is in the body table because
+  everything with a body is.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

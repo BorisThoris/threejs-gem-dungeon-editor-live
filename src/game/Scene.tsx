@@ -17,6 +17,7 @@ import { BombDriver } from "./systems/BombDriver";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WispDriver } from "./mobs/WispDriver";
 import { HarrierDriver } from "./mobs/HarrierDriver";
+import { KeeperDriver } from "./keeper/KeeperDriver";
 import { ReaperDriver } from "./reaper/ReaperDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
@@ -118,6 +119,7 @@ export function Scene() {
       <ReaperDriver />
       <WispDriver />
       <HarrierDriver />
+      <KeeperDriver />
       {/* The light the player carries. Outside the physics tree because it
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}

@@ -27,6 +27,8 @@ import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
 import { Wisp } from "../mobs/Wisp";
 import { Harrier } from "../mobs/Harrier";
+import { Keeper } from "../keeper/Keeper";
+import { keeperPostsFor } from "../keeper/posts";
 import { Darts } from "../traps/Darts";
 import { Grate } from "../traps/Grate";
 import { Pit } from "../traps/Pit";
@@ -134,6 +136,22 @@ function RoomHarrier({ room }: { room: RoomData }) {
   const awake = useRun((s) => s.harrierAwake && !s.harrierSlain);
   const here = useRun((s) => s.currentRoomId === room.id);
   return awake && here ? <Harrier room={room} /> : null;
+}
+
+/** The Keeper, at each of its posts in this room, while the player is in it. */
+function RoomKeeper({ room }: { room: RoomData }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const dungeon = useRun((s) => s.dungeon);
+  const floor = useRun((s) => s.floor);
+  const posts = useMemo(() => (dungeon ? keeperPostsFor(dungeon, floor).filter((p) => p.roomId === room.id) : []), [dungeon, floor, room.id]);
+  if (!here || posts.length === 0) return null;
+  return (
+    <>
+      {posts.map((p) => (
+        <Keeper key={p.dir} room={room} dir={p.dir} />
+      ))}
+    </>
+  );
 }
 
 function RoomWisp({ room }: { room: RoomData }) {
@@ -290,6 +308,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomDraft room={room} />
       <RoomWisp room={room} />
       <RoomHarrier room={room} />
+      <RoomKeeper room={room} />
       <PlacedDevices roomId={room.id} />
       <RoomNest roomId={room.id} half={half} />
       {hazards.map((p, i) => (

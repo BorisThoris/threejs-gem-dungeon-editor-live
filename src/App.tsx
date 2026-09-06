@@ -181,6 +181,8 @@ export default function App() {
     void import("./game/mobs/lamplighter").then((m) => (w.__wispAt = m.wispAt, w.__wispTarget = m.wispTargetFor));
     // Where the Harrier roosts, comes in, and is, from the one owner of it.
     void import("./game/mobs/harrierRoost").then((m) => (w.__harrierAt = m.harrierAt, w.__harrierRoost = m.harrierRoostFor, w.__harrierEntry = m.harrierEntryFor));
+    // Where the Keeper stands, from the one owner of it.
+    void import("./game/keeper/posts").then((m) => (w.__keeperPosts = m.keeperPostsFor));
     void import("./game/sentry/placement").then((m) => (w.__sentryFor = m.sentryFor));
     // Which room a floor's Cutpurse nests in. Derived from the dungeon
     // rather than stored in it, so a check that wants to set up a theft
