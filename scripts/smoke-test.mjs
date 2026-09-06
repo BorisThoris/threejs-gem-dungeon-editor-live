@@ -3638,14 +3638,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
       ok("the circle walked is ground the arms sweep, not a hole in them",
          swept > 0, `${swept} of the rings reach a circle of ${ORBIT}`);
-      // A quarter of the circle, or one frame of travel, whichever is
-      // larger. Steering corrects once a frame, so the line can only be
-      // held to within how far the player moves between corrections:
-      // 3.7 m/s at 246ms frames is 0.9m of drift that no amount of
-      // steering could have taken out. On a machine that renders at sixty
-      // that term is six centimetres and the quarter-circle is the bound,
-      // so this is slack for the rasteriser and nothing else.
-      const line = Math.max(ORBIT * 0.25, walk.speed * walk.frame);
+      // A quarter of the circle, plus the one frame the steering cannot
+      // correct within.
+      //
+      // Steering aims once a frame, so the player carries on for a whole
+      // frame of travel past wherever the last correction pointed them:
+      // 3.7 m/s at 246ms is 0.91m of drift no steering could have taken
+      // out, on top of however wide the line itself is allowed to be. The
+      // first attempt at this used the larger of the two, which is the
+      // drift's own expected value - it measured 0.91 against 0.91 and
+      // failed by rounding. On a machine that renders at sixty the frame
+      // term is six centimetres and the quarter-circle is effectively the
+      // whole bound, so this is slack for the rasteriser and nothing else.
+      const line = ORBIT * 0.25 + walk.speed * walk.frame;
       ok(
         "the walk holds its line rather than wandering off it",
         walk.drift < line,
