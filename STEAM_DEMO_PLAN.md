@@ -166,7 +166,7 @@ overlays, and on this machine - a software rasteriser at three to five
 frames a second - it now fails two to four checks intermittently, never
 the same ones twice, always in the same shape: the harness read a prompt
 too early, or stood a little wrong. Three of them were tracked down and
-fixed properly this round; the rest are described in PLAYTEST §31 along
+fixed properly this round; the rest are described in PLAYTEST §32 along
 with what would actually fix them, which is waiting on a condition the
 game publishes rather than on a clock. The checks that cover the new
 mechanics pass on every run.
@@ -373,6 +373,9 @@ Fourteen commits, `5c928fc..fc6340d`.
   and freezes movement through the store, so the physics world and player
   survive.
 - Sound synthesised with the Web Audio API — no audio files to ship or license.
+- A score, synthesised the same way: a title theme, and underground a phrase
+  that closes up and drops an octave as the floor wakes, with a heartbeat once
+  something is hunting. Mixed under every cue the player must hear.
 
 ### Phase 5 — make it shippable
 
@@ -465,10 +468,12 @@ PLAYTEST.md has the rest.
   is verified by hand rather than automatically. A carried thing is put down
   where the camera aims, and no approach the harness tried reproduced a
   player's aim reliably enough to trust. PLAYTEST.md says so.
-- The demo is three floors of ten room kinds. The kinds walked through most
-  have two or three arrangements each and two rooms are authored, but it is
-  still the same props in the same quadrants, and that is what runs out
-  next.
+- The demo is three floors of eleven room kinds. The rooms were once "the
+  same props in the same quadrants"; measured over forty runs after the
+  size, shape, biome, litter and ground work, 98% of the rooms a run walks
+  through are furnished unlike the rest of it, and `yarn test:layout` holds
+  that number. What runs out next is not variety but *things to do* in
+  them, which is the next arc.
 
 ---
 
@@ -482,3 +487,36 @@ watched, how it is lit, and the line the player is shown on reaching it.
 
 PLAYTEST.md section 7 lists the knobs with their current values and what
 each one does.
+
+---
+
+## 6. The next arc: things to do in the rooms
+
+The base is a game with a hook: gems, a toll, and one thing on the floor
+you cannot fight. Runs 1 to 6 made the floors worth looking at and
+listening to. What runs out next is not variety but *things to do in the
+rooms* - and the brief for this arc names its inspirations plainly:
+Barony, The Binding of Isaac, Spelunky. Secrets. Bombs. An environment
+that treats what lives in it the way it treats the player. A reason not
+to linger, and a reason to.
+
+No combat yet. What the player gets is not a weapon but leverage.
+
+Each run below is shipped the same way as the sixty-odd cycles before it:
+a check that goes red on the old code, the change, the docs, the eight
+suites, `main`, and the live site. In order:
+
+| Run | What | Why this order |
+| --- | --- | --- |
+| 7 | **The puzzle rooms, refined.** The memory trial's crystals must be visible from the lectern - a sightline rule in the placement filter, an arrangement without pillars across the room, and a layout check that every crystal can be seen from where the trial is started. The tome: every number a single digit so a slot commits on the keypress, difficulty by length rather than by range; "I have it" to end the showing phase early; a way out that works under pointer lock, on screen, that a first Escape does not swallow. | The most concrete complaint in the brief, and polish before content. |
+| 8 | **Bombs, and what they are for.** A fourth item family: set down, a short fuse, a blast. Inside it the Warden is routed and the thief drops what it holds; the player is hurt too, which is the risk. And the reason to carry one: rooms can have a **cracked wall** the blast opens onto a secret room the map does not show. Found in chests, sold at the shop, and never enough of them. | Isaac's core loop of secrets, on top of a floor that already has a map. |
+| 9 | **The environment treats what lives in it as it treats the player.** Every mob declares a body - `ground`, `flying`, `ghost` - and the floor's rules read it: spikes and snares bite ground bodies, solid props are steered round by anything with a body, a ghost passes through all of it. The Warden and the Cutpurse are ground. A layout check that every mob has a body and every hazard says who it bites. | Needed before more mobs exist, or each one re-invents the rules. |
+| 10 | **The one you cannot escape if you linger.** Every floor has a patience, and it runs out. When it does something wakes that has no room, no alarm and no lure - a ghost body, through walls and spikes and wards, faster than a walk, and it does not leave. A bomb stalls it. The HUD says how long the floor has left before it says nothing more, and the score's heartbeat comes in under it. Risk against reward: the treasure room you have not opened, or the door. | Spelunky's ghost and Barony's minotaur, and the missing shape of a run. |
+| 11 | **Floors that are alive.** Two or three ambient creatures with bodies: rats that scatter from footsteps and spring snares, a moth that drifts to a raised lantern and gives it away, a wisp that lights braziers ahead of you. Each one reads the run 9 rules rather than its own. | The brief's "each level should feel alive", built on run 9 so it costs nothing to add a creature. |
+| 12 | **Environmental traps.** Plates that loose darts across a doorway, a grate that drops behind you, a floor that gives way over spikes - each one a body-aware hazard, so a ground mob triggers it and a ghost does not. | Traps a player can *use*, which is the Spelunky half of the brief. |
+| 13 | **Secrets, deeper.** Cracked walls in more kinds; alcoves behind them holding a relic, a key, a shrine; a draft of air where a wall is thin. | The second pass on run 8 once bombs have been played with. |
+| 14 | **Review and polish.** Play the arc end to end, fix what it finds, refresh the docs, re-measure the suites. | The same closing pass every arc has had. |
+
+What this arc deliberately does not do: give the player a weapon. The
+Warden stays the thing you cannot fight, because that is the hook. Bombs
+stop it; they do not kill it.

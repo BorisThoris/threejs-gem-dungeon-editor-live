@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §31 asks a human
+  moment it can afford to. That is precisely the behaviour §32 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §31.
+for a person, not for this document, and it is on the list in §32.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2464,14 +2464,70 @@ most tempts a player to grab and run, so it is the one where running
 should sometimes be the worst thing available: the haul becomes a decision
 rather than a pickup.
 
-## 30. Steam Deck
+## 30. The game had no music
+
+There has been an ambient bed since the first sound went in - a drone at
+55Hz, a fifth above it, and a breath of filtered noise whose low-pass opens
+as the floor rouses - and it is weather rather than music. Nothing in it
+moves in pitch, so it can only ever say "somewhere underground" and never
+say anything twice. A demo on a store page is heard before it is read,
+and this one was heard as a hum. The title screen was silent.
+
+A score, synthesised like everything else here so it ships no files and
+needs no licence. Five notes of A minor pentatonic - the bed's drone is the
+A below all of them - and an eight-note phrase meant to be hummable.
+Stately on the title screen; underground, sparse, and closing up as the
+floor wakes: the gap between notes falls from 2.4 seconds to 1.1, the
+register drops an octave past half alarm, and a heartbeat comes in under
+the phrase once something is actually hunting. Held where it is while the
+game is paused, silenced by the mute with everything else, and scheduled
+on the audio clock rather than the frame loop, so the phrase stays even
+here at four frames a second.
+
+### Mixed three times before it was right
+
+The audio suite taps the real graph at the destination and measures
+samples, and it earned its keep on the first run of this. At a gain of
+0.5 the score raised the room tone every cue is measured against from
+0.031 to 0.094 and **buried ten of the twenty-six cues** - a door, a key,
+a footstep, and the Warden's own approach among them. At 0.22 it still
+nearly doubled the room and two cues a player must not miss, the death
+sting and being seen by a watcher, no longer stood three times clear of
+it. It is 0.09 on the title screen and 0.05 underground now, adding 0.0025
+to a room of 0.031. This is a game whose only verb against the Warden is
+evasion and whose warnings are all sounds; the score is the least
+important thing in the mix, and it is mixed like it.
+
+Two of the five new checks were wrong before they were right, and both in
+ways worth writing down. The melody check sampled three seconds of an
+eight-note phrase and reported no fifth - because the one note in eight
+that *is* the fifth had not been played inside the window. It watches a
+whole phrase now. And the heartbeat was measured in a band that also holds
+the bed's drone and fifth, both far louder than a pulse; measured flat it
+put 0.63 against 0.59 and could not have told a missing heartbeat from a
+present one. It is measured as the score's own contribution now - the
+same band with the score running and stopped - and at 88 to 130Hz, where
+the pulse's attack lives and nothing of the bed does.
+
+### And a plan item retired with a number
+
+STEAM_DEMO_PLAN's last outstanding content note said "it is still the
+same props in the same quadrants, and that is what runs out next." It
+predates §25 to §29. Measured over forty runs of three floors - by which
+props are in a room and how many of each, and again by which ninth of the
+room each prop stands in - **98% of the rooms a run walks through are
+furnished unlike the rest of it**, and every kind has dozens of looks. The
+measurement stays in `yarn test:layout` so it cannot quietly regress; the
+note is gone.
+
+## 31. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 31. What a human playtest should watch for
+## 32. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2597,7 +2653,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 32. Options and accessibility
+## 33. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2629,7 +2685,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 33. Deeds
+## 34. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2662,7 +2718,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 34. Two harness bugs that read as game bugs
+## 35. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2735,7 +2791,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 35. Tuning knobs
+## 36. Tuning knobs
 
 All in `src/game/world.ts`:
 

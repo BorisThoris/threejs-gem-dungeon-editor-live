@@ -564,6 +564,14 @@ registries the game reads:
 Nothing the editor produces can fail to reach a run, because there is no
 second model for it to be written in.
 
+The score lives in `systems/audio.ts` beside the cues and the bed, driven
+from `Audio.tsx` off the run's `phase`, `paused` and alarm. It is
+scheduled on the audio clock from a timer that only has to stay ahead of
+it, never from the frame loop, and it is mixed under every cue: the audio
+suite measures the room tone the cues are heard over with the score
+running, and the score is the one thing in the mix allowed to be turned
+down until they clear it.
+
 ## Verification
 
 A note that cost a day to learn. **Nothing in a test may `import()` a
