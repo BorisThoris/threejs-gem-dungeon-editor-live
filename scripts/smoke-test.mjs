@@ -5820,6 +5820,123 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   }
 }
 
+// Run 10: every floor has a patience, and it runs out. When it does
+// something wakes that has no room, no alarm and no lure - a ghost body,
+// through walls and spikes and furniture, faster than a walk - and it does
+// not leave. These play the whole of that: the clock it runs on, the
+// warning, the waking, the chase, the one thing that holds it, the doorway
+// it follows through, and the floor below that starts patient again.
+{
+  const patience = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const frames = (n) =>
+      new Promise((done) => {
+        let i = 0;
+        const tick = () => (++i >= n ? done(null) : requestAnimationFrame(tick));
+        requestAnimationFrame(tick);
+      });
+    if (!D.patienceLeft || !D.reaper) return { error: "no patience in the store" };
+    const out = {};
+    run.getState().startRun(19);
+    await wait(1200);
+    // The clock: full at the start, and held by the pause menu.
+    const a = D.patienceLeft();
+    run.getState().pause();
+    await wait(900);
+    const b = D.patienceLeft();
+    run.getState().resume();
+    out.startsFull = a > W.FLOOR_PATIENCE_S - 5 && a <= W.FLOOR_PATIENCE_S;
+    out.pausedHeld = Math.abs(a - b) < 0.05;
+    // The warning, written onto the clock rather than waited for.
+    let warned = null;
+    const off1 = window.__bus.on("floorTiring", (e) => (warned = e.left));
+    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S - W.REAPER_WARNING_S + 1) });
+    await frames(3);
+    await wait(400);
+    out.warned = warned;
+    out.hudWarns = /tires of you/i.test(document.body.innerText);
+    off1();
+    // It wakes.
+    let woke = false;
+    const off2 = window.__bus.on("reaperWoke", () => (woke = true));
+    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S + 1) });
+    await frames(3);
+    await wait(400);
+    out.woke = woke && run.getState().reaperAwake;
+    out.hudSays = /it is here/i.test(document.body.innerText);
+    off2();
+    await frames(2);
+    const p0 = window.__reaper ? { ...window.__reaper } : null;
+    out.drawn = !!p0 && p0.room === run.getState().currentRoomId;
+    // It closes on a player who stands still, and takes a life.
+    const lives0 = run.getState().lives;
+    const t0 = performance.now();
+    let first = p0?.distance ?? 0;
+    let last = first;
+    let closed = false;
+    let struck = false;
+    while (performance.now() - t0 < 14000) {
+      await wait(150);
+      const p = window.__reaper;
+      if (!p) continue;
+      last = p.distance;
+      if (last < first * 0.5) closed = true;
+      if (run.getState().lives < lives0) {
+        struck = true;
+        break;
+      }
+    }
+    out.first = first;
+    out.last = last;
+    out.closed = closed;
+    out.struck = struck;
+    out.watched = (performance.now() - t0) / 1000;
+    // A blast holds it. Lives topped up first: it strikes again on its
+    // grace, and the blast costs one too.
+    run.setState({ satchel: ["bomb"], identified: [], lives: 9 });
+    out.placed = run.getState().placeDevice(0);
+    let burst = false;
+    const off3 = window.__bus.on("bombBurst", () => (burst = true));
+    const t1 = performance.now();
+    while (!burst && performance.now() - t1 < (W.BOMB_FUSE_S + 4) * 1000) await wait(100);
+    off3();
+    await frames(1);
+    out.burst = burst;
+    out.stalled = D.reaper().stalled;
+    const held = window.__reaper ? { x: window.__reaper.x, z: window.__reaper.z } : null;
+    await wait(1000);
+    out.heldStill =
+      !!held && !!window.__reaper && Math.hypot(window.__reaper.x - held.x, window.__reaper.z - held.z) < 0.05;
+    // It follows through the doorway you take.
+    const s = run.getState();
+    const room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+    run.getState().travel(Object.keys(room.links)[0]);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await frames(3);
+    out.followed = run.getState().reaperAwake && window.__reaper?.room === run.getState().currentRoomId;
+    // And the floor below starts patient again, without it.
+    const d = run.getState().dungeon;
+    run.setState({ transitioning: true, currentRoomId: d.endId, gems: 99 });
+    run.getState().roomReady(d.endId);
+    await wait(1500);
+    const after = run.getState();
+    out.newFloor = after.floor === 2 && after.reaperAwake === false && D.patienceLeft() > W.FLOOR_PATIENCE_S - 5;
+    return out;
+  });
+  ok("a floor's patience runs on the run's clock and starts full", !patience.error && patience.startsFull && patience.pausedHeld, patience.error || JSON.stringify({ full: patience.startsFull, paused: patience.pausedHeld }));
+  if (!patience.error) {
+    ok("the floor warns before it gives up, on the HUD and over the bus", patience.warned !== null && patience.hudWarns, JSON.stringify({ warned: patience.warned, hud: patience.hudWarns }));
+    ok("and when it runs out something wakes that the map cannot show", patience.woke && patience.hudSays && patience.drawn, JSON.stringify({ woke: patience.woke, hud: patience.hudSays, drawn: patience.drawn }));
+    ok("it closes on a standing player and takes a life", patience.closed && patience.struck, `${patience.first?.toFixed(1)}m to ${patience.last?.toFixed(1)}m in ${patience.watched?.toFixed(1)}s${patience.struck ? ", struck" : ""}`);
+    ok("a blast holds it where it stands", patience.placed && patience.burst && patience.stalled && patience.heldStill, JSON.stringify({ placed: patience.placed, burst: patience.burst, stalled: patience.stalled, still: patience.heldStill }));
+    ok("it follows through the doorway you take", patience.followed);
+    ok("and the next floor starts patient again, without it", patience.newFloor);
+  }
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

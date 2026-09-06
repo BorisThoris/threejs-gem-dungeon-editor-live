@@ -1323,6 +1323,47 @@ check("the shipped room templates reach the floors the game generates", authored
   check("no creature builds its own list of what bites it", offenders.length === 0, offenders.join(", ") || "Warden and Cutpurse read mobs/body.ts");
 }
 
+// --- The floor's patience -----------------------------------------------------
+//
+// Run 10: every floor puts up with the player for so long, and then
+// something wakes that has no room, no alarm and no lure - a ghost body,
+// through walls and spikes and wards, faster than a walk and slower than a
+// dash, and it does not leave. These hold the numbers to the shape of the
+// promise: a floor is finishable at a walk inside its patience, the warning
+// comes before the end, a walk cannot get away and a dash can, a bomb holds
+// it for a real length of time, and the floor's rules read it as a ghost.
+{
+  const P = L.FLOOR_PATIENCE_S, W = L.REAPER_WARNING_S, V = L.REAPER_SPEED;
+  check("a floor has a patience, in seconds, and it is minutes not moments", typeof P === "number" && P >= 180 && P <= 600, `${P}s`);
+  check("the warning comes well before the end and is not most of it", typeof W === "number" && W >= 20 && W <= P / 3, `${W}s of ${P}s`);
+  check("the one that wakes is faster than a walk and slower than a dash", V > L.WALK_SPEED && V < L.DASH_SPEED, `${V} against walk ${L.WALK_SPEED}, dash ${L.DASH_SPEED}`);
+  check("and faster than the Warden at its most roused - it is the bigger threat", V > L.WARDEN_SPEED_ROUSED, `${V} against ${L.WARDEN_SPEED_ROUSED}`);
+  check("a blast holds it for longer than its own fuse, so setting one under it is worth the walk", L.REAPER_STALL_S > L.BOMB_FUSE_S, `${L.REAPER_STALL_S}s against a ${L.BOMB_FUSE_S}s fuse`);
+  check("it is a ghost to the floor", L.BODIES?.reaper === "ghost", String(L.BODIES?.reaper));
+  if (L.obstaclesFor && L.bitesFor) {
+    const d = L.generateDungeon({ seed: 77, minRooms: 8, maxRooms: 16 });
+    const trap = d.rooms.find((r) => r.kind === "trap") ?? d.rooms[1];
+    check("so nothing on the floor is in its way and nothing bites it", L.obstaclesFor("ghost", trap, d.seed, []).length === 0 && L.bitesFor("ghost", trap, d.seed, []).length === 0);
+  }
+  // A floor at a walk: the longest shortest path from the start to the exit
+  // over 200 seeds, in rooms, times a generous crossing per room, must fit
+  // inside the patience with room to open a chest or two. This is the
+  // promise "you can always finish if you do not linger" as a number.
+  let longest = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const rules = L.floorRules((seed % L.FLOORS) + 1);
+    const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+    const path = L.shortestPath(d.rooms, d.startId, d.endId) ?? [];
+    longest = Math.max(longest, path.length);
+  }
+  const CROSS_S = (L.ROOM_SIZE_LARGE ?? 24) / L.WALK_SPEED + 3;
+  check("the longest floor can be walked start to exit in under half its patience", longest * CROSS_S < P / 2, `${longest} rooms at ${CROSS_S.toFixed(1)}s each = ${(longest * CROSS_S).toFixed(0)}s of ${P}s`);
+  // One owner of the numbers: world.ts names them, everything else reads.
+  const owners = ["src/game/state/run.ts", "src/ui/Hud.tsx", "src/game/systems/Audio.tsx", "src/game/reaper/ReaperDriver.tsx", "src/game/reaper/Reaper.tsx"]
+    .filter((f) => { try { return /(PATIENCE_S|REAPER_[A-Z_]+)\s*=\s*\d/.test(readFileSync(join(root, f), "utf8")); } catch { return false; } });
+  check("and only world.ts spells the patience out", owners.length === 0, owners.join(", ") || "one owner");
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,
