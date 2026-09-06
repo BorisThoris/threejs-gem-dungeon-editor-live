@@ -2466,6 +2466,48 @@ check("the shipped room templates reach the floors the game generates", authored
     missing.length ? missing.join(", ") : L.BUILTIN_SURFACES.join(", ")
   );
 
+  /**
+   * And the biome is in the room, not only on it.
+   *
+   * A biome that tints the walls and leaves nothing behind is a colour
+   * filter. Each one scatters two of its own props; this asks whether they
+   * actually land, because every one of them is filtered by the same rules
+   * the arrangement is and a biome whose litter never passes them would be
+   * silently decorative.
+   */
+  {
+    let withLitter = 0;
+    let looked = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const rules = L.floorRules(2);
+      const d = L.generateDungeon({ seed: seed * 31 + 2, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      for (const r of d.rooms) {
+        if (r.template) continue;
+        const want = L.BIOME[L.biomeIdFor(r.kind, r.id, d.seed)].litter;
+        if (!want.length) continue;
+        looked++;
+        const placed = L.placementsFor(r, d.seed, {});
+        if (placed.some((p) => want.includes(p.kind))) withLitter++;
+      }
+    }
+    check(
+      "a biome puts something of its own in the room, not just on its walls",
+      looked > 0 && withLitter / looked > 0.8,
+      `${withLitter} of ${looked} rooms carry their biome's own props`
+    );
+  }
+
+  {
+    const clashes = L.BIOMES.flatMap((b) =>
+      L.BIOME[b].litter.filter((k) => L.NEVER_LITTER.includes(k)).map((k) => `${b}:${k}`)
+    );
+    check(
+      "and no biome scatters a prop a room uses to mean something",
+      clashes.length === 0,
+      clashes.length ? clashes.join(", ") : `${L.NEVER_LITTER.join(", ")} kept out of the litter`
+    );
+  }
+
   // A room looks the same every time you walk back into it.
   const a = L.biomeIdFor("normal", "room_3", 4242);
   const b = L.biomeIdFor("normal", "room_3", 4242);

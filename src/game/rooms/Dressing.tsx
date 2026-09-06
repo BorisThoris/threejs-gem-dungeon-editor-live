@@ -11,7 +11,7 @@ import {
   trapHazards,
   type Vec3,
 } from "../dungeon/layout";
-import { createRng } from "../rng";
+import { createRng, shuffle } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
@@ -22,6 +22,7 @@ import { CATALOG, Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
 import { gemFor, keyFor, reservedAnchors } from "./kinds";
 import { CLOSE_REACH } from "../world";
+import { biomeFor } from "./biomes";
 import { arrangementFor, type Spots } from "./layouts";
 import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
@@ -40,6 +41,8 @@ const CLEAR_OF_SPIKES = HAZARD_RADIUS + 0.5;
 const CLEAR_OF_SENTRY = 1.3;
 /** A key lying on the floor: small, but it has to be seen to be found. */
 const CLEAR_OF_KEY = 1.2;
+/** How far the biome's own litter stands off anything already placed. */
+const CLEAR_OF_LITTER = 1.2;
 
 const near2 = (p: PropPlacement, a: Vec3, r: number) =>
   (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
@@ -129,7 +132,40 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     return [...torches, ...layout].filter(allowed);
   };
 
-  const own = dress(room.kind);
+  /**
+   * What the biome leaves lying about.
+   *
+   * The biome tinted the room and furnished nothing, so a flooded cistern
+   * and a dry catacomb were the same room in two colours. Two of the
+   * biome's own props go on anchors the arrangement did not want, held to
+   * exactly the same `allowed` rules as everything else - out of the door
+   * lanes, clear of the gem, the spikes, the watcher, the key and the
+   * kind's own content - and clear of what the arrangement already placed,
+   * so a biome can never make a room unwalkable or bury its point.
+   *
+   * An authored template is left alone: somebody placed those by hand.
+   */
+  const scatter = (placed: PropPlacement[]): PropPlacement[] => {
+    if (room.template) return placed;
+    const biome = biomeFor(room.kind, room.id, seed);
+    if (!biome.litter.length) return placed;
+    const rng = createRng(`${seed}:${room.id}:litter`);
+    const spots = shuffle(rng, [...corners, ...far, ...near, ...centre]);
+    const out = [...placed];
+    let laid = 0;
+    for (const spot of spots) {
+      if (laid >= biome.litter.length) break;
+      const kind = biome.litter[laid];
+      const p: PropPlacement = { kind, x: spot[0], z: spot[2], rotation: rng() * Math.PI * 2 };
+      if (!allowed(p)) continue;
+      if (out.some((q) => near2(p, [q.x, 0, q.z], CLEAR_OF_LITTER))) continue;
+      out.push(p);
+      laid++;
+    }
+    return out;
+  };
+
+  const own = scatter(dress(room.kind));
   if (!opts.asVault || room.template) return own;
 
   // A treasure room's chests have to fit around whatever the room already

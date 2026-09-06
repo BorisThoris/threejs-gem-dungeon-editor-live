@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §28 asks a human
+  moment it can afford to. That is precisely the behaviour §29 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §28.
+for a person, not for this document, and it is on the list in §29.
 
 ## 23. The satchel spending what it cannot use
 
@@ -2254,14 +2254,63 @@ forward.
   focus can be walked to Quit to menu" while sitting on "High contrast
   marks". It compares the focused element's **index** now.
 
-## 27. Steam Deck
+## 27. Biomes that furnish, not just tint
+
+Run 2 gave a room its stone and its light. It still had the kind's
+furniture and nothing else, so a flooded cistern and a dry catacomb were
+the same room in two colours.
+
+Each biome names two props as its own `litter` — the mossy one webs and
+rubble, the catacomb skulls and urns, the foundry crates and barrels — and
+`placementsFor` scatters them on anchors the kind's arrangement did not
+want. They go through exactly the same `allowed` filter as everything else:
+out of the door lanes, clear of the gem, the spikes, the watcher, the key
+and the kind's own content. An authored template is left alone, because
+somebody placed those by hand.
+
+It lands in **90%** of rooms (541 of 589 measured). The tenth that misses is
+the small crowded ones — a shop whose counter leaves nowhere to put a crate
+— and that is the honest number rather than a bar set to clear it. Draw
+calls did not move (52); triangles went 1906 → 2450.
+
+**And it immediately produced a real design bug.** The crystal biome
+littered `crystal` props, and the memory chamber is drawn in the crystal
+biome — so the trial whose entire mechanism is *choose the four crystals in
+the order they lit* got decoy crystals strewn around it. A chest would have
+been worse: `Chests` reads the placement list and makes every `chest` in it
+lootable, so a biome that scattered one would hand out free items. There is
+a `NEVER_LITTER` set now — crystal, candle, spikes, chest — and a check
+that no biome names anything in it.
+
+### The perf leak that was not a leak
+
+`test:perf` reported `room_1 +3 over 3 laps` — a geometry leak. It
+reproduced with the change reverted, and run 2 had **passed on the same
+code minutes earlier**, which is the signature of an instrument rather than
+a fault.
+
+The leak guard settled a room by taking three readings 200 ms apart and
+calling it stable when they matched. A frame on this machine takes about
+280 ms, so consecutive polls routinely fall inside the same frame and read
+the same number *because nothing has been drawn between them* — the loop
+declares a still-building room finished, and a lap that settles early
+against one that settles late reports a leak that is not there. It counts
+**rendered frames** now, via the `__perf.frames` counter the same loop
+publishes. Two consecutive runs afterwards returned byte-identical
+readings: `51 55 51 51 60 56 57 53 51`.
+
+That is the third instrument this session to be defeated by the same thing
+— sampling a frame-driven value on a wall clock — after the lantern and the
+Cutpurse.
+
+## 28. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 28. What a human playtest should watch for
+## 29. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -2387,7 +2436,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 29. Options and accessibility
+## 30. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -2419,7 +2468,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 30. Deeds
+## 31. Deeds
 
 Ten achievements, listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -2452,7 +2501,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 31. Two harness bugs that read as game bugs
+## 32. Two harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -2525,7 +2574,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 32. Tuning knobs
+## 33. Tuning knobs
 
 All in `src/game/world.ts`:
 

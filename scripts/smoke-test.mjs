@@ -2967,7 +2967,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }, vault);
     const keyOffer = await stepTo(vault.keyAt, 1.6);
     ok("the key on the floor offers to be taken", /iron key/i.test(String(keyOffer)), String(keyOffer));
-    await act();
+    // Pressed until the key is in hand. A dropped E leaves the player with
+    // no key, and the two vault checks behind this one then fail saying the
+    // door wants a key the player was never given - which is true, and
+    // nothing to do with what either of them is about.
+    for (let i = 0; i < 5; i++) {
+      const now = await page.evaluate(() => window.__run.getState().keys);
+      if (now > 0) break;
+      await act();
+      await page.waitForTimeout(400);
+      await stepTo(vault.keyAt, 1.6);
+    }
     const held = await page.evaluate(() => {
       const s = window.__run.getState();
       return { keys: s.keys, takenIn: s.keyTakenIn };

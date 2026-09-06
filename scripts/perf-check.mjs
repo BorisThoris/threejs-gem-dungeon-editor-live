@@ -180,22 +180,39 @@ const drift = await page.evaluate(async () => {
   /**
    * Stand in a room until its geometry count stops moving.
    *
-   * Three equal readings, not two. Two in a row is exactly how the old
-   * settling loop convinced itself a still-building floor had finished:
-   * a count climbing in steps pauses on a step often enough that one run
-   * in several starts measuring from halfway up the ramp.
+   * Counted in *rendered frames*, not in milliseconds. Three equal readings
+   * two hundred milliseconds apart sounds like patience, and on this
+   * machine it is not: a frame here takes about two hundred and eighty
+   * milliseconds, so consecutive polls routinely fall inside the same frame
+   * and read the same number because nothing has been drawn between them.
+   * The loop then declares a still-building room finished, and a lap that
+   * settles early against a lap that settles late reports a leak that is
+   * not there - which it did, on the same code that had passed a moment
+   * before, naming "room_1 +3 over 3 laps".
+   *
+   * `__perf.frames` is incremented once per frame by the same loop that
+   * publishes the counts, so waiting for it to advance is the one honest
+   * way to say "a frame has happened". Three frames unchanged is settled.
    */
+  const nextFrame = async () => {
+    const from = window.__perf.frames;
+    for (let i = 0; i < 40; i++) {
+      await wait(50);
+      if (window.__perf.frames > from) return true;
+    }
+    return false;
+  };
   const settleIn = async (id) => {
     run.setState({ transitioning: true, currentRoomId: id });
     run.getState().roomReady(id);
     let last = -1;
     let same = 0;
-    for (let i = 0; i < 16; i++) {
-      await wait(200);
+    for (let i = 0; i < 24; i++) {
+      if (!(await nextFrame())) break;
       const now = window.__perf.geometries;
       same = now === last ? same + 1 : 0;
       last = now;
-      if (same >= 2) break;
+      if (same >= 3) break;
     }
     return last;
   };

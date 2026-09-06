@@ -270,6 +270,15 @@ Two stores that both claimed the player's stats. So:
   the sizes: no kind always made of the same thing, no biome declared that
   a player cannot stand in, every biome painted with a surface the registry
   actually has, and the same room the same place when you walk back in.
+- A biome furnishes as well as tints: each one names two props as its
+  `litter`, scattered by `placementsFor` on anchors the kind's own
+  arrangement did not want. They go through exactly the same `allowed`
+  filter as everything else in the room - out of the door lanes, clear of
+  the gem, the spikes, the watcher, the key and the kind's content - so a
+  biome can never make a room unwalkable or bury its point, and an authored
+  template is left alone because somebody placed those by hand. It lands in
+  90% of rooms; the tenth that misses is the small crowded ones, where a
+  shop's counter leaves nowhere to put a crate.
 - How big a room is comes from `SIZE_RANGE` in
   `src/game/dungeon/generate.ts`, rolled per room from the ladder in
   `ROOM_SIZES`, and how it is shaped from `SHAPES_FOR` filtered by

@@ -1,3 +1,4 @@
+import type { PropKind } from "../dungeon/types";
 import type { RoomKind } from "../dungeon/types";
 import { createRng } from "../rng";
 import type { BuiltinSurface } from "../textures/registry";
@@ -47,17 +48,41 @@ export interface Biome {
    */
   glow: string;
   light: number;
+  /**
+   * What this biome leaves lying about, over and above the kind's own
+   * furniture. Scattered on anchors the arrangement did not want, and held
+   * to exactly the rules everything else in the room is - clear of the
+   * door lanes, the gem, the spikes, the watcher and the kind's content -
+   * so a biome can never make a room unwalkable.
+   *
+   * Two or three of these is the difference between a room that is tinted
+   * blue and a room that reads as flooded.
+   */
+  litter: readonly PropKind[];
 }
 
+/**
+ * Props a biome may never scatter, because a room kind uses them to mean
+ * something.
+ *
+ * The crystal biome littered `crystal`, and the memory chamber is drawn in
+ * the crystal biome - so the trial whose whole mechanism is "choose the
+ * four crystals in the order they lit" got extra crystals strewn around it
+ * that light up never and mean nothing. A chest is worse: `Chests` reads
+ * the placement list and makes every `chest` in it lootable, so a biome
+ * that scattered one would be handing out free items.
+ */
+export const NEVER_LITTER: readonly PropKind[] = ["crystal", "candle", "spikes", "chest"];
+
 export const BIOME: Record<BiomeId, Biome> = {
-  hewn: { name: "Hewn stone", floor: "#a9a9b3", wall: "#65656d", surface: "stone", glow: "#8790a8", light: 1 },
-  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05 },
-  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95 },
-  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8 },
-  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1 },
-  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1 },
-  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05 },
-  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05 },
+  hewn: { name: "Hewn stone", floor: "#a9a9b3", wall: "#65656d", surface: "stone", glow: "#8790a8", light: 1, litter: ["rubble", "pillar"] },
+  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"] },
+  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"] },
+  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"] },
+  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"] },
+  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"] },
+  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"] },
+  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"] },
 };
 
 /**
