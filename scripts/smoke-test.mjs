@@ -3079,7 +3079,22 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     });
     const naming = [counter[0], counter[1], counter[2] + 1.1];
     const nameOffer = await stepTo(naming, 1.6);
-    ok("the counter offers to name what you cannot identify", /ask about/i.test(String(nameOffer)), String(nameOffer));
+    // When this misses, say which triggers were in reach and how far, and
+    // where the walk actually stopped. Twice now the failure has been
+    // "Already at full health" - the life trigger's blocked reason, which
+    // only shows when nothing usable is nearer - and twice the reason was
+    // guessed at rather than read.
+    const offered = /ask about/i.test(String(nameOffer));
+    const near = offered
+      ? ""
+      : await page.evaluate(() => {
+          const p = window.__playerDebug;
+          const rows = Object.entries(window.__triggers || {})
+            .map(([label, t]) => `${label} ${t.dist.toFixed(2)}m ${t.enabled ? "on" : "off"}`)
+            .join("; ");
+          return ` | player ${p.x.toFixed(2)},${p.z.toFixed(2)} | ${rows}`;
+        });
+    ok("the counter offers to name what you cannot identify", offered, String(nameOffer) + near);
     await act();
     const named = await page.evaluate(() => {
       const s = window.__run.getState();
