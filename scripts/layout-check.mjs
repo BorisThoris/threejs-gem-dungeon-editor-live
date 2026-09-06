@@ -1716,6 +1716,24 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the HUD says what makes it kneel", /a blast makes it kneel/.test(hud));
 }
 
+// --- Deeds for the arc ---------------------------------------------------------------
+//
+// Run 19: five deeds for the ten loops, and a floor that says how much
+// of its patience was left when it was left. The count checks above
+// re-count; these hold the new ones to being about the arc, and the
+// Last Breath window to under the Reaper's warning, so it is only earned
+// by a player who heard the floor tire and stayed.
+{
+  const arc = ["throughwall", "bombed", "lastbreath", "spiked", "slipped"];
+  check("the arc's five deeds exist, named, with a line each", arc.every((id) => L.DEED_IDS.includes(id) && L.DEEDS[id]?.name && L.DEEDS[id]?.blurb), arc.filter((id) => !L.DEED_IDS.includes(id)).join(", ") || "all five");
+  check("Last Breath is under the Reaper's warning", L.LAST_BREATH_S > 0 && L.LAST_BREATH_S < L.REAPER_WARNING_S, `${L.LAST_BREATH_S}s against ${L.REAPER_WARNING_S}s`);
+  const events = readFileSync(join(root, "src/game/events.ts"), "utf8");
+  const watch = readFileSync(join(root, "src/game/deeds/watch.ts"), "utf8");
+  check("the floor says what was left of its patience, and the watcher reads it rather than counting", /floorDescended: \{ floor: number; left: number \}/.test(events) && /left <= LAST_BREATH_S/.test(watch) && !/floorEnteredAt/.test(watch));
+  const summary = readFileSync(join(root, "src/ui/RunSummary.tsx"), "utf8");
+  check("the run summary names the deeds this run earned", /earnedThisRun/.test(summary) && /summary-deeds/.test(summary));
+}
+
 // --- The Sentry's question --------------------------------------------------
 //
 // The third and last of the things in this game that can catch a player,
@@ -2517,15 +2535,15 @@ check("the shipped room templates reach the floors the game generates", authored
 
 // --- Deeds ------------------------------------------------------------------
 //
-// Ten achievements, and the two things about them that can silently rot:
+// Fifteen achievements, and the two things about them that can silently rot:
 // a Steam API name that drifts from the one the store page was set up
 // with, and a deed nothing in the game can earn. The first is checked
 // against `steam/README.md`, which is the document somebody will actually
 // type those names out of; the second is checked against the watcher.
 {
   const ids = L.DEED_IDS;
-  check("there are ten deeds and every one has a name and a line", 
-    ids.length === 10 && ids.every((id) => L.DEEDS[id].name && L.DEEDS[id].blurb),
+  check("there are fifteen deeds and every one has a name and a line", 
+    ids.length === 15 && ids.every((id) => L.DEEDS[id].name && L.DEEDS[id].blurb),
     `${ids.length} deeds`
   );
   const steamNames = ids.map((id) => L.DEEDS[id].steam);

@@ -4,7 +4,8 @@ import { allDelversEscaped } from "./catalog";
 import { bus } from "../events";
 import { useDeeds } from "../state/deeds";
 import { useRecords } from "../state/records";
-import { useRun } from "../state/run";
+import { keeperStalled, runClock, useRun } from "../state/run";
+import { LAST_BREATH_S } from "../world";
 
 /**
  * What earns a deed.
@@ -35,9 +36,21 @@ export function useDeedWatch() {
      */
     let litThisFloor = false;
     let floorAt = 1;
+    /** Run-clock second of the last blast, so a rout can be told to be its. */
+    let bombAt = -Infinity;
 
     const offs = [
-      bus.on("wardenRouted", () => earn("routed")),
+      // A rout is the spikes' unless a blast just went off: the bomb's
+      // deed is the bomb's, and the spikes' stays the spikes'.
+      bus.on("bombBurst", () => {
+        bombAt = runClock(useRun.getState());
+      }),
+      bus.on("wardenRouted", () => {
+        if (runClock(useRun.getState()) - bombAt <= 0.5) earn("bombed");
+        else earn("routed");
+      }),
+      bus.on("secretRevealed", () => earn("throughwall")),
+      bus.on("harrierSlain", () => earn("spiked")),
       // A snare wounds through the same door the spikes do, so the event
       // alone cannot tell them apart - but the store knows whether a snare
       // was the thing that was sprung, because springing one is what
@@ -59,18 +72,23 @@ export function useDeedWatch() {
       bus.on("runStarted", () => {
         litThisFloor = false;
         floorAt = 1;
+        bombAt = -Infinity;
       }),
-      bus.on("floorDescended", ({ floor }) => {
+      bus.on("floorDescended", ({ floor, left }) => {
         // The floor just left was taken in the dark, if nothing on it was
         // ever lit. Read on arriving at the next one, which is the only
         // moment the answer is final.
         if (!litThisFloor && floor > floorAt) earn("darkrunner");
+        // And left with seconds of its patience to spare: the floor says
+        // how much was left, rather than this reaching in to count.
+        if (left <= LAST_BREATH_S) earn("lastbreath");
         litThisFloor = false;
         floorAt = floor;
       }),
       bus.on("runWon", () => {
         const s = useRun.getState();
         earn("escape");
+        if (keeperStalled(s)) earn("slipped");
         if (s.gems >= 15) earn("haul");
         if (s.lives >= s.maxLives) earn("unspent");
         // The last floor counts too, and it is only won on leaving it.

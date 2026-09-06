@@ -33,6 +33,11 @@ export const DEED_IDS = [
   "darkrunner",
   "unspent",
   "everydelver",
+  "throughwall",
+  "bombed",
+  "lastbreath",
+  "spiked",
+  "slipped",
 ] as const;
 export type DeedId = (typeof DEED_IDS)[number];
 
@@ -113,6 +118,38 @@ export const DEEDS: Record<DeedId, Deed> = {
     name: "All Five",
     blurb: "Escape the dungeon as every delver.",
     steam: "ALL_DELVERS",
+  },
+  // The ten loops' arc: each of these names a play the systems since run
+  // 11 support, and that a player who only ever ran might not think of.
+  throughwall: {
+    id: "throughwall",
+    name: "Behind the Wall",
+    blurb: "Open a room the map does not show.",
+    steam: "WALL_OPENED",
+  },
+  bombed: {
+    id: "bombed",
+    name: "Fire and Iron",
+    blurb: "Rout the Warden with a bomb.",
+    steam: "WARDEN_BOMBED",
+  },
+  lastbreath: {
+    id: "lastbreath",
+    name: "Last Breath",
+    blurb: "Leave a floor with under fifteen seconds of its patience left.",
+    steam: "FLOOR_LAST_BREATH",
+  },
+  spiked: {
+    id: "spiked",
+    name: "Spiked",
+    blurb: "Down the Harrier over something that bites.",
+    steam: "HARRIER_SPIKED",
+  },
+  slipped: {
+    id: "slipped",
+    name: "Past the Keeper",
+    blurb: "Take the last stairs while the Keeper kneels.",
+    steam: "KEEPER_SLIPPED",
   },
 };
 

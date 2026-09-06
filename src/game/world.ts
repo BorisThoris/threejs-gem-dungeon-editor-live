@@ -846,3 +846,10 @@ export const KEEPER_FLOOR = FLOORS;
 export const KEEPER_REACH = 2.2;
 export const KEEPER_STALL_S = 9;
 export const KEEPER_STRIKE_GRACE_S = 1.5;
+
+/**
+ * How little of a floor's patience counts as leaving with seconds to
+ * spare - the Last Breath deed. Under the Reaper's warning, so it can
+ * only be earned by a player who heard the floor tire and stayed anyway.
+ */
+export const LAST_BREATH_S = 15;

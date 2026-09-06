@@ -1940,7 +1940,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §44 asks a human
+  moment it can afford to. That is precisely the behaviour §45 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2009,7 +2009,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §44.
+for a person, not for this document, and it is on the list in §45.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3252,14 +3252,68 @@ player to do, gathers the bomb's price on top of the toll, walks to the
 shop, buys the floor's one bomb, walks to the Keeper's room, sets it
 from the middle of the floor and takes the stairs while it kneels.
 
-## 43. Steam Deck
+## 43. Deeds and the run summary catch up
+
+"The records are the reason to run again." The ten loops added a wall
+to open, a Warden to bomb, a floor to leave at the last second, a
+Harrier to spike and a Keeper to slip past, and none of them had a
+sentence in the deeds. Now they do, and the run summary says which of
+them this run earned.
+
+### Five more sentences about the game
+
+Each deed names a play a system supports that a player who only ever
+ran might not think to try, in the same voice as the first ten:
+
+- **Behind the Wall** - open a room the map does not show.
+- **Fire and Iron** - rout the Warden with a bomb.
+- **Last Breath** - leave a floor with under fifteen seconds of its
+  patience left.
+- **Spiked** - down the Harrier over something that bites.
+- **Past the Keeper** - take the last stairs while the Keeper kneels.
+
+They are earned in the one watcher from facts the game already
+publishes. Where a fact was missing, the game was made to say it: a
+floor now says how much of its patience was left when it was left
+(`floorDescended` carries `left`), rather than the watcher reaching in
+to count. A rout in the half-second after a blast is the bomb's deed and
+not the spikes', so "It Bleeds" still means what its line says.
+
+### The summary
+
+`earnedThisRun` in the deeds store is the list of what this run was the
+first to do, cleared when a run starts, and the summary reads it under
+DEEDS - "Behind the Wall · Last Breath", or "none new". The title
+screen keeps the full list with what each is for; the summary is the
+moment a player is deciding whether to run again, and the thing that
+decides it is what they just did.
+
+### Counts
+
+Fifteen deeds, said where the count is said: the Steam instructions'
+table, the README, the store page and the plan. The layout suite's
+count checks re-count; the store page's number is read from the
+catalogue's length as it always was.
+
+### Held and played
+
+Four layout checks hold the five to existing, named and lined, the Last
+Breath window under the Reaper's warning, the floor saying what was left
+and the watcher reading it, and the summary naming the run's deeds. Four
+smoke checks set a bomb at the crack with the Warden beside you and earn
+the wall and the bomb and not the spikes; leave a floor with seconds of
+patience left; spike the Harrier and slip the Keeper through the events
+their own checks prove the game publishes; and read the summary naming
+what this run earned, then "none new" on a fresh one.
+
+## 44. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 44. What a human playtest should watch for
+## 45. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3385,7 +3439,7 @@ nobody has held a Deck with this on it.
   whether anyone *notices*: whether a player remembers the inky bottle
   three floors later, or drinks each one as a fresh coin toss.
 
-## 45. Options and accessibility
+## 46. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3417,9 +3471,9 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 46. Deeds
+## 47. Deeds
 
-Ten achievements, listed at the title screen with what each is for whether
+Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
 and every system is available from the first game - and they are chosen to
 do the job achievements are actually good at: naming the plays a system
@@ -3440,17 +3494,23 @@ them the dark is playable.
 | Dark Runner | `FLOOR_UNLIT` | Take a whole floor without raising the lantern |
 | Unspent | `NO_LIVES_LOST` | Escape without losing a life |
 | All Five | `ALL_DELVERS` | Escape as every delver |
+| Behind the Wall | `WALL_OPENED` | Open a room the map does not show |
+| Fire and Iron | `WARDEN_BOMBED` | Rout the Warden with a bomb |
+| Last Breath | `FLOOR_LAST_BREATH` | Leave a floor with under fifteen seconds of its patience left |
+| Spiked | `HARRIER_SPIKED` | Down the Harrier over something that bites |
+| Past the Keeper | `KEEPER_SLIPPED` | Take the last stairs while the Keeper kneels |
 
 One watcher earns all of them (`src/game/deeds/watch.ts`) and one store
-reports them (`src/game/state/deeds.ts`); nothing else in the game knows
-achievements exist. The Steam side is a single call in
+reports them (`src/game/state/deeds.ts`), which since run 19 also keeps
+the list of what the current run was the first to earn, for the run
+summary's DEEDS line; nothing else in the game knows achievements exist. The Steam side is a single call in
 `electron/preload.cjs` that currently only logs, and `steam/README.md`
 says exactly what to put in it - including the two things that are easy
 to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 47. Harness bugs that read as game bugs
+## 48. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3539,7 +3599,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 48. Tuning knobs
+## 49. Tuning knobs
 
 All in `src/game/world.ts`:
 

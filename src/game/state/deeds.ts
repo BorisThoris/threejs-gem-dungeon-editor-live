@@ -43,6 +43,8 @@ function tellSteam(id: DeedId) {
 
 export interface DeedsStore {
   done: DeedId[];
+  /** The ones this run was the first to do, for the summary. Cleared when a run starts. */
+  earnedThisRun: DeedId[];
   /** Earn one. Does nothing if it is already done. Returns whether it was new. */
   earn: (id: DeedId) => boolean;
   clear: () => void;
@@ -71,11 +73,12 @@ function save(done: DeedId[]) {
 
 export const useDeeds = create<DeedsStore>()((set, get) => ({
   done: load(),
+  earnedThisRun: [],
 
   earn: (id) => {
     if (get().done.includes(id)) return false;
     const done = [...get().done, id];
-    set({ done });
+    set({ done, earnedThisRun: [...get().earnedThisRun, id] });
     save(done);
     tellSteam(id);
     // The toast and the sound hang off the event, so nothing in here has
@@ -85,7 +88,10 @@ export const useDeeds = create<DeedsStore>()((set, get) => ({
   },
 
   clear: () => {
-    set({ done: [] });
+    set({ done: [], earnedThisRun: [] });
     save([]);
   },
 }));
+
+// A new run starts with nothing to its name yet.
+bus.on("runStarted", () => useDeeds.setState({ earnedThisRun: [] }));

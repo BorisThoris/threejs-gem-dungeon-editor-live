@@ -317,6 +317,11 @@ Two stores that both claimed the player's stats. So:
   stands in; `KeeperDriver` says when the kneel ends. It never walks, so
   nothing on the floor bites it, and it is in the body table because
   everything with a body is.
+- Deeds stay in one watcher (`deeds/watch.ts`) fed by facts the game
+  already says; the ten loops' five are no exception, and where a fact
+  was missing the event grew it (`floorDescended.left`) rather than the
+  watcher reaching into the store to count. `earnedThisRun` in the deeds
+  store is the summary's list, cleared on `runStarted`.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

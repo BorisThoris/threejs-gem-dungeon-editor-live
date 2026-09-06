@@ -964,7 +964,8 @@ export const useRun = create<RunState>()(
         const spawn = spawnAtStart();
         bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
         bus.emit("lookSet", { yaw: spawn.yaw, pitch: 0 });
-        bus.emit("floorDescended", { floor });
+        // `s` is the floor being left, so its patience is still its own.
+        bus.emit("floorDescended", { floor, left: patienceLeft(s) });
         transitionFallback = window.setTimeout(
           () => get().roomReady(dungeon.startId),
           TRANSITION_FALLBACK_MS

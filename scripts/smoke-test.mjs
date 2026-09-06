@@ -6659,6 +6659,81 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("and while it kneels the stairs are offered and taken: the run is won", !kept.error && kept.promptGo && kept.enabled && kept.phase === "won", kept.error || JSON.stringify({ prompt: kept.promptGo, enabled: kept.enabled, phase: kept.phase }));
 }
 
+// Run 19: the arc's deeds are earned from what the game already says, and
+// the run summary names what this run was the first to do.
+{
+  const arc = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    window.__deeds.getState().clear();
+    const earned = [];
+    const off = window.__bus.on("deedEarned", ({ id }) => earned.push(id));
+    run.getState().startRun(23);
+    await wait(1000);
+    const d = run.getState().dungeon;
+    // A bomb at the cracked wall, with the Warden beside you: the wall
+    // opens and the Warden is routed by the blast - two deeds, and the
+    // spikes' deed is not one of them.
+    const host = d.rooms.find((r) => r.secret);
+    if (!host) return { error: "no cracked wall on this floor" };
+    run.setState({ transitioning: true, currentRoomId: host.id, lives: 9, satchel: ["bomb"], identified: [] });
+    run.getState().roomReady(host.id);
+    await wait(1400);
+    const spot = D.crackSpot();
+    window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[2]] });
+    await wait(400);
+    run.setState({ wardenRoomId: host.id, wardenCameFrom: null, alarm: 4 });
+    run.getState().placeDevice(0);
+    const t0 = D.clock();
+    while (!earned.includes("throughwall") && D.clock() - t0 < W.BOMB_FUSE_S + 3) await wait(150);
+    await wait(400);
+    const afterBomb = [...earned];
+    // Leave the floor with seconds of its patience to spare.
+    const before = d.rooms.find((r) => Object.values(r.links).includes(d.endId));
+    const dir = Object.keys(before.links).find((k) => before.links[k] === d.endId);
+    run.setState({ transitioning: true, currentRoomId: before.id, wardenRoomId: null, gems: 30 });
+    run.getState().roomReady(before.id);
+    await wait(1200);
+    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S - W.LAST_BREATH_S + 3) });
+    await wait(300);
+    const leftBefore = D.patienceLeft();
+    run.getState().travel(dir);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await wait(600);
+    const floor = run.getState().floor;
+    const lastBreath = earned.includes("lastbreath");
+    // The watcher's other two, from the events the Harrier and the Keeper
+    // publish - their own checks prove the game publishes them.
+    window.__bus.emit("harrierSlain");
+    await wait(200);
+    // A win while the Keeper kneels: the last floor, kneeling, and the win.
+    run.setState({ floor: W.KEEPER_FLOOR, keeperStalledUntil: D.clock() + 30 });
+    await wait(200);
+    window.__bus.emit("runWon");
+    await wait(300);
+    const thisRun = [...window.__deeds.getState().earnedThisRun];
+    // The summary, on a run ended: it names what this run earned.
+    run.setState({ phase: "won", endedAt: D.clock() });
+    await wait(700);
+    const summary = document.querySelector('[data-testid="summary-deeds"]')?.textContent ?? null;
+    // And a fresh run starts with none.
+    run.getState().startRun(24);
+    await wait(900);
+    const fresh = [...window.__deeds.getState().earnedThisRun];
+    run.setState({ phase: "lost", endedAt: D.clock() });
+    await wait(700);
+    const summaryFresh = document.querySelector('[data-testid="summary-deeds"]')?.textContent ?? null;
+    off();
+    return { afterBomb, leftBefore, floor, lastBreath, earned, thisRun, summary, fresh, summaryFresh };
+  });
+  ok("a bomb at the crack earns the wall and the Warden, and not the spikes", !arc.error && arc.afterBomb.includes("throughwall") && arc.afterBomb.includes("bombed") && !arc.afterBomb.includes("routed"), arc.error || JSON.stringify(arc.afterBomb));
+  ok("leaving a floor with seconds of patience left is a deed", !arc.error && arc.floor === 2 && arc.lastBreath, arc.error || JSON.stringify({ left: arc.leftBefore, floor: arc.floor, earned: arc.earned }));
+  ok("the Harrier spiked and the Keeper slipped are deeds", !arc.error && arc.earned.includes("spiked") && arc.earned.includes("slipped"), arc.error || JSON.stringify(arc.earned));
+  ok("the run summary names what this run earned, and a fresh run has none", !arc.error && arc.thisRun.length >= 4 && /Behind the Wall/.test(arc.summary ?? "") && /Last Breath/.test(arc.summary ?? "") && arc.fresh.length === 0 && /none new/.test(arc.summaryFresh ?? ""), arc.error || JSON.stringify({ thisRun: arc.thisRun, summary: arc.summary, fresh: arc.fresh, summaryFresh: arc.summaryFresh }));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

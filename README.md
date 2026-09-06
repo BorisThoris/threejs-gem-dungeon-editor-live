@@ -150,7 +150,7 @@ it, because a gamepad cannot drag and the Steam Deck is a gamepad. On a
 touchscreen it carries three more rows: the on-screen controls on auto,
 on or off, how far a drag turns the view, and which thumb walks.
 
-Ten deeds are listed at the title screen, with what each is for whether or
+Fifteen deeds are listed at the title screen, with what each is for whether or
 not you have done it. None of them changes a run - everything the game has
 is there from the first one - and they exist to name the things the systems
 support that you might not think to try.

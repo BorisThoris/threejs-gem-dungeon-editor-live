@@ -1,6 +1,8 @@
 import { useRef } from "react";
 
+import { DEEDS } from "../game/deeds/catalog";
 import { DELVERS } from "../game/delvers/catalog";
+import { useDeeds } from "../game/state/deeds";
 import { useRecords } from "../game/state/records";
 import { runSeconds, useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
@@ -25,6 +27,9 @@ export function RunSummary() {
   const floor = useRun((s) => s.floor);
   // The run's seed, not this floor's: they part company on the way down.
   const seed = useRun((s) => s.runSeed);
+  // What this run was the first to do. The list of what it was not is the
+  // reason to run again, and the title screen has that one.
+  const earned = useDeeds((s) => s.earnedThisRun);
   // Who was carrying it. Twenty-two gems means two different things
   // depending on which of these got out with them, and the summary is the
   // one screen that has room to say so.
@@ -93,6 +98,14 @@ export function RunSummary() {
           {gemsTotal} gem{gemsTotal === 1 ? "" : "s"} found · {relics} relic
           {relics === 1 ? "" : "s"} · {known} item{known === 1 ? "" : "s"} named ·{" "}
           {roomsSeen} room{roomsSeen === 1 ? "" : "s"} · {clock(seconds)}
+        </p>
+        <p style={{ ...body, fontSize: text.small, marginBottom: 6 }} data-testid="summary-deeds">
+          <span style={{ color: colors.dim }}>DEEDS </span>
+          {earned.length ? (
+            <span style={{ color: colors.gold }}>{earned.map((id) => DEEDS[id].name).join(" · ")}</span>
+          ) : (
+            <span style={{ color: colors.dim }}>none new</span>
+          )}
         </p>
         <p style={{ ...body, fontSize: text.small, marginBottom: 18 }}>
           <span style={{ color: colors.dim }}>AS </span>

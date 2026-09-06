@@ -80,7 +80,7 @@ them is the easy one, and all of them are there from the first run.
 - A Cutpurse that takes what you carry to a nest you can walk to
 - Twelve items whose names are hidden and whose blessings are not
 - Five delvers, all available from the first run
-- Ten deeds, and a seed on every run so you can walk the same dungeon again
+- Fifteen deeds, and a seed on every run so you can walk the same dungeon again
 - Full gamepad support, key rebinding, captions, and high-contrast marks
 - Verified on a 1280x800 screen for Steam Deck
 

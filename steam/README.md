@@ -74,7 +74,7 @@ carries the Steam API name it maps to - written down there rather than
 derived from the game's own id, because the two live in different places
 and renaming one must not silently rename the other.
 
-Create these ten in **Steamworks > Stats & Achievements**, with these
+Create these fifteen in **Steamworks > Stats & Achievements**, with these
 exact API names:
 
 | API name | Display name | What it is for |
@@ -89,6 +89,11 @@ exact API names:
 | `FLOOR_UNLIT` | Dark Runner | Take a whole floor without raising the lantern |
 | `NO_LIVES_LOST` | Unspent | Escape without losing a single life |
 | `ALL_DELVERS` | All Five | Escape the dungeon as every delver |
+| `WALL_OPENED` | Behind the Wall | Open a room the map does not show |
+| `WARDEN_BOMBED` | Fire and Iron | Rout the Warden with a bomb |
+| `FLOOR_LAST_BREATH` | Last Breath | Leave a floor with under fifteen seconds of its patience left |
+| `HARRIER_SPIKED` | Spiked | Down the Harrier over something that bites |
+| `KEEPER_SLIPPED` | Past the Keeper | Take the last stairs while the Keeper kneels |
 
 Each also wants a 64x64 icon, earned and unearned.
 

@@ -95,7 +95,8 @@ export interface BusEvents {
    */
   wardenProximity: { level: number };
   /** The exit was taken and a deeper floor begins. */
-  floorDescended: { floor: number };
+  /** The floor arrived at, and how much of the last floor's patience was left on leaving it. */
+  floorDescended: { floor: number; left: number };
   runLost: undefined;
   /** A deed was done for the first time. */
   deedEarned: { id: string };
