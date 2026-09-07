@@ -3499,6 +3499,17 @@ says twelve lines, firing them again says nothing, and the second and
 third floors name their new thing. Red on the old tree, where nine of
 the twelve were silence.
 
+Two harness bugs surfaced beside them, both the same bug in different
+clothes. The blurb check asked the third floor to say "Keeper" where
+the line says its stairs are kept, which is the better line. And
+`test:touch` read the phone's run as nought: it teleports the player
+five metres back and samples the next eight frames, and the run covers
+thirteen metres and ends against a wall, so a window that opens a frame
+late measures a body that has already stopped. The same sequence in
+isolation ran at six metres a second. It samples until it has seen a
+run now. A window counted in frames is still a bet on the machine;
+waiting for the thing you asked for is not.
+
 ## 47. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
