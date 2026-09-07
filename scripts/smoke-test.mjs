@@ -3625,10 +3625,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const offered = await standAtChest(at);
     ok("a chest offers what is inside it, by its look", /open the chest - /i.test(String(offered)), String(offered));
     await act();
-    const opened = await page.evaluate(() => {
-      const s = window.__run.getState();
-      return { held: s.satchel.length, looted: s.looted.length };
-    });
+    /**
+     * Read in frames, not on `act`'s fixed wait after the press.
+     *
+     * A trigger publishes and consumes in the frame loop, so the press
+     * lands a frame or two later - and a frame on this machine can be
+     * most of a second. The seven hundred milliseconds `act` waits was
+     * enough on one run and not on the next, on identical code, and the
+     * check reported the chest taking nothing when the prompt beside it
+     * had just read the chest's contents correctly.
+     */
+    let opened = { held: 0, looted: 0 };
+    for (let i = 0; i < 16 && opened.held !== 1; i++) {
+      opened = await page.evaluate(() => {
+        const s = window.__run.getState();
+        return { held: s.satchel.length, looted: s.looted.length };
+      });
+      if (opened.held !== 1) await page.waitForTimeout(250);
+    }
     ok("and pressing E at it takes the thing", opened.held === 1 && opened.looted === 1, JSON.stringify(opened));
 
     /**
