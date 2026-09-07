@@ -27,6 +27,8 @@ import { harrierAt, harrierEntryFor, harrierRoostFor } from "./harrierRoost";
  */
 export function Harrier({ room }: { room: Room }) {
   const group = useRef<Group>(null);
+  /** How near it is to a strike, nought to one: the dive it is already flying. */
+  const tell = useRef(0);
   const pos = useRef({ x: 0, z: 0, placed: false });
   const dungeon = useRun((s) => s.dungeon);
   const floor = useRun((s) => s.floor);
@@ -87,7 +89,7 @@ export function Harrier({ room }: { room: Room }) {
       harrierAt.away = kept;
       if (import.meta.env.DEV) {
         const w = window as unknown as { __harrier?: Record<string, unknown> };
-        w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance: Math.hypot(cam.x - p.x, cam.z - p.z), down, away, barred };
+        w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance: Math.hypot(cam.x - p.x, cam.z - p.z), down, away, barred, tell: tell.current };
       }
     };
 
@@ -125,8 +127,13 @@ export function Harrier({ room }: { room: Room }) {
     const limit = half - 0.5;
     p.x = Math.max(-limit, Math.min(limit, p.x + heading.dx * step));
     p.z = Math.max(-limit, Math.min(limit, p.z + heading.dz * step));
-    // It dives as it closes: at height across the room, at head height on you.
+    // It dives as it closes: at height across the room, at head height on
+    // you. That descent is its tell - the same number the Warden's grace
+    // and the Keeper's halberd publish - so it tips its nose with it and a
+    // check can read the warning rather than the hit.
     const dive = Math.max(0, Math.min(1, 1 - distance / 4));
+    tell.current = dive;
+    g.rotation.x = -dive * 0.45;
     const y = FLIGHT_HEIGHT - (FLIGHT_HEIGHT - 1.4) * dive + Math.sin(t * 6) * 0.12;
     g.position.set(p.x, y, p.z);
     const wings = g.children;

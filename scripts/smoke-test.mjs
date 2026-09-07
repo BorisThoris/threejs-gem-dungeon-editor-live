@@ -6976,6 +6976,105 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+/**
+ * Run 24: the second before a hit is shown.
+ *
+ * Three things in the dungeon take a life by touching you - the Warden
+ * after its arrival grace, the Keeper inside its reach, the Harrier at the
+ * end of a dive - and each now publishes how near it is to doing it, nought
+ * to one, and wears that number: the Warden rises and its eyes swell, the
+ * Keeper's halberd comes down, the Harrier tips its nose. A threat that
+ * gives no notice is a coin toss, so the notice is read here rather than
+ * looked at: the tell must pass a half before the life goes.
+ */
+{
+  const told = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+
+    // The Warden, walked into the room and standing over the player.
+    run.getState().startRun(23);
+    await wait(1000);
+    let d = run.getState().dungeon;
+    const here = run.getState().currentRoomId;
+    run.setState({ floorRooms: 2, lives: 9, wardenRoomId: here, wardenCameFrom: null, alarm: 3 });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    await wait(600);
+    let best = 0;
+    let hit = false;
+    const lives = run.getState().lives;
+    for (let i = 0; i < 60 && !hit; i++) {
+      await wait(120);
+      const w = window.__warden;
+      if (w && typeof w.tell === "number") best = Math.max(best, w.tell);
+      hit = run.getState().lives < lives;
+    }
+    out.warden = { tell: +best.toFixed(2), hit };
+
+    // The Keeper, walked up to on the last floor.
+    const posts = window.__keeperPosts(d, W.KEEPER_FLOOR);
+    if (posts.length) {
+      const post = posts[0];
+      const room = d.rooms.find((r) => r.id === post.roomId);
+      run.setState({ floor: W.KEEPER_FLOOR, floorRooms: 2, transitioning: true, currentRoomId: room.id, wardenRoomId: null, lives: 9 });
+      run.getState().roomReady(room.id);
+      for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+      const door = window.__layout.doorPosition(room, post.dir);
+      // Well outside its reach first: nothing raised.
+      window.__bus.emit("teleport", { position: [door[0] * 0.3, 1.5, door[2] * 0.3] });
+      await wait(900);
+      const far = window.__keeper ? window.__keeper.tell : null;
+      // And then into it.
+      window.__bus.emit("teleport", { position: [door[0] * 0.82, 1.5, door[2] * 0.82] });
+      let near = 0;
+      for (let i = 0; i < 40; i++) {
+        await wait(120);
+        if (window.__keeper && typeof window.__keeper.tell === "number") near = Math.max(near, window.__keeper.tell);
+      }
+      out.keeper = { far: far === null ? null : +far.toFixed(2), near: +near.toFixed(2) };
+    }
+
+    // The Harrier, closing on a standing player.
+    for (let seed = 31; seed < 80; seed += 3) {
+      run.getState().startRun(seed);
+      await wait(900);
+      d = run.getState().dungeon;
+      if (window.__harrierRoost(d, W.HARRIER_FROM_FLOOR)) break;
+    }
+    run.setState({ floor: W.HARRIER_FROM_FLOOR, floorRooms: 2, lives: 9, alarm: W.HARRIER_ALARM_LEVEL });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    let wing = 0;
+    let struck = false;
+    const before = run.getState().lives;
+    for (let i = 0; i < 90 && !struck; i++) {
+      await wait(150);
+      const h = window.__harrier;
+      if (h && typeof h.tell === "number") wing = Math.max(wing, h.tell);
+      struck = run.getState().lives < before;
+    }
+    out.harrier = { tell: +wing.toFixed(2), struck };
+    return out;
+  });
+  ok(
+    "the Warden shows the second before it strikes",
+    told.warden && told.warden.hit && told.warden.tell >= 0.5,
+    JSON.stringify(told.warden)
+  );
+  ok(
+    "the Keeper raises its halberd as the player comes into reach, and not before",
+    told.keeper && told.keeper.far === 0 && told.keeper.near >= 0.5,
+    JSON.stringify(told.keeper)
+  );
+  ok(
+    "the Harrier's dive is the warning it gives",
+    told.harrier && told.harrier.struck && told.harrier.tell >= 0.5,
+    JSON.stringify(told.harrier)
+  );
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §49 asks a human
+  moment it can afford to. That is precisely the behaviour §50 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §49.
+for a person, not for this document, and it is on the list in §50.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§52), again, and it
+the thing they asked for now. Cycle 56's lesson (§53), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §49, one per system the loops added.
+Eight new questions, in §50, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3563,14 +3563,55 @@ the thief arriving - and then, once the room has been left and come
 back to, the Warden is standing in it. Red on the old tree, where the
 rule did not exist to ask.
 
-## 48. Steam Deck
+## 48. The second before a hit
+
+Three things in the dungeon take a life by touching you: the Warden
+when it reaches you, the Keeper inside its reach, the Harrier at the
+end of a dive. Between them they are most of what kills a run, and none
+of them showed you it was coming.
+
+### What the probe found
+
+The Warden has an arrival grace - a second and a half after it enters a
+room before it may strike - written so that a player standing in the
+doorway it comes through is not hit on the frame it appears. It reads
+like a windup and is not one: it is spent while the thing crosses the
+room. Measured, it walked in from seven metres with the grace already
+ten seconds old and took a life on the first frame it was close enough
+to. No notice at all.
+
+So the notice is the approach, which is the thing a player can actually
+watch. Over the last three touch-radii the Warden rises off the floor,
+its eyes swell and the light it carries flares; back away and it
+settles again. The Keeper's halberd comes down over the last reach
+outside its reach, so the swing has begun before the step that costs a
+life. The Harrier already dived as it closed - that descent is its
+warning, and it tips its nose with it now.
+
+### One number
+
+Each of the three publishes the same thing: `tell`, nought to one, how
+near it is to taking a life. It is what the body shows and what the
+check reads, so the warning cannot be true on screen and false in the
+test, or the other way round. Nothing else knows the number exists.
+
+### Checks
+
+`test:smoke` gains three, each played: the Warden's tell passes a half
+before it lands a hit (0.99 measured), the Keeper's is nought a reach
+outside its reach and one inside it, and the Harrier's passes a half
+before it strikes (0.55 measured, which is the dive it was already
+flying). The Warden's went red on the old code with a life lost and the
+tell still at nought - which is the bug, stated as a number.
+
+## 49. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 49. What a human playtest should watch for
+## 50. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3751,7 +3792,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 50. Options and accessibility
+## 51. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3783,7 +3824,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 51. Deeds
+## 52. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3822,7 +3863,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 52. Harness bugs that read as game bugs
+## 53. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3911,7 +3952,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 53. Tuning knobs
+## 54. Tuning knobs
 
 All in `src/game/world.ts`:
 

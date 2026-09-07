@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group, Vector3 } from "three";
+import { Group, PointLight, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
@@ -62,6 +62,17 @@ const bandFor = (distance: number): number => {
 export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: WardenProps) {
   const group = useRef<Group>(null);
   const eyes = useRef<Group>(null);
+  const glow = useRef<PointLight>(null);
+  /**
+   * How near this thing is to taking a life, nought to one.
+   *
+   * The Warden walks into the room, waits out its arrival grace and hits
+   * you, and for sixty cycles that second and a half looked exactly like
+   * the second and a half before it: a figure standing there. A threat
+   * that gives no notice is not difficulty, it is a coin toss - so the
+   * grace is on its face now, and the check reads the same number.
+   */
+  const tell = useRef(0);
   const alarm = useRun((s) => s.alarm);
   const cameFrom = useRun((s) => s.wardenCameFrom);
   // Once it has been routed it walks round what hurt it. Read as state
@@ -162,6 +173,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       // arrival grace" from "not striking at all" - which is the difference
       // between a rule working and a rule stuck on.
       probe.sinceArrival = runClock(useRun.getState()) - arrivedAt.current;
+      probe.tell = tell.current;
     }
 
     const level = bandFor(distance);
@@ -175,6 +187,24 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     // sound moves as the player turns.
     const reach = halfSize(room) * 1.4;
     const closeness = Math.max(0, Math.min(1, 1 - (distance - WARDEN_TOUCH_RADIUS) / reach));
+    /**
+     * The last few strides, on its face.
+     *
+     * The arrival grace is not a windup: it is spent crossing the room, so
+     * by the time this thing is close enough to touch you it has been in
+     * the room for ten seconds and hits on the first frame it can. It was
+     * measured doing exactly that - a life taken with the tell still at
+     * nought - which is a threat that gives no notice.
+     *
+     * So the notice is the approach. Over the last three touch-radii it
+     * rises off the floor, its eyes swell and the light it carries flares:
+     * a player watching the room sees the blow coming, and one who backs
+     * off sees it settle again. The same number the check reads.
+     */
+    tell.current = Math.max(0, Math.min(1, 1 - (distance - WARDEN_TOUCH_RADIUS) / (WARDEN_TOUCH_RADIUS * 3)));
+    g.position.y += tell.current * 0.22;
+    if (eyes.current) eyes.current.scale.setScalar(1 + tell.current * 1.6);
+    if (glow.current) glow.current.intensity = 5 + behaviour.rouse * 8 + tell.current * 16;
     if (canControl(useRun.getState())) {
       sfx.stalk(closeness, sideOf(-dx, -dz));
     } else {
@@ -278,6 +308,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       {/* Set ahead of the hood so it lights the room it is walking into
           rather than the front of its own robe. */}
       <pointLight
+        ref={glow}
         position={[0, 2.05, 0.75]}
         color={eyeColour}
         intensity={5 + rouse * 8}

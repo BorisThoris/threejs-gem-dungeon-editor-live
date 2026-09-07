@@ -335,6 +335,9 @@ Two stores that both claimed the player's stats. So:
   is the floor's first room while the player has not left it and the floor
   still has patience, and the Warden's step, the Harrier's waking and the
   thief's arrival each ask it rather than deciding for themselves.
+- Everything that can take a life publishes `tell`, nought to one: how near
+  it is to doing it. The body shows that number and the checks read it, so a
+  warning cannot be true on screen and false in a test.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus
