@@ -2908,7 +2908,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   if (library4) {
     await stepTo(library4.anchors[0], 1.9);
     await act();
-    const before = await page.evaluate(() => /remember these/i.test(document.body.innerText));
+    // Waited on in frames, not on one wall-clock guess after the press.
+    // The tome is drawn a frame or two after E lands, and a frame here can
+    // be most of a second when the machine is busy - so a single read at a
+    // fixed 700ms reported the tome shut when it was merely not drawn yet,
+    // and the check about what dying does to it never ran on an open tome.
+    // The first library check already reads it this way; this one now does.
+    let before = false;
+    for (let i = 0; i < 12 && !before; i++) {
+      before = await page.evaluate(() => /remember these/i.test(document.body.innerText));
+      if (!before) await page.waitForTimeout(250);
+    }
     await page.evaluate(() => {
       const run = window.__run;
       run.setState({ lives: 1 });
