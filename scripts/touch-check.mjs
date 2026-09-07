@@ -168,6 +168,33 @@ const snap = (page) =>
     };
   });
 /** The fastest the body went over a few frames. */
+/**
+ * The best speed seen over the next `n` frames, stopping early once it
+ * passes `enough`.
+ *
+ * A fixed window is a bet on how far the body gets per frame, and the bet
+ * is different on every machine: the run below covers thirteen metres and
+ * ends against a wall, so a window that starts a frame late reads a body
+ * that has already stopped and calls a working run nought. Sampled until
+ * it has seen what it was asked for, or until the frames run out.
+ */
+const topSpeedUntil = (page, n, enough) =>
+  page.evaluate(
+    ([count, bar]) =>
+      new Promise((done) => {
+        let i = 0;
+        let best = 0;
+        const tick = () => {
+          const p = window.__playerDebug;
+          if (p) best = Math.max(best, Math.hypot(p.vx, p.vz));
+          if (best > bar || ++i >= count) done(best);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    [n, enough]
+  );
+
 const topSpeed = (page, n) =>
   page.evaluate(
     (count) =>
@@ -273,7 +300,7 @@ const PHONE = { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile:
   await page.evaluate(([x, z]) => window.__bus.emit("teleport", { position: [x, 1.5, z] }), back);
   await frames(page, 1);
   await f.drag(1, 180, 300 - 46 * 1.6, 2);
-  const runSpeed = await topSpeed(page, 8);
+  const runSpeed = await topSpeedUntil(page, 24, world.walk + 0.5);
   ok("phone: shoving the stick past its rim starts the run", (await attr(page, "[data-testid=touch-run]", "data-on")) === "yes");
   ok("phone: and the player is running", runSpeed > world.walk + 0.5, `${runSpeed.toFixed(2)} m/s against a walk of ${world.walk}`);
   await f.lift(1);
