@@ -6,6 +6,7 @@ import {
   barsNow,
   canControl,
   lureNow,
+  sanctuaryRoom,
   useRun,
   wardNow,
   wardenSenses,
@@ -92,6 +93,13 @@ export function WardenDriver() {
      * still. It goes back to walking when the stone runs out.
      */
     if (to === wardNow(run)) return;
+    /**
+     * Nor into the room the floor started the player in, while that is
+     * still their first breath on it. Refused for the same reason and in
+     * the same way as the stone: the room says "not this one", and the
+     * moment the player walks out of it the refusal is over.
+     */
+    if (to === sanctuaryRoom(run)) return;
     run.moveWarden(to);
 
     // Heard through the wall: it has stepped into a room you could walk to.

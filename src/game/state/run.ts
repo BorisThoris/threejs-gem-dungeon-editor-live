@@ -71,6 +71,7 @@ import {
   NOISE_HOLD_S,
   REAPER_STALL_S,
   REAPER_STRIKE_GRACE_S,
+  REAPER_WARNING_S,
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
@@ -1310,6 +1311,8 @@ export const useRun = create<RunState>()(
       // circle drawn on the floor of a room, and a rule that reads "the
       // Warden will not come in here, but" is a rule nobody remembers.
       if (wardNow(s) === s.currentRoomId) return false;
+      // Nor into the room the floor started you in, until you have left it.
+      if (sanctuaryRoom(s) === s.currentRoomId) return false;
       set({ thiefPhase: "stalking" });
       bus.emit("thiefCame", { roomId: s.currentRoomId });
       return true;
@@ -1865,6 +1868,35 @@ export const useRun = create<RunState>()(
 export const runClock = (s: RunState): number =>
   performance.now() / 1000 - s.pausedFor - (s.paused && s.pausedAt > 0 ? performance.now() / 1000 - s.pausedAt : 0);
 
+/**
+ * The room a floor starts you in, while it is still a sanctuary.
+ *
+ * A floor begins with a breath: you arrive, you read the room, you decide
+ * which doorway to take. That is not a moment to be hit in, and on the
+ * third floor - where the Warden wakes on the first room walked - it was:
+ * you could arrive, stand still, and be hunted before you had chosen
+ * anything. Nothing that hunts comes into this room while the rule holds.
+ *
+ * It holds until you leave (`floorRooms` counts the rooms walked on this
+ * floor and starts at one), and it does not survive the floor running out
+ * of patience: the one thing you cannot wait out is the one thing a safe
+ * room must not shelter you from, or standing on the stairs would be a way
+ * to play. Come back later and it is an ordinary room - which is the other
+ * half of the rule, and the reason the first breath being free costs the
+ * floor nothing.
+ *
+ * Every threat asks this rather than each deciding for itself: the
+ * Warden's step, the Harrier's waking, the thief's arrival.
+ */
+export const sanctuaryRoom = (s: RunState): string | null =>
+  s.dungeon &&
+  s.phase === "playing" &&
+  s.currentRoomId === s.dungeon.startId &&
+  s.floorRooms === 1 &&
+  patienceLeft(s) > REAPER_WARNING_S
+    ? s.dungeon.startId
+    : null;
+
 /** True while a timed effect is still running. */
 const running = (s: RunState, until: number): boolean => until > runClock(s);
 
@@ -2109,6 +2141,10 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // How long the floor will put up with the player, and what woke when it
     // stopped. On the run's clock, like every deadline in here.
     patienceLeft: () => patienceLeft(useRun.getState()),
+    // Whether the room the player is in is the floor's first, still unleft
+    // and still inside the floor's patience: the one rule every threat
+    // asks before it comes in.
+    sanctuary: () => sanctuaryRoom(useRun.getState()) !== null,
     reaper: () => {
       const s = useRun.getState();
       return { awake: s.reaperAwake, stalled: reaperStalled(s), enteredAt: s.floorEnteredAt };

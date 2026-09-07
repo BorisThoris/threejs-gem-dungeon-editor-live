@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §48 asks a human
+  moment it can afford to. That is precisely the behaviour §49 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §48.
+for a person, not for this document, and it is on the list in §49.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§51), again, and it
+the thing they asked for now. Cycle 56's lesson (§52), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §48, one per system the loops added.
+Eight new questions, in §49, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3510,14 +3510,67 @@ isolation ran at six metres a second. It samples until it has seen a
 run now. A window counted in frames is still a bet on the machine;
 waiting for the thing you asked for is not.
 
-## 47. Steam Deck
+## 47. The first room of a floor is a sanctuary
+
+The third refinement, and the first one a player asked for rather than
+a check: arriving on a floor should be a breath. You land at the stair
+head, you read the room, you pick a doorway. Nothing should be allowed
+to take a life from you while you are doing that.
+
+It could. On the third floor the Warden wakes on the first room walked
+- which is the room you are standing in - so it could be roused and
+walking toward you before you had chosen anything, and the Cutpurse
+comes for anyone who stops moving with gems on them, which is exactly
+what a player reading a new floor does. The room a floor starts you in
+was the one place the game could hit someone who had not yet acted.
+
+### One rule, asked by everything
+
+`sanctuaryRoom(s)` is the start room while three things hold: you are
+in it, you have not left it (`floorRooms` counts rooms walked and
+starts at one), and the floor has not run out of patience. The Warden's
+step refuses it exactly as it refuses a ward stone, the Harrier will
+not take wing while it holds, and the thief will not arrive. Each of
+those asks the one predicate rather than deciding for itself, so the
+rule cannot rot in one place and hold in another.
+
+The patience clause is the part that keeps it honest. The Reaper is
+the one thing you cannot wait out, and a safe room that sheltered you
+from it would make standing on the stairs a way to play. So the
+sanctuary ends when the floor tires - long after the HUD has said so -
+and it ends the moment you walk out. Come back later and it is an
+ordinary room: the Warden may be standing in it, and that is the other
+half of the rule. The first breath is free because it is only the
+first.
+
+### What was already true, and now cannot quietly stop being
+
+A watcher only stands in three kinds of room, and a start is not one of
+them. A trap needs a kind a start does not have. A roost skips it, and
+so does the moth. All of that was true by accident of four separate
+lists, which is how a thing stops being true. Five layout checks hold
+every floor of a hundred seeds to it.
+
+### Checks
+
+`test:layout` gains five, over three hundred floors: no watcher, no
+trap, no roost and nothing perched in a start room, and a start room to
+check on every floor. `test:smoke` gains two, played rather than
+reasoned about: on the last floor, with the alarm at its worst, the
+Warden next door and the thief owed a visit, eight seconds pass in the
+start room without a life lost, without the Warden entering and without
+the thief arriving - and then, once the room has been left and come
+back to, the Warden is standing in it. Red on the old tree, where the
+rule did not exist to ask.
+
+## 48. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 48. What a human playtest should watch for
+## 49. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3698,7 +3751,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 49. Options and accessibility
+## 50. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3730,7 +3783,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 50. Deeds
+## 51. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3769,7 +3822,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 51. Harness bugs that read as game bugs
+## 52. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3858,7 +3911,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 52. Tuning knobs
+## 53. Tuning knobs
 
 All in `src/game/world.ts`:
 

@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import type { Dungeon } from "../dungeon/types";
-import { useRun } from "../state/run";
+import { sanctuaryRoom, useRun } from "../state/run";
 import { HARRIER_ALARM_LEVEL } from "../world";
 import { harrierRoostFor } from "./harrierRoost";
 
@@ -26,6 +26,10 @@ export function HarrierDriver() {
       c.roost = harrierRoostFor(s.dungeon, s.floor);
     }
     if (!c.roost) return;
+    // Not while the player is still in the room the floor started them in:
+    // a thing that takes wing the instant you arrive is not a threat, it is
+    // a coin toss on the loading screen.
+    if (sanctuaryRoom(s)) return;
     if (s.alarm >= HARRIER_ALARM_LEVEL || s.currentRoomId === c.roost) s.wakeHarrier();
   });
 

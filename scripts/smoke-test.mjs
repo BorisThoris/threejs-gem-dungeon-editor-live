@@ -6894,6 +6894,84 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+/**
+ * Run 23: the room a floor starts you in is a sanctuary.
+ *
+ * Arrive, read the room, choose a doorway - and be hit by none of it while
+ * you do. On the third floor the Warden wakes on the first room walked,
+ * which is the room you are standing in, so this was the one place the
+ * game could take a life from a player who had not yet done anything.
+ * Played rather than reasoned about: the alarm at its worst, the Warden
+ * in the next room, the thief owed a visit, and then the same room again
+ * once it has been left.
+ */
+{
+  const safe = await page.evaluate(async () => {
+    const run = window.__run;
+    const W = window.__world;
+    const D = window.__derived;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(31);
+    await wait(1000);
+    const d = run.getState().dungeon;
+    const start = d.rooms.find((r) => r.id === d.startId);
+    const out = Object.entries(start.links).find(([, id]) => id)?.[1];
+    if (!out) return { error: "the first room has no doorway" };
+    // The worst the floor gets, in the room it starts you in.
+    run.setState({
+      floor: W.KEEPER_FLOOR,
+      transitioning: true,
+      currentRoomId: d.startId,
+      floorRooms: 1,
+      lives: 3,
+      gems: 9,
+      alarm: 5,
+      wardenRoomId: out,
+      wardenCameFrom: null,
+      thiefNextAt: 0,
+    });
+    run.getState().roomReady(d.startId);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    const held = D.sanctuary();
+    const before = run.getState().lives;
+    let camePhase = "away";
+    const t0 = D.clock();
+    while (D.clock() - t0 < 8) {
+      await wait(200);
+      const s = run.getState();
+      if (s.thiefPhase !== "away") camePhase = s.thiefPhase;
+      if (s.wardenRoomId === d.startId) break;
+    }
+    const s1 = run.getState();
+    const kept = {
+      sanctuary: held,
+      lives: s1.lives === before,
+      wardenOut: s1.wardenRoomId !== d.startId,
+      thiefAway: camePhase === "away",
+      harrierAsleep: !s1.harrierAwake,
+    };
+    // And once it has been left it is an ordinary room: the Warden walks in.
+    run.setState({ transitioning: true, currentRoomId: out, floorRooms: 2, wardenRoomId: d.startId });
+    run.getState().roomReady(out);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    run.setState({ transitioning: true, currentRoomId: d.startId, floorRooms: 3, wardenRoomId: d.startId });
+    run.getState().roomReady(d.startId);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    await wait(400);
+    return { ...kept, afterLeaving: D.sanctuary(), wardenIn: run.getState().wardenRoomId === d.startId };
+  });
+  ok(
+    "the room a floor starts you in is a sanctuary while you are still in it",
+    !safe.error && safe.sanctuary === true && safe.lives && safe.wardenOut && safe.thiefAway && safe.harrierAsleep,
+    safe.error || JSON.stringify(safe)
+  );
+  ok(
+    "and an ordinary room once you have left it: the Warden can be standing in it",
+    !safe.error && safe.afterLeaving === false && safe.wardenIn === true,
+    safe.error || JSON.stringify({ after: safe.afterLeaving, wardenIn: safe.wardenIn })
+  );
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

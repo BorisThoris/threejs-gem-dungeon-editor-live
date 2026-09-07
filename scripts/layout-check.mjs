@@ -941,6 +941,42 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// --- The first room of a floor ---------------------------------------------
+//
+// A floor begins with a breath: you arrive, you read the room, you pick a
+// doorway. Nothing that hunts or bites belongs in that room while it is
+// still the first thing you are looking at. Some of this was already true
+// by accident - a watcher only stands in three kinds of room and none of
+// them is a start, a trap needs a kind that a start is not, a roost skips
+// it - and being true by accident is how it stops being true. Held to it
+// here, over every floor of a hundred seeds, so the day someone adds
+// "start" to a list of kinds this says so.
+{
+  let watched = 0;
+  let trapped = 0;
+  let roosted = 0;
+  let perched = 0;
+  let floors = 0;
+  for (let seed = 1; seed <= 100; seed++) {
+    for (const floor of [1, 2, 3]) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      const start = d.rooms.find((r) => r.id === d.startId);
+      if (!start) continue;
+      floors++;
+      if (L.sentryFor(start, d.seed, floor)) watched++;
+      if (L.trapsFor(start, d.seed, d.endId).length) trapped++;
+      if (L.harrierRoostFor(d, floor) === start.id) roosted++;
+      if (L.mothRoom(d) === start.id) perched++;
+    }
+  }
+  check("every floor has a first room to check", floors >= 100, `${floors} floors over 100 seeds`);
+  check("no watcher stands in the room a floor starts you in", watched === 0, `${watched} of ${floors}`);
+  check("no trap is laid in the room a floor starts you in", trapped === 0, `${trapped} of ${floors}`);
+  check("nothing roosts in the room a floor starts you in", roosted === 0, `${roosted} of ${floors}`);
+  check("nothing perches in the room a floor starts you in", perched === 0, `${perched} of ${floors}`);
+}
+
 // --- Nobody on the other end ------------------------------------------------
 //
 // Everything in this game that is not state goes over one typed bus, and

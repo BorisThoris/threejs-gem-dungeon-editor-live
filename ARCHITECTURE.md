@@ -331,6 +331,10 @@ Two stores that both claimed the player's stats. So:
   every time - and is the only thing that emits a teaching `notice`. A
   system that grows a rule the player cannot see adds a row; the store
   changes facts and never says sentences.
+- One rule, asked by everything it binds: `sanctuaryRoom` in the run store
+  is the floor's first room while the player has not left it and the floor
+  still has patience, and the Warden's step, the Harrier's waking and the
+  thief's arrival each ask it rather than deciding for themselves.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus
