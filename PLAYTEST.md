@@ -3929,8 +3929,43 @@ nothing on exactly the builds that matter.
 
 ## 54. Harness bugs that read as game bugs
 
-Both were found in the last round and both are worth writing down, because
-the failure they produce is indistinguishable from the game being broken.
+Every one of these is worth writing down, because the failure it produces
+is indistinguishable from the game being broken.
+
+**One shape, over and over.** The refinement runs turned up five more, and
+they are all the same mistake: a check that reads the result of something
+the frame loop does, after waiting a fixed number of milliseconds for it.
+That wait is a bet on how fast the machine is drawing. It pays on a quiet
+machine and loses on a loaded one, and it loses by reporting the game
+broken. The five:
+
+- The Warden's warning was read after giving it 7.2 seconds to cross a
+  room. It steps under a per-frame cap, so the same crossing costs more
+  wall time on a busy machine; the check found the Warden still walking
+  and said it gave no warning. It stands three metres away now, which is
+  what it was ever about.
+- The tome check read the screen once, 700 milliseconds after the press,
+  and reported the tome shut when it was merely not drawn yet - which
+  also meant the check after it, about what dying does to an open tome,
+  never ran on one.
+- The gem flourish check settled the player onto the gem in frames and
+  only then read the gem count. The gem is taken by a distance check in
+  its own frame loop, so it had already gone: the check said the gem was
+  never taken, on code where all of it works.
+- The chest pickup was read 700 milliseconds after E, on a press the
+  frame loop had not consumed yet - passing on one run and failing on the
+  next, on identical code.
+- The chest lids were read as soon as any lid appeared. A room mounts
+  over several frames, so a three-chest room was caught with one drawn,
+  and the check reported two chests that had opened themselves.
+
+The fix is the same every time and it is not a longer wait: wait for the
+thing you are asking about. Where the game can be asked - how many chests
+a room holds, whether the satchel has the item, whether the effect is
+still playing - ask it, and read the scene once it agrees.
+
+Below are the three from the round before, kept because they are each a
+different shape of the same lesson.
 
 **The watcher's beam.** The check that puts a player in the beam without
 waiting for it placed them 0.35 radians "ahead" of where it pointed,
