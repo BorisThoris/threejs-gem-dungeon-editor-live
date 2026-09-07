@@ -385,7 +385,16 @@ export interface RunState {
    * the flourish can play where the gem stood rather than at the player.
    * A puzzle's reward has no spot and gives none.
    */
-  collectGem: (roomId: string, at?: readonly [number, number]) => boolean;
+  collectGem: (
+    roomId: string,
+    at?: readonly [number, number],
+    /**
+     * How many gems it pays. One for a gem lying on a floor, and
+     * `SET_PIECE_GEMS` for a set piece answered - the one place that
+     * decides is `world.ts`, and the three rooms that pay it all ask.
+     */
+    worth?: number
+  ) => boolean;
   spendGems: (amount: number) => boolean;
   /** Take a relic. Does not charge for it; the shop does that. */
   addRelic: (id: RelicId, at?: readonly [number, number]) => void;
@@ -1000,20 +1009,22 @@ export const useRun = create<RunState>()(
       }
     },
 
-    collectGem: (roomId, at) => {
+    collectGem: (roomId, at, worth = 1) => {
       const s = get();
       if (s.gemRooms.includes(roomId)) return false;
       // Every gem taken rouses the floor. This is the whole bargain: the
-      // reward and the danger come from the same act.
+      // reward and the danger come from the same act - and a set piece
+      // that pays three raises it three times, because otherwise the way
+      // to a quiet floor would be to answer everything.
       // The delver's multiplier and the relic's, in that order: a Pilgrim
       // with an Ash Censer is back to an ordinary gem, which is exactly
       // what four gems bought them.
       const alarm =
         s.alarm +
-        ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
+        worth * ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
       set({
-        gems: s.gems + 1,
-        gemsTotal: s.gemsTotal + 1,
+        gems: s.gems + worth,
+        gemsTotal: s.gemsTotal + worth,
         gemRooms: [...s.gemRooms, roomId],
         alarm,
       });

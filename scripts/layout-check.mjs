@@ -3419,6 +3419,52 @@ check("the shipped room templates reach the floors the game generates", authored
 }
 
 /**
+ * A set piece is worth walking into.
+ *
+ * The tome, the memory trial and the challenge room's plate each paid one
+ * gem - the same as the gem lying loose on the floor of the same room,
+ * which can be picked up on the way past without answering anything. §22
+ * measured what that meant: a player racing the exit can pay every toll
+ * off the floor and see no set piece at all, so the most efficient way
+ * through a demo was also the way that saw the least of it.
+ *
+ * The fairness promise is untouched and still checked elsewhere: every
+ * floor's exit is payable without the vault, the arena or a puzzle. This
+ * is about what answering one is worth, not about needing to.
+ */
+{
+  check(
+    "answering a set piece is worth more than bending down for a gem",
+    L.SET_PIECE_GEMS > 1,
+    `${L.SET_PIECE_GEMS} gems against 1`
+  );
+  /**
+   * Enough to notice. A puzzle room holds a gem on its floor as well, so
+   * the comparison a player actually makes is "rob this room" against
+   * "answer it": one gem against one plus the set piece's.
+   */
+  check(
+    "and answering a room is worth at least three times robbing it",
+    1 + L.SET_PIECE_GEMS >= 3,
+    `${1 + L.SET_PIECE_GEMS} gems answered against 1 robbed`
+  );
+  /**
+   * And not so much that one set piece pays a whole floor's exit: the
+   * toll is the thing the run is about, and a puzzle that clears it in
+   * one press would replace the decision rather than add to it.
+   */
+  let coversToll = 0;
+  for (let floor = 1; floor <= L.FLOORS; floor++) {
+    if (L.SET_PIECE_GEMS >= L.tollForFloor(floor)) coversToll++;
+  }
+  check(
+    "and never enough to pay a floor's exit on its own",
+    coversToll === 0,
+    `${L.SET_PIECE_GEMS} gems against tolls of ${[1, 2, 3].map((f) => L.tollForFloor(f)).join(", ")}`
+  );
+}
+
+/**
  * The moments the arc is built around have their own beats.
  *
  * A floor is the unit the whole run is measured in, and going down one was

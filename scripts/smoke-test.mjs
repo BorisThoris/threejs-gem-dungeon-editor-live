@@ -7181,6 +7181,51 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * Answering a set piece pays more than robbing the room it is in.
+ *
+ * The tome, the memory trial and the challenge room's plate each paid one
+ * gem - exactly what the gem lying on the same room's floor pays, and
+ * that one can be picked up on the way past without answering anything.
+ * So the fastest way through the demo was also the richest, and the rooms
+ * built to show what the game is were the rooms with least reason to
+ * enter. Read through the store, because what a set piece is worth is a
+ * fact about the run rather than about a puzzle overlay.
+ */
+{
+  const worth = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const { SET_PIECE_GEMS } = window.__world;
+    run.getState().startRun(61);
+    await wait(1200);
+    const before = run.getState().gems;
+    // A gem on a floor is worth one, by the same call the rooms make.
+    run.getState().collectGem("floor-gem");
+    const afterFloor = run.getState().gems;
+    // A set piece answered is worth what the one owner says.
+    run.getState().collectGem("room_2:puzzle", undefined, SET_PIECE_GEMS);
+    const afterPiece = run.getState().gems;
+    return {
+      declared: SET_PIECE_GEMS,
+      floorGem: afterFloor - before,
+      setPiece: afterPiece - afterFloor,
+      toll: window.__derived.toll(),
+    };
+  });
+  ok("a gem lying on a floor is worth one", worth.floorGem === 1, JSON.stringify(worth));
+  ok(
+    "and answering a set piece is worth more than that",
+    worth.setPiece === worth.declared && worth.setPiece > worth.floorGem,
+    JSON.stringify(worth)
+  );
+  ok(
+    "and never enough to pay the floor's exit on its own",
+    worth.setPiece < worth.toll,
+    JSON.stringify(worth)
+  );
+}
+
+/**
  * The moments the arc turns on are moments on screen.
  *
  * Going down a floor was the same 220ms cut as walking through any door on

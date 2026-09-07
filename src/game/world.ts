@@ -884,3 +884,34 @@ export const TAKEN_LIGHT_S = 0.28;
 export const TAKEN_MOTE_S = 0.6;
 export const TAKEN_MOTES = 14;
 export const TAKEN_LIGHT = 16;
+
+/**
+ * What answering a set piece is worth, in gems.
+ *
+ * The tome, the memory trial, the challenge room's plate and the arena's
+ * plinth each paid exactly one gem - the same as the gem lying loose on
+ * the floor of the same room, which can be walked over and picked up
+ * without doing any of it. So the fastest way through a demo was also the
+ * richest, and the rooms built to show what the game is were the rooms
+ * with the least reason to enter them. PLAYTEST §22 measured it: a player
+ * racing the exit can pay every toll off the floor and see no set piece
+ * at all.
+ *
+ * Two rather than one. A robbed puzzle room still pays its floor gem, so
+ * skipping is never punished; an answered one pays that gem and two more,
+ * which is three times the room's value for the alarm it raises and the
+ * time it costs.
+ *
+ * Not three, which was the first number tried and which a check written
+ * in the same run rejected: floor one's toll is three, so a single set
+ * piece would have paid a whole floor's exit by itself and replaced the
+ * decision the run is about rather than adding to it. It has to be worth
+ * noticing and never worth a floor.
+ *
+ * The fairness promise is untouched: every floor's exit is still payable
+ * without the vault, the arena or a single puzzle, and `yarn test:layout`
+ * still holds it. This changes what a set piece is worth, not whether you
+ * need one - and whether to *force* one is still a person's call, on the
+ * human playtest list.
+ */
+export const SET_PIECE_GEMS = 2;

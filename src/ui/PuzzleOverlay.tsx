@@ -4,6 +4,7 @@ import { bus, type PuzzleRequest } from "../game/events";
 import { NumberPuzzle } from "../game/puzzles/NumberPuzzle";
 import { useRun } from "../game/state/run";
 import { fullscreen, panel } from "./overlay";
+import { SET_PIECE_GEMS } from "../game/world";
 
 /**
  * The one place a puzzle is drawn.
@@ -74,7 +75,8 @@ export function PuzzleOverlay() {
     const run = useRun.getState();
     if (outcome === "solved") {
       run.clearRoom(roomId);
-      run.collectGem(`${roomId}:puzzle`);
+      // What answering it is worth, from the one place that decides.
+      run.collectGem(`${roomId}:puzzle`, undefined, SET_PIECE_GEMS);
     } else if (outcome === "failed") {
       run.failRoom(roomId);
     }

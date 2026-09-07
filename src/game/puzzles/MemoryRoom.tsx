@@ -10,7 +10,7 @@ import { createRng } from "../rng";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { runClock, useRun } from "../state/run";
-import { CLOSE_REACH } from "../world";
+import { CLOSE_REACH, SET_PIECE_GEMS } from "../world";
 
 const COLORS = [
   { base: "#ff6b6b", glow: "#ff4444" },
@@ -154,7 +154,7 @@ export function MemoryRoom({ room }: RoomKindProps) {
         setPhase("solved");
         const run = useRun.getState();
         run.clearRoom(room.id);
-        run.collectGem(`${room.id}:puzzle`);
+        run.collectGem(`${room.id}:puzzle`, undefined, SET_PIECE_GEMS);
         bus.emit("puzzleResult", { roomId: room.id, completed: true });
       }
       return;

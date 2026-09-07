@@ -7,7 +7,7 @@ import { bus } from "../events";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { useRun } from "../state/run";
-import { GROUND_Y } from "../world";
+import { GROUND_Y, SET_PIECE_GEMS } from "../world";
 import { challengeAnchors } from "./anchors";
 import { Carryable, carry } from "./Carryable";
 
@@ -84,7 +84,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
     if (weighted()) {
       setOutcome("solved");
       run.clearRoom(room.id);
-      run.collectGem(`${room.id}:puzzle`);
+      run.collectGem(`${room.id}:puzzle`, undefined, SET_PIECE_GEMS);
       bus.emit("puzzleResult", { roomId: room.id, completed: true });
     } else {
       setOutcome("sprung");
