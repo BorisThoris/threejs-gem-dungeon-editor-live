@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
-import { mapIsDark, useRun } from "../game/state/run";
+import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
+import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
 
 const SIZE = MINIMAP_SIZE;
@@ -55,6 +56,25 @@ export function Minimap() {
   // is the whole difference between a theft and a punishment: the gems are
   // not gone, they are somewhere, and the map says where.
   const nestRoomId = useRun((s) => (s.nestGems > 0 && s.nestSeen ? s.nestRoomId : null));
+  /**
+   * The two rooms the readout names and the map did not mark.
+   *
+   * The HUD says "a harrier roosts here" when you walk into the roost and
+   * "holds the stairs" the moment you are on the last floor - and then a
+   * player who leaves that room has been told about a place and given no
+   * way to find it again. A readout and a map that disagree about what is
+   * worth knowing are two readouts.
+   *
+   * The roost only once it has been walked into, because the tell is what
+   * makes it findable; the kept stairs from the moment the Keeper is on
+   * the floor, because it is the exit and the exit is already drawn.
+   */
+  const roostSeen = useRun((s) =>
+    s.dungeon && harrierRoostFor(s.dungeon, s.floor) && s.visited.includes(harrierRoostFor(s.dungeon, s.floor)!)
+      ? harrierRoostFor(s.dungeon, s.floor)
+      : null
+  );
+  const keeperKeeps = useRun((s) => (keeperHolds(s) && s.dungeon ? s.dungeon.endId : null));
   const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
 
   // Gloom runs out on a clock, not on a state change, so the map has to
@@ -124,6 +144,8 @@ export function Minimap() {
       isExit: r.id === dungeon.endId,
       isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
       isNest: r.id === nestRoomId,
+      isRoost: r.id === roostSeen,
+      isKept: r.id === keeperKeeps,
       marked: marks.includes(r.id),
       hasWarden: shows.showsWarden && r.id === wardenRoomId,
       hasGem:
@@ -137,7 +159,7 @@ export function Minimap() {
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId, marks]);
+  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId, marks, roostSeen, keeperKeeps]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -234,6 +256,32 @@ export function Minimap() {
                     stroke={colors.accent}
                     strokeWidth={2}
                     strokeDasharray="3 3"
+                  />
+                )}
+                {/* Where the thing with wings sleeps, once you have been
+                    in the room: a broken ring, because it is somewhere to
+                    avoid rather than somewhere to go. */}
+                {c.isRoost && (
+                  <circle
+                    data-testid="map-roost"
+                    r={cell / 2 + 2}
+                    fill="none"
+                    stroke={colors.gold}
+                    strokeWidth={2}
+                    strokeDasharray="2 4"
+                  />
+                )}
+                {/* The stairs the Keeper is standing across. Drawn as a bar
+                    over the exit rather than as another ring, because the
+                    exit is already the gold one and this says it is shut. */}
+                {c.isKept && (
+                  <rect
+                    data-testid="map-kept"
+                    x={-cell / 2 - 2}
+                    y={-1.5}
+                    width={cell + 4}
+                    height={3}
+                    fill={colors.danger}
                   />
                 )}
                 {c.hasWarden && (

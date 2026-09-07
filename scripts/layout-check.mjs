@@ -57,6 +57,7 @@ writeFileSync(
    export * from "${root}src/game/sentry/placement";
    export * from "${root}src/game/rooms/Dressing";
    export * from "${root}src/game/rooms/placements";
+   export * from "${root}src/ui/hudLines";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
@@ -1663,7 +1664,15 @@ check("the shipped room templates reach the floors the game generates", authored
   }
   const bra = readFileSync(join(root, "src/game/props/Braziers.tsx"), "utf8");
   check("the braziers read where the wisp is and flare for it, not the other way round", /wispAt/.test(bra) && /WISP_FLARE_REACH/.test(bra) && !/wispAt/.test(readFileSync(join(root, "src/game/state/run.ts"), "utf8")));
-  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  /**
+   * The readout's words live in `hudLines.ts` now, not in the component.
+   * These checks are about what the game tells the player, so they read
+   * both: the module that decides what each line says, and the component
+   * that draws them.
+   */
+  const hud =
+    readFileSync(join(root, "src/ui/Hud.tsx"), "utf8") +
+    readFileSync(join(root, "src/ui/hudLines.ts"), "utf8");
   const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   check("the HUD and the captions say so when it is out", /a wisp/.test(hud) && /wispCame/.test(cap) && /wispLeft/.test(cap));
 }
@@ -1714,7 +1723,10 @@ check("the shipped room templates reach the floors the game generates", authored
   } else {
     check("the Harrier knows where it roosts", false, "no harrierRoostFor");
   }
-  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  // The readout's words are in `hudLines.ts`; the component only draws them.
+  const hud =
+    readFileSync(join(root, "src/ui/Hud.tsx"), "utf8") +
+    readFileSync(join(root, "src/ui/hudLines.ts"), "utf8");
   const cap = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   check("the HUD names where it roosts and what downs it, and the captions say the rest", /roosts here/.test(hud) && /a blast downs it/.test(hud) && /harrierWoke/.test(cap) && /harrierSlain/.test(cap));
 }
@@ -1758,7 +1770,9 @@ check("the shipped room templates reach the floors the game generates", authored
   const door = readFileSync(join(root, "src/game/interact/DoorTrigger.tsx"), "utf8");
   const run = readFileSync(join(root, "src/game/state/run.ts"), "utf8");
   check("the door and the walk both ask the store whether it holds", /keeperHolds/.test(door) && /keeperHolds\(s\)/.test(run) && /stallKeeper/.test(run.split("detonate:")[1] ?? ""));
-  const hud = readFileSync(join(root, "src/ui/Hud.tsx"), "utf8");
+  const hud =
+    readFileSync(join(root, "src/ui/Hud.tsx"), "utf8") +
+    readFileSync(join(root, "src/ui/hudLines.ts"), "utf8");
   check("the HUD says what makes it kneel", /a blast makes it kneel/.test(hud));
 }
 
@@ -3401,6 +3415,150 @@ check("the shipped room templates reach the floors the game generates", authored
   const a = L.biomeIdFor("normal", "room_3", 4242);
   const b = L.biomeIdFor("normal", "room_3", 4242);
   check("and a room is the same place when you walk back in", a === b, `${a} then ${b}`);
+}
+
+/**
+ * One readout: what it says, in what order, in one voice.
+ *
+ * The HUD grew a line a run for twenty-five runs and each was appended
+ * where the last one ended, so what a player read first was whatever had
+ * been built first. Order and naming are one module's job now, and these
+ * hold it to the three promises that make a readout one readout.
+ */
+{
+  // A floor with everything on it at once, so every line exists and the
+  // ordering has something to order.
+  const loud = {
+    lives: 1,
+    maxLives: 3,
+    freeHit: true,
+    keys: 1,
+    gems: 2,
+    toll: 4,
+    spare: 0,
+    owed: 2,
+    floor: 3,
+    floors: 3,
+    roomTitle: "Vault",
+    ground: { name: "standing water", says: "carries", tone: "danger" },
+    roost: true,
+    drafty: true,
+    patience: 9,
+    patienceShort: true,
+    reaper: false,
+    wardenAwake: true,
+    wardenSays: "Hunting",
+    wardenTone: "danger",
+    wardenBars: 4,
+    wary: true,
+    warded: false,
+    keeper: "holds",
+    keeperUp: 0,
+    harrier: "hunting",
+    harrierUp: 0,
+    lanternLit: true,
+    wisp: true,
+    oil: 12,
+    barSeconds: 20,
+    nestGems: 2,
+    relics: ["Warden's Lantern"],
+  };
+  const lines = L.hudLines(loud);
+
+  check("the readout has a line for every system that is saying something", lines.length >= 10, `${lines.length} lines`);
+  check(
+    "no two lines are called the same thing",
+    new Set(lines.map((l) => l.label)).size === lines.length,
+    lines.map((l) => l.label).join(", ")
+  );
+  check(
+    "every line has a name and something to say",
+    lines.every((l) => l.label.length > 0 && l.body.length > 0 && l.id.length > 0),
+    lines.filter((l) => !l.label || !l.body).map((l) => l.id).join(", ") || "all of them"
+  );
+  check(
+    "and they come out most urgent first",
+    lines.every((l, i) => i === 0 || lines[i - 1].rank <= l.rank),
+    lines.map((l) => `${l.label}:${l.rank}`).join(" ")
+  );
+
+  // The thing that is taking a life is above the thing underfoot.
+  const at = (id) => lines.findIndex((l) => l.id === id);
+  check(
+    "what is about to take a life is read before what the floor is made of",
+    at("keeper") < at("ground") && at("harrier") < at("ground") && at("warden") < at("ground"),
+    lines.map((l) => l.label).join(" > ")
+  );
+  check(
+    "and before what leaving will cost",
+    at("keeper") < at("gems") && at("harrier") < at("gems"),
+    lines.map((l) => l.label).join(" > ")
+  );
+
+  // The Reaper is the one thing that cannot be outwalked, so it is first.
+  const doomed = L.hudLines({ ...loud, reaper: true });
+  check(
+    "and when the floor's own end is in the room, it is the first thing said",
+    doomed[0].id === "reaper",
+    doomed.map((l) => l.label).join(" > ")
+  );
+  check(
+    "which replaces the countdown rather than being read beside it",
+    !doomed.some((l) => l.id === "patience"),
+    doomed.map((l) => l.id).join(", ")
+  );
+
+  // A quiet floor says only what is true.
+  const quiet = L.hudLines({
+    ...loud,
+    reaper: false,
+    patienceShort: false,
+    wardenAwake: false,
+    keeper: null,
+    harrier: null,
+    barSeconds: 0,
+    nestGems: 0,
+    roost: false,
+    drafty: false,
+    freeHit: false,
+    keys: 0,
+    owed: 0,
+    spare: 2,
+    relics: [],
+  });
+  check(
+    "a quiet floor says only the five things that are always true",
+    quiet.map((l) => l.id).sort().join(",") === "floor,gems,ground,lantern,lives",
+    quiet.map((l) => l.id).join(", ")
+  );
+  check(
+    "and the same line is called the same thing whether the floor is quiet or loud",
+    quiet.every((q) => {
+      const same = lines.find((l) => l.id === q.id);
+      return !same || same.label === q.label;
+    }),
+    quiet.map((l) => `${l.id}=${l.label}`).join(" ")
+  );
+
+  // Every tone the lines ask for is one the palette has, and anything
+  // drawn in danger also carries a mark.
+  check(
+    "every line names a tone the palette has",
+    lines.every((l) => ["ink", "dim", "gold", "accent", "danger"].includes(l.tone)),
+    lines.map((l) => l.tone).join(", ")
+  );
+  check(
+    "and nothing urgent is told in colour alone",
+    lines.filter((l) => l.tone === "danger").every((l) => typeof l.mark === "string" && l.mark.length > 0),
+    lines.filter((l) => l.tone === "danger" && !l.mark).map((l) => l.id).join(", ") || "all marked"
+  );
+
+  // The same facts give the same readout twice.
+  check(
+    "and the same floor reads the same way twice",
+    JSON.stringify(L.hudLines(loud)) === JSON.stringify(lines),
+    "stable"
+  );
 }
 
 /**

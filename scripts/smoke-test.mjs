@@ -7181,6 +7181,123 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * One readout: the urgent thing is the first thing on it.
+ *
+ * The lines are ordered by `hudLines`, but a check that only reads that
+ * module is a check about a list rather than about what a player sees. So
+ * this reads the drawn HUD: put the floor's own end in the room and find
+ * "it is here" at the top of the panel, above what the ground is made of
+ * - which is where it sat for twenty-five runs, because the ground line
+ * was written first.
+ */
+{
+  const readout = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(41);
+    await wait(1200);
+    const panel = () => {
+      const el = document.querySelector('[data-testid="hud"]');
+      return el ? Array.from(el.children).map((c) => c.getAttribute("data-testid")) : [];
+    };
+    for (let i = 0; i < 40 && panel().length === 0; i++) await wait(150);
+    const quiet = panel();
+    // The floor runs out of patience and the thing that cannot be
+    // outwalked is in the room.
+    run.setState({ reaperAwake: true, wardenRoomId: run.getState().currentRoomId, alarm: 4 });
+    let loud = quiet;
+    for (let i = 0; i < 40; i++) {
+      loud = panel();
+      if (loud.includes("hud-reaper")) break;
+      await wait(150);
+    }
+    const text = document.querySelector('[data-testid="hud"]')?.innerText ?? "";
+    return { quiet, loud, first: loud[0], text };
+  });
+  ok(
+    "the readout is a list of named lines rather than a block",
+    readout.quiet.length > 0 && readout.quiet.every((id) => typeof id === "string" && id.startsWith("hud-")),
+    JSON.stringify(readout.quiet)
+  );
+  ok(
+    "and when the floor's own end is in the room it is the first line on it",
+    readout.first === "hud-reaper",
+    JSON.stringify(readout.loud)
+  );
+  ok(
+    "read before what the ground is made of, which is where it used to sit",
+    readout.loud.indexOf("hud-reaper") < readout.loud.indexOf("hud-ground"),
+    JSON.stringify(readout.loud)
+  );
+  ok(
+    "and no two lines on it are called the same thing",
+    (() => {
+      const labels = readout.text
+        .split("\n")
+        .map((l) => l.trim().split(" ")[0])
+        .filter(Boolean);
+      return new Set(labels).size === labels.length;
+    })(),
+    JSON.stringify(readout.text.slice(0, 160))
+  );
+}
+
+/**
+ * The map marks what the readout names.
+ *
+ * The HUD says "a harrier roosts here" when you walk into the roost and
+ * "holds the stairs" from the moment you are on the last floor, and then
+ * a player who walks out has been told about a place and given no way to
+ * find it again. A readout and a map that disagree about what is worth
+ * knowing are two readouts.
+ */
+{
+  const marked = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const { harrierRoostFor } = await import("/src/game/mobs/harrierRoost.ts");
+    run.getState().startRun(41);
+    await wait(1200);
+    // Floor two, where something with wings roosts.
+    run.setState({ floor: 2 });
+    const d = run.getState().dungeon;
+    const roost = harrierRoostFor(d, 2);
+    if (!roost) return { error: "no roost on floor 2" };
+    const shown = () => !!document.querySelector('[data-testid="map-roost"]');
+    // Not marked before the room has been walked into: the tell is what
+    // makes it findable, and a marker without one is a spoiler.
+    run.setState({ visited: [d.startId], currentRoomId: d.startId });
+    await wait(600);
+    const before = shown();
+    run.setState({ visited: [d.startId, roost] });
+    let after = before;
+    for (let i = 0; i < 30 && !after; i++) {
+      await wait(150);
+      after = shown();
+    }
+    // And the kept stairs, on the floor the Keeper stands on.
+    run.setState({ floor: 3, currentRoomId: run.getState().dungeon.startId });
+    let kept = false;
+    for (let i = 0; i < 30 && !kept; i++) {
+      await wait(150);
+      kept = !!document.querySelector('[data-testid="map-kept"]');
+    }
+    return { before, after, kept, holds: window.__derived.keeper().holds };
+  });
+  ok(
+    "the roost is not on the map before you have been in it",
+    !marked.error && marked.before === false,
+    marked.error || JSON.stringify(marked)
+  );
+  ok("and is on it once you have", marked.after === true, JSON.stringify(marked));
+  ok(
+    "and the stairs the Keeper stands across are marked shut",
+    marked.holds === true && marked.kept === true,
+    JSON.stringify(marked)
+  );
+}
+
+/**
  * A chest that has been opened looks opened.
  *
  * The trigger went away when it was looted and the prop did not: the same
