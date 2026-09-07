@@ -7122,30 +7122,34 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.getState().roomReady(host.id);
     for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
     const at = window.__derived.gemSpot(host.id);
-    // Walked to in frames, not in wall time: the pickup is a distance
-    // check in the gem's own frame loop, and a fixed wait is a bet on how
-    // fast this machine draws.
-    window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
-    const near = () => {
-      const p = window.__playerDebug;
-      return Math.hypot(p.x - at[0], p.z - at[2]) < 0.6;
-    };
-    for (let i = 0; i < 40 && !near(); i++) await wait(150);
+    /**
+     * Everything is set up before the player is moved, and then one loop
+     * watches for both.
+     *
+     * The first version of this settled the player onto the gem's spot in
+     * frames and only then read the gem count - and the gem is taken by a
+     * distance check in its own frame loop, so it was already gone by the
+     * time the "before" was sampled and the check reported the gem never
+     * taken. The flourish has the same problem from the other end: six
+     * tenths of a second of it, and a poll that starts after the pickup
+     * has been confirmed can easily start after it has finished.
+     */
     const gemsBefore = run.getState().gems;
-    // The flourish, while it plays.
     let lit = 0;
     let motes = 0;
     let kind = null;
-    for (let i = 0; i < 40 && run.getState().gems === gemsBefore; i++) await wait(150);
-    for (let i = 0; i < 40; i++) {
+    window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+    // One loop, sampling the probe every time round, so the flourish is
+    // caught whichever frame the pickup lands on.
+    for (let i = 0; i < 90; i++) {
       const t = window.__taken;
       if (t && t.active) {
         if (t.light > lit) lit = t.light;
         if (t.motes > motes) motes = t.motes;
         if (t.kind) kind = t.kind;
       }
-      await wait(120);
-      if (lit > 0 && motes > 0) break;
+      if (run.getState().gems > gemsBefore && lit > 0 && motes > 0) break;
+      await wait(100);
     }
     // And then gone, in frames, the way the blast's end is waited for.
     for (let i = 0; i < 60 && window.__taken && window.__taken.active; i++) await wait(150);
@@ -7179,7 +7183,22 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.getState().startRun(31);
     await wait(1200);
     const d = run.getState().dungeon;
-    const host = d.rooms.find((r) => r.id === d.vaultId) ?? d.rooms.find((r) => r.type === "treasure");
+    /**
+     * The room on this floor with the most chests, so the check has more
+     * than one to tell apart. Picking the vault by name found a floor
+     * whose vault held a single chest, and "the one that was looted is
+     * open and the rest are shut" proves very little when there is no
+     * rest.
+     */
+    let host = null;
+    let most = 0;
+    for (const r of d.rooms) {
+      const n = window.__derived.chestKeys(r.id).length;
+      if (n > most) {
+        most = n;
+        host = r;
+      }
+    }
     if (!host) return { error: "no room with chests" };
     run.setState({ transitioning: true, currentRoomId: host.id, lives: 3, satchel: [], looted: [] });
     run.getState().roomReady(host.id);
