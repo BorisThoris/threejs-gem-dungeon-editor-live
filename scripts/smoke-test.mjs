@@ -7180,26 +7180,42 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   const chest = await page.evaluate(async () => {
     const run = window.__run;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-    run.getState().startRun(31);
-    await wait(1200);
-    const d = run.getState().dungeon;
     /**
-     * The room on this floor with the most chests, so the check has more
-     * than one to tell apart. Picking the vault by name found a floor
-     * whose vault held a single chest, and "the one that was looted is
-     * open and the rest are shut" proves very little when there is no
-     * rest.
+     * A floor with a room holding more than one chest, so the check has
+     * something to tell apart.
+     *
+     * Picking the vault by name drew a floor whose vault held a single
+     * chest, and "the one that was looted is open and the rest are shut"
+     * proves very little when there is no rest. Which floors have a
+     * crowded room is the generator's business and not a fact worth
+     * hard-coding a seed for, so it asks a few and takes the best - and
+     * settles for one chest rather than failing if none of them has two,
+     * because that is a property of the generator and not of this
+     * feature.
      */
     let host = null;
     let most = 0;
-    for (const r of d.rooms) {
-      const n = window.__derived.chestKeys(r.id).length;
-      if (n > most) {
-        most = n;
-        host = r;
+    let d = null;
+    for (const seed of [31, 32, 33, 34, 35, 36]) {
+      run.getState().startRun(seed);
+      await wait(1200);
+      const floor = run.getState().dungeon;
+      for (const r of floor.rooms) {
+        const n = window.__derived.chestKeys(r.id).length;
+        if (n > most) {
+          most = n;
+          host = r;
+          d = floor;
+        }
       }
+      if (most > 1) break;
     }
-    if (!host) return { error: "no room with chests" };
+    if (!host || !d) return { error: "no room with chests" };
+    // Back onto the floor the winner is on, since the search moved off it.
+    if (run.getState().dungeon.seed !== d.seed) {
+      run.getState().startRun(d.seed);
+      await wait(1200);
+    }
     run.setState({ transitioning: true, currentRoomId: host.id, lives: 3, satchel: [], looted: [] });
     run.getState().roomReady(host.id);
     for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
