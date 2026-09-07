@@ -98,6 +98,13 @@ for the player who wants to remember where the draft was. Raise the
 lantern and a wisp gathers to lead you toward the crack - and the wisp
 is light, so the Warden sees you for exactly as long as it is out.
 
+The readout is ordered by what is about to happen to you rather than by
+what was built first: the thing taking a life is at the top, then the
+clock you are losing, then what the door costs, then what you can spend,
+then where you are. Nothing urgent is said in colour alone, and the map
+marks the places the readout names - the roost you have walked into, the
+stairs the Keeper is standing across.
+
 A blast is seen as well as heard - a flash, embers thrown out and pulled
 back down, dust across the floor, the view knocked harder the nearer it
 was - and the wall it opens is left with its stone at the gap. Taking

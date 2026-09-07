@@ -351,6 +351,18 @@ Two stores that both claimed the player's stats. So:
   it open, and the store's probe cannot disagree. The drawn list is
   shorter in a room where something has burst, so the open flag is looked
   up by where the chest stands rather than by its place in either list.
+- The readout is a list, not a block: `ui/hudLines.ts` is the only thing
+  that decides what each line is called, what it says, and how urgent it
+  is, over five ranks from "this is taking a life" down to "this is where
+  you are". The component builds a snapshot of the facts and draws what it
+  is handed, so a new system adds a row rather than appending markup at
+  whatever point in the file it happens to reach. No two lines may share a
+  label and nothing drawn in the danger tone may lack a high-contrast
+  mark; both are held by `yarn test:layout`.
+- The map marks what the readout names. A place the HUD tells you about -
+  the harrier's roost, the stairs the Keeper holds - is on the minimap
+  too, because a readout and a map that disagree about what is worth
+  knowing are two readouts.
 - Everything that can take a life publishes `tell`, nought to one: how near
   it is to doing it. The body shows that number and the checks read it, so a
   warning cannot be true on screen and false in a test.

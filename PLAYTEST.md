@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §51 asks a human
+  moment it can afford to. That is precisely the behaviour §52 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §51.
+for a person, not for this document, and it is on the list in §52.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§54), again, and it
+the thing they asked for now. Cycle 56's lesson (§55), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §51, one per system the loops added.
+Eight new questions, in §52, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3668,14 +3668,76 @@ The modifiers decide which wins, in one place, so two relics that both
 tint it agree regardless of which was bought first - and the light never
 has to know which relics exist.
 
-## 50. Steam Deck
+## 50. One readout
+
+The HUD grew a line a run for twenty-five runs, and every one of them was
+appended where the last one ended. That is not an order anyone chose. It
+is the order the features were built in, and it showed.
+
+**What was wrong with it.** With the Reaper in the room, the one thing in
+the game that cannot be outwalked, "it is here, the exit now" sat below
+what the floor was made of, because the ground line had been written
+fifteen runs earlier. Two different facts were both labelled FLOOR, one
+saying which floor you were on and the other how long it would put up
+with you, and a reader learns to skip a label that means two things. The
+grammar had drifted too: some lines were a value with a qualifier, others
+were sentences, and the separator between them was not always the same
+character.
+
+**What it is now.** The lines are a list rather than a block of markup,
+and one module decides what each one is called, what it says, and how
+urgent it is. Five ranks:
+
+1. Something is taking a life from you now, or will if you stand still.
+   The Reaper in the room, the Keeper across the stairs, the Harrier in
+   the air, the Warden hunting.
+2. A clock you are losing: the floor's patience, a barred doorway, the
+   window while something kneels or is down.
+3. What leaving will cost, and whether you can pay it.
+4. What can be spent or lost: lives, oil, what is in the nest.
+5. Where you are and what the room is made of, which is true all the time
+   and is therefore never the thing to read first.
+
+Within a rank the order is fixed and is not a judgement about anything.
+The component builds a snapshot of the facts and draws what it is handed.
+
+**One thing it found straight away.** Ground that carries sound is drawn
+in the danger tone, and listing the lines in one place made it obvious
+that it was the only urgent thing on the readout with no high-contrast
+mark beside it. A reader who cannot tell the tones apart saw "standing
+water, carries" in the same grey as "moss, dead", which is the opposite
+of what it means. It has a mark now, and a check holds that nothing drawn
+in the danger tone ever lacks one.
+
+**And the map marks what the readout names.** The HUD says "a harrier
+roosts here" the moment you walk into the roost, and "holds the stairs"
+from the moment you are on the last floor. A player who then walks out of
+that room has been told about a place and given no way to find it again;
+a readout and a map that disagree about what is worth knowing are two
+readouts, not one. The roost gets a broken gold ring once it has been
+walked into, and not before, because a marker without the tell that earns
+it is a spoiler. The kept stairs get a bar across the exit, which says
+shut, rather than a fourth kind of circle.
+
+**How it is checked.** Thirteen layout checks read the module rather than
+the screen, because ordering and naming are facts about a list: no two
+lines share a label, every line has a name and something to say, they
+come out most urgent first, what is about to take a life is read before
+the ground and before the toll, the floor's own end replaces the
+countdown rather than sitting beside it, a quiet floor says only what is
+always true, every tone is one the palette has, nothing urgent is told in
+colour alone, and the same floor reads the same way twice. Seven smoke
+checks then read the drawn panel and the drawn map, because a list in the
+right order is not the same claim as a screen in the right order.
+
+## 51. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 51. What a human playtest should watch for
+## 52. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3856,7 +3918,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 52. Options and accessibility
+## 53. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3888,7 +3950,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 53. Deeds
+## 54. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3927,7 +3989,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 54. Harness bugs that read as game bugs
+## 55. Harness bugs that read as game bugs
 
 Every one of these is worth writing down, because the failure it produces
 is indistinguishable from the game being broken.
@@ -4051,7 +4113,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 55. Tuning knobs
+## 56. Tuning knobs
 
 All in `src/game/world.ts`:
 
