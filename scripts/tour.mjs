@@ -336,6 +336,25 @@ const SCREENS = [
     },
   },
   {
+    /**
+     * The descent, which is the biggest thing on screen in a run and had
+     * no picture. Looking at the pictures is the check, and a beat nobody
+     * has looked at is a beat nobody has checked.
+     */
+    file: "screen-descent.png",
+    setUp: async () => {
+      await page.evaluate(async () => {
+        const run = window.__run;
+        run.getState().startRun(51);
+        await new Promise((r) => setTimeout(r, 1500));
+        window.__bus.emit("floorDescended", { floor: 2, left: 40 });
+      });
+      // Caught while it is held rather than after: the card fades out on
+      // its own, and a shot taken late is a shot of the room.
+      await page.waitForTimeout(700);
+    },
+  },
+  {
     file: "screen-lost.png",
     setUp: async () => {
       await page.evaluate(async () => {
