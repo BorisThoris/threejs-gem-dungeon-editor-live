@@ -865,3 +865,22 @@ export const BURST_LIGHT_S = 0.5;
 export const BURST_EMBER_S = 0.9;
 export const BURST_EMBERS = 40;
 export const BURST_LIGHT = 30;
+
+/**
+ * What taking something looks like.
+ *
+ * The gem was the whole reason to walk into a room and it left in one
+ * frame: the octahedron stopped being drawn and its light went with it,
+ * so the thing a player crossed a floor for read as a rendering glitch.
+ * These are the shape of the moment instead - a light that rises and
+ * dies, a handful of motes drawn up and inward, and the whole of it over
+ * inside a second so it never stands between the player and the room.
+ *
+ * Smaller than a blast in every dimension, because a pickup is a good
+ * thing happening and a blast is not: a third of the embers, half the
+ * light, and two thirds of the time.
+ */
+export const TAKEN_LIGHT_S = 0.28;
+export const TAKEN_MOTE_S = 0.6;
+export const TAKEN_MOTES = 14;
+export const TAKEN_LIGHT = 16;

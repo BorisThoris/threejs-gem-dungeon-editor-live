@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { PointLight } from "three";
+import { Color, type PointLight } from "three";
 
+import { modifiers } from "../relics/catalog";
 import { canControl, lanternLit, useRun } from "../state/run";
 import {
   LANTERN_INTENSITY_DOWN,
@@ -33,6 +34,19 @@ export function Lantern() {
   const unflushed = useRef(0);
   // Eased towards the target, so the change reads as a hand moving.
   const level = useRef(1);
+  /**
+   * The colour of the flame, which is the one thing of the delver's the
+   * player sees all run.
+   *
+   * Relics used to change numbers and nothing else - a Warden's Lantern
+   * bought two floors ago left no mark on the screen at all. It is the
+   * modifiers that decide which relic wins; this only asks. Subscribed
+   * rather than read in the frame loop, because the answer changes about
+   * twice a run and comparing two strings sixty times a second to find
+   * that out is work for nobody.
+   */
+  const tint = useRun((s) => modifiers(s.relics).lightTint);
+  const colour = useMemo(() => new Color(tint), [tint]);
 
   useFrame((state, delta) => {
     const l = light.current;
@@ -49,6 +63,9 @@ export function Lantern() {
     // Slightly ahead of and below the eye, so it lights the floor in front
     // rather than the inside of the player's own head.
     l.position.set(state.camera.position.x, state.camera.position.y - 0.25, state.camera.position.z);
+    // Eased like the reach is, so putting a relic on does not switch the
+    // room's colour between two frames.
+    l.color.lerp(colour, Math.min(1, delta * 2.4));
 
     if (import.meta.env.DEV) {
       /**
@@ -59,11 +76,17 @@ export function Lantern() {
        * room got any darker - which is the entire point of the feature.
        * Written into one object rather than a fresh one, at frame rate.
        */
-      const w = window as unknown as { __lantern?: Record<string, number> };
-      const probe = (w.__lantern ??= { intensity: 0, distance: 0, ease: 0 });
+      const w = window as unknown as {
+        __lantern?: { intensity: number; distance: number; ease: number; tint: string };
+      };
+      const probe = (w.__lantern ??= { intensity: 0, distance: 0, ease: 0, tint });
       probe.intensity = l.intensity;
       probe.distance = l.distance;
       probe.ease = ease;
+      // What the modifiers asked for, not what the eased colour has
+      // reached: a check about which relic is worn should not also be a
+      // check about how fast the ease runs on this machine.
+      probe.tint = tint;
     }
 
     // Time only counts while the player is in control: a lantern must not
@@ -76,5 +99,5 @@ export function Lantern() {
     useRun.getState().burnOil(spend);
   });
 
-  return <pointLight ref={light} color="#ffd9a0" intensity={LANTERN_INTENSITY_UP} decay={1.5} />;
+  return <pointLight ref={light} color={tint} intensity={LANTERN_INTENSITY_UP} decay={1.5} />;
 }

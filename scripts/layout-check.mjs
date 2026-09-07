@@ -56,6 +56,7 @@ writeFileSync(
    export * from "${root}src/game/sentry/beam";
    export * from "${root}src/game/sentry/placement";
    export * from "${root}src/game/rooms/Dressing";
+   export * from "${root}src/game/rooms/placements";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
@@ -3400,6 +3401,100 @@ check("the shipped room templates reach the floors the game generates", authored
   const a = L.biomeIdFor("normal", "room_3", 4242);
   const b = L.biomeIdFor("normal", "room_3", 4242);
   check("and a room is the same place when you walk back in", a === b, `${a} then ${b}`);
+}
+
+/**
+ * What a delver carries, and what taking something looks like.
+ *
+ * Relics changed numbers and nothing a player could see. The lantern is
+ * the one thing of theirs that is on screen for a whole run, so it is
+ * where a relic is worn - and the modifiers decide which one wins, in one
+ * place, because two relics that both tint it must not depend on the
+ * order they were bought in.
+ */
+{
+  const plain = L.modifiers([]).lightTint;
+  const warden = L.modifiers(["lantern"]).lightTint;
+  const censer = L.modifiers(["censer"]).lightTint;
+  check(
+    "a delver with no relics carries a plain flame",
+    plain === L.LIGHT_TINT_PLAIN,
+    `${plain}`
+  );
+  check(
+    "and the two relics that are worn each change it, to different colours",
+    warden !== plain && censer !== plain && warden !== censer,
+    `plain ${plain}, warden ${warden}, censer ${censer}`
+  );
+  check(
+    "and holding both is the same light whichever was bought first",
+    L.modifiers(["lantern", "censer"]).lightTint === L.modifiers(["censer", "lantern"]).lightTint,
+    `${L.modifiers(["lantern", "censer"]).lightTint} then ${L.modifiers(["censer", "lantern"]).lightTint}`
+  );
+  // Every relic set answers with a colour rather than undefined: the
+  // light reads this every frame and has no fallback of its own.
+  let tinted = 0;
+  const ids = L.RELIC_IDS;
+  for (let mask = 0; mask < 1 << ids.length; mask++) {
+    const held = ids.filter((_, i) => mask & (1 << i));
+    if (/^#[0-9a-f]{6}$/i.test(L.modifiers(held).lightTint)) tinted++;
+  }
+  check(
+    "and every set of relics a run can hold names a colour",
+    tinted === 1 << ids.length,
+    `${tinted} of ${1 << ids.length} sets`
+  );
+
+  /**
+   * A chest's key is the room and its index in the room's placements, and
+   * both the trigger that loots one and the prop that has to look opened
+   * ask the same function for it. Over many rooms: distinct within a
+   * room, and stable when asked twice.
+   */
+  let rooms = 0;
+  let distinct = 0;
+  let stable = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const d = L.generateDungeon(seed, 1);
+    for (const room of d.rooms) {
+      const places = L.placementsFor(room, d.seed, { asVault: d.vaultId === room.id, sentry: null, key: null });
+      const chests = places.map((p, i) => (p.kind === "chest" ? L.chestKey(room.id, i) : null)).filter(Boolean);
+      if (chests.length === 0) continue;
+      rooms++;
+      if (new Set(chests).size === chests.length) distinct++;
+      const again = places.map((p, i) => (p.kind === "chest" ? L.chestKey(room.id, i) : null)).filter(Boolean);
+      if (again.join("|") === chests.join("|")) stable++;
+    }
+  }
+  check(
+    "every chest in a room has a key of its own",
+    rooms > 0 && distinct === rooms,
+    `${distinct} of ${rooms} rooms with chests`
+  );
+  check(
+    "and the same chest keeps it",
+    rooms > 0 && stable === rooms,
+    `${stable} of ${rooms} rooms with chests`
+  );
+
+  /**
+   * The pickup's flourish must never be mistaken for a blast's, which is
+   * the one thing on screen that means a life is at stake. Smaller in
+   * every dimension, and over sooner.
+   */
+  check(
+    "taking something is a smaller, shorter thing to look at than a blast",
+    L.TAKEN_MOTES < L.BURST_EMBERS &&
+      L.TAKEN_LIGHT < L.BURST_LIGHT &&
+      L.TAKEN_MOTE_S < L.BURST_EMBER_S &&
+      L.TAKEN_LIGHT_S < L.BURST_LIGHT_S,
+    `${L.TAKEN_MOTES} motes for ${L.TAKEN_MOTE_S}s at ${L.TAKEN_LIGHT}, against ${L.BURST_EMBERS} embers for ${L.BURST_EMBER_S}s at ${L.BURST_LIGHT}`
+  );
+  check(
+    "and it is over inside a second, so it never stands between the player and the room",
+    L.TAKEN_MOTE_S < 1,
+    `${L.TAKEN_MOTE_S}s`
+  );
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

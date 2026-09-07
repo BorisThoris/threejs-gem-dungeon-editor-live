@@ -7094,6 +7094,172 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
 }
 
+/**
+ * Taking something is a thing that happens on screen.
+ *
+ * A gem was a shape that stopped existing. Its light went out in the same
+ * frame the octahedron did, an item went from a chest straight to a word
+ * in the satchel, and the chest it came out of stayed shut. Everything
+ * the player is in the dungeon for happened in one frame and left nothing
+ * behind, while the one thing that hurts them - a blast - has had a body
+ * since run 21.
+ *
+ * Three things, read the way the blast is read: off the effect's own
+ * probe while it plays, and off the scene for the chest, because a lid
+ * that opens is geometry rather than state.
+ */
+{
+  const took = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(31);
+    await wait(1200);
+    const d = run.getState().dungeon;
+    // A room with a gem still in it that is not the one the run starts in.
+    const host = d.rooms.find((r) => r.id !== d.startId && window.__derived.gemSpot(r.id));
+    if (!host) return { error: "no room with a gem" };
+    run.setState({ transitioning: true, currentRoomId: host.id, lives: 3 });
+    run.getState().roomReady(host.id);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    const at = window.__derived.gemSpot(host.id);
+    // Walked to in frames, not in wall time: the pickup is a distance
+    // check in the gem's own frame loop, and a fixed wait is a bet on how
+    // fast this machine draws.
+    window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+    const near = () => {
+      const p = window.__playerDebug;
+      return Math.hypot(p.x - at[0], p.z - at[2]) < 0.6;
+    };
+    for (let i = 0; i < 40 && !near(); i++) await wait(150);
+    const gemsBefore = run.getState().gems;
+    // The flourish, while it plays.
+    let lit = 0;
+    let motes = 0;
+    let kind = null;
+    for (let i = 0; i < 40 && run.getState().gems === gemsBefore; i++) await wait(150);
+    for (let i = 0; i < 40; i++) {
+      const t = window.__taken;
+      if (t && t.active) {
+        if (t.light > lit) lit = t.light;
+        if (t.motes > motes) motes = t.motes;
+        if (t.kind) kind = t.kind;
+      }
+      await wait(120);
+      if (lit > 0 && motes > 0) break;
+    }
+    // And then gone, in frames, the way the blast's end is waited for.
+    for (let i = 0; i < 60 && window.__taken && window.__taken.active; i++) await wait(150);
+    const gone = !window.__taken || !window.__taken.active;
+    return { took: run.getState().gems > gemsBefore, lit, motes, kind, gone };
+  });
+  ok("a gem is taken", !took.error && took.took === true, took.error || JSON.stringify(took));
+  ok(
+    "taking it is seen: a light and a few motes where it stood",
+    took.lit > 0 && took.motes > 0,
+    JSON.stringify(took)
+  );
+  ok("and the flourish knows a gem from a relic", took.kind === "gem", String(took.kind));
+  ok("and it is over within a moment", took.gone === true, JSON.stringify(took));
+}
+
+/**
+ * A chest that has been opened looks opened.
+ *
+ * The trigger went away when it was looted and the prop did not: the same
+ * shut box stood there for the rest of the floor, so a vault with three
+ * of them gave a player no way to see which ones they had already been
+ * to. Read off the scene rather than a probe, the way the dart plate's
+ * jamb holes are: a lid is a mesh at an angle, and an angle is the whole
+ * claim.
+ */
+{
+  const chest = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(31);
+    await wait(1200);
+    const d = run.getState().dungeon;
+    const host = d.rooms.find((r) => r.id === d.vaultId) ?? d.rooms.find((r) => r.type === "treasure");
+    if (!host) return { error: "no room with chests" };
+    run.setState({ transitioning: true, currentRoomId: host.id, lives: 3, satchel: [], looted: [] });
+    run.getState().roomReady(host.id);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
+    // Every chest lid in the room, by its tilt. Shut is flat.
+    const lids = () => {
+      const out = [];
+      window.__scene.traverse((o) => {
+        if (o.userData && o.userData.lid) out.push(Math.abs(o.rotation.x));
+      });
+      return out;
+    };
+    for (let i = 0; i < 40 && lids().length === 0; i++) await wait(150);
+    const before = lids();
+    if (before.length === 0) return { error: "no chest lids in the room" };
+    // Loot one, through the store, the way the shop's checks buy.
+    const key = window.__derived.chestKeys(host.id)[0];
+    if (!key) return { error: "the room reports no chests" };
+    run.getState().takeItem("bomb", key);
+    let after = before;
+    for (let i = 0; i < 40; i++) {
+      after = lids();
+      if (after.some((a) => a > 0.4)) break;
+      await wait(150);
+    }
+    return {
+      shutBefore: before.every((a) => a < 0.1),
+      openAfter: after.filter((a) => a > 0.4).length,
+      stillShut: after.filter((a) => a < 0.1).length,
+      total: before.length,
+    };
+  });
+  ok("a room of chests starts with every lid shut", !chest.error && chest.shutBefore === true, chest.error || JSON.stringify(chest));
+  ok(
+    "and the one that was looted stands open, while the rest stay shut",
+    chest.openAfter === 1 && chest.stillShut === chest.total - 1,
+    JSON.stringify(chest)
+  );
+}
+
+/**
+ * What you are carrying shows in the light you carry.
+ *
+ * Relics changed numbers and nothing else: a player who had bought the
+ * Warden's Lantern two floors ago had no way to see it, and the shop's
+ * one line was the only time the game ever mentioned it. The lantern is
+ * the one thing of the delver's that is on screen the whole run, so it is
+ * where a relic can be worn. One owner, in `modifiers`, so the light does
+ * not decide for itself which relics it knows about.
+ */
+{
+  const worn = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(31);
+    await wait(1200);
+    run.setState({ relics: [], oil: 60, lanternUp: true });
+    for (let i = 0; i < 30 && !window.__lantern; i++) await wait(150);
+    const plain = window.__lantern ? window.__lantern.tint : null;
+    run.setState({ relics: ["lantern"] });
+    let held = plain;
+    for (let i = 0; i < 30; i++) {
+      await wait(150);
+      held = window.__lantern ? window.__lantern.tint : null;
+      if (held !== plain) break;
+    }
+    return { plain, held, declared: window.__derived.lightTint(["lantern"]) };
+  });
+  ok(
+    "the light a delver carries is tinted by the relics they hold",
+    worn.plain !== null && worn.held !== null && worn.held !== worn.plain,
+    JSON.stringify(worn)
+  );
+  ok(
+    "and the tint is the one the modifiers declare, not one the light invented",
+    worn.held === worn.declared,
+    JSON.stringify(worn)
+  );
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

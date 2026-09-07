@@ -76,6 +76,21 @@ export interface RunModifiers {
   showsGems: boolean;
   /** The first hit on each floor is free. */
   freeHitPerFloor: boolean;
+  /**
+   * The colour of the light the delver carries.
+   *
+   * The one thing of theirs that is on screen for the whole run, and
+   * until now it said nothing about them: a player who bought the
+   * Warden's Lantern on floor one had no sign of it afterwards but a
+   * line in the HUD, and the Ash Censer none at all. A relic that is
+   * worn reads at a glance and costs nothing to draw.
+   *
+   * Ordered, so two relics that both tint it agree on which wins rather
+   * than depending on the order they were bought in: the Warden's
+   * Lantern is a cold light and takes precedence, because it is the one
+   * a player is watching the room with.
+   */
+  lightTint: string;
 }
 
 const has = (relics: readonly RelicId[], id: RelicId) => relics.includes(id);
@@ -106,8 +121,21 @@ function compute(relics: readonly RelicId[]): RunModifiers {
     showsWarden: has(relics, "lantern"),
     showsGems: has(relics, "chart"),
     freeHitPerFloor: has(relics, "charm"),
+    // Cold first, then smoke, then the plain flame every delver starts
+    // with. One place decides, so the lantern never has to know which
+    // relics exist.
+    lightTint: has(relics, "lantern")
+      ? LIGHT_TINT_WARDEN
+      : has(relics, "censer")
+        ? LIGHT_TINT_CENSER
+        : LIGHT_TINT_PLAIN,
   };
 }
+
+/** The three colours a carried light can be, and nothing else names them. */
+export const LIGHT_TINT_PLAIN = "#ffd9a0";
+export const LIGHT_TINT_WARDEN = "#bcd8ff";
+export const LIGHT_TINT_CENSER = "#e2b98a";
 
 /**
  * What a relic costs. The same wherever you meet the shop.

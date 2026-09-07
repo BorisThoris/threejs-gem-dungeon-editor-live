@@ -288,7 +288,7 @@ function RelicStand({
           const run = useRun.getState();
           if (run.relics.includes(id)) return;
           if (!canSpend(run, price)) return;
-          if (run.spendGems(price)) run.addRelic(id);
+          if (run.spendGems(price)) run.addRelic(id, [position[0], position[2]]);
         }}
       />
     </group>

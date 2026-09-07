@@ -335,6 +335,22 @@ Two stores that both claimed the player's stats. So:
   is the floor's first room while the player has not left it and the floor
   still has patience, and the Warden's step, the Harrier's waking and the
   thief's arrival each ask it rather than deciding for themselves.
+- Taking something is drawn the same way a blast is: `props/Taken.tsx`
+  listens to `gemCollected`, `relicTaken` and `itemTaken` and plays one
+  light and one instanced ring of motes, deliberately smaller and shorter
+  than the burst so the two are never confused. Where each event happened
+  travels with it as an optional pair of numbers; the store does no
+  geometry with them and only passes them on, and the three pickups that
+  are puzzle rewards give none, so the flourish plays at the player.
+- What a relic does to the screen is decided in `modifiers` with
+  everything else it does: `lightTint` is the colour of the carried
+  lantern, so two relics that both tint it agree whichever was bought
+  first, and `player/Lantern.tsx` asks rather than deciding.
+- A chest's key is its index in the room's full placement list, owned by
+  `rooms/placements.ts` so the trigger that loots one, the prop that draws
+  it open, and the store's probe cannot disagree. The drawn list is
+  shorter in a room where something has burst, so the open flag is looked
+  up by where the chest stands rather than by its place in either list.
 - Everything that can take a life publishes `tell`, nought to one: how near
   it is to doing it. The body shows that number and the checks read it, so a
   warning cannot be true on screen and false in a test.

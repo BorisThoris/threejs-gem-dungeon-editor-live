@@ -100,7 +100,15 @@ is light, so the Warden sees you for exactly as long as it is out.
 
 A blast is seen as well as heard - a flash, embers thrown out and pulled
 back down, dust across the floor, the view knocked harder the nearer it
-was - and the wall it opens is left with its stone at the gap. It does
+was - and the wall it opens is left with its stone at the gap. Taking
+something is seen too, and deliberately unlike a blast: a smaller light
+and a handful of motes drawn upward and inward, over in about half a
+second, cold blue for a gem and gold for a relic. A chest you have
+emptied stands with its lid back, so a vault tells you which of its
+three you have already been to. And what you are carrying shows in what
+you carry: the Warden's Lantern gives your own flame a cold cast and the
+Ash Censer a smokier one, which for two floors was a line in the HUD and
+nothing you could see. It does
 more than open walls. Barrels, crates and urns burst, and
 one standing between the bomb and you takes the blast for you; now and
 then a gem glints in the wreck. The Warden inside a blast is routed. And

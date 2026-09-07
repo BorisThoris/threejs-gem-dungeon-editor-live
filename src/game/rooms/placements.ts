@@ -223,3 +223,21 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   }
   return picked;
 }
+
+/**
+ * A chest's key: the room it is in and its index in the room's placements.
+ *
+ * Three things need this and two of them used to work it out separately -
+ * the trigger that loots a chest, the prop that has to know whether it has
+ * been looted, and the probe a check reads. They have to agree exactly,
+ * because the index is into the full placement list rather than the
+ * standing one: a room where a barrel has burst has a shorter standing
+ * list, and a chest keyed off that list would change its key mid-floor
+ * and forget it had been opened.
+ *
+ * It lives here rather than beside the component that draws chests
+ * because the store's probe needs it too, and the store must not import a
+ * component: that would put React and three into the graph of a module
+ * the layout checks bundle and run under node.
+ */
+export const chestKey = (roomId: string, index: number) => `${roomId}:${index}`;

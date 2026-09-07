@@ -19,6 +19,7 @@ import { WispDriver } from "./mobs/WispDriver";
 import { HarrierDriver } from "./mobs/HarrierDriver";
 import { KeeperDriver } from "./keeper/KeeperDriver";
 import { Burst } from "./props/Burst";
+import { Taken } from "./props/Taken";
 import { ReaperDriver } from "./reaper/ReaperDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
@@ -126,6 +127,11 @@ export function Scene() {
           while a room is still mounting. */}
       <Lantern />
       <Burst />
+      {/* The other half of the blast's argument: what taking something
+          looks like. Beside it, and outside the physics tree for the same
+          reason - neither is a body, and both have to be able to play
+          while a room is still mounting. */}
+      <Taken />
       <Suspense fallback={null}>
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />

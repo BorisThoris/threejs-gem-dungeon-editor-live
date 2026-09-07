@@ -44,7 +44,7 @@ export function Gem({ roomId, position, takeLabel }: GemProps) {
     const dx = cam.x - position[0];
     const dz = cam.z - position[2];
     if (dx * dx + dz * dz <= PICKUP_RADIUS * PICKUP_RADIUS) {
-      useRun.getState().collectGem(roomId);
+      useRun.getState().collectGem(roomId, [position[0], position[2]]);
     }
   });
 
@@ -70,7 +70,7 @@ export function Gem({ roomId, position, takeLabel }: GemProps) {
           position={[0, 0, 0]}
           label={takeLabel}
           radius={2.4}
-          onInteract={() => useRun.getState().collectGem(roomId)}
+          onInteract={() => useRun.getState().collectGem(roomId, [position[0], position[2]])}
         />
       )}
     </group>

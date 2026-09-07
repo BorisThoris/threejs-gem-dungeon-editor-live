@@ -58,10 +58,17 @@ export interface BusEvents {
   wardenLured: { roomId: string };
   /** The Bone Charm ate a hit. */
   charmSpent: undefined;
-  /** A relic was taken. */
-  relicTaken: { id: string };
+  /**
+   * A relic was taken, and where from when the thing that took it knew.
+   *
+   * The place is optional on all three of these because three of the five
+   * callers have no place to give: a puzzle's reward is not lying
+   * anywhere, it is granted. What has a spot says so, and the flourish
+   * plays where the player is when nothing does.
+   */
+  relicTaken: { id: string; x?: number; z?: number };
   /** Something went into the satchel. */
-  itemTaken: { id: string };
+  itemTaken: { id: string; x?: number; z?: number };
   /** Something came out of it, and is now known for what it was. */
   itemUsed: { id: string; cruel: boolean };
   /** The shopkeeper put a name to something without it being spent. */
@@ -100,7 +107,7 @@ export interface BusEvents {
   runLost: undefined;
   /** A deed was done for the first time. */
   deedEarned: { id: string };
-  gemCollected: { roomId: string };
+  gemCollected: { roomId: string; x?: number; z?: number };
   damaged: undefined;
   lifeBought: undefined;
   doorOpened: { toRoomId: string };

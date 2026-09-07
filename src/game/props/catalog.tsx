@@ -22,6 +22,18 @@ export interface PropProps {
   /** Radians about y. */
   rotation?: number;
   scale?: number;
+  /**
+   * Emptied, for the props that can be. Only the chest reads it: a
+   * looted chest kept its lid shut for the rest of the floor, so a
+   * vault with three of them told a player nothing about which ones
+   * they had already been to, and the trigger quietly going away was
+   * the only sign anything had happened.
+   *
+   * On PropProps rather than on a chest-only component because the
+   * catalogue is one table of one signature, and a prop that ignores
+   * it costs nothing.
+   */
+  open?: boolean;
 }
 
 /**
@@ -107,11 +119,21 @@ function Chair(p: PropProps) {
 }
 
 function Chest(p: PropProps) {
+  // The lid turns about its back edge rather than its middle, so an open
+  // chest reads as hinged instead of as a plank floating over a box. The
+  // group carries the hinge and the mesh sits forward of it.
+  const open = p.open === true;
   return (
     <group {...frame(p)}>
       <mesh position={[0, 0.3, 0]} castShadow geometry={geo("box", 0.9, 0.6, 0.55)} material={mat({ color: WOOD, roughness: 0.8 })} />
-      <mesh position={[0, 0.66, 0]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD })} />
-      <mesh position={[0, 0.45, 0.29]} geometry={geo("box", 0.12, 0.16, 0.04)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
+      {/* The inside, only worth drawing once there is a way to see it. */}
+      {open && (
+        <mesh position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={geo("plane", 0.82, 0.47)} material={mat({ color: "#1c1410", roughness: 1 })} />
+      )}
+      <group position={[0, 0.66, -0.285]} rotation={[open ? -1.15 : 0, 0, 0]} userData={{ lid: true }}>
+        <mesh position={[0, 0, 0.285]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD })} />
+        <mesh position={[0, -0.21, 0.575]} geometry={geo("box", 0.12, 0.16, 0.04)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
+      </group>
     </group>
   );
 }

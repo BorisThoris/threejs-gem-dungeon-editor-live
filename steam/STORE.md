@@ -87,6 +87,8 @@ them is the easy one, and all of them are there from the first run.
   barrels, routs the Warden, downs the Harrier and kneels the Keeper
 - A Harrier from the second floor down that the spikes cannot touch, and
   a Keeper at the last stairs that only a blast moves
+- Six relics bought with gems, two of them worn: the light you carry
+  changes colour to say what you hold
 - Thirteen items whose names are hidden and whose blessings are not
 - Five delvers, all available from the first run
 - Fifteen deeds, and a seed on every run so you can walk the same dungeon again

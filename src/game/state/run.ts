@@ -34,7 +34,9 @@ import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
 import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
-import { placementsFor } from "../rooms/placements";
+import { chestKey, placementsFor } from "../rooms/placements";
+import { gemFor, keyFor } from "../rooms/kinds";
+import { sentryFor } from "../sentry/placement";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
 import { keeperPostsFor } from "../keeper/posts";
@@ -377,12 +379,18 @@ export interface RunState {
   travel: (dir: Dir) => void;
   /** The room shell reports that its colliders are mounted. */
   roomReady: (roomId: string) => void;
-  collectGem: (roomId: string) => boolean;
+  /**
+   * Take the room's gem. `at` is where it was lying, when the caller
+   * knows: the store does no geometry with it and only passes it on, so
+   * the flourish can play where the gem stood rather than at the player.
+   * A puzzle's reward has no spot and gives none.
+   */
+  collectGem: (roomId: string, at?: readonly [number, number]) => boolean;
   spendGems: (amount: number) => boolean;
   /** Take a relic. Does not charge for it; the shop does that. */
-  addRelic: (id: RelicId) => void;
+  addRelic: (id: RelicId, at?: readonly [number, number]) => void;
   /** Put an item in the satchel. False when there is no room for it. */
-  takeItem: (id: ItemId, from?: string) => boolean;
+  takeItem: (id: ItemId, from?: string, at?: readonly [number, number]) => boolean;
   /** Drink or read what is in a slot, and learn what it was. */
   useItem: (slot: number) => void;
   /**
@@ -992,7 +1000,7 @@ export const useRun = create<RunState>()(
       }
     },
 
-    collectGem: (roomId) => {
+    collectGem: (roomId, at) => {
       const s = get();
       if (s.gemRooms.includes(roomId)) return false;
       // Every gem taken rouses the floor. This is the whole bargain: the
@@ -1009,7 +1017,7 @@ export const useRun = create<RunState>()(
         gemRooms: [...s.gemRooms, roomId],
         alarm,
       });
-      bus.emit("gemCollected", { roomId });
+      bus.emit("gemCollected", { roomId, x: at?.[0], z: at?.[1] });
       return true;
     },
 
@@ -1051,14 +1059,14 @@ export const useRun = create<RunState>()(
       return true;
     },
 
-    addRelic: (id) => {
+    addRelic: (id, at) => {
       const s = get();
       if (s.relics.includes(id)) return;
       set({ relics: [...s.relics, id] });
-      bus.emit("relicTaken", { id });
+      bus.emit("relicTaken", { id, x: at?.[0], z: at?.[1] });
     },
 
-    takeItem: (id, from) => {
+    takeItem: (id, from, at) => {
       const s = get();
       if (s.satchel.length >= satchelSlots(s)) {
         bus.emit("notice", "Your satchel is full. Use something first.");
@@ -1068,7 +1076,7 @@ export const useRun = create<RunState>()(
         satchel: [...s.satchel, id],
         looted: from && !s.looted.includes(from) ? [...s.looted, from] : s.looted,
       });
-      bus.emit("itemTaken", { id });
+      bus.emit("itemTaken", { id, x: at?.[0], z: at?.[1] });
       return true;
     },
 
@@ -2135,6 +2143,32 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
       const room = roomNow(useRun.getState());
       return room ? crackSpot(room) : null;
     },
+    // Where this room's gem lies, if it has one: the flourish plays there
+    // and a check that walks to a gem needs the same answer the room's
+    // own dressing used, not one of its own.
+    gemSpot: (roomId: string) => {
+      const s = useRun.getState();
+      const room = s.dungeon ? roomById(s.dungeon, roomId) : null;
+      return room && s.dungeon ? gemFor(room, s.dungeon.seed) : null;
+    },
+    // Every chest in a room, by the key looting one is recorded under.
+    // One owner, in Dressing, so a check cannot loot a chest under a key
+    // the room would never use.
+    chestKeys: (roomId: string) => {
+      const s = useRun.getState();
+      const room = s.dungeon ? roomById(s.dungeon, roomId) : null;
+      if (!room || !s.dungeon) return [];
+      const asVault = s.dungeon.vaultId === room.id;
+      const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
+      const sentry = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : [])?.at ?? null;
+      return placementsFor(room, s.dungeon.seed, { asVault, sentry, key })
+        .map((p, i) => (p.kind === "chest" ? chestKey(room.id, i) : null))
+        .filter((k): k is string => k !== null);
+    },
+    // What colour the light a delver carries would be with these relics.
+    // The modifiers decide; this only asks, so a check cannot agree with
+    // a copy of the rule instead of with the rule.
+    lightTint: (relics: readonly RelicId[]) => modifiers(relics).lightTint,
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
     // What has gone off, by key: a probe reads it beside where the traps are.
     sprung: () => ({ ...useRun.getState().sprung }),

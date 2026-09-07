@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §50 asks a human
+  moment it can afford to. That is precisely the behaviour §51 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §50.
+for a person, not for this document, and it is on the list in §51.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§53), again, and it
+the thing they asked for now. Cycle 56's lesson (§54), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §50, one per system the loops added.
+Eight new questions, in §51, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3604,14 +3604,78 @@ before it strikes (0.55 measured, which is the dive it was already
 flying). The Warden's went red on the old code with a life lost and the
 tell still at nought - which is the bug, stated as a number.
 
-## 49. Steam Deck
+## 49. Taking something is a thing that happens
+
+The dungeon is one long argument for walking into the next room, and the
+reason is always the same: there is a gem in it. For the whole life of
+this game that gem left in a single frame. The octahedron stopped being
+drawn and the light it cast went out in the same instant, which does not
+read as a delver pocketing a jewel - it reads as the renderer dropping a
+mesh. A relic went the same way. An item went from inside a chest to a
+word in a satchel slot without ever having been a thing lying on a
+floor.
+
+Run 21 gave the blast a body and said why: the centrepiece of the arc
+was a sound and a set of facts changing. This is the other half of that
+argument. The blast is the worst thing that happens to a player and it
+has a body; the pickup is the best thing and had none.
+
+**What it looks like now.** A light rises at the spot over a fifth of a
+second and falls away over the rest, and fourteen motes are drawn up and
+inward, towards the delver who now has the thing. It is over in six
+tenths of a second.
+
+Deliberately smaller than a blast in every dimension - fourteen motes
+against forty, sixteen of light against thirty, six tenths of a second
+against nine. The two must never be mistaken for one another in the
+corner of an eye, because one of them means a life is at stake. A layout
+check holds that ordering rather than trusting it to whoever edits the
+constants next.
+
+The colour says what was taken: a gem's cold blue, a relic's gold, an
+item's paler gold. So the flourish is also the answer to "what did I
+just pick up" without a line of text.
+
+Built the way the blast is built, and for the same reasons: one light,
+one instanced mesh, mounted once for the room, invisible in between,
+paced on rendered frames so a slow machine sees all of it rather than
+the first frame and none of the rest, and frozen with everything else
+behind the pause menu.
+
+**Where it plays.** At the thing, when the thing had a place. Three of
+the five ways a gem can be collected are puzzle rewards, which are
+granted rather than lying anywhere, and for those it plays at the
+player. The place travels with the event as an optional pair of numbers;
+the store does no geometry with it and only passes it on.
+
+**A chest that has been opened looks opened.** Looting one used to take
+its prompt away and leave the same shut box standing there for the rest
+of the floor. A vault has three chests, so a player had no way to see
+which ones they had already been to. The lid now turns about its back
+edge, and there is an inside to see once it is up. The key a chest is
+looted under is its index in the room's full placement list, which is
+not the list that gets drawn - a room where a barrel has burst draws a
+shorter one - so the flag is looked up by where the chest stands rather
+than by its position in either list.
+
+**What you carry shows in the light you carry.** Relics changed numbers
+and nothing a player could see. Someone who bought the Warden's Lantern
+two floors ago had one line in the HUD and no other sign of it. The
+lantern is the one thing of the delver's that is on screen for the whole
+run, so it is where a relic can be worn: the Warden's Lantern gives the
+carried flame a cold cast, and the Ash Censer a dimmer, smokier one.
+The modifiers decide which wins, in one place, so two relics that both
+tint it agree regardless of which was bought first - and the light never
+has to know which relics exist.
+
+## 50. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 50. What a human playtest should watch for
+## 51. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3792,7 +3856,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 51. Options and accessibility
+## 52. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3824,7 +3888,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 52. Deeds
+## 53. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3863,7 +3927,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 53. Harness bugs that read as game bugs
+## 54. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3952,7 +4016,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 54. Tuning knobs
+## 55. Tuning knobs
 
 All in `src/game/world.ts`:
 

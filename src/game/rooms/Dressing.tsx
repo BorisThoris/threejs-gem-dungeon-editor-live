@@ -35,7 +35,7 @@ interface DressingProps {
   room: Room;
   seed: number;
 }
-import { placementsFor } from "./placements";
+import { chestKey, placementsFor } from "./placements";
 
 export { placementsFor, type DressingOptions } from "./placements";
 
@@ -86,12 +86,37 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
     for (const p of standing) (p.kind === "torch" ? lit : other).push(p);
     return [lit, other];
   }, [standing]);
+  /**
+   * Which of the room's chests stand open.
+   *
+   * Keyed by the chest's place rather than by its index in the drawn
+   * list, because those two are not the same list: the index a chest is
+   * looted under is into `placements`, and what gets drawn is `standing`,
+   * which is shorter in a room where something has burst. Looking the
+   * flag up by where the chest is sidesteps the whole question and is a
+   * handful of numbers to compare.
+   */
+  const looted = useRun((s) => s.looted);
+  const opened = useMemo(() => {
+    const out = new Set<string>();
+    placements.forEach((p, i) => {
+      if (p.kind === "chest" && looted.includes(chestKey(room.id, i))) out.add(spotKey(p));
+    });
+    return out;
+  }, [placements, looted, room.id]);
 
   return (
     <group>
       <Braziers places={braziers} roomId={room.id} />
       {rest.map((p) => (
-        <Prop key={`${p.kind}@${p.x.toFixed(1)},${p.z.toFixed(1)}`} kind={p.kind} position={[p.x, 0, p.z]} rotation={p.rotation} scale={p.scale} />
+        <Prop
+          key={`${p.kind}@${p.x.toFixed(1)},${p.z.toFixed(1)}`}
+          kind={p.kind}
+          position={[p.x, 0, p.z]}
+          rotation={p.rotation}
+          scale={p.scale}
+          open={p.kind === "chest" && opened.has(spotKey(p))}
+        />
       ))}
       {wrecks.map((p) => (
         <Wreck key={breakKey(room, p)} x={p.x} z={p.z} />
@@ -116,6 +141,9 @@ function Wreck({ x, z }: { x: number; z: number }) {
     </group>
   );
 }
+
+/** Where a placement stands, rounded, as a string two lists can match on. */
+const spotKey = (p: PropPlacement) => `${p.x.toFixed(2)},${p.z.toFixed(2)}`;
 
 /**
  * The chests in a room, and what is in them.
@@ -150,7 +178,7 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
     <>
       {placements.map((p, i) => {
         if (p.kind !== "chest") return null;
-        const key = `${room.id}:${i}`;
+        const key = chestKey(room.id, i);
         if (looted.includes(key)) return null;
         const id = rollItem(seed, key, floor);
         const known = identified.includes(id);
