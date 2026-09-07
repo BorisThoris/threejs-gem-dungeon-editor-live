@@ -359,6 +359,13 @@ Two stores that both claimed the player's stats. So:
   whatever point in the file it happens to reach. No two lines may share a
   label and nothing drawn in the danger tone may lack a high-contrast
   mark; both are held by `yarn test:layout`.
+- The four moments the arc turns on are a table in `ui/momentBeats.ts` and
+  one player in `ui/Moments.tsx`: an event, a hold, a wash and what it
+  says. The descent holds the floor's blurb on the black rather than
+  putting it in a corner notice while the player is reading a new room,
+  and it takes those words from `floorRules` like everything else about
+  the descent - so the teacher does not also say them. None of the beats
+  take a keypress.
 - The map marks what the readout names. A place the HUD tells you about -
   the harrier's roost, the stairs the Keeper holds - is on the minimap
   too, because a readout and a map that disagree about what is worth

@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §52 asks a human
+  moment it can afford to. That is precisely the behaviour §53 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §52.
+for a person, not for this document, and it is on the list in §53.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§55), again, and it
+the thing they asked for now. Cycle 56's lesson (§56), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §52, one per system the loops added.
+Eight new questions, in §53, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3730,14 +3730,61 @@ colour alone, and the same floor reads the same way twice. Seven smoke
 checks then read the drawn panel and the drawn map, because a list in the
 right order is not the same claim as a screen in the right order.
 
-## 51. Steam Deck
+## 51. The moments land
+
+Everything in this game that matters happens, and most of it happened at
+the same size as everything else.
+
+**What was flat.** Walking down to the next floor was the same 220
+millisecond cut as walking through any door on it, and a floor is the
+unit the whole run is measured in. The floor's blurb, which is the only
+warning a player gets about what is new below, arrived afterwards as a
+notice in the corner, competing with a room they had just been put down
+in and had to read. The cracked wall coming down, which a whole system of
+drafts, sounds and bombs exists to lead you to, was a burst like any
+other burst. And the Keeper kneeling, the one instant on the last floor
+when the exit can be walked through at all, was a line in the readout
+changing colour.
+
+**What they are now.** One table, one player. A moment is an event, a
+hold, a wash and what it says, and adding one is a row rather than
+another effect somewhere in the tree.
+
+The descent holds the floor's number and its blurb on the black for two
+and a half seconds, against a door's fifth of one. The words come from
+the same `floorRules` every other part of the descent's difficulty comes
+from, and the teacher no longer says them: it is the same sentence, held
+where the player can read it, and saying it in both places would be
+saying it twice.
+
+The wall gives in dust rather than fire, because the blast already has
+its own light in the room and this is the room behind it opening, which
+is a different fact.
+
+The Keeper's kneel is gold and says the stairs are open now.
+
+**Nothing blocks.** The game is back underneath and none of the beats
+take a keypress. A beat that eats an input from a player who has just
+been hit is worse than no beat at all.
+
+**How it is checked.** The table is a plain module beside the component,
+so eight layout checks read what the game promises to show without
+drawing it: every moment has a beat, each is played by an event the game
+already sends, no two answer the same event, each says something rather
+than only flashing, the descent is held longer than four door cuts, it
+names the floor and takes its words from the descent's own rules, every
+floor has something to say when you arrive on it, and no beat outstays a
+breath. Four smoke checks then read the drawn cards, because a table with
+the right words in it is not the same claim as a screen with them on it.
+
+## 52. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 52. What a human playtest should watch for
+## 53. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3918,7 +3965,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 53. Options and accessibility
+## 54. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3950,7 +3997,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 54. Deeds
+## 55. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3989,7 +4036,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 55. Harness bugs that read as game bugs
+## 56. Harness bugs that read as game bugs
 
 Every one of these is worth writing down, because the failure it produces
 is indistinguishable from the game being broken.
@@ -4113,7 +4160,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 56. Tuning knobs
+## 57. Tuning knobs
 
 All in `src/game/world.ts`:
 

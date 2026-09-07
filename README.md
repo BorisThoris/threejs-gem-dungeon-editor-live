@@ -98,6 +98,12 @@ for the player who wants to remember where the draft was. Raise the
 lantern and a wisp gathers to lead you toward the crack - and the wisp
 is light, so the Warden sees you for exactly as long as it is out.
 
+Going down a floor is a moment rather than a cut: the screen holds the
+floor's number and one line about what is new below, which is the only
+warning you get. The cracked wall coming down and the Keeper going to its
+knee each get their own, and none of them take the controls away from
+you.
+
 The readout is ordered by what is about to happen to you rather than by
 what was built first: the thing taking a life is at the top, then the
 clock you are losing, then what the door costs, then what you can spend,
