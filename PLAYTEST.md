@@ -2015,6 +2015,32 @@ way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
 for a person, not for this document, and it is on the list in §54.
 
+**One half of it was not a design question, and run 29 fixed it.** A solved
+set piece paid exactly one gem: the same as the gem lying loose on the floor
+of the same room, which can be picked up on the way past without answering
+anything. So the choice a player faced in a puzzle room was one gem for
+walking in against one gem for walking in *and* solving it, which is not a
+choice. That is a reward nobody ever set, rather than a shape anyone chose.
+
+A set piece pays two now, from `SET_PIECE_GEMS` in `world.ts`, which all
+three rooms ask. Robbing a puzzle room still pays its floor gem, so nothing
+punishes skipping; answering it pays three times that.
+
+Two rather than three, and a check written in the same run is what settled
+it: floor one's toll is three, so a set piece worth three would have paid a
+whole floor's exit by itself. That does not add a decision, it replaces one.
+The bound is written down now - worth more than a floor gem, at least three
+times a robbed room, never as much as a floor's exit - so the next person to
+tune it finds out at once if they have gone too far.
+
+The fairness promise is untouched and still checked: every floor's exit is
+payable without the vault, the arena or a single puzzle. And the alarm
+scales with the gems, so answering everything is not also the way to a quiet
+floor.
+
+What is still a person's call is the other half: whether any encounter
+should be unavoidable.
+
 ## 23. The satchel spending what it cannot use
 
 Two ways to lose an item for nothing, both found by reading `useItem`
