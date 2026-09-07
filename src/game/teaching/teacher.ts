@@ -129,7 +129,16 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "keeper", event: "keeperBars", line: "The Keeper holds the last stairs. It cannot be walked past. A blast in its room makes it kneel - for nine seconds." }),
 
   // Every floor, on arriving: what this one is like.
-  lesson({ id: "floor", event: "floorDescended", every: true, line: ({ floor }) => floorRules(floor).blurb, sample: { floor: 2, left: 0 } }),
+  /**
+   * The floor's blurb is not said here any more.
+   *
+   * It was a notice in the corner, arriving at the moment the player had
+   * just been put down in a new room and had a room to read. It is the
+   * only warning they get about what is new below, so it is now held on
+   * the black of the descent itself, where there is nothing else to look
+   * at - see `ui/Moments.tsx`, which asks `floorRules` for the same words
+   * this row did. Saying it in both places would be saying it twice.
+   */
 ];
 
 /** The events the ten loops added, each of which must have a lesson. */

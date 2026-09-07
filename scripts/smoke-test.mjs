@@ -7181,6 +7181,83 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * The moments the arc turns on are moments on screen.
+ *
+ * Going down a floor was the same 220ms cut as walking through any door on
+ * it, and the floor's blurb - the only warning a player gets about what is
+ * new below - arrived as a notice in the corner while they were reading a
+ * room they had just been put down in. The Keeper kneeling, which is the
+ * one instant on the last floor when the exit is passable, was a HUD line
+ * changing colour.
+ */
+{
+  const beats = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(51);
+    await wait(1200);
+    const card = (id) => document.querySelector(`[data-testid="moment-${id}"]`);
+    // Going down. Read in frames until the card is up, because it is drawn
+    // by React off a bus event rather than in the same tick as the emit.
+    window.__bus.emit("floorDescended", { floor: 2, left: 40 });
+    let descent = null;
+    for (let i = 0; i < 30 && !descent; i++) {
+      descent = card("descent");
+      if (!descent) await wait(120);
+    }
+    const said = descent ? descent.innerText : "";
+    const blurb = window.__world.floorRules(2).blurb;
+    // And it goes away on its own rather than sitting over the floor.
+    let gone = false;
+    for (let i = 0; i < 40 && !gone; i++) {
+      await wait(200);
+      gone = !card("descent");
+    }
+    // The Keeper kneeling gets its own.
+    window.__bus.emit("keeperKnelt");
+    let kneel = null;
+    for (let i = 0; i < 30 && !kneel; i++) {
+      kneel = card("kneel");
+      if (!kneel) await wait(120);
+    }
+    // The wall giving gets its own, and a different one.
+    window.__bus.emit("secretRevealed", { roomId: "r", to: "s" });
+    let wall = null;
+    for (let i = 0; i < 30 && !wall; i++) {
+      wall = card("wall");
+      if (!wall) await wait(120);
+    }
+    return {
+      said,
+      blurb,
+      gone,
+      kneel: kneel ? kneel.innerText : null,
+      wall: wall ? wall.innerText : null,
+    };
+  });
+  ok(
+    "going down a floor names the floor and says what is new on it",
+    /FLOOR 2/.test(beats.said) && beats.said.includes(beats.blurb),
+    JSON.stringify(beats.said.slice(0, 120))
+  );
+  ok(
+    "and the card goes away on its own rather than sitting over the floor",
+    beats.gone === true,
+    String(beats.gone)
+  );
+  ok(
+    "the Keeper kneeling is a moment, not a colour changing",
+    beats.kneel !== null && /kneels/i.test(beats.kneel),
+    JSON.stringify(beats.kneel)
+  );
+  ok(
+    "and the wall giving is its own, told apart from it",
+    beats.wall !== null && /wall/i.test(beats.wall) && beats.wall !== beats.kneel,
+    JSON.stringify(beats.wall)
+  );
+}
+
+/**
  * One readout: the urgent thing is the first thing on it.
  *
  * The lines are ordered by `hudLines`, but a check that only reads that

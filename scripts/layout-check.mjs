@@ -58,6 +58,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/Dressing";
    export * from "${root}src/game/rooms/placements";
    export * from "${root}src/ui/hudLines";
+   export * from "${root}src/ui/momentBeats";
    export * from "${root}src/game/relics/catalog";
    export * from "${root}src/game/warden/tuning";
    export * from "${root}src/game/warden/steer";
@@ -3415,6 +3416,57 @@ check("the shipped room templates reach the floors the game generates", authored
   const a = L.biomeIdFor("normal", "room_3", 4242);
   const b = L.biomeIdFor("normal", "room_3", 4242);
   check("and a room is the same place when you walk back in", a === b, `${a} then ${b}`);
+}
+
+/**
+ * The moments the arc is built around have their own beats.
+ *
+ * A floor is the unit the whole run is measured in, and going down one was
+ * the same 220ms cut as walking through any door on it. The cracked wall
+ * coming down was a burst like any other burst. The Keeper kneeling - the
+ * one instant on the last floor when the exit is passable - was a HUD line
+ * changing colour.
+ */
+{
+  const ids = L.MOMENTS.map((m) => m.id);
+  check("every moment the arc turns on has a beat", ids.length >= 3, ids.join(", "));
+  check(
+    "each is played by an event the game already sends",
+    L.MOMENTS.every((m) => typeof m.event === "string" && m.event.length > 0),
+    L.MOMENTS.map((m) => `${m.id}<-${m.event}`).join(", ")
+  );
+  check(
+    "no two of them answer the same event",
+    new Set(L.MOMENTS.map((m) => m.event)).size === L.MOMENTS.length,
+    L.MOMENTS.map((m) => m.event).join(", ")
+  );
+  check(
+    "and every one of them says something rather than only flashing",
+    L.MOMENTS.every((m) => typeof m.title === "string" && m.title.length > 0),
+    L.MOMENTS.map((m) => `${m.id}:${m.title}`).join(", ")
+  );
+  const descent = L.MOMENTS.find((m) => m.id === "descent");
+  check(
+    "going down a floor is held longer than the cut between two rooms",
+    !!descent && descent.hold > L.DOOR_CUT_MS * 4,
+    descent ? `${descent.hold}ms against a ${L.DOOR_CUT_MS}ms door` : "no descent"
+  );
+  check(
+    "and it names the floor and says what is new on it, from the descent's own rules",
+    !!descent && typeof descent.line === "function" && descent.line({ floor: 2 }) === L.floorRules(2).blurb,
+    descent && descent.line ? descent.line({ floor: 2 }).slice(0, 60) : "no line"
+  );
+  check(
+    "every floor of the descent has something to say when you arrive on it",
+    [1, 2, 3].every((n) => descent && descent.line({ floor: n }).length > 20),
+    [1, 2, 3].map((n) => (descent ? descent.line({ floor: n }).length : 0)).join(", ")
+  );
+  // Long enough to read, short enough not to be in the way.
+  check(
+    "and no beat outstays a breath",
+    L.MOMENTS.every((m) => m.hold <= 3000),
+    L.MOMENTS.map((m) => `${m.id}:${m.hold}ms`).join(", ")
+  );
 }
 
 /**

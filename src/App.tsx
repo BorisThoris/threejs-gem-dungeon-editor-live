@@ -25,6 +25,7 @@ import { DeedToast } from "./ui/Deed";
 import { ItemLog, Satchel } from "./ui/Satchel";
 import { TouchControls } from "./ui/TouchControls";
 import { Transitions } from "./ui/Transitions";
+import { Moments } from "./ui/Moments";
 
 /**
  * Esc toggles pause while a run is on and no puzzle is up: a puzzle owns
@@ -247,6 +248,7 @@ export default function App() {
     <>
       <Scene />
       <Transitions />
+      <Moments />
       <Audio />
       <Hud />
       <Minimap />
