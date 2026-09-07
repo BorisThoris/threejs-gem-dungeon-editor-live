@@ -326,6 +326,11 @@ Two stores that both claimed the player's stats. So:
   (a flash, embers, dust) off the same `bombBurst` the sound plays on, and
   the player's shake reads the same event. The store never learns the
   light exists; the checks read the effect's probe rather than the scene.
+- One teacher, one table: `teaching/teacher.ts` holds every first-time
+  line the game says - the event, the words, whether it is once a run or
+  every time - and is the only thing that emits a teaching `notice`. A
+  system that grows a rule the player cannot see adds a row; the store
+  changes facts and never says sentences.
 - Anything that is not state goes over `src/game/events.ts`. One typed bus,
   and `yarn test:layout` holds both ends of it together: every event it
   declares must be emitted somewhere and listened to somewhere. A typed bus

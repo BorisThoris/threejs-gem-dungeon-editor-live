@@ -1627,7 +1627,6 @@ export const useRun = create<RunState>()(
       if (s.harrierAwake || s.harrierSlain || s.phase !== "playing") return;
       set({ harrierAwake: true });
       bus.emit("harrierWoke");
-      bus.emit("notice", "Something takes wing.");
     },
 
     harrierStrike: () => {

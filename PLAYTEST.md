@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §47 asks a human
+  moment it can afford to. That is precisely the behaviour §48 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §47.
+for a person, not for this document, and it is on the list in §48.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§50), again, and it
+the thing they asked for now. Cycle 56's lesson (§51), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §47, one per system the loops added.
+Eight new questions, in §48, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3449,14 +3449,64 @@ over, waited for in frames rather than seconds for the reason above. Red on the 
 Perf budgets are unchanged; the effect's two geometries sit within the
 room's headroom.
 
-## 46. Steam Deck
+## 46. One teacher for every system
+
+The second refinement. The game teaches by having just happened: one
+line in the notice slot, at the moment the thing is in front of the
+player. For sixty cycles that was one module and one set of systems -
+the Warden, the watcher, the thief, the lantern, the bar, the bomb -
+and the ten loops added ten more systems that said nothing at all the
+first time. A player darted by a plate they never saw, or watching a
+moth carry their light away, or meeting a thing with wings that the
+spikes cannot touch, was told none of it.
+
+### One table
+
+Every rule a player cannot see is a row now, in one module
+(`teaching/teacher.ts`): the event, the line, whether it is said once a
+run or every time, and where it needs one, the condition it is said
+under. Twenty-eight rows in one voice. The Warden's lines moved over
+unchanged; the loops' ten events each gained one that names the rule
+and what it is for:
+
+- A plate, and darts across the lane - and the Warden has feet.
+- The Warden springing one: the floor's traps are yours to use.
+- A pit: a spike patch now, for anything that walks.
+- A grate: barred to it, and to you, until it lifts.
+- A draft, a clink, a chime, a drip: something is behind that wall.
+- A wisp that leads to the crack, and is seen by everything that hunts
+  by light.
+- A moth that carries the light where you are not.
+- Bats, woken by a dash under their roost.
+- A rat in your snare: anything with feet springs it.
+- A barrel that took the blast for you.
+- Wings that spikes cannot touch and a blast knocks down.
+- The Keeper, which cannot be walked past, and kneels for nine seconds.
+
+The floor blurbs name what is new where it is new: wings on the second
+floor, the kept stairs on the third, so the answer to the Keeper is
+known three rooms before the door rather than at it. The Harrier's bare
+notice moved out of the store: the store changes facts, the teacher
+says sentences.
+
+### Checks
+
+`test:layout` gains four, read off the table itself: every event the
+loops added has a line, every line is a sentence or two that ends and
+is under 190 characters, no two say the same thing, and every lesson
+has its own name. `test:smoke` gains three: firing all ten loop events
+says twelve lines, firing them again says nothing, and the second and
+third floors name their new thing. Red on the old tree, where nine of
+the twelve were silence.
+
+## 47. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 47. What a human playtest should watch for
+## 48. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3637,7 +3687,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 48. Options and accessibility
+## 49. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3669,7 +3719,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 49. Deeds
+## 50. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -3708,7 +3758,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 50. Harness bugs that read as game bugs
+## 51. Harness bugs that read as game bugs
 
 Both were found in the last round and both are worth writing down, because
 the failure they produce is indistinguishable from the game being broken.
@@ -3797,7 +3847,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 51. Tuning knobs
+## 52. Tuning knobs
 
 All in `src/game/world.ts`:
 

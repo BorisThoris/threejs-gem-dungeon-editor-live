@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
 import { useDeedWatch } from "./game/deeds/watch";
-import { useWardenWarning } from "./game/warden/warning";
+import { useTeacher } from "./game/teaching/teacher";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
 import { canControl, useRun } from "./game/state/run";
@@ -118,7 +118,7 @@ export default function App() {
   // The mixer follows the settings wherever the player is, including the
   // title screen the volume slider lives on.
   useMixerSettings();
-  useWardenWarning();
+  useTeacher();
   // What earns a deed, in one place. Nothing else in the game knows deeds
   // exist, which is the only way a list of achievements stays a list of
   // sentences about the game rather than bookkeeping smeared across it.

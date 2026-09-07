@@ -6843,6 +6843,53 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the run summary names what this run earned, and a fresh run has none", !arc.error && arc.thisRun.length >= 4 && /Behind the Wall/.test(arc.summary ?? "") && /Last Breath/.test(arc.summary ?? "") && arc.fresh.length === 0 && /none new/.test(arc.summaryFresh ?? ""), arc.error || JSON.stringify({ thisRun: arc.thisRun, summary: arc.summary, fresh: arc.fresh, summaryFresh: arc.summaryFresh }));
 }
 
+/**
+ * Run 22: one teacher. Every system the loops added says its one line the
+ * first time it matters, and not the second time; and a floor says what
+ * is new on it when the player arrives.
+ */
+{
+  const taught = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(23);
+    await wait(900);
+    const said = [];
+    const off = window.__bus.on("notice", (t) => {
+      if (t) said.push(t);
+    });
+    const events = [
+      ["trapSprung", { key: "k1", kind: "darts", by: "player" }],
+      ["trapSprung", { key: "k2", kind: "pit", by: "player" }],
+      ["trapSprung", { key: "k3", kind: "grate", by: "player" }],
+      ["draftFelt", { roomId: "r" }],
+      ["wallSound", { roomId: "r", flavour: "hoard" }],
+      ["wispCame"],
+      ["mothLanded"],
+      ["batsRoused"],
+      ["snareSprung", { by: "rat" }],
+      ["propBroken", { roomId: "r", kind: "barrel", key: "b" }],
+      ["harrierWoke"],
+      ["keeperBars"],
+    ];
+    for (const [e, p] of events) {
+      window.__bus.emit(e, p);
+      await wait(60);
+    }
+    const once = said.length;
+    for (const [e, p] of events) {
+      window.__bus.emit(e, p);
+      await wait(60);
+    }
+    off();
+    return { once, twice: said.length, said: said.slice(0, 12) };
+  });
+  ok("every system the loops added says its one line the first time it matters", taught.once === 12, `${taught.once} lines said: ${taught.said.map((s) => s.slice(0, 28)).join(" | ")}`);
+  ok("and says it once: the second time is silence", taught.twice === taught.once && taught.once > 0, `${taught.twice} after a second round of the same events`);
+  const blurbs = await page.evaluate(() => [2, 3].map((f) => window.__world.floorRules(f).blurb));
+  ok("a floor names what is new on it: wings on the second, the Keeper on the third", /wing/i.test(blurbs[0]) && /keeper/i.test(blurbs[1]), blurbs.join(" | "));
+}
+
 // The editor, which nothing had ever opened. It is the content pipeline:
 // author a room, mark it live, and the generator places it. Untested, all
 // three of those were claims rather than facts - and the last templates to

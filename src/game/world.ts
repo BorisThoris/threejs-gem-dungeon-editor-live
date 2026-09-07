@@ -613,7 +613,7 @@ const DESCENT: readonly FloorRules[] = [
     wardenGrace: 2,
     startingAlarm: 1,
     sentryChance: 0.45,
-    blurb: "Deeper. The halls are wider, watchers stand in them, and something is already stirring.",
+    blurb: "Deeper. The halls are wider, watchers stand in them, and something with wings roosts down here.",
     light: { ambient: 0.5, sky: "#7f96bd", fill: "#cfe0dc", fillIntensity: 14, fogFar: 41 },
   },
   {
@@ -634,7 +634,7 @@ const DESCENT: readonly FloorRules[] = [
     wardenGrace: 1,
     startingAlarm: 2,
     sentryChance: 0.65,
-    blurb: "The bottom. Watched almost everywhere, and one gem from being hunted. Take what you can and climb.",
+    blurb: "The bottom. Watched almost everywhere, one gem from being hunted, and the last stairs are kept. Bring a bomb.",
     light: { ambient: 0.34, sky: "#9c6a72", fill: "#ffae96", fillIntensity: 11, fogFar: 36 },
   },
 ];

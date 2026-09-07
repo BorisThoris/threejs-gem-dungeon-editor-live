@@ -46,6 +46,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/mobs/harrierRoost";
    export * from "${root}src/game/keeper/posts";
+   export * from "${root}src/game/teaching/teacher";
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
@@ -964,7 +965,15 @@ check("the shipped room templates reach the floors the game generates", authored
   const body = events.slice(events.indexOf("interface BusEvents"));
   const declared = [...body.slice(0, body.indexOf("\n}")).matchAll(/^  (\w+):/gm)].map((m) => m[1]);
   const tree = execFileSync("grep", ["-rhoE", "bus\\.(on|emit)\\(\"\\w+\"", join(root, "src")], { encoding: "utf8" });
-  const used = (verb, name) => tree.includes(`bus.${verb}("${name}"`);
+  /**
+   * The teacher listens from a table rather than a literal, so a grep for
+   * `bus.on("name")` cannot see it. Its rows are listeners: read them off
+   * the module instead of pretending the events they carry are unheard -
+   * and read them, rather than exempting the whole question, so a lesson
+   * pointed at an event nobody emits is still caught below.
+   */
+  const tabled = new Set(L.LESSONS.map((l) => l.event));
+  const used = (verb, name) => tree.includes(`bus.${verb}("${name}"`) || (verb === "on" && tabled.has(name));
 
   check("the bus declares the events this check knows about", declared.length > 20, `${declared.length} declared`);
   const unheard = declared.filter((e) => used("emit", e) && !used("on", e));
@@ -2535,7 +2544,26 @@ check("the shipped room templates reach the floors the game generates", authored
 
 // --- Deeds ------------------------------------------------------------------
 //
-// Fifteen achievements, and the two things about them that can silently rot:
+// One teacher. Every system with a rule the player cannot see has a line
+// in one table, said once the first time it matters; the loops' ten events
+// each have one, every line is a sentence or two that ends, and no two say
+// the same thing.
+{
+  const lessons = L.LESSONS;
+  const events = new Set(lessons.map((l) => l.event));
+  const missing = L.LOOP_EVENTS.filter((e) => !events.has(e));
+  check("the teacher has a first-time line for every event the loops added", missing.length === 0, missing.join(", ") || `${lessons.length} lessons over ${events.size} events`);
+  const texts = lessons.map((l) => ({ id: l.id, text: L.lessonText(l, l.sample, false) }));
+  const bad = texts.filter((t) => !t.text || t.text.length > 190 || !/[.!]$/.test(t.text));
+  check("every lesson is a sentence or two that ends, under 190 characters", bad.length === 0, bad.map((b) => `${b.id} (${b.text?.length ?? 0})`).join(", ") || `longest ${Math.max(...texts.map((t) => t.text.length))}`);
+  const seen = new Map();
+  const dup = texts.filter((t) => (seen.has(t.text) ? true : (seen.set(t.text, t.id), false)));
+  check("no two lessons say the same thing", dup.length === 0, dup.map((d) => d.id).join(", ") || "all distinct");
+  const ids = new Set(lessons.map((l) => l.id));
+  check("every lesson has its own name", ids.size === lessons.length, `${ids.size} of ${lessons.length}`);
+}
+
+// Ten achievements, and the two things about them that can 
 // a Steam API name that drifts from the one the store page was set up
 // with, and a deed nothing in the game can earn. The first is checked
 // against `steam/README.md`, which is the document somebody will actually
