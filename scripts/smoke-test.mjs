@@ -6591,8 +6591,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       d = run.getState().dungeon;
     }
     if (!d.rooms.some((r) => r.kind === "trap")) return { error: "no floor with a trap room in 17 seeds" };
-    // The floor below the first: the Harrier does not roost above it.
-    run.setState({ floor: W.HARRIER_FROM_FLOOR, lives: 3, satchel: ["bomb"], identified: [] });
+    // The floor below the first: the Harrier does not roost above it. And a
+    // player who has walked into the floor rather than one still standing
+    // where it dropped them: the room a floor starts you in is a sanctuary
+    // (run 23) and nothing takes wing while you are still in it, which is
+    // the rule and not this check's subject.
+    run.setState({ floor: W.HARRIER_FROM_FLOOR, floorRooms: 2, lives: 3, satchel: ["bomb"], identified: [] });
     await wait(400);
     const roost = window.__harrierRoost(d, W.HARRIER_FROM_FLOOR);
     if (!roost) return { error: "no roost on this floor" };
