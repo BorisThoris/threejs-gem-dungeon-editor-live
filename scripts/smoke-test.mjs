@@ -7241,12 +7241,26 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       });
       return out;
     };
-    for (let i = 0; i < 40 && lids().length === 0; i++) await wait(150);
+    /**
+     * Waited on until the room has drawn all of its chests, not until it
+     * has drawn one.
+     *
+     * The first non-empty read is not the finished room: a room mounts
+     * over several frames, and stopping at the first lid to appear caught
+     * a three-chest room with one of them drawn. The check then said one
+     * lid before and three after, and reported two chests that had opened
+     * themselves. What the room holds is a fact the store can be asked
+     * for, so it is asked, and the scene is read once it agrees.
+     */
+    const keys = window.__derived.chestKeys(host.id);
+    if (!keys.length) return { error: "the room reports no chests" };
+    for (let i = 0; i < 60 && lids().length < keys.length; i++) await wait(150);
     const before = lids();
-    if (before.length === 0) return { error: "no chest lids in the room" };
+    if (before.length !== keys.length) {
+      return { error: `the room drew ${before.length} of its ${keys.length} chests` };
+    }
     // Loot one, through the store, the way the shop's checks buy.
-    const key = window.__derived.chestKeys(host.id)[0];
-    if (!key) return { error: "the room reports no chests" };
+    const key = keys[0];
     run.getState().takeItem("bomb", key);
     let after = before;
     for (let i = 0; i < 40; i++) {
