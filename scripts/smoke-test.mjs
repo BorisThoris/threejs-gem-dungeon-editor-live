@@ -6887,7 +6887,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("every system the loops added says its one line the first time it matters", taught.once === 12, `${taught.once} lines said: ${taught.said.map((s) => s.slice(0, 28)).join(" | ")}`);
   ok("and says it once: the second time is silence", taught.twice === taught.once && taught.once > 0, `${taught.twice} after a second round of the same events`);
   const blurbs = await page.evaluate(() => [2, 3].map((f) => window.__world.floorRules(f).blurb));
-  ok("a floor names what is new on it: wings on the second, the Keeper on the third", /wing/i.test(blurbs[0]) && /keeper/i.test(blurbs[1]), blurbs.join(" | "));
+  ok(
+    "a floor names what is new on it: wings on the second, the kept stairs on the third",
+    /wing/i.test(blurbs[0]) && /kept|keeper/i.test(blurbs[1]),
+    blurbs.join(" | ")
+  );
 }
 
 // The editor, which nothing had ever opened. It is the content pipeline:
