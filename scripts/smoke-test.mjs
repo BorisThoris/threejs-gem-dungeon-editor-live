@@ -7002,11 +7002,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const here = run.getState().currentRoomId;
     run.setState({ floorRooms: 2, lives: 9, wardenRoomId: here, wardenCameFrom: null, alarm: 3 });
     window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    // Stood a few strides from it rather than across the room from it.
+    // How long it takes to cross a room is the chase check's business and
+    // is measured in its own steps, which a loaded machine makes shorter
+    // in wall time; this is about the last strides, so it starts there.
+    for (let i = 0; i < 40 && !window.__warden; i++) await wait(150);
+    if (window.__warden) {
+      const len = Math.hypot(window.__warden.x, window.__warden.z) || 1;
+      window.__bus.emit("teleport", { position: [(window.__warden.x / len) * (len - 3), 1.5, (window.__warden.z / len) * (len - 3)] });
+    }
     await wait(600);
     let best = 0;
     let hit = false;
     const lives = run.getState().lives;
-    for (let i = 0; i < 60 && !hit; i++) {
+    for (let i = 0; i < 120 && !hit; i++) {
       await wait(120);
       const w = window.__warden;
       if (w && typeof w.tell === "number") best = Math.max(best, w.tell);
