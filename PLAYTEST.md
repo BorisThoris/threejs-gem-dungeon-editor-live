@@ -1944,7 +1944,7 @@ allowed to move. What it may not do is collapse.
 - **The walker banks nothing.** It picks up exactly 15 gems and the tolls
   take exactly 15. The half of the economy that turns surplus gems into a
   score is never exercised by a finished run, because the walker leaves the
-  moment it can afford to. That is precisely the behaviour §53 asks a human
+  moment it can afford to. That is precisely the behaviour §54 asks a human
   to watch for, and the automated walker does it every time.
 
 ### A third instrument, fixed the same way
@@ -2013,7 +2013,7 @@ risk/reward shape — take more, wake the floor more. For a *demo*, whose job
 is to show what the game is, it means the most efficient way to play is the
 way that sees the least of it. Whether to force one encounter — a toll the
 floor cannot quite cover, a set piece on the way to the exit — is a decision
-for a person, not for this document, and it is on the list in §53.
+for a person, not for this document, and it is on the list in §54.
 
 ## 23. The satchel spending what it cannot use
 
@@ -3384,7 +3384,7 @@ And in the batch, three checks that had passed for cycles failed on a
 loaded machine and passed alone - the pause check's second placement on
 the beam, the bomb set at the cracked wall, the shop's sale - and each
 was a fixed wall-time wait standing in for a frame. All three wait for
-the thing they asked for now. Cycle 56's lesson (§56), again, and it
+the thing they asked for now. Cycle 56's lesson (§57), again, and it
 will be again: a wait in milliseconds is a guess about the machine.
 
 ### Counts
@@ -3400,7 +3400,7 @@ Harrier and the Keeper.
 
 ### What a human playtest should watch for
 
-Eight new questions, in §53, one per system the loops added.
+Eight new questions, in §54, one per system the loops added.
 
 ## 45. The blast is seen
 
@@ -3777,14 +3777,68 @@ floor has something to say when you arrive on it, and no beat outstays a
 breath. Four smoke checks then read the drawn cards, because a table with
 the right words in it is not the same claim as a screen with them on it.
 
-## 52. Steam Deck
+## 52. The refinement, reviewed
+
+Eight runs, on a brief that was not about adding anything: make what is
+already here work together, and make it worth looking at.
+
+**What each one changed.**
+
+| Run | What it was | What it is |
+| --- | --- | --- |
+| 21 | The blast was a sound and a set of facts changing | A flash, forty embers, dust, and a shake that scales with how near you stood |
+| 22 | Ten systems the loops added said nothing the first time they mattered | One table of first-time lines in one voice, said once each |
+| 23 | A floor could hit you before you had read the room you woke in | The first room is a sanctuary until you leave it, and ordinary once you have |
+| 24 | Six threats that took a life with no warning | Each publishes one number for how near it is to striking, and wears it |
+| 25 | A gem left in one frame; a looted chest stayed shut | A light and a ring of motes, coloured by what was taken; a lid that opens |
+| 26 | A readout ordered by what was built first | Five ranks of urgency, one label per fact, and a map that marks what it names |
+| 27 | A floor change was the same cut as a door | The floor's number and its blurb held on the black; the wall and the kneel each get a beat |
+
+**What the refinement found rather than added.** Three of the eight runs
+turned up a real bug that no check had ever been pointed at:
+
+- A dart plate's jamb holes stood in the lane at head height, because the
+  group's rotation was inverted. Eight runs shipped with it. It was found
+  by looking at a photograph.
+- The Warden struck with no warning at all, because what looked like a
+  windup - the grace period after it arrives in a room - is spent
+  crossing the room toward you.
+- Ground that carries sound was drawn in the danger tone with no
+  high-contrast mark, so a reader who cannot tell the tones apart saw
+  "standing water, carries" in the same grey as "moss, dead". Listing the
+  readout's lines in one place made it obvious in a minute; six runs of
+  reading the component had not.
+
+**What the refinement did not fix, and is honest about.**
+
+- **It is still not known whether any of this is fun.** Every run above
+  makes something more legible, and legibility is not the same as
+  pleasure. A player who can now see the Warden winding up may find the
+  wind-up makes it trivial rather than fair. Nothing here can tell.
+- **The set pieces are still skippable.** §22 measured that the most
+  efficient way through the demo sees the least of it, and no refinement
+  run changed the economy. A player can still pay every toll from gems on
+  the floor and never enter the arena, the library, the memory trial or
+  the vault.
+- **The beats have never been seen at speed.** They are paced on rendered
+  frames and were checked on a machine drawing three to six of them a
+  second. At sixty, a 900 millisecond flash for the wall giving may read
+  as a flicker rather than an event. This is a tuning question for a real
+  machine.
+- **Nothing was cut.** The brief said make everything better, and eight
+  runs added a flourish, a teacher, a sanctuary rule, six tells, a
+  pickup effect, a line model, a map marker and a beat player. None of
+  them removed a system. A demo that is too full is a real failure mode
+  and this arc did nothing to test for it.
+
+## 53. Steam Deck
 
 Checked at 1280x800: HUD, hint, prompt and menu text scale with the
 viewport (about 15 px on the Deck's panel, capped on desktop). The pad
 mapping is the standard one and was verified with a synthetic gamepad;
 nobody has held a Deck with this on it.
 
-## 53. What a human playtest should watch for
+## 54. What a human playtest should watch for
 
 - **Does anyone see a set piece?** The measurement in §22 says a player can
   pay every toll from gems lying on the floor and never enter the arena,
@@ -3965,7 +4019,7 @@ person can tell:
   player reads the summary's DEEDS line, and whether "Behind the Wall"
   or "Past the Keeper" sends anyone back down to try.
 
-## 54. Options and accessibility
+## 55. Options and accessibility
 
 Thirteen settings, on one screen, reachable from the title and from the
 pause menu. Most of them are not preferences - they are the list a Steam
@@ -3997,7 +4051,7 @@ the pointer and the menu back, and a game that lets you bind it away is a
 game you can get stuck in. Binding a key another action holds takes it off
 that one and the screen says which action that left with nothing.
 
-## 55. Deeds
+## 56. Deeds
 
 Fifteen achievements - ten from cycle 3, five from run 19 (§43) - listed at the title screen with what each is for whether
 or not it has been earned. They change nothing about a run - every delver
@@ -4036,7 +4090,7 @@ to lose: it must never throw, and `steamworks.js` is a native module that
 has to be unpacked from the asar or every achievement silently does
 nothing on exactly the builds that matter.
 
-## 56. Harness bugs that read as game bugs
+## 57. Harness bugs that read as game bugs
 
 Every one of these is worth writing down, because the failure it produces
 is indistinguishable from the game being broken.
@@ -4160,7 +4214,7 @@ that lies in that direction is worse than no check - it costs an
 afternoon looking for a bug that is not there, and the third time it
 happens people start ignoring the suite.
 
-## 57. Tuning knobs
+## 58. Tuning knobs
 
 All in `src/game/world.ts`:
 

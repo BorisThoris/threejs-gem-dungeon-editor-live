@@ -166,7 +166,7 @@ overlays, and on this machine - a software rasteriser at three to five
 frames a second - it now fails two to four checks intermittently, never
 the same ones twice, always in the same shape: the harness read a prompt
 too early, or stood a little wrong. Three of them were tracked down and
-fixed properly this round; the rest are described in PLAYTEST §53 along
+fixed properly this round; the rest are described in PLAYTEST §54 along
 with what would actually fix them, which is waiting on a condition the
 game publishes rather than on a clock. The checks that cover the new
 mechanics pass on every run.
@@ -454,6 +454,20 @@ PLAYTEST.md has the rest.
 
 ### Needs a person, not a machine
 
+- **The refinement made things legible, not fun.** Runs 21 to 28 gave the
+  blast a body, every system a first-time line, the spawn room a safety
+  rule, the six threats a tell before they strike, pickups a flourish,
+  the readout an order and the four big moments a beat. Every one of
+  those makes the game easier to read. None of them can tell you whether
+  reading it is enjoyable - and a wind-up that makes the Warden fair may
+  equally make it trivial. PLAYTEST §52 lists what the arc did not fix.
+- **The beats have never been seen at speed.** They are paced on rendered
+  frames and were tuned on a machine drawing three to six a second. At
+  sixty, the 900 millisecond flash when a wall gives may read as a
+  flicker rather than an event.
+- **Nothing was cut.** Eight runs each added something and none removed a
+  system. A demo that is too full is a real failure mode, and nothing
+  here tests for it.
 - **Nobody has played it.** Everything above proves the game *functions*.
   None of it says whether it is *fun*: whether the toll is set right,
   whether the Warden is frightening or tedious, whether the bottom floor
@@ -510,7 +524,7 @@ a check that goes red on the old code, the change, the docs, the nine
 suites (eight until the touch suite joined at run 18), `main`, and the
 live site. In order:
 
-Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11, and runs 11 to 20 have shipped. Runs 21 to 28 are the refinement - the brief after the loops: what is there works together, every system is better than it was, and the whole is worth looking at - and runs 21 to 27 have shipped.
+Runs 7 to 10 have shipped in this order, each on `main` and the live site; the ten loops begin at run 11, and runs 11 to 20 have shipped. Runs 21 to 28 are the refinement - the brief after the loops: what is there works together, every system is better than it was, and the whole is worth looking at - and all eight have shipped.
 
 | Run | What | Why this order |
 | --- | --- | --- |
@@ -535,6 +549,7 @@ Runs 7 to 10 have shipped in this order, each on `main` and the live site; the t
 | 25 | **Taking something is a thing that happens.** A gem left in one frame - the shape and the light both gone at once - a looted chest kept its lid shut for the rest of the floor, and a relic bought two floors ago left no mark on the screen. One flourish, built the way run 21 built the blast and deliberately smaller than it, plays where a gem, relic or item was taken; a chest's lid turns about its back edge once it is empty; and the relics a delver holds tint the lantern they carry, which is the only thing of theirs on screen for a whole run. | The blast is the worst thing that happens to a player and it has a body. The pickup is the best thing and had none. |
 | 26 | **One readout.** The HUD grew a line a run for twenty-five runs, each appended where the last one ended, so what a player read first was whatever had been built first: with the Reaper in the room, "it is here" sat below what the floor was made of, and two different facts were both labelled FLOOR. The lines become a list with a rank, one module decides order and naming, and the minimap marks the places the readout names - the roost once walked into, the stairs the Keeper holds. | A readout whose order is its build history is not a readout, and a map that disagrees with it is a second one. |
 | 27 | **The moments land.** Going down a floor was the same fifth-of-a-second cut as walking through any door on it, and the floor's blurb arrived afterwards as a corner notice while the player was reading a new room; the cracked wall coming down was a burst like any other; the Keeper kneeling was a readout line changing colour. One table and one player give each its own beat - the descent holding the floor and its blurb on the black, the wall giving in dust, the kneel in gold - and none of them take a keypress. | These are the punctuation of a run, and punctuation you cannot see is not punctuation. |
+| 28 | **Play it whole, and say what is left.** The walker end to end on three seeds, the tour re-shot with a photograph of the descent - the biggest thing on screen and the only one with no picture - the docs refreshed, the suites re-counted, and an honest review of the eight refinement runs: what each changed, the three real bugs they found rather than added, and the four things they did not fix. | An arc that does not end by saying what it failed to do is a sales pitch. |
 
 What this arc deliberately does not do: give the player a weapon. The
 Warden stays the thing you cannot fight, because that is the hook. Bombs
