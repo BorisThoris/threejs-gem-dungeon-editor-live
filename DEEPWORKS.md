@@ -459,6 +459,39 @@ Two unrelated lines, one conclusion. The resolutions the evidence supports:
   outright deletes the draft tell. A relic that opens a wall you already found by
   listening is an *enabler*. Enablers, never substitutes.
 
+### The resolution: relics become a loadout, not a ladder
+
+Hades separates in-run power from permanent progression, and its permanent layer
+is **not accumulation** (3-0). The Mirror of Night is built entirely on **paired,
+mutually-exclusive talents** — a red and a green per slot, invested in
+separately, only one active at a time, **freely switchable before a run**.
+
+That is the cleanest answer available to our problem, and it satisfies both
+objections at once:
+
+- **Diablo's** — a purchase carries no drop moment. A loadout has no purchase
+  moment to be flat; the decision is *configuring*, and it recurs every run
+  instead of ending when the sixth relic is bought.
+- **Outer Wilds'** — whatever pays best is what players optimise for. A pair you
+  *choose between* is not a parallel power ladder competing with knowing; it is a
+  declaration of how you intend to play this run.
+
+**Six relics as three either/or pairs is a build decision every run. Six relics
+as purchases is a treadmill that ends.** The gems then buy something else
+entirely — bombs, oil, a vault key, passage — and the shop stops being the
+meta-system.
+
+### And the escalation must be elected, not only imposed
+
+Hades' Pact is a **menu of 15 named, priced conditions the player enables before
+a run**, gated behind having won once (3-0). Our Coefficient is currently
+*entirely* imposed: depth, dwell and greed push it and the player never elects
+anything.
+
+The fix is not to remove it but to let the player **add** to it deliberately, at
+a named price, for a named payout — with the target rising as they clear it,
+which is what makes elected difficulty an achievement rather than a setting.
+
 **Still worth doing, with a caveat:** slots and upgrade-exchange, and rarity
 rolled by risk (behind a cracked wall, in a vault, below 25 glim) so the darkness
 bargain feeds the relic system. Hades prices removing one choice at 2 then 3
@@ -797,15 +830,29 @@ and reading it as such was the biggest methodological error available here.
   converting wishlists"** figure — both refuted, both circulating as Valve data.
 - **Outer Wilds' "three-part anatomy of a clue"** — 0-3.
 
-### The conflict the plan has not resolved
+### The conflict — and its resolution, from a third source
 
 Two unrelated researches attacked the **six shop-bought relics** from opposite
 directions: Diablo says a purchase carries no drop moment and closed its own shop
 channel for that reason; Outer Wilds says whatever pays best is what players
-optimise for, and a purchasable meta-system competes with knowing. The plan
-proposes strengthening The Offer *and* The Ledger independently. **That is a real
-design conflict, not a wording problem**, and the resolution the evidence supports
-is that relics must be enablers of knowledge use, never substitutes for it.
+optimise for, and a purchasable meta-system competes with knowing.
+
+**Hades resolves both.** Its permanent layer is not accumulation but **paired
+mutually-exclusive talents, freely switchable before a run** (3-0). Make the six
+relics a **loadout** rather than a ladder and neither objection lands: a loadout
+has no purchase moment to be flat, and a pair you choose between is not a power
+ladder competing with knowing. Relics stay enablers of knowledge use; the gems
+buy consumables and passage instead.
+
+### The methodological finding
+
+The most useful thing this programme produced is not about game design. Nine
+researches were truncated, and reading their limit-starved refutations as
+evidence produced **four wrong entries in the first draft of this document** —
+including a claim I stated as settled fact about Alien Isolation. The
+resumed passes reversed them. **Where verification is cheap and the cost of a
+wrong "no" is high, an unverified refutation must be recorded as unknown, not as
+false.**
 
 ## The one line
 
