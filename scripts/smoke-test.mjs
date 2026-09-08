@@ -5323,13 +5323,21 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const step = DIR_STEP[host.secret.dir];
     const half = halfSize(host);
     window.__bus.emit("teleport", { position: [step.x * half * 0.86, 1.5, step.z * half * 0.86] });
-    await settle(1200);
+    // Until the prompt is up, not for a fixed while: the crack shows on
+    // one frame, the trigger mounts on the next, registers on the one
+    // after and publishes on the one after that - and under suite load a
+    // frame is a fifth of a second.
+    let prompt = null;
+    for (let i = 0; i < 20 && !prompt; i++) {
+      await settle(200);
+      const m = document.body.innerText.match(/E\s+([^\n]+)/);
+      if (m && /through the crack/i.test(m[1])) prompt = m;
+    }
     const afterDraft = run.getState().glim;
-    const prompt = document.body.innerText.match(/E\s+([^\n]+)/);
     return {
       litAtStart,
       afterDraft,
-      offered: /through the crack/i.test(String(prompt ? prompt[1] : "")),
+      offered: prompt !== null,
       room: host.id,
     };
   });
@@ -7212,6 +7220,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const livesBefore = run.getState().lives;
     const gemsBefore = run.getState().gems;
     let broke = null;
+    let walkedOver = 0;
+    const offGem = window.__bus.on("gemCollected", () => walkedOver++);
     const off = window.__bus.on("propBroken", (e) => (broke = e.key));
     const t0 = performance.now();
     while (!broke && performance.now() - t0 < (W.BOMB_FUSE_S + 4) * 1000) await wait(100);
@@ -7222,8 +7232,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.shielded = run.getState().lives === livesBefore;
     out.obstaclesAfter = B.obstaclesFor("ground", room, d.seed, run.getState().placed, run.getState().broken).length;
     out.obstaclesBefore = obstaclesBefore;
+    offGem();
     out.spill = K.spillFor(d.seed, key);
-    out.gemsPaid = run.getState().gems - gemsBefore;
+    out.gemsPaid = run.getState().gems - gemsBefore - walkedOver;
     // And with nothing between: the same spot, the barrel gone, costs a life.
     window.__bus.emit("teleport", { position: [bombAt[0], 1.5, bombAt[1]] });
     await wait(400);
@@ -8480,7 +8491,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const seen = new Map();
     let placeholders = 0;
     let rooms = 0;
-    for (let seed = 1; seed <= 40; seed++) {
+    for (let seed = 1; seed <= 120; seed++) {
       let next = seed;
       for (let floor = 1; floor <= 3; floor++) {
         const rules = W.floorRules(floor);
@@ -8497,12 +8508,17 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       }
     }
 
-    // And the room the delver is actually standing in, entered twice.
+    // And the room the delver is actually standing in, entered twice - on
+    // the first seed whose first floor has one.
     const run = window.__run;
-    run.getState().startRun(3);
-    await new Promise((r) => setTimeout(r, 900));
-    const d = run.getState().dungeon;
-    const room = d.rooms.find((r) => r.template);
+    let d = null;
+    let room = null;
+    for (let seed = 1; seed <= 30 && !room; seed++) {
+      run.getState().startRun(seed);
+      await new Promise((r) => setTimeout(r, 700));
+      d = run.getState().dungeon;
+      room = d.rooms.find((r) => r.template);
+    }
     const before = room ? JSON.stringify(T.authoredProps(room)) : null;
     let after = before;
     if (room) {
