@@ -73,7 +73,20 @@ export function WardenDriver() {
       !lure && din.answering(heard, "warden", run.wardenRoomId) && heard.tag === "loud"
         ? heard.fromRoomId
         : null;
-    const going = lure ?? noise;
+    /**
+     * A noise you are standing on top of is a noise you have already
+     * investigated.
+     *
+     * Without this the Warden treats its own room as somewhere to walk to,
+     * and `nextRoom` obliges by sending it out of a doorway and back -
+     * which looks like pacing and is actually the thing failing to notice
+     * it has arrived. It also quietly moves where it re-enters from, and
+     * that showed up as a trap check the Warden had been walking into by
+     * luck for several runs: it came back in through a different doorway
+     * and missed the pit entirely.
+     */
+    const investigating = noise === run.wardenRoomId ? null : noise;
+    const going = lure ?? investigating;
 
     /**
      * Hearing is the other half of the ladder, and the half that works

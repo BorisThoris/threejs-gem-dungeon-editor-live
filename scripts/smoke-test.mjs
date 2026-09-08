@@ -6003,8 +6003,21 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await frames(6);
     await wait(600);
     out.bandSaid = bandSaid;
+    // Long enough for two lumps: they are spaced deliberately, because a
+    // floor that arrives owing three of them would otherwise deliver all
+    // three inside a twentieth of a second and read as a glitch.
+    // HEAT_SPACING_S is 5, and lives in the coefficient rather than in
+    // world.ts, which is not on this probe's window. One spacing plus a
+    // frame's grace is the shortest wait that can see a second lump.
+    await wait(5800);
     out.bought = [...bought];
-    out.hudNamesTheFloor = /the floor is/i.test(document.body.innerText);
+    /**
+     * The HUD says the same words the bus said. Written this way rather
+     * than as a literal, because the whole point of the band is that the
+     * NAME is the readout - a check that hardcoded one band's phrasing
+     * would pass or fail on which band the clock happened to reach.
+     */
+    out.hudNamesTheFloor = !!bandSaid && document.body.innerText.toLowerCase().includes(bandSaid.toLowerCase());
     out.hudCountsNothing = !/\bthe floor tires of you\b/i.test(document.body.innerText);
     off1();
     offBuy();
