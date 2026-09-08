@@ -7221,8 +7221,16 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const gemsBefore = run.getState().gems;
     let broke = null;
     let walkedOver = 0;
+    // Every prop the blast broke, not just the one it was set beside: now
+    // that the authored rooms actually register, a tableau's crate can
+    // stand inside the same blast as the barrel, and the wreck that pays
+    // is whichever of them the seed says holds something.
+    const brokeAll = [];
     const offGem = window.__bus.on("gemCollected", () => walkedOver++);
-    const off = window.__bus.on("propBroken", (e) => (broke = e.key));
+    const off = window.__bus.on("propBroken", (e) => {
+      brokeAll.push(e.key);
+      if (e.key === key) broke = e.key;
+    });
     const t0 = performance.now();
     while (!broke && performance.now() - t0 < (W.BOMB_FUSE_S + 4) * 1000) await wait(100);
     off();
@@ -7234,6 +7242,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.obstaclesBefore = obstaclesBefore;
     offGem();
     out.spill = K.spillFor(d.seed, key);
+    out.spills = brokeAll.filter((k) => K.spillFor(d.seed, k)).length;
+    out.brokeAll = brokeAll.length;
     out.gemsPaid = run.getState().gems - gemsBefore - walkedOver;
     // And with nothing between: the same spot, the barrel gone, costs a life.
     window.__bus.emit("teleport", { position: [bombAt[0], 1.5, bombAt[1]] });
@@ -7254,7 +7264,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   if (!burst.error) {
     ok("and it is out of every body's way from then on", burst.obstaclesAfter === burst.obstaclesBefore - 1, `${burst.obstaclesBefore} then ${burst.obstaclesAfter}`);
     ok("the barrel between you and the bomb took the blast for you", burst.shielded, JSON.stringify({ shielded: burst.shielded }));
-    ok("and the wreck pays what the seed says it holds", burst.gemsPaid === (burst.spill ? 1 : 0), JSON.stringify({ spill: burst.spill, paid: burst.gemsPaid }));
+    ok("and the wreck pays what the seed says it holds", burst.gemsPaid === burst.spills, JSON.stringify({ broke: burst.brokeAll, spills: burst.spills, paid: burst.gemsPaid }));
     ok("with the barrel gone, the same spot costs a life", burst.hurtWithoutIt, JSON.stringify({ hurt: burst.hurtWithoutIt }));
   }
 }
