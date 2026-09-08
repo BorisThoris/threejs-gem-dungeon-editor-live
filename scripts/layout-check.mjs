@@ -2859,24 +2859,34 @@ check("the shipped room templates reach the floors the game generates", authored
     `${L.LANTERN_INTENSITY_DOWN}->${L.LANTERN_INTENSITY_UP} candela, ${L.LANTERN_RANGE_DOWN}->${L.LANTERN_RANGE_UP} units`
   );
   /**
-   * A full lantern must not cover a whole run held up.
+   * A full flask must not cover a whole run held up.
    *
    * Otherwise the decision is not one: a player raises it on the first
-   * floor and never touches it again. A floor is 19 to 22 seconds of
-   * walking on its shortest path and three to five minutes actually
-   * played, so a run is roughly ten to fifteen minutes - and a hundred and
-   * fifty seconds of oil is a fraction of that, refilled at braziers by
-   * anyone who wants the light back.
+   * floor and never touches it again. The unit is no longer seconds - oil
+   * is spent walking into a room, and standing still costs nothing at all,
+   * because a wall clock taxes deliberation and hiding and those are the
+   * two things this game is made of.
    *
-   * The other end matters too: it has to be enough to actually use, or the
-   * answer is always "down" and the choice is again not one. Long enough
-   * to cross several rooms lit is the bar.
+   * So the bar is in ROOMS. A run is three floors of eight to sixteen
+   * rooms, call it thirty; a flask has to be worth several rooms of
+   * pushing into the dark at a raised flame, and nowhere near thirty of
+   * them.
    */
-  const crossing = L.ROOM_SIZE_LARGE / L.WALK_SPEED;
+  const litRooms = L.LANTERN_OIL_FULL / L.OIL_PER_NEW_ROOM;
   check(
-    "a full lantern is worth several rooms of light, and nowhere near a run of it",
-    L.LANTERN_FULL_S > crossing * 8 && L.LANTERN_FULL_S < 60 * 8,
-    `${L.LANTERN_FULL_S}s, against ${crossing.toFixed(1)}s to cross the largest room`
+    "a full flask is worth several new rooms lit, and nowhere near a run of them",
+    litRooms >= 6 && litRooms <= 15,
+    `${litRooms} new rooms at a raised flame, against about 30 in a run`
+  );
+  check(
+    "and a great deal further at a guttered one, so the bands are an economy as well as a sightline",
+    L.LANTERN_OIL_FULL / (L.OIL_PER_NEW_ROOM * 0.26) > litRooms * 3,
+    `${Math.round(L.LANTERN_OIL_FULL / (L.OIL_PER_NEW_ROOM * 0.26))} rooms at the Shrouded band`
+  );
+  check(
+    "backtracking is nearly free, so a player may look at a room twice without paying for it",
+    L.LANTERN_OIL_FULL / L.OIL_PER_KNOWN_ROOM > 30,
+    `${L.LANTERN_OIL_FULL / L.OIL_PER_KNOWN_ROOM} known rooms`
   );
   check(
     "putting it down does not un-see you at once, and un-sees you sooner than stopping running does",
@@ -4362,6 +4372,33 @@ check("the shipped room templates reach the floors the game generates", authored
   /** Every verb needs a LEGIBLE limit: a universal verb is unreadable. */
   check("every verb has exactly one limit", L.VERBS.every((v) => v.limit.length > 4));
   check("and every limit is signposted, because you cannot plan against an invisible edge", L.VERBS.every((v) => v.signpost.length > 12));
+
+  /**
+   * And the limits exist as FUNCTIONS as well as prose, keyed on the Din's
+   * surfaces rather than on biome names, so a limit the player learns as a
+   * sentence is the same limit the game enforces.
+   */
+  check("wet stone does not crack, and the game can be asked", L.bombCracks("stone") && !L.bombCracks("water"));
+  check("a snare will not set on tile, and the game can be asked", L.snareSets("stone") && !L.snareSets("tile"));
+  check("a draft kills a flame that is up", L.draftSnuffs(true, 100) === true);
+  check("and takes nothing from one already down", L.draftSnuffs(true, 0) === false);
+  check("standing out of the draft costs the flame nothing", L.draftSnuffs(false, 100) === false);
+  check("a vault re-locks behind you", L.VAULT_RELOCKS === true);
+
+  /**
+   * Each limit bites exactly one surface. A limit that killed two of the
+   * five would not be an edge, it would be a tax.
+   */
+  check("each limit costs one surface, not a category", L.BOMB_DEAD.length === 1 && L.SNARE_DEAD.length === 1);
+  check("and they are different surfaces, so no room is dead to both", L.BOMB_DEAD.every((g) => !L.SNARE_DEAD.includes(g)));
+  check("every dead surface is one the Din actually names", [...L.BOMB_DEAD, ...L.SNARE_DEAD].every((g) => L.SURFACES.includes(g)));
+  check("and most surfaces are dead to neither", L.SURFACES.filter((g) => L.bombCracks(g) && L.snareSets(g)).length >= 3, `${L.SURFACES.filter((g) => L.bombCracks(g) && L.snareSets(g)).length} of ${L.SURFACES.length}`);
+
+  /** Each limit's prose and its function have to name the same surface. */
+  const bombLimit = L.VERBS.find((v) => v.id === "bomb");
+  const snareLimit = L.VERBS.find((v) => v.id === "snare");
+  check("the bomb's sentence names the surface its function kills", /wet|water/.test(`${bombLimit?.limit} ${bombLimit?.signpost}`), bombLimit?.limit);
+  check("and the snare's does too", /tile/.test(`${snareLimit?.limit} ${snareLimit?.signpost}`), snareLimit?.limit);
 }
 
 /**

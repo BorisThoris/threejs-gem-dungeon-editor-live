@@ -38,6 +38,8 @@
  * memory ceiling, and shipped surfaces that visibly repel it.
  */
 
+import type { Surface } from "../din/tags";
+
 export interface Verb {
   id: string;
   /** What it IS. If this reads as a genre function, the brief is wrong. */
@@ -145,3 +147,58 @@ export const KEY_IS = [
   { property: "metal", pays: "dropping it is [loud] 0.50, and the Cutpurse hears metal" },
   { property: "unique", pays: "carrying it makes you the most interesting thing on the floor" },
 ] as const;
+
+/**
+ * The limits, as functions rather than as prose.
+ *
+ * `VERBS` says what each limit IS, in the words the signpost uses. These
+ * are the same four facts in the form the game can ask, and they are here
+ * beside the prose so the two cannot drift: a limit whose sentence says
+ * one thing and whose function says another is worse than no limit, because
+ * the player learns the sentence and plans against it.
+ *
+ * All four are keyed on the Din's surface vocabulary rather than on a biome
+ * name, for the reason the Din exists: a rule that names `catacomb` is a
+ * rule about one room kind, and a rule that names `tile` is a rule about
+ * every floor that reads glazed, including ones not written yet.
+ */
+
+/**
+ * Wet stone does not crack.
+ *
+ * The wave goes into the water instead of into the wall. The signpost is
+ * the room itself: a flooded chamber is unmistakable from its doorway, and
+ * the crack in it runs dark and swollen rather than dry and pale.
+ */
+export const BOMB_DEAD: readonly Surface[] = ["water"];
+export const bombCracks = (surface: Surface): boolean => !BOMB_DEAD.includes(surface);
+
+/**
+ * A snare will not set on tile.
+ *
+ * The teeth skid and it will not sit flat. Tile is the one surface that
+ * reads glazed, and it is worth knowing which rooms have it before you
+ * are backing into one with the Warden coming.
+ */
+export const SNARE_DEAD: readonly Surface[] = ["tile"];
+export const snareSets = (surface: Surface): boolean => !SNARE_DEAD.includes(surface);
+
+/**
+ * A draft kills the flame.
+ *
+ * The draft that says a wall is thin is the same draft that puts the
+ * lantern out, which is the whole of the joke: the tell that leads you to
+ * the secret takes away the light you were reading it by. It only bites a
+ * flame that is up - a lantern already down has nothing to lose.
+ */
+export const draftSnuffs = (inDraft: boolean, glim: number): boolean => inDraft && glim > 0;
+
+/**
+ * A vault re-locks behind you.
+ *
+ * The bar drops as you cross the threshold, the first time and every time,
+ * so the key buys one entry rather than a door that is now open. It is
+ * why setting the key on a plate is a real decision and not a free extra
+ * use of a thing you had finished with.
+ */
+export const VAULT_RELOCKS = true;

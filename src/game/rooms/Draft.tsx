@@ -47,6 +47,15 @@ export function Draft({ room }: { room: Room }) {
       felt.current = true;
       bus.emit("draftFelt", { roomId: room.id });
     }
+    /**
+     * A draft kills the flame - the lantern's one limit, and the joke the
+     * whole tell is built on: the draft that says a wall is thin is the
+     * same draft that takes away the light you were reading it by. It is
+     * checked every frame the player stands in it rather than once on
+     * arrival, so backing out and coming back with it raised is the same
+     * bargain each time.
+     */
+    if (near && run.glim > 0) run.snuffLantern();
     // And what is behind it, faintly, every few seconds while they stand
     // there: the draft says there is a room, the sound says what is in it.
     if (near && run.dungeon) {

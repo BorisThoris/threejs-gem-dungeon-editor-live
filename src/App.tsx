@@ -92,6 +92,14 @@ function useSatchelKeys() {
         useRun.getState().toggleMark();
         return;
       }
+      // Setting the key down. It is a heavy piece of cut metal rather
+      // than a number in a wallet, so it can be put on the floor - which
+      // makes a noise where it lands, and is the one lure the player
+      // already owns and never has to buy.
+      if (bindings.dropKey.includes(event.code)) {
+        useRun.getState().dropKey();
+        return;
+      }
       const slot = SLOT_ACTIONS.findIndex((action) => bindings[action].includes(event.code));
       if (slot < 0) return;
       useRun.getState().useItem(slot);

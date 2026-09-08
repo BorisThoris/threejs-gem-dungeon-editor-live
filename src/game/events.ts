@@ -103,6 +103,13 @@ export interface BusEvents {
   arenaRun: { running: boolean };
   /** The floor's key has been picked up. */
   keyTaken: undefined;
+  /**
+   * The key has been set down. It is a heavy piece of cut metal, so this
+   * is a noise where the key is rather than a number leaving a wallet.
+   */
+  keyDropped: { roomId: string };
+  /** The key is holding a plate down, and the plate is keeping it. */
+  keySetOnPlate: { roomId: string };
   /** A vault has been unlocked. */
   vaultOpened: { roomId: string };
   /** A Sentry held the player in its beam long enough to call out. */

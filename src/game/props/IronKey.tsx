@@ -21,6 +21,12 @@ interface IronKeyProps {
 export function IronKey({ roomId, position }: IronKeyProps) {
   const group = useRef<Group>(null);
   const taken = useRun((s) => s.keyTakenIn !== null);
+  /**
+   * A key set down in this room lies where it was set down, and the same
+   * press picks it up. Without this, dropping the key would be throwing
+   * it away, and a lure you cannot retrieve is not a lure.
+   */
+  const lying = useRun((s) => (s.keyLyingIn === roomId ? s.keyLyingAt : null));
 
   useFrame((state) => {
     const g = group.current;
@@ -30,10 +36,11 @@ export function IronKey({ roomId, position }: IronKeyProps) {
     g.position.y = position[1] + Math.sin(t * 1.7) * 0.09;
   });
 
-  if (taken) return null;
+  if (taken && !lying) return null;
+  const at: [number, number, number] = lying ? [lying.x, position[1], lying.z] : position;
 
   return (
-    <group ref={group} position={position}>
+    <group ref={group} position={at}>
       {/* A bow, a shaft and two teeth: unmistakably a key at a glance. */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.12, 0.035, 8, 16]} />
@@ -52,7 +59,7 @@ export function IronKey({ roomId, position }: IronKeyProps) {
       <pointLight color="#ffd479" intensity={2.2} distance={3.2} />
       <InteractTrigger
         position={[0, 0, 0]}
-        label="Take the iron key"
+        label={lying ? "Pick the iron key back up" : "Take the iron key"}
         radius={CLOSE_REACH}
         onInteract={() => useRun.getState().takeKey(roomId)}
       />

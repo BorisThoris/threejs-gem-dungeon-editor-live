@@ -105,6 +105,16 @@ export function DinDriver() {
       }),
       bus.on("vaultOpened", () => din.release("carried:key")),
       bus.on("thiefTook", () => din.release("carried:key")),
+      /**
+       * Metal on stone. It is the loudest thing the player owns that
+       * costs nothing to use, and it lands where the key lands rather
+       * than where the player ends up - which is the entire point of it.
+       */
+      bus.on("keyDropped", ({ roomId }) => {
+        din.release("carried:key");
+        strike("keyDropped", roomId);
+      }),
+      bus.on("keySetOnPlate", () => din.release("carried:key")),
 
       /**
        * The lantern is a condition, not an event: it is true for as long
@@ -120,7 +130,15 @@ export function DinDriver() {
         }
         const { s, bars } = floor();
         if (!s.dungeon || !s.currentRoomId) return;
-        din.hold("lantern", "lantern", s.dungeon.rooms, s.currentRoomId, 1, 0, 0, bars);
+        /**
+         * The magnitude is the glim, so lowering the flame makes the
+         * player less visible BY DEGREES rather than by a switch - which
+         * is the whole reason the lantern has five bands and not two
+         * states. A Sentry answers to [bright] at 0.50, so a delver at
+         * Guttered is already under its threshold in the next room and
+         * still over it in its own.
+         */
+        din.hold("lantern", "lantern", s.dungeon.rooms, s.currentRoomId, s.glim / 100, 0, 0, bars);
       }),
       bus.on("lanternOut", () => din.release("lantern")),
 
@@ -153,7 +171,11 @@ export function DinDriver() {
           ["carried:key", "carriedKey"],
           ["wisp", "wisp"],
         ] as const) {
-          if (din.holding(key)) din.hold(key, id, s.dungeon.rooms, roomId, undefined, 0, 0, bars);
+          // The lantern moves at whatever band it is currently on, rather
+          // than at the magnitude the table declares: it is the one held
+          // source whose strength the player is choosing continuously.
+          const at = key === "lantern" ? s.glim / 100 : undefined;
+          if (din.holding(key)) din.hold(key, id, s.dungeon.rooms, roomId, at, 0, 0, bars);
         }
       }),
     []

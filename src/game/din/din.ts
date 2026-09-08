@@ -143,7 +143,7 @@ export function hold(
   id: HeldId,
   rooms: readonly Room[],
   roomId: string,
-  magnitude = HELD[id].magnitude,
+  magnitude: number = HELD[id].magnitude,
   x = 0,
   z = 0,
   bars: ReadonlySet<string> = new Set()

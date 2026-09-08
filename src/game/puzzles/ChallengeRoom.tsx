@@ -4,10 +4,11 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { Color, Vector3, type MeshStandardMaterial } from "three";
 
 import { bus } from "../events";
+import { InteractTrigger } from "../interact/InteractTrigger";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { useRun } from "../state/run";
-import { GROUND_Y, SET_PIECE_GEMS } from "../world";
+import { CLOSE_REACH, GROUND_Y, SET_PIECE_GEMS } from "../world";
 import { challengeAnchors } from "./anchors";
 import { Carryable, carry } from "./Carryable";
 
@@ -63,8 +64,18 @@ export function ChallengeRoom({ room }: RoomKindProps) {
     return () => bus.emit("hint", null);
   }, [outcome, safeNow]);
 
-  /** Something other than the idol is holding the plate down. */
-  const weighted = () => carry.countResting(plate[0], plate[2], PLATE_RADIUS, IDOL) > 0;
+  /**
+   * Something other than the idol is holding the plate down.
+   *
+   * The key counts, and that is the whole of what rebriefing it bought:
+   * it is a heavy piece of cut metal, and heavy is a property a plate can
+   * read. The plate keeps it, which is why this is a decision - the vault
+   * has two other ways in, so spending the key here is a trade rather
+   * than a mistake.
+   */
+  const weighted = () =>
+    carry.countResting(plate[0], plate[2], PLATE_RADIUS, IDOL) > 0 ||
+    useRun.getState().keyOnPlateIn === room.id;
 
   // The plate shows whether lifting the idol is safe: green when weighted
   // by something else, red when the idol alone holds it. Written only on
@@ -110,6 +121,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
 
       {/* The altar and its plate. */}
       <group position={plate}>
+        <PlateKey roomId={room.id} />
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 0.17, 0]} castShadow>
             <cylinderGeometry args={[1.3, 1.4, 0.34, 16]} />
@@ -150,5 +162,36 @@ export function ChallengeRoom({ room }: RoomKindProps) {
         </Carryable>
       ))}
     </>
+  );
+}
+
+/**
+ * Setting the key on the plate.
+ *
+ * Offered only while there is a key in hand and the plate does not already
+ * have one on it. The press spends the key for good: the plate keeps it,
+ * and the vault upstairs has to be opened one of its other two ways. That
+ * trade is only honest because the gate audit made those other two ways
+ * real, which is the argument for auditing per gate written as code.
+ */
+function PlateKey({ roomId }: { roomId: string }) {
+  const keys = useRun((s) => s.keys);
+  const already = useRun((s) => s.keyOnPlateIn === roomId);
+  if (already) {
+    return (
+      <mesh position={[0, 0.56, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.12, 0.035, 8, 16]} />
+        <meshStandardMaterial color="#c9a227" metalness={0.85} roughness={0.3} emissive="#4a3a08" />
+      </mesh>
+    );
+  }
+  if (keys < 1) return null;
+  return (
+    <InteractTrigger
+      position={[0, 0.5, 0]}
+      label="Set the iron key on the plate"
+      radius={CLOSE_REACH}
+      onInteract={() => useRun.getState().setKeyOnPlate(roomId)}
+    />
   );
 }

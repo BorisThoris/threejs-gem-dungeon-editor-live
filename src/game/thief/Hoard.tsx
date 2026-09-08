@@ -30,6 +30,12 @@ import { CLOSE_REACH, GROUND_Y } from "../world";
 export function Hoard({ roomId, half }: { roomId: string; half: number }) {
   const group = useRef<Group>(null);
   const gems = useRun((s) => s.nestGems);
+  /**
+   * The Cutpurse takes the key when there is nothing else to take, so the
+   * heap can hold the one thing on the floor that is not a gem - and a
+   * prompt that counts gems would offer nothing at all for it.
+   */
+  const key = useRun((s) => s.nestKey);
   // A corner, chosen from the room's own id so it is the same corner every
   // time the player walks back in.
   const at = useMemo<[number, number, number]>(() => {
@@ -87,7 +93,13 @@ export function Hoard({ roomId, half }: { roomId: string; half: number }) {
       <InteractTrigger
         position={[0, 0.4, 0]}
         radius={CLOSE_REACH}
-        label={`Take back ${gems} gem${gems === 1 ? "" : "s"}`}
+        label={
+          gems > 0
+            ? key
+              ? `Take back ${gems} gem${gems === 1 ? "" : "s"} and the iron key`
+              : `Take back ${gems} gem${gems === 1 ? "" : "s"}`
+            : "Take back the iron key"
+        }
         onInteract={() => useRun.getState().emptyNest()}
       />
     </group>

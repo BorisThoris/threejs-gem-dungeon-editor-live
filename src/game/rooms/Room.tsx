@@ -189,7 +189,7 @@ function RoomTraps({ room, seed }: { room: RoomData; seed: number }) {
 
 /** The heap, in the one room on the floor that has one. */
 function RoomNest({ roomId, half }: { roomId: string; half: number }) {
-  const isNest = useRun((s) => s.nestRoomId === roomId && s.nestGems > 0);
+  const isNest = useRun((s) => s.nestRoomId === roomId && (s.nestGems > 0 || s.nestKey));
   return isNest ? <Hoard roomId={roomId} half={half} /> : null;
 }
 
@@ -220,7 +220,12 @@ export function Room({ room, seed }: RoomProps) {
   }, [room.id]);
 
   const gem = gemFor(room, seed);
-  const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
+  /**
+   * The room draws the key when the key is IN it, which since the key can
+   * be set down is no longer the same thing as the room it started in.
+   * `keyFor` still says where it lies when it has never been moved.
+   */
+  const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id || s.keyLyingIn === room.id);
   const floor = useRun((s) => s.floor);
   const light = floorRules(floor).light;
   const sentry = sentryFor(room, seed, floor);
