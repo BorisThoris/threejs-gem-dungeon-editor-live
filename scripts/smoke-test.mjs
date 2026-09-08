@@ -5120,45 +5120,56 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * same wall in two rooms: what differs is what the floor is made of.
      */
     {
-      const s = run.getState();
-      const wet = s.dungeon.rooms.find((r) => r.secret && !bombCracks(surfaceOf(r)));
-      const dry = s.dungeon.rooms.find((r) => r.secret && bombCracks(surfaceOf(r)));
-      const burst = async (room) => {
-        go(room.id);
+      /**
+       * A floor has one cracked wall, and whether the room holding it is
+       * flooded is the seed's business - so both seeds are chosen rather
+       * than hoped for, and each case is played on its own dungeon.
+       * Without this one of the two passed by never happening, which is
+       * the same as not being checked at all.
+       */
+      const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+      const { floorRules } = await import("/src/game/world.ts");
+      const rules = floorRules(1);
+      const seedWhere = (want) => {
+        for (let seed = 1; seed < 600; seed++) {
+          const d = generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+          const host = d.rooms.find((r) => r.secret);
+          if (host && bombCracks(surfaceOf(host)) === want) return seed;
+        }
+        return null;
+      };
+      out.seeds = { wet: seedWhere(false), dry: seedWhere(true) };
+
+      /** Set a bomb against the one cracked wall on the seed's floor. */
+      const bombTheCrack = async (seed) => {
+        run.getState().startRun(seed);
+        await settle(1500);
+        const host = run.getState().dungeon.rooms.find((r) => r.secret);
+        run.setState({ transitioning: true, currentRoomId: host.id });
+        run.getState().roomReady(host.id);
         // The room has to be standing before a teleport into it will
         // stick: arrive too early and the room's own spawn wins, and the
         // bomb is set down nowhere near the wall it was meant for.
-        await settle(1200);
+        await settle(1300);
         run.setState({ transitioning: false, satchel: ["bomb"] });
-        const at = crackSpot(room);
+        const at = crackSpot(host);
         window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
         await settle(500);
-        return at;
-      };
-      if (wet) {
-        const at = await burst(wet);
         run.getState().placeDevice(0);
         const bomb = run.getState().placed.at(-1);
         run.getState().detonate(bomb?.key);
-        out.wet = {
-          opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === wet.id).links[wet.secret.dir]),
-          aimed: [Math.round(at[0]), Math.round(at[2])],
-          set: bomb ? [Math.round(bomb.x), Math.round(bomb.z)] : null,
-        };
-      } else out.wet = { none: true };
-      if (dry) {
-        const at = await burst(dry);
-        run.getState().placeDevice(0);
-        const bomb = run.getState().placed.at(-1);
-        run.getState().detonate(bomb?.key);
-        out.dry = {
-          opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === dry.id).links[dry.secret.dir]),
+        const after = run.getState().dungeon.rooms.find((r) => r.id === host.id);
+        return {
+          surface: surfaceOf(host),
+          opened: Boolean(after.links[host.secret.dir]),
           // Where the bomb actually went against where it was aimed, so a
           // miss reads as a miss rather than as the rule being wrong.
           aimed: [Math.round(at[0]), Math.round(at[2])],
           set: bomb ? [Math.round(bomb.x), Math.round(bomb.z)] : null,
         };
-      } else out.dry = { none: true };
+      };
+      out.wet = out.seeds.wet === null ? { none: true } : await bombTheCrack(out.seeds.wet);
+      out.dry = out.seeds.dry === null ? { none: true } : await bombTheCrack(out.seeds.dry);
     }
     return out;
   });
@@ -5177,6 +5188,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     "the same wire sets on the floor beside it",
     verbs.snare.none || verbs.snare.set === true,
     JSON.stringify(verbs.snare)
+  );
+  ok(
+    "the dungeon builds both a flooded cracked wall and a dry one",
+    verbs.seeds.wet !== null && verbs.seeds.dry !== null,
+    JSON.stringify(verbs.seeds)
   );
   ok(
     "wet stone does not crack",
@@ -5246,7 +5262,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       felt.offered === true,
       JSON.stringify(felt)
     );
-    await act();
+    // `act` belongs to the shop block's scope; the press is two lines.
+    await page.keyboard.press("KeyE");
+    await page.waitForTimeout(900);
     const through = await page.evaluate((roomId) => {
       const s = window.__run.getState();
       const host = s.dungeon.rooms.find((r) => r.id === roomId);
