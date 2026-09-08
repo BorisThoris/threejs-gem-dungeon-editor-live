@@ -1934,7 +1934,35 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const dir = ["north", "south", "east", "west"].find((k) => here.links[k]);
     if (!here || !dir) return null;
     const other = here.links[dir];
-    run.setState({ transitioning: true, currentRoomId: here.id, lives: 3, alarm: 6, lastDamageAt: -Infinity });
+    /**
+     * And nothing else on the floor may take the hit first.
+     *
+     * What is asserted below is WHEN the Warden's strike lands, so anything
+     * else that can take a life inside the window turns this into a check
+     * about which threat is quicker. That used to be nobody: the alarm was
+     * the only thing that woke a Harrier, and the floor's patience was a
+     * countdown with one event at the end of it.
+     *
+     * The coefficient changed that. At alarm 6 a floor is already three
+     * credits hot before anyone moves, and a few minutes into the suite it
+     * is past six - which buys a Harrier, which took the life 1.6 seconds
+     * before the Warden could, and the damage cooldown then swallowed the
+     * strike this check exists to time.
+     *
+     * So the floor is put back to the second it began - heat is a pure
+     * function of that, so this is the whole of resetting it - and the two
+     * things that can hit are sent away.
+     */
+    run.setState({
+      transitioning: true,
+      currentRoomId: here.id,
+      lives: 3,
+      alarm: 6,
+      lastDamageAt: -Infinity,
+      floorEnteredAt: window.__derived.clock(),
+      harrierAwake: false,
+      reaperAwake: false,
+    });
     run.getState().roomReady(here.id);
     await wait(1400);
     // Exactly where it will appear: a stride inside the doorway.
