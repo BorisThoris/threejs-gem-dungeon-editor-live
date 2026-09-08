@@ -439,6 +439,25 @@ Two stores that both claimed the player's stats. So:
   three events had nobody - among them `wardenStruck`, which meant the
   Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
+- What the delver has WORKED OUT is `src/game/state/ledger.ts`, and the one
+  place an entry gets written is `src/game/ledger/watch.ts` - the same shape
+  as `deeds/watch.ts`, and for the same reason: the alternative is a line of
+  bookkeeping in every system that can teach something.
+  - A deed records what happened and changes nothing. A lesson changes the
+    NEXT run, by letting the delver skip a step they have already paid for
+    once. That is why they are two stores and not one list: a store that
+    mixed them would invite a deed to start paying.
+  - The rule the recording side obeys, and it is a constraint on the game
+    rather than on the player: **an entry is written when its observation
+    happened, and never when something merely implies it.** Opening a wall
+    the delver never stood at teaches nothing. Three of the nine entries are
+    about a thing FAILING to react, which no event can carry, so they are
+    counted on a quarter-second tick rather than fired.
+  - What a lesson buys is spent by the system that owns the thing: the
+    Minimap marks a felt draft, `Captions.tsx` names what is behind a wall
+    and says a rung heard through one, and `hudLines.ts` carries the DARK
+    line's vein band and the KNOWN line. `knows(id)` in `state/ledger.ts` is
+    the one question any of them asks.
 - Templates come from `src/game/rooms/templates.ts`, by id.
 - What an authored room actually contains is `authoredProps` in
   `src/game/rooms/templates.ts`, and it is the one place a template's

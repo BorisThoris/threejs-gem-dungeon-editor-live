@@ -35,6 +35,7 @@ import { Pit } from "../traps/Pit";
 import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
+import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
 
@@ -158,6 +159,25 @@ function RoomWisp({ room }: { room: RoomData }) {
   const out = useRun((s) => s.wispOut);
   const here = useRun((s) => s.currentRoomId === room.id);
   return out && here ? <Wisp room={room} /> : null;
+}
+
+/**
+ * What is cut into this room's walls, and - in a start room - the names.
+ *
+ * Only while the player is standing in it, like everything else in this
+ * file: a trigger mounted in every room on the floor is thirty-four
+ * triggers the player can never reach.
+ */
+function RoomCut({ room }: { room: RoomData }) {
+  const here = useRun((s) => s.currentRoomId === room.id);
+  const isStart = useRun((s) => s.dungeon?.startId === room.id);
+  if (!here) return null;
+  return (
+    <>
+      <Cut room={room} />
+      {isStart ? <Names room={room} /> : null}
+    </>
+  );
 }
 
 /** The draft from a cracked wall, in the room that has one, while the player is in it. */
@@ -311,6 +331,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomAmbient room={room} seed={seed} />
       <RoomTraps room={room} seed={seed} />
       <RoomDraft room={room} />
+      <RoomCut room={room} />
       <RoomWisp room={room} />
       <RoomHarrier room={room} />
       <RoomKeeper room={room} />

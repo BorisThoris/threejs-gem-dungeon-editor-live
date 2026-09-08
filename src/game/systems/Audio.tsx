@@ -70,6 +70,7 @@ export function Audio() {
       bus.on("secretRevealed", () => sfx.unlock2()),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
+      bus.on("fragmentRead", () => sfx.named()),
       bus.on("keyTaken", () => sfx.key()),
       // Tolerant of a bare emit: a missing pan is a cue in the middle,
       // and a sound effect is never worth throwing out of the frame loop for.

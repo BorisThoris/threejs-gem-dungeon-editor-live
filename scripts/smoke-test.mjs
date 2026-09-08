@@ -8460,11 +8460,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await import("/src/game/rooms/shipped.ts");
     const G = await import("/src/game/dungeon/generate.ts");
     const W = await import("/src/game/world.ts");
-    // The SHIPPED set, from the file that defines it. `allTemplates()` is
+    // The SHIPPED set, from the module that owns it. `allTemplates()` is
     // the live registry, which by this point in the run also holds the
     // draft the editor block authored - and a draft an author made in the
     // Room Builder is under no obligation to use slots.
-    const shipped = (await import("/src/content/templates.json")).default;
+    const shipped = (await import("/src/game/rooms/shipped.ts")).SHIPPED;
     const ruled = shipped.filter((t) => (t.slots ?? []).length > 0);
     const multiplies = new Set(ruled.map((t) => t.id));
 
@@ -8614,6 +8614,72 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the ledger screen lists every lesson", screen.rows >= 9, JSON.stringify({ rows: screen.rows, written: screen.written }));
   ok("and shows an unlearned one as something to go and observe, never as its answer",
     screen.unwritten > 0 && screen.text.startsWith("Not yet:"), screen.text.slice(0, 90));
+}
+
+// The Deepworks itself: a fiction cut into the walls, and read by choosing
+// to stop and read it. Nothing here is voiced, nothing is on the map, and
+// nothing it says changes a rule - which is exactly why it has to be
+// checked, because a system that pays nothing is the easiest one to leave
+// half-wired.
+{
+  const walls = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const P = await import("/src/game/deepworks/placement.ts");
+    const lore = (await import("/src/game/state/lore.ts")).useLore;
+    lore.getState().clear();
+    run.getState().startRun(5);
+    await wait(1200);
+
+    // Find a room on this floor with something cut in it, and stand in it.
+    const d = run.getState().dungeon;
+    const found = d.rooms.map((r) => [r, P.cutIn(r, d, 1)]).find(([, cuts]) => cuts.length > 0);
+    if (!found) return { error: "nothing cut on this floor" };
+    const [room, cuts] = found;
+    run.setState({ transitioning: true, currentRoomId: room.id });
+    run.getState().roomReady(room.id);
+    await wait(1000);
+    window.__bus.emit("teleport", { position: [cuts[0].x * 0.75, 1.5, cuts[0].z * 0.75] });
+    await wait(900);
+
+    // It offers itself to be read, and reading it is a choice.
+    const prompted = /Read what is cut here/i.test(document.body.innerText);
+    const before = lore.getState().read.length;
+    let said = "";
+    const off = window.__bus.on("notice", (line) => {
+      if (line) said = line;
+    });
+    document.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyE", bubbles: true }));
+    await wait(700);
+    off();
+    const after = lore.getState().read.length;
+
+    // The start room's names wall, whose length is the records' and not
+    // the run's.
+    run.setState({ transitioning: true, currentRoomId: d.startId });
+    run.getState().roomReady(d.startId);
+    await wait(1000);
+    const half = d.rooms.find((r) => r.id === d.startId).size / 2;
+    window.__bus.emit("teleport", { position: [0, 1.5, -half * 0.75] });
+    await wait(900);
+    const names = /Read the names/i.test(document.body.innerText);
+
+    return {
+      prompted,
+      before,
+      after,
+      said,
+      text: cuts[0].fragment.text,
+      names,
+      runs: window.__records.getState().runs,
+      shown: P.namesOn(window.__records.getState().runs),
+    };
+  });
+  ok("a wall with something cut in it offers to be read", !walls.error && walls.prompted === true, walls.error || String(walls.prompted));
+  ok("and reading it says what is cut there, in the delver's world's own words",
+    walls.said === walls.text, JSON.stringify({ said: walls.said, cut: walls.text }));
+  ok("what has been read is remembered", walls.after === walls.before + 1, JSON.stringify({ before: walls.before, after: walls.after }));
+  ok("the start room's names wall is there to be read", walls.names === true, JSON.stringify({ runs: walls.runs, shown: walls.shown }));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

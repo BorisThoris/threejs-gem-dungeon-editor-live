@@ -846,7 +846,7 @@ Sorted by what each composes with, divided by what it costs.
 | 8 | **The Satchel that resolves** | dual edges are Din writes | small | **built** |
 | 9 | **The Offer** | four table changes | small | **built** |
 | 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | **built** |
-| 11 | **The Ledger** | needs the tells to already pay | medium | table written |
+| 11 | **The Ledger** | needs the tells to already pay | medium | **built** |
 | 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing | table written |
 
 **"Table written"** means the data and the pure functions exist in `src/`,

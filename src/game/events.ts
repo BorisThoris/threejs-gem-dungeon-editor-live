@@ -124,6 +124,8 @@ export interface BusEvents {
   runLost: undefined;
   /** A deed was done for the first time. */
   deedEarned: { id: string };
+  /** A fragment was read off a wall for the first time ever. */
+  fragmentRead: { id: number };
   /** A line was written in the Ledger. Carries the lesson's id. */
   lessonLearned: { id: string };
   gemCollected: { roomId: string; x?: number; z?: number };

@@ -47,6 +47,7 @@ writeFileSync(
    export * from "${root}src/game/relics/offer";
    export * from "${root}src/game/rooms/slots";
    export * from "${root}src/game/deepworks/fragments";
+   export * from "${root}src/game/deepworks/placement";
    export * from "${root}src/game/ledger/lessons";
    export * from "${root}src/game/din/tags";
    export * from "${root}src/game/din/carry";
@@ -4830,6 +4831,100 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the draft entry only works on a draft the player felt themselves", !!draft && /you have felt|already/.test(draft.pays), draft?.pays);
   check("and one lesson deliberately pays nothing, which is the point of it", LE.some((l) => /^Nothing\./.test(l.pays)));
   check("recording is on observation only, and it is written down as a rule", L.RECORDED_ON_OBSERVATION_ONLY === true);
+}
+
+
+// --- The Deepworks, cut into the walls -------------------------------------
+//
+// Forty fragments and a run of thirty-four rooms. The corpus was written to
+// survive being found in any order; this holds the placement to the two
+// rules that make that true - a fragment is only ever cut somewhere it
+// could have been cut, and nothing here ever sequences them.
+{
+  const kinds = L.ROOM_KINDS;
+  // Every line has somewhere it can appear. A fragment whose `on` names
+  // only surfaces no room offers is a line nobody will ever read.
+  const stranded = L.FRAGMENTS.filter(
+    (f) => !kinds.some((k) => f.on.some((sfc) => L.surfacesOf(k).includes(sfc)))
+  );
+  check("every fragment in the corpus has somewhere it can be cut", stranded.length === 0,
+    stranded.map((f) => f.id).join(", ") || "none");
+
+  // Every surface the corpus uses is one some room actually offers - the
+  // mirror of the above, and the one that catches a surface invented in the
+  // table and never mapped.
+  const offered = new Set(kinds.flatMap((k) => L.surfacesOf(k)));
+  const unmapped = [...new Set(L.FRAGMENTS.flatMap((f) => f.on))].filter((sfc) => !offered.has(sfc));
+  check("and every surface the corpus names is one a room has", unmapped.length === 0,
+    unmapped.join(", ") || "none");
+
+  // What a run actually shows. Walked the way a run walks it.
+  let rooms = 0;
+  let carrying = 0;
+  let cut = 0;
+  let wrongPlace = 0;
+  let startOnlyElsewhere = 0;
+  const seen = new Set();
+  const byEnding = new Map();
+  for (let seed = 1; seed <= 120; seed++) {
+    const ending = L.endingFor(seed);
+    for (const [i, d] of runFloors(seed).entries()) {
+      for (const room of d.rooms) {
+        rooms++;
+        const here = L.cutIn(room, d, i + 1);
+        if (here.length) carrying++;
+        cut += here.length;
+        for (const c of here) {
+          seen.add(c.fragment.id);
+          byEnding.set(ending, (byEnding.get(ending) ?? new Set()).add(c.fragment.id));
+          // Cut where it could have been cut, and nowhere else.
+          if (!c.fragment.on.includes(c.surface)) wrongPlace++;
+          if (!L.surfacesOf(room.kind).includes(c.surface)) wrongPlace++;
+          // The one that names the wall belongs in the first start room.
+          if (c.fragment.startOnly && !(i === 0 && room.id === d.startId)) startOnlyElsewhere++;
+        }
+      }
+    }
+  }
+  check("a fragment is never cut on a surface its own line forbids", wrongPlace === 0, `${wrongPlace} of ${cut}`);
+  check("and never on a surface the room does not have", wrongPlace === 0, `${cut} cuts`);
+  check("the line that names the wall is only ever in the first start room",
+    startOnlyElsewhere === 0, `${startOnlyElsewhere} out of place`);
+
+  // Most rooms say nothing. A place that talks in every room is a place
+  // nobody reads; a place that never talks has no fiction in it at all.
+  const share = carrying / rooms;
+  check("most rooms are silent, and some are not", share > 0.12 && share < 0.45,
+    `${(share * 100).toFixed(0)}% of ${rooms} rooms carry something`);
+  check("no room is a museum", cut / Math.max(1, carrying) <= L.MOST_PER_ROOM,
+    `${(cut / Math.max(1, carrying)).toFixed(2)} per room that carries`);
+
+  // The corpus is reachable. A line nothing ever draws is a line that was
+  // written for nobody.
+  check("across a hundred and twenty runs the whole corpus turns up",
+    seen.size === L.FRAGMENTS.length, `${seen.size} of ${L.FRAGMENTS.length}`);
+
+  // The ending weights, and does not filter. Three disjoint corpora would
+  // put the planted contradiction out of reach of the runs that want it.
+  const leaks = [...byEnding].map(([ending, ids]) => {
+    const favours = new Set(L.ENDING_OF[ending].favours);
+    return [ending, [...ids].filter((id) => !favours.has(id)).length];
+  });
+  check("an ending weights the corpus rather than filtering it",
+    leaks.every(([, n]) => n > 10), leaks.map(([e, n]) => `${e}:${n}`).join(", "));
+
+  // The same wall says the same thing every time you walk back past it.
+  const d = runFloors(9)[0];
+  const twice = d.rooms.map((r) => JSON.stringify(L.cutIn(r, d, 1)));
+  const again = d.rooms.map((r) => JSON.stringify(L.cutIn(r, d, 1)));
+  check("a wall says the same thing every time it is walked past",
+    twice.join("|") === again.join("|"), `${twice.length} rooms`);
+
+  // The names wall: the one tripled fact whose third leg is a rule that
+  // was already there.
+  check("the names wall is empty on the first run and grows after it",
+    L.namesOn(0) === 0 && L.namesOn(1) === 1 && L.namesOn(7) === 7, "0, 1, 7");
+  check("and stops being a spreadsheet", L.namesOn(400) === L.NAMES_SHOWN, `${L.namesOn(400)}`);
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
