@@ -14,6 +14,7 @@ import {
   GLOOM_S,
   ITEMS,
   MIRE_S,
+  MIRE_LOUDNESS,
   ITEM_IDS,
   RATTLE_ALARM,
   SATCHEL_SLOTS,
@@ -52,6 +53,7 @@ import {
   glimBand,
   oilForRoom,
 } from "../lantern/glim";
+import { AFFLICTIONS, BATCH, afflictionFor } from "../items/afflictions";
 import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
 import { barKey } from "../warden/bars";
@@ -313,6 +315,20 @@ export interface RunState {
    * allowed this, which is the whole argument for auditing per gate.
    */
   keyOnPlateIn: string | null;
+  /**
+   * How many containers have been opened toward working the mire out of
+   * your hands. The cure is a NAMED TASK CLEARED BY PLAYING rather than a
+   * subtraction: a flat cost is computed once and forgotten, and a task
+   * makes the player price their own current fragility, so the same
+   * draught is a different decision at different moments.
+   */
+  mireOpened: number;
+  /**
+   * Where the thing that followed you out of the dark is, which is never
+   * where you are. It is the best lure in the game, and it is the reason
+   * to drink an unknown potion in a room you want emptied.
+   */
+  dreadRoomId: string | null;
   /** The Cutpurse has the key in its hands, right now. */
   thiefKey: boolean;
   /** The Cutpurse got away with the key, and the nest has it. */
@@ -476,6 +492,22 @@ export interface RunState {
   placeDevice: (slot: number) => boolean;
   /** Learn what a slot holds without spending it. The shop charges for this. */
   identifySlot: (slot: number) => boolean;
+  /**
+   * Name several at once, and they lock in together.
+   *
+   * The designer who rejected limiting or punishing guesses put the reason
+   * plainly - "I'd expect people to just not make guesses until the very
+   * end" - which is exactly why our potions rotted in the satchel. The
+   * shipped answer was batched, locking validation: guessing costs more
+   * than deducing because a wrong guess in a batch wastes the right ones
+   * beside it, and nothing costs a resource at all. Returns how many were
+   * newly named.
+   */
+  identifyBatch: (slots: readonly number[]) => number;
+  /** Stand in a brazier's light: the dark stops clinging. */
+  clearGloom: () => void;
+  /** A container opened, which is what works the mire out of your hands. */
+  openedContainer: () => void;
   /**
    * Lift what is in a slot one step: cursed to plain, plain to blessed.
    * It lifts the whole kind, because a charge is a fact about a kind in
@@ -734,6 +766,8 @@ export const useRun = create<RunState>()(
     keyLyingIn: null,
     keyLyingAt: null,
     keyOnPlateIn: null,
+    mireOpened: 0,
+    dreadRoomId: null,
     thiefKey: false,
     nestKey: false,
     unlocked: [],
@@ -844,6 +878,8 @@ export const useRun = create<RunState>()(
         keyLyingIn: null,
         keyLyingAt: null,
         keyOnPlateIn: null,
+        mireOpened: 0,
+        dreadRoomId: null,
         thiefKey: false,
         nestKey: false,
         unlocked: [],
@@ -1064,6 +1100,8 @@ export const useRun = create<RunState>()(
           keyLyingIn: null,
           keyLyingAt: null,
           keyOnPlateIn: null,
+          mireOpened: 0,
+          dreadRoomId: null,
           thiefKey: false,
           nestKey: false,
           unlocked: [],
@@ -1232,6 +1270,9 @@ export const useRun = create<RunState>()(
         satchel: [...s.satchel, id],
         looted: from && !s.looted.includes(from) ? [...s.looted, from] : s.looted,
       });
+      // Working your hands loose: a chest opened counts toward the mire's
+      // named cure, and so does a container burst below.
+      if (from && !s.looted.includes(from)) get().openedContainer();
       bus.emit("itemTaken", { id, x: at?.[0], z: at?.[1] });
       return true;
     },
@@ -1319,7 +1360,27 @@ export const useRun = create<RunState>()(
           });
           break;
         case "gloom":
-          set({ effects: { ...get().effects, gloom: now + inverted(GLOOM_S, charge) } });
+          /**
+           * Was "your map goes dark for a while", which is a subtraction
+           * with no upside at all - and against the rule this whole system
+           * turns on: an unknown consumable earns its slot only if the bad
+           * outcome is DUAL-SIDED. If the worst case is pure loss, never
+           * drinking is correct play, and the satchel fills up with things
+           * a rational delver carries to the exit unopened.
+           *
+           * So it is the darkness bargain, imposed instead of chosen. The
+           * flame goes out and will not come back up while it clings, and
+           * imposed darkness pays exactly what chosen darkness pays: the
+           * watchers lose you, and the veins show in the walls. Nothing
+           * here is new - it is the lantern's own rules arriving without
+           * having been asked for.
+           */
+          set({
+            effects: { ...get().effects, gloom: now + inverted(GLOOM_S, charge) },
+            glim: 0,
+            glimUpAt: 0,
+          });
+          bus.emit("lanternOut");
           break;
         case "mapping":
           set({ mapped: true });
@@ -1343,11 +1404,31 @@ export const useRun = create<RunState>()(
           }
           break;
         }
-        case "dread":
-          // It says on the label that the Warden knows where you are, so a
-          // noise it was off chasing stops mattering.
-          get().giveAway(inverted(DREAD_ALARM, charge));
+        case "dread": {
+          /**
+           * Was the worst of the four, and the only affliction that could
+           * end a run outright: it told the Warden exactly where you were,
+           * so nobody sane would ever drink it.
+           *
+           * Now the thing that followed you out of the dark is a NOISE
+           * SOURCE THAT IS NOT WHERE YOU ARE, which under the Din makes it
+           * the best lure in the game and a reason to drink an unknown
+           * potion in a room you want emptied. The floor still rouses,
+           * because something did follow you out; what changed is where
+           * everything that hears it goes.
+           */
+          const after = get();
+          const to =
+            after.dungeon && after.currentRoomId
+              ? wakingRoom(after.dungeon, after.currentRoomId)
+              : null;
+          get().raiseAlarm(inverted(DREAD_ALARM, charge));
+          if (to) {
+            set({ dreadRoomId: to, wardenLure: to, lureUntil: until(GLOOM_S) });
+            bus.emit("wardenLured", { roomId: to });
+          }
           break;
+        }
         case "avarice": {
           // Both halves move, in opposite directions: blessed is more gems
           // for less noise, cursed is fewer for more. It is the one item
@@ -1374,6 +1455,20 @@ export const useRun = create<RunState>()(
           });
           break;
         }
+      }
+      /**
+       * And both edges are stated the moment it lands.
+       *
+       * Never discovered across runs: a dual edge the player has to find
+       * out about over three deaths is a pure loss in the run they are
+       * currently in, which is the failure this table exists to fix. The
+       * cure is said with it, because a named task nobody has been told
+       * about is a subtraction wearing a task's clothes.
+       */
+      const bite = afflictionFor(id);
+      if (bite) {
+        bus.emit("notice", `${bite.lands} ${bite.edge}`);
+        bus.emit("notice", bite.cure);
       }
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
     },
@@ -1594,6 +1689,40 @@ export const useRun = create<RunState>()(
       return true;
     },
 
+    identifyBatch: (slots) => {
+      const s = get();
+      // At most a batch at a time, and each slot counted once however many
+      // times it was named: the lock is on the batch, not on the presses.
+      const ids = [...new Set(slots.slice(0, BATCH).map((i) => s.satchel[i]))]
+        .filter((id): id is ItemId => Boolean(id) && !s.identified.includes(id as ItemId));
+      if (ids.length === 0) return 0;
+      set({ identified: [...s.identified, ...ids] });
+      for (const id of ids) bus.emit("itemNamed", { id });
+      return ids.length;
+    },
+
+    clearGloom: () => {
+      const s = get();
+      if (!running(s, s.effects.gloom)) return;
+      // Cleared by standing somewhere, not by paying for it. The brazier
+      // keeps the one job it was always better at than filling a flask.
+      set({ effects: { ...s.effects, gloom: 0 } });
+      bus.emit("notice", "The fire burns the dark off you.");
+    },
+
+    openedContainer: () => {
+      const s = get();
+      if (!running(s, s.effects.mire)) return;
+      const opened = s.mireOpened + 1;
+      const cure = AFFLICTIONS.find((a) => a.id === "mire");
+      if (cure && opened >= cure.clears.count) {
+        set({ effects: { ...s.effects, mire: 0 }, mireOpened: 0 });
+        bus.emit("notice", "Your hands come back to you.");
+        return;
+      }
+      set({ mireOpened: opened });
+    },
+
     /**
      * The shrine.
      *
@@ -1688,6 +1817,13 @@ export const useRun = create<RunState>()(
         return;
       }
 
+      // The dark clings: the flame will not come up while it does, which
+      // is the whole of what the gloom now is. The cure is a place to
+      // stand rather than a price to pay, so this is a wait, not a wall.
+      if (running(s, s.effects.gloom)) {
+        bus.emit("notice", "The dark clings to you. The wick will not catch.");
+        return;
+      }
       if (s.oil < RAISE_OIL) {
         bus.emit("notice", "There is not enough oil to bring it back up.");
         return;
@@ -2101,6 +2237,8 @@ export const useRun = create<RunState>()(
         for (const p of burst) {
           bus.emit("propBroken", { roomId, kind: p.kind, key: p.key });
           if (spillFor(s.dungeon.seed, p.key)) spilled++;
+          // A crate blown open is a crate opened, for the mire's cure.
+          get().openedContainer();
         }
         set({
           broken: [...get().broken, ...burst.map((p) => p.key)],
@@ -2371,10 +2509,21 @@ const roomNow = (s: RunState): Room | undefined =>
  * stand in, it is the bare figure - a noise made through a black screen
  * is one the game should not be inventing a floor for.
  */
+/**
+ * How long a sprint stays audible, and the one owner of it.
+ *
+ * The mire's other edge is read here rather than decided here: heavy legs
+ * are also quiet legs, and `MIRE_LOUDNESS` sits beside the duration it
+ * belongs to in the item catalogue so the rule can be checked without a
+ * browser. This stays the one place that answers "how far do my feet
+ * carry", which is why the ground and the legs are multiplied together
+ * here and nowhere else.
+ */
 export const noiseHoldFor = (s: RunState): number => {
   const room = roomNow(s);
-  if (!room || !s.dungeon) return NOISE_HOLD_S;
-  return NOISE_HOLD_S * biomeFor(room.kind, room.id, s.dungeon.seed).carry;
+  const ground = !room || !s.dungeon ? 1 : biomeFor(room.kind, room.id, s.dungeon.seed).carry;
+  const legs = running(s, s.effects.mire) ? MIRE_LOUDNESS : 1;
+  return NOISE_HOLD_S * ground * legs;
 };
 
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);

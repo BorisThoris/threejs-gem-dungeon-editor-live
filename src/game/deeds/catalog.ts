@@ -1,4 +1,5 @@
 import { DELVER_IDS } from "../delvers/catalog";
+import { DRAUGHT_IDS } from "../items/catalog";
 
 /**
  * Deeds: the things worth having done.
@@ -38,6 +39,7 @@ export const DEED_IDS = [
   "lastbreath",
   "spiked",
   "slipped",
+  "everydraught",
 ] as const;
 export type DeedId = (typeof DEED_IDS)[number];
 
@@ -151,7 +153,26 @@ export const DEEDS: Record<DeedId, Deed> = {
     blurb: "Take the last stairs while the Keeper kneels.",
     steam: "KEEPER_SLIPPED",
   },
+  /**
+   * Identification RESOLVES, and that is a feature rather than a bug.
+   *
+   * "It is a feature, not a bug, that most consumables are identified by
+   * around midgame." In a twenty-minute run that is decisive: a kind named
+   * once stays known for the rest of it, so knowing every draught is a
+   * state the player actually reaches - and a deed is what says so. What
+   * the shop sells afterwards is speed of resolution, not knowledge.
+   */
+  everydraught: {
+    id: "everydraught",
+    name: "All Draughts Known",
+    blurb: "Name every potion and scroll in one run.",
+    steam: "ALL_DRAUGHTS_KNOWN",
+  },
 };
+
+/** Whether every drinkable and readable kind has been named this run. */
+export const allDraughtsKnown = (identified: readonly string[]): boolean =>
+  DRAUGHT_IDS.every((id) => identified.includes(id));
 
 /** Whether every delver has got out at least once. */
 export const allDelversEscaped = (escapedAs: readonly string[]): boolean =>

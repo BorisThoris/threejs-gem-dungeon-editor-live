@@ -5300,6 +5300,177 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 }
 
 /**
+ * THE SATCHEL THAT RESOLVES.
+ *
+ * Our players hoarded because we told them to. The rule, from the studio
+ * whose whole genre is unknown consumables: an unknown consumable earns
+ * its slot only if the bad outcome is interestingly DUAL-SIDED, because
+ * "if the worst case is pure loss, never drinking is correct play". We
+ * shipped four whose worst case was pure loss, so the satchel filled with
+ * things a rational delver carried to the exit unopened - which is not a
+ * difficulty, it is a system that does nothing.
+ *
+ * The layout suite holds the table to its rule. This walks into all four
+ * and finds the other edge actually there, and clears each one by playing
+ * rather than by paying.
+ */
+{
+  const bag = await page.evaluate(async () => {
+    const run = window.__run;
+    const D = window.__derived;
+    const out = {};
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(83);
+    await wait(1200);
+
+    /**
+     * GLOOM. Was "your map goes dark", a subtraction with no upside. It is
+     * the darkness bargain now, imposed rather than chosen - and imposed
+     * darkness pays exactly what chosen darkness pays.
+     */
+    {
+      run.setState({ satchel: ["gloom"], oil: 60, glim: 100, transitioning: false, effects: { swift: 0, mire: 0, gloom: 0 } });
+      await wait(150);
+      run.getState().useItem(0);
+      await wait(200);
+      const dark = D.lantern();
+      // And the flame will not come back up while it clings.
+      run.getState().toggleLantern();
+      await wait(200);
+      out.gloom = {
+        wentOut: dark.glim === 0,
+        veins: dark.veins,
+        refuses: D.lantern().glim === 0,
+        clinging: run.getState().effects.gloom > 0,
+      };
+      // The cure is a place to stand, not a price to pay.
+      run.getState().clearGloom();
+      out.gloom.cured = run.getState().effects.gloom === 0;
+    }
+
+    /** MIRE. Heavy legs are also quiet legs, in the Din's own units. */
+    {
+      run.setState({ satchel: ["mire"], effects: { swift: 0, mire: 0, gloom: 0 }, mireOpened: 0 });
+      await wait(150);
+      const loudBefore = D.noiseHold();
+      run.getState().useItem(0);
+      await wait(200);
+      const loudAfter = D.noiseHold();
+      // Three containers works it out of your hands, and two does not.
+      run.getState().openedContainer();
+      run.getState().openedContainer();
+      const stillMired = run.getState().effects.mire > 0;
+      run.getState().openedContainer();
+      out.mire = {
+        quieter: loudAfter < loudBefore,
+        ratio: +(loudAfter / loudBefore).toFixed(2),
+        stillMired,
+        cured: run.getState().effects.mire === 0,
+      };
+    }
+
+    /**
+     * DREAD. Was the only affliction that could end a run outright, and so
+     * the only one nobody sane would ever drink. Now it is a noise that is
+     * not where you are, which is the best lure in the game.
+     */
+    {
+      const here = run.getState().currentRoomId;
+      run.setState({ satchel: ["dread"], dreadRoomId: null, wardenLure: null, lureUntil: 0 });
+      await wait(150);
+      run.getState().useItem(0);
+      await wait(200);
+      const after = run.getState();
+      out.dread = {
+        somewhere: after.dreadRoomId !== null,
+        notHere: after.dreadRoomId !== here,
+        lured: after.wardenLure === after.dreadRoomId,
+      };
+    }
+
+    /**
+     * And both edges are said the moment it lands, never discovered across
+     * runs - a dual edge the player has to learn over three deaths is a
+     * pure loss in the run they are actually in.
+     */
+    {
+      const said = [];
+      const off = window.__bus.on("notice", (t) => said.push(String(t)));
+      run.setState({ satchel: ["gloom"], effects: { swift: 0, mire: 0, gloom: 0 }, glim: 100, oil: 60 });
+      await wait(120);
+      run.getState().useItem(0);
+      await wait(200);
+      off();
+      const all = said.join(" ");
+      out.told = {
+        lands: /clings to you/i.test(all),
+        edge: /veins|lose you/i.test(all),
+        cure: /brazier/i.test(all),
+      };
+      run.getState().clearGloom();
+    }
+
+    /**
+     * Naming is BATCHED and LOCKING. Guessing costs more than deducing
+     * because a wrong guess in a batch wastes the right ones beside it,
+     * and nothing costs a resource at all.
+     */
+    {
+      const { BATCH } = await import("/src/game/items/afflictions.ts");
+      run.setState({ satchel: ["gloom", "mire", "dread", "healing"], identified: [], gems: 0 });
+      await wait(120);
+      const named = run.getState().identifyBatch([0, 1, 2, 3]);
+      const known = run.getState().identified;
+      out.batch = {
+        size: BATCH,
+        named,
+        atMostABatch: named <= BATCH,
+        locked: ["gloom", "mire", "dread"].every((id) => known.includes(id)),
+        // Nothing was spent for it: the whole point of batching instead of
+        // pricing is that knowledge-checking costs no resource.
+        free: run.getState().gems === 0,
+        // And naming the same three again names nothing new.
+        again: run.getState().identifyBatch([0, 1, 2]),
+      };
+    }
+
+    /** Naming resolves, and finishing it is a deed. */
+    {
+      const { DRAUGHT_IDS } = await import("/src/game/items/catalog.ts");
+      window.__deeds.getState().clear();
+      run.setState({ identified: [] });
+      await wait(120);
+      for (const id of DRAUGHT_IDS) {
+        run.setState({ satchel: [id] });
+        run.getState().identifySlot(0);
+      }
+      await wait(200);
+      out.deed = {
+        draughts: DRAUGHT_IDS.length,
+        known: run.getState().identified.length,
+        earned: window.__deeds.getState().done.includes("everydraught"),
+      };
+    }
+    return out;
+  });
+
+  ok("the gloom puts the flame out rather than the map", bag.gloom.wentOut && bag.gloom.clinging, JSON.stringify(bag.gloom));
+  ok("and imposed darkness pays what chosen darkness pays", bag.gloom.veins === true, JSON.stringify(bag.gloom));
+  ok("the flame will not come back up while the dark clings", bag.gloom.refuses === true, JSON.stringify(bag.gloom));
+  ok("and standing in a fire is the cure, which costs nothing", bag.gloom.cured === true, JSON.stringify(bag.gloom));
+  ok("heavy legs are quiet legs", bag.mire.quieter === true, JSON.stringify(bag.mire));
+  ok("and a fifth as loud is what the table says", Math.abs(bag.mire.ratio - 0.2) < 0.01, JSON.stringify(bag.mire));
+  ok("three containers works the mire out, and two does not", bag.mire.stillMired && bag.mire.cured, JSON.stringify(bag.mire));
+  ok("what followed you is somewhere, and it is not where you are", bag.dread.somewhere && bag.dread.notHere, JSON.stringify(bag.dread));
+  ok("and everything that hears goes to it", bag.dread.lured === true, JSON.stringify(bag.dread));
+  ok("both edges and the cure are said the moment it lands", bag.told.lands && bag.told.edge && bag.told.cure, JSON.stringify(bag.told));
+  ok("naming is batched, and the batch locks in together", bag.batch.locked && bag.batch.atMostABatch, JSON.stringify(bag.batch));
+  ok("and it costs no resource at all, which is the whole point", bag.batch.free === true, JSON.stringify(bag.batch));
+  ok("naming the same three again names nothing new", bag.batch.again === 0, JSON.stringify(bag.batch));
+  ok("naming every draught is reachable inside one run, and is a deed", bag.deed.earned === true, JSON.stringify(bag.deed));
+}
+
+/**
  * Delvers: five different openings, and the rules that hold across them.
  *
  * Each one is a trade, and the trades are easy to write and easy to get

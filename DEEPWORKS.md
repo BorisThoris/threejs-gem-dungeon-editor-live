@@ -841,8 +841,8 @@ Sorted by what each composes with, divided by what it costs.
 | 3 | **Semi-legibility** | mostly deletions | small | **built** |
 | 4 | **The Coefficient** | replaces `FLOOR_PATIENCE_S`; one pure function | small | **built** |
 | 5 | **The Cycle** | the largest omission; needs 1–4 to have anything to spend | medium | **built** |
-| 6 | **The Lantern Bargain** | non-bankable wick + five bands + gemveins | medium | table written |
-| 7 | **Verbs, not keys** | near-free once the Din exists; per-gate audit | small | table written |
+| 6 | **The Lantern Bargain** | non-bankable wick + five bands + gemveins | medium | **built** |
+| 7 | **Verbs, not keys** | near-free once the Din exists; per-gate audit | small | **built** |
 | 8 | **The Satchel that resolves** | dual edges are Din writes | small | table written |
 | 9 | **The Offer** | four table changes | small | table written |
 | 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | table written |
@@ -857,10 +857,13 @@ in a text editor is far cheaper than getting them wrong in a frame loop.
 One of the checks written this way immediately caught a fragment
 containing the word "then", which the corpus forbids.
 
-**Two of the three mandatory deletions are done.** `FLOOR_PATIENCE_S` and
-`REAPER_WARNING_S` are gone, and both were *replaced* rather than merely
-removed. The oil tank and hoardable unidentified items go with systems 6
-and 8.
+**Two of the three mandatory deletions are done, and the third is under way.**
+`FLOOR_PATIENCE_S` and `REAPER_WARNING_S` are gone, and both were *replaced*
+rather than merely removed. The oil tank went with system 6: `LANTERN_FULL_S`
+is gone and oil is spent at doorways rather than on a wall clock, because a
+time-based drain taxes deliberation, careful looking and hiding, which are the
+three things this game is made of. Hoardable unidentified items go with system
+8, which is the last of the three.
 
 **Three deletions, and they are not optional** — Law 7 says a flat mechanic must
 go, and these three fail the studio's own test: the oil tank, the floor patience

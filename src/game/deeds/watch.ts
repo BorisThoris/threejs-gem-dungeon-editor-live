@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { allDelversEscaped } from "./catalog";
+import { allDelversEscaped, allDraughtsKnown } from "./catalog";
 import { bus } from "../events";
 import { useDeeds } from "../state/deeds";
 import { useRecords } from "../state/records";
@@ -86,6 +86,15 @@ export function useDeedWatch() {
         if (heat >= REAPER_AT) earn("lastbreath");
         litThisFloor = false;
         floorAt = floor;
+      }),
+      /**
+       * Naming resolves, so finishing the naming is a thing that happens
+       * inside a run rather than an ambition nobody reaches. Checked on
+       * every naming rather than at the door, because a run that ends
+       * badly still knew what it knew.
+       */
+      bus.on("itemNamed", () => {
+        if (allDraughtsKnown(useRun.getState().identified)) earn("everydraught");
       }),
       bus.on("runWon", () => {
         const s = useRun.getState();

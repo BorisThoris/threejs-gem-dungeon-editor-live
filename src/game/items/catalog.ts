@@ -40,6 +40,26 @@ export const ITEM_IDS = [
 export type ItemId = (typeof ITEM_IDS)[number];
 
 /**
+ * The kinds that are drunk or read, as opposed to put down.
+ *
+ * Identification resolving is about these: a device announces what it is
+ * by doing it where you can see, and a draught is the thing you have to
+ * find out about. Written as a list rather than derived at the call site,
+ * so "every draught" means one thing everywhere it is asked.
+ */
+export const DRAUGHT_IDS = [
+  "healing",
+  "swiftness",
+  "dread",
+  "mire",
+  "mapping",
+  "banish",
+  "avarice",
+  "gloom",
+  "echoes",
+] as const satisfies readonly ItemId[];
+
+/**
  * A device is not drunk or read: it is put down where you stand, and it
  * stays in the room after you have left it. That is the whole reason the
  * family exists. Everything in the satchel until now happened to the
@@ -264,6 +284,15 @@ export function rollItem(seed: number, key: string, floor: number): ItemId {
 /** How long the timed items last, in seconds. */
 export const SWIFTNESS_S = 18;
 export const MIRE_S = 12;
+/**
+ * How loud a mired delver's feet are, as a fraction of ordinary.
+ *
+ * The mire's other edge: heavy legs are also quiet legs. It lives here
+ * beside the duration it belongs to rather than in the store, so the rule
+ * can be checked without a browser - and `noiseHoldFor` is still the one
+ * owner of how far feet actually carry, which reads this and nothing else.
+ */
+export const MIRE_LOUDNESS = 0.2;
 export const GLOOM_S = 25;
 /**
  * How much faster or slower those make you.

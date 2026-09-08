@@ -6,7 +6,7 @@ import { WISP_FLARE_REACH } from "../world";
 import { Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
-import { useRun } from "../state/run";
+import { mapIsDark, useRun } from "../state/run";
 import { LANTERN_FILL_REACH } from "../world";
 import { geo, mat } from "./shared";
 
@@ -163,6 +163,34 @@ function Flame({ at, roomId }: { at: PropPlacement; roomId?: string }) {
  * by.
  */
 
+/** How near a brazier the dark stops clinging to you. */
+const FIRELIGHT_REACH = 3.2;
+
+/**
+ * Standing in the light: the gloom's named cure.
+ *
+ * The cure is a PLACE TO STAND rather than a price to pay, which is the
+ * half of this that makes an affliction a decision instead of a
+ * subtraction - a flat cost is computed once and forgotten, and a task
+ * makes the player price their own current fragility. Polled on the frame
+ * loop and written only when it fires, because the store refuses it
+ * outright when nothing is clinging.
+ */
+function Firelight({ places }: { places: PropPlacement[] }) {
+  useFrame((state) => {
+    const run = useRun.getState();
+    if (!mapIsDark(run)) return;
+    const cam = state.camera.position;
+    for (const at of places) {
+      if (Math.hypot(cam.x - at.x, cam.z - at.z) < FIRELIGHT_REACH) {
+        run.clearGloom();
+        return;
+      }
+    }
+  });
+  return null;
+}
+
 export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?: string }) {
   // A stable identity for the list, so the matrices are not rewritten on
   // every render of the room around them.
@@ -170,6 +198,7 @@ export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?:
   if (at.length === 0) return null;
   return (
     <group>
+      <Firelight places={at} />
       {PARTS.map((part) => (
         <Part key={part.key} part={part} places={at} />
       ))}

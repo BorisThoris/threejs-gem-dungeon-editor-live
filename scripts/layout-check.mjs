@@ -2578,6 +2578,7 @@ check("the shipped room templates reach the floors the game generates", authored
   const WORDS = [
     "zero", "one", "two", "three", "four", "five", "six",
     "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+    "sixteen", "seventeen", "eighteen", "nineteen", "twenty",
   ];
   const word = (n) => WORDS[n] ?? String(n);
   /** Said in words or in digits; the page may phrase it either way. */
@@ -2703,8 +2704,8 @@ check("the shipped room templates reach the floors the game generates", authored
 // type those names out of; the second is checked against the watcher.
 {
   const ids = L.DEED_IDS;
-  check("there are fifteen deeds and every one has a name and a line", 
-    ids.length === 15 && ids.every((id) => L.DEEDS[id].name && L.DEEDS[id].blurb),
+  check("there are sixteen deeds and every one has a name and a line", 
+    ids.length === 16 && ids.every((id) => L.DEEDS[id].name && L.DEEDS[id].blurb),
     `${ids.length} deeds`
   );
   const steamNames = ids.map((id) => L.DEEDS[id].steam);
@@ -4421,6 +4422,25 @@ check("the shipped room templates reach the floors the game generates", authored
   check("no two afflictions are cleared the same way", new Set(L.AFFLICTIONS.map((a) => a.clears.kind)).size === L.AFFLICTIONS.length);
   check("identification resolves rather than gating the run", L.IDENTIFICATION_RESOLVES === true);
   check("and knowledge-checking is batched rather than priced", L.BATCH >= 2 && L.BATCH <= 4, `${L.BATCH} at a time`);
+
+  /**
+   * And what the table now costs the game to keep, rather than to state.
+   * Every one of these is a fact the wiring reads: a table nothing asks
+   * is a design document with a `.ts` extension.
+   */
+  check("every draught is an item, and no device is a draught", L.DRAUGHT_IDS.every((id) => L.ITEM_IDS.includes(id)) && L.DRAUGHT_IDS.every((id) => L.ITEMS[id].family !== "device" && L.ITEMS[id].family !== "bomb"));
+  check("and every drinkable and readable kind is one", L.ITEM_IDS.filter((id) => L.ITEMS[id].family === "potion" || L.ITEMS[id].family === "scroll").every((id) => L.DRAUGHT_IDS.includes(id)), `${L.DRAUGHT_IDS.length} draughts`);
+  check("naming every draught is a deed, because naming resolves", L.DEED_IDS.includes("everydraught"));
+  check("and the deed is only finished by naming all of them", L.allDraughtsKnown(L.DRAUGHT_IDS) === true && L.allDraughtsKnown(L.DRAUGHT_IDS.slice(1)) === false);
+  /**
+   * Heavy legs are quiet legs, and the factor lives beside the one owner
+   * of how far feet carry rather than in a second opinion about it.
+   */
+  check("the mire's other edge makes footfalls quieter, not louder", L.MIRE_LOUDNESS < 1 && L.MIRE_LOUDNESS > 0, `x${L.MIRE_LOUDNESS}`);
+  check("and it is a fifth, which is the figure the table states", Math.abs(L.MIRE_LOUDNESS - 0.2) < 1e-9);
+  /** Each cure names a thing the player does, never a thing they spend. */
+  check("no cure is priced in gems, oil, lives or slots", L.AFFLICTIONS.every((a) => !/\bgem|\boil\b|\blife\b|\blives\b|\bpay\b|\bbuy\b|\bcost\b/i.test(a.cure)), L.AFFLICTIONS.map((a) => a.cure).join(" | "));
+  check("and every cure is a place to be or a thing to do", L.AFFLICTIONS.every((a) => ["brazier", "containers", "floor", "pickup"].includes(a.clears.kind)));
 }
 
 /**

@@ -91,9 +91,10 @@ exact API names:
 | `ALL_DELVERS` | All Five | Escape the dungeon as every delver |
 | `WALL_OPENED` | Behind the Wall | Open a room the map does not show |
 | `WARDEN_BOMBED` | Fire and Iron | Rout the Warden with a bomb |
-| `FLOOR_LAST_BREATH` | Last Breath | Leave a floor with under fifteen seconds of its patience left |
+| `FLOOR_LAST_BREATH` | Last Breath | Leave a floor while it already knows where you are |
 | `HARRIER_SPIKED` | Spiked | Down the Harrier over something that bites |
 | `KEEPER_SLIPPED` | Past the Keeper | Take the last stairs while the Keeper kneels |
+| `ALL_DRAUGHTS_KNOWN` | All Draughts Known | Name every potion and scroll in one run |
 
 Each also wants a 64x64 icon, earned and unearned.
 

@@ -3320,7 +3320,7 @@ decides it is what they just did.
 
 ### Counts
 
-Fifteen deeds, said where the count is said: the Steam instructions'
+Sixteen deeds, said where the count is said: the Steam instructions'
 table, the README, the store page and the plan. The layout suite's
 count checks re-count; the store page's number is read from the
 catalogue's length as it always was.
@@ -3420,7 +3420,7 @@ will be again: a wait in milliseconds is a guess about the machine.
 | `yarn test:layout` | 385 |
 | `yarn test:smoke` | 348 |
 
-Fifteen deeds, nineteen kinds of thing on the floor with a body or a
+Sixteen deeds, nineteen kinds of thing on the floor with a body or a
 trigger, four screens more in the tour: a dart plate, the wisp, the
 Harrier and the Keeper.
 

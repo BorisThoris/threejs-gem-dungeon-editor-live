@@ -91,7 +91,7 @@ them is the easy one, and all of them are there from the first run.
   changes colour to say what you hold
 - Thirteen items whose names are hidden and whose blessings are not
 - Five delvers, all available from the first run
-- Fifteen deeds, and a seed on every run so you can walk the same dungeon again
+- Sixteen deeds, and a seed on every run so you can walk the same dungeon again
 - Full gamepad support, key rebinding, captions, and high-contrast marks
 - Verified on a 1280x800 screen for Steam Deck
 
