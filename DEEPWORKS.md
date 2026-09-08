@@ -843,9 +843,9 @@ Sorted by what each composes with, divided by what it costs.
 | 5 | **The Cycle** | the largest omission; needs 1–4 to have anything to spend | medium | **built** |
 | 6 | **The Lantern Bargain** | non-bankable wick + five bands + gemveins | medium | **built** |
 | 7 | **Verbs, not keys** | near-free once the Din exists; per-gate audit | small | **built** |
-| 8 | **The Satchel that resolves** | dual edges are Din writes | small | table written |
-| 9 | **The Offer** | four table changes | small | table written |
-| 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | table written |
+| 8 | **The Satchel that resolves** | dual edges are Din writes | small | **built** |
+| 9 | **The Offer** | four table changes | small | **built** |
+| 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | **built** |
 | 11 | **The Ledger** | needs the tells to already pay | medium | table written |
 | 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing | table written |
 

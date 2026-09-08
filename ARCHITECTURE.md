@@ -440,6 +440,27 @@ Two stores that both claimed the player's stats. So:
   Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
 - Templates come from `src/game/rooms/templates.ts`, by id.
+- What an authored room actually contains is `authoredProps` in
+  `src/game/rooms/templates.ts`, and it is the one place a template's
+  substitution slots are resolved. A template's props may be placeholders
+  with a `slot` name, and its `slots` rules say what each may become -
+  `subst` (the whole room agrees on one drawn kind), `shuffle` (the
+  composition is kept, what stands where is not), `nsubst` (the first N
+  become one thing, the rest another). They are resolved once, from the
+  room's own identity, *before* the props are turned - so the dressing, the
+  gem's placement and the door-lane filters all read an ordinary prop list
+  and have no idea a placeholder was ever there. A placeholder never leaves
+  `resolveSlots`. Two shipped templates are thirty-six rooms this way, and
+  eight orientations on top of that.
+  - Keyed on `room.seed`, `room.id` and `room.grid` rather than the floor
+    seed, for the same reason the orientation is: a run's three start rooms
+    share an id and a grid square, so a template drawn from the floor seed
+    would have furnished all three alike.
+  - A slot decides what a room *looks* like and never what it *pays*.
+    `keepsItsWorth` in `src/game/rooms/slots.ts` is that rule, and
+    `yarn test:layout` holds every shipped rule to it - the first slotted
+    hall put its chest in a `subst` beside a statue, and a third of the time
+    a key opened onto a chamber with nothing in it.
 - What furniture a room gets is `placementsFor` in
   `src/game/rooms/Dressing.tsx`, and being the floor's locked room is part
   of that question rather than a separate one: a vault is dressed as a
@@ -722,7 +743,8 @@ src/
       Dressing.tsx       seeded props per kind, door lanes kept clear
       kinds.ts           kind -> tint, title, content component
       content.tsx        what each kind puts in the shell
-      templates.ts       authored layouts, by id
+      templates.ts       authored layouts, by id; the one place slots resolve
+      slots.ts           substitution rules: subst, shuffle, nsubst
     props/
       catalog.tsx        the twenty props, with footprint and solidity
       Hazard.tsx         a patch of spikes: costs the player a life, and
@@ -836,6 +858,12 @@ registries the game reads:
   editor's own `isRoomTemplate` answers a much weaker question - is this
   well-formed JSON with kinds the game knows - and a template can pass it
   and still lose half its props.
+
+  A slotted template is held to *every kind every slot can produce*, not
+  only the kind the author placed - a template validated only as authored
+  is a template validated in a shape the player may never be shown. It does
+  that per-prop and per-pair rather than by enumerating variants, so the
+  check stays cheap while the content multiplies.
 - **Surfaces**: the painter and the mosaic tool save a 128x128 image under a
   surface id. `useSurface(id)` in any room picks it up at once.
 - **Props**: the inspector shows one catalogue entry at a time; the
