@@ -1,3 +1,13 @@
+# SUPERSEDED — both researches later completed in full
+
+This hand-merge was written while Hades and Thief were still blocked. Both
+subsequently completed (103/103 and 105/105, zero errors) with their own
+syntheses, and **two of the claims relied on below were downgraded by those
+runs** — the Mirror of Night's paired talents (1-2) and Thief's Min Relax
+After Peak (0-3). Kept for the record; the plan follows the completed runs.
+
+---
+
 # Hades and Thief — synthesis done by hand
 
 Both reports produced strong verified claims in every pass; what failed twice was

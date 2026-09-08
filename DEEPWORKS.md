@@ -15,12 +15,14 @@ research proposed died**, including several things I had already written into a
 draft. Where a proposal below rests on something that did not verify, it says
 so in the text rather than in a footnote.
 
-**A note on the second pass.** Nine of the fifteen researches were truncated by
-a session limit on the first attempt and were later resumed. Seven came back
-complete with zero errors, and **the resumed runs overturned several of their own
-earlier refutations** — a 0-3 from a limit-starved run means the verifiers never
-ran, not that the claim is false. Everything below reflects the resumed evidence,
-and Part 6 records what moved in both directions.
+**A note on the passes.** Nine of the fifteen researches were truncated by a
+session limit on the first attempt and were later resumed; **all nine eventually
+completed with zero errors.** The resumed runs overturned several of their own
+earlier refutations *and* downgraded several earlier confirmations — a 0-3 from a
+limit-starved run means the verifiers never ran, not that the claim is false, and
+a 3-0 from one sample is not settled either. Where three passes disagree, the
+disagreement is shown rather than resolved by preference. Part 6 records
+everything that moved.
 
 Three conventions:
 
@@ -189,6 +191,28 @@ without it (3-0):
 That last row is a design statement: **theft is silent.** Stealing and smashing
 should not feel alike.
 
+**The architecture is verified; the numbers above are ours.** The third pass
+closed most of the sound gap. Verified 3-0, with Leonard's counterfactual —
+*"without this, it is unlikely the sound design could have succeeded"*:
+
+    a coarse room graph connected by portals, separate from render geometry
+    an attenuation cost on each portal edge
+    flood the graph from the source with a decaying loudness budget
+    AI hearing reads the arriving loudness in its own room
+    a per-room volume scalar (0.0 silent → 1.0 full) as authored terrain
+    a two-key material table (mover, struck) → sound schema, external data
+
+**Two corrections that would have cost us a day.** Footsteps do *not* go through
+the object-collision material table — they use a separate schema with the
+material on the **texture**, and the stronger "keyed on a material pair" version
+was refuted 0-3. And Thief's room graph was **hand-authored per mission**, a
+labour cost the "what went right" framing omits; ours should derive from
+`dungeon/layout.ts` automatically.
+
+**Still ours:** no source survived verification for a movement-speed → loudness
+mapping, or for per-material loudness numbers. The table above is our invention.
+The architecture is transplanted; the values are to be tuned.
+
 **The honest cost.** Noita's own file warns that tagging a material obligates
 you to author its companion (`[meltable]` needs a `_molten` variant). Budget one
 companion rule per tag. Tags make *variants* free, not *ideas*.
@@ -200,39 +224,67 @@ without being told they could.
 
 ### 2. THE LADDER — awareness with rungs
 
-*Law 3, and Thief's numbers — with the confidence split the second pass forced.*
+*Law 3, with three passes of evidence and a clean split between what is verified
+and what is ours.*
 
-Four rungs replacing calm/roused, one bark each:
+**Leonard's own statement of the goal is the best sentence in the research, and
+it is our brief exactly:**
 
-    0 Unaware   1 Uneasy   2 Searching   3 Hunting
+> the point is **"broadening out the gray zone of safety and danger that in most
+> first-person games is razor thin."**
 
-**Verified in both passes (3-0 twice), and these are the load-bearing ones:**
+**Verified 3-0 across passes:**
 
-    ordered 3D viewcones, each with its own angle / Z-angle / range / acuity
-    visibility as a continuous 0..1 scalar from lighting + movement + exposure
-    per-cone weights, e.g. Peripheral = light 0.3 / movement 3.0 / exposure 1.0
-    decay via a capacitor that CANNOT skip a rung
-    reaction delay      750 ms moderate / 500 ms strong
-                        break the stimulus inside it → nothing happens
-    retrigger window    12 s (moderate) / 22 s (strong) of instant reaction
-    ignore-delay range  9 ft — anything closer bypasses the delay entirely
+    ordered 3D viewcones — a SET (9 active by default), each with its own
+      angle / Z angle / range / acuity; only the FIRST cone the target enters
+      counts, and each emits constant output regardless of position within it
+    visibility is a continuous 0..1 scalar from three separable inputs —
+      lighting, movement, exposure — with multiple raycasts for the player
+    per-cone profiles as (light, movement, exposure) multipliers:
+      Normal 1.0/1.0/1.0 · Peripheral 0.3/3.0/1.0 · Omni 0.8/1.4/1.2
+      Night vision 6.0/1.0/1.0
+    reaction delay      750 ms moderate / 500 ms strong; break the stimulus
+                        inside the window and there is no alert at all
+    retrigger           12 s / 22 s of instant reaction afterwards
+    ignore-delay        anything within 9 ft skips the delay entirely
 
-**The reaction delay is the prize.** It is what lets you be seen and *un-see*
-yourself, a verb we do not offer at all today.
+**The asymmetry, stated precisely (3-0).** Up is a *jump*: gated by a delay that
+is a property of the **current** state, not the goal state, and once passed it
+advances **without passing through intermediate states**. Down is a *slide*: a
+capacitor that degrades gradually, "passing through all the intermediate states".
 
-**Contested — our design decision, not a verified constant.** The second pass
-returned 1-2 against two claims the first returned 3-0 and 2-1: a single 0-100
-acuity score, and the per-rung discharge times plus **"Min Relax After Peak"**.
+    alert_up    = a gated jump      alert_down = a timed slide through every rung
 
-I called Min Relax After Peak the sleeper — one number and the floor remembers
-what you did on it. **It is still the right idea and I still propose it**, but as
-ours rather than Looking Glass's. Same for the discharge times: keep
-Uneasy 6 s → Searching 14 s → Hunting 22 s as *starting values*, and drop the
-implication that Thief shipped exactly those.
+**And the legibility half, which we already half-ship.** Leonard: *"Such a range
+of internal states would be meaningless if the player could not perceive it"* —
+resolved through barks, because *"sound was the primary medium through which the
+AIs communicated both their location and their internal state to the player."*
+Our Warden already has directional audio; it has no state to communicate.
 
-Thief's stated goal is still our brief exactly (3-0): *"we tried to design AIs
-with a broader range of awareness than the typical two states that AIs exhibit:
-'oblivious' and 'omniscient.'"*
+**A fifth independent confirmation of Law 3, and the most precise one.** The
+0..1 analog value is what the *pipeline* carries; the awareness output stage is
+*"entirely discrete"*, designed for *"a limited number of player-perceivable
+inputs, and discrete valued results."* **The gem's few visible steps are a
+deliberate quantisation of an analog interior — and that quantisation IS the
+readability.** Continuous underneath, named on the surface, now confirmed by
+Darkest Dungeon, DCSS, Prey, RoR2 and Thief.
+
+**The cap is a content tool we should steal (3-0).** `AI_AlertCap` sets max
+level, min level, and a floor after peaking. Capping **below 2 hard-disables
+attack and flee** — Thief ships metaproperties that exist purely to let city AI
+perceive the player without ever engaging.
+
+> **One archetype, many creatures, by cap alone.** An evade-only game can cap
+> most of its population below the combat gate and still have them react, bark
+> and investigate. That is our rats, our moth, our Cutpurse and our Warden out of
+> one implementation.
+
+**Ours, not Thief's — flagged after three passes.** The per-rung *discharge
+times* and the reading that **"Min Relax After Peak"** makes a guard permanently
+more suspicious went 3-0 → 1-2 → **0-3**. The property is documented; the
+*behaviour* is not. So the floor-after-peak rule stays in the plan as **our
+design decision** — a floor that remembers what you did on it is right for this
+game — and 6/14/22 s stay as starting values with no claim of provenance.
 
 ### 3. THE COEFFICIENT — replacing the floor timer
 
@@ -459,27 +511,82 @@ Two unrelated lines, one conclusion. The resolutions the evidence supports:
   outright deletes the draft tell. A relic that opens a wall you already found by
   listening is an *enabler*. Enablers, never substitutes.
 
-### The resolution: relics become a loadout, not a ladder
+### The resolution: the meta layer buys OPTIONS AND ODDS, never power
 
-Hades separates in-run power from permanent progression, and its permanent layer
-is **not accumulation** (3-0). The Mirror of Night is built entirely on **paired,
-mutually-exclusive talents** — a red and a green per slot, invested in
-separately, only one active at a time, **freely switchable before a run**.
+*Corrected. My first version of this rested on the Mirror of Night's paired
+mutually-exclusive talents — which came back **1-2** on the second pass having
+been 3-0 on the first, along with every other specific Mirror claim. Contested,
+so I am not building the resolution on it. The structural principle underneath is
+verified 3-0, and it is sharper anyway.*
 
-That is the cleanest answer available to our problem, and it satisfies both
-objections at once:
+**Hades' split (3-0):** in-run power is *totally disposable* — boons end with the
+run, on death and on victory alike — and the permanent layer buys **options and
+odds, never the run's actual power.** The report states the consequence for us
+without hedging:
 
-- **Diablo's** — a purchase carries no drop moment. A loadout has no purchase
-  moment to be flat; the decision is *configuring*, and it recurs every run
-  instead of ending when the sixth relic is bought.
-- **Outer Wilds'** — whatever pays best is what players optimise for. A pair you
-  *choose between* is not a parallel power ladder competing with knowing; it is a
-  declaration of how you intend to play this run.
+> *"six PERMANENT relics bought at a shop inverts Hades' split — your meta layer
+> holds the power rather than the odds. The specific risk is that once all six
+> are bought the run's texture stops changing, which is exactly the
+> trivialisation Hades avoids by keeping boons disposable."*
 
-**Six relics as three either/or pairs is a build decision every run. Six relics
-as purchases is a treadmill that ends.** The gems then buy something else
-entirely — bombs, oil, a vault key, passage — and the shop stops being the
-meta-system.
+So the fix is not primarily *how* relics are acquired — it is **what they buy**:
+
+- **Relics should bias the offer table, not raise flat numbers.** A relic that
+  makes better things appear, or makes a kind of room more likely, or improves
+  what a chest can hold, leaves every run's texture live. A relic that adds a
+  number is spent the moment it is bought.
+- **Something must stay disposable.** If the six relics are the only power in the
+  game, there is nothing left to lose on death and nothing to rebuild. The gems
+  should buy *run-scoped* things — bombs, oil, a key, passage — and the relics
+  should change the odds those purchases face.
+
+**Both earlier objections still resolve.** A relic that biases odds has no flat
+purchase moment to fall flat (Diablo), and it enables rather than substitutes for
+knowing (Outer Wilds) — it changes what the dungeon offers, not what you need to
+understand.
+
+**And make two relics a pair (3-0).** Duo boons require prerequisites from both
+gods and **cannot be numerically inflated** — their value is categorical. The
+transplant, in the report's words: *"make a small number of relic PAIRS unlock a
+third, unbuyable effect — the payoff arrives only if the player's earlier picks
+happened to line up, which retroactively makes floor-1 choices feel consequential
+on floor 3."*
+
+### Three offers is a hardcoded constant, and that is now evidenced
+
+I flagged this as unevidenced last pass. The resumed run settles it from
+**decompiled game data** (3-0): `GetTotalLootChoices()` returns **3**;
+`CalcNumLootChoices()` is `3 − Pact ranks`, floored at 1; and the condition that
+removes one costs **2 then 3 Heat** against **1 Heat per rank** for +20% enemy
+damage, +20% enemy count or +15% enemy health.
+
+**Removing a choice is, by the designers' own pricing, a bigger difficulty
+increase than making enemies hit harder.** The transplant: present three, and
+treat any reduction below three as **an explicit difficulty purchase, never a
+silent economy tuning.**
+
+Scope discipline: this evidences three as *Hades'* constant, not as proven
+optimal for a twenty-minute run. The Vampire Survivors comparison still does not
+exist.
+
+**And the steering rule, which is the whole point:** *pick who bids, not what you
+get.* Keepsakes guarantee only the **first** boon offered while equipped — not
+that the next reward is a boon at all — and two gods ignore the bias entirely.
+Free choice collapses to the same build every run; a biased-but-not-determined
+offer forces adaptation while preserving the feeling of intent.
+
+### The three-floor reward mix, as a tuned ratio (3-0, from RunManager.lua)
+
+Every room reward is explicitly typed **"this run"** or **"next run"**, and the
+mix is a self-correcting ratio pulled toward a per-biome target that **declines
+with depth**: 0.45 → 0.40 → 0.33, with **zero meta rewards in the final biome.**
+
+That is directly transplantable to three floors: floor one may pay toward the
+next run; **floor three pays only into this one.**
+
+(The companion claim that the correction factor makes the early sequence
+deterministically alternating failed at 1-2 — the ratio is real and
+self-correcting, the alternating model is not established.)
 
 ### And the escalation must be elected, not only imposed
 
@@ -771,11 +878,18 @@ and reading it as such was the biggest methodological error available here.
 
 ### Downgraded on the second pass — I had these too CONFIDENT
 
-- **Thief's per-rung discharge times and "Min Relax After Peak"**: 3-0 in the
-  first run, **1-2 in the second**. Contested, not settled. I called Min Relax
-  After Peak "the sleeper"; it is now our design decision informed by a contested
-  source, not a Thief constant. The reaction delays (750/500 ms), the retrigger
-  windows, the ordered cones and the capacitor decay survive both runs at 3-0.
+- **Thief's per-rung discharge times and "Min Relax After Peak"**: 3-0, then
+  1-2, then **0-3** across three passes. The *property* is documented in the
+  engine; the *behaviour* — that an alerted guard settles permanently more
+  suspicious — is not. I called it "the sleeper"; it stays in the plan as our
+  design decision with no claim of provenance. Everything else in the Ladder
+  strengthened: the reaction delays, the ordered cones, the capacitor decay and
+  the jump/slide asymmetry are all 3-0 across passes.
+- **Hades' Mirror of Night as paired mutually-exclusive talents**: 3-0, then
+  **1-2**, with every other specific Mirror claim refuted 0-3. My first
+  resolution of the relic conflict rested on it; the replacement rests on the
+  structural split instead, which is 3-0 — **the meta layer buys options and
+  odds, never the run's power.**
 - **"Three offers, not a shelf"**: the Hades half is verified, but the Vampire
   Survivors half — the part about the *shape* of a choice — was never sourced,
   and the Hades resume was cut short before its synthesis ran.
