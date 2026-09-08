@@ -439,6 +439,23 @@ Two stores that both claimed the player's stats. So:
   three events had nobody - among them `wardenStruck`, which meant the
   Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
+- What the walls SAY is `src/game/deepworks/fragments.ts` - forty fragments,
+  none of which contains "then", "after" or "next" - and where each of them
+  is cut is `src/game/deepworks/placement.ts`, which is the one place that
+  decides. Two separate owners on purpose: a fragment's `on` is a fact about
+  the fiction (a line on the Keeper's slab has to be one a man on the last
+  stair would have written), and `SURFACES_OF` is a fact about the game's
+  rooms. `on` says where a line could have been CUT and never what is
+  standing in the room, so no fragment can imply a prop the game does not
+  place.
+  - The run's ending weights the corpus rather than filtering it: three
+    disjoint corpora would be three places rather than one seen from three
+    angles, and would put the planted contradiction out of reach of the runs
+    that most want it. `yarn test:layout` measures that it still leaks.
+  - Reading one is an `InteractTrigger`, which is the whole design: reading
+    costs time, and the floor already charges for time. Never a marker on
+    the map, never voiced. What has been read lives in
+    `src/game/state/lore.ts` and buys nothing.
 - What the delver has WORKED OUT is `src/game/state/ledger.ts`, and the one
   place an entry gets written is `src/game/ledger/watch.ts` - the same shape
   as `deeds/watch.ts`, and for the same reason: the alternative is a line of
