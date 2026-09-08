@@ -2,6 +2,13 @@ import { lazy, Suspense, useEffect } from "react";
 
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
+// Registers the shipped room templates for their side effect, and it has
+// to be somebody's import: `templates.ts` is the registry and must not
+// reach for content, so the entry point is what runs the registration.
+// Nothing did. The layout check imports it itself - which is exactly why
+// two authored rooms could be held to sixty seeds in all eight
+// orientations and never once be drawn for a player.
+import "./game/rooms/shipped";
 import { useDeedWatch } from "./game/deeds/watch";
 import { useLedgerWatch } from "./game/ledger/watch";
 import { useTeacher } from "./game/teaching/teacher";
@@ -151,6 +158,13 @@ export default function App() {
     w.__settings = useSettings;
     void import("./game/state/deeds").then((m) => (w.__deeds = m.useDeeds));
     void import("./game/state/ledger").then((m) => (w.__ledger = m.useLedger));
+    void import("./game/state/lore").then((m) => (w.__lore = m.useLore));
+    // The registry as the GAME holds it. A check that imports
+    // `rooms/templates` itself can get a second instance of the module
+    // in dev and read an empty registry forever - which is how "the
+    // shipped templates are registered" passed for months while nothing
+    // in the app imported the content at all.
+    void import("./game/rooms/templates").then((m) => (w.__templates = m));
     // The numbers themselves, so a check never keeps its own copy of one.
     // A check that hardcodes 1.05 for the Warden's reach is a second owner
     // of it, and passes for years after the constant moves.

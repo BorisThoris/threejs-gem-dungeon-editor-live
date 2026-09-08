@@ -116,7 +116,19 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
   const half = halfSize(room);
   const out: CutFragment[] = [];
   const taken = new Set<number>();
-  const walls = (["north", "east", "south", "west"] as const).filter((d) => !room.links[d]);
+  /**
+   * A wall with no doorway in it and no crack behind it.
+   *
+   * The doorway half is obvious - nothing is read from the middle of a lane
+   * somebody is walking through. The crack half is the one that had to be
+   * found: the draft is felt at the middle of the cracked wall and the way
+   * through is offered there, so a line cut into that same wall puts two
+   * prompts in one place and the nearer one wins. A fragment that can shadow
+   * a gate is a fragment that can lock a floor.
+   */
+  const walls = (["north", "east", "south", "west"] as const).filter(
+    (d) => !room.links[d] && room.secret?.dir !== d
+  );
   for (let i = 0; i < Math.min(many, MOST_PER_ROOM); i++) {
     // One fragment twice in a room reads as a misprint.
     let fragment: Fragment | undefined;

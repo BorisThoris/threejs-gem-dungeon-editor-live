@@ -8456,16 +8456,23 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 // authored.
 {
   const slots = await page.evaluate(async () => {
-    const T = await import("/src/game/rooms/templates.ts");
-    await import("/src/game/rooms/shipped.ts");
+    const T = window.__templates;
     const G = await import("/src/game/dungeon/generate.ts");
     const W = await import("/src/game/world.ts");
-    // The SHIPPED set, from the module that owns it. `allTemplates()` is
-    // the live registry, which by this point in the run also holds the
-    // draft the editor block authored - and a draft an author made in the
-    // Room Builder is under no obligation to use slots.
+    /**
+     * The registry as the GAME has it, and deliberately without this check
+     * importing the content to make it true. Importing `shipped.ts` here
+     * is what hid the fact that nothing in the app did: two authored rooms
+     * were held to sixty seeds in all eight orientations and were never
+     * once drawn for a player.
+     */
     const shipped = (await import("/src/game/rooms/shipped.ts")).SHIPPED;
+    const registered = new Set(T.allTemplates().map((t) => t.id));
+    const missing = shipped.filter((t) => !registered.has(t.id)).map((t) => t.id);
+    // A template either varies or is a tableau that tells one story in four
+    // particular props. There is no third thing for a shipped room to be.
     const ruled = shipped.filter((t) => (t.slots ?? []).length > 0);
+    const fixed = shipped.filter((t) => t.tableau);
     const multiplies = new Set(ruled.map((t) => t.id));
 
     // Every arrangement the player could be shown, over runs walked the way
@@ -8506,6 +8513,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     }
     return {
       shipped: shipped.length,
+      missing,
+      accounted: ruled.length + fixed.length,
       ruled: ruled.length,
       rooms,
       placeholders,
@@ -8514,8 +8523,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       stable: before !== null && before === after,
     };
   });
-  ok("the shipped templates reach the running game with their rules intact",
-    slots.ruled > 0 && slots.ruled === slots.shipped, JSON.stringify({ ruled: slots.ruled, of: slots.shipped }));
+  ok("the game the player runs has the shipped room templates in it",
+    slots.missing.length === 0, JSON.stringify({ missing: slots.missing, of: slots.shipped }));
+  ok("and every one of them either varies or tells one story",
+    slots.accounted === slots.shipped, JSON.stringify({ varies: slots.ruled, tableaux: slots.accounted - slots.ruled, of: slots.shipped }));
   ok("and no placeholder ever reaches the room the game draws",
     slots.rooms > 30 && slots.placeholders === 0, JSON.stringify({ rooms: slots.rooms, placeholders: slots.placeholders }));
   // Eight orientations is what an unslotted room gets, and every slotted
@@ -8579,12 +8590,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // - which is the rule, not a workaround for one.
     run.getState().startRun(31);
     await wait(1200);
-    const third = run.getState().dungeon.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
-    run.setState({ transitioning: true, currentRoomId: third.id });
-    run.getState().roomReady(third.id);
-    await wait(900);
+    // The room the delver is standing in, because the map draws rooms they
+    // have been in - and the payoff is about a wall they felt for
+    // themselves, which is the same thing said twice.
+    const third = run.getState().dungeon.startId;
     const before = document.querySelectorAll('[data-testid="map-felt"]').length;
-    run.getState().feltDraft(third.id);
+    run.getState().feltDraft(third);
     await wait(600);
     const after = document.querySelectorAll('[data-testid="map-felt"]').length;
 
@@ -8637,7 +8648,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const run = window.__run;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const P = await import("/src/game/deepworks/placement.ts");
-    const lore = (await import("/src/game/state/lore.ts")).useLore;
+    const lore = window.__lore;
     lore.getState().clear();
     run.getState().startRun(5);
     await wait(1200);
