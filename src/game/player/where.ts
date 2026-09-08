@@ -16,10 +16,35 @@
  * Room-local, like everything else in a room: only one room is mounted and
  * it is always drawn at the origin.
  */
-export const playerAt = { x: 0, z: 0 };
+export const playerAt = {
+  x: 0,
+  z: 0,
+  /**
+   * How fast the player is crossing the floor, in units per second.
+   *
+   * Here rather than derived by each reader, because the ladder asks it
+   * from three places at frame rate and the honest answer needs the
+   * previous frame's position - a fact only this module has. Movement is
+   * one of the three separable inputs a creature's awareness is built
+   * from, and it is separable precisely so a player can do something about
+   * it: standing still is a move, and a peripheral cone is three times as
+   * sensitive to motion as it is to light.
+   */
+  speed: 0,
+};
+
+let lastX = 0;
+let lastZ = 0;
 
 /** Called once a frame by the player body, and by nothing else. */
-export function setPlayerAt(x: number, z: number): void {
+export function setPlayerAt(x: number, z: number, delta = 0): void {
+  // A room change teleports the body, and a teleport is not a sprint: a
+  // frame where the position jumps across the floor would otherwise read
+  // as the loudest movement in the game to everything watching.
+  const moved = Math.hypot(x - lastX, z - lastZ);
+  playerAt.speed = delta > 0 && moved < 8 ? moved / delta : 0;
+  lastX = x;
+  lastZ = z;
   playerAt.x = x;
   playerAt.z = z;
 }

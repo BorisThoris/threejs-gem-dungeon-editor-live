@@ -53,8 +53,8 @@ export function alarmLabel(
   if (reeling) return "Reeling";
   if (lured) return "Following a noise";
   // Which sense gave the player away, because the two have different
-  // answers: one is put down with a key, the other by stopping.
-  if (seen) return "Sees your light";
+  // answers: the moth is waited out or led off, the noise is stopped.
+  if (seen) return "The moth has you";
   if (heard) return "Heard you";
   if (alarm <= 0) return "Still";
   if (alarm < ALARM_HUNTS_AT) return "Stirring";

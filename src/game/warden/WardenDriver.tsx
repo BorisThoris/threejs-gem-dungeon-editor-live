@@ -12,9 +12,19 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../state/run";
+import * as din from "../din/din";
+import { emptyArrival } from "../din/din";
+import * as ladder from "../ladder/state";
 import { barToBreak } from "./bars";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
+
+/**
+ * Reused, because this is asked on the frame the Warden steps and an
+ * allocation per step is an allocation the perf budget would rather not
+ * have.
+ */
+const heard = emptyArrival();
 
 /**
  * The Warden's walk through the rooms nobody is standing in.
@@ -43,10 +53,50 @@ export function WardenDriver() {
     // following a noise it already heard rather than listening for the
     // player, which is why a Scroll of Echoes is also permission to run.
     const lure = lureNow(run);
+
+    /**
+     * And what the floor itself is telling it.
+     *
+     * The lure above is a tool the player buys and aims. This is the
+     * general case underneath it: the Warden answers to [loud] at 0.30
+     * and walks to wherever the loudest thing it can hear happened, and
+     * it has no idea what made the noise. That is the whole payoff of the
+     * Din, and it arrives with no new content - a barrel the player never
+     * touched, burst by a Harrier's dive two rooms away, now pulls the
+     * Warden off the player's trail, and nobody wrote a rule for it.
+     *
+     * Below the lure in priority because a bought, aimed noise should
+     * beat an incidental one; above the hunt because a Warden that
+     * ignored a bomb to keep walking at you would read as a cheat.
+     */
+    const noise =
+      !lure && din.answering(heard, "warden", run.wardenRoomId) && heard.tag === "loud"
+        ? heard.fromRoomId
+        : null;
+    const going = lure ?? noise;
+
+    /**
+     * Hearing is the other half of the ladder, and the half that works
+     * through walls.
+     *
+     * Sight is reported by the component, which is the only thing that
+     * knows where this is standing - but it is only mounted while the
+     * Warden is in the room the player is in, which is the minority of the
+     * floor. A noise two rooms away has to be able to move it, and this is
+     * where that happens: a thing it can hear puts it on searching, and a
+     * loud one is a strong stimulus, which is reacted to faster and
+     * remembered longer.
+     *
+     * Never above searching. Hearing tells you a room, not a person -
+     * committing on a sound alone would make every burst barrel a death
+     * sentence and would delete the difference between the two senses.
+     */
+    if (noise) ladder.report("warden", 2, false, heard.magnitude >= 0.6, noise);
+
     // Heard, or seen: a raised lantern on a dark floor gives a player away
     // exactly as a sprint does, and `wardenSenses` is the one place that
     // decides that so the driver, the HUD and the tuning cannot disagree.
-    const behaviour = behaviourFor(run.alarm, !lure && wardenSenses(run));
+    const behaviour = behaviourFor(run.alarm, !going && wardenSenses(run));
     since.current += delta;
     if (since.current < behaviour.stepSeconds) return;
     since.current = 0;
@@ -55,7 +105,7 @@ export function WardenDriver() {
     // is busy, and a Warden that wandered off mid-approach would read as a
     // bug rather than as mercy. A sound it is chasing outranks that: it
     // leaves, which is the whole point of throwing one.
-    if (!lure && run.wardenRoomId === run.currentRoomId) return;
+    if (!going && run.wardenRoomId === run.currentRoomId) return;
 
     const bars = barsNow(run);
     /**
@@ -67,7 +117,7 @@ export function WardenDriver() {
      * this step and is heard everywhere, so the bar never simply stops
      * working without the player being told.
      */
-    const wall = barToBreak(run.dungeon, run.wardenRoomId, lure ?? run.currentRoomId, bars);
+    const wall = barToBreak(run.dungeon, run.wardenRoomId, going ?? run.currentRoomId, bars);
     if (wall) {
       run.breakBar();
       return;
@@ -76,8 +126,8 @@ export function WardenDriver() {
     const to = nextRoom(
       run.dungeon,
       run.wardenRoomId,
-      lure ?? run.currentRoomId,
-      lure ? true : behaviour.hunts,
+      going ?? run.currentRoomId,
+      going ? true : behaviour.hunts,
       run.wardenCameFrom,
       Math.random(),
       bars

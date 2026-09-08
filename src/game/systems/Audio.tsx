@@ -90,6 +90,12 @@ export function Audio() {
       // "it is close", which in a game about which door to take is half a
       // sentence.
       bus.on("wardenNearby", ({ roomId }) => sfx.wardenNear(towards(roomId))),
+      /**
+       * Every rung, out loud. The only thing that makes the grey zone a
+       * zone rather than a hidden number: a player who cannot hear a
+       * creature get more suspicious has a boolean with extra steps.
+       */
+      bus.on("rungChanged", ({ rung, rose }) => sfx.bark(rung, rose)),
       bus.on("wardenWoke", () => sfx.wardenNear()),
       bus.on("wardenEntered", () => sfx.wardenHere()),
       // Over the `hurt` that the damage itself fires, not instead of it.

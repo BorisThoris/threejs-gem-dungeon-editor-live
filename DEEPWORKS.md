@@ -951,12 +951,19 @@ directions: Diablo says a purchase carries no drop moment and closed its own sho
 channel for that reason; Outer Wilds says whatever pays best is what players
 optimise for, and a purchasable meta-system competes with knowing.
 
-**Hades resolves both.** Its permanent layer is not accumulation but **paired
-mutually-exclusive talents, freely switchable before a run** (3-0). Make the six
-relics a **loadout** rather than a ladder and neither objection lands: a loadout
-has no purchase moment to be flat, and a pair you choose between is not a power
-ladder competing with knowing. Relics stay enablers of knowledge use; the gems
-buy consumables and passage instead.
+**Hades resolves both** — but not by the route I first wrote here, and this entry
+has been corrected. The resolution rested on the Mirror of Night's paired
+mutually-exclusive talents, which came back **1-2** on the resumed pass having
+been 3-0 on the first. The structural claim underneath is 3-0 and sharper: in-run
+power is *totally disposable*, and the permanent layer buys **options and odds,
+never the run's power.**
+
+So the fix is not primarily *how* relics are acquired but **what they buy** —
+relics bias the offer table rather than adding numbers, and something must stay
+disposable. Both objections still resolve: a relic that biases odds has no flat
+purchase moment to fall flat, and it enables rather than substitutes for knowing.
+See §8 for the full resolution; this entry is kept, corrected, rather than
+deleted, because the register's job is to record what moved.
 
 ### The methodological finding
 

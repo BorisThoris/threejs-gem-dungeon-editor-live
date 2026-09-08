@@ -6,6 +6,12 @@ import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
 import { canControl, runClock, useRun, wardenStaggered } from "../state/run";
+import * as ladder from "../ladder/state";
+import { CONES } from "../ladder/caps";
+import { closeEnough } from "../ladder/awareness";
+import { coneFor, rungFor, seenAt } from "../ladder/rungs";
+import { exposureAt, visibilityFor } from "../ladder/sight";
+import { playerAt } from "../player/where";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import {
@@ -14,6 +20,7 @@ import {
   WARDEN_HAZARD_BERTH,
   WARDEN_MAX_STEP,
   WARDEN_TOUCH_RADIUS,
+  WARDEN_TURN_RATE,
 } from "../world";
 import { wardenAt } from "./position";
 import { patchAt, steerAround, type Patch } from "./steer";
@@ -115,6 +122,12 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
    * and walking off and back on is a second bite.
    */
   const inHazard = useRef(false);
+  /**
+   * Which way it is looking, in radians, turned towards what it is
+   * interested in rather than snapped to it. A ref because it changes
+   * every frame and nothing renders differently for it.
+   */
+  const facing = useRef(0);
 
   useEffect(() => {
     bus.emit("wardenProximity", { level: 0 });
@@ -144,7 +157,70 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
-    g.rotation.y = Math.atan2(dx, dz);
+
+    /**
+     * Which way it is looking - and, for the first time, not always at you.
+     *
+     * It used to face the player every frame, on every rung, which made
+     * getting behind it impossible and made a viewcone meaningless: the
+     * player was always dead ahead in the sharpest cone it had. The point
+     * of the ladder is broadening out the grey zone between safe and
+     * caught, and there is no grey zone at all if the thing has eyes in
+     * the back of its head.
+     *
+     * So the head turns, at a rate, towards whatever it is currently
+     * interested in: the player once it is hunting, the room it last had
+     * them in while it is searching, and a slow idle sweep when it is
+     * neither. Turning rather than snapping is what makes the sweep the
+     * tell - a player watching the lantern come round has time to move,
+     * and one who has already moved watches it go past.
+     */
+    const rung = ladder.rungOf("warden");
+    let aim: number;
+    if (rung >= 3) {
+      aim = Math.atan2(dx, dz);
+    } else if (rung === 2) {
+      // Towards the doorway it last had them through, so searching looks
+      // like searching somewhere rather than like standing and spinning.
+      const mark = ladder.markOf("warden");
+      const dir = mark ? DIRS.find((d) => room.links[d] === mark) : undefined;
+      if (dir) {
+        const [mx, , mz] = doorPosition(room, dir);
+        aim = Math.atan2(mx - g.position.x, mz - g.position.z);
+      } else {
+        aim = facing.current + Math.sin(t * 0.55) * 0.9;
+      }
+    } else {
+      aim = facing.current + Math.sin(t * 0.35) * 0.7;
+    }
+    // Shortest way round, so it never takes the long way to turn 10 degrees.
+    const turn = ((aim - facing.current + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    const most = WARDEN_TURN_RATE * delta;
+    facing.current += Math.max(-most, Math.min(most, turn));
+    g.rotation.y = facing.current;
+
+    /**
+     * What it can see from where it is standing and which way it is
+     * looking.
+     *
+     * The cones are ordered and the first one the player falls inside is
+     * the only one that counts, with no falloff inside it - so the edge of
+     * a cone is a line the player can learn and stand outside. The three
+     * inputs are separable on purpose: light (which this thing is blind
+     * to, because it is carrying the lamp), movement, and how much of you
+     * is behind the furniture.
+     *
+     * Reported, not applied. The machine is stepped once a frame in one
+     * place, because two callers stepping the same capacitor makes a guard
+     * that flickers.
+     */
+    const cone = coneFor(CONES.warden ?? [], Math.sin(facing.current), Math.cos(facing.current), dx, dz);
+    if (cone) {
+      const v = visibilityFor("warden", room.id, playerAt.speed, exposureAt(cam.x, cam.z, obstacles));
+      const seen = seenAt(cone, v);
+      ladder.report("warden", rungFor(seen), closeEnough(distance), seen >= 0.7, room.id);
+    }
+
     wardenAt.x = g.position.x;
     wardenAt.z = g.position.z;
     wardenAt.roomId = room.id;

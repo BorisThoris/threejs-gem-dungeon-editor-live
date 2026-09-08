@@ -39,6 +39,13 @@ writeFileSync(
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
+   export * from "${root}src/game/din/tags";
+   export * from "${root}src/game/din/carry";
+   export * from "${root}src/game/din/emissions";
+   export * from "${root}src/game/din/susceptibility";
+   export * from "${root}src/game/ladder/rungs";
+   export * from "${root}src/game/ladder/awareness";
+   export * from "${root}src/game/ladder/caps";
    export * from "${root}src/game/mobs/ambient";
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
@@ -3751,6 +3758,364 @@ check("the shipped room templates reach the floors the game generates", authored
     L.TAKEN_MOTE_S < 1,
     `${L.TAKEN_MOTE_S}s`
   );
+}
+
+/**
+ * THE DIN - the shared vocabulary.
+ *
+ * The floor had ten good systems and no channel between them: 120 of 140
+ * bus listeners were Audio and Captions, and across the six threat systems
+ * exactly one file subscribed to the bus at all. These checks hold the
+ * replacement to the two properties that make it worth having - silence is
+ * the default, and the receiver declares what it answers to - because both
+ * are easy to erode one convenient exception at a time.
+ */
+{
+  const tags = new Set(L.TAGS);
+  check("the vocabulary is about twenty tags, not a hundred", L.TAGS.length >= 18 && L.TAGS.length <= 24, `${L.TAGS.length}`);
+  check("no tag is declared in two families", new Set(L.TAGS).size === L.TAGS.length);
+
+  const sus = L.SUSCEPTIBILITY;
+  const receivers = Object.keys(sus);
+  check("every receiver declares a susceptibility block", receivers.length >= 9, `${receivers.length}`);
+
+  /**
+   * The rule that keeps the table sparse. A receiver reacting to a tag it
+   * never declared is the bug this whole design exists to make impossible,
+   * and it would arrive as one convenient special case.
+   */
+  check(
+    "every tag any receiver answers to is in the vocabulary",
+    receivers.every((id) => Object.keys(sus[id].answers).every((t) => tags.has(t))),
+    receivers.flatMap((id) => Object.keys(sus[id].answers).filter((t) => !tags.has(t))).join(", ")
+  );
+  check(
+    "and every threshold is a real magnitude",
+    receivers.every((id) => Object.values(sus[id].answers).every((v) => v > 0 && v <= 1))
+  );
+
+  /**
+   * `deaf` carries no mechanism - it is a written-down claim that a tag's
+   * absence is a decision. This is what holds it to that.
+   */
+  check(
+    "nothing is both deaf and susceptible to the same tag",
+    receivers.every((id) => (sus[id].deaf ?? []).every((t) => sus[id].answers[t] === undefined)),
+    receivers.filter((id) => (sus[id].deaf ?? []).some((t) => sus[id].answers[t] !== undefined)).join(", ")
+  );
+  check(
+    "and every deafness names a real tag",
+    receivers.every((id) => (sus[id].deaf ?? []).every((t) => tags.has(t)))
+  );
+
+  /**
+   * The Reaper's empty block is the design, not an omission. Everything
+   * else on the floor can be routed, lured, blinded or bombed; one thing
+   * cannot, and it is worth one data row rather than five files' worth of
+   * "except the Reaper".
+   */
+  check("the Reaper answers to nothing at all", Object.keys(sus.reaper.answers).length === 0, JSON.stringify(sus.reaper.answers));
+  check("and says so, rather than leaving it to be discovered as a gap", (sus.reaper.deaf ?? []).length >= 5);
+
+  /** The two jokes that would otherwise read as missing rows. */
+  check("the Warden is blind to light: it is carrying the lamp", (sus.warden.deaf ?? []).includes("bright") && sus.warden.answers.bright === undefined);
+  check("the Sentry is deaf: it is a post, not an ear", (sus.sentry.deaf ?? []).includes("loud") && sus.sentry.answers.loud === undefined);
+  check("the Harrier cannot be sent away with a noise", (sus.harrier.deaf ?? []).includes("loud") && sus.harrier.answers.blast !== undefined);
+
+  /**
+   * The design statement at the bottom of the emissions table. Stealing
+   * and smashing must not feel alike, and a player who learns the floor
+   * does not hear a gem leave its socket has learned the game's actual
+   * proposition.
+   */
+  check("theft is silent", L.EMISSIONS.gemTaken.magnitude === 0 && L.EMISSIONS.gemTaken.tags.length === 0);
+  check(
+    "a bomb declares what it is and never learns who is listening",
+    ["blast", "loud", "bright", "hot"].every((t) => L.EMISSIONS.bombBurst.tags.includes(t))
+  );
+  check("and it is the only source of [blast]", Object.values(L.EMISSIONS).filter((e) => e.tags.includes("blast")).length === 1);
+  check(
+    "every emission is made of real tags",
+    Object.values({ ...L.EMISSIONS, ...L.HELD }).every((e) => e.tags.every((t) => tags.has(t)))
+  );
+
+  /** Walking is below every threshold in the game. That is what walking is for. */
+  const thresholds = receivers.flatMap((id) => Object.entries(sus[id].answers)).filter(([t]) => t === "loud").map(([, v]) => v);
+  check("walking is quieter than anything on the floor listens for", thresholds.every((v) => L.EMISSIONS.walk.magnitude < v), `walk ${L.EMISSIONS.walk.magnitude} vs min ${Math.min(...thresholds)}`);
+
+  /** Propagation: the transplanted half, and the numbers that are ours. */
+  const line = (n) => Array.from({ length: n }, (_, i) => ({
+    id: `r${i}`, kind: "normal", seed: 0, grid: { x: i, z: 0 }, size: 16, shape: "square",
+    links: { ...(i > 0 ? { west: `r${i - 1}` } : {}), ...(i < n - 1 ? { east: `r${i + 1}` } : {}) },
+  }));
+  const four = line(4);
+  const reach = L.carriesTo(four, "r0", 1);
+  check("a sound is at full strength in the room it happened in", reach.get("r0") === 1);
+  check("one doorway costs it 65%", Math.abs(reach.get("r1") - 0.35) < 1e-9, `${reach.get("r1")}`);
+  check("two doorways, and it is a rumour", Math.abs(reach.get("r2") - 0.1225) < 1e-9, `${reach.get("r2")}`);
+  /**
+   * And the flood terminates where the file says it does, rather than
+   * walking the whole dungeon to deliver numbers no receiver could act on.
+   */
+  const six = L.carriesTo(line(6), "r0", 1);
+  check("three doorways away it is below everything on the floor that listens", six.get("r3") < 0.3, `${six.get("r3")?.toFixed(4)}`);
+  check("and four doorways away it is not there at all", six.get("r4") === undefined, `${six.get("r4")}`);
+
+  /** A wall is 0.00, and that is not a rounded-down small number. */
+  const split = [
+    { id: "a", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size: 16, shape: "square", links: {} },
+    { id: "b", kind: "normal", seed: 0, grid: { x: 1, z: 0 }, size: 16, shape: "square", links: {} },
+  ];
+  check("a wall stops it dead, however loud it was", L.carriesTo(split, "a", 1).get("b") === undefined);
+
+  /**
+   * A dungeon is a graph and not a tree, so a room two doorways away down
+   * one route may be one doorway away down another. A queue that takes the
+   * first arrival delivers the quieter of the two, which would have shipped
+   * as "the Warden sometimes ignores a bomb it should have heard".
+   */
+  const ring = [
+    { id: "a", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size: 16, shape: "square", links: { east: "b", south: "c" } },
+    { id: "b", kind: "normal", seed: 0, grid: { x: 1, z: 0 }, size: 16, shape: "square", links: { west: "a", south: "d" } },
+    { id: "c", kind: "normal", seed: 0, grid: { x: 0, z: 1 }, size: 16, shape: "square", links: { north: "a", east: "d" } },
+    { id: "d", kind: "normal", seed: 0, grid: { x: 1, z: 1 }, size: 16, shape: "square", links: { north: "b", west: "c" } },
+  ];
+  check("it arrives by the loudest way round, not the first one found", Math.abs(L.carriesTo(ring, "a", 1).get("d") - 0.1225) < 1e-9, `${L.carriesTo(ring, "a", 1).get("d")}`);
+
+  /** A bar is a wall the player paid a gem and eight seconds of hammering for. */
+  const barred = L.carriesTo(four, "r0", 1, new Set([L.barKey("r0", "r1")]));
+  check("a barred doorway stops sound as well as stopping the Warden", barred.get("r1") === undefined && barred.get("r0") === 1);
+
+  check("a sound halves every two and a half seconds", Math.abs(L.aged(1, L.HALF_LIFE_S) - 0.5) < 1e-9);
+  check("and is gone, rather than ending on a frame boundary at 0.01", L.aged(1, 30) < L.AUDIBLE);
+
+  /**
+   * The two facts a player can actually plan against, and the reason the
+   * numbers were chosen. A bomb pulls a Warden from the next room and not
+   * from across the floor: near enough to be a tool, far enough to be a
+   * decision.
+   */
+  const wardenHears = sus.warden.answers.loud;
+  check("a bomb is heard one room away", 1 * 0.35 >= wardenHears, `${0.35} vs ${wardenHears}`);
+  check("but not two: a lure is a local tool, not a floor-wide one", 1 * 0.1225 < wardenHears, `${0.1225} vs ${wardenHears}`);
+
+  /** The Sentry sees the flash of the thing it cannot hear. Tags, not names. */
+  check(
+    "the Sentry never hears the loudest thing in the game - and sees its flash",
+    sus.sentry.answers.loud === undefined && L.EMISSIONS.bombBurst.magnitude >= sus.sentry.answers.bright
+  );
+  check(
+    "and only in its own room: a flash does not turn a corner well",
+    1 * 0.35 < sus.sentry.answers.bright,
+    `${0.35} vs ${sus.sentry.answers.bright}`
+  );
+
+  /**
+   * The biome table already owns how far a sprint carries, and it is shown
+   * to the player as "deep moss" or "standing water" before they commit to
+   * the dash. The Din reads that number rather than keeping a second copy.
+   */
+  const roomIn = (kind, id) => ({ id, kind, seed: 7, grid: { x: 0, z: 0 }, size: 16, shape: "square", links: {} });
+  const carries = L.ROOM_KINDS.flatMap((kind) => [0, 1, 2, 3].map((i) => L.loudnessIn("sprint", roomIn(kind, `r${i}`))));
+  check("a sprint is not equally loud everywhere", new Set(carries.map((c) => c.toFixed(3))).size > 1, `${new Set(carries.map((c) => c.toFixed(3))).size} values`);
+  check("and a bomb is, because a tool with situational reach cannot be planned with", new Set(L.ROOM_KINDS.map((k) => L.loudnessIn("bombBurst", roomIn(k, "r0")))).size === 1);
+  check("every surface maps into the acoustic vocabulary", Object.values(L.SURFACE_OF).every((s) => tags.has(s)));
+}
+
+/**
+ * THE LADDER - awareness with rungs.
+ *
+ * The brief, in the words of the designer who shipped the best version of
+ * it: broadening out the gray zone of safety and danger that in most
+ * first-person games is razor thin. Ours was two states and a boolean.
+ *
+ * Everything checked here is a property that is easy to erode by accident
+ * and impossible to notice going: a jump that quietly becomes a ratchet, a
+ * cone that quietly grows a falloff, a cap that quietly stops capping.
+ */
+{
+  const caps = L.CAPS;
+  const ids = Object.keys(caps);
+  check("every creature on the floor has a cap", ids.length >= 9, `${ids.length}`);
+  check("and none of them has a floor above its ceiling", ids.every((id) => caps[id].min <= caps[id].max));
+  check("and every rung named is a rung that exists", ids.every((id) => caps[id].max <= 3 && caps[id].min >= 0));
+
+  /**
+   * The content tool. A creature capped below the engage rung perceives,
+   * reacts and calls out, and never commits - which is how one
+   * implementation covers a rat, a moth, a roost and a Warden.
+   */
+  const capped = ids.filter((id) => caps[id].max < L.ENGAGE);
+  check("some of the population is capped below the engage rung", capped.length >= 3, capped.join(", "));
+  check(
+    "and a capped creature never commits, even at its own ceiling",
+    capped.every((id) => !L.engaged({ ...L.fresh(caps[id].max) }, caps[id])),
+    capped.join(", ")
+  );
+  check(
+    "while the things that hunt you do",
+    ids.filter((id) => caps[id].max >= L.ENGAGE).every((id) => L.engaged(L.fresh(3), caps[id]))
+  );
+
+  /** Pinned: it never rises because it never was not risen, and never falls. */
+  check("the Reaper is pinned at the top rung", L.pinnedAt("reaper") === L.ENGAGE, `${L.pinnedAt("reaper")}`);
+  check("and it is the only thing on the floor that is pinned there", ids.filter((id) => L.pinnedAt(id) === L.ENGAGE).length === 1);
+
+  /**
+   * UP IS A JUMP. Gated by a delay that belongs to the rung it is leaving,
+   * and once past it the creature arrives without visiting anything on the
+   * way. A ratchet would hand the player a warning the design does not
+   * intend to give.
+   */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.warden, 3, 0, false, false, "r1");
+    check("a gated jump does not move on the frame the stimulus starts", a.rung === 0, `${a.rung}`);
+    a = L.step(a, caps.warden, 3, L.REACT_MODERATE_S - 0.01, false, false, "r1");
+    check("nor a hair before the delay is up", a.rung === 0, `${a.rung}`);
+    a = L.step(a, caps.warden, 3, L.REACT_MODERATE_S, false, false, "r1");
+    check("and then it arrives at the top without visiting the rungs between", a.rung === 3, `${a.rung}`);
+    check("and remembers where it had you", a.markRoomId === "r1", `${a.markRoomId}`);
+  }
+
+  /**
+   * And the half that makes ducking behind a pillar a real move: break the
+   * stimulus inside the window and there is no alert AT ALL. Nothing is
+   * banked, so it is not a postponement of something already decided.
+   */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.warden, 3, 0, false, false, "r1");
+    a = L.step(a, caps.warden, 0, 0.4, false, false, null);
+    a = L.step(a, caps.warden, 3, 0.5, false, false, "r1");
+    check("breaking the stimulus inside the window banks nothing", a.rung === 0, `${a.rung}`);
+    a = L.step(a, caps.warden, 3, 0.5 + L.REACT_MODERATE_S - 0.01, false, false, "r1");
+    check("and the next attempt starts its own delay from scratch", a.rung === 0, `${a.rung}`);
+  }
+
+  /** A strong stimulus is dealt with faster than a moderate one. */
+  check("a strong stimulus is reacted to faster", L.REACT_STRONG_S < L.REACT_MODERATE_S, `${L.REACT_STRONG_S} vs ${L.REACT_MODERATE_S}`);
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.warden, 3, 0, false, true, null);
+    a = L.step(a, caps.warden, 3, L.REACT_STRONG_S, false, true, null);
+    check("and gets there on the shorter clock", a.rung === 3, `${a.rung}`);
+  }
+
+  /** At arm's length there is no window: a delay there reads as broken. */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.warden, 3, 0, true, false, null);
+    check("inside arm's length the delay does not apply at all", a.rung === 3, `${a.rung}`);
+  }
+  check("and arm's length is about a stride, not half a room", L.IGNORE_DELAY_RANGE > 1 && L.IGNORE_DELAY_RANGE < 5, `${L.IGNORE_DELAY_RANGE}`);
+
+  /**
+   * Seen once, seen cheaply: a botched approach is worth abandoning.
+   *
+   * Run on the rat, because the interesting case is a creature that has
+   * had time to come back down while it is still primed - and the Warden's
+   * top rung takes 22 seconds to leave against a 12-second window, so it
+   * cannot show this without also testing the discharge times.
+   */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.rat, 1, 0, true, false, null);
+    for (let t = 1; t <= L.DISCHARGE_S[1]; t++) a = L.step(a, caps.rat, 0, t, false, false, null);
+    const before = a.rung;
+    a = L.step(a, caps.rat, 1, L.DISCHARGE_S[1] + 0.5, false, false, null);
+    check("inside the retrigger window, being noticed again costs nothing", before === 0 && a.rung === 1, `${before} then ${a.rung}`);
+
+    let b = L.fresh(0);
+    b = L.step(b, caps.rat, 1, 0, true, false, null);
+    const past = L.RETRIGGER_MODERATE_S + 1;
+    for (let t = 1; t <= past; t++) b = L.step(b, caps.rat, 0, t, false, false, null);
+    const settled = b.rung;
+    b = L.step(b, caps.rat, 1, past, false, false, null);
+    check("and once it has lapsed, the window is back", settled === 0 && b.rung === 0, `${settled} then ${b.rung}`);
+  }
+  check("and being seen matters longer than being heard", L.RETRIGGER_STRONG_S > L.RETRIGGER_MODERATE_S);
+
+  /**
+   * DOWN IS A SLIDE. Through every intermediate state, and slower the
+   * higher it got. Being noticed is sudden and being forgotten is slow,
+   * and both shapes are things a player learns.
+   */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.rat, 2, 0, true, false, null);
+    const walked = [a.rung];
+    for (let t = 1; t < 60; t++) {
+      const next = L.step(a, caps.rat, 0, t, false, false, null);
+      if (next.rung !== a.rung) walked.push(next.rung);
+      a = next;
+    }
+    check("coming down passes through every rung on the way", walked.join(">") === "2>1>0", walked.join(">"));
+  }
+  check("and the higher it got, the longer it takes to let go", L.DISCHARGE_S[3] > L.DISCHARGE_S[2] && L.DISCHARGE_S[2] > L.DISCHARGE_S[1]);
+
+  /**
+   * OURS, and marked as ours: a floor that remembers what you did on it.
+   * The engine property this looked like is documented; the behaviour is
+   * not, across three verification passes.
+   */
+  {
+    let a = L.fresh(0);
+    a = L.step(a, caps.warden, 3, 0, true, false, null);
+    for (let t = 1; t < 300; t++) a = L.step(a, caps.warden, 0, t, false, false, null);
+    check("a Warden that has hunted you never goes fully still again", a.rung >= 1, `${a.rung}`);
+    let b = L.fresh(0);
+    for (let t = 1; t < 300; t++) b = L.step(b, caps.warden, 0, t, false, false, null);
+    check("but one that never noticed you is still still", b.rung === 0, `${b.rung}`);
+    let c = L.fresh(0);
+    c = L.step(c, caps.rat, 2, 0, true, false, null);
+    for (let t = 1; t < 300; t++) c = L.step(c, caps.rat, 0, t, false, false, null);
+    check("and a creature without the rule forgets completely", c.rung === 0, `${c.rung}`);
+  }
+
+  /**
+   * The cones. Ordered, first hit wins, and CONSTANT output inside - which
+   * is what makes the edge of a cone a line the player can learn and stand
+   * just outside of. A gradient would not be.
+   */
+  const cones = L.CONES.warden;
+  check("the Warden reads well ahead of itself and poorly to the sides", cones[0].angle < cones[2].angle && cones[0].acuity > cones[2].acuity);
+  check("and it notices anything standing right next to it, from any side", cones[cones.length - 1].angle >= Math.PI - 1e-9);
+  check(
+    "the cones are declared narrowest-and-sharpest first, so the first hit is the right one",
+    cones.every((c, i) => i === 0 || c.angle >= cones[i - 1].angle)
+  );
+  {
+    const first = L.coneFor(cones, 0, 1, 0, 3);
+    const wide = L.coneFor(cones, 0, 1, 3, 3);
+    check("dead ahead falls in the sharp cone", first === cones[0]);
+    check("and off to the side falls in a duller one", wide !== null && wide !== cones[0]);
+    check("outside every cone is not seen at all", L.coneFor(cones, 0, 1, 0, -20) === null);
+  }
+  {
+    const v = { light: 0.5, movement: 0.5, exposure: 1 };
+    const near = L.seenAt(cones[0], v);
+    check("output inside a cone does not fall off with distance", near === L.seenAt(cones[0], v), `${near}`);
+    check("and a duller cone is genuinely duller", L.seenAt(cones[2], v) < near);
+  }
+
+  /**
+   * Peripheral vision, which is the profile worth having: a tenth as
+   * sensitive to light, three times as sensitive to movement. Out of the
+   * corner of its eye it cannot see your lantern and it absolutely can see
+   * you run.
+   */
+  check("peripheral vision is far more sensitive to movement than to light", L.PROFILES.peripheral.movement > L.PROFILES.peripheral.light * 5);
+  check("and the Sentry's night vision is the opposite", L.PROFILES.nightVision.light > L.PROFILES.nightVision.movement * 3);
+  check(
+    "every profile weighs all three inputs",
+    Object.values(L.PROFILES).every((p) => p.light >= 0 && p.movement >= 0 && p.exposure >= 0)
+  );
+
+  /** The discrete output stage: the quantisation IS the readability. */
+  check("the analog value quantises upwards through every rung", L.rungFor(0) === 0 && L.rungFor(0.2) === 1 && L.rungFor(0.5) === 2 && L.rungFor(1) === 3);
+  check("and every rung has a word the player can be told", [0, 1, 2, 3].every((r) => typeof L.RUNG_NAME[r] === "string" && L.RUNG_NAME[r].length > 0));
+  check("four rungs, not eight: a ladder whose rungs cannot be named is a number in a costume", L.RUNGS.length === 4);
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

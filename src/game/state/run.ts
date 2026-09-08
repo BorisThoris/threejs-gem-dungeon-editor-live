@@ -2002,12 +2002,33 @@ export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 export const lanternLit = (s: RunState): boolean => s.lanternRaised && s.oil > 0;
 
 /**
- * Whether the Warden is currently walking to a light it can see. The exact
- * twin of `wardenHears`, and for the same reason: the two bargains this
- * game makes with the player - fast or unnoticed, seeing or unseen - are
- * the same shape and are kept the same way.
+ * Whether the player's light is currently showing.
+ *
+ * A neutral fact with a neutral name, because it stopped being one
+ * creature's business. It was `wardenSeesLight`, and it meant two
+ * different things at once: a raised lantern, and a moth circling your
+ * head. Splitting them is what the Din's susceptibility table forced, and
+ * the split is better than what it replaced - see `wardenMarked`.
+ *
+ * This half is read by the things that genuinely answer to [bright]: the
+ * Sentry, the moth, and the lamplighter that follows a raised lamp.
  */
-export const wardenSeesLight = (s: RunState): boolean => s.mothOn || running(s, s.litUntil);
+export const lightIsShowing = (s: RunState): boolean => running(s, s.litUntil);
+
+/**
+ * Whether a moth has marked the player for the Warden.
+ *
+ * The Warden is blind to light - it has been holding the company's lamp
+ * since the shift ended and nothing you can carry is brighter. So a raised
+ * lantern, on its own, tells it nothing, and the bargain the lantern makes
+ * is with the Sentry rather than with this.
+ *
+ * A moth is not light. A moth is a creature that has settled on you and
+ * will not leave, and that IS something a Warden can read across a room -
+ * which is what makes the moth worth its place: it is the only way in the
+ * game that being lit gives you away to the thing that hunts you.
+ */
+export const wardenMarked = (s: RunState): boolean => s.mothOn;
 
 /**
  * Whether it knows where the player is at all, by either sense.
@@ -2017,7 +2038,7 @@ export const wardenSeesLight = (s: RunState): boolean => s.mothOn || running(s, 
  * would have meant three places each deciding for themselves whether
  * light counts - which is exactly the class of bug the rebuild was for.
  */
-export const wardenSenses = (s: RunState): boolean => wardenHears(s) || wardenSeesLight(s);
+export const wardenSenses = (s: RunState): boolean => wardenHears(s) || wardenMarked(s);
 
 /**
  * Whether the Warden is still reeling from the spikes. While it is, it
@@ -2213,7 +2234,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();
-      return { raised: s.lanternRaised, lit: lanternLit(s), oil: s.oil, seen: wardenSeesLight(s) };
+      return { raised: s.lanternRaised, lit: lanternLit(s), oil: s.oil, seen: lightIsShowing(s) };
     },
     lure: () => lureNow(useRun.getState()),
     items: () => ITEM_IDS.slice(),

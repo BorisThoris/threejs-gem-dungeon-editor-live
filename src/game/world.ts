@@ -334,6 +334,22 @@ export const BOMB_RADIUS = 3.2;
  */
 export const NOISE_HOLD_S = 4;
 
+/**
+ * How fast the Warden's head comes round, in radians per second.
+ *
+ * About 130 degrees a second, and it is the single number that decides
+ * whether getting behind this thing is a real move. Too fast and its
+ * viewcones may as well not exist - which is where the game was, because
+ * it faced the player every frame on every rung. Too slow and it reads as
+ * broken rather than as heavy.
+ *
+ * Turning is also the tell: the lantern coming round is the notice a
+ * player gets before it commits, so this is a readability number as much
+ * as a difficulty one.
+ */
+export const WARDEN_TURN_RATE = 2.3;
+
+
 // How long a floor is left alone before it wakes scales with depth, and so
 // lives with the rest of the descent in `floorRules` below.
 

@@ -4869,12 +4869,33 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await sleep(3600);
     out.unseenLater = window.__derived.lantern().seen;
 
-    // Up on a floor that has not heard a thing, and the Warden comes.
-    run.setState({ noisyUntil: 0, litUntil: 0, alarm: 0, wardenLure: null, lureUntil: 0, lanternRaised: false });
+    /**
+     * Up on a floor that has not heard a thing - and the Warden does NOT
+     * come, because it is the one carrying the lamp.
+     *
+     * This check used to assert the opposite, and the opposite was the
+     * shipped behaviour: raising the lantern set the Warden walking. The
+     * Din's susceptibility table made that untenable to keep - the Warden
+     * declares itself deaf to [bright] and the Sentry declares that light
+     * is the only thing it answers to, and a Warden that also saw light
+     * left the Sentry with nothing of its own.
+     *
+     * So the lantern's bargain is now with the Sentry, the moth and the
+     * lamplighter, and the Warden's is with noise. One sense each, and the
+     * moth is the bridge between them: it is not light, it is a creature
+     * that has settled on you and will not leave, and THAT a Warden can
+     * read across a room.
+     */
+    run.setState({ noisyUntil: 0, litUntil: 0, alarm: 0, wardenLure: null, lureUntil: 0, lanternRaised: false, mothOn: false });
     const huntsQuiet = window.__derived.hunts();
     run.getState().toggleLantern();
     await sleep(400);
-    out.light = { huntsQuiet, huntsLit: window.__derived.hunts(), lit: window.__derived.lantern().lit };
+    const huntsLit = window.__derived.hunts();
+    // And now the moth finds the lamp.
+    run.setState({ mothOn: true });
+    await sleep(150);
+    out.light = { huntsQuiet, huntsLit, huntsMothed: window.__derived.hunts(), lit: window.__derived.lantern().lit };
+    run.setState({ mothOn: false });
 
     // Burned dry: it goes out on its own and will not come back up.
     run.setState({ oil: 1.2 });
@@ -4942,8 +4963,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     JSON.stringify({ at: lamp.seenAfterLowering, later: lamp.unseenLater })
   );
   ok(
-    "a raised lantern sets the Warden walking for you on a floor that has heard nothing",
-    lamp.light.huntsQuiet === false && lamp.light.huntsLit === true,
+    "a raised lantern does not set the Warden walking: it is the one carrying the lamp",
+    lamp.light.huntsQuiet === false && lamp.light.huntsLit === false && lamp.light.lit === true,
+    JSON.stringify(lamp.light)
+  );
+  ok(
+    "but a moth that has settled on it does, which is the only way light gives you away to it",
+    lamp.light.huntsMothed === true,
     JSON.stringify(lamp.light)
   );
   ok(

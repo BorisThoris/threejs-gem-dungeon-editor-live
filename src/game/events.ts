@@ -40,6 +40,18 @@ export interface BusEvents {
   wardenRouted: undefined;
   /** A sprint gave the player away: it knows which room they are in. */
   wardenHeard: undefined;
+  /**
+   * Something on the floor moved up or down the awareness ladder.
+   *
+   * The ladder's whole point is a wide grey zone between safe and caught,
+   * and a range of internal states nobody can perceive is not a range at
+   * all - so every rung change says itself, and the audio layer turns it
+   * into a bark in a direction. `rose` is here because up and down want
+   * opposite sounds: being noticed is a sudden thing and being forgotten
+   * is a slow one, and one event carrying both would have to be told
+   * apart by whoever listens.
+   */
+  rungChanged: { who: string; rung: number; rose: boolean; name: string };
   /** The lantern went up or down. */
   lanternToggled: { raised: boolean };
   /** The last of the oil burned away. */

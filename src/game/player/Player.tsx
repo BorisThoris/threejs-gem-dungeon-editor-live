@@ -144,7 +144,7 @@ export function Player() {
     // One writer for where the player is: everything outside the frame loop
     // that needs it - putting a device down on the floor, for one - reads it
     // from there rather than keeping a copy.
-    setPlayerAt(p.x, p.z);
+    setPlayerAt(p.x, p.z, delta);
     const b = bob.current;
     // The head dips on each footfall and sways on the stride, at a size
     // meant to be felt rather than seen. Anyone it bothers can switch it off.

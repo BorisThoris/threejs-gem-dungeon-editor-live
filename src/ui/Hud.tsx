@@ -17,7 +17,7 @@ import {
   useCurrentRoom,
   useRun,
   wardNow,
-  wardenSeesLight,
+  wardenMarked,
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
@@ -233,7 +233,7 @@ function useWardenSense(): {
           : null;
     return {
       heard: !lured && wardenSenses(s),
-      seen: !lured && wardenSeesLight(s),
+      seen: !lured && wardenMarked(s),
       lit: lanternLit(s),
       oil: Math.ceil(s.oil),
       lured,

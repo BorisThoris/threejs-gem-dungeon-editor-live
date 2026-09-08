@@ -28,6 +28,40 @@ Two stores that both claimed the player's stats. So:
   and a panner sixty times a second, which is the shape of every stutter
   this project has had; `yarn test:perf` drives it twenty thousand times and
   checks that one sound came out rather than twenty thousand.
+- **What a thing on the floor IS lives in `src/game/din/`, and what a
+  creature ANSWERS TO lives beside it in `susceptibility.ts`.** This is the
+  same rule pushed one level further and it is the one worth understanding.
+  A bomb declares `[blast] [loud] [bright] [hot]` and never learns the
+  Warden exists; the Warden declares `hears [loud] >= 0.30, fears [blast]`
+  and never learns what a bomb is. The alternative - each threat carrying a
+  private list of the specific events it reacts to - is exactly the shape
+  this codebase had, and it is why the floor was flat: 120 of 140 bus
+  listeners were Audio and Captions, and across the six threat systems
+  exactly one file subscribed to the bus at all.
+  Two properties are load-bearing and both are checked. **Silence is the
+  default**: a receiver that has not declared a tag is not slightly
+  affected, it is unaffected, and there is no fallback that makes
+  everything sensitive to everything. And **matching is by tag, never by
+  name** - `hears [loud]`, not `hears bombBurst, barrelBurst, grateDrop` -
+  so a new noisy thing is heard by everything that listens for `[loud]` the
+  day it lands, with no other file touched.
+- **How far a thing is heard is `din/carry.ts` and nothing else.** The room
+  graph is `Room.links`, which the generator already writes; a doorway costs
+  x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's
+  reach is computed once when it happens and never again, so a frame loop
+  asking "what can I hear" is a map lookup rather than a flood.
+- **Where a creature is on the awareness ladder is `ladder/state.ts`, and
+  only `LadderDriver` steps it.** Two informants know different halves of
+  the world - a floor-level driver knows what the Din is delivering into a
+  room, a mounted component knows where the creature is standing and which
+  way it is looking - so both `report` and exactly one caller advances the
+  machine. Two callers stepping the same capacitor gives a guard that
+  flickers between their two views.
+- **The difference between the creatures is `ladder/caps.ts`, not their
+  files.** Every one of them runs the same state machine; a rat is a rat
+  because its cap is 2 and a Reaper is a Reaper because its min and max are
+  both 3. Capping below the engage rung means it perceives, reacts and
+  barks and never commits, which is most of the population in one table.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
@@ -620,6 +654,20 @@ src/
       catalog.ts         ten achievements, with the Steam names they map to
       watch.ts           the only thing in the game that earns one
     state/run.ts         the run: phase, lives, gems, current room, visited
+    din/                 the shared vocabulary the floor is written in
+      tags.ts            ~20 tags: emitted / borne / surfaces / states
+      emissions.ts       what each thing declares itself to be, and how loud
+      susceptibility.ts  what each creature answers to - and what it does not
+      carry.ts           the room-portal flood: doorway 0.35, wall 0.00
+      din.ts             what is currently being broadcast, and who it reaches
+      DinDriver.tsx      the one place an event becomes something audible
+    ladder/              awareness with rungs, and the asymmetry that reads
+      rungs.ts           four named rungs, ordered cones, the analog inputs
+      awareness.ts       the machine: up is a gated jump, down is a slide
+      caps.ts            one archetype, many creatures, by cap alone
+      sight.ts           the three separable inputs, honouring susceptibility
+      state.ts           where every creature is; informants report, one steps
+      LadderDriver.tsx   steps it once a frame, and says every rung out loud
     input/
       keyboard.ts        edge presses, asked by action rather than by key;
                          an on-screen button is a key named for its action

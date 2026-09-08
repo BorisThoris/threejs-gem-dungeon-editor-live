@@ -474,6 +474,33 @@ export const sfx = {
    * on from where the player is looking, which is the whole value of the
    * cue: a footfall through a wall you cannot place is only a jump scare.
    */
+  /**
+   * A bark: the creature saying, out loud, which rung it is on.
+   *
+   * This is the whole legibility half of the awareness ladder, and it is
+   * not decoration. A range of internal states is meaningless if the
+   * player cannot perceive it, and the game this is transplanted from
+   * resolved that entirely through barks - sound was the primary medium
+   * through which the AIs communicated both their location and their
+   * internal state.
+   *
+   * Rising and falling are different sounds because they are different
+   * news. Going up is a short sharp intake, higher the further up it
+   * went; coming down is a longer, lower, falling note, so a player who
+   * hears one behind them knows without turning round whether to keep
+   * moving or to keep still.
+   */
+  bark(rung: number, rose: boolean, pan = 0) {
+    if (rung <= 0 && rose) return;
+    const base = 150 + rung * 55;
+    if (rose) {
+      tone(base, 0.16, "triangle", 0.3, 900, pan);
+      later(70, () => tone(base * 1.25, 0.12, "sine", 0.2, 1100, pan));
+    } else {
+      tone(base * 0.8, 0.42, "sine", 0.22, 620, pan);
+      later(150, () => tone(base * 0.6, 0.5, "sine", 0.16, 480, pan));
+    }
+  },
   wardenNear(pan = 0) {
     tone(58, 0.5, "sine", 0.45, 42, pan);
     noiseBurst(0.3, 0.1, 260, pan);

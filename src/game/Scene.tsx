@@ -14,6 +14,8 @@ import { Anisotropy } from "./textures/Anisotropy";
 import { Room } from "./rooms/Room";
 import { canControl, useCurrentRoom, useRun } from "./state/run";
 import { BombDriver } from "./systems/BombDriver";
+import { DinDriver } from "./din/DinDriver";
+import { LadderDriver } from "./ladder/LadderDriver";
 import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WispDriver } from "./mobs/WispDriver";
 import { HarrierDriver } from "./mobs/HarrierDriver";
@@ -115,6 +117,8 @@ export function Scene() {
       {/* The Warden walks the floor whether or not its room is mounted, and
           the Cutpurse's timer runs whichever room the player is standing
           in - both of them need a frame loop that outlives a room. */}
+      <DinDriver />
+      <LadderDriver />
       <WardenDriver />
       <CutpurseDriver />
       <BombDriver />
