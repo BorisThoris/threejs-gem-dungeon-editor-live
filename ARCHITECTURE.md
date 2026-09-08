@@ -475,7 +475,16 @@ Two stores that both claimed the player's stats. So:
     and says a rung heard through one, and `hudLines.ts` carries the DARK
     line's vein band and the KNOWN line. `knows(id)` in `state/ledger.ts` is
     the one question any of them asks.
-- Templates come from `src/game/rooms/templates.ts`, by id.
+- Templates come from `src/game/rooms/templates.ts`, by id - and the
+  content is registered by `App.tsx` importing `src/game/rooms/shipped.ts`
+  for its side effect. That import is load-bearing and was missing for the
+  whole life of the pipeline: the registry is not allowed to reach for
+  content, so the entry point has to, and nothing did. Two authored rooms
+  were held to sixty seeds in all eight orientations by `yarn test:layout`
+  (which imports the content itself) and never once drawn for a player.
+  The smoke suite now reads the registry the game holds, through
+  `window.__templates`, without importing the content to make its own
+  assertion true.
 - What an authored room actually contains is `authoredProps` in
   `src/game/rooms/templates.ts`, and it is the one place a template's
   substitution slots are resolved. A template's props may be placeholders
