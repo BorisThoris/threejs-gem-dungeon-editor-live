@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
+import { ledgerLessonBy } from "../game/ledger/lessons";
+import { knows } from "../game/state/ledger";
+import { useRun } from "../game/state/run";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
@@ -69,21 +72,65 @@ export function Captions() {
       bus.on("snareSprung", ({ by }) => {
         if (by === "rat") say("Something small springs your snare");
       }),
-      bus.on("mothLanded", () => say("A moth settles on the lantern")),
+      // What the moth costs, said every time, once the delver has watched
+      // it cost them once. Before that the teacher says it the first time
+      // and this says only what happened - a player who has not seen it be
+      // a problem has not learned that it is one, and telling them is the
+      // inference the Ledger exists to refuse to make.
+      bus.on("mothLanded", () =>
+        say(knows("moth") ? "A moth settles on the lantern - it carries you" : "A moth settles on the lantern")
+      ),
       bus.on("mothLeft", () => say("The moth carries the light away")),
       bus.on("batsRoused", () => say("Bats burst from the roost")),
       bus.on("draftFelt", () => say("A draft of cold air, from the wall")),
       bus.on("propBroken", ({ kind }) => say(`The ${kind} bursts`)),
+      // A sound through a wall the delver has opened before is a sound
+      // they can now place. The description is what they hear; the name is
+      // what they have established it means, and the entry is only written
+      // once they have opened one and seen for themselves.
       bus.on("wallSound", ({ flavour }) =>
         say(
-          flavour === "hoard"
-            ? "Something clinks, through the wall"
-            : flavour === "reliquary"
-              ? "A faint chime, through the wall"
-              : "Water, dripping, through the wall"
+          knows("wallSound")
+            ? flavour === "hoard"
+              ? "A hoard, through the wall"
+              : flavour === "reliquary"
+                ? "A reliquary, through the wall"
+                : "A shrine, through the wall"
+            : flavour === "hoard"
+              ? "Something clinks, through the wall"
+              : flavour === "reliquary"
+                ? "A faint chime, through the wall"
+                : "Water, dripping, through the wall"
         )
       ),
+      /**
+       * And the bark. A rung changing in a room the delver cannot see into
+       * is the one thing the Ladder does that they would otherwise never
+       * hear - so once they have heard one and walked in on what it named,
+       * the game says it out loud instead of leaving it in the sound.
+       */
+      bus.on("rungChanged", ({ rose, name }) => {
+        if (!knows("bark") || !rose) return;
+        const s = useRun.getState();
+        if (s.wardenRoomId && s.wardenRoomId !== s.currentRoomId) say(name);
+      }),
       bus.on("mapMarked", ({ marked }) => say(marked ? "Marked on the map" : "Mark cleared")),
+      /**
+       * A line written in the Ledger, said in the delver's own words at
+       * the moment they write it.
+       *
+       * A caption rather than a card, deliberately. A deed gets a card
+       * because it is an award and the player is meant to look at it; a
+       * lesson is the delver noticing something, and it belongs in the
+       * same quiet voice that says "a draft of cold air, from the wall".
+       * The entry IS the announcement - there is no separate line saying
+       * one was learned, because a notice about a record is not the
+       * record.
+       */
+      bus.on("lessonLearned", ({ id }) => {
+        const lesson = ledgerLessonBy(id);
+        if (lesson) say(lesson.entry);
+      }),
       bus.on("wispCame", () => say("A wisp gathers at the lantern")),
       bus.on("wispLeft", () => say("The wisp goes out")),
       bus.on("harrierWoke", () => say("Something takes wing")),

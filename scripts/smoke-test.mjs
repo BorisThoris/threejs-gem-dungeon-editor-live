@@ -8460,8 +8460,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await import("/src/game/rooms/shipped.ts");
     const G = await import("/src/game/dungeon/generate.ts");
     const W = await import("/src/game/world.ts");
-    const shipped = T.allTemplates();
+    // The SHIPPED set, from the file that defines it. `allTemplates()` is
+    // the live registry, which by this point in the run also holds the
+    // draft the editor block authored - and a draft an author made in the
+    // Room Builder is under no obligation to use slots.
+    const shipped = (await import("/src/content/templates.json")).default;
     const ruled = shipped.filter((t) => (t.slots ?? []).length > 0);
+    const multiplies = new Set(ruled.map((t) => t.id));
 
     // Every arrangement the player could be shown, over runs walked the way
     // a run walks them.
@@ -8505,6 +8510,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       rooms,
       placeholders,
       arrangements: [...seen].map(([id, set]) => [id, set.size]),
+      multiplied: [...seen].filter(([id]) => multiplies.has(id)).map(([id, set]) => [id, set.size]),
       stable: before !== null && before === after,
     };
   });
@@ -8512,9 +8518,102 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     slots.ruled > 0 && slots.ruled === slots.shipped, JSON.stringify({ ruled: slots.ruled, of: slots.shipped }));
   ok("and no placeholder ever reaches the room the game draws",
     slots.rooms > 30 && slots.placeholders === 0, JSON.stringify({ rooms: slots.rooms, placeholders: slots.placeholders }));
-  ok("an authored room the player walks into is many rooms, not one",
-    slots.arrangements.length > 0 && slots.arrangements.every(([, n]) => n >= 16), JSON.stringify(slots.arrangements));
+  // Eight orientations is what an unslotted room gets, and every slotted
+  // one has to beat that by its own rules - which is the difference the
+  // whole system exists to make.
+  ok("an authored room with slots is many rooms, not one",
+    slots.multiplied.length === slots.ruled && slots.multiplied.every(([, n]) => n >= 16),
+    JSON.stringify(slots.arrangements));
   ok("and it is the same room when they walk back into it", slots.stable, String(slots.stable));
+}
+
+// The Ledger. Knowledge is the only progression a twenty-minute run can
+// honestly carry, and the whole design rests on one rule: an entry is
+// written when its observation HAPPENED, never when something implies it.
+// So this plays the observations rather than calling `learn`, and it plays
+// the near-misses too - because a Ledger that writes a line for standing
+// near a Warden has replaced the game's own subject with a checklist.
+{
+  const ledger = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const L = window.__ledger;
+    L.getState().clear();
+    run.getState().startRun(23);
+    await wait(1200);
+
+    const d = run.getState().dungeon;
+    const host = d.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    if (!host) return { error: "no cracked wall on this floor" };
+
+    // The near-miss first: opening a wall the delver never stood at
+    // teaches nothing, and the entry must not appear.
+    run.setState({ transitioning: true, currentRoomId: host.id });
+    run.getState().roomReady(host.id);
+    await wait(900);
+    run.getState().revealSecret(host.id);
+    await wait(400);
+    const deduced = L.getState().learned.includes("draft");
+
+    // And now the observation: feel the draft, then open the wall.
+    run.getState().startRun(23);
+    await wait(1200);
+    const again = run.getState().dungeon.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    run.setState({ transitioning: true, currentRoomId: again.id });
+    run.getState().roomReady(again.id);
+    await wait(900);
+    run.getState().feltDraft(again.id);
+    run.getState().revealSecret(again.id);
+    await wait(500);
+    const observed = L.getState().learned.includes("draft");
+    const said = document.body.innerText.includes("the wall behind it was thin");
+
+    // What it buys: a wall felt on a later run is on the map without a
+    // bomb, and only a wall the delver actually stood at.
+    run.getState().startRun(31);
+    await wait(1200);
+    const third = run.getState().dungeon.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    const before = document.querySelectorAll('[data-testid="map-felt"]').length;
+    run.getState().feltDraft(third.id);
+    await wait(500);
+    const after = document.querySelectorAll('[data-testid="map-felt"]').length;
+
+    // And it survives the run that learned it.
+    const kept = L.getState().learned.slice();
+    return { deduced, observed, said, before, after, kept };
+  });
+  ok("a wall opened without ever feeling its draft teaches nothing", !ledger.error && ledger.deduced === false, ledger.error || String(ledger.deduced));
+  ok("feeling the draft and then opening the wall writes the entry", ledger.observed === true, String(ledger.observed));
+  ok("and the entry is said in the delver's own words as it is written", ledger.said === true, String(ledger.said));
+  ok("a written lesson outlives the run that learned it", (ledger.kept ?? []).includes("draft"), JSON.stringify(ledger.kept));
+  // And what it buys, on a later run: the wall the delver stood at is on
+  // the map, without a bomb spent proving what they already know.
+  ok("and pays for itself: a draft felt on a later run is marked without a bomb",
+    ledger.after > ledger.before, JSON.stringify({ before: ledger.before, after: ledger.after }));
+
+  // The screen. The opposite of the deeds screen in the one way that
+  // matters: a lesson is not shown before it is learned, because the
+  // lesson IS what is being played for.
+  const screen = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().quitToMenu();
+    await wait(600);
+    document.querySelector('[data-testid="menu-ledger"]')?.click();
+    await wait(400);
+    const rows = [...document.querySelectorAll('[data-testid^="lesson-"]')];
+    const written = rows.filter((r) => r.dataset.written === "yes");
+    const unwritten = rows.filter((r) => r.dataset.written === "no");
+    return {
+      rows: rows.length,
+      written: written.length,
+      unwritten: unwritten.length,
+      text: unwritten.map((r) => r.innerText).join(" | "),
+    };
+  });
+  ok("the ledger screen lists every lesson", screen.rows >= 9, JSON.stringify({ rows: screen.rows, written: screen.written }));
+  ok("and shows an unlearned one as something to go and observe, never as its answer",
+    screen.unwritten > 0 && screen.text.startsWith("Not yet:"), screen.text.slice(0, 90));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

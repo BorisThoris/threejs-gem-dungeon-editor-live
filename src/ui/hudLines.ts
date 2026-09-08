@@ -107,6 +107,21 @@ export interface HudFacts {
   barSeconds: number;
   nestGems: number;
   relics: readonly string[];
+  /**
+   * What the delver has written in the Ledger, and it is the only fact
+   * here that outlives the run.
+   *
+   * The readout is where most of what knowing buys gets spent, because
+   * what a lesson buys is almost always "you do not have to keep asking
+   * this" - and the readout is where the asking happens. Ids rather than
+   * lines: what a lesson SAYS on screen is this module's to decide, the
+   * same as every other line.
+   */
+  learned: readonly string[];
+  /** A watcher stands in this room. */
+  watched: boolean;
+  /** The band the gemveins show at, named. */
+  veinBand: string;
 }
 
 /** The separator between a fact and what qualifies it, everywhere. */
@@ -251,7 +266,11 @@ export function hudLines(f: HudFacts): HudLine[] {
    * nothing.
    */
   if (f.lanternBuys) {
-    add({ id: "bargain", label: "DARK", body: f.lanternBuys, rank: 4, tone: "accent" });
+    // And where the veins are, for a delver who has taken one out of a
+    // wall and therefore knows they were there the whole time. Before
+    // that, finding the band is the thing they are doing.
+    const veins = f.learned.includes("gemvein") ? `${DOT}veins from ${f.veinBand} down` : "";
+    add({ id: "bargain", label: "DARK", body: f.lanternBuys + veins, rank: 4, tone: "accent" });
   }
   if (f.nestGems > 0) {
     add({ id: "stolen", label: "STOLEN", body: `${f.nestGems}${DOT}in its nest, on the map`, rank: 3, tone: "accent" });
@@ -286,6 +305,27 @@ export function hudLines(f: HudFacts): HudLine[] {
   }
   if (f.relics.length) {
     add({ id: "held", label: "HELD", body: f.relics.join(", "), rank: 4, tone: "gold" });
+  }
+
+  /**
+   * What the delver has established about what is in this room with them.
+   *
+   * Three of the Ledger's entries are about a thing NOT reacting, and a
+   * fact of that shape is worth nothing while it lives only in the
+   * player's memory: every time they meet the creature again they weigh
+   * the same question and get it wrong half the time. This is where
+   * knowing gets spent - the question stops being asked.
+   *
+   * Only ever about something that is actually here. "The watcher has no
+   * ear" on a floor with no watcher on it is trivia, and a readout that
+   * carries trivia is a readout people learn to skip.
+   */
+  const known: string[] = [];
+  if (f.wardenAwake && f.learned.includes("wardenBlind")) known.push("it carries its own light");
+  if (f.watched && f.learned.includes("sentryDeaf")) known.push("the watcher has no ear");
+  if (f.reaper && f.learned.includes("reaper")) known.push("only a blast holds it");
+  if (known.length) {
+    add({ id: "known", label: "KNOWN", body: known.join(DOT), rank: 4, tone: "dim" });
   }
 
   // Stable within a rank: the order above, which is not a judgement.

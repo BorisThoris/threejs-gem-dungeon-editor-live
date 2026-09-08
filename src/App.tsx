@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
 import { useDeedWatch } from "./game/deeds/watch";
+import { useLedgerWatch } from "./game/ledger/watch";
 import { useTeacher } from "./game/teaching/teacher";
 import { lockLossPause } from "./game/input/mouseLook";
 import { Scene } from "./game/Scene";
@@ -132,6 +133,7 @@ export default function App() {
   // exist, which is the only way a list of achievements stays a list of
   // sentences about the game rather than bookkeeping smeared across it.
   useDeedWatch();
+  useLedgerWatch();
 
   useEffect(() => installKeyboard(), []);
 
@@ -148,6 +150,7 @@ export default function App() {
     w.__records = useRecords;
     w.__settings = useSettings;
     void import("./game/state/deeds").then((m) => (w.__deeds = m.useDeeds));
+    void import("./game/state/ledger").then((m) => (w.__ledger = m.useLedger));
     // The numbers themselves, so a check never keeps its own copy of one.
     // A check that hardcodes 1.05 for the Warden's reach is a second owner
     // of it, and passes for years after the constant moves.

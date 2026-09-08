@@ -4,6 +4,8 @@ import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
 import { enterImmersive, useTouchControls } from "../game/input/device";
 import { useDeeds } from "../game/state/deeds";
+import { useLedger } from "../game/state/ledger";
+import { LEDGER_LESSONS } from "../game/ledger/lessons";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { FLOORS, tollForFloor } from "../game/world";
@@ -17,7 +19,7 @@ const isElectron = () =>
 
 export function MainMenu() {
   const [page, setPage] = useState<
-    "menu" | "controls" | "records" | "delvers" | "deeds" | "credits"
+    "menu" | "controls" | "records" | "delvers" | "deeds" | "ledger" | "credits"
   >("menu");
   const [seed, setSeed] = useState("");
   const startRun = useRun((s) => s.startRun);
@@ -88,6 +90,9 @@ export function MainMenu() {
             <button style={secondaryButton} data-testid="menu-deeds" onClick={() => setPage("deeds")}>
               Deeds
             </button>
+            <button style={secondaryButton} data-testid="menu-ledger" onClick={() => setPage("ledger")}>
+              Ledger
+            </button>
             <button style={secondaryButton} data-testid="menu-credits" onClick={() => setPage("credits")}>
               Credits
             </button>
@@ -101,6 +106,8 @@ export function MainMenu() {
           <Credits onBack={() => setPage("menu")} />
         ) : page === "deeds" ? (
           <Deeds onBack={() => setPage("menu")} />
+        ) : page === "ledger" ? (
+          <Ledger onBack={() => setPage("menu")} />
         ) : page === "delvers" ? (
           <Delvers chosen={delver} onChoose={setDelver} onBack={() => setPage("menu")} />
         ) : page === "records" ? (
@@ -303,6 +310,65 @@ function Deeds({ onBack }: { onBack: () => void }) {
         })}
       </div>
       <button style={button} data-testid="deeds-back" onClick={onBack}>
+        Back
+      </button>
+    </>
+  );
+}
+
+
+/**
+ * The Ledger: what the delver has worked out, in their own hand.
+ *
+ * The opposite of the deeds screen in the one way that matters. A deed is
+ * shown before it is earned, because naming a play a player might not
+ * think to try is the job deeds are good at. A lesson is NOT shown before
+ * it is learned, because the lesson IS the thing being played for - a list
+ * of the conclusions available would be a walkthrough with a scrollbar,
+ * and the game would have handed over its own subject.
+ *
+ * So an unwritten line shows what would have to be OBSERVED and nothing
+ * else. "Felt a draft in a room, and later opened the wall it came from"
+ * is an invitation to go and do that; the entry it becomes, and what the
+ * entry then pays, are both withheld until it has been done.
+ */
+function Ledger({ onBack }: { onBack: () => void }) {
+  const learned = useLedger((s) => s.learned);
+  return (
+    <>
+      <p style={{ ...body, marginBottom: 14 }}>
+        <span style={{ color: colors.gold }}>{learned.length}</span>
+        <span style={{ color: colors.dim }}> of {LEDGER_LESSONS.length} written.</span> Nothing
+        here makes you stronger - each one lets you skip a step you have already paid for once.
+      </p>
+      <div style={{ display: "grid", gap: 6, marginBottom: 14, textAlign: "left" }}>
+        {LEDGER_LESSONS.map((lesson) => {
+          const written = learned.includes(lesson.id);
+          return (
+            <div
+              key={lesson.id}
+              data-testid={`lesson-${lesson.id}`}
+              data-written={written ? "yes" : "no"}
+              style={{
+                padding: "8px 12px",
+                borderRadius: 4,
+                border: `1px solid ${written ? colors.gold : colors.line}`,
+                opacity: written ? 1 : 0.6,
+              }}
+            >
+              <div style={{ fontSize: text.body, color: written ? colors.gold : colors.dim }}>
+                {written ? lesson.entry : `Not yet: ${lesson.observed}.`}
+              </div>
+              {written && lesson.pays ? (
+                <div style={{ fontSize: text.small, color: colors.dim, lineHeight: 1.5 }}>
+                  {lesson.pays}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+      <button style={button} data-testid="ledger-back" onClick={onBack}>
         Back
       </button>
     </>

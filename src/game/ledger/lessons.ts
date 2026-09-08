@@ -66,37 +66,37 @@ export const LEDGER_LESSONS: readonly LedgerLesson[] = [
     id: "moth",
     observed: "had a moth settle on the raised lantern and then been found",
     entry: "The moth came to the lamp, and it did not leave, and after that it knew where I was.",
-    pays: "The moth's arrival is called out the moment it lands, rather than after it has cost you.",
+    pays: "The moth's arrival names what it costs, every time, rather than the once the teacher says it.",
   },
   {
     id: "wardenBlind",
     observed: "stood lit and still inside a Warden's cone and not been seen",
     entry: "I stood in its light with the lamp up. It did not turn. It is carrying its own.",
-    pays: "The lantern's readout stops warning you about the Warden, which was never true.",
+    pays: "The readout says it outright, so a raised lantern beside a Warden stops being a question.",
   },
   {
     id: "sentryDeaf",
     observed: "made a noise in a Sentry's room and had it not turn",
     entry: "I dropped something at its foot. It never turned. It is a post, not an ear.",
-    pays: "Noise near a watcher stops being flagged as a risk it is not.",
+    pays: "The readout says it outright, so noise near a watcher stops being a question.",
   },
   {
     id: "wallSound",
     observed: "heard something through a wall, and opened it",
     entry: "There was a sound through the stone here, and a room behind it.",
-    pays: "A sound through a wall you have opened before names what kind of room it is.",
+    pays: "A sound through a wall names what is behind it instead of describing the noise.",
   },
   {
     id: "gemvein",
     observed: "taken a gem from a vein that only showed below the Dark band",
     entry: "The veins are in the walls the whole time. You only see them with the lamp down.",
-    pays: "The glim readout names the band the veins show at, instead of leaving it to be found.",
+    pays: "The lantern's readout names the band the veins show at, instead of leaving it to be found.",
   },
   {
     id: "bark",
     observed: "heard a creature's bark and then seen the rung it was on",
     entry: "It makes a different sound when it has only heard you than when it has you.",
-    pays: "A bark from a room you cannot see names the rung.",
+    pays: "A rung changing in a room you cannot see is said out loud, and names the rung.",
   },
   {
     id: "theftSilent",
@@ -106,13 +106,16 @@ export const LEDGER_LESSONS: readonly LedgerLesson[] = [
   },
   {
     id: "reaper",
-    observed: "used a bomb, a bar, a snare and a lure on the last thing, and had none of them work",
-    entry: "Noise, light, a blast, a barred door. It answered to none of it. It is not looking for me.",
-    pays: "The floor's own readout stops offering you options against it.",
+    observed: "used a bar, a snare and a lure on the last thing, and had none of them work",
+    entry: "A barred door, a snare, a lure. It answered to none of it. Only the blast, and only for a moment.",
+    pays: "The readout names what does hold it, so the bar and the snare stop being offered against it.",
   },
 ] as const;
 
 export type LessonId = (typeof LEDGER_LESSONS)[number]["id"];
+
+/** Every id, for reading a save written by some other build. */
+export const LESSON_IDS: readonly string[] = LEDGER_LESSONS.map((l) => l.id);
 
 export const ledgerLessonBy = (id: string): LedgerLesson | undefined =>
   LEDGER_LESSONS.find((l) => l.id === id);

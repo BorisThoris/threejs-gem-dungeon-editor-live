@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
+import { useLedger } from "../game/state/ledger";
 import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
@@ -55,8 +56,17 @@ export function Minimap() {
    * delver carrying the Sounding Rod, and only for a draft they stood in
    * themselves. Both halves matter: the offer is an enabler, so it
    * operates on what is already known and never tells you anything new.
+   *
+   * A written Ledger reaches the same place from the other direction: a
+   * delver who has felt a draft AND opened the wall it came from has
+   * established what a draft means, and does not have to spend a bomb
+   * establishing it again. Two ways in, one owner, and both halves of the
+   * rule - felt themselves, never deduced - hold for either.
    */
-  const felts = useRun((s) => (modifiers(s.relics).marksFeltDrafts ? s.draftsFelt : EMPTY));
+  const knowsDrafts = useLedger((s) => s.learned.includes("draft"));
+  const felts = useRun((s) =>
+    knowsDrafts || modifiers(s.relics).marksFeltDrafts ? s.draftsFelt : EMPTY
+  );
   const unlocked = useRun((s) => s.unlocked);
   const mapped = useRun((s) => s.mapped);
   // The nest goes on the dial the moment something of yours is in it. That

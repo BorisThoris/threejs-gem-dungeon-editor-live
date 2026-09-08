@@ -124,6 +124,8 @@ export interface BusEvents {
   runLost: undefined;
   /** A deed was done for the first time. */
   deedEarned: { id: string };
+  /** A line was written in the Ledger. Carries the lesson's id. */
+  lessonLearned: { id: string };
   gemCollected: { roomId: string; x?: number; z?: number };
   damaged: undefined;
   lifeBought: undefined;

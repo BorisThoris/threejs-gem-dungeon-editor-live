@@ -24,6 +24,9 @@ import {
   wardenStaggered,
 } from "../game/state/run";
 import { roostFor } from "../game/mobs/ambient";
+import { sentryFor } from "../game/sentry/placement";
+import { useLedger } from "../game/state/ledger";
+import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
 import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
@@ -100,6 +103,20 @@ export function Hud() {
    * urgent and what a line is called are one module's business now, and
    * this only draws what it is handed.
    */
+  /**
+   * The three facts the Ledger spends. Read here rather than inside
+   * `hudLines` because that module is pure and the checks read it without
+   * a browser - the same reason every other fact is assembled here.
+   *
+   * The vein band is asked of the one owner rather than named: the band
+   * the veins show at is `glim.ts`'s to decide, and a readout with its own
+   * copy of the threshold is a readout that goes on saying "Dark" after
+   * somebody moves it.
+   */
+  const learned = useLedger((s) => s.learned);
+  const watched = !!(room && sentryFor(room, dungeonSeed, floor));
+  const veinBand = (GLIM_BANDS.find((b) => b.at < GEMVEIN_BELOW) ?? GLIM_BANDS[GLIM_BANDS.length - 1]).name;
+
   const lines = hudLines({
     lives,
     maxLives,
@@ -135,6 +152,9 @@ export function Hud() {
     barSeconds,
     nestGems,
     relics: relics.map((id) => RELICS[id].name),
+    learned,
+    watched,
+    veinBand: veinBand.toLowerCase(),
   });
 
   // Eight lines at a monitor's spacing is more than half of a phone held

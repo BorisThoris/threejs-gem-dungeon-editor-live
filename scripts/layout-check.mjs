@@ -520,9 +520,13 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
   }
   check("the generator places authored rooms often enough to measure", authored > 100, `${authored} placed`);
+  const ruled = new Set(slotted.map((t) => t.id));
   for (const [id, set] of drawn) {
-    // Eight orientations times the template's own variants, and the check
-    // wants to see the multiplication in the rooms rather than in the maths.
+    // Eight orientations is what an unslotted room gets. Every slotted one
+    // has to beat that by its own rules, which is the multiplication seen
+    // in the rooms rather than in the maths - and a template without rules
+    // is held to nothing here, because it promised nothing.
+    if (!ruled.has(id)) continue;
     check(`the ${id} the player walks into is many different rooms`, set.size >= 16,
       `${set.size} distinct arrangements`);
   }
@@ -3792,6 +3796,18 @@ check("the shipped room templates reach the floors the game generates", authored
     ground: { name: "standing water", says: "carries", tone: "danger" },
     roost: true,
     drafty: true,
+    // Nothing written in the Ledger, so the loud floor is the loudest a
+    // delver who has learned nothing can be shown. What knowing adds is
+    // checked below, against this.
+    learned: [],
+    watched: true,
+    veinBand: "dark",
+    // The lantern's two lines. Absent until now, which meant the DARK line
+    // - the half of the bargain a player would otherwise never learn -
+    // was never once built by any check on this readout.
+    lanternLit: true,
+    lanternBand: "shrouded",
+    lanternBuys: "One chest in four is holding a second thing.",
     patience: 9,
     patienceShort: true,
     reaper: false,
@@ -3857,6 +3873,31 @@ check("the shipped room templates reach the floors the game generates", authored
     doomed.map((l) => l.id).join(", ")
   );
 
+  /**
+   * What the Ledger buys on the readout.
+   *
+   * The line only exists for something that is actually in the room with
+   * the delver: "the watcher has no ear" on a floor with no watcher is
+   * trivia, and a readout that carries trivia is a readout people learn to
+   * skip. So it is checked both ways round.
+   */
+  {
+    const knowing = L.hudLines({ ...loud, reaper: true, learned: ["wardenBlind", "sentryDeaf", "reaper", "gemvein"] });
+    const known = knowing.find((l) => l.id === "known");
+    check("what the delver has established is on the readout", !!known, known ? known.body : "no KNOWN line");
+    check("and only about what is in the room with them",
+      !L.hudLines({ ...loud, wardenAwake: false, watched: false, reaper: false, learned: ["wardenBlind", "sentryDeaf", "reaper"] })
+        .some((l) => l.id === "known"),
+      "nothing here to know about");
+    check("nothing is established before it has been observed",
+      !lines.some((l) => l.id === "known"), "an empty ledger says nothing");
+    const dark = knowing.find((l) => l.id === "bargain");
+    const unlearned = lines.find((l) => l.id === "bargain");
+    check("and a delver who has taken a gem from a vein is told which band they show at",
+      !!dark && !!unlearned && dark.body.includes("dark") && !unlearned.body.includes("veins"),
+      dark ? dark.body : "no DARK line");
+  }
+
   // A quiet floor says only what is true.
   const quiet = L.hudLines({
     ...loud,
@@ -3874,6 +3915,12 @@ check("the shipped room templates reach the floors the game generates", authored
     owed: 0,
     spare: 2,
     relics: [],
+    // The middle band, which is the one that buys nothing - so a quiet
+    // floor is quiet about the bargain too. The DARK line is true whenever
+    // the flame is bought something, and a fixture that left it on would
+    // be asking whether a line that IS true gets said.
+    lanternBand: "guttered",
+    lanternBuys: "",
   });
   check(
     "a quiet floor says only the five things that are always true",
