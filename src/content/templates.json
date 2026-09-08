@@ -27,19 +27,29 @@
         "kind": "pillar",
         "x": -5.5,
         "z": 3.4,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "dressing"
       },
       {
         "kind": "crystal",
         "x": 3.4,
         "z": -5.5,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "dressing"
       },
       {
         "kind": "barrel",
         "x": 5.5,
         "z": -3.4,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "dressing"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "dressing",
+        "op": "shuffle",
+        "into": []
       }
     ]
   },
@@ -59,7 +69,8 @@
         "kind": "barrel",
         "x": 3.4,
         "z": 5.5,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "clutter"
       },
       {
         "kind": "chest",
@@ -71,19 +82,41 @@
         "kind": "skull",
         "x": -3.4,
         "z": -5.5,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "clutter"
       },
       {
         "kind": "table",
         "x": -5.5,
         "z": 3.8,
-        "rotation": 0
+        "rotation": 0,
+        "slot": "furniture"
       },
       {
         "kind": "chair",
         "x": 3.4,
         "z": -5.5,
-        "rotation": 2.0
+        "rotation": 2.0,
+        "slot": "clutter"
+      }
+    ],
+    "slots": [
+      {
+        "slot": "clutter",
+        "op": "nsubst",
+        "into": [
+          "urn",
+          "rubble"
+        ],
+        "n": 1
+      },
+      {
+        "slot": "furniture",
+        "op": "subst",
+        "into": [
+          "table",
+          "bookshelf"
+        ]
       }
     ]
   }

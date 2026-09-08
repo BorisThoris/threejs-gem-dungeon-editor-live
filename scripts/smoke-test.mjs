@@ -2497,8 +2497,26 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       `${r.called ? "called out" : "let them go"} after holding them ${r.maxLit}s of ${patience}s ` +
       `(frames of ${(r.frame * 1000).toFixed(0)}ms)`;
 
-    const walked = await litCross(spot, false);
-    const mired = await litCross(spot, true);
+    /**
+     * Cross until the crossing is actually observed.
+     *
+     * `everLit` is a precondition rather than the promise: the promise is
+     * that the post never calls out without having held someone for its
+     * patience, and a crossing the harness never saw at all cannot say
+     * anything either way. On a loaded machine a 220ms frame is two
+     * thirds of a metre at a walk, which is enough to step over a narrow
+     * beam between two samples - so a missed observation is retried
+     * rather than read as the game being unfair. Missing a detection is
+     * the safe direction: it never costs the player a life it should not
+     * have.
+     */
+    const crossUntilSeen = async (mire) => {
+      let r = await litCross(spot, mire);
+      for (let i = 0; i < 3 && !r.everLit; i++) r = await litCross(spot, mire);
+      return r;
+    };
+    const walked = await crossUntilSeen(false);
+    const mired = await crossUntilSeen(true);
     ok(
       "the post never calls out without having held the player for its patience",
       walked.everLit && mired.everLit && fair(walked) && fair(mired),
@@ -8429,6 +8447,74 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     m.draftStore.remove("probe-good");
     m.draftStore.remove("probe-bad");
   });
+}
+
+// Slots, in the build the player runs. The layout check holds the maths;
+// this holds the pipeline - a template's rules travel from JSON through
+// vite's import into the running registry, and the room the delver walks
+// into is one of the many the rules promise rather than the one that was
+// authored.
+{
+  const slots = await page.evaluate(async () => {
+    const T = await import("/src/game/rooms/templates.ts");
+    await import("/src/game/rooms/shipped.ts");
+    const G = await import("/src/game/dungeon/generate.ts");
+    const W = await import("/src/game/world.ts");
+    const shipped = T.allTemplates();
+    const ruled = shipped.filter((t) => (t.slots ?? []).length > 0);
+
+    // Every arrangement the player could be shown, over runs walked the way
+    // a run walks them.
+    const seen = new Map();
+    let placeholders = 0;
+    let rooms = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      let next = seed;
+      for (let floor = 1; floor <= 3; floor++) {
+        const rules = W.floorRules(floor);
+        const d = G.generateDungeon({ seed: next, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+        next = (d.seed * 7919 + (floor + 1)) >>> 0;
+        for (const room of d.rooms) {
+          if (!room.template) continue;
+          rooms++;
+          const props = T.authoredProps(room);
+          if (props.some((p) => p.slot !== undefined)) placeholders++;
+          const key = props.map((p) => `${p.kind}@${p.x.toFixed(2)},${p.z.toFixed(2)}`).join("|");
+          seen.set(room.template, (seen.get(room.template) ?? new Set()).add(key));
+        }
+      }
+    }
+
+    // And the room the delver is actually standing in, entered twice.
+    const run = window.__run;
+    run.getState().startRun(3);
+    await new Promise((r) => setTimeout(r, 900));
+    const d = run.getState().dungeon;
+    const room = d.rooms.find((r) => r.template);
+    const before = room ? JSON.stringify(T.authoredProps(room)) : null;
+    let after = before;
+    if (room) {
+      run.setState({ transitioning: true, currentRoomId: room.id });
+      run.getState().roomReady(room.id);
+      await new Promise((r) => setTimeout(r, 900));
+      after = JSON.stringify(T.authoredProps(run.getState().dungeon.rooms.find((r) => r.id === room.id)));
+    }
+    return {
+      shipped: shipped.length,
+      ruled: ruled.length,
+      rooms,
+      placeholders,
+      arrangements: [...seen].map(([id, set]) => [id, set.size]),
+      stable: before !== null && before === after,
+    };
+  });
+  ok("the shipped templates reach the running game with their rules intact",
+    slots.ruled > 0 && slots.ruled === slots.shipped, JSON.stringify({ ruled: slots.ruled, of: slots.shipped }));
+  ok("and no placeholder ever reaches the room the game draws",
+    slots.rooms > 30 && slots.placeholders === 0, JSON.stringify({ rooms: slots.rooms, placeholders: slots.placeholders }));
+  ok("an authored room the player walks into is many rooms, not one",
+    slots.arrangements.length > 0 && slots.arrangements.every(([, n]) => n >= 16), JSON.stringify(slots.arrangements));
+  ok("and it is the same room when they walk back into it", slots.stable, String(slots.stable));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

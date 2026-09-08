@@ -107,6 +107,28 @@ const check = (name, ok, detail = "") => {
   if (!ok) failures++;
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+/**
+ * The three floors of one run, generated the way a run generates them.
+ *
+ * `generateDungeon` takes an options object, and two blocks here were
+ * calling it as `generateDungeon(seed, floor)` - which lands in the
+ * `options.seed ?? Math.random()` branch, so 360 floors that named a seed
+ * were 360 random floors, and the block claiming to hold locked rooms
+ * across 120 seeds was holding them across whatever it happened to draw.
+ * One owner for how a run walks its floors, so no block has to remember
+ * the descent's seed derivation again.
+ */
+const runFloors = (seed, floors = 3) => {
+  const out = [];
+  let next = seed;
+  for (let floor = 1; floor <= floors; floor++) {
+    const rules = L.floorRules(floor);
+    const d = L.generateDungeon({ seed: next, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+    out.push(d);
+    next = (d.seed * 7919 + (floor + 1)) >>> 0;
+  }
+  return out;
+};
 const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, seed: 0, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
 /**
  * Every set of doors a room can have: all fifteen non-empty combinations.
@@ -381,6 +403,135 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   check("all eight ways round a room were tried", orientations.size === 8, `${orientations.size} of 8`);
   check("a shipped template is one the game will draw whole in every one of them", turned.length === 0,
     turned.slice(0, 2).join("; ") || "none");
+}
+
+// --- Slots: how many rooms one authored room is ----------------------------
+//
+// A run is 34 rooms and 23 of them look different, and an authored set piece
+// makes that worse rather than better: it is the one room a returning player
+// recognises on sight. The shipped mitigation is substitution at placement
+// time - the composition is authored, what stands in it is drawn - so the
+// hall you have seen before is a hall you have not.
+//
+// Everything here holds the shipped content to that, because a slot system
+// nothing uses is a table written rather than a system built.
+{
+  const slotted = L.allTemplates().filter((t) => (t.slots ?? []).length > 0);
+  check("shipped templates use slots at all", slotted.length > 0, `${slotted.length} of ${L.allTemplates().length}`);
+
+  // The number the whole file exists to make large. One is an authored room
+  // with extra ceremony.
+  const counts = [];
+  let product = 1;
+  for (const t of L.allTemplates()) {
+    const per = {};
+    for (const p of t.props) if (p.slot) per[p.slot] = (per[p.slot] ?? 0) + 1;
+    const n = L.variantsOf(t.slots ?? [], per);
+    counts.push(`${t.id} x${n}`);
+    product *= n;
+  }
+  check("every slotted template is more than one room", slotted.every((t) => {
+    const per = {};
+    for (const p of t.props) if (p.slot) per[p.slot] = (per[p.slot] ?? 0) + 1;
+    return L.variantsOf(t.slots ?? [], per) > 1;
+  }), counts.join(", "));
+  check("and the authored rooms together are many more rooms than there are of them",
+    product >= 8 * L.allTemplates().length, `${product} rooms from ${L.allTemplates().length} authored`);
+
+  // All three operations ship. An op the content never uses is a branch
+  // nothing has ever run, and this codebase has had enough of those.
+  const ops = new Set(L.allTemplates().flatMap((t) => (t.slots ?? []).map((r) => r.op)));
+  check("all three substitution operations are used by shipped content", ops.size === 3,
+    [...ops].sort().join(", "));
+
+  // Every rule names props that exist, and every placeholder is named by a
+  // rule - an unruled placeholder is a prop that silently never varies.
+  const dangling = [];
+  for (const t of L.allTemplates()) {
+    const named = new Set((t.slots ?? []).map((r) => r.slot));
+    const used = new Set(t.props.filter((p) => p.slot).map((p) => p.slot));
+    for (const slot of named) if (!used.has(slot)) dangling.push(`${t.id}: rule for absent slot ${slot}`);
+    for (const slot of used) if (!named.has(slot)) dangling.push(`${t.id}: slot ${slot} has no rule`);
+  }
+  check("every rule and every placeholder have each other", dangling.length === 0, dangling.join("; ") || "none");
+
+  // The rule the vault check found the hard way: substitution decides what a
+  // room LOOKS like and never what it PAYS. The first slotted hall put its
+  // chest in a subst beside a statue, and a third of the time a key opened
+  // onto a chamber with nothing in it.
+  const worth = [];
+  for (const t of L.allTemplates()) {
+    for (const rule of t.slots ?? []) {
+      if (!L.keepsItsWorth(t.props, rule)) worth.push(`${t.id}: ${rule.slot} can change what the room pays`);
+    }
+  }
+  check("no slot decides what a room is worth", worth.length === 0, worth.join("; ") || "none");
+
+  // Placeholders never leave the resolver, positions never move, and the
+  // count never changes: everything downstream reads an ordinary prop list
+  // and has no idea any of this happened.
+  const t0 = slotted[0];
+  const one = L.resolveSlots(t0.props, t0.slots, "a");
+  check("a resolved room is the authored room with the same props in the same places",
+    one.length === t0.props.length &&
+    one.every((p, i) => p.x === t0.props[i].x && p.z === t0.props[i].z && p.slot === undefined),
+    `${one.length} props`);
+
+  // The same room is the same room every time it is entered. A set piece
+  // that reshuffled while the player walked back through it would be worse
+  // than no set piece at all.
+  const same = L.resolveSlots(t0.props, t0.slots, "a").map((p) => p.kind).join(",");
+  check("the same room resolves the same way twice", one.map((p) => p.kind).join(",") === same, same);
+
+  // And a shuffle preserves the composition exactly - it moves things, it
+  // does not replace them.
+  for (const t of L.allTemplates()) {
+    for (const rule of (t.slots ?? []).filter((r) => r.op === "shuffle")) {
+      const before = t.props.filter((p) => p.slot === rule.slot).map((p) => p.kind).sort().join(",");
+      const drawn = new Set();
+      let kept = 0;
+      for (let seed = 0; seed < 40; seed++) {
+        const after = L.resolveSlots(t.props, [rule], `s${seed}`)
+          .filter((p, i) => t.props[i].slot === rule.slot)
+          .map((p) => p.kind);
+        drawn.add(after.join(","));
+        if ([...after].sort().join(",") === before) kept++;
+      }
+      check(`the ${rule.slot} shuffle in ${t.id} keeps the composition it was given`, kept === 40, before);
+      check(`and moves it around rather than leaving it`, drawn.size > 1, `${drawn.size} arrangements`);
+    }
+  }
+
+  // What the player actually gets. Rooms are furnished from their own
+  // identity, so the same template placed twice on a floor is two rooms -
+  // and the run's three start rooms, which share an id and a grid square,
+  // are three rooms rather than one drawn three times.
+  const drawn = new Map();
+  let authored = 0;
+  for (let seed = 1; seed <= 120; seed++) {
+    for (const dungeon of runFloors(seed)) {
+      for (const room of dungeon.rooms) {
+        if (!room.template) continue;
+        authored++;
+        const props = L.authoredProps(room);
+        const key = props.map((p) => `${p.kind}@${p.x.toFixed(2)},${p.z.toFixed(2)}`).join("|");
+        drawn.set(room.template, (drawn.get(room.template) ?? new Set()).add(key));
+      }
+    }
+  }
+  check("the generator places authored rooms often enough to measure", authored > 100, `${authored} placed`);
+  for (const [id, set] of drawn) {
+    // Eight orientations times the template's own variants, and the check
+    // wants to see the multiplication in the rooms rather than in the maths.
+    check(`the ${id} the player walks into is many different rooms`, set.size >= 16,
+      `${set.size} distinct arrangements`);
+  }
+  const revisit = (id) => {
+    const room = runFloors(id).flatMap((d) => d.rooms).find((r) => r.template);
+    return JSON.stringify(L.authoredProps(room));
+  };
+  check("and walking back into one finds it exactly as it was",
+    revisit(7) === revisit(7) && revisit(11) === revisit(11), "two runs re-entered");
 }
 
 // The dressing: every arrangement of every kind, at every size, must stand
@@ -2009,8 +2160,9 @@ check("the shipped room templates reach the floors the game generates", authored
   const bare = [];
   let bareSet = 0;
   for (let seed = 1; seed <= 120; seed++) {
+    const floors = runFloors(seed);
     for (let floor = 1; floor <= 3; floor++) {
-      const d = L.generateDungeon(seed, floor);
+      const d = floors[floor - 1];
       if (!d.vaultId) continue;
       const vault = d.rooms.find((r) => r.id === d.vaultId);
       const asVault = chests(vault, d.seed, true);

@@ -1,5 +1,6 @@
 import { orient, orientationOf, type Orientation } from "../dungeon/layout";
 import type { PropPlacement, Room, RoomTemplate } from "../dungeon/types";
+import { resolveSlots } from "./slots";
 
 /**
  * Authored room layouts, by id.
@@ -40,7 +41,25 @@ export const templatesForKind = (kind: RoomTemplate["kind"]): RoomTemplate[] =>
 export function authoredProps(room: Room): PropPlacement[] {
   const template = room.template ? getTemplate(room.template) : undefined;
   if (!template) return [];
-  return orientProps(template.props, orientationOf(room));
+  /**
+   * The one place a slotted template becomes a room, and before the turn
+   * rather than after it: everything downstream reads a plain list of props
+   * and has no way of knowing a placeholder was ever there.
+   *
+   * Keyed on the room's own identity the same way its orientation is - a
+   * run's three start rooms share an id and a grid square, so drawing on
+   * the dungeon seed alone would have furnished all three the same and
+   * substituted the same things into them.
+   *
+   * Unconditional, because a template with no rules resolves to itself and
+   * a branch here would be one more thing to keep true.
+   */
+  const props = resolveSlots(
+    template.props,
+    template.slots ?? [],
+    `slots:${room.seed}:${room.id}:${room.grid.x},${room.grid.z}`
+  );
+  return orientProps(props, orientationOf(room));
 }
 
 /**

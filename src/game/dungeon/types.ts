@@ -1,3 +1,5 @@
+import type { SlotRule, SlottedPlacement } from "../rooms/slots";
+
 /**
  * The dungeon, as data.
  *
@@ -120,7 +122,16 @@ export interface RoomTemplate {
   kind: RoomKind;
   size: number;
   shape: Shape;
-  props: PropPlacement[];
+  props: SlottedPlacement[];
+  /**
+   * What the placeholders among those props may turn into, resolved once
+   * per room from that room's own seed.
+   *
+   * Optional, and absent on every template written before slots existed:
+   * an authored room with no rules resolves to itself, which is the only
+   * behaviour that lets the two live side by side.
+   */
+  slots?: SlotRule[];
 }
 
 export interface GridPos {

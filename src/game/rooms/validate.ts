@@ -3,6 +3,7 @@ import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types"
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
 import { claimedSpots, gemFor, keyFor } from "./kinds";
+import { kindOptions } from "./slots";
 import { orientProps } from "./templates";
 
 /**
@@ -80,64 +81,93 @@ export function templateProblems(
   // - the gem, the key, the braziers, the kind's own content - is turned
   // too. Comparing an unturned prop to a turned gem is a measurement of a
   // room that does not exist.
-  orientProps(t.props, orientationOf(room)).forEach((p, index) => {
-    const spec = PROP_SPECS[p.kind];
-    if (!spec) {
-      problems.push({ index, reason: `${p.kind} is not a prop the game has` });
-      return;
-    }
-    const clear = clearOf(spec.solid);
-    const say = (reason: string) => problems.push({ index, reason: `${spec.title}: ${reason}` });
+  const oriented = orientProps(t.props, orientationOf(room));
+  /**
+   * Every kind each position can turn out to be, which for an unslotted
+   * template is the one kind the author placed. Held to all of them, since
+   * a template validated only as authored is a template validated in a
+   * shape the player may never be shown.
+   */
+  const options = kindOptions(t.props, t.slots ?? []);
 
-    // Measured from the prop's edge, not its centre. Every placement rule
-    // in this game used to test the centre point, which let a template put
-    // a table's near metre through a wall or into a doorway and call it
-    // legal - the same blind spot that had the seeded arrangements standing
-    // props inside each other.
-    if (Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half) {
-      say("reaches through a wall");
-    } else if (t.shape !== "square" && Math.hypot(p.x, p.z) + spec.radius > reach) {
-      say("reaches off the drawn floor of this shape");
-    }
-    // The worst case on purpose: `roomForTemplate` doors every wall, and a
-    // template has to survive being placed in any room the generator makes.
-    // A one-axis room would keep a prop across its middle; a four-doored
-    // one would drop it, and the author would never know which they got.
-    if (spec.solid && inDoorLane(p.x, p.z, room)) say("stands in a doorway's path and will be dropped");
-    if (spec.solid && overhangsLane(p.x, p.z, spec.radius, room)) {
-      say("reaches into a doorway's path");
-    }
-    if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
-      say("stands where this room's own content stands and will be dropped");
-    }
-    if (corners.some((c) => Math.hypot(c[0] - p.x, c[2] - p.z) < spec.radius + 0.4)) {
-      say("stands inside one of the room's braziers");
-    }
-    for (let seed = 1; seed <= seeds; seed++) {
-      const gem = gemFor(room, seed);
-      if (gem && Math.hypot(gem[0] - p.x, gem[2] - p.z) < clear) {
-        say("is too close to where the gem can land and will be dropped");
-        break;
+  oriented.forEach((p, index) => {
+    // One reason per position, however many kinds produce it: an author
+    // reading "reaches through a wall" three times for one prop learns
+    // nothing the first line did not already tell them.
+    const said = new Set<string>();
+    const say = (title: string, reason: string) => {
+      const full = `${title}: ${reason}`;
+      if (said.has(full)) return;
+      said.add(full);
+      problems.push({ index, reason: full });
+    };
+
+    for (const kind of options[index]) {
+      const spec = PROP_SPECS[kind];
+      if (!spec) {
+        problems.push({ index, reason: `${kind} is not a prop the game has` });
+        continue;
       }
-      const key = keyFor(room, seed);
-      if (Math.hypot(key[0] - p.x, key[2] - p.z) < clear) {
-        say("is too close to where the floor's key can land and will be dropped");
-        break;
+      const clear = clearOf(spec.solid);
+
+      // Measured from the prop's edge, not its centre. Every placement rule
+      // in this game used to test the centre point, which let a template put
+      // a table's near metre through a wall or into a doorway and call it
+      // legal - the same blind spot that had the seeded arrangements standing
+      // props inside each other.
+      if (Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half) {
+        say(spec.title, "reaches through a wall");
+      } else if (t.shape !== "square" && Math.hypot(p.x, p.z) + spec.radius > reach) {
+        say(spec.title, "reaches off the drawn floor of this shape");
+      }
+      // The worst case on purpose: `roomForTemplate` doors every wall, and a
+      // template has to survive being placed in any room the generator makes.
+      // A one-axis room would keep a prop across its middle; a four-doored
+      // one would drop it, and the author would never know which they got.
+      if (spec.solid && inDoorLane(p.x, p.z, room)) {
+        say(spec.title, "stands in a doorway's path and will be dropped");
+      }
+      if (spec.solid && overhangsLane(p.x, p.z, spec.radius, room)) {
+        say(spec.title, "reaches into a doorway's path");
+      }
+      if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
+        say(spec.title, "stands where this room's own content stands and will be dropped");
+      }
+      if (corners.some((c) => Math.hypot(c[0] - p.x, c[2] - p.z) < spec.radius + 0.4)) {
+        say(spec.title, "stands inside one of the room's braziers");
+      }
+      for (let seed = 1; seed <= seeds; seed++) {
+        const gem = gemFor(room, seed);
+        if (gem && Math.hypot(gem[0] - p.x, gem[2] - p.z) < clear) {
+          say(spec.title, "is too close to where the gem can land and will be dropped");
+          break;
+        }
+        const key = keyFor(room, seed);
+        if (Math.hypot(key[0] - p.x, key[2] - p.z) < clear) {
+          say(spec.title, "is too close to where the floor's key can land and will be dropped");
+          break;
+        }
+      }
+      // Two solid props whose footprints meet is one prop inside another, and
+      // nothing downstream compares a prop to another prop. This used to
+      // compare their centres to within a millimetre, which caught only the
+      // case of clicking the same cell twice.
+      //
+      // Every pairing of what each of the two can become, which is why the
+      // check never has to enumerate whole variants: a pair that meets in
+      // some variant meets in this pairing.
+      for (let j = 0; j < index; j++) {
+        const q = oriented[j];
+        const apart = Math.hypot(q.x - p.x, q.z - p.z);
+        for (const otherKind of options[j]) {
+          const other = PROP_SPECS[otherKind];
+          if (!other) continue;
+          if (apart < 1e-3 || (spec.solid && other.solid && apart < spec.radius + other.radius)) {
+            say(spec.title, `stands inside the ${other.title}`);
+          }
+        }
       }
     }
-    // Two solid props whose footprints meet is one prop inside another, and
-    // nothing downstream compares a prop to another prop. This used to
-    // compare their centres to within a millimetre, which caught only the
-    // case of clicking the same cell twice.
-    const twin = orientProps(t.props, orientationOf(room)).findIndex((q, j) => {
-      if (j >= index) return false;
-      const other = PROP_SPECS[q.kind];
-      if (!other) return false;
-      const apart = Math.hypot(q.x - p.x, q.z - p.z);
-      if (apart < 1e-3) return true;
-      return spec.solid && other.solid && apart < spec.radius + other.radius;
-    });
-    if (twin >= 0) say(`stands inside the ${PROP_SPECS[t.props[twin].kind]?.title ?? "prop"}`);
   });
 
   return problems;

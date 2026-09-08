@@ -155,3 +155,80 @@ export const withinBand = (reward: number, peerReward: number): boolean =>
 /** How many things a hoard SHOWS, against how many it is worth. */
 export const HOARD_LOOKS = 24;
 export const HOARD_PAYS = 3;
+
+/**
+ * Every kind each authored position can turn out to be.
+ *
+ * The reason this exists rather than the resolver being enough: a room's
+ * props go through filters - out of the door lanes, off the walls, clear of
+ * the gem - and anything that fails is dropped without a word. A template
+ * validated as authored and then substituted at play time is a template
+ * validated in a shape the player never sees, and the failure mode is the
+ * one this codebase already paid for once: a treasure room that shipped
+ * three chests and drew two.
+ *
+ * So the validator holds a slotted template to EVERY kind every slot can
+ * produce, and it can do that without enumerating variants because the
+ * placement rules are per-prop and per-pair, never per-room. That keeps the
+ * check polynomial while `variantsOf` stays exponential, which is the whole
+ * bargain: the player gets the multiplication, the check does not have to
+ * walk it.
+ */
+export function kindOptions(
+  props: readonly SlottedPlacement[],
+  rules: readonly SlotRule[]
+): PropKind[][] {
+  const out: PropKind[][] = props.map((p) => [p.kind]);
+  for (const rule of rules) {
+    const indices = props.map((p, i) => (p.slot === rule.slot ? i : -1)).filter((i) => i >= 0);
+    if (indices.length === 0) continue;
+    // A shuffle draws from the composition it was given; the other two
+    // draw from what the rule offers. `nsubst` uses both of its entries -
+    // every position can be either the real one or one of the rest.
+    const options =
+      rule.op === "shuffle"
+        ? indices.map((i) => props[i].kind)
+        : rule.op === "nsubst"
+          ? [rule.into[0], rule.into[1] ?? rule.into[0]]
+          : rule.into;
+    const unique = [...new Set(options)];
+    for (const i of indices) out[i] = unique;
+  }
+  return out;
+}
+
+/**
+ * Props whose presence is a reward rather than dressing.
+ *
+ * Small list on purpose, and it is the same one the rest of the game uses:
+ * a chest is what `placementsFor` fills and what the vault check counts.
+ */
+export const REWARD_KINDS: readonly PropKind[] = ["chest"];
+
+const paysOut = (kind: PropKind): boolean => REWARD_KINDS.includes(kind);
+
+/**
+ * Whether a rule leaves the room worth what it was authored to be worth.
+ *
+ * The rule this file needed and did not have, found by the check that holds
+ * locked rooms: the first slotted hall put its chest in a `subst` alongside
+ * a statue and an urn, and a third of the time a key opened onto a chamber
+ * with nothing in it. Substitution is for what a room LOOKS like. The
+ * moment it decides what a room PAYS, a set piece stops being an authored
+ * promise and becomes a coin flip on the reward - which is the opposite of
+ * what authoring a room is for.
+ *
+ * So every option a slot offers must sit on the same side of that line as
+ * the others: dressing may become other dressing, a chest may only become
+ * another thing that pays. Anything else changes the room's worth, and a
+ * variant that changes the room's worth is not a variant of that room.
+ */
+export const keepsItsWorth = (
+  props: readonly SlottedPlacement[],
+  rule: SlotRule
+): boolean => {
+  const authored = props.filter((p) => p.slot === rule.slot).map((p) => p.kind);
+  if (authored.length === 0) return true;
+  const seen = [...authored, ...(rule.op === "shuffle" ? [] : rule.into)];
+  return seen.every(paysOut) || !seen.some(paysOut);
+};
