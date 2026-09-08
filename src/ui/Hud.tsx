@@ -59,7 +59,6 @@ export function Hud() {
   // carried half its meaning and the gem count's danger likewise, which is
   // exactly the thing a colour-blind player cannot read.
   const marks = useSettings((s) => s.highContrast);
-  const freeHit = useRun((s) => modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed);
   const room = useCurrentRoom();
   const dungeonSeed = useRun((s) => s.dungeon?.seed ?? 0);
   // Loud, quiet, or neither, off the one number the store runs the sprint
@@ -104,7 +103,6 @@ export function Hud() {
   const lines = hudLines({
     lives,
     maxLives,
-    freeHit,
     keys,
     gems,
     toll,

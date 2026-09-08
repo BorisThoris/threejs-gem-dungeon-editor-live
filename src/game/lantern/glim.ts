@@ -109,8 +109,18 @@ export const GEMVEIN_BELOW = 26;
 /** And at nothing at all, a thin wall shows itself. */
 export const CRACK_BELOW = 1;
 
-export const gemveinsShow = (glim: number): boolean => glim < GEMVEIN_BELOW;
-export const cracksShow = (glim: number): boolean => glim < CRACK_BELOW;
+/**
+ * One band earlier, for a delver wearing the hood, and one band earlier
+ * again for the pair. The bands stay the one owner of where the lines
+ * are: what an offer buys is which line you are reading from, never a
+ * number of its own.
+ */
+export const A_BAND = 25;
+
+export const gemveinsShow = (glim: number, earlier = false): boolean =>
+  glim < GEMVEIN_BELOW + (earlier ? A_BAND : 0);
+export const cracksShow = (glim: number, earlier = false): boolean =>
+  glim < CRACK_BELOW + (earlier ? A_BAND : 0);
 /** The lit half of the bargain: reading a room before walking into it. */
 export const canScout = (glim: number): boolean => glim >= GLIM_BANDS[0].at;
 

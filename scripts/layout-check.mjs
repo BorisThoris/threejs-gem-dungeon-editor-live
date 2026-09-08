@@ -2925,7 +2925,13 @@ check("the shipped room templates reach the floors the game generates", authored
 // job rather than a bug. All four are asserted here so a change to a
 // multiplier says which of them it broke.
 {
-  const RELIC_SETS = [[], ["boots"], ["lantern", "chart"], ["boots", "charm", "ledger"]];
+  /**
+   * Every set of offers a run can hold. Not one of them touches a speed
+   * any more - that is the point of the swap, and this is where it shows:
+   * the Cutpurse's promise used to have an exception written into it for
+   * the one relic that bought a number.
+   */
+  const RELIC_SETS = [[], ["chit"], ["rod", "hood"], ["chit", "cant", "cut"]];
   const speed = L.CUTPURSE_SPEED;
   let sprintCatches = 0;
   let walkFails = 0;
@@ -2935,8 +2941,10 @@ check("the shipped room templates reach the floors the game generates", authored
     const pace = L.paceFor(relics, "none");
     cases++;
     if (L.catchesCutpurse(pace, speed)) sprintCatches++;
-    // Boots are the documented exception, and are asked about separately.
-    if (!L.outwalksCutpurse(pace, speed) || has("boots")) walkFails++;
+    // Nothing bought is an exception any more: the boots were the only
+    // one, and they were a number wearing a name.
+    void has;
+    if (!L.outwalksCutpurse(pace, speed)) walkFails++;
   }
   check(
     "unhindered, a sprint always catches the Cutpurse",
@@ -2949,10 +2957,9 @@ check("the shipped room templates reach the floors the game generates", authored
     `${walkFails} of ${cases} relic sets`
   );
   check(
-    "Soft Boots are the exception, and they really are one",
-    L.outwalksCutpurse(L.paceFor(["boots"], "none"), speed) &&
-      !L.outwalksCutpurse(L.paceFor([], "none"), speed),
-    `booted walk ${L.paceFor(["boots"], "none").walk} against ${speed}`
+    "and nothing bought is an exception to it any more",
+    RELIC_SETS.every((r) => L.paceFor(r, "none").walk === L.paceFor([], "none").walk),
+    RELIC_SETS.map((r) => `${r.join("+") || "none"}:${L.paceFor(r, "none").walk}`).join(" ")
   );
   check(
     "and a Potion of Mire is the other: nothing you have catches it",
@@ -3762,22 +3769,22 @@ check("the shipped room templates reach the floors the game generates", authored
  */
 {
   const plain = L.modifiers([]).lightTint;
-  const warden = L.modifiers(["lantern"]).lightTint;
-  const censer = L.modifiers(["censer"]).lightTint;
+  const hood = L.modifiers(["hood"]).lightTint;
+  const seal = L.modifiers(["cut"]).lightTint;
   check(
     "a delver with no relics carries a plain flame",
     plain === L.LIGHT_TINT_PLAIN,
     `${plain}`
   );
   check(
-    "and the two relics that are worn each change it, to different colours",
-    warden !== plain && censer !== plain && warden !== censer,
-    `plain ${plain}, warden ${warden}, censer ${censer}`
+    "and the two offers that are worn each change it, to different colours",
+    hood !== plain && seal !== plain && hood !== seal,
+    `plain ${plain}, hood ${hood}, seal ${seal}`
   );
   check(
     "and holding both is the same light whichever was bought first",
-    L.modifiers(["lantern", "censer"]).lightTint === L.modifiers(["censer", "lantern"]).lightTint,
-    `${L.modifiers(["lantern", "censer"]).lightTint} then ${L.modifiers(["censer", "lantern"]).lightTint}`
+    L.modifiers(["hood", "cut"]).lightTint === L.modifiers(["cut", "hood"]).lightTint,
+    `${L.modifiers(["hood", "cut"]).lightTint} then ${L.modifiers(["cut", "hood"]).lightTint}`
   );
   // Every relic set answers with a colour rather than undefined: the
   // light reads this every frame and has no fallback of its own.

@@ -85,7 +85,6 @@ export function Audio() {
         if (cruel) sfx.bitter();
         else sfx.drink();
       }),
-      bus.on("charmSpent", () => sfx.charm()),
       // Which wall the footfall came through. Without it the cue says only
       // "it is close", which in a game about which door to take is half a
       // sentence.

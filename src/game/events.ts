@@ -68,8 +68,6 @@ export interface BusEvents {
   barBroken: { byWarden: boolean };
   /** A thrown sound has sent it somewhere that is not where the player is. */
   wardenLured: { roomId: string };
-  /** The Bone Charm ate a hit. */
-  charmSpent: undefined;
   /**
    * A relic was taken, and where from when the thing that took it knew.
    *

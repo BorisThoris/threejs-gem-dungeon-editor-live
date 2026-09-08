@@ -57,7 +57,6 @@ export interface HudLine {
 export interface HudFacts {
   lives: number;
   maxLives: number;
-  freeHit: boolean;
   keys: number;
   gems: number;
   toll: number;
@@ -230,7 +229,6 @@ export function hudLines(f: HudFacts): HudLine[] {
     label: "LIVES",
     body:
       "♥".repeat(f.lives) +
-      (f.freeHit ? `${DOT}charm` : "") +
       (f.keys > 0 ? `${DOT}iron key` : ""),
     rank: 3,
     tone: f.lives <= 1 ? "danger" : "ink",

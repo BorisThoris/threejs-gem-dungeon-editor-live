@@ -463,11 +463,6 @@ export const sfx = {
   relic() {
     [440, 660, 880, 1320].forEach((f, i) => later(i * 70, () => tone(f, 0.5, "sine", 0.3)));
   },
-  /** The charm eating a hit: a hit that stops short. */
-  charm() {
-    tone(660, 0.1, "sine", 0.4);
-    later(60, () => tone(330, 0.4, "sine", 0.3));
-  },
   /** The Warden heard through a wall: a slow knock, no pitch to speak of. */
   /**
    * It has stepped into a room next door. `pan` is which side that room is

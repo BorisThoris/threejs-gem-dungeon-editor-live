@@ -54,6 +54,9 @@ export function Draft({ room }: { room: Room }) {
     if (near && !felt.current) {
       felt.current = true;
       bus.emit("draftFelt", { roomId: room.id });
+      // Written down as observed, never deduced: the rod may only mark a
+      // wall the delver has stood at themselves.
+      run.feltDraft(room.id);
     }
     /**
      * A draft kills the flame - the lantern's one limit, and the joke the

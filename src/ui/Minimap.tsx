@@ -42,15 +42,22 @@ const FADE = "radial-gradient(circle at 50% 50%, #000 58%, transparent 92%)";
  * Lantern rings the room the Warden is in, the Robber's Chart dots the
  * rooms that still hold a gem.
  */
+/** One frozen empty list, so a delver without the rod re-renders nothing. */
+const EMPTY: readonly string[] = [];
+
 export function Minimap() {
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
   const visited = useRun((s) => s.visited);
   const marks = useRun((s) => s.marks);
-  const gemRooms = useRun((s) => s.gemRooms);
-  const wardenRoomId = useRun((s) => s.wardenRoomId);
+  /**
+   * A wall you felt a draft at, marked without a bomb - but only for a
+   * delver carrying the Sounding Rod, and only for a draft they stood in
+   * themselves. Both halves matter: the offer is an enabler, so it
+   * operates on what is already known and never tells you anything new.
+   */
+  const felts = useRun((s) => (modifiers(s.relics).marksFeltDrafts ? s.draftsFelt : EMPTY));
   const unlocked = useRun((s) => s.unlocked);
-  const shows = useRun((s) => modifiers(s.relics));
   const mapped = useRun((s) => s.mapped);
   // The nest goes on the dial the moment something of yours is in it. That
   // is the whole difference between a theft and a punishment: the gems are
@@ -147,19 +154,22 @@ export function Minimap() {
       isRoost: r.id === roostSeen,
       isKept: r.id === keeperKeeps,
       marked: marks.includes(r.id),
-      hasWarden: shows.showsWarden && r.id === wardenRoomId,
-      hasGem:
-        shows.showsGems &&
-        r.id !== currentRoomId &&
-        !gemRooms.includes(r.id) &&
-        r.kind !== "start" &&
-        r.kind !== "end",
+      /**
+       * The map no longer knows where the Warden is or which rooms still
+       * hold a gem. Both were SUBSTITUTES for knowing rather than
+       * enablers: a chart that marks every room with a gem deletes the
+       * reason to look in one, and a lantern that always shows the Warden
+       * deletes the reason to listen for it. What the map marks now is
+       * either something the player did (`marked`) or something they
+       * felt (`felt`), and nothing else.
+       */
+      felt: felts.includes(r.id),
       links: Object.entries(r.links)
         .filter(([, to]) => to && known.has(to))
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, gemRooms, wardenRoomId, shows, mapped, unlocked, nestRoomId, marks, roostSeen, keeperKeeps]);
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -230,7 +240,20 @@ export function Minimap() {
                   strokeWidth={c.isExit || c.isVault ? 2.5 : 1}
                   strokeDasharray={c.isVault ? "4 3" : undefined}
                 />
-                {c.hasGem && <circle r={3.4} fill={colors.accent} opacity={0.95} />}
+                {/* A wall this delver stood at and felt the draft from,
+                    marked because they are carrying the rod that writes
+                    such things down. Never a room they have not been in:
+                    the offer saves the bomb, not the noticing. */}
+                {c.felt && (
+                  <circle
+                    data-testid="map-felt"
+                    r={3.4}
+                    fill="none"
+                    stroke={colors.accent}
+                    strokeWidth={1.5}
+                    opacity={0.95}
+                  />
+                )}
                 {/* The player's own mark. Nothing in the game reads it,
                     which is what makes it worth making: it means whatever
                     they meant by it. */}
@@ -283,9 +306,6 @@ export function Minimap() {
                     height={3}
                     fill={colors.danger}
                   />
-                )}
-                {c.hasWarden && (
-                  <circle r={cell / 2 + 2} fill="none" stroke={colors.danger} strokeWidth={2.5} />
                 )}
               </g>
             ))}

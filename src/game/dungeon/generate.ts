@@ -31,6 +31,12 @@ export interface GenerateOptions {
   maxRooms?: number;
   /** Chance that two adjacent rooms not already linked get a second doorway. */
   loopChance?: number;
+  /**
+   * Whether a room that pays stands where a plain one would have. Passed
+   * in rather than read, because the generator is pure and the offers a
+   * delver is carrying are the run's business, not the dungeon's.
+   */
+  pays?: boolean;
 }
 
 /**
@@ -40,6 +46,16 @@ export interface GenerateOptions {
  */
 const ONCE_PER_RUN: RoomKind[] = ["shop", "shrine", "memory", "challenge", "library", "arena"];
 const COMMON: RoomKind[] = ["treasure", "trap", "normal", "treasure", "normal"];
+
+/**
+ * The same list with one plain room turned over.
+ *
+ * The Foreman's Tally: you may expect a room that pays where a plain one
+ * would have been. It biases the OFFER TABLE rather than what anything is
+ * worth, which is the whole distinction the meta layer is held to - a
+ * floor is not richer, it is likelier to be arranged the way you hoped.
+ */
+const TALLIED: RoomKind[] = ["treasure", "trap", "treasure", "treasure", "normal"];
 
 /**
  * How big a room of each kind may be, low to high, in metres.
@@ -170,7 +186,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   const specials = shuffle(rng, ONCE_PER_RUN);
   // target - 2 leaves room for start and end.
   for (let i = 0; i < target - 2; i++) {
-    kinds.push(i < specials.length ? specials[i] : pick(rng, COMMON));
+    kinds.push(i < specials.length ? specials[i] : pick(rng, options.pays ? TALLIED : COMMON));
   }
   const queue = shuffle(rng, kinds);
 

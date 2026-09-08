@@ -444,20 +444,55 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   });
   ok("the toll rises with every floor", tolls[0] < tolls[1] && tolls[1] < tolls[2], tolls.join(" then "));
 
+  /**
+   * What an offer may and may not buy.
+   *
+   * The six that shipped here bought a cheaper exit, a free hit, a
+   * quarter more speed and half the alarm. Every one of those is a number
+   * wearing a name, and the test the plan holds them to is: state the
+   * reward as a sentence about what the player may now DO, and if the
+   * only honest sentence is a number, it is a stat affix. So the toll and
+   * the lives are checked to be exactly what they were with nothing held
+   * at all, and what is bought is checked to change a rule instead.
+   */
   const relic = await page.evaluate(() => {
     const run = window.__run;
-    run.setState({ gems: 20 });
+    run.setState({ gems: 20, relics: [] });
+    const bareToll = window.__derived.toll();
     const before = run.getState().lives;
-    run.getState().addRelic("ledger");
-    const withLedger = window.__derived.toll();
-    run.getState().addRelic("charm");
+    run.getState().addRelic("cut");
+    run.getState().addRelic("hood");
+    const withOffers = window.__derived.toll();
     run.getState().damage();
-    return { before, after: run.getState().lives, withLedger, held: run.getState().relics.length };
+    return {
+      before,
+      after: run.getState().lives,
+      bareToll,
+      withOffers,
+      held: run.getState().relics.length,
+      // The one key that was cut turns in any vault rather than being
+      // spent in one: an option, not a number.
+      anyVault: window.__derived.offers().anyVault,
+      veinsEarlier: window.__derived.offers().veinsEarlier,
+    };
   });
-  ok("a relic makes the exit cheaper", relic.withLedger === tolls[0] - 1, `toll ${relic.withLedger} with the ledger, ${tolls[0]} without`);
-  ok("the charm eats a hit instead of a life", relic.after === relic.before, `${relic.before} then ${relic.after} lives`);
+  ok(
+    "nothing bought makes the exit cheaper any more",
+    relic.withOffers === relic.bareToll && relic.bareToll === tolls[0],
+    `toll ${relic.withOffers} holding two offers, ${tolls[0]} holding none`
+  );
+  ok(
+    "and nothing bought eats a hit: what is bought is never the run's power",
+    relic.after === relic.before - 1,
+    `${relic.before} then ${relic.after} lives`
+  );
+  ok(
+    "what they buy is a rule changed instead",
+    relic.anyVault === true && relic.veinsEarlier === true,
+    JSON.stringify({ anyVault: relic.anyVault, veinsEarlier: relic.veinsEarlier })
+  );
   await page.waitForTimeout(400);
-  ok("relics are held and shown", relic.held === 2 && /Ledger/i.test(await page.evaluate(() => document.body.innerText)));
+  ok("offers are held and shown", relic.held === 2 && /Seal|Hood/i.test(await page.evaluate(() => document.body.innerText)));
 
   const warden = await page.evaluate(async () => {
     const run = window.__run;
@@ -1817,6 +1852,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     };
     let last = { x: window.__warden.x, z: window.__warden.z, t: performance.now(), room: where() };
     let biggest = 0;
+    /** The room both of the last two samples agreed on, or null. */
+    let settled = last.room;
     let longestFrame = 0;
     let moved = 0;
     let stalled = false;
@@ -1828,12 +1865,27 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const dt = (now - last.t) / 1000;
         const room = where();
         if (dt > 0.001) {
-          if (room === last.room) {
+          /**
+           * A room change is not a step, and it takes TWO samples to be
+           * over. The store's room changes first and the body only snaps
+           * to the new room's entry point on the frame after - so
+           * skipping just the frame the room id changes leaves the snap
+           * itself to be measured as a walk, and it reads as the Warden
+           * crossing half a room in one frame.
+           *
+           * The clamp it is accusing is unconditional (`Math.min(speed *
+           * delta, WARDEN_MAX_STEP, ...)`), so a same-room step cannot
+           * exceed the cap however long the frame ran; what changed is
+           * that the Warden now investigates noises and therefore changes
+           * rooms often enough for a one-sample skip to be caught out.
+           */
+          if (room === last.room && room === settled) {
             biggest = Math.max(biggest, Math.hypot(w.x - last.x, w.z - last.z));
             longestFrame = Math.max(longestFrame, dt);
           } else {
-            moved++;
+            if (room !== last.room) moved++;
           }
+          settled = room === last.room ? room : null;
           last = { x: w.x, z: w.z, t: now, room };
         }
         if (!stalled && now - t0 > 400) {
@@ -5154,7 +5206,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         run.setState({ transitioning: false, satchel: ["bomb"] });
         const at = crackSpot(host);
         window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
-        await settle(500);
+        /**
+         * Wait for the delver to actually BE there rather than for a
+         * number of milliseconds. A bomb is set down where the player is
+         * standing, so a fixed sleep that the machine outruns puts it at
+         * the room's origin and the wall reads as uncrackable when what
+         * really happened is that nobody walked to it.
+         */
+        const near = () => {
+          const d = window.__playerDebug;
+          return d && Math.hypot(d.x - at[0], d.z - at[2]) < 0.8;
+        };
+        for (let i = 0; i < 40 && !near(); i++) await settle(150);
+        await settle(200);
         run.getState().placeDevice(0);
         const bomb = run.getState().placed.at(-1);
         run.getState().detonate(bomb?.key);
@@ -5622,7 +5686,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       readsAsNamed: /Wire Snare|Snare/i.test(document.body.innerText),
     };
 
-    // The Courier: two slots, and the boots really in the modifiers.
+    // The Courier: two slots, and the cant really in the modifiers.
     run.getState().startRun(5, "courier");
     await sleep(900);
     const before = run.getState();
@@ -5640,7 +5704,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       plainWalk: null,
     };
 
-    // The Tomb Robber: gems in hand, a chart, and a floor already stirring
+    // The Tomb Robber: gems in hand, the chit, and a floor already stirring
     // - including after a rout, which clamps the alarm to a baseline.
     run.getState().startRun(5, "robber");
     await sleep(900);
@@ -5652,7 +5716,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.robber = {
       gems: b.gems,
       gemsTotal: b.gemsTotal,
-      chart: b.relics.includes("chart"),
+      chit: b.relics.includes("chit"),
       alarmOnArrival: b.alarm,
       floorBaseline: baseline,
       alarmAfterRout: run.getState().alarm,
@@ -5673,7 +5737,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const p1 = run.getState();
     out.pilgrim = {
       lives: p1.lives,
-      charm: p1.relics.includes("charm"),
+      hood: p1.relics.includes("hood"),
       alarmBefore,
       alarmAfterOneGem: p1.alarm,
       toll: window.__derived.toll(),
@@ -5728,13 +5792,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     JSON.stringify(delvers.courier)
   );
   ok(
-    "and its boots are in the speed the game actually moves it at",
-    delvers.courier.walk > delvers.courier.plainWalk,
+    "and it walks at the same speed as everyone else, because nothing buys speed",
+    delvers.courier.walk === delvers.courier.plainWalk,
     `${delvers.courier.walk} against a plain ${delvers.courier.plainWalk}`
   );
   ok(
     "the Tomb Robber opens with gems in hand, counted as found",
-    delvers.robber.gems === 2 && delvers.robber.gemsTotal === 2 && delvers.robber.chart === true,
+    delvers.robber.gems === 2 && delvers.robber.gemsTotal === 2 && delvers.robber.chit === true,
     JSON.stringify(delvers.robber)
   );
   ok(
@@ -5748,8 +5812,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     })
   );
   ok(
-    "the Pilgrim gets a fourth life and the charm",
-    delvers.pilgrim.lives === 4 && delvers.pilgrim.charm === true,
+    "the Pilgrim gets a fourth life and the hood",
+    delvers.pilgrim.lives === 4 && delvers.pilgrim.hood === true,
     JSON.stringify(delvers.pilgrim)
   );
   ok(
@@ -8257,14 +8321,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.setState({ relics: [], oil: 60, lanternUp: true });
     for (let i = 0; i < 30 && !window.__lantern; i++) await wait(150);
     const plain = window.__lantern ? window.__lantern.tint : null;
-    run.setState({ relics: ["lantern"] });
+    run.setState({ relics: ["hood"] });
     let held = plain;
     for (let i = 0; i < 30; i++) {
       await wait(150);
       held = window.__lantern ? window.__lantern.tint : null;
       if (held !== plain) break;
     }
-    return { plain, held, declared: window.__derived.lightTint(["lantern"]) };
+    return { plain, held, declared: window.__derived.lightTint(["hood"]) };
   });
   ok(
     "the light a delver carries is tinted by the relics they hold",

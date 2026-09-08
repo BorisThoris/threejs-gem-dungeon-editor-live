@@ -25,6 +25,7 @@ import {
   appearancesFor,
   isBomb,
   isDevice,
+  rollItem,
   type Appearances,
   type ItemId,
 } from "../items/catalog";
@@ -425,10 +426,18 @@ export interface RunState {
    * the game reads a mark, which is what makes it worth making.
    */
   marks: string[];
+  /**
+   * Rooms whose draft the delver has FELT, which is a different thing
+   * from a room the game knows has a crack in it.
+   *
+   * The Sounding Rod operates on this list and on nothing else, which is
+   * what makes it an enabler rather than a substitute: it cannot show a
+   * wall the player has not already stood at, so it saves the bomb and
+   * never the noticing.
+   */
+  draftsFelt: string[];
   /** The lamplighter wisp is out: the Warden can see the player's light. */
   wispOut: boolean;
-  /** The Bone Charm's free hit, spent once a floor. */
-  freeHitUsed: boolean;
   /** Whether the player has met the Warden yet, for the one-time warning. */
   wardenMet: boolean;
   /** True from leaving one room until the next has mounted. */
@@ -645,6 +654,8 @@ export interface RunState {
   markBombBought: () => void;
   /** Mark the room the player is in on the map, or unmark it. */
   toggleMark: () => void;
+  /** A draft was felt here, by standing in it. */
+  feltDraft: (roomId: string) => void;
   /** The wisp came out, or went out. Called from the frame loop when the light's visibility changes. */
   setWisp: (out: boolean) => void;
   /**
@@ -797,8 +808,8 @@ export const useRun = create<RunState>()(
     bombBought: false,
     broken: [],
     marks: [],
+    draftsFelt: [],
     wispOut: false,
-    freeHitUsed: false,
     wardenMet: false,
     transitioning: false,
     inputLocks: 0,
@@ -820,6 +831,8 @@ export const useRun = create<RunState>()(
         seed,
         minRooms: rules.minRooms,
         maxRooms: rules.maxRooms,
+        // What a delver opens with can already bias their first floor.
+        pays: modifiers(delver.relics).biasesRooms,
       });
       if (transitionFallback) window.clearTimeout(transitionFallback);
       set({
@@ -911,10 +924,10 @@ export const useRun = create<RunState>()(
         bombBought: false,
         broken: [],
         marks: [],
+        draftsFelt: [],
         wispOut: false,
         wardenLure: null,
         lureUntil: 0,
-        freeHitUsed: false,
         wardenMet: false,
         // The start room has to mount before the player is let go.
         transitioning: true,
@@ -1048,6 +1061,9 @@ export const useRun = create<RunState>()(
           seed: (s.dungeon.seed * 7919 + floor) >>> 0,
           minRooms: rules.minRooms,
           maxRooms: rules.maxRooms,
+          // Bought on the way down, felt on the floor below - which is
+          // the only place a meta purchase is allowed to be felt at all.
+          pays: modifiers(s.relics).biasesRooms,
         });
         set({
           floor,
@@ -1138,10 +1154,10 @@ export const useRun = create<RunState>()(
           bombBought: false,
           broken: [],
           marks: [],
+          draftsFelt: [],
           wispOut: false,
           wardenLure: null,
           lureUntil: 0,
-          freeHitUsed: false,
           transitioning: true,
         });
         const spawn = spawnAtStart();
@@ -1203,7 +1219,7 @@ export const useRun = create<RunState>()(
       const took = worth + veined;
       const alarm =
         s.alarm +
-        took * ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
+        took * ALARM_PER_GEM * DELVERS[s.delver].alarmFactor;
       set({
         gems: s.gems + took,
         gemsTotal: s.gemsTotal + took,
@@ -1227,13 +1243,10 @@ export const useRun = create<RunState>()(
       if (s.phase !== "playing") return false;
       const now = runClock(s);
       if (now - s.lastDamageAt < DAMAGE_COOLDOWN_S) return false;
-      // The charm eats the floor's first hit, and still starts the
-      // invulnerability window, so it reads as a hit that did not land.
-      if (modifiers(s.relics).freeHitPerFloor && !s.freeHitUsed) {
-        set({ freeHitUsed: true, lastDamageAt: now });
-        bus.emit("charmSpent");
-        return true;
-      }
+      // The free hit used to be eaten here. It was the meta layer holding
+      // the run's POWER, which is the one thing the split forbids: what
+      // is bought changes the odds a run faces, never how much it can
+      // take. Nothing replaces it, because nothing should.
       const lives = Math.max(0, s.lives - 1);
       set({ lives, lastDamageAt: now });
       bus.emit("damaged");
@@ -1273,6 +1286,25 @@ export const useRun = create<RunState>()(
       // Working your hands loose: a chest opened counts toward the mire's
       // named cure, and so does a container burst below.
       if (from && !s.looted.includes(from)) get().openedContainer();
+      /**
+       * The Assayer's Chit: there is a second thing under the first one.
+       *
+       * ODDS rather than power - it does not make what a chest holds
+       * better, it makes a chest hold more often - and it is refused
+       * outright when there is nowhere to put it, so the offer never
+       * silently drops what it promised.
+       */
+      if (from && modifiers(s.relics).chestPaysTwice) {
+        const after = get();
+        if (after.satchel.length < satchelSlots(after) && after.dungeon) {
+          // A second roll on a key derived from the first, so the thing
+          // under the thing is as seeded and as replayable as the thing.
+          const under = rollItem(after.dungeon.seed, `${from}:under`, after.floor);
+          set({ satchel: [...after.satchel, under] });
+          bus.emit("itemTaken", { id: under, x: at?.[0], z: at?.[1] });
+          bus.emit("notice", "There is something under it.");
+        }
+      }
       bus.emit("itemTaken", { id, x: at?.[0], z: at?.[1] });
       return true;
     },
@@ -1971,7 +2003,15 @@ export const useRun = create<RunState>()(
     unlockRoom: (roomId) => {
       const s = get();
       if (s.keys < 1 || s.unlocked.includes(roomId)) return false;
-      set({ keys: s.keys - 1, unlocked: [...s.unlocked, roomId] });
+      /**
+       * The Company Seal: the one key that was cut opens any vault on the
+       * floor, so the key is turned rather than spent. An OPTION - it
+       * changes what the key may be used for, not how much anything is
+       * worth - and it is the offer that makes setting the key on a plate
+       * a decision with two live sides rather than one.
+       */
+      const keeps = modifiers(s.relics).anyVault;
+      set({ keys: keeps ? s.keys : s.keys - 1, unlocked: [...s.unlocked, roomId] });
       bus.emit("vaultOpened", { roomId });
       return true;
     },
@@ -2077,6 +2117,12 @@ export const useRun = create<RunState>()(
       // every event's emitter by name.
       if (out) bus.emit("wispCame");
       else bus.emit("wispLeft");
+    },
+
+    feltDraft: (roomId) => {
+      const s = get();
+      if (s.draftsFelt.includes(roomId)) return;
+      set({ draftsFelt: [...s.draftsFelt, roomId] });
     },
 
     toggleMark: () => {
@@ -2550,9 +2596,28 @@ export const lanternBand = (s: RunState) => glimBand(lanternLit(s) ? s.glim : 0)
  * be banked, because you can only take it while you are standing in the
  * danger.
  */
-export const veinsShowing = (s: RunState): boolean => gemveinsShow(lanternLit(s) ? s.glim : 0);
+/**
+ * Whether the walls are giving up their veins.
+ *
+ * The Gutter Hood reads them a band earlier than the dark usually allows,
+ * which is ODDS rather than power: it does not make a socket worth more,
+ * it makes the band at which you can take the doubled one wider. The
+ * lantern's own bands are still the one owner of where the line is.
+ */
+export const veinsShowing = (s: RunState): boolean =>
+  gemveinsShow(lanternLit(s) ? s.glim : 0, modifiers(s.relics).veinsEarlier);
 /** And at nothing at all, a thin wall shows itself without a bomb. */
-export const cracksShowing = (s: RunState): boolean => cracksShow(lanternLit(s) ? s.glim : 0);
+/**
+ * Whether a cracked wall is showing itself without a bomb.
+ *
+ * The Long Dark - the pair of the Sounding Rod and the Gutter Hood - moves
+ * it up to the Dark band instead of nothing at all. A pair cannot be
+ * numerically inflated: you either hold both or you do not, so its value
+ * is categorical, and it arrives only if two earlier picks happened to
+ * line up.
+ */
+export const cracksShowing = (s: RunState): boolean =>
+  cracksShow(lanternLit(s) ? s.glim : 0, modifiers(s.relics).longDark);
 
 /**
  * Whether the player's light is currently showing.
@@ -2665,7 +2730,12 @@ export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
  * slack to spend on it. What a delver changes is the alarm, which does.
  */
 export const tollNow = (s: RunState): number =>
-  Math.max(1, tollForFloor(s.floor) - modifiers(s.relics).tollDiscount);
+  /**
+   * The toll, undiscounted. Nothing bought reduces it any more: "every
+   * exit costs one gem less" is a number wearing a name, and the toll
+   * rising 3, 5, 7 is the one sentence the whole fiction is read off.
+   */
+  Math.max(1, tollForFloor(s.floor));
 
 /**
  * How many slots this run's satchel has. Four for everyone but the
@@ -2754,6 +2824,12 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // The modifiers decide; this only asks, so a check cannot agree with
     // a copy of the rule instead of with the rule.
     lightTint: (relics: readonly RelicId[]) => modifiers(relics).lightTint,
+    /**
+     * What the offers a run is carrying actually change. Asked of the one
+     * place that computes it, so a check cannot agree with a copy of the
+     * rule instead of with the rule.
+     */
+    offers: () => modifiers(useRun.getState().relics),
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
     // What has gone off, by key: a probe reads it beside where the traps are.
     sprung: () => ({ ...useRun.getState().sprung }),
