@@ -4393,6 +4393,16 @@ check("the shipped room templates reach the floors the game generates", authored
   check("each limit costs one surface, not a category", L.BOMB_DEAD.length === 1 && L.SNARE_DEAD.length === 1);
   check("and they are different surfaces, so no room is dead to both", L.BOMB_DEAD.every((g) => !L.SNARE_DEAD.includes(g)));
   check("every dead surface is one the Din actually names", [...L.BOMB_DEAD, ...L.SNARE_DEAD].every((g) => L.SURFACES.includes(g)));
+  /**
+   * And one the dungeon actually BUILDS. A limit keyed on a surface no
+   * biome produces is a rule that can never fire, which is worse than no
+   * rule: it reads as an edge the player can plan against and is not one.
+   * This caught `water` being in the vocabulary while the flooded biome -
+   * whose ground the game calls "standing water" - reported as dirt.
+   */
+  const built = new Set(Object.values(L.BIOME).map((b) => L.SURFACE_OF[b.surface]));
+  check("and one the dungeon actually builds, so the limit can fire", [...L.BOMB_DEAD, ...L.SNARE_DEAD].every((g) => built.has(g)), `built: ${[...built].join(", ")}`);
+  check("every surface the Din names is one some biome produces", L.SURFACES.every((g) => built.has(g)), L.SURFACES.filter((g) => !built.has(g)).join(", ") || "all of them");
   check("and most surfaces are dead to neither", L.SURFACES.filter((g) => L.bombCracks(g) && L.snareSets(g)).length >= 3, `${L.SURFACES.filter((g) => L.bombCracks(g) && L.snareSets(g)).length} of ${L.SURFACES.length}`);
 
   /** Each limit's prose and its function have to name the same surface. */

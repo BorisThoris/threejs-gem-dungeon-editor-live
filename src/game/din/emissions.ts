@@ -111,7 +111,14 @@ export const SURFACE_OF: Record<Biome["surface"], Surface> = {
   stone: "stone",
   moss: "moss",
   brick: "tile",
-  dirt: "dirt",
+  /**
+   * The flooded biome, whose ground the game already calls "standing
+   * water". It read as `dirt` until the bomb was given a limit that names
+   * water, at which point the limit could never fire: the Din had a
+   * surface in its vocabulary that nothing in the dungeon produced. A
+   * rule nothing can ask is not a rule.
+   */
+  dirt: "water",
   iron: "tile",
   wood: "dirt",
 };

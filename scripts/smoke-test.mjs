@@ -3590,7 +3590,22 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const s = window.__run.getState();
       return { unlocked: s.unlocked.includes(v.vaultId), keys: s.keys, room: s.currentRoomId };
     }, [vault]);
-    ok("and pressing E spends the key and opens it", through.unlocked && through.keys === 0, JSON.stringify(through));
+    /**
+     * The key is spent and you are inside - and the door is shut again
+     * behind you, which is the key's one signposted limit. It buys an
+     * ENTRY rather than a door that is now permanently open, which is
+     * what makes spending the key on a plate a real trade.
+     */
+    ok(
+      "and pressing E spends the key and puts you inside",
+      through.keys === 0 && through.room === vault.vaultId,
+      JSON.stringify({ ...through, vault: vault.vaultId })
+    );
+    ok(
+      "and the vault re-locks behind you, so the key bought one way in",
+      through.unlocked === false,
+      JSON.stringify(through)
+    );
   }
 
   /**
@@ -4513,7 +4528,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       unreachable,
     };
   });
-  ok("the title screen lists every deed", page8.count === 15, `${page8.count} cards, fifteen since run 19`);
+  const deedCount = await page.evaluate(async () => (await import("/src/game/deeds/catalog.ts")).DEED_IDS.length);
+  ok("the title screen lists every deed", page8.count === deedCount, `${page8.count} cards against ${deedCount} deeds`);
   ok(
     "with the earned ones marked, and the rest saying what they are for",
     page8.earned > 0 && /Rout the Warden on the floor's own spikes/.test(page8.text),
@@ -5107,28 +5123,41 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const s = run.getState();
       const wet = s.dungeon.rooms.find((r) => r.secret && !bombCracks(surfaceOf(r)));
       const dry = s.dungeon.rooms.find((r) => r.secret && bombCracks(surfaceOf(r)));
-      const burst = (room) => {
+      const burst = async (room) => {
         go(room.id);
+        // The room has to be standing before a teleport into it will
+        // stick: arrive too early and the room's own spawn wins, and the
+        // bomb is set down nowhere near the wall it was meant for.
+        await settle(1200);
         run.setState({ transitioning: false, satchel: ["bomb"] });
         const at = crackSpot(room);
         window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+        await settle(500);
         return at;
       };
       if (wet) {
-        burst(wet);
-        await settle(300);
+        const at = await burst(wet);
         run.getState().placeDevice(0);
-        const key = run.getState().placed.at(-1)?.key;
-        run.getState().detonate(key);
-        out.wet = { opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === wet.id).links[wet.secret.dir]) };
+        const bomb = run.getState().placed.at(-1);
+        run.getState().detonate(bomb?.key);
+        out.wet = {
+          opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === wet.id).links[wet.secret.dir]),
+          aimed: [Math.round(at[0]), Math.round(at[2])],
+          set: bomb ? [Math.round(bomb.x), Math.round(bomb.z)] : null,
+        };
       } else out.wet = { none: true };
       if (dry) {
-        burst(dry);
-        await settle(300);
+        const at = await burst(dry);
         run.getState().placeDevice(0);
-        const key = run.getState().placed.at(-1)?.key;
-        run.getState().detonate(key);
-        out.dry = { opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === dry.id).links[dry.secret.dir]) };
+        const bomb = run.getState().placed.at(-1);
+        run.getState().detonate(bomb?.key);
+        out.dry = {
+          opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === dry.id).links[dry.secret.dir]),
+          // Where the bomb actually went against where it was aimed, so a
+          // miss reads as a miss rather than as the rule being wrong.
+          aimed: [Math.round(at[0]), Math.round(at[2])],
+          set: bomb ? [Math.round(bomb.x), Math.round(bomb.z)] : null,
+        };
       } else out.dry = { none: true };
     }
     return out;
@@ -5159,6 +5188,76 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     verbs.dry.none || verbs.dry.opened === true,
     JSON.stringify(verbs.dry)
   );
+  ok(
+    "the bomb landed where it was aimed, so a miss would read as a miss",
+    verbs.dry.none || String(verbs.dry.aimed) === String(verbs.dry.set),
+    JSON.stringify(verbs.dry)
+  );
+}
+
+/**
+ * The crack's second answer, which is the three rules meeting.
+ *
+ * A cracked wall is a bomb OR it is simply passable in the dark. None of
+ * the three rules that make that work was written for the others: the
+ * draft is the tell that a wall is thin, the draft is also what puts the
+ * lantern out, and a lantern that is out is what makes the stone give
+ * itself up. So walking up to the tell with the flame up hands the player
+ * the way through by taking their light away.
+ */
+{
+  const felt = await page.evaluate(async () => {
+    const run = window.__run;
+    const settle = (ms) => new Promise((r) => setTimeout(r, ms));
+    const { DIR_STEP, halfSize } = await import("/src/game/dungeon/types.ts");
+    run.getState().startRun(31);
+    await settle(1500);
+    const s = run.getState();
+    const host = s.dungeon.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    if (!host) return { none: true };
+    run.setState({ transitioning: true, currentRoomId: host.id });
+    run.getState().roomReady(host.id);
+    await settle(1300);
+    // Walk up to it with the flame up. The draft takes the light.
+    run.setState({ transitioning: false, oil: 60, glim: 100 });
+    await settle(200);
+    const litAtStart = run.getState().glim;
+    const step = DIR_STEP[host.secret.dir];
+    const half = halfSize(host);
+    window.__bus.emit("teleport", { position: [step.x * half * 0.86, 1.5, step.z * half * 0.86] });
+    await settle(1200);
+    const afterDraft = run.getState().glim;
+    const prompt = document.body.innerText.match(/E\s+([^\n]+)/);
+    return {
+      litAtStart,
+      afterDraft,
+      offered: /through the crack/i.test(String(prompt ? prompt[1] : "")),
+      room: host.id,
+    };
+  });
+  if (!felt.none) {
+    ok(
+      "walking up to the draft with the flame up puts it out",
+      felt.litAtStart > 0 && felt.afterDraft === 0,
+      JSON.stringify(felt)
+    );
+    ok(
+      "and the dark it leaves you in is what shows the way through",
+      felt.offered === true,
+      JSON.stringify(felt)
+    );
+    await act();
+    const through = await page.evaluate((roomId) => {
+      const s = window.__run.getState();
+      const host = s.dungeon.rooms.find((r) => r.id === roomId);
+      return { opened: Boolean(host.links[host.secret.dir]) };
+    }, felt.room);
+    ok(
+      "so a cracked wall has a second answer, and it costs no bomb",
+      through.opened === true,
+      JSON.stringify(through)
+    );
+  }
 }
 
 /**
