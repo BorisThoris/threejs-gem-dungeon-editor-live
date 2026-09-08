@@ -37,7 +37,7 @@
  * turned forty order-independent fragments into a chain.
  */
 
-export interface Lesson {
+export interface LedgerLesson {
   id: string;
   /**
    * What the delver must ACTUALLY have done or seen for this to be
@@ -55,7 +55,7 @@ export interface Lesson {
   pays: string;
 }
 
-export const LESSONS: readonly Lesson[] = [
+export const LEDGER_LESSONS: readonly LedgerLesson[] = [
   {
     id: "draft",
     observed: "felt a draft in a room, and later opened the wall it came from",
@@ -112,9 +112,10 @@ export const LESSONS: readonly Lesson[] = [
   },
 ] as const;
 
-export type LessonId = (typeof LESSONS)[number]["id"];
+export type LessonId = (typeof LEDGER_LESSONS)[number]["id"];
 
-export const lessonBy = (id: string): Lesson | undefined => LESSONS.find((l) => l.id === id);
+export const ledgerLessonBy = (id: string): LedgerLesson | undefined =>
+  LEDGER_LESSONS.find((l) => l.id === id);
 
 /**
  * The one rule the recording side has to obey, written where it can be

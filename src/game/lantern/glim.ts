@@ -45,7 +45,7 @@
 /** Glim: how much light the delver is showing, 0 to 100. */
 export const GLIM_MAX = 100;
 
-export interface Band {
+export interface GlimBand {
   id: string;
   name: string;
   /** The lowest glim in this band. */
@@ -62,7 +62,7 @@ export interface Band {
  * Shrouded is where the chest bonus lives, which is the rung that makes the
  * slide downwards worth starting.
  */
-export const BANDS: readonly Band[] = [
+export const GLIM_BANDS: readonly GlimBand[] = [
   {
     id: "raised",
     name: "Raised",
@@ -94,15 +94,15 @@ export const BANDS: readonly Band[] = [
   },
 ] as const;
 
-export const bandFor = (glim: number): Band => {
+export const glimBand = (glim: number): GlimBand => {
   const g = Math.max(0, Math.min(GLIM_MAX, glim));
   // Walked high to low, so the first band whose floor it clears is its own.
-  for (const band of BANDS) if (g >= band.at) return band;
-  return BANDS[BANDS.length - 1];
+  for (const band of GLIM_BANDS) if (g >= band.at) return band;
+  return GLIM_BANDS[GLIM_BANDS.length - 1];
 };
 
 /** How far the delver can see at this glim. */
-export const seesAt = (glim: number): number => bandFor(glim).sees;
+export const seesAt = (glim: number): number => glimBand(glim).sees;
 
 /** Below this, the walls give up their veins. */
 export const GEMVEIN_BELOW = 26;
@@ -112,7 +112,7 @@ export const CRACK_BELOW = 1;
 export const gemveinsShow = (glim: number): boolean => glim < GEMVEIN_BELOW;
 export const cracksShow = (glim: number): boolean => glim < CRACK_BELOW;
 /** The lit half of the bargain: reading a room before walking into it. */
-export const canScout = (glim: number): boolean => glim >= BANDS[0].at;
+export const canScout = (glim: number): boolean => glim >= GLIM_BANDS[0].at;
 
 /**
  * What a room costs to walk into, in oil.

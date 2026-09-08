@@ -711,28 +711,32 @@ export const ARENA_SPIN = 0.75;
 export const TRANSITION_FALLBACK_MS = 1500;
 
 /**
- * The floor's patience, and what wakes when it runs out.
+ * What arrives on the floor's last band.
  *
- * Every floor puts up with the player for FLOOR_PATIENCE_S on the run's
- * clock and then the Reaper is on it: a ghost body - through walls, spikes,
- * wards and furniture - that has no room, no alarm and no lure, does not
- * leave, and follows through every doorway the player takes. It is faster
- * than a walk and slower than a dash, so lingering cannot be walked away
- * from and the exit can still be run for; and a dash is the loud thing
- * the Warden hears. Spelunky's ghost and Barony's minotaur, and the shape
- * a run was missing: a reason not to open the last chest.
+ * The floor's own patience is not a constant any more and is not here: it
+ * is `heat` in `din`'s neighbour `heat/coefficient.ts`, a pure function of
+ * dwell, greed and depth that compounds as you descend. What used to be
+ * the 300-second FLOOR_PATIENCE_S was a countdown, and a countdown is a ramp - four
+ * minutes of nothing followed by the worst thing in the game. Heat buys
+ * five things at five thresholds instead, and this is the last of them.
  *
- * REAPER_WARNING_S before the end the HUD starts counting and the score's
- * heartbeat comes in, so it is never a surprise. A blast holds it for
- * REAPER_STALL_S - longer than a fuse, so a bomb set under it is worth the
- * walk. Between two strikes it waits REAPER_STRIKE_GRACE_S, over and above
- * the damage cooldown, so being caught costs a life and a chance, not a
- * run. It is stepped no further than REAPER_MAX_STEP in one frame for the
- * same reason the Warden is not: a slow frame must not put it on top of
- * you from across the room.
+ * A ghost body - through walls, spikes, wards and furniture - with no
+ * room, no alarm and no lure, that does not leave and follows through
+ * every doorway. It is faster than a walk and slower than a dash, so
+ * lingering cannot be walked away from and the exit can still be run for;
+ * and a dash is the loud thing the Warden hears. Spelunky's ghost and
+ * Barony's minotaur, and the shape a run was missing: a reason not to open
+ * the last chest.
+ *
+ * It is never a surprise, because the player has watched the floor climb
+ * through four named bands to get here and the last of them is called IT
+ * KNOWS WHERE YOU ARE. A blast holds it for REAPER_STALL_S - longer than a
+ * fuse, so a bomb set under it is worth the walk. Between two strikes it
+ * waits REAPER_STRIKE_GRACE_S, over and above the damage cooldown, so
+ * being caught costs a life and a chance, not a run. It is stepped no
+ * further than REAPER_MAX_STEP in one frame for the same reason the Warden
+ * is not: a slow frame must not put it on top of you from across the room.
  */
-export const FLOOR_PATIENCE_S = 300;
-export const REAPER_WARNING_S = 45;
 export const REAPER_SPEED = 6.5;
 export const REAPER_TOUCH_RADIUS = WARDEN_TOUCH_RADIUS;
 export const REAPER_MAX_STEP = REAPER_TOUCH_RADIUS / 2;

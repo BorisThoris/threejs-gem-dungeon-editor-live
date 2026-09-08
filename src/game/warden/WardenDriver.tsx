@@ -127,7 +127,19 @@ export function WardenDriver() {
       run.dungeon,
       run.wardenRoomId,
       going ?? run.currentRoomId,
-      going ? true : behaviour.hunts,
+      /**
+       * Hunting, and the third way into it.
+       *
+       * The alarm has always been able to set it hunting. The floor's heat
+       * can now do it too, by way of the ladder: the Warden's ceiling
+       * opens every floor at `searching`, so on a cold floor it
+       * investigates, walks to noises and calls out and never beelines -
+       * and the heat purchase that lifts the ceiling is what lets it
+       * commit. It still has to actually see you afterwards, which is the
+       * difference between "the floor allowed this" and "the floor did
+       * this".
+       */
+      going ? true : behaviour.hunts || ladder.commits("warden"),
       run.wardenCameFrom,
       Math.random(),
       bars

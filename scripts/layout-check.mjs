@@ -39,6 +39,15 @@ writeFileSync(
    export * from "${root}src/game/rooms/kinds";
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
+   export * from "${root}src/game/heat/coefficient";
+   export * from "${root}src/game/cycle/director";
+   export * from "${root}src/game/lantern/glim";
+   export * from "${root}src/game/verbs/gates";
+   export * from "${root}src/game/items/afflictions";
+   export * from "${root}src/game/relics/offer";
+   export * from "${root}src/game/rooms/slots";
+   export * from "${root}src/game/deepworks/fragments";
+   export * from "${root}src/game/ledger/lessons";
    export * from "${root}src/game/din/tags";
    export * from "${root}src/game/din/carry";
    export * from "${root}src/game/din/emissions";
@@ -1399,9 +1408,64 @@ check("the shipped room templates reach the floors the game generates", authored
 // comes before the end, a walk cannot get away and a dash can, a bomb holds
 // it for a real length of time, and the floor's rules read it as a ghost.
 {
-  const P = L.FLOOR_PATIENCE_S, W = L.REAPER_WARNING_S, V = L.REAPER_SPEED;
-  check("a floor has a patience, in seconds, and it is minutes not moments", typeof P === "number" && P >= 180 && P <= 600, `${P}s`);
-  check("the warning comes well before the end and is not most of it", typeof W === "number" && W >= 20 && W <= P / 3, `${W}s of ${P}s`);
+  const V = L.REAPER_SPEED;
+
+  /**
+   * THE COEFFICIENT - one number, three inputs, replacing the floor timer.
+   *
+   * `FLOOR_PATIENCE_S = 300` is gone, and with it the shape it had: a
+   * single number falling at a single rate with one event at the bottom of
+   * it. These hold the replacement to being the thing the plan asked for
+   * rather than a countdown with extra arithmetic.
+   */
+  check("heat is a pure function of dwell, greed and depth", L.heatFrom(60, 0, 0) === 1 && L.heatFrom(0, 2, 0) === 1);
+  check("and nothing about it is negative", L.heatFrom(-100, -5, -2) === 0);
+  check(
+    "depth compounds rather than adding: the same minute costs more the deeper you are",
+    L.heatFrom(60, 0, 2) > L.heatFrom(60, 0, 1) && L.heatFrom(60, 0, 1) > L.heatFrom(60, 0, 0),
+    `${L.heatFrom(60, 0, 0)} / ${L.heatFrom(60, 0, 1).toFixed(3)} / ${L.heatFrom(60, 0, 2).toFixed(3)}`
+  );
+  check("and it compounds at the rate the source it came from uses", Math.abs(L.DEPTH_BASE - 1.15) < 1e-9, `${L.DEPTH_BASE}`);
+  check(
+    "greed is felt but is never the whole of it: taking nothing is not the correct line",
+    L.ALARM_WEIGHT > 0 && L.ALARM_WEIGHT < L.DWELL_WEIGHT,
+    `${L.ALARM_WEIGHT} against ${L.DWELL_WEIGHT}`
+  );
+
+  /**
+   * Five bands, named and never counted, and the purchases underneath
+   * them. The whole point of an integer threshold is that pressure arrives
+   * as an EVENT - so the ladder has to actually have rungs on it.
+   */
+  check("the floor's heat has five names and no numbers on screen", L.BANDS.length === 5 && L.BANDS.every((b) => typeof b.name === "string" && b.name.length > 0));
+  check("and they only ever get worse", L.BANDS.every((b, i) => i === 0 || b.at > L.BANDS[i - 1].at), L.BANDS.map((b) => b.at).join(" < "));
+  check("the last band is what wakes the thing that does not leave", L.REAPER_AT === L.BANDS[L.BANDS.length - 1].at);
+  check("heat buys four things before that, at four prices", L.PURCHASES.length === 4 && L.PURCHASES.every((p) => p.at > 0 && p.at < L.REAPER_AT));
+  check("and every one of them is cheaper than the last is dear", L.PURCHASES.every((p, i) => i === 0 || p.at > L.PURCHASES[i - 1].at), L.PURCHASES.map((p) => `${p.id}:${p.at}`).join(" "));
+  check("and every one says a line rather than nudging a stat", L.PURCHASES.every((p) => typeof p.says === "string" && p.says.length > 8));
+  check(
+    "nothing is bought on a floor the player has just walked onto",
+    L.affordable(L.heatFrom(0, 0, 0)).length === 0,
+    L.affordable(L.heatFrom(0, 0, 0)).join(", ") || "nothing"
+  );
+  check("and the floor's own arithmetic delivers them in order", JSON.stringify(L.affordable(6)) === JSON.stringify(["cutpurse", "bats", "ceiling", "harrier"]), JSON.stringify(L.affordable(6)));
+  check("a band is named for every heat a floor can reach", [0, 1, 3, 5, 7, 9, 40].every((h) => typeof L.bandName(h) === "string" && L.bandName(h).length > 0));
+
+  /**
+   * The promise the old constant carried, restated against the function:
+   * a floor is finishable at a walk before it stops putting up with you.
+   *
+   * Measured at the WORST case the game can produce - the deepest floor,
+   * at the highest alarm - because that is the one the promise has to
+   * survive, and because compounding means the shallow case is no longer
+   * evidence about the deep one.
+   */
+  const deepest = L.secondsTo(L.REAPER_AT, L.ALARM_MAX, L.FLOORS - 1);
+  const easiest = L.secondsTo(L.REAPER_AT, 0, 0);
+  check("a quiet first floor is minutes, not moments", easiest >= 180 && easiest <= 900, `${easiest.toFixed(0)}s`);
+  check("and the deepest floor at full alarm is still a real span", deepest >= 100, `${deepest.toFixed(0)}s`);
+  check("but a great deal shorter than the shallowest, which is the compounding doing its job", deepest < easiest / 2, `${deepest.toFixed(0)}s against ${easiest.toFixed(0)}s`);
+
   check("the one that wakes is faster than a walk and slower than a dash", V > L.WALK_SPEED && V < L.DASH_SPEED, `${V} against walk ${L.WALK_SPEED}, dash ${L.DASH_SPEED}`);
   check("and faster than the Warden at its most roused - it is the bigger threat", V > L.WARDEN_SPEED_ROUSED, `${V} against ${L.WARDEN_SPEED_ROUSED}`);
   check("a blast holds it for longer than its own fuse, so setting one under it is worth the walk", L.REAPER_STALL_S > L.BOMB_FUSE_S, `${L.REAPER_STALL_S}s against a ${L.BOMB_FUSE_S}s fuse`);
@@ -1411,10 +1475,11 @@ check("the shipped room templates reach the floors the game generates", authored
     const trap = d.rooms.find((r) => r.kind === "trap") ?? d.rooms[1];
     check("so nothing on the floor is in its way and nothing bites it", L.obstaclesFor("ghost", trap, d.seed, []).length === 0 && L.bitesFor("ghost", trap, d.seed, []).length === 0);
   }
+
   // A floor at a walk: the longest shortest path from the start to the exit
   // over 200 seeds, in rooms, times a generous crossing per room, must fit
-  // inside the patience with room to open a chest or two. This is the
-  // promise "you can always finish if you do not linger" as a number.
+  // inside the worst case above with room to open a chest or two. This is
+  // the promise "you can always finish if you do not linger" as a number.
   let longest = 0;
   for (let seed = 1; seed <= 200; seed++) {
     const rules = L.floorRules((seed % L.FLOORS) + 1);
@@ -1423,11 +1488,20 @@ check("the shipped room templates reach the floors the game generates", authored
     longest = Math.max(longest, path.length);
   }
   const CROSS_S = (L.ROOM_SIZE_LARGE ?? 24) / L.WALK_SPEED + 3;
-  check("the longest floor can be walked start to exit in under half its patience", longest * CROSS_S < P / 2, `${longest} rooms at ${CROSS_S.toFixed(1)}s each = ${(longest * CROSS_S).toFixed(0)}s of ${P}s`);
-  // One owner of the numbers: world.ts names them, everything else reads.
-  const owners = ["src/game/state/run.ts", "src/ui/Hud.tsx", "src/game/systems/Audio.tsx", "src/game/reaper/ReaperDriver.tsx", "src/game/reaper/Reaper.tsx"]
-    .filter((f) => { try { return /(PATIENCE_S|REAPER_[A-Z_]+)\s*=\s*\d/.test(readFileSync(join(root, f), "utf8")); } catch { return false; } });
-  check("and only world.ts spells the patience out", owners.length === 0, owners.join(", ") || "one owner");
+  check(
+    "the longest floor can be walked start to exit inside the worst heat the game can make",
+    longest * CROSS_S < deepest,
+    `${longest} rooms at ${CROSS_S.toFixed(1)}s each = ${(longest * CROSS_S).toFixed(0)}s of ${deepest.toFixed(0)}s`
+  );
+
+  /**
+   * One owner of the numbers. The coefficient names them and everything
+   * else reads - the same rule the deleted constants had, moved to where
+   * the arithmetic went.
+   */
+  const owners = ["src/game/state/run.ts", "src/ui/Hud.tsx", "src/ui/hudLines.ts", "src/game/systems/Audio.tsx", "src/game/heat/HeatDriver.tsx", "src/game/reaper/Reaper.tsx"]
+    .filter((f) => { try { return /(DWELL_WEIGHT|ALARM_WEIGHT|DEPTH_BASE|REAPER_AT)\s*=\s*[\d.]/.test(readFileSync(join(root, f), "utf8")); } catch { return false; } });
+  check("and only the coefficient spells the floor's own pressure out", owners.length === 0, owners.join(", ") || "one owner");
 }
 
 // --- Floors that are alive ----------------------------------------------------
@@ -1617,7 +1691,7 @@ check("the shipped room templates reach the floors the game generates", authored
   check("marking the map is an action, with a default key and a label", !!has && L.DEFAULT_BINDINGS?.mark?.length > 0 && !!L.ACTION_LABEL?.mark, has ? `${L.DEFAULT_BINDINGS.mark} - ${L.ACTION_LABEL.mark}` : "no mark action");
   const readme = readFileSync(join(root, "README.md"), "utf8");
   check("and the README's controls name it", /mark the room/i.test(readme) && /d-pad up/i.test(readme));
-  check("a thin wall speaks slower than a breath and faster than the floor tires", L.WALL_SOUND_EVERY_S > 1 && L.WALL_SOUND_EVERY_S < L.REAPER_WARNING_S, `${L.WALL_SOUND_EVERY_S}s`);
+  check("a thin wall speaks slower than a breath and often enough to be learned", L.WALL_SOUND_EVERY_S > 1 && L.WALL_SOUND_EVERY_S < 45, `${L.WALL_SOUND_EVERY_S}s`);
   const captions = readFileSync(join(root, "src/ui/Captions.tsx"), "utf8");
   const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
   check("every flavour behind a wall has a caption and a sound", ["hoard", "reliquary", "shrine"].every((f) => new RegExp(`"${f}"`).test(captions) || /flavour ===/.test(captions)) && /throughWall/.test(audio) && /hoard|reliquary/.test(audio));
@@ -1794,10 +1868,10 @@ check("the shipped room templates reach the floors the game generates", authored
 {
   const arc = ["throughwall", "bombed", "lastbreath", "spiked", "slipped"];
   check("the arc's five deeds exist, named, with a line each", arc.every((id) => L.DEED_IDS.includes(id) && L.DEEDS[id]?.name && L.DEEDS[id]?.blurb), arc.filter((id) => !L.DEED_IDS.includes(id)).join(", ") || "all five");
-  check("Last Breath is under the Reaper's warning", L.LAST_BREATH_S > 0 && L.LAST_BREATH_S < L.REAPER_WARNING_S, `${L.LAST_BREATH_S}s against ${L.REAPER_WARNING_S}s`);
+  check("Last Breath is the floor's own last band, so it is only earned by staying through it", L.REAPER_AT === L.BANDS[L.BANDS.length - 1].at);
   const events = readFileSync(join(root, "src/game/events.ts"), "utf8");
   const watch = readFileSync(join(root, "src/game/deeds/watch.ts"), "utf8");
-  check("the floor says what was left of its patience, and the watcher reads it rather than counting", /floorDescended: \{ floor: number; left: number \}/.test(events) && /left <= LAST_BREATH_S/.test(watch) && !/floorEnteredAt/.test(watch));
+  check("the floor says how hot it had got, and the watcher reads it rather than counting", /floorDescended: \{ floor: number; heat: number \}/.test(events) && /heat >= REAPER_AT/.test(watch) && !/floorEnteredAt/.test(watch));
   const summary = readFileSync(join(root, "src/ui/RunSummary.tsx"), "utf8");
   check("the run summary names the deeds this run earned", /earnedThisRun/.test(summary) && /summary-deeds/.test(summary));
 }
@@ -4116,6 +4190,373 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the analog value quantises upwards through every rung", L.rungFor(0) === 0 && L.rungFor(0.2) === 1 && L.rungFor(0.5) === 2 && L.rungFor(1) === 3);
   check("and every rung has a word the player can be told", [0, 1, 2, 3].every((r) => typeof L.RUNG_NAME[r] === "string" && L.RUNG_NAME[r].length > 0));
   check("four rungs, not eight: a ladder whose rungs cannot be named is a number in a costume", L.RUNGS.length === 4);
+}
+
+/**
+ * THE CYCLE - pressure that oscillates instead of ramping.
+ *
+ * The largest omission the research found: we had nothing that ever
+ * relaxed. The asymmetry between the phases IS the design - the peak is a
+ * spike, not a plateau - and it is the property most likely to be tuned
+ * away by somebody who thinks a longer peak is a better peak.
+ */
+{
+  const T = L.BASE;
+  check("the peak is a spike, not a plateau", T.sustainMaxS <= 5 && T.relaxMinS >= 30, `${T.sustainMinS}-${T.sustainMaxS}s at the top against ${T.relaxMinS}-${T.relaxMaxS}s at the bottom`);
+  check("and the valley is many times the peak", T.relaxMinS > T.sustainMaxS * 5, `${T.relaxMinS} against ${T.sustainMaxS}`);
+  check("a build-up has a floor under it, so a bad first second cannot be the peak", T.buildUpMinS >= 15, `${T.buildUpMinS}s`);
+  check("every phase with a range has a real one, so the player cannot count it out", T.sustainMaxS > T.sustainMinS && T.relaxMaxS > T.relaxMinS);
+  check("and forward progress can end a relax early, so the valley is not an intermission", T.relaxProgress > 0 && T.relaxProgress < 8, `${T.relaxProgress} rooms`);
+
+  /**
+   * A crescendo is the same machine with five numbers swapped, and it is
+   * a PRESET rather than the normal curve turned up. Inverted from base
+   * pacing: a long hold at the top against almost no valley.
+   */
+  check(
+    "a crescendo inverts the base curve rather than steepening it",
+    L.CRESCENDO.sustainMinS > L.BASE.sustainMaxS && L.CRESCENDO.relaxMaxS < L.BASE.relaxMinS,
+    `sustain ${L.CRESCENDO.sustainMinS}-${L.CRESCENDO.sustainMaxS}s against ${L.BASE.sustainMinS}-${L.BASE.sustainMaxS}s, relax ${L.CRESCENDO.relaxMinS}-${L.CRESCENDO.relaxMaxS}s against ${L.BASE.relaxMinS}-${L.BASE.relaxMaxS}s`
+  );
+  check("and is never reachable by the director on its own", JSON.stringify(L.BASE) !== JSON.stringify(L.CRESCENDO));
+
+  /** The four phases, walked. */
+  {
+    let d = L.openCycle(0);
+    check("a floor opens in the build-up", d.phase === "buildUp");
+    // Hot from the first second, and it still will not peak early.
+    d = L.stokeCycle(d, 1);
+    d = L.stepCycle(d, T, T.buildUpMinS - 1, 0.016, true, 0, 0.5);
+    check("and will not peak before its floor, however bad it gets", d.phase === "buildUp", d.phase);
+    d = L.stepCycle(d, T, T.buildUpMinS, 0.016, true, 0, 0.5);
+    check("then it peaks", d.phase === "sustainPeak", d.phase);
+    d = L.stepCycle(d, T, T.buildUpMinS + T.sustainMaxS + 0.1, 0.016, true, 0, 0.5);
+    check("and comes off the peak on its own clock, whatever is happening", d.phase === "peakFade", d.phase);
+    /**
+     * The fade waits for a natural break. Without it the valley is spent
+     * finishing the fight that caused the peak, and the player gets a
+     * relax they never experienced.
+     */
+    let t = T.buildUpMinS + T.sustainMaxS + 1;
+    d = L.stepCycle(d, T, t, 0.016, true, 0, 0.5);
+    check("the relax does not start while the fight is still going", d.phase === "peakFade", d.phase);
+    // Let go, and let it cool.
+    for (let i = 0; i < 2000 && d.phase === "peakFade"; i++) { t += 0.05; d = L.stepCycle(d, T, t, 0.05, false, 0, 0.5); }
+    check("and starts the moment it is over", d.phase === "relax", d.phase);
+    const began = t;
+    d = L.stepCycle(d, T, began + T.relaxMinS - 1, 0.016, false, 0, 0.5);
+    check("a valley is not cut short by the clock alone", d.phase === "relax", d.phase);
+    d = L.stepCycle(d, T, began + T.relaxMaxS + 1, 0.016, false, 0, 0.5);
+    check("and then it builds again", d.phase === "buildUp", d.phase);
+  }
+
+  /**
+   * Forward progress ends a valley early. This is the half that makes the
+   * bargain of the whole game legible in the pacing rather than in a
+   * penalty: push on toward the stair and the floor comes back at you
+   * sooner, sweep it for gems and it does not.
+   */
+  {
+    let d = L.openCycle(0);
+    d = L.stokeCycle(d, 1);
+    d = L.stepCycle(d, T, T.buildUpMinS, 0.016, true, 0, 0.5);
+    d = L.stepCycle(d, T, T.buildUpMinS + T.sustainMaxS + 0.1, 0.016, true, 0, 0.5);
+    let t = T.buildUpMinS + T.sustainMaxS + 1;
+    for (let i = 0; i < 2000 && d.phase === "peakFade"; i++) { t += 0.05; d = L.stepCycle(d, T, t, 0.05, false, 0, 0.5); }
+    const walked = L.stepCycle(d, T, t + 1, 0.016, false, d.progressAt + T.relaxProgress, 0.5);
+    const stood = L.stepCycle(d, T, t + 1, 0.016, false, d.progressAt, 0.5);
+    check("walking on ends the valley early", walked.phase === "buildUp", walked.phase);
+    check("and standing still does not", stood.phase === "relax", stood.phase);
+  }
+
+  /**
+   * Minimal Threat, read precisely: no NEW threats. Whatever is already in
+   * flight keeps acting, which is what stops a valley reading as a
+   * scripted intermission.
+   */
+  check("nothing new is sent during a valley", L.mayEscalate({ phase: "relax" }) === false);
+  check("and everything else in the cycle may send", ["buildUp", "sustainPeak", "peakFade"].every((phase) => L.mayEscalate({ phase })));
+
+  /**
+   * The accumulator. Permission to make it crude is explicit - "Survivor
+   * Intensity estimation is crude, yet the resulting pacing works" - so
+   * these hold it to being monotone in the right direction and nothing
+   * more.
+   */
+  check("a life taken is the largest single input", Object.entries(L.INTENSITY).filter(([k]) => k !== "hunted").every(([, v]) => v <= L.INTENSITY.damaged), JSON.stringify(L.INTENSITY));
+  check("and being hunted outweighs being merely near", L.INTENSITY.hunted > L.INTENSITY.nearby);
+  check("intensity is clamped, so very bad cannot become three times as long to forget", L.stokeCycle(L.stokeCycle(L.openCycle(0), 1), 1).intensity === 1);
+  check("it bleeds off when nothing is happening", L.stepCycle(L.stokeCycle(L.openCycle(0), 1), T, 1, 1, false, 0, 0.5).intensity < 1);
+  check("and does not while something is engaging", L.stepCycle(L.stokeCycle(L.openCycle(0), 1), T, 1, 1, true, 0, 0.5).intensity === 1);
+  check("the decay is widened for one accumulator rather than a maximum of four", L.DECAY_PER_S > 0 && L.DECAY_PER_S <= 0.15, `${L.DECAY_PER_S}/s`);
+
+  /**
+   * And the join between the two systems, which is the reason they are
+   * two: the amplitude is the Coefficient's and the frequency is this.
+   */
+  const period = T.buildUpMinS + T.sustainMaxS + T.relaxMaxS;
+  check("a cycle is about a minute and a half at its longest, so a floor holds several", period >= 45 && period <= 120, `${period}s`);
+}
+
+/**
+ * THE LANTERN BARGAIN - darkness as an affordance the player spends.
+ *
+ * Our lantern was a pure penalty: lowering it gave nothing, so there was no
+ * reason ever to raise it except that you could not see. That fails Law 6
+ * twice - darkness must PAY, and it must pay in NAMED STEPS.
+ */
+{
+  const B = L.GLIM_BANDS;
+  check("five bands, not four: Shrouded is real", B.length === 5, B.map((b) => b.name).join(" / "));
+  check("and they run downward without a gap", B.every((b, i) => i === 0 || b.at < B[i - 1].at));
+  check("every band names itself", B.every((b) => b.name && b.id));
+  check("and you see less the further down you go", B.every((b, i) => i === 0 || b.sees < B[i - 1].sees), B.map((b) => b.sees).join(" > "));
+
+  /**
+   * BOTH ENDS PAY, in currencies that cannot be converted into each other.
+   * My first table had darkness paying and light paying nothing, which is a
+   * difficulty setting rather than a decision.
+   */
+  const pays = B.filter((b) => b.buys.length > 0);
+  check("the top band buys something no other band can", B[0].buys.length > 0, B[0].buys);
+  check("and so do the two bottom ones", B[3].buys.length > 0 && B[4].buys.length > 0);
+  check("at least three of the five pay, and the middle one does not", pays.length >= 3 && B[1].buys === "");
+
+  check("veins show below the Dark band and not above it", L.gemveinsShow(L.GEMVEIN_BELOW - 1) && !L.gemveinsShow(L.GEMVEIN_BELOW));
+  check("and cracks show only at nothing at all", L.cracksShow(0) && !L.cracksShow(1));
+  check("scouting is the top band's alone", L.canScout(100) && !L.canScout(B[0].at - 1));
+
+  /**
+   * OIL BURNS PER ROOM, NOT PER SECOND. A time-based drain punishes
+   * deliberation, careful looking and hiding - which are exactly the
+   * behaviours an evade-only lantern game wants to reward, and are the
+   * whole of what this game is.
+   */
+  check("pushing into the unknown is what costs", L.oilForRoom(false) > L.oilForRoom(true), `${L.oilForRoom(false)} new against ${L.oilForRoom(true)} known`);
+  check("and backtracking is nearly free", L.oilForRoom(true) <= L.oilForRoom(false) / 4, `${L.oilForRoom(true)} of ${L.oilForRoom(false)}`);
+
+  /** Cheap and instant to enter, expensive and slow to leave. */
+  check("darkness is instant and free to enter", L.LOWER_S === 0);
+  check("and costs both oil and time to leave", L.RAISE_OIL > 0 && L.RAISE_S > 0, `${L.RAISE_OIL} oil, ${L.RAISE_S}s`);
+}
+
+/**
+ * VERBS, NOT KEYS - and the hedge that is the useful part. The rule is not
+ * "no locks", it is no lock whose ONLY solution is its key, and the audit
+ * is per GATE rather than per tool.
+ */
+{
+  check("every gate the game puts up has more than one answer", L.GATES.every((g) => g.ways.length >= 2), L.GATES.filter((g) => g.ways.length < 2).map((g) => g.id).join(", ") || "all of them");
+  check("and one of them has three", L.GATES.some((g) => g.ways.length >= 3));
+  check("every verb is briefed as a physical behaviour", L.VERBS.every((v) => v.brief.length > 12));
+  /**
+   * The one that failed the test: "the thing that opens the vault" is a
+   * function wearing an object's name, and it is why the key had exactly
+   * one use for its entire life.
+   */
+  const key = L.VERBS.find((v) => v.id === "key");
+  check("including the key, which used to be briefed as a function", !!key && !/opens the vault/.test(key.brief), key?.brief);
+  check("and rebriefing it produces three properties it did not have", L.KEY_IS.length === 3 && L.KEY_IS.every((k) => k.property && k.pays));
+  check("a heavy key can weight a plate, which is now a way through a gate", L.GATES.find((g) => g.id === "plate")?.ways.some((w) => /key/.test(w)));
+
+  /** Every verb needs a LEGIBLE limit: a universal verb is unreadable. */
+  check("every verb has exactly one limit", L.VERBS.every((v) => v.limit.length > 4));
+  check("and every limit is signposted, because you cannot plan against an invisible edge", L.VERBS.every((v) => v.signpost.length > 12));
+}
+
+/**
+ * THE SATCHEL THAT RESOLVES. An unknown consumable earns its slot only if
+ * the bad outcome is interestingly dual-sided: "if the worst case is pure
+ * loss, never drinking is correct play" - which is exactly what our four
+ * cruel items were.
+ */
+{
+  const cruel = L.ITEM_IDS.filter((id) => L.ITEMS[id].cruel);
+  check("every cruel item in the catalogue has an affliction written for it", cruel.every((id) => L.AFFLICTIONS.some((a) => a.id === id)), cruel.filter((id) => !L.AFFLICTIONS.some((a) => a.id === id)).join(", ") || "all of them");
+  check("and every affliction is of an item that exists", L.AFFLICTIONS.every((a) => L.ITEM_IDS.includes(a.id)));
+  check("every one has a second edge", L.AFFLICTIONS.every((a) => a.edge.length > 12), L.AFFLICTIONS.filter((a) => a.edge.length <= 12).map((a) => a.id).join(", ") || "all of them");
+  /**
+   * And the penalty is a NAMED TASK cleared by playing, never a
+   * subtraction. A flat cost is computed once and forgotten; a task makes
+   * the player price their own current fragility.
+   */
+  check("and a named cure cleared by playing", L.AFFLICTIONS.every((a) => a.cure.length > 8 && a.clears && a.clears.count >= 1));
+  check("no two afflictions are cleared the same way", new Set(L.AFFLICTIONS.map((a) => a.clears.kind)).size === L.AFFLICTIONS.length);
+  check("identification resolves rather than gating the run", L.IDENTIFICATION_RESOLVES === true);
+  check("and knowledge-checking is batched rather than priced", L.BATCH >= 2 && L.BATCH <= 4, `${L.BATCH} at a time`);
+}
+
+/**
+ * THE OFFER - what the meta layer is allowed to buy. Two unrelated
+ * researches attacked six permanent shop-bought relics from opposite
+ * directions, and the resolution is structural: the permanent layer buys
+ * OPTIONS AND ODDS, never the run's power.
+ */
+{
+  const O = Object.values(L.OFFERS);
+  check("there are six offers, each with a price", O.length === 6 && O.every((o) => o.price > 0));
+  /**
+   * The design test: state the reward as a sentence about what the player
+   * may now DO. If the only honest sentence is a number, it is a trifecta
+   * affix - and our shipped six failed it four times over.
+   */
+  const numeric = O.filter((o) => /\d|%|quarter|half|twice|double|less|more|faster/.test(o.does));
+  check("and not one of them is a number wearing a name", numeric.length === 0, numeric.map((o) => `${o.id}: ${o.does}`).join(" | ") || "none");
+  check("every one is a sentence about what the player may now do", O.every((o) => /^You may /.test(o.does)), O.filter((o) => !/^You may /.test(o.does)).map((o) => o.id).join(", ") || "all of them");
+  check("and every one is odds, options or an enabler - never power", O.every((o) => ["odds", "options", "enabler"].includes(o.kind)));
+  check("at least one is an enabler that does nothing until the player has learned something", O.some((o) => o.kind === "enabler"));
+
+  /**
+   * A pair unlocks a third thing nobody can buy. The property worth
+   * stealing is not the bonus - it is that a duo effect CANNOT BE
+   * NUMERICALLY INFLATED, because its value is categorical.
+   */
+  check("relics pair up", L.PAIRS.length >= 2 && L.PAIRS.every((p) => p.of.length === 2));
+  check("and every pair names two offers that exist", L.PAIRS.every((p) => p.of.every((id) => L.OFFER_IDS.includes(id))));
+  check("no offer is in two pairs, so a pair is a choice", new Set(L.PAIRS.flatMap((p) => p.of)).size === L.PAIRS.length * 2);
+  check("a pair pays only when both are held", L.pairFor([L.PAIRS[0].of[0]]).length === 0 && L.pairFor(L.PAIRS[0].of).length === 1);
+  check("and no pair's payoff is a number either", L.PAIRS.every((p) => !/\d|%/.test(p.does)));
+
+  /**
+   * The reward mix declines with depth, with ZERO meta on the last floor.
+   * Floor one may pay toward the next run; floor three pays only into this
+   * one - which is also the answer to "why would I not just dive".
+   */
+  check("the meta share declines with depth", L.META_SHARE.every((v, i) => i === 0 || v <= L.META_SHARE[i - 1]), L.META_SHARE.join(" > "));
+  check("and the last floor pays only into this run", L.metaShareOn(3) === 0, `${L.metaShareOn(3)}`);
+  check("while the first pays a real share toward the next", L.metaShareOn(1) > 0.3, `${L.metaShareOn(1)}`);
+
+  /** Escalation must be ELECTED as well as imposed. */
+  check("difficulty can be elected, at a named price for a named payout", L.PACTS.length >= 3 && L.PACTS.every((p) => p.costs && p.pays && p.heat > 0));
+  check("and every pact pays in the currency the run already uses", L.PACTS.every((p) => !/\bscore\b/.test(p.pays)));
+}
+
+/**
+ * ROOMS AS TEMPLATES WITH SLOTS. Authored set pieces inside procedural
+ * content are endorsed by the same document that names their cost - deja
+ * vu, and "a spoiled edge" for veterans - and the shipped mitigation is
+ * placement-time rewriting under the rule "In order to provide fun and
+ * reduce spoiler effects, randomise."
+ */
+{
+  const props = [
+    { kind: "urn", x: -2, z: -2, slot: "vessel" },
+    { kind: "urn", x: 2, z: -2, slot: "vessel" },
+    { kind: "urn", x: 0, z: 2, slot: "vessel" },
+    { kind: "chest", x: 0, z: 0, slot: "prize" },
+    { kind: "pillar", x: 4, z: 4 },
+  ];
+  const rules = [
+    { slot: "vessel", op: "subst", into: ["urn", "crate", "barrel"] },
+    { slot: "prize", op: "nsubst", into: ["chest", "rubble"], n: 1 },
+  ];
+  const counts = { vessel: 3, prize: 1 };
+  check("a template with two slots is many rooms rather than one", L.variantsOf(rules, counts) >= 3, `${L.variantsOf(rules, counts)} variants`);
+
+  /**
+   * And the claim the plan actually makes, stated as arithmetic: a
+   * treasure chamber whose gem, chest and cracked wall each land in one of
+   * three authored positions is not one room with three details - it is
+   * twenty-seven rooms, from one authored room, and that attacks "23 of 34
+   * rooms look different" at the root rather than by adding props.
+   */
+  const three = [
+    { slot: "gem", op: "nsubst", into: ["crystal", "rubble"], n: 1 },
+    { slot: "chest", op: "nsubst", into: ["chest", "rubble"], n: 1 },
+    { slot: "crack", op: "nsubst", into: ["wall", "rubble"], n: 1 },
+  ];
+  const spread = L.variantsOf(three, { gem: 3, chest: 3, crack: 3 });
+  check("three things in three authored spots each is nine rooms and more", spread >= 9, `${spread} rooms from one authored room`);
+  check("and a template with no slots is honestly one", L.variantsOf([], {}) === 1);
+
+  const out = L.resolveSlots(props, rules, "room-a");
+  check("no placeholder survives resolution", out.every((p) => p.slot === undefined));
+  check("and nothing is lost or gained on the way", out.length === props.length);
+  check("the untouched prop is untouched", out[4].kind === "pillar" && out[4].x === 4);
+  /**
+   * SUBST is one draw for the whole room, so a room of urns is urns rather
+   * than a mixture that reads as scatter.
+   */
+  const vessels = out.slice(0, 3).map((p) => p.kind);
+  check("a substitution agrees with itself across the room", new Set(vessels).size === 1, vessels.join(", "));
+  check("and it drew from the list it was given", ["urn", "crate", "barrel"].includes(vessels[0]), vessels[0]);
+  /** The same room is the same room every time it is entered. */
+  check("the same room resolves the same way twice", JSON.stringify(L.resolveSlots(props, rules, "room-a")) === JSON.stringify(out));
+  check("and two rooms do not have to agree", [1,2,3,4,5,6,7,8].some((i) => JSON.stringify(L.resolveSlots(props, rules, `room-${i}`)) !== JSON.stringify(out)));
+
+  /** The power spiral: never both harder and richer than peers at a depth. */
+  check("a room may be richer than its peers, within a band", L.withinBand(1.5, 1) && !L.withinBand(3, 1));
+  check("and a hoard looks enormous while being worth three gems", L.HOARD_LOOKS >= L.HOARD_PAYS * 6, `${L.HOARD_LOOKS} shown for ${L.HOARD_PAYS}`);
+}
+
+/**
+ * THE WORLD. The fiction is read off the mechanics rather than painted on,
+ * and the distribution rule is the law of three - every load-bearing fact
+ * gets three carriers of three different kinds.
+ */
+{
+  const F = L.FRAGMENTS;
+  check("forty fragments", F.length === 40, `${F.length}`);
+  check("in four shapes, ten of each", L.FRAGMENT_SHAPES.every((sh) => F.filter((f) => f.shape === sh).length === 10), L.FRAGMENT_SHAPES.map((sh) => `${sh}:${F.filter((f) => f.shape === sh).length}`).join(" "));
+  check("every id is its own", new Set(F.map((f) => f.id)).size === F.length);
+  check("and every one can be cut somewhere", F.every((f) => f.on.length > 0));
+  /**
+   * The rule for how a fragment is WRITTEN: never a sequence. A statement
+   * about the place or a person survives being found in any order; a
+   * statement about what happened next does not.
+   */
+  const sequenced = F.filter((f) => /\b(then|after|next|later|before)\b/i.test(f.text));
+  check("no fragment contains then, after or next", sequenced.length === 0, sequenced.map((f) => f.id).join(", ") || "none");
+  /** And nothing names a proper noun the player cannot see. */
+  check("and none of them names the company, the seam or the year", F.every((f) => !/\b(18|19|20)\d\d\b/.test(f.text)));
+  check("only one fragment points at another, and it is pinned to the first room", F.filter((f) => f.startOnly).length === 1);
+
+  /** The law of three, held to being three DIFFERENT kinds of carrier. */
+  check("every load-bearing fact has three carriers", L.TRIPLED.every((t) => t.text && t.object && t.rule));
+  check("and each names a fragment that exists", L.TRIPLED.every((t) => F.some((f) => f.id === t.text)));
+  check("and a rule the game actually holds", L.TRIPLED.every((t) => t.rule.length > 10));
+  check("four facts tripled, which is as many as a twenty-minute run can carry", L.TRIPLED.length === 4);
+
+  /**
+   * ONE simulated variable with three values, taken deliberately half:
+   * resampling teaches a generator's variation limits, and a twenty-minute
+   * repeated run erodes precisely the effect the idea is for.
+   */
+  check("the seam ended one of three ways, and that is the only thing simulated", L.ENDINGS.length === 3);
+  check("every ending favours fragments that exist", L.ENDINGS.every((e) => L.ENDING_OF[e].favours.every((id) => F.some((f) => f.id === id))));
+  check("and the same seed draws the same ending", L.endingFor(7) === L.endingFor(7));
+  check("while different seeds draw different ones", new Set([1,2,3,4,5,6].map(L.endingFor)).size === 3);
+
+  /** Rooms tell stories in four props, never in an event. */
+  check("every tableau is built from four ordinary objects", L.TABLEAUX.every((t) => t.props.length === 4), L.TABLEAUX.filter((t) => t.props.length !== 4).map((t) => t.id).join(", ") || "all of them");
+  check("and says what it is for", L.TABLEAUX.every((t) => t.tells.length > 10));
+  check("one of them points forwards rather than backwards", L.TABLEAUX.some((t) => t.ahead === true));
+}
+
+/**
+ * THE LEDGER - knowledge as the progression, and the only currency a
+ * twenty-minute run can honestly offer.
+ */
+{
+  const LE = L.LEDGER_LESSONS;
+  check("the ledger has lessons to record", LE.length >= 8, `${LE.length}`);
+  check("every id is its own", new Set(LE.map((l) => l.id)).size === LE.length);
+  /**
+   * It records only what the player is 100% certain to have OBSERVED, and
+   * makes no inferences on their behalf: "keeping track of what they've
+   * learned should not be the challenging part of the game."
+   */
+  check("every lesson names a thing the delver actually did", LE.every((l) => l.observed.length > 20));
+  check("and every entry is written in the first person, as a record", LE.every((l) => l.entry.length > 20));
+  check("most of them let the player skip a step afterwards", LE.filter((l) => l.pays.length > 10).length >= LE.length - 1);
+  /**
+   * ENABLERS, never substitutes. A ledger entry that revealed secret walls
+   * outright would delete the draft tell it was supposed to reward.
+   */
+  const draft = LE.find((l) => l.id === "draft");
+  check("the draft entry only works on a draft the player felt themselves", !!draft && /you have felt|already/.test(draft.pays), draft?.pays);
+  check("and one lesson deliberately pays nothing, which is the point of it", LE.some((l) => /^Nothing\./.test(l.pays)));
+  check("recording is on observation only, and it is written down as a rule", L.RECORDED_ON_OBSERVATION_ONLY === true);
 }
 
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);

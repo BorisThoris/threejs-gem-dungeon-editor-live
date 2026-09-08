@@ -74,6 +74,17 @@ export const PURCHASES = [
 export type PurchaseId = (typeof PURCHASES)[number]["id"];
 
 /**
+ * The least time between two lumps, in seconds.
+ *
+ * A floor can arrive owing several at once - floor three at a raised alarm
+ * is over three credits before the player has taken a step - and
+ * delivering them on consecutive frames is three lines of text in a
+ * twentieth of a second, which reads as a glitch rather than as a floor
+ * reacting. Spacing them is what keeps a threshold an event.
+ */
+export const HEAT_SPACING_S = 5;
+
+/**
  * The five names the floor's heat is called by, and never a number.
  *
  * Straight out of Law 3: the rule is transparent, the magnitude is not.
@@ -98,6 +109,26 @@ export const BANDS = [
  * in words for several minutes.
  */
 export const REAPER_AT = BANDS[BANDS.length - 1].at;
+
+/**
+ * How long a floor takes to reach a given heat at a given alarm, in
+ * seconds - the inverse of the coefficient.
+ *
+ * Here rather than in a check because it is the number the game's own
+ * promise is made of: a floor has to be finishable at a walk before it
+ * stops putting up with you, and that promise used to be one constant
+ * anybody could read. Now it is a function of depth and greed, so the
+ * place that answers it has to be the place that defines it.
+ *
+ * Returns Infinity where the alarm alone already exceeds the target,
+ * which is the honest answer: a floor that is already there does not take
+ * any time to get there.
+ */
+export function secondsTo(heat: number, alarm: number, floorsDescended: number): number {
+  const scale = Math.pow(DEPTH_BASE, Math.max(0, floorsDescended));
+  const minutes = heat / scale - alarm * ALARM_WEIGHT;
+  return minutes <= 0 ? 0 : (minutes / DWELL_WEIGHT) * 60;
+}
 
 export const bandFor = (heat: number): number => {
   let band = 0;

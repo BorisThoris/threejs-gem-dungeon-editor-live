@@ -102,7 +102,12 @@ export function Audio() {
       bus.on("wardenStruck", () => sfx.wardenStrike()),
       bus.on("wardenWounded", () => sfx.wardenWound()),
       bus.on("wardenRouted", () => sfx.wardenRout()),
-      bus.on("floorTiring", () => sfx.wardenNear()),
+      /**
+       * The floor moving up a band. Pitched by the band rather than one
+       * cue for all of them: the readout says the name and this says how
+       * far up it is, so a player who is not looking still knows.
+       */
+      bus.on("floorHeat", ({ band }) => sfx.bark(band, true)),
       bus.on("reaperWoke", () => sfx.wardenHere()),
       bus.on("reaperStruck", () => sfx.wardenStrike()),
       bus.on("reaperStalled", () => sfx.wardenWound()),

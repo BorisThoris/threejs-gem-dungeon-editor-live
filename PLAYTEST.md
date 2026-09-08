@@ -4301,3 +4301,400 @@ arrival alarm is a baseline as well as a starting value - a Scroll of
 Banishment calms the floor but never past it. `yarn test:layout` checks that
 no row is gentler or brighter than the one above it, and `yarn test:smoke`
 walks a seed down all three floors twice and compares them room for room.
+
+## 59. The Din: a shared vocabulary, and the ears that were missing
+
+### The measurement that started it
+
+79 declared bus events. 140 listener registrations. **120 of them are
+presentation only** - `Audio.tsx` (62), `Captions.tsx` (40),
+`deeds/watch.ts` (12), `Transitions.tsx` (6). Twenty do anything else.
+
+Files that listened at all, per threat system:
+
+    warden/  0 of 7     sentry/  0 of 3     thief/  0 of 4
+    keeper/  0 of 3     reaper/  0 of 2     mobs/   1 of 11
+
+The Warden, Sentry, Cutpurse, Keeper and Reaper subscribed to nothing.
+Each was a frame loop polling the store for its own private facts. They
+could not react to each other, to a trap firing, to a barrel bursting, to
+a wall opening, or to the player being seen by something else. That is the
+whole of the flatness: ten good systems with no channel between them, so
+the player could never cause anything they did not already know they were
+causing.
+
+### What was built instead of more wires
+
+`src/game/din/` - about twenty tags in four families, and rules that name
+a tag where a thing would go:
+
+    emitted    [loud] [bright] [blast] [hot] [metal] [wet]
+    borne      [ground] [flying] [ghost]        already shipped
+    surfaces   [stone] [moss] [tile] [dirt] [water]
+    states     [lit] [barred] [broken] [snared] [carried] [owed]
+
+A bomb declares `[blast] [loud] [bright] [hot]` and never learns the Warden
+exists. Each receiver declares what it answers to and **defaults to
+answering nothing** - a tag absent from a susceptibility block is a tag
+that thing has never heard of, and there is no fallback that quietly makes
+everything sensitive to everything.
+
+The one improvement on the game this is transplanted from: their receivers
+match by exact material *name*, so a new material harms nobody until it has
+been added to every entity. Ours match by TAG, so a new noisy thing is
+heard by everything listening for `[loud]` the day it lands.
+
+### Propagation
+
+The room graph is `Room.links`, which the generator already writes - the
+game this comes from hand-authored one per mission, which the "what went
+right" framing omits and which would have been the expensive half.
+
+    same room x 1.00     doorway x 0.35     wall x 0.00     half-life 2.5s
+
+Reach is computed **once**, when a signal is made, and never again; a frame
+loop asking "what can I hear" is a map lookup. Dijkstra on the loudest
+arriving path rather than breadth-first, because a dungeon is a graph and
+not a tree and a queue that takes the first arrival delivers the quieter of
+two routes - which would have shipped as "the Warden sometimes ignores a
+bomb it should have heard".
+
+A barred doorway is a wall. The player paid a gem and eight seconds of
+hammering for that bar, and it stopping sound as well as stopping the
+Warden is the kind of second use a verb earns by being a physical thing.
+
+### The numbers are ours, and are marked as ours
+
+The architecture verified against a primary source, with that designer's
+own counterfactual - *"without this, it is unlikely the sound design could
+have succeeded"*. **No source survived verification for per-material
+loudness numbers or for a movement-speed-to-loudness mapping**, so every
+figure in the emissions table is a starting value:
+
+    bomb burst  1.00   grate  0.70   roost  0.70   barrel  0.60
+    bar  0.50   key dropped  0.50   pit  0.55   darts  0.40
+    sprint  0.35   snare  0.35   cutpurse  0.20   walk  0.05
+    gem taken  0.00
+
+That last row is a design statement rather than a measurement. **Theft is
+silent.** Stealing and smashing must not feel alike, and a player who
+learns the floor does not hear a gem leave its socket has learned the
+game's actual proposition.
+
+### Two facts a player can now plan against
+
+A bomb is `[loud] 1.00`; the Warden hears `[loud]` at 0.30. One doorway
+away it arrives at 0.35 and is heard. Two doorways away it arrives at
+0.1225 and is not. **A lure is a local tool, not a floor-wide one** - near
+enough to be a tool, far enough to be a decision.
+
+And the Sentry never hears the loudest thing in the game, because it is
+deaf by declaration. It sees the *flash*: `bombBurst` also carries
+`[bright] 1.00`, and the Sentry answers `[bright]` at 0.50 - in its own
+room only, because 0.35 through a doorway is under its threshold. Nobody
+wrote a rule connecting bombs to Sentries. The tags did it.
+
+### What it bought on day one, with no new content
+
+The Warden now walks to wherever the loudest thing it can hear happened,
+with no idea what made the noise - so a barrel the player never touched,
+burst by something else two rooms away, pulls it off their trail. The roost
+was one hand-written `bombBurst` listener; it now declares `[loud] 0.40`
+and `[blast] 0.15` and goes up for a barrel beside it, a grate in the
+doorway, or a bomb one room over.
+
+The roost cannot rouse itself, which was worth checking rather than
+assuming: a roost going up is `[loud] 0.70`, over its own threshold, but by
+the time its five seconds are up that has decayed to 0.175.
+
+## 60. The Ladder: awareness with rungs, and the Warden's head
+
+### The brief
+
+> the point is "broadening out the gray zone of safety and danger that in
+> most first-person games is razor thin."
+
+Ours had two states - it has not noticed you, or it is coming - and the
+whole of the game between them was a boolean flipping.
+
+### Four rungs over a continuous interior
+
+Still, Stirring, Searching, Hunting. The interior is analog and the surface
+is discrete, and the quantisation IS the readability rather than a
+simplification of it - the source's own output stage is *"entirely
+discrete, designed for a limited number of player-perceivable inputs, and
+discrete valued results."*
+
+**Up is a gated jump.** Held behind a reaction delay that belongs to the
+rung it is LEAVING (750 ms moderate, 500 ms strong), and once past it the
+creature arrives without visiting anything in between. Break the stimulus
+inside that window and there is **no alert at all** - nothing is banked -
+which is what makes ducking behind a pillar a real move rather than a
+postponement. Inside 2.75 units the delay does not apply, because a window
+at arm's length reads as the creature being broken rather than the player
+being quick. Afterwards there is a retrigger window (12 s / 22 s) in which
+being noticed again is instant.
+
+**Down is a timed slide**, one rung at a time, through every state on the
+way, and slower the higher it got (6 / 14 / 22 s). Being noticed is sudden;
+being forgotten is slow.
+
+Those discharge times and the rule that a creature which has peaked settles
+back permanently more suspicious are **ours**, and are flagged as ours in
+the source. The engine property that appeared to establish them went 3-0,
+then 1-2, then **0-3** across three verification passes: the property is
+documented, the behaviour is not.
+
+### One archetype, many creatures, by cap alone
+
+Every creature on the floor runs the same state machine. What makes a rat a
+rat is three numbers:
+
+| | max | min | floor after peak |
+| --- | --- | --- | --- |
+| warden | 3 | 0 | yes |
+| sentry | 3 | 1 | no |
+| cutpurse | 3 | 0 | no |
+| reaper | 3 | **3** | - |
+| rat | **2** | 0 | no |
+| moth | **1** | 0 | no |
+| bat | **2** | 0 | no |
+| wisp | **1** | 0 | no |
+| harrier | 3 | 0 | yes |
+| keeper | 3 | **2** | yes |
+
+Capping below the engage rung hard-disables committing: a rat perceives,
+reacts and calls out and never comes for you. The Reaper's min and max are
+both the top rung - it never rises because it was never not risen, and it
+cannot be slid back down. Between that row and its empty susceptibility
+block there is nothing left to write about it anywhere else.
+
+### And the Warden got a head
+
+It used to face the player every frame, on every rung. That made viewcones
+meaningless - the player was always dead ahead in the sharpest cone it had
+- and it meant there was no grey zone at all, because the thing had eyes in
+the back of its head.
+
+It now turns at 2.3 rad/s toward whatever it is interested in: the player
+once it is hunting, the doorway it last had them through while it is
+searching, and a slow idle sweep when it is neither. **Turning rather than
+snapping is what makes the sweep the tell** - a player watching the lantern
+come round has time to move.
+
+Its cones are ordered, first hit wins, with constant output inside so the
+edge is a line you can learn and stand outside of:
+
+    0.35 rad, range 12, acuity 1.00   normal
+    0.90 rad, range  9, acuity 0.70   normal
+    1.90 rad, range  6, acuity 0.55   peripheral
+    pi,       range 2.5, acuity 0.60  omni
+
+Peripheral vision is the profile worth having: a tenth as sensitive to
+light, three times as sensitive to movement. Out of the corner of its eye
+it cannot see your lantern and it absolutely can see you run.
+
+### One deliberate behaviour change, and a check rewritten to match
+
+**The Warden is blind to light.** It has been holding the company's lamp
+since the shift ended, and nothing you can carry is brighter. A smoke check
+asserted the opposite - "a raised lantern sets the Warden walking" - and
+that check now asserts the new promise instead.
+
+The reason is the susceptibility table rather than taste: the Warden
+declares itself deaf to `[bright]` and the Sentry declares that light is
+the only thing it answers to, and a Warden that also saw light left the
+Sentry with nothing of its own. So the lantern's bargain is now with the
+Sentry, the moth and the lamplighter, and the Warden's is with noise.
+
+**The moth is the bridge**, and it is what makes the moth worth its place:
+it is not light, it is a creature that has settled on you and will not
+leave, and *that* a Warden can read across a room. It is now the only way
+in the game that being lit gives you away to the thing that hunts you.
+
+### Barks
+
+*"Such a range of internal states would be meaningless if the player could
+not perceive it"* - resolved through barks, because sound was the primary
+medium through which those creatures communicated both their location and
+their internal state. Every rung change now says itself, and rising and
+falling are different sounds because they are different news: a short sharp
+intake going up, a longer falling note coming down, so a player who hears
+one behind them knows without turning round whether to keep moving or to
+keep still.
+
+## 61. The Coefficient: deleting the floor timer
+
+### What was wrong with a countdown
+
+`FLOOR_PATIENCE_S = 300` was a ramp: one number falling at one rate with a
+single event at the bottom of it. What the player experienced was four
+minutes of nothing and then the worst thing in the game. And dwell, greed
+and depth were three unrelated pressures with three hand-tuned tables.
+
+The evidence against a monotonic ramp is not an opinion - one studio
+shipped it, players hated it, and their own patch notes now target a value
+that *"should stay in-between 3 and 7 during most of the run"*, which is a
+cycle.
+
+### One function
+
+    heat = (dwellMinutes x 1.0 + alarm x 0.5) x 1.15 ^ floorsDescended
+
+A **pure function** of the state, recomputed every tick and never mutated
+on a transition. That distinction is not pedantry: a mutated accumulator
+has a history, so the same player in the same situation gets different
+pressure depending on the route they took to it.
+
+It **compounds** with depth rather than adding, so a slow floor one costs
+you on floor three - which is what "floors get worse as you go down" was
+always trying to be, given a mechanism instead of three tables.
+
+And greed weighs half what dwell does, deliberately: a game about taking
+things whose optimal line is taking nothing has a hole in the middle.
+
+### It never kills. It buys.
+
+| heat | what the floor sends |
+| --- | --- |
+| 1 | a Cutpurse tries the floor |
+| 2 | the roosts go up |
+| 3 | the Warden's ceiling rises to *hunting* |
+| 6 | a Harrier goes up |
+| 8 | the last band |
+
+Five events across the same span that used to hold one, and each is
+something the world sent rather than a slider moving. The Warden's ceiling
+is the interesting one: **it starts every floor capped at *searching***, so
+on a cold floor it investigates noises, walks to them and calls out and
+never beelines for you. Heat is what lifts the cap. That is the ladder's
+content trick applied to the main threat over time rather than across
+creatures.
+
+### The bands, named and never counted
+
+    the floor is quiet - the floor has noticed - the floor is looking
+    the floor is awake - IT KNOWS WHERE YOU ARE
+
+Law 3 applied to the one number the player is not entitled to see: the rule
+stays transparent (lingering and taking things heats a floor) and the
+magnitude does not, because a player who can count does not hurry - they
+wait until 3 and then move, which is the opposite of what a countdown is
+for.
+
+### The promise, restated as a measurement
+
+The old constant carried "a floor is finishable at a walk before it stops
+putting up with you". Against the function, measured at the worst case the
+game can produce:
+
+| | seconds to the last band |
+| --- | --- |
+| floor one, alarm 0 | **480** |
+| floor three, alarm 6 | **183** |
+| longest floor over 200 seeds, walked | **78** |
+
+The compounding is doing visible work: the deepest floor at full alarm is
+about 38% of the shallowest at rest, and the walk still fits inside it more
+than twice over.
+
+## 62. The Cycle: the thing we had none of
+
+We had nothing that ever relaxed.
+
+> "Constant, unchanging combat is fatiguing - Long periods of inactivity
+>  are boring - Unpredictable peaks and valleys of intensity create a
+>  powerfully compelling and replayable experience."
+
+And the split between this and the Coefficient is that studio's own
+sentence rather than an inference: *"Algorithm adjusts pacing, not
+difficulty - Amplitude (difficulty) is not changed, frequency (pacing)
+is."*
+
+**The Coefficient sets the amplitude. The Cycle sets the frequency.**
+
+    BUILD_UP      at least 15s, then until intensity crosses the peak
+    SUSTAIN_PEAK  3-5s, and no longer
+    PEAK_FADE     waits for a natural break before the relax clock starts
+    RELAX         30-45s, ended early by forward progress
+
+The asymmetry IS the design: **the peak is a spike, not a plateau** - three
+to five seconds at the top against thirty to forty-five at the bottom, a
+factor of six or more.
+
+The fade earns its place. Without it the valley is spent finishing the
+fight that caused the peak, and the player gets a relax they never
+experienced.
+
+### Relax is not emptiness
+
+Minimal Threat, read precisely: **no NEW threats, and whatever is already
+in flight keeps acting.** The Warden in your room does not politely stop
+walking because a director decided you have had enough. Heat earned during
+a valley is **held, not cancelled** - it arrives the moment the valley
+ends, which is what makes a relax feel like a breath rather than like the
+difficulty being turned down.
+
+### The progress axis is ours, and is stated
+
+Rooms newly walked on this floor. Three of them ends a valley early.
+Without a defined progress axis the relax is a fixed intermission players
+learn to wait out - and with one, the bargain of the whole game is
+legible in the pacing rather than in a penalty: push on toward the stair
+and the floor comes back at you sooner; sweep it for gems and it does not.
+
+### The accumulator is crude on purpose
+
+Permission is explicit: *"Survivor Intensity estimation is crude, yet the
+resulting pacing works."* It does not have to be good - it has to be
+monotone in the right direction. A life taken is 0.55, being hunted 0.5 a
+second, forced displacement 0.3, being merely near 0.15, the floor being
+loud at you 0.12. It decays at 0.10/s except while something is actively
+engaging, widened from the four-player original because one accumulator
+that is not the maximum of four is a noisier signal.
+
+A solo game also collapses the threat radius: being in the room with a
+thing that will commit IS the pressure, and the ladder already knows
+whether it means it.
+
+### The boss sits outside the loop
+
+Adaptive pacing is switched off entirely for authored encounters - the
+director paces the connective tissue and the *designer* paces the
+crescendos. Our Keeper is a designed encounter, and a valley chosen by an
+accumulator in the middle of it would be the director overruling the only
+authored moment in the game.
+
+A crescendo preset exists and is the same machine with five numbers
+swapped, inverted from base pacing: sustain 25-30 s against relax 2-5 s.
+It is never reachable by the director on its own.
+
+### Not evidenced, and marked
+
+The base cycle comes to about 65 s at its longest, so a floor holds
+several. **Any claim about how many cycles a floor should contain was voted
+down outright**, so that is a tuning start and never a target.
+
+## 63. Semi-legibility: which numbers were deleted
+
+Run 26 made the readout maximally legible on purpose. Law 3 says that was
+half right, and the split is between two kinds of fact.
+
+**Kept as numbers** - the toll, the gem count, the price, the lives. The
+player is entitled to plan against an economic fact.
+
+**Deleted as numbers**, each replaced by a physical tell rather than a
+hidden state:
+
+| was | is |
+| --- | --- |
+| `the floor tires of you · 12s` | `the floor is looking` |
+| `a doorway · 5s` | `a doorway`, and the hammering going quiet |
+| `up · 12s oil` | `up · low`, and the flame shortening |
+| `the harrier is down · 3s` | `the harrier is down · spikes would end it` |
+
+A fear clock is not a plan, it is a countdown to panic. The oil one was the
+least defensible of the three: a number attached to a resource the player
+cannot spend deliberately, so all it ever did was tell them precisely when
+to worry.
+

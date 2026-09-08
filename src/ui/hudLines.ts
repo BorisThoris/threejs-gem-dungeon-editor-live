@@ -69,8 +69,18 @@ export interface HudFacts {
   ground: { name: string; says: string; tone: HudLine["tone"] } | null;
   roost: boolean;
   drafty: boolean;
-  patience: number;
-  patienceShort: boolean;
+  /**
+   * What the floor's heat is CALLED, and the band it is in. Never the
+   * number.
+   *
+   * Run 26 made the readout maximally legible on purpose, and Law 3 says
+   * that was half right. Economic facts stay numeric because the player is
+   * entitled to plan against them; fear clocks do not, because a player
+   * who can count does not hurry - they wait until 3 and then move, which
+   * is the opposite of what a countdown is for.
+   */
+  heatSays: string;
+  heatBand: number;
   reaper: boolean;
   wardenAwake: boolean;
   wardenSays: string;
@@ -92,6 +102,18 @@ export interface HudFacts {
 
 /** The separator between a fact and what qualifies it, everywhere. */
 const DOT = " · ";
+
+/**
+ * How much oil is left, in words.
+ *
+ * "12s oil" is the third fear clock, and the least defensible of the
+ * three: it is a number attached to a resource the player cannot spend
+ * deliberately, so all it ever did was tell them precisely when to panic.
+ * The flame itself shortens as it burns, which is the physical tell every
+ * deleted number is owed.
+ */
+const oilWord = (oil: number): string =>
+  oil <= 0 ? "dry" : oil <= 20 ? "guttering" : oil <= 60 ? "low" : oil <= 110 ? "half" : "full";
 
 /**
  * The readout, most urgent first.
@@ -137,15 +159,26 @@ export function hudLines(f: HudFacts): HudLine[] {
     });
   }
 
-  // Rank 1: a clock running down.
-  if (f.patienceShort && !f.reaper) {
+  /**
+   * Rank 1: the floor's own temper, named and never counted.
+   *
+   * This line used to read "the floor tires of you - 12s". The words were
+   * right and the number was the problem: it turned the one pressure in
+   * the game that is supposed to make a player hurry into a thing they
+   * could wait out precisely.
+   *
+   * The names carry no mechanical weight whatsoever and do all of the
+   * work: "the floor is looking" and "IT KNOWS WHERE YOU ARE" are not
+   * ranks of a variable, they are two different rooms to be standing in.
+   */
+  if (f.heatBand > 0 && !f.reaper) {
     add({
-      id: "patience",
-      label: "PATIENCE",
-      body: `the floor tires of you${DOT}${Math.max(0, f.patience)}s`,
-      rank: 1,
-      tone: "danger",
-      mark: "!!",
+      id: "heat",
+      label: "FLOOR",
+      body: f.heatSays,
+      rank: f.heatBand >= 3 ? 1 : 4,
+      tone: f.heatBand >= 3 ? "danger" : f.heatBand >= 2 ? "gold" : "dim",
+      mark: f.heatBand >= 3 ? "!!" : undefined,
     });
   }
   if (f.harrier && f.harrier !== "hunting") {
@@ -157,13 +190,18 @@ export function hudLines(f: HudFacts): HudLine[] {
           ? `a harrier roosts here${DOT}quietly`
           : f.harrier === "away"
             ? "the harrier wheels away"
-            : `the harrier is down${DOT}${f.harrierUp}s${DOT}spikes would end it`,
+            : `the harrier is down${DOT}spikes would end it`,
       rank: f.harrier === "roosts" ? 4 : 1,
       tone: "gold",
     });
   }
   if (f.barSeconds > 0) {
-    add({ id: "barred", label: "BARRED", body: `a doorway${DOT}${f.barSeconds}s`, rank: 1, tone: "gold" });
+    /**
+     * The bar holds, and how long it has left is not the player's to
+     * count either - the hammering they hear go quiet is the tell, and a
+     * physical tell is what every deleted number is replaced by.
+     */
+    add({ id: "barred", label: "BARRED", body: "a doorway", rank: 1, tone: "gold" });
   }
 
   // Rank 2: what leaving costs.
@@ -191,7 +229,7 @@ export function hudLines(f: HudFacts): HudLine[] {
   add({
     id: "lantern",
     label: "LANTERN",
-    body: `${f.lanternLit ? "up" : "down"}${f.wisp ? `${DOT}a wisp` : ""}${DOT}${f.oil}s oil`,
+    body: `${f.lanternLit ? "up" : "down"}${f.wisp ? `${DOT}a wisp` : ""}${DOT}${oilWord(f.oil)}`,
     rank: 3,
     tone: f.oil <= 20 ? "danger" : f.lanternLit ? "gold" : "dim",
     mark: f.oil <= 20 ? "!" : undefined,

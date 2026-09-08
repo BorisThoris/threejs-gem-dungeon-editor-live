@@ -114,8 +114,8 @@ export interface BusEvents {
    */
   wardenProximity: { level: number };
   /** The exit was taken and a deeper floor begins. */
-  /** The floor arrived at, and how much of the last floor's patience was left on leaving it. */
-  floorDescended: { floor: number; left: number };
+  /** The floor arrived at, and how hot the floor being left had become. */
+  floorDescended: { floor: number; heat: number };
   runLost: undefined;
   /** A deed was done for the first time. */
   deedEarned: { id: string };
@@ -146,8 +146,18 @@ export interface BusEvents {
   bombBurst: { roomId: string; x: number; z: number };
   /** A cracked wall opened onto the room behind it. */
   secretRevealed: { roomId: string; to: string };
-  /** The floor's patience is nearly gone: the countdown has begun. */
-  floorTiring: { left: number };
+  /**
+   * The floor's heat has moved up a band.
+   *
+   * Named, never counted. The band is here for the audio layer to pitch
+   * against and the name is what the player is shown - the two together
+   * are the whole of Law 3 applied to the one number the player is not
+   * entitled to see: the rule is transparent (lingering and taking things
+   * heats a floor) and the magnitude is not.
+   */
+  floorHeat: { band: number; name: string };
+  /** The floor's heat bought something, and here it comes. */
+  heatSpent: { id: string; says: string };
   /** It ran out, and the Reaper is on the floor. */
   reaperWoke: undefined;
   /** It reached the player. */

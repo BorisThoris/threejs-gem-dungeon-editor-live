@@ -62,6 +62,31 @@ Two stores that both claimed the player's stats. So:
   because its cap is 2 and a Reaper is a Reaper because its min and max are
   both 3. Capping below the engage rung means it perceives, reacts and
   barks and never commits, which is most of the population in one table.
+- **How much pressure a floor is under is `heat/coefficient.ts` and nothing
+  else, and it is a PURE FUNCTION.** `FLOOR_PATIENCE_S = 300` is gone. Heat
+  is `(dwellMinutes + alarm x 0.5) x 1.15 ^ floorsDescended`, recomputed
+  every tick and never mutated on a transition - a mutated accumulator has
+  a history, so the same player in the same situation gets different
+  pressure depending on the route they took to it. It compounds with depth
+  rather than adding, which is what "floors get worse as you go down" was
+  always trying to be. And it never kills: it BUYS, at named thresholds,
+  and the accumulator crossing an integer is what makes pressure arrive as
+  an event instead of as a slider moving.
+- **The floor's heat is named and never counted.** Five band names carry
+  zero mechanical weight and do the work a number cannot. The rule stays
+  transparent (lingering and taking things heats a floor); the magnitude
+  does not, because a player who can count does not hurry. The same
+  deletion applies to the bar and the oil: economic facts - the toll, the
+  gem count, the price - stay numeric because the player is entitled to
+  plan against them, and every deleted fear clock is replaced by a physical
+  tell rather than by a hidden state.
+- **How OFTEN the floor sends something is `cycle/`, and it is a different
+  question from how bad.** That split is not an inference: "Algorithm
+  adjusts pacing, not difficulty - Amplitude (difficulty) is not changed,
+  frequency (pacing) is." The Cycle's only power is to refuse a NEW threat
+  during a valley; everything already in flight keeps acting, which is what
+  stops the valley reading as a scripted intermission. Heat earned during
+  one is held, not cancelled.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
@@ -261,13 +286,13 @@ Two stores that both claimed the player's stats. So:
   spikes keep the Warden's wide margin, furniture asks only a body's
   half-width, and a chest given the spikes' berth sealed the treasure
   room's corner hoard against it.
-- A floor's patience is one number in `world.ts` and one field in the
-  store - `floorEnteredAt`, the run-clock second the floor began - and
-  `patienceLeft(s)` is the only arithmetic on them. `reaper/ReaperDriver.tsx`
-  counts it from the frame loop, never a timer, because the run's clock is
-  the one the pause menu stops; it warns once and wakes the Reaper once,
-  both keyed on the second the floor began so a new run's first floor is
-  warned about again. The Reaper is a `ghost` in the body table and
+- A floor's pressure is one function in `heat/coefficient.ts` and one field
+  in the store - `floorEnteredAt`, the run-clock second the floor began -
+  and `heatNow(s)` is the only arithmetic on them. `heat/HeatDriver.tsx`
+  reads it from the frame loop, never a timer, because the run's clock is
+  the one the pause menu stops; it announces each band once and buys each
+  lump once, all keyed on the second the floor began so a new run's first
+  floor is announced again. The Reaper is a `ghost` in the body table and
   `reaper/Reaper.tsx` is what ghost means: it asks the floor for nothing.
   It has no room of its own - it is mounted with whichever room the player
   is in, which is how it follows - and the store owns the three things
@@ -367,7 +392,7 @@ Two stores that both claimed the player's stats. So:
   changes facts and never says sentences.
 - One rule, asked by everything it binds: `sanctuaryRoom` in the run store
   is the floor's first room while the player has not left it and the floor
-  still has patience, and the Warden's step, the Harrier's waking and the
+  has not reached its last band, and the Warden's step, the Harrier's waking and the
   thief's arrival each ask it rather than deciding for themselves.
 - Taking something is drawn the same way a blast is: `props/Taken.tsx`
   listens to `gemCollected`, `relicTaken` and `itemTaken` and plays one
@@ -437,7 +462,7 @@ Two stores that both claimed the player's stats. So:
 - But cap a thing that is being *moved*, and read the clock twice for a
   thing that is being *timed*. The Sentry added the same delta to how long
   it had held you in its beam, and on the frame the light first touched a
-  player a hitch took that from nothing to past its patience in one go -
+  player a hitch took that from nothing to past its own tolerance in one go -
   called out on the instant of contact. Capping each frame's contribution
   fixed that and quietly broke the other half of the same promise: the
   count is also how "standing still in the light is always seen" is
@@ -661,6 +686,14 @@ src/
       carry.ts           the room-portal flood: doorway 0.35, wall 0.00
       din.ts             what is currently being broadcast, and who it reaches
       DinDriver.tsx      the one place an event becomes something audible
+    heat/                the Coefficient: one number replacing the floor timer
+      coefficient.ts     heat = (dwell + alarm x 0.5) x 1.15 ^ floorsDescended,
+                         five named bands, four purchases at four thresholds
+      HeatDriver.tsx     spends it in lumps, and wakes the last band
+    cycle/               the Cycle: pacing that oscillates instead of ramping
+      director.ts        build up / sustain peak / peak fade / relax
+      state.ts           the director, and whether the floor may send anything
+      CycleDriver.tsx    steps it, and stokes it from what happens to you
     ladder/              awareness with rungs, and the asymmetry that reads
       rungs.ts           four named rungs, ordered cones, the analog inputs
       awareness.ts       the machine: up is a gated jump, down is a slide

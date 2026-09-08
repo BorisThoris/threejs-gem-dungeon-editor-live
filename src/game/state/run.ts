@@ -41,6 +41,7 @@ import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
 import { keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
+import { REAPER_AT, affordable, bandFor, bandName, heatFrom, type PurchaseId } from "../heat/coefficient";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
@@ -60,7 +61,6 @@ import {
   DAMAGE_COOLDOWN_S,
   DART_REARM_S,
   FLOORS,
-  FLOOR_PATIENCE_S,
   GRATE_HOLD_S,
   HARRIER_DOWN_S,
   HARRIER_RETREAT_S,
@@ -73,7 +73,6 @@ import {
   NOISE_HOLD_S,
   REAPER_STALL_S,
   REAPER_STRIKE_GRACE_S,
-  REAPER_WARNING_S,
   STARTING_LIVES,
   TRANSITION_FALLBACK_MS,
   WARDEN_BANISH_DISTANCE,
@@ -275,6 +274,15 @@ export interface RunState {
    * floor you take, the harder it is to leave.
    */
   alarm: number;
+  /**
+   * What this floor's heat has already bought, so nothing is bought twice.
+   *
+   * Per floor rather than per run: the whole point of the coefficient
+   * compounding with depth is that each floor starts its own ladder from a
+   * higher base, and a roost that could only ever go up once in a run
+   * would waste the compounding on floors two and three.
+   */
+  heatBought: PurchaseId[];
   /** Rooms entered on this floor, which is what wakes the Warden. */
   floorRooms: number;
   /** Which room the Warden is in, or null while it still sleeps. */
@@ -517,6 +525,13 @@ export interface RunState {
   /** Something startled the roost: the noise carries further than the ground would. */
   rouseBats: () => void;
   /**
+   * Record that the floor's heat has delivered something, so it is never
+   * delivered twice. The doing is the driver's; the remembering is the
+   * store's, because what a floor has already sent is part of what the
+   * run IS.
+   */
+  heatDelivered: (id: PurchaseId) => void;
+  /**
    * A dart plate or a pit went off under something. Returns false when it
    * was not armed - a plate still re-arming, a pit already open - so the
    * thing that stepped on it knows whether anything happened.
@@ -648,6 +663,7 @@ export const useRun = create<RunState>()(
     unlocked: [],
     keyTakenIn: null,
     alarm: 0,
+    heatBought: [],
     floorRooms: 1,
     wardenRoomId: null,
     wardenCameFrom: null,
@@ -751,6 +767,7 @@ export const useRun = create<RunState>()(
         unlocked: [],
         keyTakenIn: null,
         alarm: alarmFloorOn(floor, delver.id),
+        heatBought: [],
         floorRooms: 1,
         wardenRoomId: null,
         wardenCameFrom: null,
@@ -948,6 +965,7 @@ export const useRun = create<RunState>()(
           // clamp the alarm to the floor's baseline, so a bonus that only
           // applied on arrival would be scrubbed off by the first rout.
           alarm: alarmFloorOn(floor, get().delver),
+          heatBought: [],
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
@@ -982,8 +1000,8 @@ export const useRun = create<RunState>()(
         const spawn = spawnAtStart();
         bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
         bus.emit("lookSet", { yaw: spawn.yaw, pitch: 0 });
-        // `s` is the floor being left, so its patience is still its own.
-        bus.emit("floorDescended", { floor, left: patienceLeft(s) });
+        // `s` is the floor being left, so its heat is still its own.
+        bus.emit("floorDescended", { floor, heat: heatNow(s) });
         transitionFallback = window.setTimeout(
           () => get().roomReady(dungeon.startId),
           TRANSITION_FALLBACK_MS
@@ -1588,6 +1606,12 @@ export const useRun = create<RunState>()(
       bus.emit("mothLeft");
     },
 
+    heatDelivered: (id) => {
+      const s = get();
+      if (s.heatBought.includes(id)) return;
+      set({ heatBought: [...s.heatBought, id] });
+    },
+
     rouseBats: () => {
       const s = get();
       const now = runClock(s);
@@ -1912,16 +1936,61 @@ export const sanctuaryRoom = (s: RunState): string | null =>
   s.phase === "playing" &&
   s.currentRoomId === s.dungeon.startId &&
   s.floorRooms === 1 &&
-  patienceLeft(s) > REAPER_WARNING_S
+  heatNow(s) < REAPER_AT
     ? s.dungeon.startId
     : null;
 
 /** True while a timed effect is still running. */
 const running = (s: RunState, until: number): boolean => until > runClock(s);
 
-/** Seconds of patience the floor has left for the player, on the run's clock. */
-export const patienceLeft = (s: RunState): number =>
-  FLOOR_PATIENCE_S - (runClock(s) - s.floorEnteredAt);
+/**
+ * The floor's heat: one number, three inputs, recomputed every tick.
+ *
+ * This replaces `FLOOR_PATIENCE_S = 300`, which was a countdown, and a
+ * countdown is a ramp. The evidence against a monotonic ramp is
+ * unambiguous - one studio shipped it, players hated it, and their own
+ * patch notes now target a value that "should stay in-between 3 and 7
+ * during most of the run", which is a cycle. Ours also made dwell, greed
+ * and depth three unrelated pressures with three hand-tuned tables.
+ *
+ *     heat = (dwellMinutes + alarm x 0.5) x 1.15 ^ floorsDescended
+ *
+ * A PURE FUNCTION of the state, never a value mutated on a transition:
+ * a mutated accumulator has a history, so the same player in the same
+ * situation gets different pressure depending on the route they took to
+ * it, and no amount of tuning fixes a number that cannot be reasoned
+ * about.
+ *
+ * And it compounds rather than adding, so a slow floor one costs you on
+ * floor three - which is what "floors get worse as you go down" was always
+ * trying to be.
+ */
+export const heatNow = (s: RunState): number =>
+  heatFrom(runClock(s) - s.floorEnteredAt, s.alarm, s.floor - 1);
+
+/**
+ * What the floor is CALLED, and never what it is counted at.
+ *
+ * Law 3, applied: the rule is transparent and the magnitude is not. The
+ * player is entitled to know that lingering and taking things heats a
+ * floor, because that is a rule they can plan against. They are not
+ * entitled to a countdown, because a player who can count does not hurry.
+ * The names carry no mechanical weight at all and do the work a number
+ * cannot.
+ */
+export const heatSays = (s: RunState): string => bandName(heatNow(s));
+export const heatBand = (s: RunState): number => bandFor(heatNow(s));
+
+/**
+ * Everything this floor's heat has bought that has not been delivered yet.
+ *
+ * Heat never kills. It buys, in lumps, at named thresholds, and the
+ * accumulator crossing an integer is what makes pressure arrive as an
+ * EVENT rather than as a slider moving - the difference between "the world
+ * sent something" and "the numbers got worse".
+ */
+export const heatOwes = (s: RunState): PurchaseId[] =>
+  affordable(heatNow(s)).filter((id) => !s.heatBought.includes(id));
 
 /** True while a blast is holding the Reaper where it stands. */
 /** It is on the floor after a blast. */
@@ -2204,12 +2273,14 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     bombs: () => useRun.getState().placed.filter((d) => isBomb(d.id)),
     // What has gone off, by key: a probe reads it beside where the traps are.
     sprung: () => ({ ...useRun.getState().sprung }),
-    // How long the floor will put up with the player, and what woke when it
-    // stopped. On the run's clock, like every deadline in here.
-    patienceLeft: () => patienceLeft(useRun.getState()),
+    // How hot the floor is, what it is called, and what it has already
+    // bought. On the run's clock, like every deadline in here.
+    heat: () => heatNow(useRun.getState()),
+    heatSays: () => heatSays(useRun.getState()),
+    heatBought: () => [...useRun.getState().heatBought],
     // Whether the room the player is in is the floor's first, still unleft
-    // and still inside the floor's patience: the one rule every threat
-    // asks before it comes in.
+    // and still below the band the floor stops putting up with you at:
+    // the one rule every threat asks before it comes in.
     sanctuary: () => sanctuaryRoom(useRun.getState()) !== null,
     reaper: () => {
       const s = useRun.getState();

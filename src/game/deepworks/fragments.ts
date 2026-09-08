@@ -34,12 +34,12 @@
  * sequence, which is what makes any three of them survive being found in
  * any order. A fragment never contains "then", "after" or "next".
  */
-export const SHAPES = ["instruction", "complaint", "inventory", "correction"] as const;
-export type Shape = (typeof SHAPES)[number];
+export const FRAGMENT_SHAPES = ["instruction", "complaint", "inventory", "correction"] as const;
+export type FragmentShape = (typeof FRAGMENT_SHAPES)[number];
 
 export interface Fragment {
   id: number;
-  shape: Shape;
+  shape: FragmentShape;
   text: string;
   /**
    * Where it is allowed to be cut. A fragment on the Keeper's slab has to
@@ -109,7 +109,7 @@ export const FRAGMENTS: readonly Fragment[] = [
   { id: 33, shape: "correction", text: "The lamp does not keep him off. The lamp is how he finds the wall.", on: ["wall", "alcove"] },
   { id: 34, shape: "correction", text: "Nobody sealed the lower floors. The lower floors are where they went.", on: ["wall"] },
   { id: 35, shape: "correction", text: "The bell is not an alarm. The bell is a receipt.", on: ["bell", "wall"] },
-  { id: 36, shape: "correction", text: "We were not robbed. We were paid, and then we were unpaid.", on: ["wall"] },
+  { id: 36, shape: "correction", text: "We were not robbed. We were paid, and the paying was undone.", on: ["wall"] },
   { id: 37, shape: "correction", text: "She is not stealing. She is the only one still saving.", on: ["wall", "alcove"] },
   { id: 38, shape: "correction", text: "It does not hunt you. It has come for the count and you are holding it.", on: ["wall", "slab"] },
   { id: 39, shape: "correction", text: "The dark is not empty down here. The dark is where the wages are.", on: ["wall", "alcove"] },

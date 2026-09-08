@@ -10,7 +10,8 @@ import {
   keeperStalled,
   lanternLit,
   lureNow,
-  patienceLeft,
+  heatBand,
+  heatSays,
   runClock,
   spareGems,
   tollNow,
@@ -28,7 +29,7 @@ import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { device } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
-import { FLOORS, REAPER_WARNING_S } from "../game/world";
+import { FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 import { hudLines, type HudLine } from "./hudLines";
@@ -74,7 +75,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, patience, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
+  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -114,8 +115,8 @@ export function Hud() {
     ground,
     roost,
     drafty,
-    patience,
-    patienceShort: patience <= REAPER_WARNING_S,
+    heatSays: heat.says,
+    heatBand: heat.band,
     reaper,
     wardenAwake,
     wardenSays: alarmLabel(alarm, heard, lured, reeling, seen),
@@ -202,8 +203,13 @@ function useWardenSense(): {
   reeling: boolean;
   warded: boolean;
   barSeconds: number;
-  /** Whole seconds of the floor's patience left, and whether it ran out. */
-  patience: number;
+  /**
+   * What the floor's heat is called, and which band that is.
+   *
+   * Named and never counted: the band decides how loudly the readout says
+   * it, and the name is the whole of what the player is shown.
+   */
+  heat: { says: string; band: number };
   reaper: boolean;
   /** Standing in the draft from a cracked wall. */
   drafty: boolean;
@@ -242,7 +248,7 @@ function useWardenSense(): {
       // Whole seconds: a bar is forty-five of them and the number is only
       // there to say "soon" or "not yet".
       barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
-      patience: Math.ceil(patienceLeft(s)),
+      heat: { says: heatSays(s), band: heatBand(s) },
       reaper: s.reaperAwake,
       drafty: draft.near && draft.roomId === s.currentRoomId,
       harrier,
@@ -264,7 +270,7 @@ function useWardenSense(): {
           was.reeling === now.reeling &&
           was.warded === now.warded &&
           was.barSeconds === now.barSeconds &&
-          was.patience === now.patience &&
+          was.heat.band === now.heat.band &&
           was.reaper === now.reaper &&
           was.drafty === now.drafty &&
           was.harrier === now.harrier &&

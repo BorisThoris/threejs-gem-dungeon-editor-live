@@ -43,7 +43,7 @@
  * period this produces is a tuning start and never a target.
  */
 
-export type Phase = "buildUp" | "sustainPeak" | "peakFade" | "relax";
+export type CyclePhase = "buildUp" | "sustainPeak" | "peakFade" | "relax";
 
 /** The shipped ConVar defaults, and the two thresholds that are ours. */
 export interface Tempo {
@@ -120,7 +120,7 @@ export const INTENSITY = {
 } as const;
 
 export interface Director {
-  phase: Phase;
+  phase: CyclePhase;
   /** The run clock when this phase began. */
   since: number;
   /** 0..1, crude and monotone in the right direction. */
@@ -131,7 +131,7 @@ export interface Director {
   holdFor: number;
 }
 
-export const start = (now = 0): Director => ({
+export const openCycle = (now = 0): Director => ({
   phase: "buildUp",
   since: now,
   intensity: 0,
@@ -147,7 +147,7 @@ const roll = (min: number, max: number, random: number) => min + (max - min) * r
  * three times as long to decay and the director stops being able to tell
  * "very bad" from "very bad a while ago".
  */
-export const stoke = (d: Director, amount: number): Director => ({
+export const stokeCycle = (d: Director, amount: number): Director => ({
   ...d,
   intensity: Math.min(1, d.intensity + amount),
 });
@@ -164,7 +164,7 @@ export const stoke = (d: Director, amount: number): Director => ({
  *                  the early-out reads.
  * @param random    for the phase lengths, 0..1.
  */
-export function step(
+export function stepCycle(
   d: Director,
   tempo: Tempo,
   now: number,

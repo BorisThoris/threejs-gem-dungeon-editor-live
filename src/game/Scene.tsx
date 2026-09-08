@@ -22,7 +22,8 @@ import { HarrierDriver } from "./mobs/HarrierDriver";
 import { KeeperDriver } from "./keeper/KeeperDriver";
 import { Burst } from "./props/Burst";
 import { Taken } from "./props/Taken";
-import { ReaperDriver } from "./reaper/ReaperDriver";
+import { CycleDriver } from "./cycle/CycleDriver";
+import { HeatDriver } from "./heat/HeatDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
@@ -122,7 +123,8 @@ export function Scene() {
       <WardenDriver />
       <CutpurseDriver />
       <BombDriver />
-      <ReaperDriver />
+      <CycleDriver />
+      <HeatDriver />
       <WispDriver />
       <HarrierDriver />
       <KeeperDriver />

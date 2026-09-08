@@ -136,7 +136,7 @@ export const DEEDS: Record<DeedId, Deed> = {
   lastbreath: {
     id: "lastbreath",
     name: "Last Breath",
-    blurb: "Leave a floor with under fifteen seconds of its patience left.",
+    blurb: "Leave a floor while it already knows where you are.",
     steam: "FLOOR_LAST_BREATH",
   },
   spiked: {

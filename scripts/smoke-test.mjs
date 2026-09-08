@@ -5966,31 +5966,53 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         const tick = () => (++i >= n ? done(null) : requestAnimationFrame(tick));
         requestAnimationFrame(tick);
       });
-    if (!D.patienceLeft || !D.reaper) return { error: "no patience in the store" };
+    if (!D.heat || !D.reaper) return { error: "no heat in the store" };
     const out = {};
     run.getState().startRun(19);
     await wait(1200);
-    // The clock: full at the start, and held by the pause menu.
-    const a = D.patienceLeft();
+    /**
+     * A floor arrives cold, and the pause menu does not heat it.
+     *
+     * Heat is a pure function of the run clock, so this is the same
+     * property the countdown had, checked the same way: read it, pause,
+     * read it again, and the number must not have moved.
+     */
+    const a = D.heat();
     run.getState().pause();
     await wait(900);
-    const b = D.patienceLeft();
+    const b = D.heat();
     run.getState().resume();
-    out.startsFull = a > W.FLOOR_PATIENCE_S - 5 && a <= W.FLOOR_PATIENCE_S;
-    out.pausedHeld = Math.abs(a - b) < 0.05;
-    // The warning, written onto the clock rather than waited for.
-    let warned = null;
-    const off1 = window.__bus.on("floorTiring", (e) => (warned = e.left));
-    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S - W.REAPER_WARNING_S + 1) });
-    await frames(3);
-    await wait(400);
-    out.warned = warned;
-    out.hudWarns = /tires of you/i.test(document.body.innerText);
+    out.startsCold = a < 1;
+    out.pausedHeld = Math.abs(a - b) < 0.02;
+
+    /**
+     * The bands, and what they buy. Written onto the floor's start time
+     * rather than waited for - eight minutes is not a thing a check sits
+     * through - and the heat is read back so the arithmetic is the game's
+     * rather than this test's.
+     */
+    const heatAt = (secondsAgo) => {
+      run.setState({ floorEnteredAt: D.clock() - secondsAgo });
+      return D.heat();
+    };
+    let bandSaid = null;
+    let bought = [];
+    const off1 = window.__bus.on("floorHeat", (e) => (bandSaid = e.name));
+    const offBuy = window.__bus.on("heatSpent", (e) => bought.push(e.id));
+    heatAt(60 * 3.2);
+    await frames(6);
+    await wait(600);
+    out.bandSaid = bandSaid;
+    out.bought = [...bought];
+    out.hudNamesTheFloor = /the floor is/i.test(document.body.innerText);
+    out.hudCountsNothing = !/\bthe floor tires of you\b/i.test(document.body.innerText);
     off1();
-    // It wakes.
+    offBuy();
+    // It wakes on the last band, and not before.
     let woke = false;
     const off2 = window.__bus.on("reaperWoke", () => (woke = true));
-    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S + 1) });
+    out.beforeTheBand = !run.getState().reaperAwake;
+    run.setState({ floorEnteredAt: D.clock() - 60 * 60 });
     await frames(3);
     await wait(400);
     out.woke = woke && run.getState().reaperAwake;
@@ -6045,18 +6067,31 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
     await frames(3);
     out.followed = run.getState().reaperAwake && window.__reaper?.room === run.getState().currentRoomId;
-    // And the floor below starts patient again, without it.
+    // And the floor below starts cold again, without it.
     const d = run.getState().dungeon;
     run.setState({ transitioning: true, currentRoomId: d.endId, gems: 99 });
     run.getState().roomReady(d.endId);
     await wait(1500);
     const after = run.getState();
-    out.newFloor = after.floor === 2 && after.reaperAwake === false && D.patienceLeft() > W.FLOOR_PATIENCE_S - 5;
+    out.newFloor = after.floor === 2 && after.reaperAwake === false && D.heat() < 1 && D.heatBought().length === 0;
     return out;
   });
-  ok("a floor's patience runs on the run's clock and starts full", !patience.error && patience.startsFull && patience.pausedHeld, patience.error || JSON.stringify({ full: patience.startsFull, paused: patience.pausedHeld }));
+  ok(
+    "a floor arrives cold, its heat runs on the run's clock, and the pause menu does not heat it",
+    !patience.error && patience.startsCold && patience.pausedHeld,
+    patience.error || JSON.stringify({ cold: patience.startsCold, paused: patience.pausedHeld })
+  );
   if (!patience.error) {
-    ok("the floor warns before it gives up, on the HUD and over the bus", patience.warned !== null && patience.hudWarns, JSON.stringify({ warned: patience.warned, hud: patience.hudWarns }));
+    ok(
+      "the floor names its own temper on the HUD and over the bus, and never counts it",
+      patience.bandSaid !== null && patience.hudNamesTheFloor && patience.hudCountsNothing,
+      JSON.stringify({ said: patience.bandSaid, hud: patience.hudNamesTheFloor, noCount: patience.hudCountsNothing })
+    );
+    ok(
+      "and heat arrives as things the floor sends rather than as a number getting worse",
+      Array.isArray(patience.bought) && patience.bought.length >= 2 && patience.beforeTheBand === true,
+      JSON.stringify({ bought: patience.bought, quietBefore: patience.beforeTheBand })
+    );
     ok("and when it runs out something wakes that the map cannot show", patience.woke && patience.hudSays && patience.drawn, JSON.stringify({ woke: patience.woke, hud: patience.hudSays, drawn: patience.drawn }));
     ok("it closes on a standing player and takes a life", patience.closed && patience.struck, `${patience.first?.toFixed(1)}m to ${patience.last?.toFixed(1)}m in ${patience.watched?.toFixed(1)}s${patience.struck ? ", struck" : ""}`);
     ok("a blast holds it where it stands", patience.placed && patience.burst && patience.stalled && patience.heldStill, JSON.stringify({ placed: patience.placed, burst: patience.burst, stalled: patience.stalled, still: patience.heldStill }));
@@ -6853,15 +6888,15 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     while (!earned.includes("throughwall") && D.clock() - t0 < W.BOMB_FUSE_S + 3) await wait(150);
     await wait(400);
     const afterBomb = [...earned];
-    // Leave the floor with seconds of its patience to spare.
+    // Leave the floor while it already knows where you are.
     const before = d.rooms.find((r) => Object.values(r.links).includes(d.endId));
     const dir = Object.keys(before.links).find((k) => before.links[k] === d.endId);
     run.setState({ transitioning: true, currentRoomId: before.id, wardenRoomId: null, gems: 30 });
     run.getState().roomReady(before.id);
     await wait(1200);
-    run.setState({ floorEnteredAt: D.clock() - (W.FLOOR_PATIENCE_S - W.LAST_BREATH_S + 3) });
+    run.setState({ floorEnteredAt: D.clock() - 60 * 60 });
     await wait(300);
-    const leftBefore = D.patienceLeft();
+    const leftBefore = D.heat();
     run.getState().travel(dir);
     for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
     await wait(600);
@@ -6892,7 +6927,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     return { afterBomb, leftBefore, floor, lastBreath, earned, thisRun, summary, fresh, summaryFresh };
   });
   ok("a bomb at the crack earns the wall and the Warden, and not the spikes", !arc.error && arc.afterBomb.includes("throughwall") && arc.afterBomb.includes("bombed") && !arc.afterBomb.includes("routed"), arc.error || JSON.stringify(arc.afterBomb));
-  ok("leaving a floor with seconds of patience left is a deed", !arc.error && arc.floor === 2 && arc.lastBreath, arc.error || JSON.stringify({ left: arc.leftBefore, floor: arc.floor, earned: arc.earned }));
+  ok("leaving a floor while it already knows where you are is a deed", !arc.error && arc.floor === 2 && arc.lastBreath, arc.error || JSON.stringify({ heat: arc.leftBefore, floor: arc.floor, earned: arc.earned }));
   ok("the Harrier spiked and the Keeper slipped are deeds", !arc.error && arc.earned.includes("spiked") && arc.earned.includes("slipped"), arc.error || JSON.stringify(arc.earned));
   ok("the run summary names what this run earned, and a fresh run has none", !arc.error && arc.thisRun.length >= 4 && /Behind the Wall/.test(arc.summary ?? "") && /Last Breath/.test(arc.summary ?? "") && arc.fresh.length === 0 && /none new/.test(arc.summaryFresh ?? ""), arc.error || JSON.stringify({ thisRun: arc.thisRun, summary: arc.summary, fresh: arc.fresh, summaryFresh: arc.summaryFresh }));
 }

@@ -55,7 +55,14 @@ export function Captions() {
       bus.on("wardenStruck", () => say("It reaches you")),
       bus.on("wardenWounded", () => say("It recoils - the spikes have it")),
       bus.on("wardenRouted", () => say("It flees into the dark")),
-      bus.on("floorTiring", () => say("The floor tires of you")),
+      bus.on("floorHeat", ({ name }) => say(name)),
+      /**
+       * And what the heat bought. The band says how the floor feels; this
+       * says what it just did about it, which is the half that makes the
+       * pressure read as the world sending something rather than as a
+       * number getting worse.
+       */
+      bus.on("heatSpent", ({ says }) => say(says)),
       bus.on("reaperWoke", () => say("Something that was not here is here")),
       bus.on("reaperStruck", () => say("It passes through you")),
       bus.on("reaperStalled", () => say("The blast holds it")),

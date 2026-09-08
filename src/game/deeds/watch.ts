@@ -5,7 +5,7 @@ import { bus } from "../events";
 import { useDeeds } from "../state/deeds";
 import { useRecords } from "../state/records";
 import { keeperStalled, runClock, useRun } from "../state/run";
-import { LAST_BREATH_S } from "../world";
+import { REAPER_AT } from "../heat/coefficient";
 
 /**
  * What earns a deed.
@@ -74,14 +74,16 @@ export function useDeedWatch() {
         floorAt = 1;
         bombAt = -Infinity;
       }),
-      bus.on("floorDescended", ({ floor, left }) => {
+      bus.on("floorDescended", ({ floor, heat }) => {
         // The floor just left was taken in the dark, if nothing on it was
         // ever lit. Read on arriving at the next one, which is the only
         // moment the answer is final.
         if (!litThisFloor && floor > floorAt) earn("darkrunner");
-        // And left with seconds of its patience to spare: the floor says
-        // how much was left, rather than this reaching in to count.
-        if (left <= LAST_BREATH_S) earn("lastbreath");
+        // And left it while it already knew where you were. The floor says
+        // how hot it had got, rather than this reaching in to work it out -
+        // which is the same division of labour the countdown had, against a
+        // number that now means something.
+        if (heat >= REAPER_AT) earn("lastbreath");
         litThisFloor = false;
         floorAt = floor;
       }),
