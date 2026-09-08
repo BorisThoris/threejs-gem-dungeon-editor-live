@@ -834,20 +834,33 @@ floor transition and quit. No external dataset can substitute.
 
 Sorted by what each composes with, divided by what it costs.
 
-| # | system | why here | rough size |
-|---|---|---|---|
-| 1 | **The Din** | everything after is cheaper; it is `body.ts` widened | medium |
-| 2 | **The Ladder** | six constants, reads the Din | small |
-| 3 | **Semi-legibility** | mostly deletions | small |
-| 4 | **The Coefficient** | replaces `FLOOR_PATIENCE_S`; one pure function | small |
-| 5 | **The Cycle** | the largest omission; needs 1–4 to have anything to spend | medium |
-| 6 | **The Lantern Bargain** | non-bankable wick + five bands + gemveins | medium |
-| 7 | **Verbs, not keys** | near-free once the Din exists; per-gate audit | small |
-| 8 | **The Satchel that resolves** | dual edges are Din writes | small |
-| 9 | **The Offer** | four table changes | small |
-| 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium |
-| 11 | **The Ledger** | needs the tells to already pay | medium |
-| 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing |
+| # | system | why here | rough size | state |
+|---|---|---|---|---|
+| 1 | **The Din** | everything after is cheaper; it is `body.ts` widened | medium | **built** |
+| 2 | **The Ladder** | six constants, reads the Din | small | **built** |
+| 3 | **Semi-legibility** | mostly deletions | small | **built** |
+| 4 | **The Coefficient** | replaces `FLOOR_PATIENCE_S`; one pure function | small | **built** |
+| 5 | **The Cycle** | the largest omission; needs 1–4 to have anything to spend | medium | **built** |
+| 6 | **The Lantern Bargain** | non-bankable wick + five bands + gemveins | medium | table written |
+| 7 | **Verbs, not keys** | near-free once the Din exists; per-gate audit | small | table written |
+| 8 | **The Satchel that resolves** | dual edges are Din writes | small | table written |
+| 9 | **The Offer** | four table changes | small | table written |
+| 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | table written |
+| 11 | **The Ledger** | needs the tells to already pay | medium | table written |
+| 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing | table written |
+
+**"Table written"** means the data and the pure functions exist in `src/`,
+with layout checks holding them to the rules above, and nothing in the game
+reads them yet. That is deliberate: every one of these is a set of
+statements that can be got wrong in a text editor, and getting them wrong
+in a text editor is far cheaper than getting them wrong in a frame loop.
+One of the checks written this way immediately caught a fragment
+containing the word "then", which the corpus forbids.
+
+**Two of the three mandatory deletions are done.** `FLOOR_PATIENCE_S` and
+`REAPER_WARNING_S` are gone, and both were *replaced* rather than merely
+removed. The oil tank and hoardable unidentified items go with systems 6
+and 8.
 
 **Three deletions, and they are not optional** — Law 7 says a flat mechanic must
 go, and these three fail the studio's own test: the oil tank, the floor patience
