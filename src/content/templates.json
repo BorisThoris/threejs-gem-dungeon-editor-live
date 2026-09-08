@@ -119,5 +119,137 @@
         ]
       }
     ]
+  },
+  {
+    "id": "tableau-barred",
+    "kind": "normal",
+    "size": 16,
+    "shape": "square",
+    "tableau": "barred-from-inside",
+    "props": [
+      {
+        "kind": "wall",
+        "x": 5.5,
+        "z": 4.3,
+        "rotation": 0
+      },
+      {
+        "kind": "chair",
+        "x": -5.5,
+        "z": -3.4,
+        "rotation": 0
+      },
+      {
+        "kind": "candle",
+        "x": -3.4,
+        "z": -5.5,
+        "rotation": 0
+      },
+      {
+        "kind": "skull",
+        "x": -5.5,
+        "z": 3.4,
+        "rotation": 0
+      }
+    ]
+  },
+  {
+    "id": "tableau-paytin",
+    "kind": "normal",
+    "size": 16,
+    "shape": "square",
+    "tableau": "sealed-pay-tin",
+    "props": [
+      {
+        "kind": "chest",
+        "x": -5.5,
+        "z": -3.4,
+        "rotation": 0
+      },
+      {
+        "kind": "skull",
+        "x": -3.4,
+        "z": -5.5,
+        "rotation": 0
+      },
+      {
+        "kind": "web",
+        "x": 5.5,
+        "z": 3.4,
+        "rotation": 0
+      },
+      {
+        "kind": "crate",
+        "x": 5.5,
+        "z": -3.4,
+        "rotation": 0
+      }
+    ]
+  },
+  {
+    "id": "tableau-desk",
+    "kind": "normal",
+    "size": 16,
+    "shape": "square",
+    "tableau": "the-wrong-side-of-the-desk",
+    "props": [
+      {
+        "kind": "table",
+        "x": -5.5,
+        "z": 3.8,
+        "rotation": 0
+      },
+      {
+        "kind": "chair",
+        "x": -5.5,
+        "z": -3.4,
+        "rotation": 0
+      },
+      {
+        "kind": "chair",
+        "x": -3.4,
+        "z": -5.5,
+        "rotation": 0
+      },
+      {
+        "kind": "candle",
+        "x": 5.5,
+        "z": 3.4,
+        "rotation": 0
+      }
+    ]
+  },
+  {
+    "id": "tableau-barmarks",
+    "kind": "normal",
+    "size": 16,
+    "shape": "square",
+    "tableau": "the-bar-marks",
+    "props": [
+      {
+        "kind": "wall",
+        "x": 5.5,
+        "z": 4.3,
+        "rotation": 0
+      },
+      {
+        "kind": "rubble",
+        "x": -5.5,
+        "z": -3.4,
+        "rotation": 0
+      },
+      {
+        "kind": "candle",
+        "x": -3.4,
+        "z": -5.5,
+        "rotation": 0
+      },
+      {
+        "kind": "crate",
+        "x": -5.5,
+        "z": 3.4,
+        "rotation": 0
+      }
+    ]
   }
 ]

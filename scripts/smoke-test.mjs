@@ -8539,6 +8539,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const L = window.__ledger;
     L.getState().clear();
+    // Captions are off by default, and the entry is said in one - so the
+    // check that reads it has to turn the setting on rather than assume a
+    // default the player does not have.
+    const captions = window.__settings.getState().captions;
+    window.__settings.getState().setCaptions(true);
     run.getState().startRun(23);
     await wait(1200);
 
@@ -8569,17 +8574,23 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const said = document.body.innerText.includes("the wall behind it was thin");
 
     // What it buys: a wall felt on a later run is on the map without a
-    // bomb, and only a wall the delver actually stood at.
+    // bomb, and only a wall the delver actually stood at. The map draws
+    // rooms the delver has BEEN in, so the check has to go and stand in it
+    // - which is the rule, not a workaround for one.
     run.getState().startRun(31);
     await wait(1200);
     const third = run.getState().dungeon.rooms.find((r) => r.secret && !r.links[r.secret.dir]);
+    run.setState({ transitioning: true, currentRoomId: third.id });
+    run.getState().roomReady(third.id);
+    await wait(900);
     const before = document.querySelectorAll('[data-testid="map-felt"]').length;
     run.getState().feltDraft(third.id);
-    await wait(500);
+    await wait(600);
     const after = document.querySelectorAll('[data-testid="map-felt"]').length;
 
     // And it survives the run that learned it.
     const kept = L.getState().learned.slice();
+    window.__settings.getState().setCaptions(captions);
     return { deduced, observed, said, before, after, kept };
   });
   ok("a wall opened without ever feeling its draft teaches nothing", !ledger.error && ledger.deduced === false, ledger.error || String(ledger.deduced));

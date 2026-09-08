@@ -187,15 +187,25 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   };
 
   const own = scatter(dress(room.kind));
-  if (!opts.asVault || room.template) return own;
+  if (!opts.asVault) return own;
 
   // A treasure room's chests have to fit around whatever the room already
   // holds, and in a set piece some of them do not: two locked rooms in
   // three hundred and sixty came out with less in them than they would
   // have had unlocked. Whichever way round it falls, the lock never takes
   // anything out of the room.
+  //
+  // An authored room keeps its composition either way. Re-dressing it as a
+  // treasure room would throw the author's props away, so a templated
+  // vault skips straight to the fallback below: the chest goes at a free
+  // anchor BESIDE the set piece rather than instead of it. Bailing out
+  // here entirely - which is what this used to do - meant a locked room
+  // with a template got no chest at all, and it only ever passed because
+  // the two templates that existed happened to contain some. The first
+  // authored room without one turned eleven locked chambers into plain
+  // ones.
   const chests = (ps: PropPlacement[]) => ps.filter((p) => p.kind === "chest").length;
-  const vaulted = dress("treasure");
+  const vaulted = room.template ? own : dress("treasure");
   const picked = chests(vaulted) >= chests(own) ? vaulted : own;
   if (chests(picked) > 0) return picked;
 

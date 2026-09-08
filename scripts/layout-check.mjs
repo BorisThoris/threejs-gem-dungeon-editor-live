@@ -424,7 +424,7 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   // with extra ceremony.
   const counts = [];
   let product = 1;
-  for (const t of L.allTemplates()) {
+  for (const t of slotted) {
     const per = {};
     for (const p of t.props) if (p.slot) per[p.slot] = (per[p.slot] ?? 0) + 1;
     const n = L.variantsOf(t.slots ?? [], per);
@@ -436,8 +436,13 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     for (const p of t.props) if (p.slot) per[p.slot] = (per[p.slot] ?? 0) + 1;
     return L.variantsOf(t.slots ?? [], per) > 1;
   }), counts.join(", "));
-  check("and the authored rooms together are many more rooms than there are of them",
-    product >= 8 * L.allTemplates().length, `${product} rooms from ${L.allTemplates().length} authored`);
+  // Against the SLOTTED ones, because a tableau is deliberately one
+  // arrangement: it tells a story in four particular props, and a slot
+  // that swapped one of them would be substituting a word out of the
+  // sentence. What multiplies has to multiply; what is authored to be
+  // read the same way every time is allowed to be.
+  check("and the rooms authored to vary together are many more rooms than there are of them",
+    product >= 8 * slotted.length, `${product} rooms from ${slotted.length} that vary`);
 
   // All three operations ship. An op the content never uses is a branch
   // nothing has ever run, and this codebase has had enough of those.
@@ -467,6 +472,17 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
   }
   check("no slot decides what a room is worth", worth.length === 0, worth.join("; ") || "none");
+
+  // A tableau tells its story in four particular props. Substituting one
+  // is substituting a word out of the sentence, so the two systems are
+  // deliberately exclusive.
+  const tableaux = L.allTemplates().filter((t) => t.tableau);
+  check("a tableau is authored to be read the same way every time",
+    tableaux.length > 0 && tableaux.every((t) => !(t.slots ?? []).length),
+    `${tableaux.length} tableaux, none of them slotted`);
+  check("and every one of them names a tableau the corpus has",
+    tableaux.every((t) => L.TABLEAUX.some((x) => x.id === t.tableau)),
+    tableaux.map((t) => t.tableau).join(", "));
 
   // Placeholders never leave the resolver, positions never move, and the
   // count never changes: everything downstream reads an ordinary prop list

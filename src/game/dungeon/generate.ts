@@ -58,6 +58,17 @@ const COMMON: RoomKind[] = ["treasure", "trap", "normal", "treasure", "normal"];
 const TALLIED: RoomKind[] = ["treasure", "trap", "treasure", "treasure", "normal"];
 
 /**
+ * How often a room of a kind that HAS authored layouts gets one.
+ *
+ * A third, which is what two templates used to give by accident and is the
+ * number the "23 of 34 rooms look different" measurement was taken under.
+ * Held as a constant so it stays that number however many templates ship:
+ * the library growing should mean more DIFFERENT set pieces, never more
+ * set pieces.
+ */
+export const AUTHORED_CHANCE = 1 / 3;
+
+/**
  * How big a room of each kind may be, low to high, in metres.
  *
  * This was one number per kind, so every room of a kind was the same room:
@@ -154,8 +165,17 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // Preferring a template whenever one existed meant a single authored
     // treasure room made every treasure room that room - and the two
     // seeded treasure arrangements became code nothing could reach.
+    //
+    // Two draws rather than one, and that is the whole of the fix: WHETHER
+    // this room is authored is a fixed chance, and WHICH template it gets
+    // is drawn separately. Drawing from `[undefined, ...authored]` made the
+    // chance of an authored room 1 - 1/(n+1), so it climbed with the
+    // library: two templates made a third of rooms authored, and the
+    // moment four more shipped, five normal rooms in six were one of five
+    // hand-made rooms. The measurement authoring is supposed to serve went
+    // backwards the more content there was.
     const authored = templatesForKind(kind);
-    const template = authored.length ? pick(rng, [undefined, ...authored]) : undefined;
+    const template = authored.length && rng() < AUTHORED_CHANCE ? pick(rng, authored) : undefined;
     const size = template?.size ?? pick(rng, sizesFor(kind));
     // Only shapes with the floor to hold their props at this size.
     const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>

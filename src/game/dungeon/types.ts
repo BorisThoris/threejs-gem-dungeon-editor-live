@@ -132,6 +132,16 @@ export interface RoomTemplate {
    * behaviour that lets the two live side by side.
    */
   slots?: SlotRule[];
+  /**
+   * The tableau this room tells, by id, when it is one.
+   *
+   * A room that tells a story in four props and no event - the Law of
+   * Closure, which is the whole reason a set piece is worth authoring at
+   * all. Held here rather than inferred from the props, because what a
+   * room MEANS is the author's claim and not something a reader of the
+   * layout could work out.
+   */
+  tableau?: string;
 }
 
 export interface GridPos {

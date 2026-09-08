@@ -249,9 +249,21 @@ export const TABLEAUX = [
     props: ["a full pay-tin, sealed", "a skeleton beside it", "nothing in its hands", "a lamp bracket, empty"],
   },
   {
+    /**
+     * Not composed, and it is written down here rather than quietly
+     * dropped: the catalogue has no bell and no rope, so this one cannot
+     * be built out of things that already exist - which is the constraint
+     * every other tableau on this list was written to.
+     *
+     * The rule it would be breaking is the one the whole file is held to:
+     * a prop may not imply a fact the game does not hold, and two new
+     * props invented to carry one tableau are two props that appear
+     * nowhere else and therefore read as a set dressed for a cutscene.
+     */
     id: "cut-bell-rope",
     tells: "somebody ended the shift deliberately, and tidily",
     props: ["a bell rope cut", "the cut end coiled", "a bell", "a stool"],
+    needsProps: true,
   },
   {
     id: "the-wrong-side-of-the-desk",
