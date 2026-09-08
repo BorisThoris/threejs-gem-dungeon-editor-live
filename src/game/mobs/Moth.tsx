@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { halfSize, type Room } from "../dungeon/types";
-import { canControl, useRun } from "../state/run";
+import { canControl, lanternRaised, useRun } from "../state/run";
 import { steerAround, type Patch } from "../warden/steer";
 import { MOTH_SPEED } from "../world";
 
@@ -34,7 +34,7 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
     const cam = state.camera.position;
     const p = pos.current;
     const t = state.clock.elapsedTime;
-    const drawn = run.lanternRaised;
+    const drawn = lanternRaised(run);
     const target = drawn
       ? { x: cam.x + Math.cos(t * 2.2) * 0.7, y: cam.y + 0.2 + Math.sin(t * 3) * 0.1, z: cam.z + Math.sin(t * 2.2) * 0.7 }
       : perch;

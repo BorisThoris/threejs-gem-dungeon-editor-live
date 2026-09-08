@@ -158,7 +158,7 @@ const snap = (page) =>
       phase: s.phase,
       paused: s.paused,
       room: s.currentRoomId,
-      lantern: s.lanternRaised,
+      lantern: s.glim > 0,
       satchel: s.satchel.length,
       locks: s.inputLocks,
       x: p.x ?? 0,

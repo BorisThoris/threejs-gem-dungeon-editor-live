@@ -93,6 +93,16 @@ export interface HudFacts {
   harrier: "roosts" | "hunting" | "away" | "down" | null;
   harrierUp: number;
   lanternLit: boolean;
+  /**
+   * The band the flame is in, named, and the one thing that band buys.
+   *
+   * Named rather than numbered for the same reason the floor's heat is,
+   * and shown at all because this half of the bargain is the half a player
+   * would otherwise never learn: that lowering the flame BUYS something.
+   * A lantern that only ever cost you would be a penalty with a keybind.
+   */
+  lanternBand: string;
+  lanternBuys: string;
   wisp: boolean;
   oil: number;
   barSeconds: number;
@@ -113,7 +123,7 @@ const DOT = " · ";
  * deleted number is owed.
  */
 const oilWord = (oil: number): string =>
-  oil <= 0 ? "dry" : oil <= 20 ? "guttering" : oil <= 60 ? "low" : oil <= 110 ? "half" : "full";
+  oil <= 0 ? "dry" : oil <= 8 ? "the last of it" : oil <= 20 ? "low" : oil <= 40 ? "half" : "full";
 
 /**
  * The readout, most urgent first.
@@ -229,11 +239,22 @@ export function hudLines(f: HudFacts): HudLine[] {
   add({
     id: "lantern",
     label: "LANTERN",
-    body: `${f.lanternLit ? "up" : "down"}${f.wisp ? `${DOT}a wisp` : ""}${DOT}${oilWord(f.oil)}`,
+    body: `${f.lanternBand}${f.wisp ? `${DOT}a wisp` : ""}${DOT}${oilWord(f.oil)}`,
     rank: 3,
-    tone: f.oil <= 20 ? "danger" : f.lanternLit ? "gold" : "dim",
-    mark: f.oil <= 20 ? "!" : undefined,
+    tone: f.oil <= 8 ? "danger" : f.lanternLit ? "gold" : "dim",
+    mark: f.oil <= 8 ? "!" : undefined,
   });
+  /**
+   * And what this band is buying, when it is buying anything.
+   *
+   * Rank 4 because it is always true and never urgent, and absent for the
+   * middle band because the middle band is where the bargain is worst -
+   * which the player should read as silence rather than as a line saying
+   * nothing.
+   */
+  if (f.lanternBuys) {
+    add({ id: "bargain", label: "DARK", body: f.lanternBuys, rank: 4, tone: "accent" });
+  }
   if (f.nestGems > 0) {
     add({ id: "stolen", label: "STOLEN", body: `${f.nestGems}${DOT}in its nest, on the map`, rank: 3, tone: "accent" });
   }

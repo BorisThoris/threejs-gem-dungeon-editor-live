@@ -89,14 +89,20 @@ export function Lantern() {
       probe.tint = tint;
     }
 
-    // Time only counts while the player is in control: a lantern must not
-    // burn through the pause menu or the black frame between two rooms.
-    if (!lit || !canControl(run)) return;
-    unflushed.current += delta;
-    if (unflushed.current < 1) return;
-    const spend = unflushed.current;
-    unflushed.current = 0;
-    useRun.getState().burnOil(spend);
+    /**
+     * Nothing is spent here any more.
+     *
+     * This used to accumulate seconds and flush them into the store about
+     * once a second, and the whole idea was wrong: a wall clock taxes
+     * deliberation, careful looking and hiding, which are the three things
+     * this game is made of. Oil is now spent walking into a room, once,
+     * by the store action the doorway calls - so standing still in the
+     * dark with the flame up costs nothing at all, and pushing on into a
+     * room nobody has seen costs six times what backtracking does.
+     *
+     * The light itself is still eased here, because that is what this
+     * component is for.
+     */
   });
 
   return <pointLight ref={light} color={tint} intensity={LANTERN_INTENSITY_UP} decay={1.5} />;

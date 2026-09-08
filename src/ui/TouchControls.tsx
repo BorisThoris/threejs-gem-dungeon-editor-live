@@ -265,7 +265,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   useEffect(() => bus.on("prompt", setPrompt), []);
   const sprint = useSyncExternalStore(subscribeTouchSprint, () => readTouch().sprint, () => false);
-  const lanternUp = useRun((s) => s.lanternRaised);
+  const lanternUp = useRun((s) => s.glim > 0);
 
   const use = (
     <TouchButton

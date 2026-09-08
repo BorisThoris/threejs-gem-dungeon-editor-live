@@ -275,13 +275,20 @@ ok("control returned after every transition", !explored.transitioning && explore
     await new Promise((r) => setTimeout(r, 1400));
     const at = gemFor(room, s.dungeon.seed);
     const before = run.getState().gems;
+    // What a socket is worth right now, asked of the game rather than
+    // assumed: below the Dark band the veins show and it pays twice, and
+    // a run opens with the flame down, so the plain answer is two. Read
+    // from the same predicate the store pays by, so this cannot agree
+    // with a copy of the rule instead of the rule.
+    const { veinsShowing } = await import("/src/game/state/run.ts");
+    const doubled = veinsShowing(run.getState());
     window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
     await new Promise((r) => setTimeout(r, 1200));
-    return { room: room.id, kind: room.kind, before, after: run.getState().gems };
+    return { room: room.id, kind: room.kind, before, doubled, after: run.getState().gems };
   });
   ok(
     "gems are taken by walking onto them",
-    !took.none && took.after === took.before + 1,
+    !took.none && took.after === took.before + (took.doubled ? 2 : 1),
     JSON.stringify(took)
   );
 }
@@ -344,11 +351,13 @@ if (exitDoor) {
     // Pay the toll and one over, so the spare gem can be seen to survive.
     const toll = await page.evaluate(() => window.__run.getState().gems + 0 || 0);
     void toll;
-    const owed = await page.evaluate(() => {
+    const asked = await page.evaluate(() => {
       const s = window.__run.getState();
       // tollNow is not exported to the page; the prompt above named it.
-      return Number(document.body.innerText.match(/exit needs (\d+) gems/i)?.[1] ?? 3) - s.gems;
+      const needs = Number(document.body.innerText.match(/exit needs (\d+) gems/i)?.[1] ?? 3);
+      return { needs, owed: needs - s.gems };
     });
+    const owed = asked.owed;
     await page.evaluate((n) => {
       const s = window.__run.getState();
       for (let i = 0; i < n; i++) s.collectGem("toll-" + i);
@@ -356,6 +365,12 @@ if (exitDoor) {
     await page.waitForTimeout(600);
     const alarmAfterGems = await page.evaluate(() => window.__run.getState().alarm);
     ok("taking gems rouses the floor", alarmAfterGems >= owed, `alarm ${alarmAfterGems} after ${owed + 1} gems`);
+    // A socket below the Dark band pays twice, so the sockets answered
+    // above bought more than the calls suggest. The toll is what is under
+    // test here rather than the lantern's bargain, so the purse is set to
+    // exactly one over what the door asked and the spare is the one gem
+    // that must survive the stairs.
+    await page.evaluate((needs) => window.__run.setState({ gems: needs + 1 }), asked.needs);
     // Those gems just roused the floor, and the walker is about to stand
     // still at the door again.
     await keepOnItsFeet();
@@ -3462,7 +3477,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const blocked = await stepTo(counter, 2.0);
     ok(
       "a blocked counter still says why, when nothing better is in reach",
-      /full health|know what everything|could be better|it is sold/i.test(String(blocked)),
+      /full health|know what everything|could be better|it is sold|flask will not take/i.test(String(blocked)),
       String(blocked)
     );
 
@@ -4818,146 +4833,160 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 /**
  * The lantern, and the second bargain.
  *
- * Seeing or unseen, asked once a room, and it is worth checking in the
- * real game for the same reason the sprint's twin was: the light, the oil,
- * what the Warden knows and what a watcher does about it are four
- * different modules agreeing about one fact, which is exactly the shape of
- * bug this tree was rebuilt to make impossible.
+ * Rewritten from the ground up, because the bargain changed shape. It used
+ * to be a boolean on a wall clock: up or down, burning seconds. A wall
+ * clock taxes deliberation, careful looking and hiding, and those are the
+ * three things this game is made of - so oil is now spent walking INTO a
+ * room and standing still costs nothing, and the light has five named
+ * bands rather than two states.
+ *
+ * The rule the whole thing is built on:
+ *
+ *   Darkness is an affordance the player spends, not a state the game
+ *   imposes - cheap and instant to enter, expensive and slow to leave, its
+ *   payoff in a currency the lit state cannot buy at all.
+ *
+ * Worth checking in the real game for the same reason its predecessor was:
+ * the glim, the oil, what a watcher does about it and what a socket pays
+ * are four modules agreeing about one fact.
  */
 {
   const lamp = await page.evaluate(async () => {
     const run = window.__run;
+    const W = window.__world;
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const lantern = () => window.__derived.lantern();
     const out = {};
     run.getState().startRun(31, "vagrant");
     await sleep(1500);
+
     // Down and full: a run opens with the choice unmade. It used to open
-    // raised, which meant it opened already seen - the Warden walking for
-    // the player and every watcher twice as quick, from the first second.
-    out.startsDown = window.__derived.lantern();
-    const dimAt = window.__lantern ? { ...window.__lantern } : null;
+    // raised, which meant it opened already seen.
+    out.startsDown = lantern();
+    // And standing still costs nothing at all, which is the whole of the
+    // correction: the old wick would have burned four seconds here.
     await sleep(2500);
-    out.unlitBurn = window.__derived.lantern().oil;
-
-    // Up: it burns, and the light in the scene follows it.
-    //
-    // The lantern eases between down and up over frames rather than
-    // snapping, so the reading is taken once it has stopped moving rather
-    // than a fixed moment after the toggle. Six hundred milliseconds is two
-    // frames on a machine drawing three and a half a second, and the run
-    // that caught this read the fully-lowered 4 and 5 - a lantern that had
-    // been raised and had not yet moved, reported as a lantern whose light
-    // does not follow it.
-    // The brightest it got, over a window, rather than a reading taken at
-    // one moment. Two things defeat a single sample here: the ease takes
-    // frames, and on a machine drawing three or four a second two polls a
-    // hundred and fifty milliseconds apart usually land inside the *same*
-    // frame - so "it stopped changing" is indistinguishable from "it has
-    // not started yet", and the first version of this settled instantly on
-    // the fully-lowered value. Peak over five seconds has neither problem:
-    // a lantern whose light never rises has no peak to find.
-    const brightest = async () => {
-      let best = null;
-      for (let i = 0; i < 25; i++) {
-        await sleep(200);
-        const now = window.__lantern ? { ...window.__lantern } : null;
-        if (now && (!best || now.intensity > best.intensity)) best = now;
-      }
-      return best;
-    };
-    run.getState().toggleLantern();
-    const lit0 = await brightest();
-    await sleep(2500);
-    const burnedUp = window.__derived.lantern().oil;
-    run.getState().toggleLantern();
-    await sleep(700);
-    const downAt = window.__derived.lantern().oil;
-    await sleep(2500);
-    out.burn = {
-      afterUp: burnedUp,
-      downAt,
-      afterDown: window.__derived.lantern().oil,
-      brightUp: lit0 ? lit0.intensity : null,
-      brightDown: dimAt ? dimAt.intensity : null,
-      reachUp: lit0 ? lit0.distance : null,
-      reachDown: dimAt ? dimAt.distance : null,
-    };
-
-    // Raised, seen at once; lowered, still seen for a few seconds, then
-    // not. Sampled around the toggles rather than after them: the hold is
-    // three seconds, and a check that looks three and a bit seconds later
-    // can only ever see the second half of the rule.
-    run.setState({ litUntil: 0 });
-    run.getState().toggleLantern();
-    await sleep(120);
-    out.seenAtOnce = window.__derived.lantern().seen;
-    run.getState().toggleLantern();
-    await sleep(150);
-    out.seenAfterLowering = window.__derived.lantern().seen;
-    await sleep(3600);
-    out.unseenLater = window.__derived.lantern().seen;
+    out.stillCostsNothing = lantern().oil === out.startsDown.oil;
 
     /**
-     * Up on a floor that has not heard a thing - and the Warden does NOT
-     * come, because it is the one carrying the lamp.
+     * One key, and it only goes one way round.
      *
-     * This check used to assert the opposite, and the opposite was the
-     * shipped behaviour: raising the lantern set the Warden walking. The
-     * Din's susceptibility table made that untenable to keep - the Warden
-     * declares itself deaf to [bright] and the Sentry declares that light
-     * is the only thing it answers to, and a Warden that also saw light
-     * left the Sentry with nothing of its own.
-     *
-     * So the lantern's bargain is now with the Sentry, the moth and the
-     * lamplighter, and the Warden's is with noise. One sense each, and the
-     * moth is the bridge between them: it is not light, it is a creature
-     * that has settled on you and will not leave, and THAT a Warden can
-     * read across a room.
+     * A press from the bottom raises it to the top and costs oil; every
+     * press after that steps DOWN one band, instantly and free. So four
+     * cheap taps put a player in the dark and one expensive press gets
+     * them out of it, which is the asymmetry the whole system is for.
      */
-    run.setState({ noisyUntil: 0, litUntil: 0, alarm: 0, wardenLure: null, lureUntil: 0, lanternRaised: false, mothOn: false });
-    const huntsQuiet = window.__derived.hunts();
-    run.getState().toggleLantern();
-    await sleep(400);
-    const huntsLit = window.__derived.hunts();
-    // And now the moth finds the lamp.
-    run.setState({ mothOn: true });
-    await sleep(150);
-    out.light = { huntsQuiet, huntsLit, huntsMothed: window.__derived.hunts(), lit: window.__derived.lantern().lit };
-    run.setState({ mothOn: false });
-
-    // Burned dry: it goes out on its own and will not come back up.
-    run.setState({ oil: 1.2 });
-    let wentOut = false;
-    const off = window.__bus.on("lanternOut", () => (wentOut = true));
-    for (let i = 0; i < 40 && !wentOut; i++) await sleep(200);
-    off();
-    const dry = window.__derived.lantern();
+    const oilBefore = lantern().oil;
     run.getState().toggleLantern();
     await sleep(200);
-    out.dry = {
-      wentOut,
-      oil: dry.oil,
-      raised: dry.raised,
-      stillDownAfterPressing: window.__derived.lantern().raised === false,
-    };
+    out.raised = { band: lantern().band, glim: lantern().glim, paid: oilBefore - lantern().oil };
+    out.seenAtOnce = lantern().seen;
 
-    // And a brazier fills it. Driven through the store: which corner a
-    // room's braziers stand in is the dressing's business and walking to
-    // one is a matter of frames, neither of which is what this asks.
-    const filled = run.getState().fillLantern();
-    out.fill = { filled, oil: window.__derived.lantern().oil, again: run.getState().fillLantern() };
+    // A raise cannot be interrupted by the same key that started it, so
+    // the walk down begins once it has arrived. Pressing through the
+    // wind-up is not a bug and must not be tested as one.
+    await sleep(1600);
+    const walkedDown = [];
+    for (let i = 0; i < 4; i++) {
+      const was = lantern().oil;
+      run.getState().toggleLantern();
+      await sleep(160);
+      walkedDown.push({ band: lantern().band, free: lantern().oil === was });
+    }
+    out.walkedDown = walkedDown;
 
-    // It goes down the stairs with you rather than being refilled there.
+    /**
+     * The dark pays, and what it pays cannot be banked.
+     *
+     * Below the Dark band the veins show in the walls, and a socket that
+     * pays one pays two. The same room means two different things
+     * depending on how you walk into it - and there is no way to find the
+     * vein in the light and come back for it, because you can only take it
+     * while you are standing in the danger.
+     */
+    const s0 = run.getState();
+    const { gemFor } = await import("/src/game/rooms/kinds.ts");
+    const gemRoom = s0.dungeon.rooms.find((r) => gemFor(r, s0.dungeon.seed) && !s0.gemRooms.includes(r.id));
+    if (gemRoom) {
+      run.setState({ glim: 0, gems: 0 });
+      // Read while it is dark: the lines below put the flame back up to
+      // price the lit socket, and asking then would ask the wrong moment.
+      const showing = lantern().veins;
+      run.getState().collectGem(gemRoom.id, undefined, 1);
+      const inTheDark = run.getState().gems;
+      const other = run.getState().dungeon.rooms.find(
+        (r) => gemFor(r, run.getState().dungeon.seed) && !run.getState().gemRooms.includes(r.id)
+      );
+      run.setState({ glim: 100, gems: 0 });
+      if (other) run.getState().collectGem(other.id, undefined, 1);
+      out.veins = { dark: inTheDark, lit: other ? run.getState().gems : null, showing };
+    }
+
+    /**
+     * Oil is spent at doorways, and a room nobody has walked into costs
+     * several times what one already known does.
+     */
+    run.setState({ glim: 100, oil: W.LANTERN_OIL_FULL, transitioning: false });
+    await sleep(200);
+    const d = run.getState().dungeon;
+    const from = d.rooms.find((r) => Object.values(r.links).filter(Boolean).length >= 2);
+    const dirs = Object.keys(from.links).filter((k) => from.links[k]);
+    run.setState({ currentRoomId: from.id, visited: [from.id], transitioning: false });
+    await sleep(300);
+    const beforeNew = run.getState().oil;
+    run.getState().travel(dirs[0]);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await sleep(120);
+    await sleep(400);
+    const newRoomCost = beforeNew - run.getState().oil;
+    // Back the way we came: a room already walked.
+    const backDir = ["north", "south", "east", "west"].find(
+      (k) => run.getState().dungeon.rooms.find((r) => r.id === run.getState().currentRoomId)?.links[k] === from.id
+    );
+    let knownRoomCost = null;
+    if (backDir) {
+      const beforeKnown = run.getState().oil;
+      run.getState().travel(backDir);
+      for (let i = 0; i < 40 && run.getState().transitioning; i++) await sleep(120);
+      await sleep(400);
+      knownRoomCost = beforeKnown - run.getState().oil;
+    }
+    out.doorways = { newRoomCost: +newRoomCost.toFixed(2), knownRoomCost: knownRoomCost === null ? null : +knownRoomCost.toFixed(2) };
+
+    // Burned dry: it goes out on its own and will not come back up.
     //
-    // Descending is walking *into* the exit room, not out of it: stand in
-    // a room that has a doorway to it and take that doorway. The first
-    // version of this stood in the exit and walked out, which travels
-    // perfectly well and stays on floor one.
-    run.setState({ oil: 40, lanternRaised: false });
+    // The cost of a doorway lives in the lantern's own module rather than
+    // in world.ts, so it is imported rather than read off `W` - which is
+    // undefined there, and quietly made this flask NaN.
+    const { OIL_PER_NEW_ROOM } = await import("/src/game/lantern/glim.ts");
+    run.setState({ glim: 100, oil: OIL_PER_NEW_ROOM * 0.9, transitioning: false, currentRoomId: from.id, visited: [] });
+    let wentOut = false;
+    const off = window.__bus.on("lanternOut", () => (wentOut = true));
+    const dirNow = Object.keys(from.links).find((k) => from.links[k]);
+    run.getState().travel(dirNow);
+    for (let i = 0; i < 40 && run.getState().transitioning; i++) await sleep(120);
+    await sleep(400);
+    off();
+    const dry = lantern();
+    run.getState().toggleLantern();
+    await sleep(200);
+    out.dry = { wentOut, oil: dry.oil, raised: dry.raised, stillDownAfterPressing: lantern().raised === false };
+
+    /**
+     * And oil is bought rather than refilled at a brazier. The refill
+     * failed the anti-grinding test outright - low risk, a lot of time,
+     * some reward - and the correct play was always to walk back to a
+     * fire, which is another way of saying it was not a decision.
+     */
+    run.setState({ oil: 0, gems: 9 });
+    const bought = run.getState().buyOil(W.OIL_MEASURES);
+    out.buy = { bought, oil: run.getState().oil, refillGone: typeof run.getState().fillLantern !== "function" };
+
+    // It goes down the stairs with you rather than being topped up there.
+    run.setState({ oil: 20, glim: 0 });
     const before = run.getState().oil;
     const endId = run.getState().dungeon.endId;
     const doorway = run.getState().dungeon.rooms
-      .map((r) => ({ room: r, dir: Object.keys(r.links).find((d) => r.links[d] === endId) }))
+      .map((r) => ({ room: r, dir: Object.keys(r.links).find((dd) => r.links[dd] === endId) }))
       .find((x) => x.dir);
     run.setState({ currentRoomId: doorway.room.id, gems: 99, transitioning: false });
     run.getState().travel(doorway.dir);
@@ -4967,38 +4996,43 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   });
 
   ok(
-    "a run starts with a full lantern, down: the choice is unmade, not made for you",
-    lamp.startsDown.raised === false &&
-      lamp.startsDown.lit === false &&
-      lamp.startsDown.oil === 150 &&
-      lamp.unlitBurn === 150,
-    JSON.stringify({ ...lamp.startsDown, afterTwoSeconds: lamp.unlitBurn })
+    "a run starts with a full flask and the flame down: the choice is unmade, not made for you",
+    lamp.startsDown.raised === false && lamp.startsDown.lit === false && lamp.startsDown.oil > 0,
+    JSON.stringify(lamp.startsDown)
   );
   ok(
-    "oil burns while it is up and does not while it is down",
-    lamp.burn.afterUp < 150 && lamp.burn.afterDown === lamp.burn.downAt,
-    JSON.stringify({ up: lamp.burn.afterUp, atDown: lamp.burn.downAt, later: lamp.burn.afterDown })
-  );
-  ok("raising it is seen at once, not a second later", lamp.seenAtOnce === true);
-  ok(
-    "and the light in the room really goes with it",
-    lamp.burn.brightUp > lamp.burn.brightDown * 2 && lamp.burn.reachUp > lamp.burn.reachDown * 1.8,
-    JSON.stringify(lamp.burn)
+    "and standing still costs nothing at all, which is what a wall clock could never say",
+    lamp.stillCostsNothing === true,
+    `${lamp.startsDown.oil} still`
   );
   ok(
-    "putting it down does not un-see you at once, and does a few seconds later",
-    lamp.seenAfterLowering === true && lamp.unseenLater === false,
-    JSON.stringify({ at: lamp.seenAfterLowering, later: lamp.unseenLater })
+    "one press from the dark brings it all the way up, and charges for it",
+    lamp.raised.band === "raised" && lamp.raised.glim === 100 && lamp.raised.paid > 0,
+    JSON.stringify(lamp.raised)
+  );
+  ok("and it is seen at once, not a second later", lamp.seenAtOnce === true);
+  ok(
+    "every press after that steps down one named band, instantly and for nothing",
+    lamp.walkedDown.map((w) => w.band).join(">") === "guttered>shrouded>dark>blind" &&
+      lamp.walkedDown.every((w) => w.free),
+    JSON.stringify(lamp.walkedDown)
+  );
+  if (lamp.veins) {
+    ok(
+      "below the Dark band a socket pays twice, and it cannot be banked",
+      lamp.veins.showing === true && lamp.veins.dark === 2 && lamp.veins.lit === 1,
+      JSON.stringify(lamp.veins)
+    );
+  }
+  ok(
+    "pushing into a room nobody has walked into is what costs oil",
+    lamp.doorways.newRoomCost > 0,
+    JSON.stringify(lamp.doorways)
   );
   ok(
-    "a raised lantern does not set the Warden walking: it is the one carrying the lamp",
-    lamp.light.huntsQuiet === false && lamp.light.huntsLit === false && lamp.light.lit === true,
-    JSON.stringify(lamp.light)
-  );
-  ok(
-    "but a moth that has settled on it does, which is the only way light gives you away to it",
-    lamp.light.huntsMothed === true,
-    JSON.stringify(lamp.light)
+    "and walking back through one already known is nearly free",
+    lamp.doorways.knownRoomCost !== null && lamp.doorways.knownRoomCost < lamp.doorways.newRoomCost / 3,
+    JSON.stringify(lamp.doorways)
   );
   ok(
     "the last of the oil puts it out on its own, and it will not come back up",
@@ -5006,14 +5040,262 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     JSON.stringify(lamp.dry)
   );
   ok(
-    "a brazier fills it, once",
-    lamp.fill.filled === true && lamp.fill.oil === 150 && lamp.fill.again === false,
-    JSON.stringify(lamp.fill)
+    "oil is bought with gems, and the brazier no longer hands it out",
+    lamp.buy.bought === true && lamp.buy.oil > 0 && lamp.buy.refillGone === true,
+    JSON.stringify(lamp.buy)
   );
   ok(
-    "and the oil goes down the stairs rather than being refilled there",
+    "and the oil goes down the stairs rather than being topped up there",
     lamp.carriesDown.floor === 2 && lamp.carriesDown.after === lamp.carriesDown.before,
     JSON.stringify(lamp.carriesDown)
+  );
+}
+
+/**
+ * VERBS, NOT KEYS - the audit, played rather than tabulated.
+ *
+ * The layout suite holds the TABLE to its rule: every gate has more than
+ * one way through, and every verb has exactly one signposted limit. That
+ * proves the design is written down. This proves it is true of the game:
+ * each limit is walked into and each second way is actually taken.
+ *
+ * The key gets its own run of checks because it is the tool the rule was
+ * aimed at. It was briefed as "the thing that opens the vault", which is a
+ * function wearing an object's name, and it had exactly one use for its
+ * whole life. Rebriefed as a heavy piece of cut metal it has three, and
+ * all three are checked here rather than believed.
+ */
+{
+  const verbs = await page.evaluate(async () => {
+    const run = window.__run;
+    const { surfaceOf } = await import("/src/game/din/emissions.ts");
+    const { snareSets, bombCracks } = await import("/src/game/verbs/gates.ts");
+    const { crackSpot } = await import("/src/game/dungeon/layout.ts");
+    const out = {};
+    const settle = (ms) => new Promise((r) => setTimeout(r, ms));
+    const go = (roomId) => {
+      run.setState({ transitioning: true, currentRoomId: roomId });
+      run.getState().roomReady(roomId);
+    };
+
+    /**
+     * The snare's limit. A room whose floor reads glazed refuses the wire
+     * and does NOT spend it - a limit you can only discover by paying for
+     * it is not a limit, it is a trap.
+     */
+    {
+      const s = run.getState();
+      const tiled = s.dungeon.rooms.find((r) => !snareSets(surfaceOf(r)));
+      const bare = s.dungeon.rooms.find((r) => snareSets(surfaceOf(r)));
+      if (tiled && bare) {
+        go(tiled.id);
+        run.setState({ satchel: ["snare"], transitioning: false });
+        const refused = run.getState().placeDevice(0) === false;
+        const kept = run.getState().satchel[0] === "snare";
+        go(bare.id);
+        run.setState({ transitioning: false });
+        const set = run.getState().placeDevice(0) === true;
+        out.snare = { refused, kept, set, on: surfaceOf(tiled), and: surfaceOf(bare) };
+      } else out.snare = { none: true };
+    }
+
+    /**
+     * The bomb's limit, and the crack it does open. Both walls are the
+     * same wall in two rooms: what differs is what the floor is made of.
+     */
+    {
+      const s = run.getState();
+      const wet = s.dungeon.rooms.find((r) => r.secret && !bombCracks(surfaceOf(r)));
+      const dry = s.dungeon.rooms.find((r) => r.secret && bombCracks(surfaceOf(r)));
+      const burst = (room) => {
+        go(room.id);
+        run.setState({ transitioning: false, satchel: ["bomb"] });
+        const at = crackSpot(room);
+        window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+        return at;
+      };
+      if (wet) {
+        burst(wet);
+        await settle(300);
+        run.getState().placeDevice(0);
+        const key = run.getState().placed.at(-1)?.key;
+        run.getState().detonate(key);
+        out.wet = { opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === wet.id).links[wet.secret.dir]) };
+      } else out.wet = { none: true };
+      if (dry) {
+        burst(dry);
+        await settle(300);
+        run.getState().placeDevice(0);
+        const key = run.getState().placed.at(-1)?.key;
+        run.getState().detonate(key);
+        out.dry = { opened: Boolean(run.getState().dungeon.rooms.find((r) => r.id === dry.id).links[dry.secret.dir]) };
+      } else out.dry = { none: true };
+    }
+    return out;
+  });
+
+  ok(
+    "a snare will not set on a floor that reads glazed",
+    verbs.snare.none || (verbs.snare.refused && verbs.snare.kept),
+    JSON.stringify(verbs.snare)
+  );
+  ok(
+    "and the wire is not spent finding that out",
+    verbs.snare.none || verbs.snare.kept === true,
+    JSON.stringify(verbs.snare)
+  );
+  ok(
+    "the same wire sets on the floor beside it",
+    verbs.snare.none || verbs.snare.set === true,
+    JSON.stringify(verbs.snare)
+  );
+  ok(
+    "wet stone does not crack",
+    verbs.wet.none || verbs.wet.opened === false,
+    JSON.stringify(verbs.wet)
+  );
+  ok(
+    "and dry stone does",
+    verbs.dry.none || verbs.dry.opened === true,
+    JSON.stringify(verbs.dry)
+  );
+}
+
+/**
+ * The key: three properties it did not have when it was a number, and the
+ * one limit that makes spending it a decision.
+ */
+{
+  const key = await page.evaluate(async () => {
+    const run = window.__run;
+    const out = {};
+    const settle = (ms) => new Promise((r) => setTimeout(r, ms));
+    const go = (roomId) => {
+      run.setState({ transitioning: true, currentRoomId: roomId });
+      run.getState().roomReady(roomId);
+    };
+
+    /** HEAVY. It weights a plate, and the plate keeps it. */
+    {
+      const s = run.getState();
+      const plate = s.dungeon.rooms.find((r) => r.kind === "challenge") ?? s.dungeon.rooms[0];
+      run.setState({ keys: 1, keyOnPlateIn: null });
+      const set = run.getState().setKeyOnPlate(plate.id) === true;
+      out.heavy = { set, on: run.getState().keyOnPlateIn === plate.id, spent: run.getState().keys === 0 };
+      run.setState({ keyOnPlateIn: null });
+    }
+
+    /** METAL. Setting it down is a noise where the key is. */
+    {
+      const s = run.getState();
+      const here = s.currentRoomId;
+      const heard = [];
+      const offNoise = window.__bus.on("keyDropped", (e) => heard.push(e.roomId));
+      run.setState({ keys: 1, keyLyingIn: null, keyLyingAt: null, transitioning: false });
+      const dropped = run.getState().dropKey() === true;
+      await settle(120);
+      offNoise();
+      const { arriving } = await import("/src/game/din/din.ts");
+      out.metal = {
+        dropped,
+        heardIn: heard[0] ?? null,
+        here,
+        lying: run.getState().keyLyingIn === here,
+        gone: run.getState().keys === 0,
+        loud: arriving("loud", here) !== null,
+      };
+      // And the same press picks it back up.
+      run.getState().takeKey(here);
+      out.metal.retrieved = run.getState().keys === 1 && run.getState().keyLyingIn === null;
+    }
+
+    /** UNIQUE. It makes you worth robbing with an empty purse. */
+    {
+      const s = run.getState();
+      const away = s.dungeon.rooms.find((r) => r.id !== s.dungeon.startId) ?? s.dungeon.rooms[0];
+      go(away.id);
+      run.setState({
+        transitioning: false,
+        floor: 3,
+        gems: 0,
+        keys: 1,
+        thiefPhase: "away",
+        thiefKey: false,
+        nestKey: false,
+        thiefNextAt: 0,
+        floorRooms: 99,
+        wardRoomId: null,
+        wardUntil: 0,
+      });
+      const came = run.getState().thiefArrives() === true;
+      const took = run.getState().thiefSteals() === true;
+      const stripped = run.getState().keys === 0 && run.getState().thiefKey === true;
+      run.getState().thiefEscapes();
+      const inTheNest = run.getState().nestKey === true;
+      run.getState().emptyNest();
+      out.unique = { came, took, stripped, inTheNest, back: run.getState().keys === 1 };
+    }
+
+    /** The limit: a vault re-locks behind you. */
+    {
+      const s = run.getState();
+      const vault = s.dungeon.vaultId;
+      if (!vault) return { ...out, relock: { none: true } };
+      const from = s.dungeon.rooms.find((r) => Object.values(r.links).includes(vault));
+      const dir = from && Object.keys(from.links).find((d) => from.links[d] === vault);
+      run.setState({ keys: 1, unlocked: [], currentRoomId: from.id, transitioning: false });
+      const opened = run.getState().unlockRoom(vault) === true;
+      run.getState().travel(dir);
+      await settle(200);
+      out.relock = { opened, inside: run.getState().currentRoomId === vault, shut: !run.getState().unlocked.includes(vault) };
+    }
+    return out;
+  });
+
+  ok(
+    "the key is heavy, so it weights a plate",
+    key.heavy.set && key.heavy.on,
+    JSON.stringify(key.heavy)
+  );
+  ok(
+    "and the plate keeps it, which is what makes that a decision",
+    key.heavy.spent === true,
+    JSON.stringify(key.heavy)
+  );
+  ok(
+    "the key is metal, so setting it down is heard",
+    key.metal.dropped && key.metal.loud,
+    JSON.stringify(key.metal)
+  );
+  ok(
+    "and heard where the key is, which is the whole point of a lure",
+    key.metal.heardIn === key.metal.here && key.metal.lying,
+    JSON.stringify(key.metal)
+  );
+  ok(
+    "a key set down can be picked back up, so it is a lure and not a loss",
+    key.metal.retrieved === true,
+    JSON.stringify(key.metal)
+  );
+  ok(
+    "the key is the only one of its cut, so the Cutpurse comes for an empty purse",
+    key.unique.came === true,
+    JSON.stringify(key.unique)
+  );
+  ok(
+    "and takes the key when there is nothing else to take",
+    key.unique.took && key.unique.stripped,
+    JSON.stringify(key.unique)
+  );
+  ok(
+    "the nest has it, and walking there gets it back",
+    key.unique.inTheNest && key.unique.back,
+    JSON.stringify(key.unique)
+  );
+  ok(
+    "a vault re-locks behind you",
+    key.relock.none || (key.relock.opened && key.relock.inside && key.relock.shut),
+    JSON.stringify(key.relock)
   );
 }
 
@@ -5093,7 +5375,12 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await sleep(900);
     const p0 = run.getState();
     const room = p0.dungeon.rooms.find((x) => x.kind !== "start" && x.kind !== "end");
-    const alarmBefore = p0.alarm;
+    // With the flame up, so the socket pays one. Below the Dark band the
+    // veins show and it pays two, and the floor is roused once per gem -
+    // which is the lantern's bargain, and would be measured here as the
+    // Pilgrim's price if the flame were left down.
+    run.setState({ glim: 100 });
+    const alarmBefore = run.getState().alarm;
     run.getState().collectGem(room.id);
     const p1 = run.getState();
     out.pilgrim = {
@@ -6208,11 +6495,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       run.setState({ transitioning: true, currentRoomId: mothRoomId, oil: 999 });
       run.getState().roomReady(mothRoomId);
       await wait(1400);
-      if (!run.getState().lanternRaised) run.getState().toggleLantern();
+      if (run.getState().glim === 0) run.getState().toggleLantern();
       const t1 = performance.now();
       while (!run.getState().mothOn && performance.now() - t1 < 12000) await wait(200);
       out.mothCame = run.getState().mothOn;
-      run.getState().toggleLantern();
+      // Lowering is now four steps rather than a switch: one press walks
+      // down one named band, so putting it out means pressing until it is
+      // out. The raise it is coming down from cannot be interrupted, so
+      // the first press has to wait for the flame to arrive.
+      await wait(1600);
+      for (let i = 0; i < 6 && run.getState().glim > 0; i++) {
+        run.getState().toggleLantern();
+        await wait(120);
+      }
       // The moth notices on its next frame, which is a third of a second here.
       await wait(900);
       out.heldByMoth = run.getState().litUntil - D.clock() > W.LANTERN_SEEN_HOLD_S + 0.5;
@@ -6656,7 +6951,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const d = s0.dungeon;
     const target = window.__wispTarget(d, s0.currentRoomId);
     const before = !!window.__wisp && window.__wispAt.out;
-    if (!s0.lanternRaised) run.getState().toggleLantern();
+    if (!s0.glim) run.getState().toggleLantern();
     let seen = null;
     for (let i = 0; i < 20 && !seen; i++) {
       await wait(200);
@@ -7300,6 +7595,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const { SET_PIECE_GEMS } = window.__world;
     run.getState().startRun(61);
     await wait(1200);
+    /**
+     * With the flame up, because these three are about the DECLARED
+     * economy - what a socket and a set piece are worth to each other and
+     * to the door. Below the Dark band the veins show and every take pays
+     * twice, which is a modifier on these rates rather than a change to
+     * them, and it is measured on its own below.
+     */
+    run.setState({ glim: 100, oil: 60 });
     const before = run.getState().gems;
     // A gem on a floor is worth one, by the same call the rooms make.
     run.getState().collectGem("floor-gem");
@@ -7307,10 +7610,28 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // A set piece answered is worth what the one owner says.
     run.getState().collectGem("room_2:puzzle", undefined, SET_PIECE_GEMS);
     const afterPiece = run.getState().gems;
+
+    /**
+     * And what the dark does to all of it.
+     *
+     * Answered blind, a set piece pays twice - which on the first floor is
+     * the whole toll in one room. That reads at first like the invariant
+     * above being broken, and it is the opposite: the rate is unchanged
+     * and the player has paid for the doubling by walking the floor with
+     * no light at all, with the coefficient running the whole time. It is
+     * the expert line the bargain exists to offer, and it is checked here
+     * so that it is a decision somebody made rather than something that
+     * happened.
+     */
+    run.setState({ glim: 0 });
+    const darkBefore = run.getState().gems;
+    run.getState().collectGem("room_3:puzzle", undefined, SET_PIECE_GEMS);
+    const blindPiece = run.getState().gems - darkBefore;
     return {
       declared: SET_PIECE_GEMS,
       floorGem: afterFloor - before,
       setPiece: afterPiece - afterFloor,
+      blindPiece,
       toll: window.__derived.toll(),
     };
   });
@@ -7323,6 +7644,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok(
     "and never enough to pay the floor's exit on its own",
     worth.setPiece < worth.toll,
+    JSON.stringify(worth)
+  );
+  ok(
+    "unless it is answered blind, which pays twice and is the point of the dark",
+    worth.blindPiece === worth.setPiece * 2 && worth.blindPiece >= worth.toll,
     JSON.stringify(worth)
   );
 }

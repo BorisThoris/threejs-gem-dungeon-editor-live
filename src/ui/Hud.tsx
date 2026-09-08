@@ -8,6 +8,7 @@ import {
   harrierDowned,
   keeperHolds,
   keeperStalled,
+  lanternBand,
   lanternLit,
   lureNow,
   heatBand,
@@ -75,7 +76,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const { heard, seen, lit, oil, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
+  const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -129,6 +130,8 @@ export function Hud() {
     harrier,
     harrierUp,
     lanternLit: lit,
+    lanternBand: band.name.toLowerCase(),
+    lanternBuys: band.buys,
     wisp,
     oil,
     barSeconds,
@@ -203,6 +206,8 @@ function useWardenSense(): {
   reeling: boolean;
   warded: boolean;
   barSeconds: number;
+  /** The lantern's band: what it is called, and the one thing it buys. */
+  band: { name: string; buys: string };
   /**
    * What the floor's heat is called, and which band that is.
    *
@@ -242,6 +247,7 @@ function useWardenSense(): {
       seen: !lured && wardenMarked(s),
       lit: lanternLit(s),
       oil: Math.ceil(s.oil),
+      band: { name: lanternBand(s).name, buys: lanternBand(s).buys },
       lured,
       reeling: wardenStaggered(s),
       warded: wardNow(s) !== null && wardNow(s) === s.currentRoomId,
@@ -266,6 +272,7 @@ function useWardenSense(): {
           was.seen === now.seen &&
           was.lit === now.lit &&
           was.oil === now.oil &&
+          was.band.name === now.band.name &&
           was.lured === now.lured &&
           was.reeling === now.reeling &&
           was.warded === now.warded &&

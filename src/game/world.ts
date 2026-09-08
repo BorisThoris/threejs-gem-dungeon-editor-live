@@ -461,7 +461,20 @@ export const BAR_BREAK_STEPS = 1;
  * The deeper floors are darker, and that is the point: this is worth the
  * most exactly where being seen costs the most.
  */
-export const LANTERN_FULL_S = 150;
+/**
+ * A full flask, in measures rather than seconds.
+ *
+ * Oil stopped being a clock. It is spent walking into a room - a lot for a
+ * room nobody has walked into, a little for one already known, scaled by
+ * how high the flame is - so the unit is a measure and the number is how
+ * many rooms of pushing into the dark a full flask is worth.
+ *
+ * Sixty is about ten new rooms at a raised flame, or three times that at a
+ * guttered one, against a floor of eight to sixteen rooms. A run lit the
+ * whole way cannot be paid for out of the flask it starts with, which is
+ * the point: light is a thing you buy with gems you could have banked.
+ */
+export const LANTERN_OIL_FULL = 60;
 /**
  * How long the Warden keeps walking towards you after the light goes down.
  *
@@ -788,6 +801,17 @@ export const GRATE_HOLD_S = 20;
  * of the room does.
  */
 export const BOMB_PRICE = 2;
+
+/**
+ * What a gem's worth of oil is.
+ *
+ * One gem, and a third of a flask - so light costs about the same as a
+ * bomb over a floor, and buying it is felt against the toll rather than
+ * being a chore performed at a brazier. Half a flask would make the
+ * question "why not always", and a tenth would make it "why ever".
+ */
+export const OIL_PRICE = 1;
+export const OIL_MEASURES = 20;
 export const DRAFT_REACH = 3;
 
 /**

@@ -185,7 +185,7 @@ for (const shot of SHOTS) {
         window.__bus.emit("teleport", { position: [x, 1.5, z], yaw });
         window.__bus.emit("lookSet", { yaw, pitch });
         if (want === "warden") run.setState({ wardenRoomId: room.id, alarm: 5 });
-        if (want === "wisp" && !run.getState().lanternRaised) run.getState().toggleLantern();
+        if (want === "wisp" && run.getState().glim === 0) run.getState().toggleLantern();
         if (want === "harrier") run.setState({ alarm: window.__world.HARRIER_ALARM_LEVEL });
         await wait(1400);
         // The Harrier comes in from its doorway: wait until it is in the

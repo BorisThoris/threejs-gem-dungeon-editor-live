@@ -3,7 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
-import { spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
+import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
@@ -42,6 +42,18 @@ import { biomeFor } from "../rooms/biomes";
 import { keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
 import { REAPER_AT, affordable, bandFor, bandName, heatFrom, type PurchaseId } from "../heat/coefficient";
+import {
+  GLIM_BANDS,
+  GLIM_MAX,
+  RAISE_OIL,
+  RAISE_S,
+  cracksShow,
+  gemveinsShow,
+  glimBand,
+  oilForRoom,
+} from "../lantern/glim";
+import { bombCracks, snareSets } from "../verbs/gates";
+import { surfaceOf } from "../din/emissions";
 import { barKey } from "../warden/bars";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
@@ -67,7 +79,7 @@ import {
   KEEPER_FLOOR,
   KEEPER_STALL_S,
   KEEPER_STRIKE_GRACE_S,
-  LANTERN_FULL_S,
+  LANTERN_OIL_FULL,
   LANTERN_SEEN_HOLD_S,
   MOTH_HOLD_S,
   NOISE_HOLD_S,
@@ -203,7 +215,30 @@ export interface RunState {
    * and is the exact twin of `noisyUntil`, deliberately: the two bargains
    * in this game are shaped the same and are kept the same way.
    */
-  lanternRaised: boolean;
+  /**
+   * How much light the delver is showing, 0 to 100.
+   *
+   * This replaces `lanternRaised`, which was a boolean, and a boolean
+   * cannot express the thing the lantern is for. Darkness has to be an
+   * affordance the player SPENDS - cheap and instant to enter, expensive
+   * and slow to leave, its payoff in a currency the lit state cannot buy
+   * at all - and that needs steps between "on" and "off".
+   *
+   * Five named bands, and both ends pay: at the top you read the next room
+   * from its doorway, and at the bottom the veins show in the walls and a
+   * cracked wall shows itself without a bomb. The middle band buys
+   * nothing, which is what makes it the middle.
+   */
+  glim: number;
+  /**
+   * When a raise finishes, on the run's clock.
+   *
+   * The asymmetry made physical: lowering is free and lands on the frame
+   * it is asked for, and raising takes a moment and costs oil, so dropping
+   * the flame to slip past a watcher is a commitment rather than a
+   * keystroke.
+   */
+  glimUpAt: number;
   oil: number;
   litUntil: number;
   /** Whether a Scroll of Mapping has shown this floor. */
@@ -259,6 +294,29 @@ export interface RunState {
   sealedRoomId: string | null;
   /** Iron keys in hand. One opens one vault. */
   keys: number;
+  /**
+   * The room a set-down key is lying in, and where in it.
+   *
+   * The key was a counter for the whole of its life, which is what made it
+   * a function wearing an object's name: a number in a wallet cannot be
+   * put on a plate, cannot be dropped to make a noise, and cannot be taken
+   * off you. It is a heavy piece of cut metal now, so it has to be
+   * somewhere, and this is where.
+   */
+  keyLyingIn: string | null;
+  keyLyingAt: { x: number; z: number } | null;
+  /**
+   * The room whose plate the key is holding down, for good.
+   *
+   * Heavy is a property the key has, and this is the price of using it:
+   * the plate keeps it. A vault with only one way in could never have
+   * allowed this, which is the whole argument for auditing per gate.
+   */
+  keyOnPlateIn: string | null;
+  /** The Cutpurse has the key in its hands, right now. */
+  thiefKey: boolean;
+  /** The Cutpurse got away with the key, and the nest has it. */
+  nestKey: boolean;
   /** Vaults already opened, so a door stays open once it has been. */
   unlocked: string[];
   /**
@@ -483,17 +541,29 @@ export interface RunState {
    */
   breakBar: (byWarden?: boolean) => void;
   /**
-   * Burn `seconds` of oil and keep the light seen.
+   * Spend oil for walking into a room, and nothing for standing in one.
    *
-   * Called from the frame loop, so it must not write on every frame: every
-   * write re-runs every selector in the store, and this is the same lesson
-   * `makeNoise` above already learned. The driver accumulates and flushes.
+   * Called once per doorway rather than from a frame loop, which is the
+   * whole change: a wall clock taxed deliberation, careful looking and
+   * hiding, and those are the three things this game is made of.
    */
-  burnOil: (seconds: number) => void;
-  /** Fill it from a brazier. Returns false when it is already full. */
-  fillLantern: () => boolean;
-  /** Pick up the floor's key. */
+  burnOilEntering: (alreadyWalked: boolean) => void;
+  /** Buy oil. Returns false when the flask is already full. */
+  buyOil: (measures: number) => boolean;
+  /** Pick up the floor's key - from where it lay, or from where it was set down. */
   takeKey: (roomId: string) => void;
+  /**
+   * Set the key down where the player stands. Metal on stone: [loud] 0.50,
+   * which makes it the one lure in the game you already own.
+   */
+  dropKey: () => boolean;
+  /** Weight a room's plate with the key, for good. False without one. */
+  setKeyOnPlate: (roomId: string) => boolean;
+  /**
+   * Put the flame out where it stands, spending nothing and refunding
+   * nothing. A draft does this; the player cannot.
+   */
+  snuffLantern: () => void;
   /** Spend a key on a vault. Returns false without one. */
   unlockRoom: (roomId: string) => boolean;
   /** The Warden walks to another room. */
@@ -642,8 +712,9 @@ export const useRun = create<RunState>()(
     noisyUntil: 0,
     wardenLure: null,
     lureUntil: 0,
-    lanternRaised: false,
-    oil: LANTERN_FULL_S,
+    glim: 0,
+    glimUpAt: 0,
+    oil: LANTERN_OIL_FULL,
     litUntil: 0,
     barredDoor: null,
     barUntil: 0,
@@ -660,6 +731,11 @@ export const useRun = create<RunState>()(
     wardUntil: 0,
     sealedRoomId: null,
     keys: 0,
+    keyLyingIn: null,
+    keyLyingAt: null,
+    keyOnPlateIn: null,
+    thiefKey: false,
+    nestKey: false,
     unlocked: [],
     keyTakenIn: null,
     alarm: 0,
@@ -742,8 +818,9 @@ export const useRun = create<RunState>()(
         noisyUntil: 0,
         // Down. See world.ts: up as a default made every run open already
         // seen, which is the bargain removed rather than offered.
-        lanternRaised: false,
-        oil: LANTERN_FULL_S,
+        glim: 0,
+        glimUpAt: 0,
+        oil: LANTERN_OIL_FULL,
         litUntil: 0,
         barredDoor: null,
         barUntil: 0,
@@ -764,6 +841,11 @@ export const useRun = create<RunState>()(
         wardUntil: 0,
         sealedRoomId: null,
         keys: 0,
+        keyLyingIn: null,
+        keyLyingAt: null,
+        keyOnPlateIn: null,
+        thiefKey: false,
+        nestKey: false,
         unlocked: [],
         keyTakenIn: null,
         alarm: alarmFloorOn(floor, delver.id),
@@ -863,6 +945,14 @@ export const useRun = create<RunState>()(
       if (barredNow(s) === barKey(s.currentRoomId!, toId)) get().breakBar(false);
 
       const seen = s.visited.includes(toId);
+      /**
+       * Walking into a room is what costs oil, and a room nobody has
+       * walked into costs six times what one already known does. Charged
+       * here, at the doorway, because this is the one place that knows
+       * both that a room is being entered and whether it has been entered
+       * before.
+       */
+      get().burnOilEntering(seen);
       set({
         transitioning: true,
         currentRoomId: toId,
@@ -871,6 +961,20 @@ export const useRun = create<RunState>()(
         floorRooms: s.floorRooms + 1,
         enteredBy: OPPOSITE[dir],
       });
+      /**
+       * A vault re-locks behind you.
+       *
+       * The bar drops as you cross the threshold, the first time and
+       * every time, so the key buys one ENTRY rather than a door that is
+       * now permanently open. You can always walk out - the bar is on the
+       * outside - and getting back in costs another way through. It is
+       * why setting the key on a plate is a real decision instead of a
+       * free extra use of a thing you had finished with.
+       */
+      if (toId === s.dungeon.vaultId && s.unlocked.includes(toId)) {
+        set({ unlocked: get().unlocked.filter((id) => id !== toId) });
+        bus.emit("notice", "The bar drops behind you.");
+      }
       const spawn = spawnAfterTravel(to, dir);
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
       bus.emit("lookSet", { yaw: spawn.yaw, pitch: 0 });
@@ -957,6 +1061,11 @@ export const useRun = create<RunState>()(
           sealedRoomId: null,
           // A key is cut for one floor's lock and is no use on the next.
           keys: 0,
+          keyLyingIn: null,
+          keyLyingAt: null,
+          keyOnPlateIn: null,
+          thiefKey: false,
+          nestKey: false,
           unlocked: [],
           keyTakenIn: null,
           // The delver's bonus is part of every floor's baseline, not a
@@ -1037,16 +1146,34 @@ export const useRun = create<RunState>()(
       // The delver's multiplier and the relic's, in that order: a Pilgrim
       // with an Ash Censer is back to an ordinary gem, which is exactly
       // what four gems bought them.
+      /**
+       * And the vein beside it, if the flame is low enough to see one.
+       *
+       * This is the key idea of the whole lantern bargain and the reason
+       * it is a bargain rather than a penalty: the SAME ROOM means two
+       * different things depending on how you walk into it. The veins are
+       * in the walls the whole time; below the Dark band they show, and a
+       * socket that pays one pays two.
+       *
+       * It cannot be banked, which is the other half. There is no way to
+       * find the vein in the light and come back for it - you can only
+       * take it while you are standing in the danger, which is what makes
+       * dropping the flame a decision made in a particular room rather
+       * than a setting chosen once.
+       */
+      const veined = veinsShowing(s) ? worth : 0;
+      const took = worth + veined;
       const alarm =
         s.alarm +
-        worth * ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
+        took * ALARM_PER_GEM * DELVERS[s.delver].alarmFactor * modifiers(s.relics).alarmPerGem;
       set({
-        gems: s.gems + worth,
-        gemsTotal: s.gemsTotal + worth,
+        gems: s.gems + took,
+        gemsTotal: s.gemsTotal + took,
         gemRooms: [...s.gemRooms, roomId],
         alarm,
       });
       bus.emit("gemCollected", { roomId, x: at?.[0], z: at?.[1] });
+      if (veined) bus.emit("notice", "There is a vein in the wall behind it.");
       return true;
     },
 
@@ -1257,6 +1384,19 @@ export const useRun = create<RunState>()(
       if (!id || !(isDevice(id) || isBomb(id)) || !s.currentRoomId || !canControl(s)) return false;
       const now = runClock(s);
       const roomId = s.currentRoomId;
+      /**
+       * A snare will not set on tile: the teeth skid and it will not sit
+       * flat. The one edge the snare has, and it costs nothing to learn
+       * because the wire is not spent finding out - a limit you only
+       * discover by paying for it is not a limit, it is a trap.
+       */
+      if (id === "snare" && s.dungeon) {
+        const here = roomById(s.dungeon, roomId);
+        if (here && !snareSets(surfaceOf(here))) {
+          bus.emit("notice", "The teeth skid on the glaze. It will not sit flat here.");
+          return false;
+        }
+      }
       const key = `${roomId}:${id}:${s.placed.length}:${Math.round(now * 100)}`;
       // Where the player is standing, from the one place that knows.
       const at = { x: playerAt.x, z: playerAt.z };
@@ -1341,7 +1481,12 @@ export const useRun = create<RunState>()(
       // Nothing to take is nothing to come for. It is a thief, not a
       // threat: turning up empty-handed to be chased would be all of the
       // interruption and none of the decision.
-      if (s.gems < 1) return false;
+      //
+      // Unless you are carrying the key, which is the only one of its cut
+      // on the floor and therefore the most interesting thing on it. This
+      // is the third property the rebrief bought, and it is the one that
+      // makes carrying the key a decision rather than a formality.
+      if (s.gems < 1 && s.keys < 1) return false;
       if (runClock(s) < s.thiefNextAt) return false;
       if (s.floorRooms < CUTPURSE_GRACE_ROOMS) return false;
       // A ward stone keeps everything out, not only the Warden. It is a
@@ -1359,6 +1504,14 @@ export const useRun = create<RunState>()(
       const s = get();
       if (s.thiefPhase !== "stalking") return false;
       if (s.gems < 1) {
+        // Nothing in the purse, but a heavy piece of cut metal in your
+        // hands. It takes that instead, and the vault's other two ways
+        // are what stop this being a dead run.
+        if (s.keys > 0) {
+          set({ keys: s.keys - 1, thiefPhase: "fleeing", thiefKey: true });
+          bus.emit("thiefTook", { gems: 0 });
+          return true;
+        }
         // It got to you and there was nothing left. It leaves rather than
         // circling: a thief with nothing to steal is not a chase.
         set({ thiefPhase: "fleeing", thiefHolding: 0 });
@@ -1376,6 +1529,11 @@ export const useRun = create<RunState>()(
       set({
         thiefPhase: "away",
         thiefHolding: 0,
+        // The key goes into the heap with everything else it has taken.
+        // A theft you cannot answer is a punishment; the nest is the
+        // address that turns it into a decision about how far you walk.
+        thiefKey: false,
+        nestKey: s.nestKey || s.thiefKey,
         nestGems: s.nestGems + held,
         thiefNextAt: runClock(s) + CUTPURSE_REST_S,
         // The nest goes on the map the moment it costs you something. A
@@ -1394,16 +1552,27 @@ export const useRun = create<RunState>()(
         thiefPhase: "away",
         thiefHolding: 0,
         gems: s.gems + held,
+        // Caught with the key on it: it drops that too, like everything
+        // else, and one press picks it back up off the floor.
+        thiefKey: false,
+        keys: s.keys + (s.thiefKey ? 1 : 0),
         thiefNextAt: runClock(s) + CUTPURSE_SHY_S,
       });
       bus.emit("thiefCaught", { gems: held });
+      if (s.thiefKey) bus.emit("keyTaken");
     },
 
     emptyNest: () => {
       const s = get();
-      if (s.nestGems < 1) return false;
-      set({ gems: s.gems + s.nestGems, nestGems: 0 });
+      if (s.nestGems < 1 && !s.nestKey) return false;
+      set({
+        gems: s.gems + s.nestGems,
+        nestGems: 0,
+        keys: s.keys + (s.nestKey ? 1 : 0),
+        nestKey: false,
+      });
       bus.emit("nestEmptied", { gems: s.nestGems });
+      if (s.nestKey) bus.emit("keyTaken");
       return true;
     },
 
@@ -1485,41 +1654,106 @@ export const useRun = create<RunState>()(
       if (!heard) bus.emit("wardenHeard");
     },
 
+    /**
+     * The lantern, on one key, and asymmetric on purpose.
+     *
+     * A press takes it DOWN one band: instant, free, and available at any
+     * moment. A press at the bottom takes it back to the top, and that one
+     * costs oil and takes a moment. So four free taps put you in the dark
+     * and one slow expensive press gets you out of it, which is the rule
+     * the whole system is built on:
+     *
+     *   Darkness is an affordance the player spends, not a state the game
+     *   imposes.
+     *
+     * One key rather than two because the cycle IS the asymmetry - a
+     * player who has learned that the light only goes one way round has
+     * learned the bargain without being told it.
+     */
     toggleLantern: () => {
       const s = get();
-      if (!s.lanternRaised && s.oil <= 0) {
-        bus.emit("notice", "The lantern is dry. There is fire in the braziers.");
+      const now = runClock(s);
+      // Still coming up. A raise is a commitment and cannot be interrupted
+      // by the same key that started it.
+      if (now < s.glimUpAt) return;
+
+      if (s.glim > 0) {
+        // Down one band, which is where the five named steps are read
+        // from - so the delver drops through Guttered, Shrouded, Dark and
+        // Blind rather than between two states.
+        const at = GLIM_BANDS.findIndex((b) => b.id === glimBand(s.glim).id);
+        const to = GLIM_BANDS[Math.min(GLIM_BANDS.length - 1, at + 1)].at;
+        set({ glim: to, litUntil: now + LANTERN_SEEN_HOLD_S });
+        bus.emit("lanternToggled", { raised: to > 0 });
         return;
       }
-      const raised = !s.lanternRaised;
-      // Seen from the moment it goes up, and for a few seconds after it
-      // comes down. Raising used to leave this to `burnOil`, which flushes
-      // about once a second - so for that second the brightest thing on
-      // the floor was invisible to the thing hunting by light, and a check
-      // that raised the lantern and looked immediately saw nothing happen.
-      set({ lanternRaised: raised, litUntil: runClock(s) + LANTERN_SEEN_HOLD_S });
-      bus.emit("lanternToggled", { raised });
+
+      if (s.oil < RAISE_OIL) {
+        bus.emit("notice", "There is not enough oil to bring it back up.");
+        return;
+      }
+      // Seen from the moment it starts to go up, rather than when it
+      // arrives: the brightest thing on the floor must not be invisible to
+      // the things that answer to light for the length of the wind-up.
+      set({
+        glim: GLIM_MAX,
+        glimUpAt: now + RAISE_S,
+        oil: Math.max(0, s.oil - RAISE_OIL),
+        litUntil: now + RAISE_S + LANTERN_SEEN_HOLD_S,
+      });
+      bus.emit("lanternToggled", { raised: true });
     },
 
-    burnOil: (seconds) => {
+    /**
+     * Oil is spent by walking into a room, and never by standing in one.
+     *
+     * My first version of this was a sixty-second wick on a wall clock.
+     * The game that shipped the best version of this idea has light that
+     * does not decay with time at all - it costs a little for a segment
+     * already explored and a lot for a new one - and the note that goes
+     * with it is aimed straight at us: a time-based drain punishes
+     * deliberation, careful looking and hiding, which are exactly the
+     * behaviours an evade-only lantern game wants to reward.
+     *
+     * This whole game is deliberation and hiding. A wall clock taxes the
+     * core verb, so pushing into the unknown is what costs and backtracking
+     * is nearly free - and the cost scales with the band, so a guttered
+     * flame is a cheap flame.
+     */
+    burnOilEntering: (alreadyWalked) => {
       const s = get();
-      if (!s.lanternRaised || s.oil <= 0) return;
-      const oil = Math.max(0, s.oil - seconds);
+      if (s.glim <= 0 || s.oil <= 0) return;
+      const spend = oilForRoom(alreadyWalked) * (s.glim / GLIM_MAX);
+      const oil = Math.max(0, s.oil - spend);
       const now = runClock(s);
       if (oil <= 0) {
         // It goes out on its own, and says so: a light that simply stopped
         // reaching would read as the floor getting darker.
-        set({ oil: 0, lanternRaised: false, litUntil: now + LANTERN_SEEN_HOLD_S });
+        set({ oil: 0, glim: 0, glimUpAt: 0, litUntil: now + LANTERN_SEEN_HOLD_S });
         bus.emit("lanternOut");
         return;
       }
       set({ oil, litUntil: now + LANTERN_SEEN_HOLD_S });
     },
 
-    fillLantern: () => {
+    /**
+     * Oil bought, rather than refilled from a brazier.
+     *
+     * The brazier refill was one of the three mechanics the anti-grinding
+     * test names outright: low risk, takes a lot of time, brings some
+     * reward - "it encourages players to bore themselves, and even worse,
+     * it may be optimal to do so." Walking back across a cleared floor to
+     * a fire was exactly that, and the correct play was to do it every
+     * time.
+     *
+     * So oil joins the things gems buy - a run-scoped, spendable thing -
+     * and the braziers keep the job they were always better at, which is
+     * being the one light you can stand in without carrying it.
+     */
+    buyOil: (measures) => {
       const s = get();
-      if (s.oil >= LANTERN_FULL_S) return false;
-      set({ oil: LANTERN_FULL_S });
+      if (s.oil >= LANTERN_OIL_FULL) return false;
+      set({ oil: Math.min(LANTERN_OIL_FULL, s.oil + measures) });
       bus.emit("lanternFilled");
       return true;
     },
@@ -1553,9 +1787,49 @@ export const useRun = create<RunState>()(
 
     takeKey: (roomId) => {
       const s = get();
+      // Off the ground where it was set down, which is the same press and
+      // the same key: a thing you put down is a thing you can pick up, and
+      // a key you could only ever take once would be a counter again.
+      if (s.keyLyingIn !== null) {
+        set({ keys: s.keys + 1, keyLyingIn: null, keyLyingAt: null });
+        bus.emit("keyTaken");
+        return;
+      }
       if (s.keyTakenIn !== null) return;
       set({ keys: s.keys + 1, keyTakenIn: roomId });
       bus.emit("keyTaken");
+    },
+
+    dropKey: () => {
+      const s = get();
+      if (s.keys < 1 || !s.currentRoomId || !canControl(s)) return false;
+      set({
+        keys: s.keys - 1,
+        keyLyingIn: s.currentRoomId,
+        keyLyingAt: { x: playerAt.x, z: playerAt.z },
+      });
+      // Where the key is, not where the player is - which are the same
+      // place this frame and will not be in a moment, and that difference
+      // is the whole of what a dropped key is for.
+      bus.emit("keyDropped", { roomId: s.currentRoomId });
+      return true;
+    },
+
+    setKeyOnPlate: (roomId) => {
+      const s = get();
+      if (s.keys < 1 || s.keyOnPlateIn !== null) return false;
+      set({ keys: s.keys - 1, keyOnPlateIn: roomId });
+      bus.emit("keySetOnPlate", { roomId });
+      return true;
+    },
+
+    snuffLantern: () => {
+      const s = get();
+      if (s.glim <= 0) return;
+      // No refund. The oil that went into raising it is burnt, which is
+      // what makes a draft cost something rather than annoy.
+      set({ glim: 0, glimUpAt: 0, litUntil: runClock(s) + LANTERN_SEEN_HOLD_S });
+      bus.emit("lanternOut");
     },
 
     unlockRoom: (roomId) => {
@@ -1640,6 +1914,16 @@ export const useRun = create<RunState>()(
       if (!s.currentRoomId || !s.dungeon) return;
       const key = barKey(s.currentRoomId, toRoomId);
       if (key === barredNow(s)) return;
+      /**
+       * A snare set in the channel holds it. The snare is briefed as a
+       * device that holds a moving thing in place, and a portcullis on
+       * its way down is a moving thing - so this is the brief paying out
+       * rather than a special case written for the grate.
+       */
+      if (snaresIn(s.placed, s.currentRoomId).length > 0) {
+        bus.emit("notice", "The grate comes down on the wire and stops.");
+        return;
+      }
       // A bar the player did not make: shorter, and silent - nobody
       // hammered anything - but the Warden breaks it the same way, and is
       // heard doing it.
@@ -1854,7 +2138,35 @@ export const useRun = create<RunState>()(
         const step = DIR_STEP[host.secret.dir];
         const wx = step.x * half;
         const wz = step.z * half;
-        if (inBlast(wx, wz)) get().revealSecret(roomId);
+        if (inBlast(wx, wz)) {
+          /**
+           * Wet stone does not crack. The wave goes into the water
+           * instead of into the wall, and the room signposts itself from
+           * its doorway - a flooded chamber is unmistakable, and the
+           * crack in it runs dark and swollen rather than dry and pale.
+           */
+          if (bombCracks(surfaceOf(host))) get().revealSecret(roomId);
+          else bus.emit("notice", "The wall runs with water. The wave goes into it, and nothing gives.");
+        }
+      }
+
+      /**
+       * The stone beside a vault door is the weakest on the floor, and a
+       * blast at that doorway brings it down. This is the gate audit
+       * paying out: the vault HAS a key, and it does not have ONLY a key,
+       * so losing the key to the Cutpurse is a setback rather than a wall.
+       */
+      const vaultId = s.dungeon.vaultId;
+      if (vaultId && blastRoom && !get().unlocked.includes(vaultId)) {
+        const toward = (Object.keys(blastRoom.links) as Dir[]).find((d) => blastRoom.links[d] === vaultId);
+        if (toward) {
+          const [vx, , vz] = doorPosition(blastRoom, toward);
+          if (inBlast(vx, vz)) {
+            set({ unlocked: [...get().unlocked, vaultId] });
+            bus.emit("vaultOpened", { roomId: vaultId });
+            bus.emit("notice", "The stone beside the vault door comes away.");
+          }
+        }
       }
     },
 
@@ -2068,7 +2380,30 @@ export const noiseHoldFor = (s: RunState): number => {
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 
 /** Whether the lantern is up and still has oil in it. */
-export const lanternLit = (s: RunState): boolean => s.lanternRaised && s.oil > 0;
+/**
+ * Whether the lantern is showing any light at all.
+ *
+ * A selector rather than a field, because the glim is the one owner of it:
+ * two facts that must agree - "is it up" and "how far up" - are one fact
+ * with a threshold, and keeping both in the store is how they drift.
+ */
+export const lanternRaised = (s: RunState): boolean => s.glim > 0;
+export const lanternLit = (s: RunState): boolean => s.glim > 0 && s.oil > 0;
+
+/** The band the flame is in, and what that band buys. */
+export const lanternBand = (s: RunState) => glimBand(lanternLit(s) ? s.glim : 0);
+
+/**
+ * Whether the walls are giving up their veins.
+ *
+ * The key idea of the whole bargain: the same room means two different
+ * things depending on how you walk into it, and what the dark pays cannot
+ * be banked, because you can only take it while you are standing in the
+ * danger.
+ */
+export const veinsShowing = (s: RunState): boolean => gemveinsShow(lanternLit(s) ? s.glim : 0);
+/** And at nothing at all, a thin wall shows itself without a bomb. */
+export const cracksShowing = (s: RunState): boolean => cracksShow(lanternLit(s) ? s.glim : 0);
 
 /**
  * Whether the player's light is currently showing.
@@ -2305,7 +2640,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();
-      return { raised: s.lanternRaised, lit: lanternLit(s), oil: s.oil, seen: lightIsShowing(s) };
+      return { raised: lanternRaised(s), lit: lanternLit(s), oil: s.oil, glim: s.glim, band: lanternBand(s).id, veins: veinsShowing(s), cracks: cracksShowing(s), seen: lightIsShowing(s) };
     },
     lure: () => lureNow(useRun.getState()),
     items: () => ITEM_IDS.slice(),

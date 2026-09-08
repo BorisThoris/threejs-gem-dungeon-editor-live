@@ -1,5 +1,5 @@
+import { keeperPostsFor } from "../keeper/posts";
 import { keeperHolds, useRun } from "../state/run";
-import { KEEPER_FLOOR } from "../world";
 import { mayEscalate, openCycle, type Director } from "./director";
 
 /**
@@ -36,6 +36,22 @@ export const cycleAllows = (): boolean => mayEscalate(director);
  */
 export function floorMaySend(): boolean {
   const s = useRun.getState();
-  if (s.floor === KEEPER_FLOOR && keeperHolds(s)) return true;
+  /**
+   * The encounter is the ROOM, not the floor.
+   *
+   * The first version of this exempted the whole of the Keeper's floor
+   * whenever the Keeper was standing, which is the entire floor until
+   * somebody bombs it - so floor three had no valleys at all and the
+   * Cycle was switched off exactly where the run is longest. The rule is
+   * that the designer paces the crescendos and the director paces the
+   * connective tissue, and almost all of floor three is connective tissue.
+   *
+   * So the exemption is the doorways the Keeper stands in, which is where
+   * the authored encounter actually begins.
+   */
+  if (s.dungeon && s.currentRoomId && keeperHolds(s)) {
+    const posts = keeperPostsFor(s.dungeon, s.floor);
+    if (posts.some((p) => p.roomId === s.currentRoomId)) return true;
+  }
   return cycleAllows();
 }

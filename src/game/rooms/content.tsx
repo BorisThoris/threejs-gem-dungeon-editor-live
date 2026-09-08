@@ -12,7 +12,14 @@ import { InteractTrigger } from "../interact/InteractTrigger";
 import { SATCHEL_SLOTS, type ItemId } from "../items/catalog";
 import type { Charges } from "../items/charge";
 import { alarmFloorFor, canSpend, tollNow, useRun } from "../state/run";
-import { BOMB_PRICE, CLOSE_REACH, GEMS_PER_LIFE } from "../world";
+import {
+  BOMB_PRICE,
+  CLOSE_REACH,
+  GEMS_PER_LIFE,
+  LANTERN_OIL_FULL,
+  OIL_MEASURES,
+  OIL_PRICE,
+} from "../world";
 
 /** What the shopkeeper charges to put a name to something. */
 const NAMING_PRICE = 1;
@@ -99,6 +106,8 @@ function Shop({ room }: RoomKindProps) {
   const canAffordName = gems >= NAMING_PRICE;
   const charges = useRun((s) => s.charges);
   const canBless = useRun((s) => canSpend(s, BLESSING_PRICE));
+  const oilFull = useRun((s) => s.oil >= LANTERN_OIL_FULL);
+  const canBuyOil = useRun((s) => canSpend(s, OIL_PRICE));
   const canAffordBlessing = gems >= BLESSING_PRICE;
   const liftable = worstSlot(satchel, charges);
 
@@ -152,6 +161,38 @@ function Shop({ room }: RoomKindProps) {
             run.takeItem("bomb", "shop");
             run.markBombBought();
           }
+        }}
+      />
+      {/**
+       * Oil, which used to be free at every brazier.
+       *
+       * The refill failed the anti-grinding test outright - low risk, a
+       * lot of time, some reward, so "it encourages players to bore
+       * themselves, and even worse, it may be optimal to do so" - and it
+       * was: the correct play was always to walk back to a fire, which is
+       * another way of saying it was not a decision.
+       *
+       * So light joins the things gems buy, which is exactly where the
+       * meta layer's rules say it belongs: gems buy RUN-SCOPED things -
+       * bombs, oil, a key, passage - and nothing permanent. And it puts
+       * the lantern's cost in the same currency as the exit, which is what
+       * makes carrying light mean carrying less treasure home.
+       */}
+      <InteractTrigger
+        position={[counter[0] - 1.1, 0, counter[2] + 1.1]}
+        label={oilFull ? "The flask is full" : `Buy oil (${OIL_PRICE} gem)`}
+        enabled={!oilFull && canBuyOil}
+        blockedReason={
+          oilFull
+            ? "The flask will not take any more"
+            : gems < OIL_PRICE
+              ? `Needs ${OIL_PRICE} gem (${gems}/${OIL_PRICE})`
+              : `That would leave you short of the ${toll} the exit wants`
+        }
+        onInteract={() => {
+          const run = useRun.getState();
+          if (run.oil >= LANTERN_OIL_FULL || !canSpend(run, OIL_PRICE)) return;
+          if (run.spendGems(OIL_PRICE)) run.buyOil(OIL_MEASURES);
         }}
       />
       {/* Knowing is worth buying: a second copy of anything is rare enough
