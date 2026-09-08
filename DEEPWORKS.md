@@ -15,6 +15,13 @@ research proposed died**, including several things I had already written into a
 draft. Where a proposal below rests on something that did not verify, it says
 so in the text rather than in a footnote.
 
+**A note on the second pass.** Nine of the fifteen researches were truncated by
+a session limit on the first attempt and were later resumed. Seven came back
+complete with zero errors, and **the resumed runs overturned several of their own
+earlier refutations** — a 0-3 from a limit-starved run means the verifiers never
+ran, not that the claim is false. Everything below reflects the resumed evidence,
+and Part 6 records what moved in both directions.
+
 Three conventions:
 
 - **(3-0)** means unanimous verification against a primary source.
@@ -82,11 +89,17 @@ once you split rule from magnitude. Prey states the boundary precisely:
 turns tension into frustration.**
 
 **Law 4 — pressure must oscillate, not ramp.**
-Left 4 Dead's Director is a four-phase state machine with published durations
-(3-0, Booth's own GDC PDF): Build Up → Sustain Peak (3–5 s past the peak) →
-Peak Fade (waits for a natural break so the relax is not consumed by an
-in-progress fight) → **Relax: 30–45 s, or until the team has travelled far
-enough toward the next safe room.** Dead Cells shipped the monotonic version,
+Left 4 Dead's Director is a four-phase state machine whose durations are both
+published *and* shipped as engine defaults (3-0, verified three ways: Booth's
+GDC deck, the `director_*` ConVars, and the `TEMPO_BUILDUP / SUSTAIN_PEAK /
+PEAK_FADE / RELAX` enum recovered from `server.dll`). Build Up → Sustain Peak
+(3–5 s past the peak) → Peak Fade (waits for a natural break so the relax is not
+consumed by an in-progress fight) → **Relax: 30–45 s, or until the team has
+travelled far enough toward the exit.** **The asymmetry is the design: the peak
+is a spike, not a plateau.** Valve's stated reason: *"Constant, unchanging
+combat is fatiguing • Long periods of inactivity are boring • Unpredictable peaks
+and valleys of intensity create a powerfully compelling and replayable
+experience."* Dead Cells shipped the monotonic version,
 players hated it, and Motion Twin's own patch notes target *"a Malaise that
 should stay in-between 3 and 7 during most of the run"* — a cycle, not a ramp
 (3-0). Our `FLOOR_PATIENCE_S = 300` is the version that failed.
@@ -187,32 +200,38 @@ without being told they could.
 
 ### 2. THE LADDER — awareness with rungs
 
-*Law 3, and Thief's numbers, every one of them verified 3-0 and every one a
-constant we do not currently have.*
+*Law 3, and Thief's numbers — with the confidence split the second pass forced.*
 
 Four rungs replacing calm/roused, one bark each:
 
     0 Unaware   1 Uneasy   2 Searching   3 Hunting
 
-    reaction delay        750 ms (moderate stimulus) / 500 ms (strong)
-                          break the stimulus inside the window → nothing happens
-    retrigger window      12 s of instant reaction after any alert
-    discharge             Uneasy 6 s → Searching 14 s → Hunting 22 s
-    descent               never skips a rung
-    min relax after peak  once it has Hunted, it never returns below Uneasy
-                          for the rest of the floor
+**Verified in both passes (3-0 twice), and these are the load-bearing ones:**
 
-Two of these are worth more than they look.
+    ordered 3D viewcones, each with its own angle / Z-angle / range / acuity
+    visibility as a continuous 0..1 scalar from lighting + movement + exposure
+    per-cone weights, e.g. Peripheral = light 0.3 / movement 3.0 / exposure 1.0
+    decay via a capacitor that CANNOT skip a rung
+    reaction delay      750 ms moderate / 500 ms strong
+                        break the stimulus inside it → nothing happens
+    retrigger window    12 s (moderate) / 22 s (strong) of instant reaction
+    ignore-delay range  9 ft — anything closer bypasses the delay entirely
 
-**The reaction delay** is what makes stealth forgiving without being easy: you
-can be seen and *un-see* yourself. That is a verb we do not offer at all today.
+**The reaction delay is the prize.** It is what lets you be seen and *un-see*
+yourself, a verb we do not offer at all today.
 
-**Min relax after peak** is one number, and it gives the floor a memory of what
-you did on it. A large part of what "the systems don't feel connected" means is
-that nothing on our floors remembers anything.
+**Contested — our design decision, not a verified constant.** The second pass
+returned 1-2 against two claims the first returned 3-0 and 2-1: a single 0-100
+acuity score, and the per-rung discharge times plus **"Min Relax After Peak"**.
 
-Thief's stated goal is our brief exactly (3-0): *"we tried to design AIs with a
-broader range of awareness than the typical two states that AIs exhibit:
+I called Min Relax After Peak the sleeper — one number and the floor remembers
+what you did on it. **It is still the right idea and I still propose it**, but as
+ours rather than Looking Glass's. Same for the discharge times: keep
+Uneasy 6 s → Searching 14 s → Hunting 22 s as *starting values*, and drop the
+implication that Thief shipped exactly those.
+
+Thief's stated goal is still our brief exactly (3-0): *"we tried to design AIs
+with a broader range of awareness than the typical two states that AIs exhibit:
 'oblivious' and 'omniscient.'"*
 
 ### 3. THE COEFFICIENT — replacing the floor timer
@@ -246,72 +265,107 @@ separate minigame."* Our alarm should have been this from the start.
 
 ### 4. THE CYCLE — the thing we have none of
 
-*Law 4. This is the single largest omission the research found, and it is
-separate from the coefficient.*
+*Law 4. The single largest omission the research found, and separate from the
+coefficient. After the second pass this is the best-sourced system in the plan.*
 
-We have nothing that ever relaxes. Left 4 Dead's shipped phases, with Valve's
-own durations (3-0):
+We have nothing that ever relaxes. Valve's shipped phases and defaults:
 
-    Build Up      spend the budget until intensity crosses the peak threshold
-    Sustain Peak  hold full threat 3–5 s past the peak
-    Peak Fade     wait for a natural break in the action — this exists so the
-                  relax period is not consumed by a fight already in progress
-    Relax         30–45 s of minimal threat, OR until the player has travelled
-                  far enough toward the exit, whichever comes first
+    BUILD_UP     ≥15 s floor; runs until intensity crosses the peak threshold
+    SUSTAIN_PEAK 3–5 s        director_sustain_peak_min_time 3 / max 5
+    PEAK_FADE    variable — population ALREADY drops to minimal here; this state
+                 only gates the START of the relax clock
+    RELAX        30–45 s      director_relax_min_interval 30 / max 45
+                 ended early by forward progress (RelaxMaxFlowTravel 3000)
 
-**Relax is dual-gated: time OR forward progress.** That is the detail to copy.
-A player who keeps moving earns quiet; a player who camps waits it out.
-
-The synthesis — and this part is my design decision, not Valve's stated rule,
-because the claim that the Director modulates *pacing* rather than *difficulty*
-errored out under the session limit and is unverified:
+≈60–90 s per cycle → **5–7 per 400 s floor.** With the discipline the report
+imposed: the claim asserting a specific L4D cycle period was **voted down 0-3**,
+so treat any cycle count as a tuning start, never an evidenced optimum.
 
 > **The coefficient sets the amplitude. The cycle sets the frequency.**
-> How much the budget buys comes from depth, greed and dwell. *When* it spends
-> comes from the cycle.
 
-At roughly 90–120 s per cycle, a twenty-minute run holds **ten to thirteen
-cycles, three or four per floor.** Our intensity proxy needs no biometrics — we
-already emit everything required: damage taken, `wardenProximity`, being in a
-Sentry beam, the alarm level, and time since the last threat contact.
+That split is now **Valve's own sentence**, not my inference — slide 92:
+*"Algorithm adjusts pacing, not difficulty — Amplitude (difficulty) is not
+changed, frequency (pacing) is."* (The stronger framing, that this is an explicit
+rejection of rubber-banding, failed the vote; the deck never names it.)
+
+**Relax is not emptiness.** Minimal Threat = no wanderers until the player is
+calm, no mobs, **no *new* threats — those already in flight still act.** That is
+what stops the valley reading as a scripted intermission.
+
+**Boss floors sit outside the loop.** Valve exempts boss encounters from
+adaptive pacing entirely: *the Director paces the connective tissue, the designer
+paces the crescendos.* Our Keeper belongs outside the Cycle.
+
+**The intensity accumulator, and permission to make it crude.** Per-actor 0..1
+from damage taken, incapacitation, forced displacement, and proximity-weighted
+threat deaths; decays toward zero **except while something is actively engaging**.
+Booth's own caveat is liberating: *"Survivor Intensity estimation is crude, yet
+the resulting pacing works."* It need not be good — it needs to be monotone in
+the right direction. Two mappings we must make: a solo game collapses L4D's
+max-of-four into one noisier accumulator, so widen the decay time and threat
+radius; and **our progress axis must be defined** (rooms cleared, or distance to
+the stair) or relax becomes a fixed intermission players learn to wait out.
+
+**Crescendos are the same machine with five numbers swapped** — Valve's finale
+scripts run relax 2–5 s against sustain 25–30 s, inverted from base pacing.
+A crescendo preset, never the normal curve.
+
+**And decompression must be scheduled, not earned.** Confirmed independently by
+Creative Assembly's menace gauge (3-0): a meter that pulls the pursuer offstage
+on a threshold, with a cooldown, a time-to-peak, and a cap on menace events per
+appearance — **the Warden should retreat on a meter even when the player has done
+nothing right.** Its inputs measure *pressure on the player*, not player noise,
+which is why the Din and the Cycle are two systems and not one.
 
 ### 5. THE LANTERN BARGAIN
 
-*Law 6, plus Grip's shipped-failure finding on hoardable resources.*
+*Law 6 — and the second pass corrected my proposal on its central point.*
 
-**(a) The oil stops being a stockpile.** `LANTERN_FULL_S = 150` is a tank, and
-DCSS cut a food clock for exactly this — *"the flavour of eating food didn't
-really make up for the inherent busywork of inventory juggling"* (3-0), plus the
-second charge that one shared clock standing in for many pressures is worse than
-tuning each separately. Both apply to our oil.
+**(a) Oil burns per ROOM, not per second.** I originally proposed a 60-second
+wick on a wall clock. Darkest Dungeon's light does not decay with time at all
+(3-0): **1 point per already-explored segment, 6 per newly explored one.**
+Pushing into the unknown costs light; backtracking is nearly free. The transplant
+note is aimed straight at us:
 
-Ours becomes a wick: burns only while raised, caps at **60 s**, refills to the
-cap at any brazier. You can never carry more than a room's worth. The decision
-moves from "when do I spend my tank" (once a run) to "is this room worth light"
-(thirty times a run).
+> *"a time-based drain punishes deliberation, careful looking and hiding — which
+> are exactly the behaviours an evade-only lantern game wants to reward."*
 
-Follow DCSS's deletion recipe (3-0): when the Ghoul lost chunk-eating they did
-*not* invent a replacement resource — the heal became automatic on kill and the
-rot timer was deleted outright. **Collapse a deleted resource's beneficiaries
-into triggers on actions the player is already taking.**
+Our whole game is deliberation and hiding. A wall clock taxes the core verb.
+(Accurate phrasing to carry: decays with **movement** rather than elapsed time,
+plus discrete event-driven swings.)
 
-**(b) Darkness pays, in five named bands.** The meter is `glim` — how lit *you*
-are, 0–100, read from the Din.
+**(b) The toggle is asymmetric.** DD lowers light at almost any moment, in steps
+or straight to zero, but raises it **only on your own turn** and only by spending
+a purchased Torch — which competes for inventory slots with treasure. *Carrying
+light means carrying less treasure home.* Ours toggles symmetrically and should
+not. The rule:
 
-| band | glim | seen at | the floor gives back |
+> **Darkness is an affordance the player spends, not a state the game imposes —
+> cheap and instant to enter, expensive and slow to leave, its cost shown as a
+> live number, its payoff in a currency the lit state cannot buy at all.**
+
+**(c) Both ends pay, in non-substitutable currencies.** My first table had
+darkness paying and light paying nothing. DD pays at both ends: high light buys
+**information and initiative** (scouting, surprise, dodge); low light buys
+**resources and crit**. Five named bands, not four — *Shadowy* is real and the
+common four-name shorthand is the imprecise version.
+
+| band | glim | seen at | what it buys |
 |---|---|---|---|
-| Raised | 76–100 | 15 m; Sentry acquires in 0.5 s | — |
+| Raised | 76–100 | 15 m | you scout the next room from the doorway; you surprise what is in it |
 | Guttered | 51–75 | 9 m | — |
 | Shrouded | 26–50 | 5 m | one chest in four holds a second thing |
 | Dark | 1–25 | 3 m | **gemveins show in the walls** |
 | Blind | 0 | 1 m | **cracked walls show without a bomb** |
 
-**Gemveins are the key idea.** Gems visible only below 25 glim turn "lower the
-lantern to hide" into "lower the lantern to see a different world": the same
-room means two things depending on how you enter it. It is the cheapest possible
-version of Prey's principle that a space should have more than one reading, and
-it uses two systems we already ship. Critically, it is a reward you can only
-take *while* in the danger — it cannot be banked, which is Grip's whole point.
+**Gemveins remain the key idea** — the same room means two things depending on
+how you enter it, and it cannot be banked because you can only take it while in
+the danger.
+
+And the deletion recipe, from DCSS (3-0): when the Ghoul lost chunk-eating they
+did not invent a replacement resource — the heal became automatic on kill and the
+rot timer was deleted outright. **Collapse a deleted resource's beneficiaries
+into triggers on actions the player already takes.**
 
 ### 6. SEMI-LEGIBILITY — resolving run 26
 
@@ -367,25 +421,52 @@ against a tool with no edges. One signposted exception each:
     bomb: wet stone does not crack   ·   lantern: a draft kills the flame
     snare: will not set on tile      ·   key: a vault re-locks behind you
 
-### 8. THE OFFER — six relics that finally matter
+### 8. THE OFFER — and the conflict two researches independently found
 
-Blizzard's surviving claim (3-0) is the diagnosis of our relics: legendaries
-should **alter ability behaviour or unlock new play**, not carry generic stat
-affixes. Ours are meant to be rules changes and read as modifiers.
+*This was the weakest section in the first draft and I had it marked "four table
+rows". Two unrelated researches attacked it from opposite directions.*
 
-Four changes, all table rows:
+**The design test, in one sentence (3-0):**
 
-- **Three offers, not a shelf.** Show 3 of 6, seeded. Hades prices removing one
-  choice at 2 then 3 Heat — *more per rank than enemy damage, count or health,
-  which are 1 each* (3-0). Choice count is the most expensive thing in the game.
-- **Slots and exchange.** Relics occupy named slots (Light, Step, Hand, Luck). A
-  second relic in an occupied slot is offered as an **exchange that upgrades a
-  tier**, never a refusal (3-0).
-- **Risk rolls rarity.** A relic found behind a cracked wall, in a vault, or
-  below 25 glim rolls the better tier (3-0). This makes the darkness bargain and
-  the secret system *feed* the relic system — three flat things become one.
-- **Two duos.** Named pairs unlocking a third effect (3-0). Six relics is fifteen
-  pairs; author three. Three table rows, and the shop has a build in it.
+> **State the reward as a sentence about what the player may now DO. If the only
+> honest sentence is a number, it is a trifecta affix.**
+
+Blizzard's exemplar legendary reads *"You may have 2 additional Sentries"*, and
+their diagnosis of the failure was *"Legendaries were piles of stats, not
+legendary… Treated all affixes equally."* Their fix: *"DROP FEWER / DROP BETTER /
+MAKE LEGENDARIES… LEGENDARY."* Corrected reading of "Less is More": **thin the
+burden tier, thicken the moment tier** — Loot 2.0 cut white/blue/rare volume
+while *increasing* legendary rates.
+
+**And a warning that lands on us:** the trifecta *re-formed* after Loot 2.0, with
+mainstat and set bonuses becoming the new treadmill. **Rules-change relics
+coexisting with stat relics will lose to the stat relics unless the stat axis is
+deliberately compressed.**
+
+**The conflict.** Blizzard closed both auction houses because *"it ultimately
+undermines Diablo's core game play: kill monsters to get cool loot"*, and the
+postmortem names the behaviour: *"Shop, not play."* Independently, the
+knowledge research names **exclusivity** as the most forcefully stated condition
+of knowledge-progression — *whatever pays best is what players optimise for* —
+and flags a purchasable-relic system as the thing that most directly violates it.
+
+Two unrelated lines, one conclusion. The resolutions the evidence supports:
+
+- **A purchase carries no drop moment**, so the entire payload must be in the
+  rules change, and the earning (the gem cost) must come from play the player
+  feels. This does not make shops wrong; it makes a flat shop fatal.
+- **Relics must not substitute for knowing.** A relic that reveals secret walls
+  outright deletes the draft tell. A relic that opens a wall you already found by
+  listening is an *enabler*. Enablers, never substitutes.
+
+**Still worth doing, with a caveat:** slots and upgrade-exchange, and rarity
+rolled by risk (behind a cracked wall, in a vault, below 25 glim) so the darkness
+bargain feeds the relic system. Hades prices removing one choice at 2 then 3
+Heat — more per rank than damage, count or health (3-0). **But "three offers, not
+a shelf" is not evidenced for a run of our shape**: the Vampire Survivors half of
+that question — the part about the *shape* of a choice — was never sourced at
+all, and the Hades resume was cut short by the spend limit before its synthesis
+ran.
 
 ### 9. THE SATCHEL THAT RESOLVES
 
@@ -415,6 +496,13 @@ The load-bearing sentence, from Returnal: a flat cost is a subtraction computed
 once and forgotten, but a banded chance makes the player price **their own
 current fragility**, so the same object gives a different correct answer at
 different moments.
+
+**And never price knowledge-checking with a consumable or a penalty** (3-0).
+Lucas Pope rejected limiting or punishing guesses in Obra Dinn for exactly the
+reason our potions rot in the satchel: *"I'd expect people to just not make
+guesses until the very end."* His shipped answer was **batched, locking
+validation** — confirm any three at once, so guessing costs more than deducing.
+Two studios, two genres, the same hoarding failure.
 
 ### 10. ROOMS AS TEMPLATES WITH SLOTS
 
@@ -554,49 +642,53 @@ decoration, and it may not be both.**
 
 ---
 
-## Part 4 — the demo, on thin evidence
+## Part 4 — the demo, graded by evidence
 
-The Steam research was the weakest of the fifteen: the session limit killed 69
-of 106 agents, and almost every measured figure — Zukowski's benchmarks, Valve's
-own Next Fest wishlist statistics, the median-playtime curves — **errored out
-before verification**. Two things survived, and one of them is a useful
-negative.
+The resumed Steam research (106/106) changed this section from "two claims, no
+strategy" to a real answer — just not about *content*. Valve documents the
+machinery precisely and documents nothing about what a demo should contain.
 
-**Valve publishes no numeric demo-length guidance at all** (3-0). Its only
-stated rule is qualitative:
+**(A) DOCUMENTED — follow exactly.**
 
-> "You need to balance giving the customer enough content to get them excited,
-> without giving away so much that they feel like they've experienced everything
-> the game has to offer."
+- **A title may participate in only ONE Next Fest, ever.** Withdrawing before
+  participating preserves the slot, so the rule constrains *participation*, not
+  demo publication.
+- Build review **4 weeks out** if you want the demo live for the T-10-day press
+  preview; **2 weeks out** at the latest or risk missing the fest.
+- The wishlist notification is **a single manual press inside a 14-day window**,
+  with a 2-week cooldown — spend it at fest open, clear of other events.
+- A standalone demo store page (**July 2024**, not 2023) buys discovery surface,
+  but **also switches on public demo reviews**, and a low score "may get filtered
+  out of some views". That is the *only* Valve-documented way a bad demo reduces
+  visibility, and it is opt-in.
 
-So *"a demo should be twenty minutes"* — a number I have seen repeated
-everywhere, and which happens to describe our demo — **is a community heuristic,
-not a platform recommendation.** We should stop citing it as though Valve said
-it.
+**(B) MEASURED — plan around it.** The fest amplifies momentum rather than
+creating it: pre-fest wishlists r=0.825 and pre-fest velocity r=0.819, against
+**r=0.457 for demo conversion rate**. Entering under 1,000 wishlists, the median
+outcome is **322 fest wishlists** (n=71). Target ≥20% demo conversion (median
+16.33%), and **screenshot Valve's post-fest Venn report immediately — it
+expires.**
 
-**Valve's default advice is to ship the demo at launch, not before** (2-1):
-*"We generally recommend waiting until launch, but there are circumstances where
-putting a demo out prior to release is effective."* The Next Fest pattern is
-framed by Valve as the exception.
+**The strategic consequence, stated plainly: do not spend the one-shot Next Fest
+slot on a low pre-fest wishlist base.** Ship the demo, build wishlists, spend the
+slot later.
 
-That is genuinely all that verified. **I am not going to write a demo strategy
-on it.** What the other fourteen researches do license, for the first ninety
-seconds, is design rather than marketing:
+**(C) UNSUPPORTED — our judgement, marked as such.** Three floors, twenty
+minutes, the shape of the first ninety seconds, meta-progression carry-over.
+**There is no primary measured data on any of it** — not on demo length, drop-off
+curves, tutorial cost, slice vs full run, or capsule click-through. Every
+circulating number traced to an uncited SEO blog, including *"Valve recommends
+30–45 minutes"*, which Valve's own text contradicts: **"no requirements
+regarding… length of demo."**
 
-- the core loop must be visible immediately — one gem, one door, one toll, no
-  tutorial room;
-- the first floor should open in **Relax**, so the first thing the player does
-  is read a room rather than react to one (Law 4, and our sanctuary already does
-  this);
-- the names wall in the first start room is the first thing that says this place
-  had people in it, and it costs nothing;
-- one fragment — *"You are not the first. Read the wall."* — is the only
-  fragment that points at another fragment, and it teaches that the wall is real.
+So our twenty-minute demo is not wrong — it is **unevidenced**, and this document
+will not imply otherwise in either direction. The one defensible heuristic is
+Zukowski's explicitly-labelled *theory* that low conversion means the game
+"looked better than it played", which argues for reaching the real core loop fast
+rather than through a tutorial. That is reasoning, not evidence.
 
-If demo strategy is going to drive a decision, **it needs its own research
-round.** Flagging that rather than dressing up two claims as a plan.
-
----
+**And the actionable one: instrument our own demo** — event pings at run start,
+floor transition and quit. No external dataset can substitute.
 
 ## Part 5 — order of work
 
@@ -624,57 +716,96 @@ rather than merely removed.
 
 ---
 
-## Part 6 — the register of what did not survive
+## Part 6 — the register: what moved, in both directions
 
-The most useful part of the document. Roughly a third of everything proposed
-died under verification, including things I had already drafted.
+Nine researches were truncated by a session limit and later resumed. **The
+resumed runs overturned several of their own refutations.** A 0-3 from a
+limit-starved run means the verifiers never ran — it is not evidence of falsity,
+and reading it as such was the biggest methodological error available here.
 
-**Things I had written into a draft and then had to remove:**
+### Reversed on the second pass — I had these WRONG in the first draft
 
-- **Four scalar channels** (noise/glim/force/scent) that emitters write and
-  actors poll — my original Din. Refuted 0-3 *as a description of Noita*. The
-  real shape is tags plus a sparse rule table plus receiver-declared
+- **Alien Isolation's two-AI Director.** Recorded as refuted 0-3. Verifies
+  **3-0** with the full agent set, sourced to Creative Assembly's own AI
+  programmer via nucl.ai plus datamined behaviour-tree data. *"the alien is never
+  allowed to cheat: while the director always knows where you are, the alien has
+  to figure it out for itself."*
+- **The menace gauge** as a real parameterised dosage meter — **3-0**, with three
+  tunables and ≥12 authored presets swapped per area.
+- **Spelunky's shopkeeper built from the ordinary monster schema** (0-3 → 2-1),
+  **aggression on eight world-state predicates** (1-2 → confirmed), and **the
+  ghost's escalation schedule** (0-3 → confirmed).
+
+### Downgraded on the second pass — I had these too CONFIDENT
+
+- **Thief's per-rung discharge times and "Min Relax After Peak"**: 3-0 in the
+  first run, **1-2 in the second**. Contested, not settled. I called Min Relax
+  After Peak "the sleeper"; it is now our design decision informed by a contested
+  source, not a Thief constant. The reaction delays (750/500 ms), the retrigger
+  windows, the ordered cones and the capacitor decay survive both runs at 3-0.
+- **"Three offers, not a shelf"**: the Hades half is verified, but the Vampire
+  Survivors half — the part about the *shape* of a choice — was never sourced,
+  and the Hades resume was cut short before its synthesis ran.
+
+### Corrections to my own draft, from evidence
+
+- **Four scalar channels** (my original Din) — refuted 0-3 as a description of
+  Noita. The real shape is tags, a sparse rule table, and receiver-declared
   susceptibility.
-- **"No then, no after, no next"** as the fragment rule. Necessary but not
-  sufficient; the verified rule is the law of three. The alternative I nearly
-  built — shatter one linear backstory, scatter the pieces — was **refuted 0-3**,
-  and survives only if the player finds every piece.
-- **The Toll Bell.** Argued from Malaise (verified) and DRG's drop-pod countdown
-  (**zero surviving claims**). It stands on one leg; the coefficient replaces it
-  on better evidence. Flagged, not recommended.
+- **"No then, no after, no next"** as the fragment rule — necessary but not
+  sufficient. The verified rule is the law of three; the alternative I nearly
+  built (shatter one backstory, scatter it) was **refuted 0-3**.
+- **The Toll Bell** — argued partly from Deep Rock Galactic, which produced
+  **zero surviving claims**. Replaced by the Coefficient on better evidence.
+- **A 60-second lantern wick on a wall clock** — contradicted by Darkest
+  Dungeon's movement-based decay, with a transplant note aimed directly at
+  evade-only games.
+- **The amplitude/frequency split**, which I flagged as my inference — it is
+  Valve's own sentence on slide 92.
 
-**Famous things that did not verify:**
+### Still unanswered, and I will not pretend otherwise
 
-- **Alien Isolation's two-AI Director** — the menace gauge, the coarse
-  proximity hints, "psychopathic serendipity", the creature learning to check
-  lockers: all **refuted 0-3**. What survived (3-0) is that the Alien's
-  behaviour tree simply has nodes **disabled at start and unlocked by
-  progression**, *"creating the illusion that the Alien is learning."* No
-  learning. A gate.
-- **Whether an absolute-rule sanctuary is a feature or a mistake** — the
-  question I most wanted answered — **got no verified answer.** Our spawn-room
-  sanctuary stays as specified, and the Amnesia warning that any clean-boundary
-  hiding rule is found in hour one remains unrebutted and unconfirmed.
-- **Nine of eleven Prey paranoia/mimic claims**, including that mimics choose
-  their objects emergently — they are hand-placed. So there is no "threatening
-  room without a monster" section here.
-- **Most of the loot psychology** — near-miss, variable-ratio dopamine, the
-  Blizzard "excitement not comparison" design test, "drop fewer, drop better":
-  all refuted or errored. Two claims survived and the document uses only those.
-- **Spelunky's shopkeeper aggro rules and the ghost's escalation** (0-3, 1-2).
-- **Dwarf Fortress entirely** — no surviving claims, so no "simulate causes, not
-  effects" law, however much I wanted one.
+- **Whether players resent dynamic difficulty.** All four claims from the CHI
+  2020 paper were voted down — both the "must be invisible" claim and its
+  counter.
+- **Dwarf Fortress entirely.** No surviving claims, so no "simulate causes, not
+  effects" law however much I wanted one.
 - **Every FromSoftware craft question** — item-description word counts, the
-  Undead Parish elevator, Hallownest's layered functions, bosses as tragedy, the
-  silence rule. Nothing. The world-building section rests on Jenkins, Worch &
-  Smith, Carson and Cook instead, which is a better foundation anyway.
+  Undead Parish elevator, bosses as tragedy, the silence rule. The world section
+  rests on Jenkins, Worch & Smith, Carson and Cook instead, which is a better
+  foundation anyway.
+- **Vampire Survivors, Path of Exile, drop-pacing numbers, pity timers**, and
+  Spelunky's level-generation algorithm.
+- **Dishonored** — chaos thresholds, vision timing, the rat plague: nothing in
+  either pass. There is no Dishonored material in this plan and there should not
+  be.
 
-**Two useful negatives to stop repeating:**
+### Myths to stop repeating
 
-- Valve has never published a demo-length number.
-- Outer Wilds has no "three-part anatomy of a clue" (0-3).
+- **"Valve recommends a 30–45 minute demo."** Traced to seven SEO blogs, none
+  citing a Valve source, and contradicted by Valve's own text: *"no requirements
+  regarding… length of demo."*
+- **The whole loot-psychology vocabulary.** Near-miss *persistence* is
+  inconsistently demonstrated and real casino data found nothing; the "~30%
+  density" figure is one statistically unsound study; the leading loot-box
+  **regulation** paper contains zero reinforcement-schedule content. And
+  Blizzard — the folklore's favourite example — files *"randomness is king"* and
+  *"near misses are fun"* under **"Where did we go wrong?"** Keep the asymmetry
+  honest: near-miss effects on *motivation* do replicate; it is *persistence*
+  that fails.
+- **Valve's "4% saw a decrease"** distribution and the **"500% increase in
+  converting wishlists"** figure — both refuted, both circulating as Valve data.
+- **Outer Wilds' "three-part anatomy of a clue"** — 0-3.
 
----
+### The conflict the plan has not resolved
+
+Two unrelated researches attacked the **six shop-bought relics** from opposite
+directions: Diablo says a purchase carries no drop moment and closed its own shop
+channel for that reason; Outer Wilds says whatever pays best is what players
+optimise for, and a purchasable meta-system competes with knowing. The plan
+proposes strengthening The Offer *and* The Ledger independently. **That is a real
+design conflict, not a wording problem**, and the resolution the evidence supports
+is that relics must be enablers of knowledge use, never substitutes for it.
 
 ## The one line
 
