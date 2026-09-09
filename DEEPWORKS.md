@@ -847,7 +847,7 @@ Sorted by what each composes with, divided by what it costs.
 | 9 | **The Offer** | four table changes | small | **built** |
 | 10 | **Rooms as templates with slots** | rides the existing pipeline and editor | medium | **built** |
 | 11 | **The Ledger** | needs the tells to already pay | medium | **built** |
-| 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing | **built** (four of five tableaux; the fifth needs a bell) |
+| 12 | **The World** | fragments, four-prop rooms, the names wall | small, ongoing | **built** (four of five tableaux; the fifth needs a bell the catalogue does not have) |
 
 **"Table written"** means the data and the pure functions exist in `src/`,
 with layout checks holding them to the rules above, and nothing in the game

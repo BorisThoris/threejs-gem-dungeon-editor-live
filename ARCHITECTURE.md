@@ -439,6 +439,19 @@ Two stores that both claimed the player's stats. So:
   three events had nobody - among them `wardenStruck`, which meant the
   Warden catching you sounded exactly like walking into spikes.
 - Textures come from `src/game/textures/registry.ts`, by id.
+- Where a set piece STANDS is the generator's, and one of them is placed by
+  meaning rather than by the draw: the tableau flagged `ahead` in the corpus
+  is staged in the last ordinary chamber on the approach to the exit, on the
+  floor the Keeper stands on, by `foreshadowOn` in
+  `src/game/deepworks/placement.ts`. A template placed that way is excluded
+  from `templatesForKind` - `placedByMeaning` is the predicate - because a
+  set piece that is both foreshadowing and scenery is scenery.
+- How often an authored room turns up at all is `AUTHORED_CHANCE` in
+  `generate.ts`, a fixed third. It has to be a constant rather than a
+  by-product of the draw: `pick(rng, [undefined, ...authored])` makes the
+  chance `1 - 1/(n+1)`, so the share climbed with the library and six
+  templates would have made five normal rooms in six hand-made. A growing
+  library must mean more DIFFERENT set pieces, never more set pieces.
 - What the walls SAY is `src/game/deepworks/fragments.ts` - forty fragments,
   none of which contains "then", "after" or "next" - and where each of them
   is cut is `src/game/deepworks/placement.ts`, which is the one place that
