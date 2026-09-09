@@ -66,8 +66,20 @@ export interface ShopOffer {
  */
 export const NEAR_REACH = 1.5;
 
-/** How far behind the counter the goods are laid out. */
-export const GOODS_OUT = 1.4;
+/**
+ * How far behind the counter the goods are laid out.
+ *
+ * On the counter's own side, which is what makes the arbitration work: a
+ * player standing anywhere in the room in front of the counter is further
+ * from every good than they are from the counter, so walking up to trade
+ * offers the trade. Step round the counter to the goods and the goods
+ * answer, which is what they are for.
+ *
+ * The number is the smallest that clears the goods' reach from the counter
+ * itself, with margin: at the counter a good is 1.97m away against a reach
+ * of 1.5. Below about 1.6 the counter starts losing to its own stock.
+ */
+export const GOODS_OUT = 1.8;
 
 /**
  * Laid out so that none of them is on the line a player walks in on.

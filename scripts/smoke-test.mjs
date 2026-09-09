@@ -3493,7 +3493,22 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
 
     // --- A life, across the counter ---------------------------------------
     await page.evaluate(() => window.__run.setState({ lives: 2, gems: 9 }));
-    const lifeOffer = await stepTo(counter, 2.0);
+    /**
+     * In front of the counter, on the room's side of it.
+     *
+     * The counter's goods are laid out behind it, so standing beside or
+     * behind the counter offers a good - which is what the goods are for
+     * and is not what this check is about. Walking up to trade means
+     * arriving from the room, and this is that spot rather than "somewhere
+     * within two metres", which is how this first read a bomb.
+     */
+    const front = await page.evaluate((id) => {
+      const room = window.__run.getState().dungeon.rooms.find((r) => r.id === id);
+      const [x, , z] = window.__anchorsFor("shop", room)[0];
+      const len = Math.hypot(x, z) || 1;
+      return [x - (x / len) * 2.2, 0, z - (z / len) * 2.2];
+    }, shop.id);
+    const lifeOffer = await stepTo(front, 0.9);
     ok("the counter offers a life when one is missing", /life/i.test(String(lifeOffer)), String(lifeOffer));
     await act();
     const bought = await page.evaluate(() => {
@@ -3576,7 +3591,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // has published again, which on this machine can be longer than two
     // reads. Wait for the old offer to go before reading the reason.
     await page.waitForFunction(() => !/Buy a bomb/.test(document.body.innerText), null, { timeout: 8000 }).catch(() => null);
-    const blocked = await stepTo(counter, 2.0);
+    const blocked = await stepTo(front, 0.9);
     ok(
       "a blocked counter still says why, when nothing better is in reach",
       /full health|know what everything|could be better|it is sold|flask will not take/i.test(String(blocked)),

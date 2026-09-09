@@ -1157,18 +1157,39 @@ check("500 dungeons across every floor size: connected, legal, and a vault that 
         }
         /**
          * And none of them stands where walking to the counter would pick
-         * it up instead. The player comes in from the room, so "at the
-         * counter" is two metres out along the line to the middle.
+         * it up instead - from ANY direction a player can arrive from.
+         *
+         * The first version of this tried one standing spot, two metres out
+         * along the line to the middle of the room, and passed. The smoke
+         * suite then walked to the counter from the side, stopped two
+         * metres away as asked, and was offered a bomb: it was a metre and
+         * a half from one of the goods and three metres from nothing else.
+         * A player coming in by a different doorway arrives differently, so
+         * the check has to ask about the whole circle.
          */
         const counter = offers.find((o) => o.id === "life");
-        const len = Math.hypot(counter.x, counter.z) || 1;
-        const stand = { x: counter.x - (counter.x / len) * 2, z: counter.z - (counter.z / len) * 2 };
-        const nearest = offers
-          .map((o) => ({ id: o.id, d: Math.hypot(o.x - stand.x, o.z - stand.z), reach: o.reach ?? L.INTERACT_RADIUS }))
-          .filter((o) => o.d <= o.reach)
-          .sort((a, b) => a.d - b.d)[0];
-        if (!nearest || nearest.id !== "life") {
-          problems.push(`${where}: standing at the counter offers ${nearest ? nearest.id : "nothing"}`);
+        const half = size / 2;
+        /**
+         * From the room's side of the counter, which is the half a player
+         * trading is standing in. Behind and beside it are where the goods
+         * are, and there the goods answering IS the behaviour - what this
+         * refuses is the counter losing to its own stock while the player
+         * is in front of it.
+         */
+        const toRoom = Math.atan2(-counter.z, -counter.x);
+        for (let a = 0; a < 24; a++) {
+          const th = toRoom + ((a / 24) - 0.5) * Math.PI;
+          const stand = { x: counter.x + Math.cos(th) * 2, z: counter.z + Math.sin(th) * 2 };
+          // Only from spots a player could actually be standing on.
+          if (Math.abs(stand.x) > half - 0.5 || Math.abs(stand.z) > half - 0.5) continue;
+          const nearest = offers
+            .map((o) => ({ id: o.id, d: Math.hypot(o.x - stand.x, o.z - stand.z), reach: o.reach ?? L.INTERACT_RADIUS }))
+            .filter((o) => o.d <= o.reach)
+            .sort((a2, b2) => a2.d - b2.d)[0];
+          if (!nearest || nearest.id !== "life") {
+            problems.push(`${where}: two metres in front of the counter at ${Math.round((th * 180) / Math.PI)}deg offers ${nearest ? nearest.id : "nothing"}`);
+            break;
+          }
         }
       }
     }
