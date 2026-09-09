@@ -168,3 +168,55 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
 export const NAMES_SHOWN = 12;
 
 export const namesOn = (runs: number): number => Math.max(0, Math.min(NAMES_SHOWN, runs));
+
+/**
+ * How many doorways before the exit the forward-pointing tableau stands.
+ *
+ * The corpus flags one tableau `ahead`, and the staged-damage vocabulary it
+ * comes from allows exactly this: a staged area may lead to a conclusion
+ * about a past event "or to suggest a potential danger just ahead". The
+ * door frame scored with the marks a bar leaves is the second kind - it is
+ * the Keeper, described, two rooms before the Keeper is met.
+ *
+ * Two, because one is the room you can already see into from the exit's
+ * doorway and three is far enough back that nothing connects them.
+ */
+export const AHEAD_OF_KEEPER = 2;
+
+/** How much further back it may look for an ordinary chamber to stage in. */
+export const AHEAD_WINDOW = 2;
+
+/**
+ * The room the forward-pointing tableau belongs in, or nothing.
+ *
+ * The last ORDINARY chamber on the approach to the exit - two doorways
+ * back if that room is a plain one, and up to two further back if it is
+ * not. A fixed distance was the first version and it staged the set piece
+ * on a fifth of floors: the room exactly two back is as often a shop or a
+ * trial as a corridor, and a tableau laid over a room that has its own
+ * content is four props fighting a counter.
+ *
+ * Widening it costs nothing the rule cared about. What matters is that the
+ * staging is on the way to the Keeper and close enough to read as part of
+ * the approach; which of the last three chambers it lands in does not
+ * change what it says.
+ *
+ * Only on the floor that HAS a Keeper: the same set of props two rooms
+ * before an ordinary staircase would be foreshadowing nothing, and a tell
+ * that points at nothing is the thing this whole file is written against.
+ */
+export const foreshadowOn = (
+  pathToExit: readonly string[] | null,
+  isPlain: (id: string) => boolean
+): string | null => {
+  if (!pathToExit || pathToExit.length < AHEAD_OF_KEEPER + 2) return null;
+  for (let back = AHEAD_OF_KEEPER; back <= AHEAD_OF_KEEPER + AHEAD_WINDOW; back++) {
+    const at = pathToExit.length - 1 - back;
+    // Never the start room: a floor short enough for those to collide has
+    // no room for the staging, and the first breath of a floor is not the
+    // place to be told about the last.
+    if (at <= 0) return null;
+    if (isPlain(pathToExit[at])) return pathToExit[at];
+  }
+  return null;
+};

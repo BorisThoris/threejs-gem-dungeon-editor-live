@@ -124,7 +124,16 @@ const runFloors = (seed, floors = 3) => {
   let next = seed;
   for (let floor = 1; floor <= floors; floor++) {
     const rules = L.floorRules(floor);
-    const d = L.generateDungeon({ seed: next, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+    // `lastFloor` included, because a run's own descent passes it and a
+    // helper that walks the floors WITHOUT it is walking floors the game
+    // does not build - which is how the staged set piece read as never
+    // placed at all.
+    const d = L.generateDungeon({
+      seed: next,
+      minRooms: rules.minRooms,
+      maxRooms: rules.maxRooms,
+      lastFloor: floor === floors,
+    });
     out.push(d);
     next = (d.seed * 7919 + (floor + 1)) >>> 0;
   }
@@ -480,6 +489,63 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   check("a tableau is authored to be read the same way every time",
     tableaux.length > 0 && tableaux.every((t) => !(t.slots ?? []).length),
     `${tableaux.length} tableaux, none of them slotted`);
+  /**
+   * The one tableau that points FORWARDS, staged on the way to what it
+   * describes rather than wherever the generator was digging.
+   *
+   * It shipped with an `ahead` flag that nothing read for as long as the
+   * corpus existed - the same shape of gap as a lesson nothing records or
+   * a template nothing registers, and the reason this block exists at all.
+   */
+  {
+    const ahead = L.TABLEAUX.filter((t) => t.ahead);
+    check("exactly one tableau in the corpus points forwards", ahead.length === 1,
+      ahead.map((t) => t.id).join(", ") || "none");
+    const template = L.foreshadowingTemplate();
+    check("and a shipped room stages it", !!template, template ? template.id : "nothing composed for it");
+
+    let floors = 0;
+    let staged = 0;
+    const wrong = [];
+    for (let seed = 1; seed <= 120; seed++) {
+      const last = runFloors(seed)[2];
+      floors++;
+      const at = last.rooms.find((r) => r.template === template.id);
+      if (!at) continue;
+      staged++;
+      const path = L.shortestPath(last.rooms, "start", last.endId) ?? [];
+      const back = path.length - 1 - path.indexOf(at.id);
+      // Where it points: exactly the declared distance before the exit, and
+      // the room wears the template's own size and shape rather than
+      // whatever it was dug at.
+      if (back < L.AHEAD_OF_KEEPER || back > L.AHEAD_OF_KEEPER + L.AHEAD_WINDOW) {
+        wrong.push(`seed ${seed}: ${back} doorways back`);
+      }
+      if (at.size !== template.size || at.shape !== template.shape) wrong.push(`seed ${seed}: ${at.size}/${at.shape}`);
+    }
+    /**
+     * Not every floor, and that is the rule rather than a shortfall: it is
+     * staged only where an ordinary chamber sits on the approach, because
+     * four props laid over a shop or a trial fight that room's own content.
+     * About half the Keeper's floors carry it, which for a set piece is
+     * the right frequency anyway - one a player meets every other run is
+     * a thing they remember, and one they meet every run is furniture.
+     */
+    check("it is staged on a good share of the Keeper's floors", staged > floors / 3, `${staged} of ${floors}`);
+    check("and always on the approach to the exit, at its own size",
+      wrong.length === 0, wrong.slice(0, 3).join("; ") || "none");
+
+    // And never on a floor with no Keeper on it: the same four props two
+    // rooms before an ordinary staircase foreshadow nothing.
+    let early = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      for (const d of runFloors(seed).slice(0, 2)) {
+        if (d.rooms.some((r) => r.template === template.id)) early++;
+      }
+    }
+    check("and never staged on a floor the Keeper does not stand on", early === 0, `${early} early`);
+  }
+
   check("and every one of them names a tableau the corpus has",
     tableaux.every((t) => L.TABLEAUX.some((x) => x.id === t.tableau)),
     tableaux.map((t) => t.tableau).join(", "));

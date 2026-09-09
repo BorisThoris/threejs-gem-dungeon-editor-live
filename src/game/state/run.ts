@@ -831,6 +831,9 @@ export const useRun = create<RunState>()(
         seed,
         minRooms: rules.minRooms,
         maxRooms: rules.maxRooms,
+        // No `lastFloor` here: a run begins on floor one, which is never
+        // the floor the Keeper stands on, so the set piece that describes
+        // it has nothing to point at. Only the descent can stage it.
         // What a delver opens with can already bias their first floor.
         pays: modifiers(delver.relics).biasesRooms,
       });
@@ -1061,6 +1064,7 @@ export const useRun = create<RunState>()(
           seed: (s.dungeon.seed * 7919 + floor) >>> 0,
           minRooms: rules.minRooms,
           maxRooms: rules.maxRooms,
+          lastFloor: floor === FLOORS,
           // Bought on the way down, felt on the floor below - which is
           // the only place a meta purchase is allowed to be felt at all.
           pays: modifiers(s.relics).biasesRooms,

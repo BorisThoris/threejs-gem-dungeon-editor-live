@@ -1,6 +1,7 @@
 import { shapeFits } from "./layout";
 import { createRng, pick, shuffle } from "../rng";
-import { templatesForKind } from "../rooms/templates";
+import { foreshadowOn } from "../deepworks/placement";
+import { foreshadowingTemplate, templatesForKind } from "../rooms/templates";
 import {
   ROOM_SIZE_DEFAULT,
   ROOM_SIZE_HUGE,
@@ -37,6 +38,13 @@ export interface GenerateOptions {
    * delver is carrying are the run's business, not the dungeon's.
    */
   pays?: boolean;
+  /**
+   * Whether this is the floor the Keeper stands on, which is the only
+   * thing the generator needs to know about it: the forward-pointing
+   * tableau is staged two rooms before the exit, and two rooms before an
+   * ordinary staircase it would be foreshadowing nothing.
+   */
+  lastFloor?: boolean;
 }
 
 /**
@@ -271,7 +279,36 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   // and the key is only ever in a room that is not the vault - which is
   // enough, because the vault is the only locked door on the floor and
   // every other room is therefore freely reachable.
-  const critical = new Set(shortestPath(rooms, "start", endId) ?? []);
+  const toExit = shortestPath(rooms, "start", endId);
+
+  /**
+   * The set piece that points forwards, staged on the way to the thing it
+   * describes.
+   *
+   * Every other authored room is drawn where the generator happened to be
+   * digging. This one is placed by MEANING - a door frame scored with the
+   * marks a bar leaves, two rooms before the Keeper that leaves them - and
+   * it is the only placement in the game that works that way, because it
+   * is the only tableau in the corpus flagged to.
+   *
+   * The room takes the template's own size and shape as well as its props,
+   * exactly as it would have if the template had been drawn when the room
+   * was dug: an authored composition validated at sixteen metres and laid
+   * into a twenty-two metre hall is a composition nobody checked.
+   */
+  if (options.lastFloor) {
+    const ahead = foreshadowingTemplate();
+    const plain = (id: string) => rooms.find((r) => r.id === id)?.kind === ahead?.kind;
+    const at = ahead ? foreshadowOn(toExit, plain) : null;
+    const room = at ? rooms.find((r) => r.id === at) : undefined;
+    if (ahead && room) {
+      room.template = ahead.id;
+      room.size = ahead.size;
+      room.shape = ahead.shape;
+    }
+  }
+
+  const critical = new Set(toExit ?? []);
   // Off the critical path is not enough: a room can be off the shortest
   // route and still be the only way through to the far side of the floor.
   // The lock only goes on a room the floor can be walked without.

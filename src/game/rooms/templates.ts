@@ -1,3 +1,4 @@
+import { TABLEAUX } from "../deepworks/fragments";
 import { orient, orientationOf, type Orientation } from "../dungeon/layout";
 import type { PropPlacement, Room, RoomTemplate } from "../dungeon/types";
 import { resolveSlots } from "./slots";
@@ -22,8 +23,22 @@ export const getTemplate = (id: string): RoomTemplate | undefined => TEMPLATES.g
 /** Everything registered, for the check that validates what ships. */
 export const allTemplates = (): RoomTemplate[] => [...TEMPLATES.values()];
 
+/**
+ * The templates the generator may draw for a room of this kind.
+ *
+ * Excludes anything placed by MEANING rather than by the draw. A
+ * forward-pointing tableau staged two rooms before the Keeper stops
+ * foreshadowing anything the moment the same four props also turn up in an
+ * ordinary corridor on floor one - it reads as scenery, and the one room
+ * that was staged reads as scenery too. A set piece is either placed
+ * deliberately or drawn at random, and it cannot be both.
+ */
 export const templatesForKind = (kind: RoomTemplate["kind"]): RoomTemplate[] =>
-  [...TEMPLATES.values()].filter((t) => t.kind === kind);
+  [...TEMPLATES.values()].filter((t) => t.kind === kind && !placedByMeaning(t));
+
+/** Whether this template is staged by a rule instead of drawn. */
+export const placedByMeaning = (t: RoomTemplate): boolean =>
+  TABLEAUX.some((x) => x.id === t.tableau && x.ahead);
 
 /**
  * An authored room's props, turned the way the room they are in is turned.
@@ -81,3 +96,15 @@ export function orientProps(props: PropPlacement[], o: Orientation): PropPlaceme
     return { ...p, x, z, rotation: turn };
   });
 }
+
+/**
+ * The registered template that points FORWARDS, if one ships.
+ *
+ * A tableau flagged `ahead` in the corpus is staged to describe something
+ * the delver has not met yet, so it is placed by where it points rather
+ * than by the generator's ordinary draw. Asked of the registry rather than
+ * hardcoded, so shipping a second forward-pointing set piece is a content
+ * change and not a code one.
+ */
+export const foreshadowingTemplate = (): RoomTemplate | undefined =>
+  [...TEMPLATES.values()].find(placedByMeaning);

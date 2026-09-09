@@ -237,7 +237,24 @@ export const TRIPLED: readonly Tripled[] = [
  * scored with the marks the Keeper's bar leaves is placed two rooms before
  * the Keeper.
  */
-export const TABLEAUX = [
+export interface Tableau {
+  id: string;
+  /** What the four objects say between them, which no text ever states. */
+  tells: string;
+  /** Four ordinary things, and never a fifth: closure needs a gap to close. */
+  props: readonly string[];
+  /**
+   * Staged to describe something the delver has NOT met yet, rather than
+   * something that already happened. Read by the placement, so a tableau
+   * flagged here is put where it points instead of wherever the generator
+   * would have drawn it.
+   */
+  ahead?: boolean;
+  /** Not composable from the prop catalogue as it stands. */
+  needsProps?: boolean;
+}
+
+export const TABLEAUX: readonly Tableau[] = [
   {
     id: "barred-from-inside",
     tells: "someone shut themselves in and the lamp went out first",
