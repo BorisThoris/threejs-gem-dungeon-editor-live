@@ -416,6 +416,82 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     turned.slice(0, 2).join("; ") || "none");
 }
 
+/**
+ * How much of a run somebody actually made, and how full those rooms are.
+ *
+ * The measurement that started this: 373 authored rooms out of 4,572, eight
+ * percent, because only two of the twelve kinds a run hands out had a
+ * template at all - and a run is mostly the other ten. A room builder, a
+ * validator, a slot system and a foreshadowing rule had all shipped, and a
+ * player walking a floor met one hand-made room in twelve.
+ *
+ * The second half is worse and was not measured before: a templated room
+ * uses ITS OWN props and nothing else - no seeded arrangement, no biome
+ * litter - so a template with four props in it drew a room barer than the
+ * generator would have furnished. The authoring pipeline was making rooms
+ * emptier.
+ */
+{
+  const KINDS_WITH_ROOMS = new Set();
+  let rooms = 0;
+  let authored = 0;
+  const perKind = new Map();
+  for (let seed = 1; seed <= 40; seed++) {
+    let next = seed;
+    for (let floor = 1; floor <= 3; floor++) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({
+        seed: next,
+        minRooms: rules.minRooms,
+        maxRooms: rules.maxRooms,
+        lastFloor: floor === 3,
+      });
+      next = (d.seed * 7919 + (floor + 1)) >>> 0;
+      for (const r of d.rooms) {
+        rooms++;
+        KINDS_WITH_ROOMS.add(r.kind);
+        if (r.template) authored++;
+        const at = perKind.get(r.kind) ?? { n: 0, made: 0 };
+        at.n++;
+        if (r.template) at.made++;
+        perKind.set(r.kind, at);
+      }
+    }
+  }
+
+  const without = [...KINDS_WITH_ROOMS].filter((k) => L.templatesForKind(k).length === 0);
+  check("every kind of room a run hands out has one somebody made", without.length === 0, without.join(", ") || "all twelve");
+
+  const share = authored / rooms;
+  check("and a run is about a third hand-made rather than a twelfth",
+    share > 0.2 && share < 0.45, `${(share * 100).toFixed(0)}% of ${rooms} rooms`);
+  // Per kind, because a share that is right on average and zero for eight
+  // kinds is the bug this replaced, and the average would not have caught
+  // it.
+  const starved = [...perKind].filter(([, v]) => v.made / v.n < 0.15).map(([k, v]) => `${k} ${((v.made / v.n) * 100).toFixed(0)}%`);
+  check("and no kind is left out of it", starved.length === 0, starved.join(", ") || "none under 15%");
+
+  /**
+   * And the room the player stands in is never barer for having been made.
+   *
+   * `placementsFor` returns the template's own props where a room has one,
+   * so this compares the same room with and without its template. The
+   * braziers are in both counts and the point is what stands between them.
+   */
+  const bare = [];
+  for (const t of L.allTemplates()) {
+    for (let seed = 1; seed <= 20; seed++) {
+      const room = { ...L.roomForTemplate(t, { x: seed % 5, z: seed % 3 }), id: `r${seed}`, seed };
+      const made = L.placementsFor(room, seed).length;
+      const { template: _drop, ...plain } = room;
+      const dressed = L.placementsFor(plain, seed).length;
+      if (made < dressed) bare.push(`${t.id} @${seed}: ${made} against ${dressed}`);
+    }
+  }
+  check("a room somebody made is never emptier than the one the generator would have dressed",
+    bare.length === 0, [...new Set(bare.map((b) => b.split(" ")[0]))].join(", ") || "none of 20 seeds each");
+}
+
 // --- Slots: how many rooms one authored room is ----------------------------
 //
 // A run is 34 rooms and 23 of them look different, and an authored set piece
@@ -1016,7 +1092,20 @@ for (let seed = 1; seed <= 500; seed++) {
   }
   const kinds = d.rooms.map((r) => r.kind);
   if (kinds.filter((k) => k === "end").length !== 1 || kinds.filter((k) => k === "start").length !== 1) bad++;
-  if (d.rooms.find((r) => r.id === d.endId).template) bad++;
+  /**
+   * The exit may be a room somebody made, but only one made FOR an exit.
+   *
+   * This used to read "the exit never has a template", which was true only
+   * because no template for the end kind existed - the rule it looked like
+   * it was stating was never the rule. What actually matters is that a
+   * template decides its room's size and shape, so a composition drawn for
+   * a fourteen-metre hole in the wall must never end up being the stair
+   * hall. The generator has both paths: a fresh end room draws from the end
+   * kind's own templates, and a room CONVERTED to the exit drops whatever
+   * it was carrying.
+   */
+  const endRoom = d.rooms.find((r) => r.id === d.endId);
+  if (endRoom.template && !L.templatesForKind("end").some((t) => t.id === endRoom.template)) bad++;
   if (d.rooms.some((r) => r.template)) authored++;
 }
 check("500 dungeons across every floor size: connected, legal, and a vault that never blocks the exit", bad === 0, `${bad} bad`);

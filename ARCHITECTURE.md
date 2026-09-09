@@ -465,6 +465,26 @@ Two stores that both claimed the player's stats. So:
   chance `1 - 1/(n+1)`, so the share climbed with the library and six
   templates would have made five normal rooms in six hand-made. A growing
   library must mean more DIFFERENT set pieces, never more set pieces.
+- **A template exists for every kind of room a run hands out, and each holds
+  eleven props.** Both numbers are held by `yarn test:layout` and both were
+  measured before they were chosen. The first: only `normal` and `treasure`
+  had templates, and a run is mostly the other ten kinds, so a third of the
+  eligible rooms was eight percent of the run - a player met one hand-made
+  room in twelve, and the room builder, the validator and the slot system
+  were all serving that twelfth. It is 34% now. The second is worse and had
+  never been measured: a templated room draws ITS OWN props and nothing else
+  - no seeded arrangement, no biome litter - so the four-to-six prop
+  templates that shipped first drew rooms EMPTIER than the generator would
+  have furnished, and the authoring pipeline was making the game barer. The
+  eleven is the draw-call budget's, not taste: a dressed room reads 51-59
+  calls against a written 72, and what makes an authored room read as made
+  is the arrangement rather than the count.
+- Sizes and shapes come from the template, so an authored room is only ever
+  built at a size and shape its own kind allows - `SIZE_RANGE` and
+  `SHAPES_FOR` in `generate.ts` - and the shipped set spreads across the
+  ladder deliberately. Fourteen templates all authored at sixteen metres
+  made sixteen metres half the dungeon, which the size-variety check caught
+  the same afternoon.
 - What the walls SAY is `src/game/deepworks/fragments.ts` - forty fragments,
   none of which contains "then", "after" or "next" - and where each of them
   is cut is `src/game/deepworks/placement.ts`, which is the one place that

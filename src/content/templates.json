@@ -1,255 +1,1578 @@
 [
-  {
-    "id": "vault-a",
-    "kind": "treasure",
-    "size": 16,
-    "shape": "square",
-    "props": [
-      {
-        "kind": "chest",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0.5
-      },
-      {
-        "kind": "chest",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": -0.5
-      },
-      {
-        "kind": "chest",
-        "x": 5.5,
-        "z": 3.4,
-        "rotation": 0.5
-      },
-      {
-        "kind": "pillar",
-        "x": -5.5,
-        "z": 3.4,
-        "rotation": 0,
-        "slot": "dressing"
-      },
-      {
-        "kind": "crystal",
-        "x": 3.4,
-        "z": -5.5,
-        "rotation": 0,
-        "slot": "dressing"
-      },
-      {
-        "kind": "barrel",
-        "x": 5.5,
-        "z": -3.4,
-        "rotation": 0,
-        "slot": "dressing"
-      }
+ {
+  "id": "vault-a",
+  "kind": "treasure",
+  "size": 16,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0.5,
+    "kind": "chest",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": -0.5,
+    "kind": "chest",
+    "x": -3.4,
+    "z": -5.5
+   },
+   {
+    "rotation": 0.5,
+    "kind": "chest",
+    "x": 5.5,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -5.5,
+    "z": 3.4,
+    "slot": "dressing"
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 3.4,
+    "z": -5.5,
+    "slot": "dressing"
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 5.5,
+    "z": -3.4,
+    "slot": "dressing"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -3.6,
+    "z": -6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 6.6,
+    "z": -3.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 3.4,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -6.9,
+    "z": 5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -4.6,
+    "z": 4.6
+   }
+  ],
+  "slots": [
+   {
+    "slot": "dressing",
+    "op": "shuffle",
+    "into": []
+   }
+  ]
+ },
+ {
+  "id": "hall-a",
+  "kind": "normal",
+  "size": 16,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "wall",
+    "x": 5.5,
+    "z": 4.3
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 3.4,
+    "z": 5.5,
+    "slot": "clutter"
+   },
+   {
+    "rotation": 0.4,
+    "kind": "chest",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.4,
+    "z": -5.5,
+    "slot": "clutter"
+   },
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": -5.5,
+    "z": 3.8,
+    "slot": "furniture"
+   },
+   {
+    "rotation": 2,
+    "kind": "chair",
+    "x": 3.4,
+    "z": -5.5,
+    "slot": "clutter"
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 4.8,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 7.6,
+    "z": 4
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.2,
+    "z": 3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 6.5,
+    "z": -3.8
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -4.4,
+    "z": 5
+   }
+  ],
+  "slots": [
+   {
+    "slot": "clutter",
+    "op": "nsubst",
+    "into": [
+     "urn",
+     "rubble"
     ],
-    "slots": [
-      {
-        "slot": "dressing",
-        "op": "shuffle",
-        "into": []
-      }
+    "n": 1
+   },
+   {
+    "slot": "furniture",
+    "op": "subst",
+    "into": [
+     "table",
+     "bookshelf"
     ]
-  },
-  {
-    "id": "hall-a",
-    "kind": "normal",
-    "size": 16,
-    "shape": "square",
-    "props": [
-      {
-        "kind": "wall",
-        "x": 5.5,
-        "z": 4.3,
-        "rotation": 0
-      },
-      {
-        "kind": "barrel",
-        "x": 3.4,
-        "z": 5.5,
-        "rotation": 0,
-        "slot": "clutter"
-      },
-      {
-        "kind": "chest",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0.4
-      },
-      {
-        "kind": "skull",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": 0,
-        "slot": "clutter"
-      },
-      {
-        "kind": "table",
-        "x": -5.5,
-        "z": 3.8,
-        "rotation": 0,
-        "slot": "furniture"
-      },
-      {
-        "kind": "chair",
-        "x": 3.4,
-        "z": -5.5,
-        "rotation": 2.0,
-        "slot": "clutter"
-      }
+   }
+  ]
+ },
+ {
+  "id": "tableau-barred",
+  "kind": "normal",
+  "size": 16,
+  "shape": "square",
+  "tableau": "barred-from-inside",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "wall",
+    "x": 5.5,
+    "z": 4.3
+   },
+   {
+    "rotation": 0,
+    "kind": "chair",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -3.4,
+    "z": -5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -5.5,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 4.8,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 7.5,
+    "z": 4.4
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -6.6,
+    "z": 4.2
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 5.4,
+    "z": -5.4
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.2,
+    "z": 3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 3,
+    "z": 3
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -4.6,
+    "z": 6.6
+   }
+  ]
+ },
+ {
+  "id": "tableau-paytin",
+  "kind": "normal",
+  "size": 16,
+  "shape": "square",
+  "tableau": "sealed-pay-tin",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "chest",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.4,
+    "z": -5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 5.5,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.6,
+    "z": 3.6
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 6.6,
+    "z": -4.4
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 4.2,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.4,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -4.8,
+    "z": 4.8
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 3.2,
+    "z": 3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -5.4,
+    "z": -6.4
+   }
+  ]
+ },
+ {
+  "id": "tableau-desk",
+  "kind": "normal",
+  "size": 16,
+  "shape": "square",
+  "tableau": "the-wrong-side-of-the-desk",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": -5.5,
+    "z": 3.8
+   },
+   {
+    "rotation": 0,
+    "kind": "chair",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "chair",
+    "x": -3.4,
+    "z": -5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 5.5,
+    "z": 3.4
+   },
+   {
+    "rotation": 1.57,
+    "kind": "bookshelf",
+    "x": 7.2,
+    "z": -4.8
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.7,
+    "z": 4.7
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 4.4,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 3.2,
+    "z": -3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -5.6,
+    "z": -5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -3.4,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 6.6,
+    "z": 3.4
+   }
+  ]
+ },
+ {
+  "id": "tableau-barmarks",
+  "kind": "normal",
+  "size": 16,
+  "shape": "square",
+  "tableau": "the-bar-marks",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "wall",
+    "x": 5.5,
+    "z": 4.3
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -5.5,
+    "z": -3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -3.4,
+    "z": -5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -5.5,
+    "z": 3.4
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.6,
+    "z": 4.2
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 4.4,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 7.1,
+    "z": 3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.2,
+    "z": -3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 5.6,
+    "z": -5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -4.8,
+    "z": 4.8
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -3.6,
+    "z": 6.6
+   }
+  ]
+ },
+ {
+  "id": "hall-collapsed",
+  "kind": "normal",
+  "size": 20,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -6.88,
+    "z": -6.88
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -5,
+    "z": -8.13
+   },
+   {
+    "rotation": 0.3,
+    "kind": "crate",
+    "x": -6.25,
+    "z": -5,
+    "slot": "spill"
+   },
+   {
+    "rotation": -0.2,
+    "kind": "crate",
+    "x": -7.8,
+    "z": -6.9,
+    "slot": "spill"
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": -4.25,
+    "z": -5.75,
+    "slot": "spill"
+   },
+   {
+    "rotation": 1.57,
+    "kind": "bookshelf",
+    "x": 6.88,
+    "z": -6.88
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.75,
+    "z": -3.75
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 8.13,
+    "z": -4.75
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 5,
+    "z": 5
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 6.25,
+    "z": 6.88
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 8.13,
+    "z": 5.63
+   }
+  ],
+  "slots": [
+   {
+    "slot": "spill",
+    "op": "nsubst",
+    "into": [
+     "urn",
+     "barrel",
+     "crate"
     ],
-    "slots": [
-      {
-        "slot": "clutter",
-        "op": "nsubst",
-        "into": [
-          "urn",
-          "rubble"
-        ],
-        "n": 1
-      },
-      {
-        "slot": "furniture",
-        "op": "subst",
-        "into": [
-          "table",
-          "bookshelf"
-        ]
-      }
-    ]
-  },
-  {
-    "id": "tableau-barred",
-    "kind": "normal",
-    "size": 16,
-    "shape": "square",
-    "tableau": "barred-from-inside",
-    "props": [
-      {
-        "kind": "wall",
-        "x": 5.5,
-        "z": 4.3,
-        "rotation": 0
-      },
-      {
-        "kind": "chair",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0
-      },
-      {
-        "kind": "candle",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": 0
-      },
-      {
-        "kind": "skull",
-        "x": -5.5,
-        "z": 3.4,
-        "rotation": 0
-      }
-    ]
-  },
-  {
-    "id": "tableau-paytin",
-    "kind": "normal",
-    "size": 16,
-    "shape": "square",
-    "tableau": "sealed-pay-tin",
-    "props": [
-      {
-        "kind": "chest",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0
-      },
-      {
-        "kind": "skull",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": 0
-      },
-      {
-        "kind": "web",
-        "x": 5.5,
-        "z": 3.4,
-        "rotation": 0
-      },
-      {
-        "kind": "crate",
-        "x": 5.5,
-        "z": -3.4,
-        "rotation": 0
-      }
-    ]
-  },
-  {
-    "id": "tableau-desk",
-    "kind": "normal",
-    "size": 16,
-    "shape": "square",
-    "tableau": "the-wrong-side-of-the-desk",
-    "props": [
-      {
-        "kind": "table",
-        "x": -5.5,
-        "z": 3.8,
-        "rotation": 0
-      },
-      {
-        "kind": "chair",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0
-      },
-      {
-        "kind": "chair",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": 0
-      },
-      {
-        "kind": "candle",
-        "x": 5.5,
-        "z": 3.4,
-        "rotation": 0
-      }
-    ]
-  },
-  {
-    "id": "tableau-barmarks",
-    "kind": "normal",
-    "size": 16,
-    "shape": "square",
-    "tableau": "the-bar-marks",
-    "props": [
-      {
-        "kind": "wall",
-        "x": 5.5,
-        "z": 4.3,
-        "rotation": 0
-      },
-      {
-        "kind": "rubble",
-        "x": -5.5,
-        "z": -3.4,
-        "rotation": 0
-      },
-      {
-        "kind": "candle",
-        "x": -3.4,
-        "z": -5.5,
-        "rotation": 0
-      },
-      {
-        "kind": "crate",
-        "x": -5.5,
-        "z": 3.4,
-        "rotation": 0
-      }
-    ]
-  }
+    "n": 1
+   }
+  ]
+ },
+ {
+  "id": "hall-camp",
+  "kind": "normal",
+  "size": 18,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": -6.19,
+    "z": 5.06
+   },
+   {
+    "rotation": 1.2,
+    "kind": "chair",
+    "x": -4.5,
+    "z": 6.52
+   },
+   {
+    "rotation": -1.2,
+    "kind": "chair",
+    "x": -8,
+    "z": 5.9
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -6.19,
+    "z": 3.6
+   },
+   {
+    "rotation": 0,
+    "kind": "potion",
+    "x": -3.6,
+    "z": 6.75
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 5.63,
+    "z": 5.63,
+    "slot": "kit"
+   },
+   {
+    "rotation": 0.4,
+    "kind": "crate",
+    "x": 6.5,
+    "z": 6,
+    "slot": "kit"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 4.5,
+    "z": 7.42,
+    "slot": "kit"
+   },
+   {
+    "rotation": 1.57,
+    "kind": "bookshelf",
+    "x": -7.2,
+    "z": -4.73
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 6.19,
+    "z": -5.63
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 3.82,
+    "z": -3.82
+   }
+  ],
+  "slots": [
+   {
+    "slot": "kit",
+    "op": "nsubst",
+    "into": [
+     "urn",
+     "crate",
+     "barrel"
+    ],
+    "n": 1
+   }
+  ]
+ },
+ {
+  "id": "vault-plundered",
+  "kind": "treasure",
+  "size": 20,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0.4,
+    "kind": "chest",
+    "x": -6.88,
+    "z": -6.25
+   },
+   {
+    "rotation": -0.3,
+    "kind": "chest",
+    "x": -5,
+    "z": -8
+   },
+   {
+    "rotation": 2.6,
+    "kind": "chest",
+    "x": 7,
+    "z": 6.25
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -8.25,
+    "z": -4.75
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 8.25,
+    "z": 4.75
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 5,
+    "z": 8
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -6.25,
+    "z": 6.75
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 4,
+    "z": 5.25
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 0,
+    "z": 3.75
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": 6.75,
+    "z": -6.75
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -6.75,
+    "z": 4.5
+   }
+  ]
+ },
+ {
+  "id": "vault-tomb",
+  "kind": "treasure",
+  "size": 22,
+  "shape": "hexagon",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "statue",
+    "x": -4.8,
+    "z": -7.1
+   },
+   {
+    "rotation": 0,
+    "kind": "statue",
+    "x": 7.1,
+    "z": -4.8
+   },
+   {
+    "rotation": 0.3,
+    "kind": "chest",
+    "x": -4.9,
+    "z": 7.4
+   },
+   {
+    "rotation": -0.3,
+    "kind": "chest",
+    "x": 4.9,
+    "z": 7.4
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -8.2,
+    "z": 3.7,
+    "slot": "urns"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 7.6,
+    "z": 4.7,
+    "slot": "urns"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -3.7,
+    "z": 7.6,
+    "slot": "urns"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 3.7,
+    "z": 8.2,
+    "slot": "urns"
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -3.58,
+    "z": -4.67
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 0,
+    "z": -6.05
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 0,
+    "z": 6.05
+   }
+  ],
+  "slots": [
+   {
+    "slot": "urns",
+    "op": "nsubst",
+    "into": [
+     "crate",
+     "barrel"
+    ],
+    "n": 2
+   }
+  ]
+ },
+ {
+  "id": "library-stacks",
+  "kind": "library",
+  "size": 18,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": -7.2,
+    "z": -6.98
+   },
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": -7.2,
+    "z": -4.73
+   },
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": -4.73,
+    "z": -6.98
+   },
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": 8.4,
+    "z": -6.1,
+    "slot": "aisle"
+   },
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": 7.2,
+    "z": -4.73,
+    "slot": "aisle"
+   },
+   {
+    "rotation": 0,
+    "kind": "bookshelf",
+    "x": 4.73,
+    "z": -6.98,
+    "slot": "aisle"
+   },
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": 6.08,
+    "z": 5.85
+   },
+   {
+    "rotation": 1,
+    "kind": "chair",
+    "x": 4.39,
+    "z": 7.2
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 8.4,
+    "z": 7.6
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -5.85,
+    "z": 5.85
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0,
+    "z": -6.75
+   }
+  ],
+  "slots": [
+   {
+    "slot": "aisle",
+    "op": "nsubst",
+    "into": [
+     "crate",
+     "barrel"
+    ],
+    "n": 1
+   }
+  ]
+ },
+ {
+  "id": "shrine-offerings",
+  "kind": "shrine",
+  "size": 16,
+  "shape": "octagon",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -2.4,
+    "z": -2.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 2.4,
+    "z": -2.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -2.4,
+    "z": 2.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 2.4,
+    "z": 2.4
+   },
+   {
+    "rotation": 0,
+    "kind": "statue",
+    "x": -3.6,
+    "z": -5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "statue",
+    "x": 5.6,
+    "z": -3.6
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -3.5,
+    "z": 5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 4,
+    "z": 5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -5.6,
+    "z": 4.2
+   },
+   {
+    "rotation": 0,
+    "kind": "potion",
+    "x": -3.4,
+    "z": 4.6
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0,
+    "z": -6.4
+   }
+  ]
+ },
+ {
+  "id": "arena-cover",
+  "kind": "arena",
+  "size": 26,
+  "shape": "circle",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -9.5,
+    "z": -7.1
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": 9.9,
+    "z": -7.3
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -7.1,
+    "z": 9.5
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": 7.3,
+    "z": 9.9
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.5,
+    "z": -10.4
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 6.2,
+    "z": 10.8
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 0,
+    "z": -7.15
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 0,
+    "z": 7.15
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -4.23,
+    "z": 4.23
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 4.23,
+    "z": -4.23
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -10.72,
+    "z": 5.52
+   }
+  ]
+ },
+ {
+  "id": "trap-bones",
+  "kind": "trap",
+  "size": 18,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.38,
+    "z": -3.38
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 3.38,
+    "z": -3.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.6,
+    "z": 3.38
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 2.48,
+    "z": 2.48
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -5.63,
+    "z": 5.63
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 5.63,
+    "z": -5.63
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -6.08,
+    "z": -6.08
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 6.08,
+    "z": 6.08
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": -7.2,
+    "z": -4.73
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 7.2,
+    "z": 4.73
+   },
+   {
+    "rotation": 0,
+    "kind": "potion",
+    "x": 7.42,
+    "z": -4.95
+   }
+  ]
+ },
+ {
+  "id": "secret-hoard",
+  "kind": "secret",
+  "size": 14,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0.5,
+    "kind": "chest",
+    "x": -3.7,
+    "z": -4.7
+   },
+   {
+    "rotation": -0.5,
+    "kind": "chest",
+    "x": 5.1,
+    "z": -3.8
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.3,
+    "z": -3.2
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 3.15,
+    "z": -5.77
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 0,
+    "z": -2.27
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": -1.93,
+    "z": 2.8
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 1.93,
+    "z": 2.8
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -4.02,
+    "z": 4.02
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 4.02,
+    "z": 4.02
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -6.1,
+    "z": 4.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 0,
+    "z": 4.38
+   }
+  ]
+ },
+ {
+  "id": "shop-stall",
+  "kind": "shop",
+  "size": 16,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -4.4,
+    "z": -6.4
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.4,
+    "z": -4.6
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -4.2,
+    "z": -5.5
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 7.5,
+    "z": -4.7
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 4.6,
+    "z": -6.4
+   },
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": 5.4,
+    "z": 5.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 3.8,
+    "z": 4
+   },
+   {
+    "rotation": 1.57,
+    "kind": "bookshelf",
+    "x": -6.9,
+    "z": 5.3
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0,
+    "z": -6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "potion",
+    "x": -3.6,
+    "z": 6.6
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 6.6,
+    "z": 3.4
+   }
+  ]
+ },
+ {
+  "id": "start-threshold",
+  "kind": "start",
+  "size": 18,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "table",
+    "x": -6.08,
+    "z": -6.08
+   },
+   {
+    "rotation": 1.4,
+    "kind": "chair",
+    "x": -4.27,
+    "z": -7.42
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -6.3,
+    "z": -4.05
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 6.08,
+    "z": -6.08
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 4.27,
+    "z": -7.42
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -3.38,
+    "z": 3.38
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -7.2,
+    "z": 6.3
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 7.2,
+    "z": 6.3
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": 0,
+    "z": 5.17
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -5.17,
+    "z": 7.42
+   },
+   {
+    "rotation": 0,
+    "kind": "potion",
+    "x": 5.17,
+    "z": 7.42
+   }
+  ]
+ },
+ {
+  "id": "end-stair",
+  "kind": "end",
+  "size": 24,
+  "shape": "octagon",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -6.1,
+    "z": -8.1
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": 8.5,
+    "z": -6.1
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": -6.1,
+    "z": 8.1
+   },
+   {
+    "rotation": 0,
+    "kind": "pillar",
+    "x": 6.1,
+    "z": 8.5
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": -3.9,
+    "z": -3.9
+   },
+   {
+    "rotation": 0,
+    "kind": "crystal",
+    "x": 3.9,
+    "z": -3.9
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -5.4,
+    "z": 5.4
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": 5.4,
+    "z": 5.4
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0,
+    "z": -9.9
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 8.9,
+    "z": 5.6
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -8.9,
+    "z": -5.2
+   }
+  ]
+ },
+ {
+  "id": "memory-antechamber",
+  "kind": "memory",
+  "size": 20,
+  "shape": "hexagon",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0.5,
+    "z": -8.1
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": -7.8,
+    "z": 0
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 8.1,
+    "z": 0.5
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -4.3,
+    "z": -6.5
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 6.5,
+    "z": -4.3
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": -6.5,
+    "z": 4.3
+   },
+   {
+    "rotation": 0,
+    "kind": "web",
+    "x": 4.3,
+    "z": 6.5
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": -4.3,
+    "z": -5.3
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 4.3,
+    "z": 5.3
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -6.4,
+    "z": -4.7
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 6.4,
+    "z": 4.7
+   }
+  ]
+ },
+ {
+  "id": "challenge-weights",
+  "kind": "challenge",
+  "size": 22,
+  "shape": "square",
+  "props": [
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -7.8,
+    "z": -8.8
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -6.32,
+    "z": -8.8
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": -8.8,
+    "z": -6.32
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 9,
+    "z": -7.8
+   },
+   {
+    "rotation": 0,
+    "kind": "barrel",
+    "x": 6.32,
+    "z": -8.8
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -7.8,
+    "z": 8.8
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 7.8,
+    "z": 9
+   },
+   {
+    "rotation": 0,
+    "kind": "rubble",
+    "x": -4.4,
+    "z": 5.1
+   },
+   {
+    "rotation": 0,
+    "kind": "skull",
+    "x": 5.2,
+    "z": -4.7
+   },
+   {
+    "rotation": 0,
+    "kind": "candle",
+    "x": -6.05,
+    "z": 6.05
+   },
+   {
+    "rotation": 0,
+    "kind": "banner",
+    "x": 0,
+    "z": 9.07
+   }
+  ]
+ }
 ]

@@ -25,3 +25,7 @@ dist-electron
 *.njsproj
 *.sln
 *.sw?
+
+# The authoring bench writes its output beside itself; the shipped copy
+# lives in src/content/templates.json.
+scripts/authoring/authored.json

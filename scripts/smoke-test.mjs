@@ -130,6 +130,22 @@ page.on("pageerror", (e) => {
 await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "load", timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(2000);
 
+/**
+ * How many times the floor gave a breath nobody earned, counted from the
+ * first frame.
+ *
+ * Not a check: a diagnostic, and it exists because the menace gauge is the
+ * one thing in the game that MOVES A THREAT while no check is looking at
+ * it. A check that fails somewhere unrelated needs to be able to ask
+ * whether the Warden walked off in the middle of it, and this is the
+ * cheapest honest way to answer that.
+ */
+await page.evaluate(() => {
+  window.__withdrawals = 0;
+  window.__bus.on("wardenWithdrew", () => (window.__withdrawals += 1));
+});
+const withdrawals = () => page.evaluate(() => window.__withdrawals ?? -1);
+
 ok("main menu appears before gameplay", await page.evaluate(() => /start/i.test(document.body.innerText)));
 const start = await page.$('button:has-text("Start")');
 if (start) await start.click();
@@ -3515,7 +3531,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const s = window.__run.getState();
       return { known: s.identified.includes("mire"), gems: s.gems };
     });
-    ok("and pressing E at it buys the name", named.known && named.gems < 9, JSON.stringify(named));
+    ok("and pressing E at it buys the name", named.known && named.gems < 9,
+    JSON.stringify({ ...named, breathsSoFar: await withdrawals() }));
 
     /**
      * And a blocked reason still shows when there is nothing better.
@@ -7575,7 +7592,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     return { holds, hudHolds, promptHolds, refused, struck, placed, knelt, hudKneels, promptGo, enabled, phase: after.phase, events };
   });
   ok("the last floor's exit is kept: the HUD and the prompt say so, and the walk is refused", !kept.error && kept.holds && kept.hudHolds && kept.promptHolds && kept.refused, kept.error || JSON.stringify({ holds: kept.holds, hud: kept.hudHolds, prompt: kept.promptHolds, refused: kept.refused }));
-  ok("standing within its reach costs a life", !kept.error && kept.struck, kept.error || JSON.stringify({ struck: kept.struck, events: kept.events }));
+  ok("standing within its reach costs a life", !kept.error && kept.struck,
+    kept.error || JSON.stringify({ struck: kept.struck, events: kept.events, breathsSoFar: await withdrawals() }));
   ok("a bomb in its room makes it kneel, and the HUD counts the window", !kept.error && kept.placed && kept.knelt && kept.hudKneels, kept.error || JSON.stringify({ placed: kept.placed, knelt: kept.knelt, hud: kept.hudKneels, events: kept.events }));
   ok("and while it kneels the stairs are offered and taken: the run is won", !kept.error && kept.promptGo && kept.enabled && kept.phase === "won", kept.error || JSON.stringify({ prompt: kept.promptGo, enabled: kept.enabled, phase: kept.phase }));
 }
