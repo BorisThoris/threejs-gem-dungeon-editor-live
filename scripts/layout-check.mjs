@@ -42,6 +42,7 @@ writeFileSync(
    export * from "${root}src/game/heat/coefficient";
    export * from "${root}src/game/cycle/director";
    export * from "${root}src/game/cycle/menace";
+   export * from "${root}src/game/cycle/state";
    export * from "${root}src/game/lantern/glim";
    export * from "${root}src/game/verbs/gates";
    export * from "${root}src/game/items/afflictions";
@@ -4805,6 +4806,61 @@ check("the shipped room templates reach the floors the game generates", authored
    */
   const period = T.buildUpMinS + T.sustainMaxS + T.relaxMaxS;
   check("a cycle is about a minute and a half at its longest, so a floor holds several", period >= 45 && period <= 120, `${period}s`);
+}
+
+/**
+ * THE CRESCENDO, on the approach to the Keeper.
+ *
+ * `CRESCENDO` had been in `director.ts` since the Cycle shipped and nothing
+ * had ever read it - the same class of thing as the menace gauge: a table
+ * written, checked, and never wired. The research is explicit that it is a
+ * preset rather than a curve the director can reach: "Crescendos are the
+ * same machine with five numbers swapped - Valve's finale scripts run relax
+ * 2-5s against sustain 25-30s, inverted from base pacing."
+ *
+ * The set piece is the Keeper. Its own doorways were already exempt from
+ * the director; what had no pacing of its own was the APPROACH.
+ */
+{
+  const C = L.CRESCENDO;
+  const B = L.BASE;
+  check("the finale holds at the top far longer than the ordinary curve does",
+    C.sustainMinS > B.sustainMaxS, `${C.sustainMinS}-${C.sustainMaxS}s against ${B.sustainMinS}-${B.sustainMaxS}s`);
+  check("and gives back almost none of it", C.relaxMaxS < B.relaxMinS, `${C.relaxMinS}-${C.relaxMaxS}s against ${B.relaxMinS}-${B.relaxMaxS}s`);
+  check("and cannot be walked out of, which is the whole difference",
+    C.relaxProgress > 10, `${C.relaxProgress} rooms against ${B.relaxProgress}`);
+
+  /**
+   * And where it applies, over floors the game actually builds: the last
+   * few rooms before the exit on the Keeper's floor, and nowhere else.
+   */
+  let onApproach = 0;
+  let elsewhere = 0;
+  let ordinary = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    let next = seed;
+    for (let floor = 1; floor <= 3; floor++) {
+      const rules = L.floorRules(floor);
+      const d = L.generateDungeon({
+        seed: next,
+        minRooms: rules.minRooms,
+        maxRooms: rules.maxRooms,
+        lastFloor: floor === 3,
+      });
+      next = (d.seed * 7919 + (floor + 1)) >>> 0;
+      for (const r of d.rooms) {
+        const path = L.shortestPath(d.rooms, r.id, d.endId);
+        const away = path ? path.length - 1 : Infinity;
+        const close = away <= L.CRESCENDO_FROM;
+        if (floor === L.KEEPER_FLOOR && close) onApproach++;
+        else if (close) elsewhere++;
+        else ordinary++;
+      }
+    }
+  }
+  check("the last floor's approach to the exit is a real part of it", onApproach > 100, `${onApproach} rooms`);
+  check("and most of a run is still the ordinary curve", ordinary > onApproach * 3, `${ordinary} ordinary against ${onApproach} on the approach`);
+  check("the floors above the Keeper have an approach too, and it is not a crescendo", elsewhere > 0, `${elsewhere} rooms near an exit on an earlier floor`);
 }
 
 /**

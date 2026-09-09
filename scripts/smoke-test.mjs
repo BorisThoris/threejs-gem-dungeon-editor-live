@@ -8922,6 +8922,66 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("and the floor counts it against the two it has to give",
     !breath.error && breath.spent === breath.before.spent + 1 && breath.gauge === 0,
     breath.error || JSON.stringify(breath));
+
+  /**
+   * And the finale's pacing, in the build the player runs.
+   *
+   * `CRESCENDO` shipped with the Cycle and nothing read it for as long as
+   * it existed - the same shape of miss as the menace gauge. So this asks
+   * the one question a table cannot answer about itself: standing three
+   * rooms from the last floor's exit, is the floor running the finale's
+   * numbers or the connective tissue's?
+   */
+  const finale = await page.evaluate(async () => {
+    const run = window.__run;
+    const C = window.__cycle;
+    const T = window.__tempos;
+    const W = await import("/src/game/world.ts");
+    const G = await import("/src/game/dungeon/generate.ts");
+    if (!C || !T || !C.tempoFor) return { error: "no cycle probe" };
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+    // A floor of the Keeper's, and a room on the approach to its exit.
+    for (let seed = 1; seed <= 40; seed++) {
+      run.getState().startRun(seed);
+      await new Promise((r) => setTimeout(r, 400));
+      const d = run.getState().dungeon;
+      if (!d) continue;
+      const near = d.rooms.find((r) => {
+        const path = G.shortestPath(d.rooms, r.id, d.endId);
+        return path && path.length - 1 > 0 && path.length - 1 <= C.CRESCENDO_FROM;
+      });
+      const far = d.rooms.find((r) => {
+        const path = G.shortestPath(d.rooms, r.id, d.endId);
+        return path && path.length - 1 > C.CRESCENDO_FROM + 1;
+      });
+      if (!near || !far) continue;
+
+      run.setState({ floor: W.KEEPER_FLOOR, currentRoomId: near.id });
+      const onApproach = C.tempoFor();
+      run.setState({ currentRoomId: far.id });
+      const backOnTheFloor = C.tempoFor();
+      run.setState({ floor: 1, currentRoomId: near.id });
+      const earlierFloor = C.tempoFor();
+      return {
+        seed,
+        approachIsCrescendo: same(onApproach, T.CRESCENDO),
+        restOfFloorIsBase: same(backOnTheFloor, T.BASE),
+        earlierFloorIsBase: same(earlierFloor, T.BASE),
+        sustain: [onApproach.sustainMinS, onApproach.sustainMaxS],
+        relax: [onApproach.relaxMinS, onApproach.relaxMaxS],
+      };
+    }
+    return { error: "no floor with both an approach and a room off it" };
+  });
+  ok("the approach to the last floor's exit runs the finale's pacing",
+    !finale.error && finale.approachIsCrescendo === true, finale.error || JSON.stringify(finale));
+  ok("and it holds at the top rather than giving a valley back",
+    !finale.error && finale.sustain[0] >= 25 && finale.relax[1] <= 5, finale.error || JSON.stringify(finale));
+  ok("the rest of the same floor is still the ordinary curve",
+    !finale.error && finale.restOfFloorIsBase === true, finale.error || JSON.stringify(finale));
+  ok("and so is the same distance from an exit on a floor above it",
+    !finale.error && finale.earlierFloorIsBase === true, finale.error || JSON.stringify(finale));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

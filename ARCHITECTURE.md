@@ -112,6 +112,19 @@ Two stores that both claimed the player's stats. So:
   standing at the counter offers the counter and stepping up to one offers
   that one. The five spots are reserved anchors too, so nothing gets dressed
   on top of an offer, which is the same bug in its next form.
+- **And the finale is paced by a preset, not by the curve turned up:
+  `tempoFor` in `cycle/state.ts`.** `CRESCENDO` shipped with the Cycle and
+  nothing read it for as long as it existed - a table written, checked, and
+  never wired, exactly like the menace gauge. It is the same machine with
+  five numbers swapped: a twenty-five to thirty second hold at the top
+  against a two to five second valley, inverted from the base curve, and
+  it cannot be walked out of. It applies on the approach to the last
+  floor's exit - three doorways out, which is where the foreshadowing
+  tableau is staged, so the pacing changes about where the player reads
+  the thing that tells them what is coming. The Keeper's own doorways were
+  already exempt from the director; what had no pacing of its own was the
+  walk up to them, and the last ninety seconds of a run were paced exactly
+  like the first ninety.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
@@ -817,7 +830,8 @@ src/
     cycle/               the Cycle: pacing that oscillates instead of ramping
       director.ts        build up / sustain peak / peak fade / relax
       menace.ts          the gauge that walks the Warden off unearned
-      state.ts           the director, the gauge, and whether the floor may send
+      state.ts           the director, the gauge, which tempo the floor runs,
+                         and whether it may send anything new
       CycleDriver.tsx    steps it, and stokes it from what happens to you
     ladder/              awareness with rungs, and the asymmetry that reads
       rungs.ts           four named rungs, ordered cones, the analog inputs

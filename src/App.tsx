@@ -229,6 +229,7 @@ export default function App() {
     // minute of unbroken pressure for it - the fill rate is held by the
     // layout checks, and this is here so the WIRING can be held too.
     void import("./game/cycle/state").then((m) => (w.__cycle = m));
+    void import("./game/cycle/director").then((m) => (w.__tempos = m));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.

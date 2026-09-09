@@ -1,6 +1,8 @@
+import { shortestPath } from "../dungeon/generate";
+import { KEEPER_FLOOR } from "../world";
 import { keeperPostsFor } from "../keeper/posts";
 import { keeperHolds, useRun } from "../state/run";
-import { mayEscalate, openCycle, type Director } from "./director";
+import { BASE, CRESCENDO, mayEscalate, openCycle, type Director, type Tempo } from "./director";
 import { openMenace, type Menace } from "./menace";
 
 /**
@@ -72,4 +74,46 @@ export function floorMaySend(): boolean {
     if (posts.some((p) => p.roomId === s.currentRoomId)) return true;
   }
   return cycleAllows();
+}
+
+/**
+ * How many rooms from the exit the last floor stops breathing.
+ *
+ * `AHEAD_OF_KEEPER` is two: the set piece that describes the Keeper is
+ * staged two to four rooms out, so three is about where the player reads
+ * the thing that tells them what is coming. The crescendo starts where the
+ * foreshadowing does, which is the only defensible place to start it.
+ */
+export const CRESCENDO_FROM = 3;
+
+/**
+ * Which pacing the floor is running: the connective tissue's, or the
+ * finale's.
+ *
+ * `CRESCENDO` has been in `director.ts` since the Cycle shipped and nothing
+ * has ever read it. It is the same machine with five numbers swapped - a
+ * twenty-five to thirty second hold at the top against a two to five second
+ * valley, inverted from the base curve - and the research is explicit that
+ * it is a PRESET, used where a set piece wants one and never reached by the
+ * director on its own.
+ *
+ * The set piece this game has is the Keeper, and its own doorways are
+ * already exempt from the director entirely. What had no pacing of its own
+ * is the APPROACH: the last few rooms before the exit on the last floor,
+ * where the run's one authored encounter is about to happen and where the
+ * director was still handing out thirty-to-forty-five second valleys. The
+ * last ninety seconds of a run were paced exactly like the first ninety.
+ *
+ * Distance by DOORWAYS WALKED rather than by metres, because that is the
+ * axis the rest of the floor is measured on - the foreshadowing, the
+ * Keeper's posts and the relax's own progress count are all rooms.
+ */
+export function tempoFor(): Tempo {
+  const s = useRun.getState();
+  if (s.floor !== KEEPER_FLOOR || !s.dungeon || !s.currentRoomId) return BASE;
+  const path = shortestPath(s.dungeon.rooms, s.currentRoomId, s.dungeon.endId);
+  // No path is a room walled off from the exit, which the generator does
+  // not make; if it ever did, the ordinary curve is the safe answer.
+  if (!path) return BASE;
+  return path.length - 1 <= CRESCENDO_FROM ? CRESCENDO : BASE;
 }

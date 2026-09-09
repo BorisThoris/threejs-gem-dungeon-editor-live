@@ -6,9 +6,9 @@ import * as ladder from "../ladder/state";
 import { roomById } from "../dungeon/types";
 import { canControl, harrierAway, runClock, useRun } from "../state/run";
 import type { RunState } from "../state/run";
-import { BASE, INTENSITY, openCycle, stepCycle, stokeCycle } from "./director";
+import { INTENSITY, openCycle, stepCycle, stokeCycle } from "./director";
 import { openMenace, pressureOn, spendMenace, stepMenace, withdrawsNow } from "./menace";
-import { cycleNow, menaceNow, setCycle, setMenace } from "./state";
+import { cycleNow, menaceNow, setCycle, setMenace, tempoFor } from "./state";
 
 /**
  * The floor's pacing, stepped once a frame.
@@ -67,7 +67,9 @@ export function CycleDriver() {
     setCycle(
       stepCycle(
         d,
-        BASE,
+        // The connective tissue's pacing, or the finale's. One call, so the
+        // driver never has an opinion about which - the floor does.
+        tempoFor(),
         runClock(s),
         delta,
         engaged,
