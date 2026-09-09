@@ -40,6 +40,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/heat/coefficient";
+   export * from "${root}src/game/heat/pledge";
    export * from "${root}src/game/cycle/director";
    export * from "${root}src/game/cycle/menace";
    export * from "${root}src/game/cycle/state";
@@ -1197,6 +1198,61 @@ check("500 dungeons across every floor size: connected, legal, and a vault that 
   }
   check("every one of the trader's offers has a place of its own", problems.length === 0, problems.slice(0, 3).join("; ") || `${IDS.length} offers over ${sizes.length * 2 * 8} shops`);
   check("and the goods are picked up closer than the counter is walked to", L.NEAR_REACH < L.INTERACT_RADIUS, `${L.NEAR_REACH}m against ${L.INTERACT_RADIUS}m`);
+}
+
+/**
+ * THE PLEDGE - escalation the player elects.
+ *
+ * The Coefficient was entirely imposed: depth, dwell and greed push it and
+ * the player never elected anything. The research names the fix and the
+ * condition on it - "let the player ADD to it deliberately, at a named
+ * price, for a named payout, WITH THE TARGET RISING as they clear it, which
+ * is what makes elected difficulty an achievement rather than a setting."
+ */
+{
+  const P = L.PLEDGES;
+  const empty = { raisedLantern: false, barredADoor: false, spentAnItem: false };
+
+  check("there are promises to make at all", P.length >= 3, `${P.length}`);
+  check("every one of them has a name and says what it gives up", P.every((p) => p.name && p.vow.length > 10));
+  check("and every id is its own", new Set(P.map((p) => p.id)).size === P.length);
+
+  /**
+   * Each is judged on ONE fact the floor was keeping anyway. A promise
+   * about two things is a promise a player cannot hold in their head while
+   * they are being chased.
+   */
+  const keys = ["raisedLantern", "barredADoor", "spentAnItem"];
+  for (const p of P) {
+    const broken = keys.filter((k) => !p.kept({ ...empty, [k]: true }));
+    check(`the ${p.name} is broken by exactly one thing`, broken.length === 1, `${p.name}: ${broken.join(", ") || "nothing"}`);
+  }
+  check("a floor on which nothing happened keeps every promise", P.every((p) => p.kept(empty)));
+  check("and the three of them are broken by three different things",
+    new Set(P.map((p) => keys.find((k) => !p.kept({ ...empty, [k]: true })))).size === P.length);
+
+  /** The price, and the sentence the whole idea turns on. */
+  check("the first promise of a run has a price", L.pledgeCost(0) > 0, `${L.pledgeCost(0)} alarm`);
+  check("and every one after a kept one costs more", [0, 1, 2, 3, 4].every((n) => L.pledgeCost(n + 1) > L.pledgeCost(n)),
+    [0, 1, 2, 3].map((n) => L.pledgeCost(n)).join(" -> "));
+  check("the price is felt in the same currency greed is, so elected and taken pressure arrive by one door",
+    L.ALARM_WEIGHT > 0);
+
+  /**
+   * And the payout has to be worth a floor's care without being worth more
+   * than the floor itself: a promise that pays a toll outright would make
+   * the exit free rather than make the floor harder.
+   */
+  check("every promise pays something", P.every((p) => p.pays > 0));
+  check("and none of them pays a whole floor's exit", P.every((p) => p.pays < 5), P.map((p) => `${p.name} ${p.pays}`).join(", "));
+
+  /** One a floor, which is what makes it a decision about THIS floor. */
+  check("a font with nothing sworn on it offers everything", L.offered(null).length === P.length);
+  check("and one with a promise on it offers nothing more", L.offered(P[0].id).length === 0);
+
+  check("a promise nobody made is never kept", L.wasKept(null, empty) === false);
+  check("and one that was made is settled on the floor's own record",
+    L.wasKept(P[0].id, empty) === true && L.wasKept(P[0].id, { ...empty, raisedLantern: true, barredADoor: true, spentAnItem: true }) === false);
 }
 // If this ever reads zero the shipped templates are not registered, and
 // every dungeon checked above is one the game would never build.

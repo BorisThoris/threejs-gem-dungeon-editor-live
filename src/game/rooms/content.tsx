@@ -36,6 +36,7 @@ const NAMING_PRICE = 1;
 const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
 import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, type ShopOfferId } from "./anchors";
+import { offered, pledgeCost } from "../heat/pledge";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 // Room layouts that ship with the game register themselves.
 import "./shipped";
@@ -427,9 +428,68 @@ function Shrine({ room }: RoomKindProps) {
         radius={CLOSE_REACH}
         onInteract={() => useRun.getState().kneelAtShrine(room.id)}
       />
+      {/**
+        * And the other thing a font is for: a promise about this floor.
+        *
+        * The one place in the game where the player ASKS for pressure. It
+        * stands a stride off the basin so it is a second thing to walk to
+        * rather than a second reading of the same press, on the same
+        * arbitration the shop's counter uses.
+        */}
+      <Vow room={room} at={at} />
     </>
   );
 }
+
+/**
+ * The vow stone: promise the floor something, for heat now and gems at the
+ * stair.
+ *
+ * One promise a floor, and the price rises with every one this run has
+ * KEPT - which is what the research means by the target rising as the
+ * player clears it. A pledge that stayed the same price would be a
+ * difficulty setting with extra words.
+ */
+function Vow({ room, at }: { room: Room; at: readonly [number, number, number] }) {
+  const pledge = useRun((s) => s.pledge);
+  const kept = useRun((s) => s.pledgesKept);
+  const choices = offered(pledge);
+  const cost = pledgeCost(kept);
+  const spot: [number, number, number] = [at[0] + VOW_OFF, 0, at[2] + VOW_OFF];
+  return (
+    <>
+      {/* A leaning marker stone, so there is something to walk up to. */}
+      <mesh position={[spot[0], 0.62, spot[2]]} rotation={[0, 0.4, 0.06]} castShadow>
+        <boxGeometry args={[0.5, 1.24, 0.22]} />
+        <meshStandardMaterial color={pledge ? "#7b6a4a" : "#575249"} roughness={0.95} />
+      </mesh>
+      {choices.map((p, i) => (
+        <InteractTrigger
+          key={p.id}
+          position={[spot[0] + (i - 1) * VOW_SPREAD, 0, spot[2]]}
+          label={`Swear ${p.name} - ${p.vow}. ${cost} alarm now, ${p.pays} gems at the stair`}
+          enabled
+          radius={CLOSE_REACH}
+          onInteract={() => useRun.getState().takePledge(p.id)}
+        />
+      ))}
+      {pledge && (
+        <InteractTrigger
+          position={spot}
+          label="You have sworn on this floor already"
+          enabled={false}
+          blockedReason="One promise a floor. Keep this one first."
+          radius={CLOSE_REACH}
+          onInteract={() => undefined}
+        />
+      )}
+    </>
+  );
+}
+
+/** How far off the basin the vow stone stands, and how far apart its three. */
+const VOW_OFF = 2.4;
+const VOW_SPREAD = 1.4;
 
 registerRoomKind("shrine", Shrine);
 

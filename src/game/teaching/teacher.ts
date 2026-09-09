@@ -72,6 +72,16 @@ export const LESSONS: readonly Lesson[] = [
   // as a breath and spends it; a line that sounded like a reward would
   // teach them they had found a trick, and there is no trick.
   lesson({ id: "turned", event: "wardenWithdrew", every: true, line: "It loses interest and walks off after something else. That will not last. Use it." }),
+  // Every time, both of them: a promise is the one pressure in this game
+  // the player asked for, and the only thing that makes it a promise
+  // rather than a setting is being told, at the stair, whether it held.
+  lesson({ id: "sworn", event: "pledgeTaken", every: true, line: "It heard you. The floor is worse for it from now, and the stair pays if you keep it." }),
+  lesson({
+    id: "settled",
+    event: "pledgeSettled",
+    every: true,
+    line: "The stair settles what was sworn on this floor.",
+  }),
   // The one line that has to arrive before the player can act on it:
   // everything else teaches by having just happened, and this by having
   // four seconds left.

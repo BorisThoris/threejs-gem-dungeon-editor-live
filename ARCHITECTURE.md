@@ -125,6 +125,22 @@ Two stores that both claimed the player's stats. So:
   already exempt from the director; what had no pacing of its own was the
   walk up to them, and the last ninety seconds of a run were paced exactly
   like the first ninety.
+- **Pressure the player ASKS FOR is `heat/pledge.ts`.** The Coefficient was
+  entirely imposed - depth, dwell and greed push it and the player elected
+  nothing - and the research names both the fix and the condition on it: let
+  them add to it deliberately, at a named price for a named payout, with the
+  target rising as they clear it, because that is what makes elected
+  difficulty an achievement rather than a setting. A pledge is sworn at the
+  font, about the floor you are standing on: no lantern, no barred doorway,
+  or nothing out of the satchel. Three things keep it a promise. The cost
+  lands first, in alarm, which is the currency greed already spends, so
+  elected and taken pressure arrive by one door and heat stays a pure
+  function of dwell, alarm and depth rather than an accumulator with a
+  history. It cannot be withdrawn: break it and the heat stays and the stair
+  pays nothing. And it is judged only on facts the run store was keeping
+  anyway - the lantern went up, a doorway was barred, something left the
+  satchel - so nothing is tracked FOR the pledge and it never becomes a
+  second economy running beside the first.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
@@ -827,6 +843,8 @@ src/
       coefficient.ts     heat = (dwell + alarm x 0.5) x 1.15 ^ floorsDescended,
                          five named bands, four purchases at four thresholds
       HeatDriver.tsx     spends it in lumps, and wakes the last band
+    heat/                how bad a floor is allowed to get
+      pledge.ts          the one pressure the player asks for, and its price
     cycle/               the Cycle: pacing that oscillates instead of ramping
       director.ts        build up / sustain peak / peak fade / relax
       menace.ts          the gauge that walks the Warden off unearned

@@ -58,6 +58,7 @@ import { AFFLICTIONS, BATCH, afflictionFor } from "../items/afflictions";
 import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
 import { barKey } from "../warden/bars";
+import { pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -360,6 +361,18 @@ export interface RunState {
   heatBought: PurchaseId[];
   /** Rooms entered on this floor, which is what wakes the Warden. */
   floorRooms: number;
+  /**
+   * The promise made at this floor's font, and what the floor has seen.
+   *
+   * The record is three booleans the game would be setting anyway - the
+   * lantern went up, a doorway was barred, something left the satchel -
+   * and the pledge is judged on them at the stair. Nothing is tracked FOR
+   * the pledge, which is what keeps it from becoming a second economy.
+   */
+  pledge: PledgeId | null;
+  floorRecord: FloorRecord;
+  /** How many promises this run has KEPT, which is what prices the next. */
+  pledgesKept: number;
   /** Which room the Warden is in, or null while it still sleeps. */
   wardenRoomId: string | null;
   /** The room it walked in from, so wandering does not just pace a corridor. */
@@ -546,6 +559,11 @@ export interface RunState {
    * trigger says which before the press.
    */
   kneelAtShrine: (roomId: string) => boolean;
+  /**
+   * Promise the font something about this floor, for heat now and gems at
+   * the stair. Refused if this floor already carries one.
+   */
+  takePledge: (id: PledgeId) => boolean;
   /** A bomb whose fuse has run out goes off. Called from the frame loop. */
   detonate: (key: string) => void;
   /** The blast opened a cracked wall: the secret becomes a doorway. */
@@ -738,6 +756,8 @@ const currentRoom = (s: RunState): Room | undefined =>
  * what you hold, whether you are still alive - is here; everything that is
  * not state (a sound, a prompt, a puzzle) goes over the bus.
  */
+const NO_PLEDGE: FloorRecord = { raisedLantern: false, barredADoor: false, spentAnItem: false };
+
 export const useRun = create<RunState>()(
   subscribeWithSelector((set, get) => ({
     phase: "menu",
@@ -797,6 +817,9 @@ export const useRun = create<RunState>()(
     alarm: 0,
     heatBought: [],
     floorRooms: 1,
+    pledge: null,
+    floorRecord: { ...NO_PLEDGE },
+    pledgesKept: 0,
     wardenRoomId: null,
     wardenCameFrom: null,
     enteredBy: null,
@@ -883,6 +906,10 @@ export const useRun = create<RunState>()(
         glimUpAt: 0,
         oil: LANTERN_OIL_FULL,
         litUntil: 0,
+        // A fresh run has promised nothing and kept nothing.
+        pledge: null,
+        floorRecord: { ...NO_PLEDGE },
+        pledgesKept: 0,
         barredDoor: null,
         barUntil: 0,
         mapped: false,
@@ -1060,6 +1087,25 @@ export const useRun = create<RunState>()(
         transitionFallback = null;
       }
       if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
+        /**
+         * The stair settles the promise, and it settles it on the way out
+         * whether the run ends here or goes on.
+         *
+         * Reaching the exit IS keeping it: the pledge is about crossing
+         * this floor, and a player standing on the stairs has crossed it.
+         * Broken pays nothing and the heat it bought stays where it is -
+         * a promise you can withdraw from is a preference.
+         */
+        if (s.pledge) {
+          const kept = wasKept(s.pledge, s.floorRecord);
+          const p = pledgeById(s.pledge);
+          const paid = kept && p ? p.pays : 0;
+          if (paid) {
+            set({ gems: get().gems + paid, gemsTotal: get().gemsTotal + paid });
+          }
+          if (kept) set({ pledgesKept: get().pledgesKept + 1 });
+          bus.emit("pledgeSettled", { id: s.pledge, kept, paid });
+        }
         if (s.floor >= FLOORS) {
           set({ transitioning: false, phase: "won", endedAt: runClock(s) });
           rememberRun(get());
@@ -1144,6 +1190,10 @@ export const useRun = create<RunState>()(
           // applied on arrival would be scrubbed off by the first rout.
           alarm: alarmFloorOn(floor, get().delver),
           heatBought: [],
+          // A promise is about ONE floor. What was kept is remembered,
+          // because it prices the next one; the promise itself is not.
+          pledge: null,
+          floorRecord: { ...NO_PLEDGE },
           floorRooms: 1,
           wardenRoomId: null,
           wardenCameFrom: null,
@@ -1372,14 +1422,18 @@ export const useRun = create<RunState>()(
       // A device is not drunk or read: it goes on the floor where the
       // player is standing, and it is still there when they come back.
       if (isDevice(id)) {
+        set({ floorRecord: { ...s.floorRecord, spentAnItem: true } });
         get().placeDevice(slot);
         return;
       }
 
-      // Whatever it does, it is spent and it is now known.
+      // Whatever it does, it is spent and it is now known - and the floor
+      // remembers that the satchel was opened, for the promise made at its
+      // font.
       set({
         satchel: s.satchel.filter((_, i) => i !== slot),
         identified: s.identified.includes(id) ? s.identified : [...s.identified, id],
+        floorRecord: { ...s.floorRecord, spentAnItem: true },
       });
 
       switch (id) {
@@ -1805,6 +1859,36 @@ export const useRun = create<RunState>()(
       return true;
     },
 
+    /**
+     * Promise the font something about this floor.
+     *
+     * The heat lands NOW and the gems land at the stair, which is the whole
+     * difference between a pledge and a difficulty setting: the floor is
+     * worse from the moment you say so, and you have not been paid yet.
+     *
+     * Heat is a pure function of dwell, alarm and depth, so a pledge cannot
+     * "add heat" directly without making it an accumulator with a history -
+     * the one thing `coefficient.ts` is written to avoid. It buys the same
+     * thing greed buys instead: alarm, which the Coefficient already reads
+     * at half weight. Elected pressure and taken pressure arrive by the
+     * same door.
+     */
+    takePledge: (id) => {
+      const s = get();
+      if (!canControl(s) || s.pledge) return false;
+      const p = pledgeById(id);
+      if (!p) return false;
+      set({
+        pledge: id,
+        alarm: s.alarm + pledgeCost(s.pledgesKept),
+        // From this moment, and not from the start of the floor: a promise
+        // is about what you do after making it.
+        floorRecord: { ...NO_PLEDGE },
+      });
+      bus.emit("pledgeTaken", { id });
+      return true;
+    },
+
     sealRoom: (roomId) => set({ sealedRoomId: roomId }),
 
     raiseAlarm: (amount) => {
@@ -1883,6 +1967,9 @@ export const useRun = create<RunState>()(
         glimUpAt: now + RAISE_S,
         oil: Math.max(0, s.oil - RAISE_OIL),
         litUntil: now + RAISE_S + LANTERN_SEEN_HOLD_S,
+        // Written down where it happens, because the promise made at the
+        // font is judged on facts the floor was keeping anyway.
+        floorRecord: { ...s.floorRecord, raisedLantern: true },
       });
       bus.emit("lanternToggled", { raised: true });
     },
@@ -1952,6 +2039,7 @@ export const useRun = create<RunState>()(
       set({
         barredDoor: key,
         barUntil: now + BAR_S,
+        floorRecord: { ...s.floorRecord, barredADoor: true },
         // Hammering is the loudest thing in the game, and it is made
         // standing still. What the bar buys is distance; what it spends is
         // any doubt about where you were when you made it.

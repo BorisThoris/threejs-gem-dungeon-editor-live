@@ -9023,6 +9023,85 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     !finale.error && finale.restOfFloorIsBase === true, finale.error || JSON.stringify(finale));
   ok("and so is the same distance from an exit on a floor above it",
     !finale.error && finale.earlierFloorIsBase === true, finale.error || JSON.stringify(finale));
+
+  /**
+   * The Pledge, played rather than tabled.
+   *
+   * The one place in this game where pressure is ASKED FOR. The table's
+   * arithmetic is held by the layout checks; what only the running game can
+   * answer is whether the heat lands when the promise is made, whether the
+   * stair pays a promise kept, and whether it pays nothing for one broken -
+   * which is the difference between a pledge and a difficulty setting.
+   */
+  const sworn = await page.evaluate(async () => {
+    const run = window.__run;
+    const P = await import("/src/game/heat/pledge.ts");
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const out = {};
+
+    const toTheStair = async () => {
+      const s = run.getState();
+      run.setState({ transitioning: true, currentRoomId: s.dungeon.endId });
+      run.getState().roomReady(s.dungeon.endId);
+      await wait(700);
+    };
+
+    // --- Kept -----------------------------------------------------------
+    run.getState().startRun(3);
+    await wait(900);
+    const before = run.getState();
+    out.offered = P.offered(before.pledge).length;
+    const took = run.getState().takePledge("unbarred");
+    const after = run.getState();
+    out.kept = {
+      took,
+      alarmRose: after.alarm - before.alarm,
+      cost: P.pledgeCost(before.pledgesKept),
+      andNoMore: P.offered(after.pledge).length,
+    };
+    const gemsBefore = run.getState().gems;
+    const keptCount = run.getState().pledgesKept;
+    await toTheStair();
+    out.kept.paid = run.getState().gems - gemsBefore;
+    out.kept.counted = run.getState().pledgesKept - keptCount;
+    out.kept.pays = P.pledgeById("unbarred").pays;
+
+    // --- Broken ---------------------------------------------------------
+    run.getState().startRun(4);
+    await wait(900);
+    const start = run.getState();
+    run.getState().takePledge("unbarred");
+    const roseBy = run.getState().alarm - start.alarm;
+    // Break it: bar a doorway, which is the one thing that promise forbids.
+    const here = run.getState().dungeon.rooms.find((r) => r.id === run.getState().currentRoomId);
+    const out1 = Object.values(here.links).find(Boolean);
+    run.getState().barDoor(out1);
+    out.broke = { barred: run.getState().floorRecord.barredADoor, roseBy };
+    const gemsThen = run.getState().gems;
+    const keptThen = run.getState().pledgesKept;
+    const alarmThen = run.getState().alarm;
+    await toTheStair();
+    out.broke.paid = run.getState().gems - gemsThen;
+    out.broke.counted = run.getState().pledgesKept - keptThen;
+    // The heat it bought is not given back on the floor it was bought for.
+    out.broke.alarmHeldOnThatFloor = alarmThen >= start.alarm + roseBy;
+    return out;
+  });
+  ok("the font offers a promise about this floor",
+    !sworn.error && sworn.offered >= 3, sworn.error || JSON.stringify(sworn));
+  ok("swearing one raises the floor's alarm there and then",
+    !sworn.error && sworn.kept.took === true && sworn.kept.alarmRose === sworn.kept.cost,
+    sworn.error || JSON.stringify(sworn.kept));
+  ok("and the font will hear no second promise on the same floor",
+    !sworn.error && sworn.kept.andNoMore === 0, sworn.error || JSON.stringify(sworn.kept));
+  ok("keeping it pays at the stair, and counts toward the price of the next",
+    !sworn.error && sworn.kept.paid === sworn.kept.pays && sworn.kept.counted === 1,
+    sworn.error || JSON.stringify(sworn.kept));
+  ok("breaking it pays nothing",
+    !sworn.error && sworn.broke.barred === true && sworn.broke.paid === 0 && sworn.broke.counted === 0,
+    sworn.error || JSON.stringify(sworn.broke));
+  ok("and the heat it bought is not handed back",
+    !sworn.error && sworn.broke.alarmHeldOnThatFloor === true, sworn.error || JSON.stringify(sworn.broke));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

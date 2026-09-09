@@ -45,6 +45,13 @@ export interface BusEvents {
    * the difference in what they are told.
    */
   wardenWithdrew: undefined;
+  /**
+   * The delver promised the font something about this floor. The one place
+   * pressure in this game is asked for rather than applied.
+   */
+  pledgeTaken: { id: string };
+  /** And the stair settled it, one way or the other. */
+  pledgeSettled: { id: string; kept: boolean; paid: number };
   /** A sprint gave the player away: it knows which room they are in. */
   wardenHeard: undefined;
   /**
