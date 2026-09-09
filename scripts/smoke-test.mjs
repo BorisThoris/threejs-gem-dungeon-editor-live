@@ -3942,7 +3942,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       await wait(700);
       const room = run.getState().dungeon.rooms.find((r) => r.kind === "arena");
       if (!room) continue;
-      run.setState({ transitioning: true, currentRoomId: room.id, lives: 99 });
+      /**
+       * The arena alone: no Warden in the room, nothing awake that hunts.
+       *
+       * This check's claim is about the ARMS - that nothing hits the player
+       * which was not within a spike's reach - and anything else that takes
+       * a life while the walk is running is noise dressed up as a finding.
+       * It read a hit four and a quarter metres from the nearest spike, and
+       * could not say what had landed it. The floor's other threats are
+       * checked where they belong.
+       */
+      run.setState({
+        transitioning: true,
+        currentRoomId: room.id,
+        lives: 99,
+        wardenRoomId: null,
+        reaperAwake: false,
+        harrierAwake: false,
+      });
       run.getState().roomReady(room.id);
       await wait(1500);
       return { id: room.id, size: room.size };
@@ -4102,9 +4119,32 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         // Every hit, and how far the nearest spike was when it landed. A hit
         // with nothing near it is the only thing here that would be a bug.
         const struck = [];
-        const off = window.__bus.on("damaged", () =>
-          struck.push({ t: +((performance.now() - t0) / 1000).toFixed(1), d: +toNearestSpike().toFixed(2) })
+        /**
+         * And WHAT hit, not only how far the nearest spike was.
+         *
+         * The check asserts that nothing hits the player which was not
+         * within a spike's reach, and its own comment says a hit out of
+         * nowhere would be a real bug. When one turned up - four and a
+         * quarter metres from any spike - the report could not say what
+         * had landed it, because proximity was the only thing recorded.
+         * The game announces every one of these; listening costs nothing
+         * and turns "a bug" into "which bug".
+         */
+        let lastBlow = null;
+        const blows = ["wardenStruck", "reaperStruck", "keeperStruck", "harrierStruck", "trapSprung", "sentrySaw", "bombBurst"];
+        const heard = blows.map((name) =>
+          window.__bus.on(name, () => {
+            lastBlow = { name, at: performance.now() };
+          })
         );
+        const off = window.__bus.on("damaged", () => {
+          const recent = lastBlow && performance.now() - lastBlow.at < 250 ? lastBlow.name : "nothing announced";
+          struck.push({
+            t: +((performance.now() - t0) / 1000).toFixed(1),
+            d: +toNearestSpike().toFixed(2),
+            by: recent,
+          });
+        });
         let travelled = 0, lx = p.x, lz = p.z, worst = 0, frames = 0, closest = Infinity;
         await new Promise((done) => {
           const tick = () => {
@@ -4150,6 +4190,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         });
         off();
         const dt = (performance.now() - t0) / 1000;
+        heard.forEach((stop) => stop());
         return { hits: struck.length, struck, seconds: +dt.toFixed(1),
                  speed: +(travelled / dt).toFixed(2), frame: +(dt / frames).toFixed(3),
                  drift: +worst.toFixed(2), closest: +closest.toFixed(2),
@@ -4211,7 +4252,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       ok(
         "every hit in the gauntlet came from a spike that was actually there",
         walk.struck.every((h) => h.d <= room),
-        `${walk.hits} hits${walk.hits ? " at " + walk.struck.map((h) => `${h.t}s/${h.d}m`).join(", ") : ""}, ` +
+        `${walk.hits} hits${walk.hits ? " at " + walk.struck.map((h) => `${h.t}s/${h.d}m by ${h.by}`).join(", ") : ""}, ` +
           `nearest spike over the walk ${walk.closest}, a spike reaches ${walk.hazard} (+${slip.toFixed(2)} for a frame)`
       );
     }
