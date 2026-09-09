@@ -67,6 +67,11 @@ export const LESSONS: readonly Lesson[] = [
   // The rout says the lesson has been learned by the other side, which is
   // a rule change and so worth saying every time.
   lesson({ id: "routed", event: "wardenRouted", every: true, line: "It will not cross those again. Whatever else this floor gives you, that trick is spent." }),
+  // Every time, and worded so it never reads as something the player did.
+  // The whole value of a scheduled breath is that the player recognises it
+  // as a breath and spends it; a line that sounded like a reward would
+  // teach them they had found a trick, and there is no trick.
+  lesson({ id: "turned", event: "wardenWithdrew", every: true, line: "It loses interest and walks off after something else. That will not last. Use it." }),
   // The one line that has to arrive before the player can act on it:
   // everything else teaches by having just happened, and this by having
   // four seconds left.

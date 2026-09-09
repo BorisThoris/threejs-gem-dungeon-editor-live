@@ -8776,6 +8776,62 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("the set piece that describes the Keeper is staged on its floor", !staged.error && staged.onLast > 5, staged.error || JSON.stringify(staged));
   ok("always on the approach to the exit, and never on a floor without one",
     !staged.error && staged.offPath === 0 && staged.elsewhere === 0, staged.error || JSON.stringify(staged));
+
+  /**
+   * The menace gauge, in the build the player runs.
+   *
+   * The gauge's arithmetic - the minute to peak, the cooldown, the cap - is
+   * held by the layout checks, where a minute of pressure costs nothing.
+   * What cannot be checked there is the WIRING, and the wiring is the whole
+   * reason this shipped unbuilt the first time: a gauge nothing reads fills
+   * up forever and the Warden never moves. So this pushes the gauge to full
+   * through the same handle the driver uses, and then asks the only
+   * question that matters - did the thing in the room actually leave, on a
+   * frame where the player did nothing at all.
+   */
+  const breath = await page.evaluate(async () => {
+    const run = window.__run;
+    const C = window.__cycle;
+    if (!C) return { error: "no cycle probe" };
+    const s = run.getState();
+    const here = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+    // In the room with the player, roused, and the gauge full. Nothing the
+    // player has done earns any of this - which is the point.
+    run.setState({ wardenRoomId: here.id, wardenCameFrom: null, wardenWary: false, alarm: 5 });
+    const before = {
+      room: run.getState().wardenRoomId,
+      wary: run.getState().wardenWary,
+      alarm: run.getState().alarm,
+      spent: C.menaceNow().spent,
+    };
+    let told = false;
+    const off = window.__bus.on("wardenWithdrew", () => (told = true));
+    C.setMenace({ ...C.menaceNow(), gauge: 1, lastAt: -1 });
+    // Frames, not wall time: the driver steps on useFrame and a loaded
+    // machine renders when it renders.
+    for (let i = 0; i < 60 && run.getState().wardenRoomId === before.room; i++) await new Promise((r) => setTimeout(r, 100));
+    off();
+    const after = run.getState();
+    return {
+      told,
+      before,
+      left: after.wardenRoomId !== before.room,
+      wary: after.wardenWary,
+      alarm: after.alarm,
+      spent: C.menaceNow().spent,
+      gauge: C.menaceNow().gauge,
+    };
+  });
+  ok("a full menace gauge walks the Warden out of the room, unearned",
+    !breath.error && breath.left === true, breath.error || JSON.stringify(breath));
+  ok("and the floor says so, so the player knows to spend it",
+    !breath.error && breath.told === true, breath.error || JSON.stringify(breath));
+  ok("a breath is not a rout: the alarm stands and nothing is learned",
+    !breath.error && breath.alarm === breath.before.alarm && breath.wary === false,
+    breath.error || JSON.stringify(breath));
+  ok("and the floor counts it against the two it has to give",
+    !breath.error && breath.spent === breath.before.spent + 1 && breath.gauge === 0,
+    breath.error || JSON.stringify(breath));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());

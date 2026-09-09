@@ -41,6 +41,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/heat/coefficient";
    export * from "${root}src/game/cycle/director";
+   export * from "${root}src/game/cycle/menace";
    export * from "${root}src/game/lantern/glim";
    export * from "${root}src/game/verbs/gates";
    export * from "${root}src/game/items/afflictions";
@@ -4627,6 +4628,97 @@ check("the shipped room templates reach the floors the game generates", authored
    */
   const period = T.buildUpMinS + T.sustainMaxS + T.relaxMaxS;
   check("a cycle is about a minute and a half at its longest, so a floor holds several", period >= 45 && period <= 120, `${period}s`);
+}
+
+/**
+ * THE MENACE GAUGE - decompression that is scheduled, not earned.
+ *
+ * The half of the Cycle that shipped unbuilt. `mayEscalate` stops the floor
+ * ADDING pressure during a valley; nothing ever removed the pressure
+ * already standing in the room. A player hounded from the second room of a
+ * floor got no valley at all unless they wounded it twice or spent a bomb.
+ *
+ * Creative Assembly's answer, 3-0: a meter that pulls the pursuer offstage
+ * on a threshold, with a cooldown, a time-to-peak and a cap per appearance,
+ * whose inputs measure PRESSURE ON THE PLAYER rather than player noise.
+ */
+{
+  const fill = (m, seconds, pressure) => {
+    let out = m;
+    for (let i = 0; i < seconds * 20; i++) out = L.stepMenace(out, 0.05, pressure);
+    return out;
+  };
+
+  check("a floor starts with an empty gauge and no breaths spent", L.openMenace().gauge === 0 && L.openMenace().spent === 0);
+  check("and with no withdrawal behind it, so the cooldown cannot gate the first one", L.openMenace().lastAt < 0);
+
+  /**
+   * Time to peak. The gate is that it is long enough never to fire during
+   * the ordinary business of being walked past, and short enough to arrive
+   * inside one bad chase rather than at the end of the floor.
+   */
+  check("the gauge fills under unbroken worst-case pressure", fill(L.openMenace(), L.PEAK_S, 1).gauge >= 1);
+  check("and does not fill a moment early", fill(L.openMenace(), L.PEAK_S * 0.9, 1).gauge < 1, fill(L.openMenace(), L.PEAK_S * 0.9, 1).gauge.toFixed(2));
+  check("the time to peak is under a fifth of a floor's patience", L.PEAK_S <= 300 / 4, `${L.PEAK_S}s`);
+  check("and is long enough that walking past cannot fill it", L.PEAK_S >= 30, `${L.PEAK_S}s`);
+
+  /**
+   * The inputs, and the one thing they must all be: pressure the player is
+   * UNDER. Being loud is the Din's business, and being loud entitles
+   * nobody to a rest.
+   */
+  check("being hunted in the room presses hardest", L.pressureOn(true, true, false, false) === L.PRESS.hunted);
+  check("and merely sharing the room presses less", L.pressureOn(true, false, false, false) < L.pressureOn(true, true, false, false));
+  check("and next door less again", L.pressureOn(false, false, true, false) < L.pressureOn(true, false, false, false));
+  check("and an empty floor does not press at all", L.pressureOn(false, false, false, false) === 0);
+  check("something else that commits presses as hard as the Warden does", L.pressureOn(false, false, false, true) === L.PRESS.hunted);
+  check("and pressure never exceeds one, however many things are on you", L.pressureOn(true, true, true, true) <= 1);
+
+  /**
+   * The asymmetry between filling and easing. A chase broken by eight
+   * seconds behind a door is one chase, not two - a gauge that emptied as
+   * fast as it filled would only ever fire during a single unbroken
+   * pursuit, which is the case the player can already answer by running.
+   */
+  check("the gauge eases off when nothing presses", fill(fill(L.openMenace(), L.PEAK_S / 2, 1), 5, 0).gauge < fill(L.openMenace(), L.PEAK_S / 2, 1).gauge);
+  check("and eases more slowly than it fills, so a chase broken by a door is one chase", L.EASE < 1, `${L.EASE}x`);
+  check("but a floor left alone does return to nothing", fill(fill(L.openMenace(), L.PEAK_S, 1), L.PEAK_S / L.EASE + 5, 0).gauge === 0);
+
+  /** The threshold, and the two gates on it. */
+  {
+    const full = fill(L.openMenace(), L.PEAK_S, 1);
+    check("a full gauge withdraws", L.withdrawsNow(full, 100));
+    check("and a part-filled one does not", !L.withdrawsNow(fill(L.openMenace(), L.PEAK_S / 2, 1), 100));
+
+    const spent = L.spendMenace(full, 100);
+    check("spending it empties the gauge and counts the breath", spent.gauge === 0 && spent.spent === 1);
+    const refilled = fill(spent, L.PEAK_S, 1);
+    check("a second full gauge inside the cooldown does not fire", !L.withdrawsNow(refilled, 100 + L.COOLDOWN_S - 1));
+    check("and does once the cooldown has lapsed", L.withdrawsNow(refilled, 100 + L.COOLDOWN_S));
+    check("the cooldown is longer than the time to peak, so breaths are not a metronome", L.COOLDOWN_S > L.PEAK_S, `${L.COOLDOWN_S}s vs ${L.PEAK_S}s`);
+  }
+
+  /**
+   * And the cap, which is what stops this becoming a strategy. The source
+   * says "per appearance"; ours appears once per floor and stays until the
+   * stair, so per floor is the mapping - stated here rather than left to
+   * be a coincidence of where the driver happens to reset it.
+   */
+  {
+    let m = L.openMenace();
+    let t = 0;
+    let breaths = 0;
+    for (let i = 0; i < 40; i++) {
+      m = fill(m, L.PEAK_S, 1);
+      t += L.PEAK_S;
+      if (L.withdrawsNow(m, t)) {
+        m = L.spendMenace(m, t);
+        breaths++;
+      }
+    }
+    check("a floor of unbroken pressure hands out the cap and no more", breaths === L.PER_FLOOR, `${breaths} breaths`);
+    check("and the cap is small enough that nobody plans around a third", L.PER_FLOOR >= 1 && L.PER_FLOOR <= 3, `${L.PER_FLOOR}/floor`);
+  }
 }
 
 /**

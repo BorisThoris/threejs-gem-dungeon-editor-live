@@ -556,6 +556,17 @@ export interface RunState {
    * same way and the difference between them must never be a rule.
    */
   routWarden: () => void;
+  /**
+   * The floor gives the player a breath: the Warden turns aside and walks
+   * off, on a meter rather than on anything the player did.
+   *
+   * Separate from `routWarden` and deliberately weaker. A rout is EARNED -
+   * it costs a bomb or two wounds, it calms the floor, and it teaches the
+   * Warden. This costs nothing, so it pays nothing: the alarm stands, no
+   * wound is credited, and the Warden is not made wary. All the player
+   * gets is the distance, and the distance is the whole point.
+   */
+  withdrawWarden: () => void;
   /** Bar or unbar a room's doors. */
   sealRoom: (roomId: string | null) => void;
   /** Rouse the floor. The one way the alarm goes up. */
@@ -2257,6 +2268,23 @@ export const useRun = create<RunState>()(
         alarm: Math.max(alarmFloorFor(s), s.alarm - WARDEN_ROUT_CALM),
       });
       bus.emit("wardenRouted");
+    },
+
+    withdrawWarden: () => {
+      const s = get();
+      if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
+      const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
+      // Nothing but the distance. The wounds it has taken stand, because
+      // walking away is not healing, and a player who has landed one wound
+      // does not lose it to the floor being kind.
+      set({
+        wardenRoomId: away ?? s.wardenRoomId,
+        wardenCameFrom: null,
+        wardenLure: null,
+        lureUntil: 0,
+        wardenStaggerUntil: 0,
+      });
+      bus.emit("wardenWithdrew");
     },
 
     detonate: (key) => {

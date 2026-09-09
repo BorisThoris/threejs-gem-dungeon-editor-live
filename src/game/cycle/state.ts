@@ -1,6 +1,7 @@
 import { keeperPostsFor } from "../keeper/posts";
 import { keeperHolds, useRun } from "../state/run";
 import { mayEscalate, openCycle, type Director } from "./director";
+import { openMenace, type Menace } from "./menace";
 
 /**
  * The floor's pacing, held outside React.
@@ -17,6 +18,23 @@ export const cycleNow = (): Director => director;
 
 export const setCycle = (next: Director): void => {
   director = next;
+};
+
+/**
+ * The menace gauge, held the same way and for the same reasons.
+ *
+ * Beside the director rather than inside it because they answer different
+ * questions on different clocks: the director asks whether the floor may
+ * send something new in the next ten seconds, and this asks whether the
+ * player has been leaned on for long enough that the thing already here
+ * should walk away. A floor resets both.
+ */
+let menace: Menace = openMenace();
+
+export const menaceNow = (): Menace => menace;
+
+export const setMenace = (next: Menace): void => {
+  menace = next;
 };
 
 /** Whether the floor may send something NEW right now. */

@@ -87,6 +87,19 @@ Two stores that both claimed the player's stats. So:
   during a valley; everything already in flight keeps acting, which is what
   stops the valley reading as a scripted intermission. Heat earned during
   one is held, not cancelled.
+- **And decompression is SCHEDULED, not earned: `cycle/menace.ts`.** The
+  paragraph above is only half of the Cycle, and the half that shipped
+  first. Refusing to send something new does nothing for a player already
+  being hounded - they have no valley at all until they wound the Warden
+  twice, bomb it, or spend a scroll. So a second accumulator measures how
+  long the player has been LEANED ON, over a whole floor, and when it fills
+  the Warden turns aside and walks off on its own. A minute of unbroken
+  pressure to fill, ninety seconds between two, and two a floor. It is
+  deliberately weaker than a rout: no wound is credited, the alarm stands,
+  and the Warden is not made wary, because a rout is earned and this is
+  not. Its inputs are pressure the player is UNDER and never player noise -
+  which is exactly why the Din and the Cycle are two systems and not one -
+  and it only fires where the player can see it happen.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
@@ -771,7 +784,8 @@ src/
       HeatDriver.tsx     spends it in lumps, and wakes the last band
     cycle/               the Cycle: pacing that oscillates instead of ramping
       director.ts        build up / sustain peak / peak fade / relax
-      state.ts           the director, and whether the floor may send anything
+      menace.ts          the gauge that walks the Warden off unearned
+      state.ts           the director, the gauge, and whether the floor may send
       CycleDriver.tsx    steps it, and stokes it from what happens to you
     ladder/              awareness with rungs, and the asymmetry that reads
       rungs.ts           four named rungs, ordered cones, the analog inputs

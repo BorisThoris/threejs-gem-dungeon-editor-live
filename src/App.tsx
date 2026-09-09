@@ -224,6 +224,11 @@ export default function App() {
     // the one fact the whole feature turns on.
     void import("./game/warden/bars").then((m) => (w.__bars = m));
     void import("./game/warden/roam").then((m) => (w.__roam = m));
+    // The floor's pacing, both halves of it. The gauge is the only way a
+    // check can look at the scheduled withdrawal without waiting a real
+    // minute of unbroken pressure for it - the fill rate is held by the
+    // layout checks, and this is here so the WIRING can be held too.
+    void import("./game/cycle/state").then((m) => (w.__cycle = m));
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.

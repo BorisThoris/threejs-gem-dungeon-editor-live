@@ -38,6 +38,13 @@ export interface BusEvents {
    * walks round what hurt it.
    */
   wardenRouted: undefined;
+  /**
+   * It turned aside of its own accord: the menace gauge filled and the
+   * floor gave the player a breath they did not earn. Distinct from a rout
+   * because nothing was spent and nothing was learned - the player is owed
+   * the difference in what they are told.
+   */
+  wardenWithdrew: undefined;
   /** A sprint gave the player away: it knows which room they are in. */
   wardenHeard: undefined;
   /**

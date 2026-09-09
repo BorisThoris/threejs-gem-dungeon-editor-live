@@ -3,9 +3,12 @@ import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
 import * as ladder from "../ladder/state";
+import { roomById } from "../dungeon/types";
 import { canControl, harrierAway, runClock, useRun } from "../state/run";
+import type { RunState } from "../state/run";
 import { BASE, INTENSITY, openCycle, stepCycle, stokeCycle } from "./director";
-import { cycleNow, setCycle } from "./state";
+import { openMenace, pressureOn, spendMenace, stepMenace, withdrawsNow } from "./menace";
+import { cycleNow, menaceNow, setCycle, setMenace } from "./state";
 
 /**
  * The floor's pacing, stepped once a frame.
@@ -31,6 +34,9 @@ export function CycleDriver() {
     if (floorAt.current !== s.floorEnteredAt) {
       floorAt.current = s.floorEnteredAt;
       setCycle(openCycle(runClock(s)));
+      // The cap is per floor, so the floor is where it resets. A player who
+      // spent both breaths upstairs arrives downstairs with two more.
+      setMenace(openMenace());
       return;
     }
 
@@ -55,6 +61,8 @@ export function CycleDriver() {
     let d = cycleNow();
     if (engaged) d = stokeCycle(d, INTENSITY.hunted * delta);
     else if (inRoom) d = stokeCycle(d, INTENSITY.nearby * delta);
+
+    stepMenaceGauge(s, delta, inRoom);
 
     setCycle(
       stepCycle(
@@ -93,11 +101,58 @@ export function CycleDriver() {
       bus.on("rungChanged", ({ rose, rung }) => {
         if (rose && rung >= 2) hit(INTENSITY.nearby);
       }),
-      bus.on("runStarted", () => setCycle(openCycle())),
-      bus.on("runLost", () => setCycle(openCycle())),
+      bus.on("runStarted", () => {
+        setCycle(openCycle());
+        setMenace(openMenace());
+      }),
+      bus.on("runLost", () => {
+        setCycle(openCycle());
+        setMenace(openMenace());
+      }),
     ];
     return () => off.forEach((fn) => fn());
   }, []);
 
   return null;
+}
+
+/**
+ * The menace gauge, stepped alongside the director and firing when it fills.
+ *
+ * Out of line rather than in the frame callback because it is a different
+ * question on a different clock, and reading them interleaved made it look
+ * like one accumulator with two thresholds - which is exactly the thing the
+ * research says these must not be.
+ */
+function stepMenaceGauge(s: RunState, delta: number, inRoom: boolean) {
+  const commits = ladder.commits("warden");
+  // One doorway away, which the room's own links already say. Not a
+  // distance: only one room is mounted, so "near" can only ever mean the
+  // doorways between here and there.
+  const here = s.dungeon && s.currentRoomId ? roomById(s.dungeon, s.currentRoomId) : undefined;
+  const adjacent = Boolean(
+    here && s.wardenRoomId && Object.values(here.links).some((id) => id === s.wardenRoomId)
+  );
+  // The other two things that commit and cannot be walked away from. They
+  // never withdraw - the Reaper is the floor's patience running out and the
+  // Harrier is a body in the air - but they are pressure, and a player
+  // under one of them while the Warden closes is under both.
+  const hunted = s.reaperAwake || (s.harrierAwake && !harrierAway(s));
+  const stepped = stepMenace(menaceNow(), delta, pressureOn(inRoom, commits, adjacent, hunted));
+  const now = runClock(s);
+
+  /**
+   * And it only fires where it can be SEEN.
+   *
+   * A gauge filled by a Reaper on an out-of-patience floor while the Warden
+   * is three rooms away would spend one of the floor's two breaths moving
+   * something the player cannot see, and they would get nothing at all for
+   * it. The breath is the distance opening in front of them.
+   */
+  if ((inRoom || adjacent) && withdrawsNow(stepped, now)) {
+    setMenace(spendMenace(stepped, now));
+    useRun.getState().withdrawWarden();
+    return;
+  }
+  setMenace(stepped);
 }
