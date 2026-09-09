@@ -603,6 +603,37 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
   }
   check("the generator places authored rooms often enough to measure", authored > 100, `${authored} placed`);
+
+  /**
+   * And no more often than it did with two templates.
+   *
+   * The rule `AUTHORED_CHANCE` states, held to the number rather than to
+   * good intentions: the draw used to be `pick(rng, [undefined, ...authored])`,
+   * which makes the chance `1 - 1/(n+1)` and climbs with the library. Two
+   * templates gave a third; six would have given five rooms in six. A
+   * library that grows has to mean MORE DIFFERENT set pieces and never
+   * more set pieces, or authoring rooms makes the "23 of 34 look
+   * different" measurement worse the more of them there are.
+   */
+  {
+    let couldBe = 0;
+    let were = 0;
+    for (let seed = 1; seed <= 120; seed++) {
+      for (const d of runFloors(seed)) {
+        for (const room of d.rooms) {
+          // Only rooms of a kind that HAS a template to draw: the others
+          // were never in the running and would drag the share down.
+          if (!L.templatesForKind(room.kind).length) continue;
+          couldBe++;
+          if (room.template) were++;
+        }
+      }
+    }
+    const share = were / Math.max(1, couldBe);
+    check("and no oftener than the rule says, however many templates ship",
+      Math.abs(share - L.AUTHORED_CHANCE) < 0.06,
+      `${(share * 100).toFixed(0)}% of ${couldBe} eligible rooms against a declared ${(L.AUTHORED_CHANCE * 100).toFixed(0)}%`);
+  }
   const ruled = new Set(slotted.map((t) => t.id));
   for (const [id, set] of drawn) {
     // Eight orientations is what an unslotted room gets. Every slotted one

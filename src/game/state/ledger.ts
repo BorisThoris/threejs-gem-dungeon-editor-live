@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import { bus } from "../events";
-import { LEDGER_LESSONS, type LessonId } from "../ledger/lessons";
+import { LESSON_IDS, type LessonId } from "../ledger/lessons";
 
 /**
  * What the delver has written down, and it outlives the run.
@@ -39,7 +39,7 @@ function load(): LessonId[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    const known = new Set<string>(LEDGER_LESSONS.map((l) => l.id));
+    const known = new Set<string>(LESSON_IDS);
     return parsed.filter((id): id is LessonId => typeof id === "string" && known.has(id));
   } catch {
     return [];
