@@ -508,8 +508,8 @@
    {
     "rotation": -0.2,
     "kind": "crate",
-    "x": -7.8,
-    "z": -6.9,
+    "x": -8.13,
+    "z": -7.25,
     "slot": "spill"
    },
    {
@@ -517,6 +517,20 @@
     "kind": "barrel",
     "x": -4.25,
     "z": -5.75,
+    "slot": "spill"
+   },
+   {
+    "rotation": 0,
+    "kind": "crate",
+    "x": 6.25,
+    "z": 6.88,
+    "slot": "spill"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 8.13,
+    "z": 5.63,
     "slot": "spill"
    },
    {
@@ -542,18 +556,6 @@
     "kind": "candle",
     "x": 5,
     "z": 5
-   },
-   {
-    "rotation": 0,
-    "kind": "crate",
-    "x": 6.25,
-    "z": 6.88
-   },
-   {
-    "rotation": 0,
-    "kind": "urn",
-    "x": 8.13,
-    "z": 5.63
    }
   ],
   "slots": [
@@ -562,7 +564,6 @@
     "op": "nsubst",
     "into": [
      "urn",
-     "barrel",
      "crate"
     ],
     "n": 2
@@ -590,8 +591,8 @@
    {
     "rotation": -1.2,
     "kind": "chair",
-    "x": -8,
-    "z": 5.9
+    "x": -7.65,
+    "z": 6.3
    },
    {
     "rotation": 0,
@@ -615,8 +616,8 @@
    {
     "rotation": 0.4,
     "kind": "crate",
-    "x": 6.5,
-    "z": 6,
+    "x": 7.2,
+    "z": 6.75,
     "slot": "kit"
    },
    {
@@ -651,8 +652,7 @@
     "op": "nsubst",
     "into": [
      "urn",
-     "crate",
-     "barrel"
+     "crate"
     ],
     "n": 2
    }
@@ -740,8 +740,7 @@
     "op": "nsubst",
     "into": [
      "urn",
-     "crate",
-     "barrel"
+     "crate"
     ],
     "n": 2
    }
@@ -756,26 +755,26 @@
    {
     "rotation": 0,
     "kind": "statue",
-    "x": -4.8,
-    "z": -7.1
+    "x": -6,
+    "z": -6.6
    },
    {
     "rotation": 0,
     "kind": "statue",
-    "x": 7.1,
-    "z": -4.8
+    "x": 6.6,
+    "z": -6
    },
    {
     "rotation": 0.3,
     "kind": "chest",
-    "x": -4.9,
-    "z": 7.4
+    "x": -7,
+    "z": 5.5
    },
    {
     "rotation": -0.3,
     "kind": "chest",
-    "x": 4.9,
-    "z": 7.4
+    "x": 5.5,
+    "z": 7
    },
    {
     "rotation": 0,
@@ -794,7 +793,7 @@
    {
     "rotation": 0,
     "kind": "urn",
-    "x": -3.7,
+    "x": -4.7,
     "z": 7.6,
     "slot": "urns"
    },
@@ -863,8 +862,8 @@
    {
     "rotation": 0,
     "kind": "bookshelf",
-    "x": 8.4,
-    "z": -6.1,
+    "x": 7.2,
+    "z": -6.98,
     "slot": "aisle"
    },
    {
@@ -896,8 +895,8 @@
    {
     "rotation": 0,
     "kind": "candle",
-    "x": 8.4,
-    "z": 7.6
+    "x": 7.42,
+    "z": 7.42
    },
    {
     "rotation": 0,
@@ -973,8 +972,8 @@
    {
     "rotation": 0,
     "kind": "urn",
-    "x": -3.5,
-    "z": 5.6
+    "x": -4.6,
+    "z": 5.2
    },
    {
     "rotation": 0,
@@ -1022,29 +1021,29 @@
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": -9.5,
-    "z": -7.1,
+    "x": -8.6,
+    "z": -8.9,
     "slot": "cover"
    },
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": 9.9,
-    "z": -7.3,
+    "x": 8.9,
+    "z": -8.6,
     "slot": "cover"
    },
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": -7.1,
-    "z": 9.5,
+    "x": -8.9,
+    "z": 8.6,
     "slot": "cover"
    },
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": 7.3,
-    "z": 9.9
+    "x": 8.1,
+    "z": 9.3
    },
    {
     "rotation": 0,
@@ -1055,8 +1054,8 @@
    {
     "rotation": 0,
     "kind": "barrel",
-    "x": 6.2,
-    "z": 10.8
+    "x": 6.5,
+    "z": 10.4
    },
    {
     "rotation": 0,
@@ -1095,8 +1094,7 @@
     "op": "nsubst",
     "into": [
      "crate",
-     "barrel",
-     "statue"
+     "barrel"
     ],
     "n": 2
    }
@@ -1206,8 +1204,8 @@
    {
     "rotation": -0.5,
     "kind": "chest",
-    "x": 5.1,
-    "z": -3.8
+    "x": 4.73,
+    "z": -4.73
    },
    {
     "rotation": 0,
@@ -1259,8 +1257,8 @@
    {
     "rotation": 0,
     "kind": "web",
-    "x": -6.1,
-    "z": 4.6
+    "x": -5.6,
+    "z": 4.73
    },
    {
     "rotation": 0,
@@ -1304,8 +1302,8 @@
    {
     "rotation": 0,
     "kind": "crate",
-    "x": -4.8,
-    "z": -5.4,
+    "x": -4.2,
+    "z": -5.5,
     "slot": "stock"
    },
    {
@@ -1331,8 +1329,8 @@
    {
     "rotation": 0,
     "kind": "candle",
-    "x": 4,
-    "z": 5
+    "x": 3.8,
+    "z": 4
    },
    {
     "rotation": 1.57,
@@ -1365,8 +1363,7 @@
     "op": "nsubst",
     "into": [
      "crate",
-     "barrel",
-     "urn"
+     "barrel"
     ],
     "n": 2
    }
@@ -1454,8 +1451,7 @@
     "op": "nsubst",
     "into": [
      "crate",
-     "barrel",
-     "urn"
+     "barrel"
     ],
     "n": 2
    }
@@ -1470,8 +1466,8 @@
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": -6.1,
-    "z": -8.1,
+    "x": -7.3,
+    "z": -7.5,
     "slot": "carved"
    },
    {
@@ -1484,8 +1480,8 @@
    {
     "rotation": 0,
     "kind": "pillar",
-    "x": -6.1,
-    "z": 8.1,
+    "x": -7.5,
+    "z": 7.3,
     "slot": "carved"
    },
    {
@@ -1543,8 +1539,7 @@
     "op": "nsubst",
     "into": [
      "statue",
-     "pillar",
-     "crate"
+     "pillar"
     ],
     "n": 2
    }
@@ -1669,8 +1664,8 @@
    {
     "rotation": 0,
     "kind": "barrel",
-    "x": 9,
-    "z": -7.8
+    "x": 8.8,
+    "z": -8.8
    },
    {
     "rotation": 0,
@@ -1687,8 +1682,8 @@
    {
     "rotation": 0,
     "kind": "urn",
-    "x": 7.8,
-    "z": 9
+    "x": 8.8,
+    "z": 8.8
    },
    {
     "rotation": 0,
@@ -1721,8 +1716,7 @@
     "op": "nsubst",
     "into": [
      "barrel",
-     "urn",
-     "statue"
+     "urn"
     ],
     "n": 2
    }

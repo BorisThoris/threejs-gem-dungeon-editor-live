@@ -54,8 +54,17 @@ export interface ShopOffer {
   reach?: number;
 }
 
-/** How close you stand to pick one thing off the counter rather than another. */
-export const NEAR_REACH = 1.0;
+/**
+ * How close you stand to pick one thing off the counter rather than another.
+ *
+ * Half the counter's own reach and no less: a metre was small enough that a
+ * player had to stand on the exact spot, and the smoke suite - which walks
+ * with the same clumsiness a person does - could not reach the naming at
+ * all. The goods are 1.6m apart, so this still leaves the nearest one
+ * unambiguous, and the counter's standing spot is over three metres from
+ * every one of them.
+ */
+export const NEAR_REACH = 1.5;
 
 /** How far behind the counter the goods are laid out. */
 export const GOODS_OUT = 1.4;

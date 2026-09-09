@@ -506,6 +506,21 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   const slotted = L.allTemplates().filter((t) => (t.slots ?? []).length > 0);
   check("shipped templates use slots at all", slotted.length > 0, `${slotted.length} of ${L.allTemplates().length}`);
 
+  /**
+   * And every kind a rule names is a kind the room can actually contain.
+   *
+   * `nsubst` reads `into[0]` and `into[1]` and nothing else - n of the
+   * tagged props become the first and the rest become the second - so a
+   * third entry is a kind written down, checked by nobody, and never once
+   * built. Five of the rules shipped with one before this ran.
+   */
+  const dead = slotted.flatMap((t) =>
+    (t.slots ?? [])
+      .filter((r) => r.op === "nsubst" && r.into.length > 2)
+      .map((r) => `${t.id}/${r.slot} names ${r.into.slice(2).join(", ")} and cannot build them`)
+  );
+  check("and no rule offers a kind it can never actually place", dead.length === 0, dead.join("; ") || "none");
+
   // The number the whole file exists to make large. One is an authored room
   // with extra ceremony.
   const counts = [];

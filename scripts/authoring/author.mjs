@@ -26,11 +26,12 @@ const WANTED = [
       { ...p("crate", -5.0, -4.0, 0.3), slot: "spill" },
       { ...p("crate", -6.5, -5.8, -0.2), slot: "spill" },
       { ...p("barrel", -3.4, -4.6), slot: "spill" },
+      { ...p("crate", 5.0, 5.5), slot: "spill" },
+      { ...p("urn", 6.5, 4.5), slot: "spill" },
       p("bookshelf", 5.5, -5.5, 1.57), p("skull", -3.0, -3.0),
       p("web", 6.5, -3.8), p("candle", 4.0, 4.0),
-      p("crate", 5.0, 5.5), p("urn", 6.5, 4.5),
     ],
-    slots: [{ slot: "spill", op: "nsubst", into: ["urn", "barrel", "crate"], n: 2 }],
+    slots: [{ slot: "spill", op: "nsubst", into: ["urn", "crate"], n: 2 }],
   },
   {
     id: "hall-camp", kind: "normal", size: 18, shape: "square",
@@ -43,7 +44,7 @@ const WANTED = [
       p("bookshelf", -6.4, -4.2, 1.57), p("web", 5.5, -5.0),
       p("skull", 3.4, -3.4),
     ],
-    slots: [{ slot: "kit", op: "nsubst", into: ["urn", "crate", "barrel"], n: 2 }],
+    slots: [{ slot: "kit", op: "nsubst", into: ["urn", "crate"], n: 2 }],
   },
   {
     id: "vault-plundered", kind: "treasure", size: 20, shape: "square",
@@ -55,7 +56,7 @@ const WANTED = [
       p("rubble", 4.0, 6.4), p("web", -5.0, 5.4), p("crystal", 0, 3.0),
       p("pillar", 5.4, -5.4), p("pillar", -5.4, 3.6),
     ],
-    slots: [{ slot: "spoil", op: "nsubst", into: ["urn", "crate", "barrel"], n: 2 }],
+    slots: [{ slot: "spoil", op: "nsubst", into: ["urn", "crate"], n: 2 }],
   },
   {
     id: "vault-tomb", kind: "treasure", size: 22, shape: "hexagon",
@@ -103,7 +104,7 @@ const WANTED = [
       p("rubble", 0, -4.4), p("rubble", 0, 4.4),
       p("skull", -2.6, 2.6), p("skull", 2.6, -2.6), p("web", -6.6, 3.4),
     ],
-    slots: [{ slot: "cover", op: "nsubst", into: ["crate", "barrel", "statue"], n: 2 }],
+    slots: [{ slot: "cover", op: "nsubst", into: ["crate", "barrel"], n: 2 }],
   },
   {
     id: "trap-bones", kind: "trap", size: 18, shape: "square",
@@ -141,7 +142,7 @@ const WANTED = [
       p("bookshelf", -6.4, 5.4, 1.57), p("banner", 0, -6.6),
       p("potion", -3.6, 6.6), p("skull", 6.6, 3.4),
     ],
-    slots: [{ slot: "stock", op: "nsubst", into: ["crate", "barrel", "urn"], n: 2 }],
+    slots: [{ slot: "stock", op: "nsubst", into: ["crate", "barrel"], n: 2 }],
   },
   {
     id: "start-threshold", kind: "start", size: 18, shape: "square",
@@ -153,7 +154,7 @@ const WANTED = [
       p("skull", -3.0, 3.0), p("web", -6.4, 5.6), p("web", 6.4, 5.6),
       p("rubble", 0, 4.6), p("potion", 4.6, 6.6),
     ],
-    slots: [{ slot: "left", op: "nsubst", into: ["crate", "barrel", "urn"], n: 2 }],
+    slots: [{ slot: "left", op: "nsubst", into: ["crate", "barrel"], n: 2 }],
   },
   {
     id: "end-stair", kind: "end", size: 24, shape: "octagon",
@@ -165,7 +166,7 @@ const WANTED = [
       p("candle", -3.6, 3.6), p("candle", 3.6, 3.6),
       p("banner", 0, -6.6), p("urn", 6.6, 3.6), p("web", -6.6, -3.6),
     ],
-    slots: [{ slot: "carved", op: "nsubst", into: ["statue", "pillar", "crate"], n: 2 }],
+    slots: [{ slot: "carved", op: "nsubst", into: ["statue", "pillar"], n: 2 }],
   },
   {
     id: "memory-antechamber", kind: "memory", size: 20, shape: "hexagon",
@@ -190,7 +191,7 @@ const WANTED = [
       p("rubble", -3.4, 3.4), p("skull", 3.4, -3.4),
       p("candle", -4.4, 4.4), p("banner", 0, 6.6),
     ],
-    slots: [{ slot: "weight", op: "nsubst", into: ["barrel", "urn", "statue"], n: 2 }],
+    slots: [{ slot: "weight", op: "nsubst", into: ["barrel", "urn"], n: 2 }],
   },
 ];
 

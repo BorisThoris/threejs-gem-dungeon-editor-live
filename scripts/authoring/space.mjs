@@ -8,6 +8,7 @@ const root = new URL("../../", import.meta.url).pathname;
 const dir = mkdtempSync(join(tmpdir(), "space-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, `
+import "${root}src/game/rooms/shipped";
 export * from "${root}src/game/dungeon/generate";
 export * from "${root}src/game/dungeon/types";
 export * from "${root}src/game/world";

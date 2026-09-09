@@ -3522,7 +3522,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const o = found.find((x) => x.id === "naming");
       return [o.x, 0, o.z];
     }, shop.id);
-    const nameOffer = await stepTo(naming, 1.6);
+    // Well inside the reach a good has, which is shorter than the counter's
+    // on purpose - standing at the counter has to offer the counter.
+    const nameOffer = await stepTo(naming, 0.7);
     // When this misses, say which triggers were in reach and how far, and
     // where the walk actually stopped. Twice now the failure has been
     // "Already at full health" - the life trigger's blocked reason, which
@@ -7143,8 +7145,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.setState({ transitioning: true, currentRoomId: shop.id, gems: 20, satchel: [], identified: [] });
     run.getState().roomReady(shop.id);
     await wait(1400);
-    const counter = window.__anchorsFor("shop", shop)[0];
-    window.__bus.emit("teleport", { position: [counter[0] + 1.1, 1.5, counter[2] + 1.6] });
+    // Where the bomb is laid out, asked of the shop rather than written as
+    // an offset that agreed with it by coincidence.
+    const bomb = window.__shopOffers(shop).find((o) => o.id === "bomb");
+    window.__bus.emit("teleport", { position: [bomb.x, 1.5, bomb.z] });
     await wait(900);
     const rows = Object.entries(window.__triggers ?? {}).filter(([l]) => /bomb/i.test(l));
     return { seed: seed - 3, gems: run.getState().gems, offered: rows.some(([, t]) => t.enabled && t.dist < 1.5), prompt: document.body.innerText.match(/buy a bomb[^\n]*/i)?.[0] ?? null };
@@ -7889,7 +7893,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       // taken reads as a Keeper raising its halberd across an empty room,
       // which is a real failure and would be indistinguishable from this
       // one - and on a loaded machine this is the one that happens.
-      const spot = [door[0] * 0.3, door[2] * 0.3];
+      /**
+       * The middle of the room, because that is a place whose distance from
+       * the Keeper is known: it stands at 0.72 of the way to its doorway,
+       * so the middle is 0.72 of a half-room away from it, and in every
+       * room the game builds that is more than twice its reach.
+       *
+       * This used to be three tenths of the way to the doorway, which is
+       * only outside the tell in rooms of twenty-one metres and up. The
+       * Keeper stands in whichever room opens onto the exit and that room
+       * can be fourteen, so the check was reading a halberd half raised and
+       * calling it a bug in the Keeper.
+       */
+      const spot = [0, 0];
       window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[1]] });
       const arrived = async () => {
         for (let i = 0; i < 40; i++) {
@@ -7900,6 +7916,9 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         return false;
       };
       out.keeperArrived = await arrived();
+      // And say so, rather than assuming it: a room too small for a spot
+      // outside the tell would make this check pass for the wrong reason.
+      out.keeperFarBy = +Math.hypot(door[0] * 0.72 - spot[0], door[2] * 0.72 - spot[1]).toFixed(2);
       const far = window.__keeper ? window.__keeper.tell : null;
       // And then into it.
       window.__bus.emit("teleport", { position: [door[0] * 0.82, 1.5, door[2] * 0.82] });
@@ -7908,7 +7927,13 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         await wait(120);
         if (window.__keeper && typeof window.__keeper.tell === "number") near = Math.max(near, window.__keeper.tell);
       }
-      out.keeper = { far: far === null ? null : +far.toFixed(2), near: +near.toFixed(2), arrived: out.keeperArrived };
+      out.keeper = {
+        far: far === null ? null : +far.toFixed(2),
+        near: +near.toFixed(2),
+        arrived: out.keeperArrived,
+        farBy: out.keeperFarBy,
+        reach: W.KEEPER_REACH,
+      };
     }
 
     // The Harrier, closing on a standing player.
@@ -7939,7 +7964,11 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
   ok(
     "the Keeper raises its halberd as the player comes into reach, and not before",
-    told.keeper && told.keeper.arrived && told.keeper.far === 0 && told.keeper.near >= 0.5,
+    told.keeper &&
+      told.keeper.arrived &&
+      told.keeper.farBy > told.keeper.reach * 2 &&
+      told.keeper.far === 0 &&
+      told.keeper.near >= 0.5,
     JSON.stringify(told.keeper)
   );
   ok(
