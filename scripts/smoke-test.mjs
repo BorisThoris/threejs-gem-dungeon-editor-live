@@ -7220,13 +7220,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const livesBefore = run.getState().lives;
     const gemsBefore = run.getState().gems;
     let broke = null;
-    let walkedOver = 0;
     // Every prop the blast broke, not just the one it was set beside: now
     // that the authored rooms actually register, a tableau's crate can
     // stand inside the same blast as the barrel, and the wreck that pays
     // is whichever of them the seed says holds something.
     const brokeAll = [];
-    const offGem = window.__bus.on("gemCollected", () => walkedOver++);
+    // What the BURST paid: the gems on the books the instant it went off,
+    // against the gems after the wreck was counted. Subtracting gem
+    // pickups by event was wrong twice over - a gem with a vein behind it
+    // pays two on one event - and the delta across the blast is the only
+    // measurement that is about the blast.
+    let gemsAtBurst = null;
+    const offGem = window.__bus.on("bombBurst", () => {
+      if (gemsAtBurst === null) gemsAtBurst = run.getState().gems;
+    });
     const off = window.__bus.on("propBroken", (e) => {
       brokeAll.push(e.key);
       if (e.key === key) broke = e.key;
@@ -7244,7 +7251,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     out.spill = K.spillFor(d.seed, key);
     out.spills = brokeAll.filter((k) => K.spillFor(d.seed, k)).length;
     out.brokeAll = brokeAll.length;
-    out.gemsPaid = run.getState().gems - gemsBefore - walkedOver;
+    out.gemsPaid = run.getState().gems - (gemsAtBurst ?? gemsBefore);
     // And with nothing between: the same spot, the barrel gone, costs a life.
     window.__bus.emit("teleport", { position: [bombAt[0], 1.5, bombAt[1]] });
     await wait(400);
