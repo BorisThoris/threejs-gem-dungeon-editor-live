@@ -35,7 +35,7 @@ const NAMING_PRICE = 1;
  */
 const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
-import { libraryLectern, shopAnchors, shrineAnchor } from "./anchors";
+import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, type ShopOfferId } from "./anchors";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 // Room layouts that ship with the game register themselves.
 import "./shipped";
@@ -75,6 +75,18 @@ function Shop({ room }: RoomKindProps) {
   const held = useRun((s) => s.relics);
   const toll = useRun(tollNow);
   const [counter, ...shelves] = shopAnchors(room);
+  /**
+   * Where each of the five things the trader offers actually stands.
+   *
+   * Read from the one owner rather than written as offsets here, because
+   * two of those offsets used to be the same offset and nothing outside
+   * this file could see it.
+   */
+  const at = useMemo(() => {
+    const table = {} as Record<ShopOfferId, { position: [number, number, number]; radius?: number }>;
+    for (const o of shopOffers(room)) table[o.id] = { position: [o.x, 0, o.z], radius: o.reach };
+    return table;
+  }, [room]);
   const satchel = useRun((s) => s.satchel);
   const identified = useRun((s) => s.identified);
   const appearances = useRun((s) => s.appearances);
@@ -120,7 +132,7 @@ function Shop({ room }: RoomKindProps) {
         <meshStandardMaterial color="#5a3d26" roughness={0.85} />
       </mesh>
       <InteractTrigger
-        position={[counter[0], 0, counter[2]]}
+        {...at.life}
         label={`Buy a life (${GEMS_PER_LIFE} gem)`}
         enabled={needsLife && canBuyLife}
         blockedReason={
@@ -142,7 +154,7 @@ function Shop({ room }: RoomKindProps) {
           somewhere to put it, so a full satchel is refused before the gems
           go rather than after. */}
       <InteractTrigger
-        position={[counter[0] + 1.1, 0, counter[2] + 1.1]}
+        {...at.bomb}
         label={bombBought ? "The shop's bomb is sold" : `Buy a bomb (${BOMB_PRICE} gems)`}
         enabled={!bombBought && canBuyBomb && !satchelFull}
         blockedReason={
@@ -179,7 +191,7 @@ function Shop({ room }: RoomKindProps) {
        * makes carrying light mean carrying less treasure home.
        */}
       <InteractTrigger
-        position={[counter[0] - 1.1, 0, counter[2] + 1.1]}
+        {...at.oil}
         label={oilFull ? "The flask is full" : `Buy oil (${OIL_PRICE} gem)`}
         enabled={!oilFull && canBuyOil}
         blockedReason={
@@ -199,7 +211,7 @@ function Shop({ room }: RoomKindProps) {
           that using one to identify it usually teaches you nothing in time
           to matter. */}
       <InteractTrigger
-        position={[counter[0], 0, counter[2] + 1.1]}
+        {...at.naming}
         label={
           puzzling >= 0
             ? `Ask about ${appearances[satchel[puzzling]].unknown} (${NAMING_PRICE} gem)`
@@ -225,7 +237,7 @@ function Shop({ room }: RoomKindProps) {
           carrying all run - every one of them they find is worse - and
           this is the only thing that answers it. */}
       <InteractTrigger
-        position={[counter[0] - 1.1, 0, counter[2] + 1.1]}
+        {...at.blessing}
         label={
           liftable >= 0
             ? `Have ${appearances[satchel[liftable]].unknown} blessed (${BLESSING_PRICE} gems)`

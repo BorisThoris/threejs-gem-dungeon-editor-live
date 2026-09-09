@@ -3508,7 +3508,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       const run = window.__run;
       run.setState({ lives: 3, gems: 9, satchel: ["mire"], identified: [] });
     });
-    const naming = [counter[0], counter[1], counter[2] + 1.1];
+    /**
+     * Where the naming actually stands, asked of the shop rather than
+     * guessed from the counter.
+     *
+     * This used to be `counter + 1.1` in z, written here and separately in
+     * the shop's component, and they agreed until the day the shop's five
+     * offers were spread out to stop two of them sharing a point. One
+     * owner, and the check reads it.
+     */
+    const naming = await page.evaluate((id) => {
+      const found = window.__shopOffers(window.__run.getState().dungeon.rooms.find((r) => r.id === id));
+      const o = found.find((x) => x.id === "naming");
+      return [o.x, 0, o.z];
+    }, shop.id);
     const nameOffer = await stepTo(naming, 1.6);
     // When this misses, say which triggers were in reach and how far, and
     // where the walk actually stopped. Twice now the failure has been
@@ -7870,8 +7883,23 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       for (let i = 0; i < 40 && run.getState().transitioning; i++) await wait(150);
       const door = window.__layout.doorPosition(room, post.dir);
       // Well outside its reach first: nothing raised.
-      window.__bus.emit("teleport", { position: [door[0] * 0.3, 1.5, door[2] * 0.3] });
-      await wait(900);
+      //
+      // Waited for by WHERE THE PLAYER IS rather than by a fixed nine
+      // hundred milliseconds. A teleport still settling when the sample is
+      // taken reads as a Keeper raising its halberd across an empty room,
+      // which is a real failure and would be indistinguishable from this
+      // one - and on a loaded machine this is the one that happens.
+      const spot = [door[0] * 0.3, door[2] * 0.3];
+      window.__bus.emit("teleport", { position: [spot[0], 1.5, spot[1]] });
+      const arrived = async () => {
+        for (let i = 0; i < 40; i++) {
+          await wait(120);
+          const p = window.__playerDebug;
+          if (p && Math.hypot(p.x - spot[0], p.z - spot[1]) < 1.0) return true;
+        }
+        return false;
+      };
+      out.keeperArrived = await arrived();
       const far = window.__keeper ? window.__keeper.tell : null;
       // And then into it.
       window.__bus.emit("teleport", { position: [door[0] * 0.82, 1.5, door[2] * 0.82] });
@@ -7880,7 +7908,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         await wait(120);
         if (window.__keeper && typeof window.__keeper.tell === "number") near = Math.max(near, window.__keeper.tell);
       }
-      out.keeper = { far: far === null ? null : +far.toFixed(2), near: +near.toFixed(2) };
+      out.keeper = { far: far === null ? null : +far.toFixed(2), near: +near.toFixed(2), arrived: out.keeperArrived };
     }
 
     // The Harrier, closing on a standing player.
@@ -7911,7 +7939,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
   ok(
     "the Keeper raises its halberd as the player comes into reach, and not before",
-    told.keeper && told.keeper.far === 0 && told.keeper.near >= 0.5,
+    told.keeper && told.keeper.arrived && told.keeper.far === 0 && told.keeper.near >= 0.5,
     JSON.stringify(told.keeper)
   );
   ok(

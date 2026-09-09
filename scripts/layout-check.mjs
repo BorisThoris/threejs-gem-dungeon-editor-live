@@ -1109,6 +1109,58 @@ for (let seed = 1; seed <= 500; seed++) {
   if (d.rooms.some((r) => r.template)) authored++;
 }
 check("500 dungeons across every floor size: connected, legal, and a vault that never blocks the exit", bad === 0, `${bad} bad`);
+
+/**
+ * The trader's five offers, and the one that could never be reached.
+ *
+ * The prompt takes the nearest thing that CAN be used, so two offers at one
+ * point are one offer - and the oil and the blessing were written at the
+ * same offset from the counter for as long as both have existed. Nothing
+ * caught it because the geometry lived inside the shop's component, where
+ * only the component could see it. It lives in `rooms/anchors.ts` now, and
+ * this is what holds it.
+ */
+{
+  const IDS = ["life", "naming", "blessing", "bomb", "oil"];
+  const sizes = [14, 16, 18];
+  const problems = [];
+  for (const size of sizes) {
+    for (const shape of ["square", "circle"]) {
+      for (let g = 0; g < 8; g++) {
+        const room = {
+          id: "shop", kind: "shop", seed: 1, grid: { x: g % 3, z: Math.floor(g / 3) },
+          size, shape, links: { north: "a", south: "b", east: "c", west: "d" },
+        };
+        const offers = L.shopOffers(room);
+        const where = `${size}m ${shape} @${room.grid.x},${room.grid.z}`;
+        if (offers.length !== IDS.length) problems.push(`${where}: ${offers.length} offers`);
+        for (let i = 0; i < offers.length; i++) {
+          for (let j = 0; j < i; j++) {
+            const apart = Math.hypot(offers[i].x - offers[j].x, offers[i].z - offers[j].z);
+            if (apart < 1.2) problems.push(`${where}: ${offers[i].id} and ${offers[j].id} are ${apart.toFixed(2)}m apart`);
+          }
+        }
+        /**
+         * And none of them stands where walking to the counter would pick
+         * it up instead. The player comes in from the room, so "at the
+         * counter" is two metres out along the line to the middle.
+         */
+        const counter = offers.find((o) => o.id === "life");
+        const len = Math.hypot(counter.x, counter.z) || 1;
+        const stand = { x: counter.x - (counter.x / len) * 2, z: counter.z - (counter.z / len) * 2 };
+        const nearest = offers
+          .map((o) => ({ id: o.id, d: Math.hypot(o.x - stand.x, o.z - stand.z), reach: o.reach ?? L.INTERACT_RADIUS }))
+          .filter((o) => o.d <= o.reach)
+          .sort((a, b) => a.d - b.d)[0];
+        if (!nearest || nearest.id !== "life") {
+          problems.push(`${where}: standing at the counter offers ${nearest ? nearest.id : "nothing"}`);
+        }
+      }
+    }
+  }
+  check("every one of the trader's offers has a place of its own", problems.length === 0, problems.slice(0, 3).join("; ") || `${IDS.length} offers over ${sizes.length * 2 * 8} shops`);
+  check("and the goods are picked up closer than the counter is walked to", L.NEAR_REACH < L.INTERACT_RADIUS, `${L.NEAR_REACH}m against ${L.INTERACT_RADIUS}m`);
+}
 // If this ever reads zero the shipped templates are not registered, and
 // every dungeon checked above is one the game would never build.
 check("the shipped room templates reach the floors the game generates", authored > 0, `${authored} of 500`);

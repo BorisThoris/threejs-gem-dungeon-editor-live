@@ -232,7 +232,13 @@ export default function App() {
     void import("./game/textures/registry").then((m) => (w.__anisotropy = m.currentAnisotropy));
     // Where each kind's own content stands, so a probe can walk up to a
     // lectern or a pressure plate without a copy of the geometry.
-    void import("./game/rooms/anchors").then((m) => (w.__anchorsFor = m.reservedAnchorsFor));
+    void import("./game/rooms/anchors").then((m) => {
+      w.__anchorsFor = m.reservedAnchorsFor;
+      // And the trader's five, by name. A check that walked to a hard-coded
+      // offset from the counter was a check that agreed with the shop by
+      // coincidence, and stopped agreeing the moment the shop moved.
+      w.__shopOffers = m.shopOffers;
+    });
     // Where a room's gem is, for the walker that plays a run to the end.
     // Without it a probe has to sweep the eight diagonal anchors hoping to
     // cross one, which is how the old gem check came to fail one run in
