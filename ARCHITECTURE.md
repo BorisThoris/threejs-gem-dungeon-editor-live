@@ -100,6 +100,18 @@ Two stores that both claimed the player's stats. So:
   not. Its inputs are pressure the player is UNDER and never player noise -
   which is exactly why the Din and the Cycle are two systems and not one -
   and it only fires where the player can see it happen.
+- **Where a room's own offers stand is `rooms/anchors.ts`, not the component
+  that draws them.** The shop's five - a life, a naming, a blessing, a bomb,
+  oil - were five hand-written offsets inside `rooms/content.tsx`, and two of
+  them were the same offset. The prompt takes the nearest thing that CAN be
+  used, so two interactions at one point are one interaction: one of those
+  two could never be reached by anybody, and had not been for as long as
+  both existed. Nothing caught it because no check could see where an offer
+  stood. The counter keeps the ordinary three-metre reach because it is what
+  a player walks to; the goods laid out on it are a metre and a half, so
+  standing at the counter offers the counter and stepping up to one offers
+  that one. The five spots are reserved anchors too, so nothing gets dressed
+  on top of an offer, which is the same bug in its next form.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Two things need it - the Warden through a wall and a Sentry
   from its post - and they have to agree, because a cue panned the wrong way
