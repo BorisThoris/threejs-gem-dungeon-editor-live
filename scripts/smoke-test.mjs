@@ -8735,6 +8735,47 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     walls.said === walls.text, JSON.stringify({ said: walls.said, cut: walls.text }));
   ok("what has been read is remembered", walls.after === walls.before + 1, JSON.stringify({ before: walls.before, after: walls.after }));
   ok("the start room's names wall is there to be read", walls.names === true, JSON.stringify({ runs: walls.runs, shown: walls.shown }));
+
+  // And the set piece that points forwards, in the build the player runs:
+  // staged on the approach to the Keeper, and nowhere else on the floor.
+  const staged = await page.evaluate(async () => {
+    const run = window.__run;
+    const T = window.__templates;
+    const G = await import("/src/game/dungeon/generate.ts");
+    const W = await import("/src/game/world.ts");
+    const D = await import("/src/game/dungeon/generate.ts");
+    const P = await import("/src/game/deepworks/placement.ts");
+    const ahead = T.allTemplates().find((t) => T.placedByMeaning(t));
+    if (!ahead) return { error: "nothing staged by meaning ships" };
+    let onLast = 0;
+    let elsewhere = 0;
+    let offPath = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      let next = seed;
+      for (let floor = 1; floor <= 3; floor++) {
+        const rules = W.floorRules(floor);
+        const d = G.generateDungeon({
+          seed: next,
+          minRooms: rules.minRooms,
+          maxRooms: rules.maxRooms,
+          lastFloor: floor === 3,
+        });
+        next = (d.seed * 7919 + (floor + 1)) >>> 0;
+        const here = d.rooms.filter((r) => r.template === ahead.id);
+        if (floor < 3) elsewhere += here.length;
+        else if (here.length) {
+          onLast++;
+          const path = D.shortestPath(d.rooms, "start", d.endId) ?? [];
+          const back = path.length - 1 - path.indexOf(here[0].id);
+          if (back < P.AHEAD_OF_KEEPER || back > P.AHEAD_OF_KEEPER + P.AHEAD_WINDOW) offPath++;
+        }
+      }
+    }
+    return { id: ahead.id, onLast, elsewhere, offPath };
+  });
+  ok("the set piece that describes the Keeper is staged on its floor", !staged.error && staged.onLast > 5, staged.error || JSON.stringify(staged));
+  ok("always on the approach to the exit, and never on a floor without one",
+    !staged.error && staged.offPath === 0 && staged.elsewhere === 0, staged.error || JSON.stringify(staged));
 }
 
 ok("the screen was still the store's at the end of the run", await screenShowsStore());
