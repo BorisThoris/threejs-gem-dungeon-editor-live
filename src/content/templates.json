@@ -565,7 +565,7 @@
      "barrel",
      "crate"
     ],
-    "n": 1
+    "n": 2
    }
   ]
  },
@@ -654,7 +654,7 @@
      "crate",
      "barrel"
     ],
-    "n": 1
+    "n": 2
    }
   ]
  },
@@ -686,13 +686,22 @@
     "rotation": 0,
     "kind": "crate",
     "x": -8.25,
-    "z": -4.75
+    "z": -4.75,
+    "slot": "spoil"
    },
    {
     "rotation": 0,
     "kind": "urn",
     "x": 8.25,
-    "z": 4.75
+    "z": 4.75,
+    "slot": "spoil"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": 4,
+    "z": 5.25,
+    "slot": "spoil"
    },
    {
     "rotation": 0,
@@ -705,12 +714,6 @@
     "kind": "web",
     "x": -6.25,
     "z": 6.75
-   },
-   {
-    "rotation": 0,
-    "kind": "skull",
-    "x": 4,
-    "z": 5.25
    },
    {
     "rotation": 0,
@@ -729,6 +732,18 @@
     "kind": "pillar",
     "x": -6.75,
     "z": 4.5
+   }
+  ],
+  "slots": [
+   {
+    "slot": "spoil",
+    "op": "nsubst",
+    "into": [
+     "urn",
+     "crate",
+     "barrel"
+    ],
+    "n": 2
    }
   ]
  },
@@ -919,25 +934,29 @@
     "rotation": 0,
     "kind": "candle",
     "x": -2.4,
-    "z": -2.4
+    "z": -2.4,
+    "slot": "offering"
    },
    {
     "rotation": 0,
     "kind": "candle",
     "x": 2.4,
-    "z": -2.4
+    "z": -2.4,
+    "slot": "offering"
    },
    {
     "rotation": 0,
     "kind": "candle",
     "x": -2.4,
-    "z": 2.4
+    "z": 2.4,
+    "slot": "offering"
    },
    {
     "rotation": 0,
     "kind": "candle",
     "x": 2.4,
-    "z": 2.4
+    "z": 2.4,
+    "slot": "offering"
    },
    {
     "rotation": 0,
@@ -981,6 +1000,17 @@
     "x": 0,
     "z": -6.4
    }
+  ],
+  "slots": [
+   {
+    "slot": "offering",
+    "op": "nsubst",
+    "into": [
+     "skull",
+     "crystal"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -993,19 +1023,22 @@
     "rotation": 0,
     "kind": "pillar",
     "x": -9.5,
-    "z": -7.1
+    "z": -7.1,
+    "slot": "cover"
    },
    {
     "rotation": 0,
     "kind": "pillar",
     "x": 9.9,
-    "z": -7.3
+    "z": -7.3,
+    "slot": "cover"
    },
    {
     "rotation": 0,
     "kind": "pillar",
     "x": -7.1,
-    "z": 9.5
+    "z": 9.5,
+    "slot": "cover"
    },
    {
     "rotation": 0,
@@ -1055,6 +1088,18 @@
     "x": -10.72,
     "z": 5.52
    }
+  ],
+  "slots": [
+   {
+    "slot": "cover",
+    "op": "nsubst",
+    "into": [
+     "crate",
+     "barrel",
+     "statue"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1067,25 +1112,29 @@
     "rotation": 0,
     "kind": "skull",
     "x": -3.38,
-    "z": -3.38
+    "z": -3.38,
+    "slot": "bones"
    },
    {
     "rotation": 0,
     "kind": "skull",
     "x": 3.38,
-    "z": -3.6
+    "z": -3.6,
+    "slot": "bones"
    },
    {
     "rotation": 0,
     "kind": "skull",
     "x": -3.6,
-    "z": 3.38
+    "z": 3.38,
+    "slot": "bones"
    },
    {
     "rotation": 0,
     "kind": "skull",
     "x": 2.48,
-    "z": 2.48
+    "z": 2.48,
+    "slot": "bones"
    },
    {
     "rotation": 0,
@@ -1129,6 +1178,17 @@
     "x": 7.42,
     "z": -4.95
    }
+  ],
+  "slots": [
+   {
+    "slot": "bones",
+    "op": "nsubst",
+    "into": [
+     "rubble",
+     "web"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1165,31 +1225,36 @@
     "rotation": 0,
     "kind": "crystal",
     "x": 0,
-    "z": -2.27
+    "z": -2.27,
+    "slot": "glint"
    },
    {
     "rotation": 0,
     "kind": "crystal",
     "x": -1.93,
-    "z": 2.8
+    "z": 2.8,
+    "slot": "glint"
    },
    {
     "rotation": 0,
     "kind": "crystal",
     "x": 1.93,
-    "z": 2.8
+    "z": 2.8,
+    "slot": "glint"
    },
    {
     "rotation": 0,
     "kind": "candle",
     "x": -4.02,
-    "z": 4.02
+    "z": 4.02,
+    "slot": "glint"
    },
    {
     "rotation": 0,
     "kind": "candle",
     "x": 4.02,
-    "z": 4.02
+    "z": 4.02,
+    "slot": "glint"
    },
    {
     "rotation": 0,
@@ -1203,6 +1268,17 @@
     "x": 0,
     "z": 4.38
    }
+  ],
+  "slots": [
+   {
+    "slot": "glint",
+    "op": "nsubst",
+    "into": [
+     "candle",
+     "crystal"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1215,31 +1291,36 @@
     "rotation": 0,
     "kind": "crate",
     "x": -4.4,
-    "z": -6.4
+    "z": -6.4,
+    "slot": "stock"
    },
    {
     "rotation": 0,
     "kind": "crate",
     "x": -6.4,
-    "z": -4.6
+    "z": -4.6,
+    "slot": "stock"
    },
    {
     "rotation": 0,
     "kind": "crate",
     "x": -4.2,
-    "z": -5.5
+    "z": -5.5,
+    "slot": "stock"
    },
    {
     "rotation": 0,
     "kind": "barrel",
     "x": 7.5,
-    "z": -4.7
+    "z": -4.7,
+    "slot": "stock"
    },
    {
     "rotation": 0,
     "kind": "barrel",
     "x": 4.6,
-    "z": -6.4
+    "z": -6.4,
+    "slot": "stock"
    },
    {
     "rotation": 0,
@@ -1277,6 +1358,18 @@
     "x": 6.6,
     "z": 3.4
    }
+  ],
+  "slots": [
+   {
+    "slot": "stock",
+    "op": "nsubst",
+    "into": [
+     "crate",
+     "barrel",
+     "urn"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1307,13 +1400,22 @@
     "rotation": 0,
     "kind": "crate",
     "x": 6.08,
-    "z": -6.08
+    "z": -6.08,
+    "slot": "left"
    },
    {
     "rotation": 0,
     "kind": "barrel",
     "x": 4.27,
-    "z": -7.42
+    "z": -7.42,
+    "slot": "left"
+   },
+   {
+    "rotation": 0,
+    "kind": "urn",
+    "x": -5.17,
+    "z": 7.42,
+    "slot": "left"
    },
    {
     "rotation": 0,
@@ -1341,15 +1443,21 @@
    },
    {
     "rotation": 0,
-    "kind": "urn",
-    "x": -5.17,
-    "z": 7.42
-   },
-   {
-    "rotation": 0,
     "kind": "potion",
     "x": 5.17,
     "z": 7.42
+   }
+  ],
+  "slots": [
+   {
+    "slot": "left",
+    "op": "nsubst",
+    "into": [
+     "crate",
+     "barrel",
+     "urn"
+    ],
+    "n": 2
    }
   ]
  },
@@ -1363,19 +1471,22 @@
     "rotation": 0,
     "kind": "pillar",
     "x": -6.1,
-    "z": -8.1
+    "z": -8.1,
+    "slot": "carved"
    },
    {
     "rotation": 0,
     "kind": "pillar",
     "x": 8.5,
-    "z": -6.1
+    "z": -6.1,
+    "slot": "carved"
    },
    {
     "rotation": 0,
     "kind": "pillar",
     "x": -6.1,
-    "z": 8.1
+    "z": 8.1,
+    "slot": "carved"
    },
    {
     "rotation": 0,
@@ -1425,6 +1536,18 @@
     "x": -8.9,
     "z": -5.2
    }
+  ],
+  "slots": [
+   {
+    "slot": "carved",
+    "op": "nsubst",
+    "into": [
+     "statue",
+     "pillar",
+     "crate"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1455,25 +1578,29 @@
     "rotation": 0,
     "kind": "web",
     "x": -4.3,
-    "z": -6.5
+    "z": -6.5,
+    "slot": "dust"
    },
    {
     "rotation": 0,
     "kind": "web",
     "x": 6.5,
-    "z": -4.3
+    "z": -4.3,
+    "slot": "dust"
    },
    {
     "rotation": 0,
     "kind": "web",
     "x": -6.5,
-    "z": 4.3
+    "z": 4.3,
+    "slot": "dust"
    },
    {
     "rotation": 0,
     "kind": "web",
     "x": 4.3,
-    "z": 6.5
+    "z": 6.5,
+    "slot": "dust"
    },
    {
     "rotation": 0,
@@ -1499,6 +1626,17 @@
     "x": 6.4,
     "z": 4.7
    }
+  ],
+  "slots": [
+   {
+    "slot": "dust",
+    "op": "nsubst",
+    "into": [
+     "rubble",
+     "skull"
+    ],
+    "n": 2
+   }
   ]
  },
  {
@@ -1511,19 +1649,22 @@
     "rotation": 0,
     "kind": "crate",
     "x": -7.8,
-    "z": -8.8
+    "z": -8.8,
+    "slot": "weight"
    },
    {
     "rotation": 0,
     "kind": "crate",
     "x": -6.32,
-    "z": -8.8
+    "z": -8.8,
+    "slot": "weight"
    },
    {
     "rotation": 0,
     "kind": "crate",
     "x": -8.8,
-    "z": -6.32
+    "z": -6.32,
+    "slot": "weight"
    },
    {
     "rotation": 0,
@@ -1572,6 +1713,18 @@
     "kind": "banner",
     "x": 0,
     "z": 9.07
+   }
+  ],
+  "slots": [
+   {
+    "slot": "weight",
+    "op": "nsubst",
+    "into": [
+     "barrel",
+     "urn",
+     "statue"
+    ],
+    "n": 2
    }
   ]
  }
