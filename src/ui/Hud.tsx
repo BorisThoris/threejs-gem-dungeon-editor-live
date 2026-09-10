@@ -180,19 +180,70 @@ export function Hud() {
         zIndex: 900,
       }}
     >
-      {lines.map((line) => (
-        <div key={line.id} data-testid={`hud-${line.id}`}>
-          <span style={{ color: colors.dim }}>{line.label} </span>
-          <span style={{ color: TONE[line.tone] }}>
-            {/* Nothing said in colour alone: the mark carries whatever the
-                tone does, for a reader who sees every tone as the same
-                grey. It is the settings' choice, and one place decides
-                what the mark is. */}
-            {marks && line.mark ? `${line.mark} ` : ""}
-            {line.body}
-          </span>
-        </div>
-      ))}
+      {lines.map((line, i) => {
+        /**
+         * The rank the line already carries, spent on the screen.
+         *
+         * `hudLines` has sorted these by how urgently they need reading
+         * since the readout was unified, and the component then drew all
+         * five ranks in the same size, weight and colour of label - so a
+         * Reaper in the room looked exactly like what the floor is made
+         * of, and the whole thing read as a table of key-value pairs
+         * rather than as something with anything to say. The ordering was
+         * doing all the work and none of it was visible.
+         *
+         * Three tiers, off the rank that is already there: what is taking
+         * a life or running out (0-1), what a decision is made on (2-3),
+         * and what is merely true (4). The last of those is the floor and
+         * the ground - always present, never the thing to read first - so
+         * it is small, dim and set below a hairline, out of the way of
+         * everything that changes.
+         */
+        const ambient = line.rank >= 4;
+        const urgent = line.rank <= 1;
+        const firstAmbient = ambient && (i === 0 || lines[i - 1].rank < 4);
+        return (
+          <div
+            key={line.id}
+            data-testid={`hud-${line.id}`}
+            style={{
+              fontSize: ambient ? text.small : undefined,
+              opacity: ambient ? 0.72 : 1,
+              marginTop: firstAmbient ? (compact ? 5 : 8) : undefined,
+              paddingTop: firstAmbient ? (compact ? 5 : 8) : undefined,
+              borderTop: firstAmbient ? `1px solid ${colors.line}` : undefined,
+            }}
+          >
+            <span
+              style={{
+                color: colors.dim,
+                // Quieter than what it labels, always. A label is how you
+                // find the fact, not the fact.
+                fontSize: ambient ? "0.94em" : "0.88em",
+                letterSpacing: "0.08em",
+                opacity: 0.85,
+              }}
+            >
+              {line.label}{" "}
+            </span>
+            <span
+              style={{
+                color: TONE[line.tone],
+                // The one thing about to take a life is allowed to be the
+                // loudest thing in the readout.
+                fontWeight: urgent ? 700 : 400,
+              }}
+            >
+              {/* Nothing said in colour alone: the mark carries whatever the
+                  tone does, for a reader who sees every tone as the same
+                  grey. It is the settings' choice, and one place decides
+                  what the mark is. */}
+              {marks && line.mark ? `${line.mark} ` : ""}
+              {line.body}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
