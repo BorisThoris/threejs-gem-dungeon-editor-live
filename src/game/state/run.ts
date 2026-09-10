@@ -373,6 +373,16 @@ export interface RunState {
   floorRecord: FloorRecord;
   /** How many promises this run has KEPT, which is what prices the next. */
   pledgesKept: number;
+  /**
+   * The Books Balance has been spent.
+   *
+   * The pair lets the shop take the toll's worth out of what has already
+   * been banked, ONCE - which in this economy means one purchase that does
+   * not have to leave the exit's price in hand. "Say nothing about it" is
+   * the pair's own sentence, so nothing announces it: the shop simply
+   * stops refusing, the way a shopkeeper who knows you would.
+   */
+  booksSpent: boolean;
   /** Which room the Warden is in, or null while it still sleeps. */
   wardenRoomId: string | null;
   /** The room it walked in from, so wandering does not just pace a corridor. */
@@ -820,6 +830,7 @@ export const useRun = create<RunState>()(
     pledge: null,
     floorRecord: { ...NO_PLEDGE },
     pledgesKept: 0,
+    booksSpent: false,
     wardenRoomId: null,
     wardenCameFrom: null,
     enteredBy: null,
@@ -910,6 +921,7 @@ export const useRun = create<RunState>()(
         pledge: null,
         floorRecord: { ...NO_PLEDGE },
         pledgesKept: 0,
+        booksSpent: false,
         barredDoor: null,
         barUntil: 0,
         mapped: false,
@@ -1299,7 +1311,11 @@ export const useRun = create<RunState>()(
     spendGems: (amount) => {
       const s = get();
       if (s.gems < amount) return false;
-      set({ gems: s.gems - amount });
+      // If this purchase only went through because the pair covered it,
+      // the pair is spent. Read before the gems move, because afterwards
+      // the question cannot be asked.
+      const onTheBooks = s.gems - amount < tollNow(s) && booksWouldCover(s, amount);
+      set({ gems: s.gems - amount, booksSpent: s.booksSpent || onTheBooks });
       return true;
     },
 
@@ -2879,7 +2895,20 @@ export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s
  * buying a relic for several gems, did not.
  */
 export const canSpend = (s: RunState, price: number): boolean =>
-  s.gems >= price && s.gems - price >= tollNow(s);
+  s.gems >= price && (s.gems - price >= tollNow(s) || booksWouldCover(s, price));
+
+/**
+ * Whether The Books Balance would carry this purchase.
+ *
+ * The pair's sentence is "the shop will take the toll's worth in banked
+ * gems, once, and say nothing about it", and in this economy the only thing
+ * the toll's worth buys is the right to spend down past it. So the pair
+ * buys exactly one purchase that does not have to leave the exit's price in
+ * hand - and the toll is still owed, which is what stops this being a
+ * discount. The player has to find it again.
+ */
+export const booksWouldCover = (s: RunState, price: number): boolean =>
+  !s.booksSpent && modifiers(s.relics).booksBalance && s.gems >= price;
 
 export const useCurrentRoom = (): Room | undefined => useRun(roomNow);
 

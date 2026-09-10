@@ -163,6 +163,18 @@ export const pairFor = (held: readonly OfferId[]): Pair[] =>
   PAIRS.filter((p) => p.of.every((id) => held.includes(id)));
 
 /**
+ * WHICH floor of a run carries the hoard The Full Count promises.
+ *
+ * One floor, and the same one every time a seed is replayed - a pair whose
+ * payoff moved around would be a pair nobody could plan a route for. The
+ * last floor is excluded on the reward mix's own rule: floor three pays only
+ * into this run, and a hoard is the most this-run thing there is, so it
+ * would be the obvious place and therefore not a discovery.
+ */
+export const hoardFloorFor = (seed: number, floors: number): number =>
+  1 + (Math.abs(Math.trunc(seed)) % Math.max(1, floors - 1));
+
+/**
  * The reward mix, as a tuned ratio that DECLINES WITH DEPTH.
  *
  * Every room reward is explicitly typed "this run" or "next run", and the

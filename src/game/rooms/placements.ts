@@ -15,6 +15,7 @@ import {
   type Vec3,
 } from "../dungeon/layout";
 import { memoryAnchors } from "../puzzles/anchors";
+import { inscribedRadius } from "../dungeon/types";
 import { createRng, shuffle } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { CATALOG } from "../props/catalog";
@@ -37,6 +38,8 @@ const CLEAR_OF_KEY = 1.2;
 const CLEAR_OF_LITTER = 1.2;
 /** How far anything tall stands off a line from the lectern to a crystal. */
 const CLEAR_OF_SIGHT = 0.9;
+/** A chest is this much across, which sets how close two of them may stand. */
+const CHEST_RADIUS = 0.5;
 
 const near2 = (p: PropPlacement, a: Vec3, r: number) =>
   (p.x - a[0]) ** 2 + (p.z - a[2]) ** 2 < r * r;
@@ -71,6 +74,20 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
 export interface DressingOptions {
   /** This is the floor's locked room. */
   asVault?: boolean;
+  /**
+   * This is the floor's vault AND the run holds The Full Count, so it is
+   * carrying more than the floor it sits on should be carrying.
+   *
+   * Named `brimming` rather than `hoard` because `hoard` already means
+   * something else one file along - the flavour a secret room can be
+   * dressed as - and two meanings for one word in the dressing is how a
+   * room ends up with the wrong one.
+   *
+   * Categorical rather than numeric, which is the whole property the pair
+   * was stolen for: there is no version of this that is twelve percent
+   * better. Either the vault is brimming or it is not.
+   */
+  brimming?: boolean;
   /**
    * Where this room's Sentry stands, if it has one.
    *
@@ -207,6 +224,51 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   const chests = (ps: PropPlacement[]) => ps.filter((p) => p.kind === "chest").length;
   const vaulted = room.template ? own : dress("treasure");
   const picked = chests(vaulted) >= chests(own) ? vaulted : own;
+
+  /**
+   * The hoard The Full Count promises: chests at every anchor this room has
+   * left, rather than a bigger number on the ones it already had.
+   *
+   * Written as "fill what is free" on purpose. A pair's payoff has to be
+   * categorical or it is a stat in a coat, and "every free anchor in the
+   * vault holds a chest" is a thing a room either is or is not. What the
+   * player sees is a room that is obviously wrong for the floor it is on,
+   * which is the sentence the pair was written from.
+   */
+  if (opts.brimming) {
+    /**
+     * Chests wherever one fits, on the room's own floor rather than on its
+     * anchor rings.
+     *
+     * The rings are a dozen spots and a full vault has already taken them,
+     * so laying the hoard on them left eleven vaults in forty no fuller
+     * than they would have been unlocked - a pair the player assembled
+     * over three floors, paying off in a room they could not tell apart.
+     * A hoard is a room stacked with chests, so it is swept off a lattice
+     * and held to the same `allowed` rules as everything else: out of the
+     * door lanes, clear of the gem, the key, the watcher and the room's
+     * own content.
+     *
+     * Two chests are half a metre across each, so 1.1 is the closest two
+     * can stand without touching.
+     */
+    const CLEAR_OF_HOARD = 1.1;
+    const STEP = 1.1;
+    const out = [...picked];
+    const half = room.size / 2;
+    const reach = inscribedRadius(room);
+    for (let x = -half + STEP; x < half; x += STEP) {
+      for (let z = -half + STEP; z < half; z += STEP) {
+        // Inside the drawn floor of a shaped room, and off its walls.
+        if (Math.hypot(x, z) + CHEST_RADIUS > reach) continue;
+        const chest: PropPlacement = { kind: "chest", x: +x.toFixed(2), z: +z.toFixed(2), rotation: 0 };
+        if (!allowed(chest)) continue;
+        if (out.some((p) => near2(p, [chest.x, 0, chest.z], CLEAR_OF_HOARD))) continue;
+        out.push(chest);
+      }
+    }
+    if (chests(out) > chests(picked)) return out;
+  }
   if (chests(picked) > 0) return picked;
 
   /**

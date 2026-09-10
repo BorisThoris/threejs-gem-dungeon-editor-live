@@ -282,6 +282,23 @@ Two stores that both claimed the player's stats. So:
   checked against what a floor actually holds, because the two had never
   been compared and the answer was that most floors could not afford one. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.
+- What a PAIR of relics unlocks is declared once in `PAIRS` in
+  `src/game/relics/offer.ts` and read through `modifiers(relics)` like any
+  other relic effect, so a duo payoff is never a second switch beside the
+  first. Two of the three had been declared and wired to nothing, which is
+  the failure mode a table invites: `cracksShow` had a reader from the day
+  it landed, `fullCount` and `booksBalance` had none, and a player who
+  assembled either pair over three floors was told they had and then played
+  a run that was identical. The Full Count's floor is `hoardFloorFor` in
+  the same file - one floor per run, never the last, the same one on a
+  replay of the seed - and `Dressing.tsx` is the only thing that asks;
+  where the hoard actually lands is `placements.ts`, which sweeps a lattice
+  over the vault rather than the anchor rings, because a full vault has
+  already taken the rings and laying the hoard on them left eleven vaults
+  in forty no fuller than an unlocked one. The Books Balance is
+  `booksSpent` on the run store, spent through `canSpend` and recorded by
+  `spendGems`, so the one purchase the toll does not have to cover is
+  counted in the same place every other gem is.
 - Where the camera is pointing is `src/game/input/look.ts`, written once a
   frame by the look controls. The minimap turns with it. It is deliberately
   not store state: it changes every frame a mouse moves, and the HUD would

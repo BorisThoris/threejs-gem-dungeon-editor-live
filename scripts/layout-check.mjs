@@ -5186,6 +5186,60 @@ check("the shipped room templates reach the floors the game generates", authored
   check("and no pair's payoff is a number either", L.PAIRS.every((p) => !/\d|%/.test(p.does)));
 
   /**
+   * And every pair's payoff is READ by something.
+   *
+   * Two of the three were not. `longDark` reached the walls; The Full Count
+   * and The Books Balance were sentences in a table, checked by the five
+   * lines above and wired to nothing - a pair the player could assemble
+   * over three floors for no effect at all. That is worse than not
+   * shipping them, because the shop tells them it will happen.
+   */
+  {
+    const held = L.PAIRS.flatMap((p) => [...p.of]);
+    const all = L.modifiers(held);
+    const none = L.modifiers([]);
+    const flags = ["longDark", "fullCount", "booksBalance"];
+    check("holding both halves of every pair turns every pair on", flags.every((f) => all[f] === true), flags.filter((f) => all[f] !== true).join(", ") || "all three");
+    check("and holding none turns none on", flags.every((f) => none[f] === false));
+    for (const p of L.PAIRS) {
+      const one = L.modifiers([p.of[0]]);
+      check(`half of ${p.name} is not ${p.name}`, L.pairFor([p.of[0]]).length === 0 && flags.some((f) => one[f] !== all[f]));
+    }
+  }
+
+  /**
+   * The Full Count names ONE floor of a run, and the same one on a replay.
+   */
+  {
+    const floors = 3;
+    const picked = [1, 2, 3, 4, 5, 99, 4242].map((seed) => L.hoardFloorFor(seed, floors));
+    check("the hoard is on one floor of the run", picked.every((f) => f >= 1 && f <= floors), picked.join(","));
+    check("and never the last, which pays only into this run anyway", picked.every((f) => f < floors), picked.join(","));
+    check("and the same floor every time a seed is replayed", L.hoardFloorFor(77, floors) === L.hoardFloorFor(77, floors));
+    check("while different seeds do not all name the same floor", new Set([1, 2, 3, 4, 5, 6, 7, 8].map((n) => L.hoardFloorFor(n, floors))).size > 1);
+  }
+
+  /**
+   * And a brimming vault is a vault with more in it, measured rather than
+   * asserted - the one thing a table cannot tell you about itself.
+   */
+  {
+    let plainer = 0;
+    let fuller = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const d = L.generateDungeon({ seed, minRooms: 9, maxRooms: 13 });
+      const vault = d.rooms.find((r) => r.id === d.vaultId);
+      if (!vault) continue;
+      const chests = (o) => L.placementsFor(vault, d.seed, o).filter((x) => x.kind === "chest").length;
+      const locked = chests({ asVault: true });
+      const brim = chests({ asVault: true, brimming: true });
+      if (brim > locked) fuller++;
+      else plainer++;
+    }
+    check("a brimming vault holds more than a locked one, on nearly every floor", fuller > plainer * 4, `${fuller} fuller, ${plainer} not`);
+  }
+
+  /**
    * The reward mix declines with depth, with ZERO meta on the last floor.
    * Floor one may pay toward the next run; floor three pays only into this
    * one - which is also the answer to "why would I not just dive".

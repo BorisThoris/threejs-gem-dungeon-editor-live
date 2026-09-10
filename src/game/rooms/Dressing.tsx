@@ -36,6 +36,9 @@ interface DressingProps {
   seed: number;
 }
 import { chestKey, placementsFor } from "./placements";
+import { modifiers } from "../relics/catalog";
+import { hoardFloorFor } from "../relics/offer";
+import { FLOORS } from "../world";
 
 export { placementsFor, type DressingOptions } from "./placements";
 
@@ -54,9 +57,21 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
     () => sentryFor(room, seed, floor, key ? [key] : [])?.at ?? null,
     [room, seed, floor, key]
   );
+  /**
+   * The Full Count: on one floor of a run that holds the pair, the vault is
+   * carrying more than that floor should be.
+   *
+   * Read here rather than in the generator because it is a fact about the
+   * RUN and not about the dungeon - the same seed played without the pair
+   * builds the same rooms, and only what stands in one of them differs.
+   */
+  const seal = useRun((s) => modifiers(s.relics).fullCount);
+  const runSeed = useRun((s) => s.runSeed);
+  const brimming =
+    seal && asVault && floor === hoardFloorFor(runSeed, FLOORS);
   const placements = useMemo(
-    () => placementsFor(room, seed, { asVault, sentry, key }),
-    [room, seed, asVault, sentry, key]
+    () => placementsFor(room, seed, { asVault, sentry, key, brimming }),
+    [room, seed, asVault, sentry, key, brimming]
   );
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.
