@@ -53,13 +53,39 @@ const frame = (p: PropProps) => ({
 
 const WOOD = "#6b4a2b";
 const DARK_WOOD = "#4a3320";
+/**
+ * The tints that carry a grain, MEASURED rather than guessed.
+ *
+ * A colour map multiplies the material's colour, so a prop that keeps its
+ * flat colour and gains a map comes out much darker than it was. My first
+ * pass at this doubled the browns by eye, and the result was a terracotta
+ * chest: the wood texture is not neutral, it is brown - its mean is
+ * (0.45, 0.30, 0.17) - so lightening a brown and then multiplying it by a
+ * brown gives a red thing.
+ *
+ * These are each original colour DIVIDED by the mean of the surface it now
+ * wears, per channel, clamped at white. The stone surface reads
+ * (0.46, 0.46, 0.48) and the wood (0.45, 0.30, 0.17), both measured off
+ * the generated canvas in the browser. So tint times grain lands back on
+ * the colour the prop always was, and the only thing that changed is that
+ * there is grain - which is the whole point, and the only way to be sure
+ * of it is to divide by the number rather than to pick one that looks
+ * about right.
+ */
+const WOOD_LIT = "#eff7f9";
+const DARK_WOOD_LIT = "#a5aab9";
+const STONE_LIT = "#ffffff";
+const STONE_DARK_LIT = "#dcdbe1";
+/** Darker cut stone: a statue's plinth and the slab of a broken wall. */
+const STONE_PLINTH = "#c9c7cf";
+const STONE_SLAB = "#b8b6be";
 const IRON = "#8d939c";
 const BONE = "#d9d2c0";
 
 function Barrel(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD, roughness: 0.85 })} />
+      <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
       {[0.25, 0.85].map((y) => (
         <mesh key={y} position={[0, y, 0]} geometry={geo("torus", 0.43, 0.03, 6, 20)} material={mat({ color: IRON, metalness: 0.7, roughness: 0.4 })} />
       ))}
@@ -80,7 +106,7 @@ function Barrel(p: PropProps) {
 function Bookshelf(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.1, 0]} castShadow geometry={geo("box", 1.6, 2.2, 0.45)} material={mat({ color: DARK_WOOD, roughness: 0.9 })} />
+      <mesh position={[0, 1.1, 0]} castShadow geometry={geo("box", 1.6, 2.2, 0.45)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
       {[0.45, 1.05, 1.65].map((y) => (
         <group key={y}>
           {[-0.5, -0.2, 0.1, 0.4].map((x, i) => (
@@ -109,10 +135,10 @@ function Candle(p: PropProps) {
 function Chair(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.45, 0]} castShadow geometry={geo("box", 0.5, 0.06, 0.5)} material={mat({ color: WOOD })} />
-      <mesh position={[0, 0.8, -0.22]} castShadow geometry={geo("box", 0.5, 0.7, 0.06)} material={mat({ color: WOOD })} />
+      <mesh position={[0, 0.45, 0]} castShadow geometry={geo("box", 0.5, 0.06, 0.5)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
+      <mesh position={[0, 0.8, -0.22]} castShadow geometry={geo("box", 0.5, 0.7, 0.06)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
       {[[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.22, z]} geometry={geo("box", 0.05, 0.44, 0.05)} material={mat({ color: DARK_WOOD })} />
+        <mesh key={i} position={[x, 0.22, z]} geometry={geo("box", 0.05, 0.44, 0.05)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
       ))}
     </group>
   );
@@ -125,13 +151,13 @@ function Chest(p: PropProps) {
   const open = p.open === true;
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.3, 0]} castShadow geometry={geo("box", 0.9, 0.6, 0.55)} material={mat({ color: WOOD, roughness: 0.8 })} />
+      <mesh position={[0, 0.3, 0]} castShadow geometry={geo("box", 0.9, 0.6, 0.55)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
       {/* The inside, only worth drawing once there is a way to see it. */}
       {open && (
         <mesh position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={geo("plane", 0.82, 0.47)} material={mat({ color: "#1c1410", roughness: 1 })} />
       )}
       <group position={[0, 0.66, -0.285]} rotation={[open ? -1.15 : 0, 0, 0]} userData={{ lid: true }}>
-        <mesh position={[0, 0, 0.285]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD })} />
+        <mesh position={[0, 0, 0.285]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
         <mesh position={[0, -0.21, 0.575]} geometry={geo("box", 0.12, 0.16, 0.04)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
       </group>
     </group>
@@ -150,8 +176,8 @@ function Crystal(p: PropProps) {
 function Pillar(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 2.1, 0]} castShadow geometry={geo("cylinder", 0.34, 0.4, 4.2, 12)} material={mat({ color: "#7d7c84", roughness: 0.9 })} />
-      <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.55, 0.6, 0.24, 12)} material={mat({ color: "#66656d" })} />
+      <mesh position={[0, 2.1, 0]} castShadow geometry={geo("cylinder", 0.34, 0.4, 4.2, 12)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
+      <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.55, 0.6, 0.24, 12)} material={mat({ color: STONE_DARK_LIT, surface: "stone" })} />
     </group>
   );
 }
@@ -179,9 +205,9 @@ function Skull(p: PropProps) {
 function Table(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.78, 0]} castShadow geometry={geo("box", 1.8, 0.08, 1)} material={mat({ color: WOOD, roughness: 0.8 })} />
+      <mesh position={[0, 0.78, 0]} castShadow geometry={geo("box", 1.8, 0.08, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
       {[[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.37, z]} geometry={geo("box", 0.08, 0.74, 0.08)} material={mat({ color: DARK_WOOD })} />
+        <mesh key={i} position={[x, 0.37, z]} geometry={geo("box", 0.08, 0.74, 0.08)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
       ))}
     </group>
   );
@@ -210,7 +236,7 @@ function Torch(p: PropProps) {
 function Wall(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.5, 0]} castShadow receiveShadow geometry={geo("box", 3, 3, 0.4)} material={mat({ color: "#55545c", roughness: 0.95 })} />
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow geometry={geo("box", 3, 3, 0.4)} material={mat({ color: STONE_SLAB, roughness: 0.95, surface: "stone" })} />
     </group>
   );
 }
@@ -231,10 +257,10 @@ function Web(p: PropProps) {
 function Crate(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.4, 0]} castShadow geometry={geo("box", 0.84, 0.8, 0.84)} material={mat({ color: WOOD, roughness: 0.85 })} />
+      <mesh position={[0, 0.4, 0]} castShadow geometry={geo("box", 0.84, 0.8, 0.84)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
       {/* Slats, so it is not a plain cube at close range. */}
       {[0.12, 0.68].map((y) => (
-        <mesh key={y} position={[0, y, 0]} geometry={geo("box", 0.88, 0.1, 0.88)} material={mat({ color: DARK_WOOD, roughness: 0.9 })} />
+        <mesh key={y} position={[0, y, 0]} geometry={geo("box", 0.88, 0.1, 0.88)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
       ))}
     </group>
   );
@@ -251,9 +277,9 @@ function Crate(p: PropProps) {
 function Statue(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]} castShadow geometry={geo("box", 0.9, 0.32, 0.9)} material={mat({ color: "#5d5c64", roughness: 0.95 })} />
-      <mesh position={[0, 1.05, 0]} castShadow geometry={geo("cylinder", 0.22, 0.34, 1.5, 10)} material={mat({ color: "#8c8a92", roughness: 0.9 })} />
-      <mesh position={[0, 1.95, 0]} castShadow geometry={geo("sphere", 0.21, 12, 10)} material={mat({ color: "#8c8a92", roughness: 0.9 })} />
+      <mesh position={[0, 0.16, 0]} castShadow geometry={geo("box", 0.9, 0.32, 0.9)} material={mat({ color: STONE_PLINTH, roughness: 0.95, surface: "stone" })} />
+      <mesh position={[0, 1.05, 0]} castShadow geometry={geo("cylinder", 0.22, 0.34, 1.5, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
+      <mesh position={[0, 1.95, 0]} castShadow geometry={geo("sphere", 0.21, 12, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
       {/* Arms folded across it, which is what makes it read as a figure. */}
       <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]} geometry={geo("box", 0.52, 0.14, 0.16)} material={mat({ color: "#7e7c85", roughness: 0.9 })} />
     </group>

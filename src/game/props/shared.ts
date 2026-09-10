@@ -14,6 +14,8 @@ import {
   type Material,
 } from "three";
 
+import { getSurface, type BuiltinSurface } from "../textures/registry";
+
 /**
  * One of each shape, and one of each material, for the whole program.
  *
@@ -86,6 +88,25 @@ export interface MaterialSpec {
   side?: number;
   depthWrite?: boolean;
   basic?: true;
+  /**
+   * The grain on it, from the same registry the walls and floors use.
+   *
+   * Every prop in the game was a flat colour. The rooms had generated
+   * stone, brick, wood and iron on their surfaces and the things standing
+   * ON those surfaces had none - so a chest was an untextured brown box in
+   * a room made of planks, and a pillar was a smooth grey plastic cylinder
+   * against a wall made of blocks. It is the same complaint as the
+   * doorways one layer in: the props do not belong to the world they are
+   * standing in.
+   *
+   * `getSurface` and not `useSurface`, because this is not a hook and does
+   * not need to be: it is the SHARED texture at its own scale, one per
+   * surface for the whole program, so a room gains a handful at most
+   * whatever it is furnished with. The material cache keys on this like
+   * every other field, so a wooden chest and a wooden table are still one
+   * material between them.
+   */
+  surface?: BuiltinSurface;
 }
 
 /** The one material with exactly these properties. */
@@ -93,10 +114,11 @@ export function mat(spec: MaterialSpec): Material {
   const key = JSON.stringify(spec);
   let m = materials.get(key);
   if (!m) {
-    const { basic, ...rest } = spec;
+    const { basic, surface, ...rest } = spec;
+    const props = surface ? { ...rest, map: getSurface(surface) } : rest;
     m = basic
-      ? new MeshBasicMaterial(rest as MeshBasicMaterial["userData"])
-      : new MeshStandardMaterial(rest as MeshStandardMaterial["userData"]);
+      ? new MeshBasicMaterial(props as MeshBasicMaterial["userData"])
+      : new MeshStandardMaterial(props as MeshStandardMaterial["userData"]);
     materials.set(key, m);
   }
   return m;
