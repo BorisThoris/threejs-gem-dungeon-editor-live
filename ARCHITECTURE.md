@@ -483,6 +483,22 @@ Two stores that both claimed the player's stats. So:
   24 candela, 5 at 4) so the bands a player has seen are unchanged and the
   three that never had a light are filled in on the curve those two
   describe.
+- The game has ONE palette and it is torchlight. `colors` in
+  `src/ui/overlay.ts` is the only palette every DOM overlay reads from, and
+  `glow` per biome in `src/game/rooms/biomes.ts` is what lights a room. They
+  used to disagree: the UI was blue-white ink, blue-grey secondary text and
+  a cyan accent on blue-black panels, while the commonest biome in the game
+  lit its rooms with a cold blue-grey fill - and the doorways were three
+  strips of `meshBasicMaterial`, an unlit flat colour no light in the world
+  could touch, so the most saturated thing in every room was its four exits
+  glowing teal. Three different pieces of the game each picked their own
+  temperature, which is what "it looks disconnected" actually is. The UI's
+  accent is now the same gold that burns over an exit you can afford, its
+  danger the same red as one you cannot, a doorway is cut stone lit by the
+  room it stands in, and a lamp over a lintel means something because only
+  the doorways worth marking carry one. The cold biomes - flooded, crystal -
+  stay cold on purpose, and now read as exceptions rather than as more of
+  the same.
 - What a relic does to the screen is decided in `modifiers` with
   everything else it does: `lightTint` is the colour of the carried
   lantern, so two relics that both tint it agree whichever was bought

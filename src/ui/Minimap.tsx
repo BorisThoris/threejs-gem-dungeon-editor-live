@@ -5,7 +5,7 @@ import { modifiers } from "../game/relics/catalog";
 import { useLedger } from "../game/state/ledger";
 import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
-import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
+import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, text } from "./overlay";
 
 const SIZE = MINIMAP_SIZE;
 const CELL = 26;
@@ -274,7 +274,7 @@ export function Minimap() {
                     textAnchor="middle"
                     fontSize={12}
                     fontWeight={700}
-                    fill={c.state === "here" ? "#0a0c12" : colors.ink}
+                    fill={c.state === "here" ? onAccent : colors.ink}
                   >
                     ?
                   </text>
@@ -323,7 +323,7 @@ export function Minimap() {
         </g>
         {/* The player: always at the centre, always pointing up. */}
         <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
-          <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill="#0a0c12" stroke="#0a0c12" strokeWidth={3} />
+          <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={onAccent} stroke={onAccent} strokeWidth={3} />
           <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
         </g>
       </svg>

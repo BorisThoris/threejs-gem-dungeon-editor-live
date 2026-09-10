@@ -99,7 +99,19 @@ export interface Biome {
 export const NEVER_LITTER: readonly PropKind[] = ["crystal", "candle", "spikes", "chest"];
 
 export const BIOME: Record<BiomeId, Biome> = {
-  hewn: { name: "Hewn stone", floor: "#a9a9b3", wall: "#65656d", surface: "stone", glow: "#8790a8", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone" },
+  /**
+   * The commonest biome in the game, and it used to be lit blue.
+   *
+   * `glow` is the colour of the room's own fill light, and hewn stone's was
+   * #8790a8 - a cold blue-grey. It is the biome most rooms are made of, so
+   * most of the game was washed in cold blue while its torches burned
+   * orange two metres away, and every prop in it went grey-blue with the
+   * walls. Torchlight is the only light source the fiction has; the fill
+   * stands in for what the torches bounce off the ceiling, and bounced
+   * torchlight is warm. The cold biomes - flooded water, crystal - stay
+   * cold, and they read as deliberate now rather than as more of the same.
+   */
+  hewn: { name: "Hewn stone", floor: "#b3aa9c", wall: "#6b665e", surface: "stone", glow: "#a8917a", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone" },
   mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss" },
   catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick" },
   flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water" },

@@ -20,17 +20,32 @@ const KIND_LABEL: Record<string, string> = {
 };
 
 /**
- * The frame's glow: cool for any door, gold for an exit you can afford, red
- * for one you cannot. Unlit, so it reads the same from any angle, but well
- * short of full brightness - at full it was a neon strip stapled to a stone
- * dungeon, and it was the brightest thing on the screen.
+ * A doorway is masonry. Only the ones that MEAN something carry a light.
+ *
+ * The frame used to be three unlit strips of flat colour - a cool blue for
+ * an ordinary door, gold or red for the exit - and the note above them said
+ * they were "well short of full brightness" so as not to read as a neon
+ * strip stapled to a stone dungeon. They read as one anyway, because an
+ * unlit material is not lighting that happens to be dim: it is a colour the
+ * room cannot touch, so the frames stayed the same flat teal whatever the
+ * torches did, and the brightest, most saturated thing in every room was
+ * its four exits. Four cyan rectangles in a grey stone box is the single
+ * loudest thing in the game that says nobody has drawn this yet.
+ *
+ * So the frame is cut stone lit like the wall it sits in, and the colour
+ * moves to a LAMP over the lintel - which only a doorway with something to
+ * say gets. An ordinary chamber is an opening in a wall, with a little warm
+ * spill low in it as though the next room had a torch in it too, and that
+ * is enough to read from across a dark room without being a sign.
  */
-const FRAME_COLOR = {
-  door: "#2a556e",
-  exitOpen: "#8a6520",
-  exitLocked: "#7a2530",
-  vault: "#7a5a1a",
+const STONE = "#6a6158";
+const LAMP = {
+  exitOpen: "#f0ad46",
+  exitLocked: "#b03a44",
+  vault: "#e0b23a",
 };
+/** The warm nothing-in-particular of light from the next room along. */
+const SPILL = "#c98a4a";
 
 interface DoorTriggerProps {
   room: Room;
@@ -75,13 +90,20 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   // A vault stays locked until a key is spent on it, and then stays open.
   const locked = target.id === vaultId && !unlocked;
   const enabled = (!isExit || gems >= toll) && !kept && !sealed && (!locked || keys > 0);
-  const color = locked
-    ? FRAME_COLOR.vault
+  /**
+   * The lamp over the lintel, or none at all.
+   *
+   * An ordinary chamber gets no lamp: it is a hole in a wall, and a game
+   * where every hole in every wall is lit up has no way left to say "this
+   * one is the way out".
+   */
+  const lamp = locked
+    ? LAMP.vault
     : isExit
       ? enabled
-        ? FRAME_COLOR.exitOpen
-        : FRAME_COLOR.exitLocked
-      : FRAME_COLOR.door;
+        ? LAMP.exitOpen
+        : LAMP.exitLocked
+      : null;
   const position = doorPosition(room, dir);
   // The frame's own x runs along the wall the door is in.
   const alongZ = dir === "east" || dir === "west";
@@ -89,8 +111,23 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   return (
     <>
       <group position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
-        <DoorFrame color={color} />
-        <pointLight position={[0, DOOR_HEIGHT - 0.6, 0]} color={color} intensity={7} distance={8} decay={1.8} />
+        <DoorFrame />
+        {lamp ? (
+          <>
+            {/* The fitting, and the flame in it. Small, and the only thing
+                here that is allowed to be brighter than the stone. */}
+            <mesh position={[0, DOOR_HEIGHT + JAMB * 1.6, DEPTH / 2]}>
+              <boxGeometry args={[0.26, 0.26, 0.18]} />
+              <meshStandardMaterial color={lamp} emissive={lamp} emissiveIntensity={1.6} roughness={0.5} />
+            </mesh>
+            <pointLight position={[0, DOOR_HEIGHT - 0.2, 0.3]} color={lamp} intensity={4} distance={7} decay={1.9} />
+          </>
+        ) : (
+          /* Light from the next room along, low in the opening, so a
+             doorway reads from across a dark room without announcing
+             itself. */
+          <pointLight position={[0, 1.1, 0]} color={SPILL} intensity={1.5} distance={4.5} decay={2} />
+        )}
       </group>
       {/* The planks, if this is the one. Drawn across the gap and low, so
           a player can see at a glance which doorway they shut and from
@@ -143,23 +180,38 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   );
 }
 
-const JAMB = 0.1;
+/**
+ * How thick the dressed stone around an opening is.
+ *
+ * Was a tenth of a metre, which is a drawn line rather than a piece of
+ * masonry - fine when the frame was a coloured strip meant to be read as a
+ * sign, wrong now that it is meant to be read as stone.
+ */
+const JAMB = 0.24;
 const DEPTH = WALL_THICKNESS + 0.06;
 
-/** Two jambs and a lintel strip, unlit so they glow the same from any angle. */
-function DoorFrame({ color }: { color: string }) {
+/**
+ * Two jambs and a lintel, cut from the same stone as the wall.
+ *
+ * Lit rather than unlit, which is the whole point: the frame now takes the
+ * room's own torchlight, so it is dark where the room is dark and warm
+ * where a torch is near, instead of holding one flat colour that no light
+ * in the game could reach. Proud of the wall by a few centimetres and wide
+ * enough to read as dressed masonry rather than as a drawn outline.
+ */
+function DoorFrame() {
   const x = DOOR_WIDTH / 2 + JAMB / 2;
   return (
     <group>
       {[-x, x].map((px) => (
-        <mesh key={px} position={[px, DOOR_HEIGHT / 2, 0]}>
+        <mesh key={px} position={[px, DOOR_HEIGHT / 2, 0]} castShadow>
           <boxGeometry args={[JAMB, DOOR_HEIGHT, DEPTH]} />
-          <meshBasicMaterial color={color} />
+          <meshStandardMaterial color={STONE} roughness={0.92} />
         </mesh>
       ))}
-      <mesh position={[0, DOOR_HEIGHT + JAMB / 2, 0]}>
+      <mesh position={[0, DOOR_HEIGHT + JAMB / 2, 0]} castShadow>
         <boxGeometry args={[DOOR_WIDTH + JAMB * 2, JAMB, DEPTH]} />
-        <meshBasicMaterial color={color} />
+        <meshStandardMaterial color={STONE} roughness={0.92} />
       </mesh>
     </group>
   );

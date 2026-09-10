@@ -56,15 +56,37 @@ export const text = {
 export const MINIMAP_SIZE = 190;
 export const MINIMAP_SCALE = device === "phone" ? 0.68 : 1;
 
+/**
+ * The one palette every overlay in the game reads from - and it used to
+ * belong to a different game than the one behind it.
+ *
+ * Ink was blue-white, dim was blue-grey, the accent was a cyan that
+ * appeared nowhere in the dungeon, and the panels were a blue-black. So
+ * every readout, prompt, menu and summary was lit by a colour no torch in
+ * the world could make, sitting on top of rooms lit by fire. That is most
+ * of what "the UI feels stuck on top of the game" actually is: not the
+ * layout, the temperature.
+ *
+ * These come off the world instead. The accent is the same lamp gold that
+ * burns over an exit you can afford, so the colour that means "this is the
+ * way on" means it in both places; danger is the same dull red as the exit
+ * you cannot; ink and dim are lamplit paper rather than screen white; and
+ * the panel is the warm near-black of stone out of the torchlight, so a
+ * menu reads as something laid over the dungeon rather than a window cut
+ * out of it.
+ */
 export const colors = {
-  ink: "#f2f4f8",
-  dim: "#aab0bd",
-  accent: "#7fe3ff",
-  danger: "#f08196",
-  gold: "#ffd479",
-  panel: "rgba(10, 12, 18, 0.86)",
-  line: "rgba(255,255,255,0.14)",
+  ink: "#f4ead9",
+  dim: "#b5a692",
+  accent: "#f0ad46",
+  danger: "#d05a58",
+  gold: "#f2c86e",
+  panel: "rgba(19, 15, 12, 0.88)",
+  line: "rgba(238, 216, 184, 0.16)",
 };
+
+/** What sits ON the accent: the warm dark of the stone, not a blue-black. */
+export const onAccent = "#1b1309";
 
 export const fullscreen: CSSProperties = {
   position: "fixed",
@@ -141,7 +163,7 @@ export const button: CSSProperties = {
   fontFamily: FONT,
   fontSize: text.body,
   letterSpacing: "0.05em",
-  color: "#0a0c12",
+  color: onAccent,
   background: colors.accent,
   border: "none",
   borderRadius: 4,
@@ -163,5 +185,5 @@ export const chip: CSSProperties = {
   height: "2.2em",
   borderRadius: 4,
   fontSize: text.chip,
-  color: "#0a0c12",
+  color: onAccent,
 };
