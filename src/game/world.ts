@@ -484,11 +484,20 @@ export const LANTERN_OIL_FULL = 60;
  * a lantern down is instant and stopping a run is not.
  */
 export const LANTERN_SEEN_HOLD_S = 3;
-/** Reach and candela, raised and lowered. */
-export const LANTERN_RANGE_UP = 15;
-export const LANTERN_RANGE_DOWN = 5;
-export const LANTERN_INTENSITY_UP = 24;
-export const LANTERN_INTENSITY_DOWN = 4;
+/**
+ * Reach and candela are NOT here.
+ *
+ * They were: four constants, a raised pair and a lowered pair, and the
+ * light eased between them. But the glim has five named bands and each one
+ * already declares how far the delver sees, so those four numbers were a
+ * second copy of two of the five - and the other three had no light at all.
+ * A player who tapped the lantern down from Raised to Guttered, or from
+ * Dark to Blind, watched the HUD change its mind and the room stay exactly
+ * as bright. Three of the five steps the bargain is made of were invisible.
+ *
+ * `GLIM_BANDS` in `lantern/glim.ts` owns the reach now, and `candelaAt`
+ * owns the brightness that goes with it.
+ */
 /**
  * What a raised lantern does to a watcher's patience, as a multiplier.
  *

@@ -2,14 +2,9 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Color, type PointLight } from "three";
 
+import { CANDELA_MAX, SEES_MAX, candelaAt } from "../lantern/glim";
 import { modifiers } from "../relics/catalog";
-import { canControl, lanternLit, useRun } from "../state/run";
-import {
-  LANTERN_INTENSITY_DOWN,
-  LANTERN_INTENSITY_UP,
-  LANTERN_RANGE_DOWN,
-  LANTERN_RANGE_UP,
-} from "../world";
+import { lanternBand, useRun } from "../state/run";
 
 /**
  * The light the player carries, and the clock that burns it.
@@ -22,6 +17,12 @@ import {
  * fifteen metres and five read as the renderer glitching; over a third of
  * a second it reads as a hand lowering.
  *
+ * What it eases TOWARDS is the band, not a raised/lowered pair. The glim
+ * has five named steps and each one says how far the delver sees; this
+ * used to blend between the first and the third and leave the other three
+ * with nothing on screen, so four taps of the lantern key produced two
+ * changes in the room. Now every tap is a smaller room.
+ *
  * The oil is spent in the store, but not every frame - the store's own
  * comment on `makeNoise` says why, and this is the same problem with a
  * tighter loop. Whole seconds are accumulated here and flushed, so a run
@@ -32,8 +33,15 @@ import {
 export function Lantern() {
   const light = useRef<PointLight>(null);
   const unflushed = useRef(0);
-  // Eased towards the target, so the change reads as a hand moving.
-  const level = useRef(1);
+  /**
+   * The reach the flame is currently at, in world units - eased towards
+   * the band's, so the change reads as a hand moving.
+   *
+   * Metres rather than a 0-to-1 blend, because the target is now one of
+   * five values rather than one of two and a normalised level would have
+   * to be un-normalised against whichever pair it sat between.
+   */
+  const reach = useRef(SEES_MAX);
   /**
    * The colour of the flame, which is the one thing of the delver's the
    * player sees all run.
@@ -52,14 +60,20 @@ export function Lantern() {
     const l = light.current;
     if (!l) return;
     const run = useRun.getState();
-    const lit = lanternLit(run);
+    /**
+     * `lanternBand` already answers "and what if it is out of oil" - an
+     * unlit lantern reads as the bottom band - so this asks one question
+     * instead of asking whether it is lit and then which band it is on.
+     */
+    const band = lanternBand(run);
 
-    const target = lit ? 1 : 0;
-    level.current += Math.max(-1, Math.min(1, target - level.current)) * Math.min(1, delta * 3.2);
-    const ease = level.current;
-    l.intensity =
-      LANTERN_INTENSITY_DOWN + (LANTERN_INTENSITY_UP - LANTERN_INTENSITY_DOWN) * ease;
-    l.distance = LANTERN_RANGE_DOWN + (LANTERN_RANGE_UP - LANTERN_RANGE_DOWN) * ease;
+    const target = band.sees;
+    reach.current += (target - reach.current) * Math.min(1, delta * 3.2);
+    l.distance = reach.current;
+    // Derived from the reach it actually has this frame rather than from
+    // the band it is heading for, so the two ease together instead of the
+    // brightness arriving before the reach does.
+    l.intensity = candelaAt(reach.current);
     // Slightly ahead of and below the eye, so it lights the floor in front
     // rather than the inside of the player's own head.
     l.position.set(state.camera.position.x, state.camera.position.y - 0.25, state.camera.position.z);
@@ -77,12 +91,14 @@ export function Lantern() {
        * Written into one object rather than a fresh one, at frame rate.
        */
       const w = window as unknown as {
-        __lantern?: { intensity: number; distance: number; ease: number; tint: string };
+        __lantern?: { intensity: number; distance: number; band: string; tint: string };
       };
-      const probe = (w.__lantern ??= { intensity: 0, distance: 0, ease: 0, tint });
+      const probe = (w.__lantern ??= { intensity: 0, distance: 0, band: band.id, tint });
       probe.intensity = l.intensity;
       probe.distance = l.distance;
-      probe.ease = ease;
+      // Which of the five the flame is heading for, so a check can step the
+      // lantern down and read the reach each step arrives at.
+      probe.band = band.id;
       // What the modifiers asked for, not what the eased colour has
       // reached: a check about which relic is worn should not also be a
       // check about how fast the ease runs on this machine.
@@ -105,5 +121,5 @@ export function Lantern() {
      */
   });
 
-  return <pointLight ref={light} color={tint} intensity={LANTERN_INTENSITY_UP} decay={1.5} />;
+  return <pointLight ref={light} color={tint} intensity={CANDELA_MAX} decay={1.5} />;
 }

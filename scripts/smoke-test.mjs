@@ -391,10 +391,30 @@ if (exitDoor) {
     // still at the door again.
     await keepOnItsFeet();
     await page.keyboard.press("KeyE");
-    await page.waitForTimeout(4000);
+    /**
+     * Sampled rather than read once, four seconds later.
+     *
+     * The toll is taken on the press and the purse only ever goes UP
+     * afterwards, so the least it is ever seen holding is what the door
+     * charged - and reading it once at the end asks a different question,
+     * which is whether anything was picked up in the meantime. It can be:
+     * the walker arrives standing in a room it has never seen, and a gem
+     * lying at the new floor's spawn is worth TWO to a delver whose flame
+     * has gone out. This check watched a correct toll for a long time and
+     * then called a doubled gem on the stairs a broken one.
+     */
+    let least = Infinity;
+    for (let i = 0; i < 40; i++) {
+      least = Math.min(least, await page.evaluate(() => window.__run.getState().gems));
+      await page.waitForTimeout(100);
+    }
     const after = await snap();
     const floor = await page.evaluate(() => window.__run.getState().floor);
-    ok("exit opens once paid and leads down a floor", after.phase === "playing" && after.gems === 1 && floor === 2 && after.room === "start", `${after.phase}, floor ${floor}, room ${after.room}, ${after.gems} gems left`);
+    ok(
+      "exit opens once paid and leads down a floor",
+      after.phase === "playing" && least === 1 && floor === 2 && after.room === "start",
+      `${after.phase}, floor ${floor}, room ${after.room}, least ${least} gems, ${after.gems} at the end`
+    );
     // The alarm does not follow you down: the new floor starts at whatever
     // its own rules say, which is quieter than the floor you just robbed and
     // no longer zero once you are deep enough.
@@ -5060,12 +5080,33 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     // the walk down begins once it has arrived. Pressing through the
     // wind-up is not a bug and must not be tested as one.
     await sleep(1600);
+    // Read before the walk down, not after it: this is the reach the flame
+    // has while it is still raised, and it is the first rung of the ladder
+    // the four presses below step off.
+    out.raisedReach = Math.round((window.__lantern?.distance ?? -1) * 100) / 100;
     const walkedDown = [];
+    /**
+     * The reach of the flame at each step, read off the light in the scene.
+     *
+     * `band` is what the store thinks and `reach` is what the room looks
+     * like, and for a long time those were different questions with the
+     * same answer only twice: the light had a raised reach and a lowered
+     * one and eased between them while the glim stepped through five named
+     * bands, so three of these four taps changed the readout and left the
+     * room exactly as bright. Nothing here ever looked at the light, which
+     * is how it stayed that way. The sleep is long enough for the ease to
+     * arrive - it is a third of a second by design, so a tenth would read
+     * the hand still moving and call two bands the same.
+     */
     for (let i = 0; i < 4; i++) {
       const was = lantern().oil;
       run.getState().toggleLantern();
-      await sleep(160);
-      walkedDown.push({ band: lantern().band, free: lantern().oil === was });
+      await sleep(900);
+      walkedDown.push({
+        band: lantern().band,
+        free: lantern().oil === was,
+        reach: Math.round((window.__lantern?.distance ?? -1) * 100) / 100,
+      });
     }
     out.walkedDown = walkedDown;
 
@@ -5191,6 +5232,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       lamp.walkedDown.every((w) => w.free),
     JSON.stringify(lamp.walkedDown)
   );
+  /**
+   * And the room gets smaller every time, which is the whole bargain.
+   *
+   * The band names are the readout; this is the game. Four presses used to
+   * produce two changes in the light and four in the HUD, and no check
+   * anywhere looked at the light, so the lantern shipped for a long time
+   * as a toggle wearing five names. Each reach is read once the ease has
+   * arrived, so "shorter than the last" is a real step and not the hand
+   * still moving.
+   */
+  {
+    const reaches = [lamp.raisedReach, ...lamp.walkedDown.map((w) => w.reach)];
+    ok(
+      "and the flame reaches less far at every one of them",
+      reaches.every((r, i) => i === 0 || (r > 0 && r < reaches[i - 1] - 0.5)),
+      reaches.join(" -> ")
+    );
+  }
   if (lamp.veins) {
     ok(
       "below the Dark band a socket pays twice, and it cannot be banked",

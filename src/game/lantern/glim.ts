@@ -104,6 +104,42 @@ export const glimBand = (glim: number): GlimBand => {
 /** How far the delver can see at this glim. */
 export const seesAt = (glim: number): number => glimBand(glim).sees;
 
+/**
+ * The brightest reach the flame has, which every dimmer one is read against.
+ *
+ * Taken from the table rather than written down again: the top band's
+ * `sees` IS the reach of a raised lantern, and a second constant saying 15
+ * somewhere else is the bug this file was written to end.
+ */
+export const SEES_MAX = GLIM_BANDS[0].sees;
+
+/** The candela of the flame at the brightest band. */
+export const CANDELA_MAX = 24;
+
+/**
+ * How candela falls with reach.
+ *
+ * FITTED, not chosen: the lantern shipped for a long time as two states -
+ * fifteen units at twenty-four candela, five units at four - and this is
+ * the exponent that passes through both of those points
+ * (24 x (5/15)^k = 4 gives k = ln 6 / ln 3). So the two brightnesses a
+ * player has actually seen are unchanged, and the three bands that never
+ * had one are filled in on the curve those two describe rather than by a
+ * number somebody liked the look of.
+ */
+export const CANDELA_FALLOFF = 1.63;
+
+/**
+ * The candela of a flame reaching this far.
+ *
+ * A point light's reach and its brightness are one fact about a flame, not
+ * two: a lamp that lights a room fifteen units across is not the same lamp
+ * dimmed, it is a bigger flame. Deriving the second from the first is what
+ * stops a band from being declared bright and short, which no fire is.
+ */
+export const candelaAt = (sees: number): number =>
+  +(CANDELA_MAX * Math.pow(Math.max(0, sees) / SEES_MAX, CANDELA_FALLOFF)).toFixed(3);
+
 /** Below this, the walls give up their veins. */
 export const GEMVEIN_BELOW = 26;
 /** And at nothing at all, a thin wall shows itself. */

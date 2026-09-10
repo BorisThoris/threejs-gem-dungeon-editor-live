@@ -23,8 +23,21 @@ const CHROMIUM =
   process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 /**
- * Measured max over 142 rooms: 51 calls, 2184 triangles, 63 geometries, 6
+ * Measured max over 156 rooms: 55 calls, 3624 triangles, 72 geometries, 7
  * textures.
+ *
+ * The triangles moved when the authored rooms landed - a hand-made room
+ * carries eleven props where a generated arrangement carried a handful, and
+ * the worst room went from 2356 to 3624. That is the feature working rather
+ * than something leaking: an authored layout REPLACES the arrangement
+ * instead of standing on top of it, and the draw calls only went 50 to 55
+ * for it, which is about 250 triangles a prop - the ordinary price of the
+ * shapes already in the catalogue.
+ *
+ * It is written down here because this tripwire did not fire when it should
+ * have: the authored-rooms commit shipped without anyone running it, and
+ * three commits went out over a budget that was already breached. A budget
+ * nobody runs is a budget that does not exist.
  *
  * `geometries` measures something different since the props started sharing
  * their shapes. It used to be a per-room cost - a room built a fresh
@@ -44,7 +57,7 @@ const CHROMIUM =
  */
 const BUDGET = {
   calls: 72,
-  triangles: 3400,
+  triangles: 4800,
   geometries: 88,
   textures: 12,
   /**

@@ -472,6 +472,17 @@ Two stores that both claimed the player's stats. So:
   travels with it as an optional pair of numbers; the store does no
   geometry with them and only passes them on, and the three pickups that
   are puzzle rewards give none, so the flourish plays at the player.
+- How far the delver's own flame reaches is `GLIM_BANDS` in
+  `src/game/lantern/glim.ts`, and its brightness is `candelaAt` beside it -
+  one fact about a fire rather than two, so no band can be declared bright
+  and short. `world.ts` used to hold a raised reach and a lowered one and
+  `Lantern.tsx` eased between them, which meant the glim's five named steps
+  had two lights between them: a player tapping down from Raised to
+  Guttered, or Dark to Blind, changed the readout and not the room. The
+  candela curve is fitted through the two lights that shipped (15 units at
+  24 candela, 5 at 4) so the bands a player has seen are unchanged and the
+  three that never had a light are filled in on the curve those two
+  describe.
 - What a relic does to the screen is decided in `modifiers` with
   everything else it does: `lightTint` is the colour of the carried
   lantern, so two relics that both tint it agree whichever was bought

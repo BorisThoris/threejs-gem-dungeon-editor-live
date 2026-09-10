@@ -3348,21 +3348,63 @@ check("the shipped room templates reach the floors the game generates", authored
 {
   const smallest = Math.min(...L.ROOM_SIZES);
   const largest = Math.max(...L.ROOM_SIZES);
+  const reaches = L.GLIM_BANDS.map((b) => b.sees);
+  const top = reaches[0];
+  const bottom = reaches[reaches.length - 1];
   check(
     "raised, the lantern lights most of an ordinary room but not the largest one",
-    L.LANTERN_RANGE_UP > L.ROOM_SIZE_DEFAULT * 0.75 && L.LANTERN_RANGE_UP < largest,
-    `${L.LANTERN_RANGE_UP} against rooms ${smallest} to ${largest} across`
+    top > L.ROOM_SIZE_DEFAULT * 0.75 && top < largest,
+    `${top} against rooms ${smallest} to ${largest} across`
   );
   check(
-    "lowered, it does not reach the far wall of even the smallest room",
-    L.LANTERN_RANGE_DOWN < smallest / 2,
-    `${L.LANTERN_RANGE_DOWN} against a half-room of ${smallest / 2}`
+    "at the bottom of the ladder it does not reach the far wall of even the smallest room",
+    bottom < smallest / 2,
+    `${bottom} against a half-room of ${smallest / 2}`
+  );
+  /**
+   * Every step of the bargain is a step the player can SEE.
+   *
+   * The lantern had two lights and five names for a long time: a raised
+   * reach and a lowered one, eased between, while the glim stepped down
+   * through Raised, Guttered, Shrouded, Dark and Blind. Three of the five
+   * taps changed the HUD and left the room exactly as bright, which is a
+   * bargain the player is told about and never shown. So the ladder is
+   * held here rather than the two ends of it: strictly shorter every step,
+   * with no two steps the same.
+   */
+  check(
+    "every band of the glim is a shorter reach than the one above it",
+    reaches.every((r, i) => i === 0 || r < reaches[i - 1]),
+    reaches.join(" -> ")
+  );
+  check(
+    "and no two bands light the same room",
+    new Set(reaches).size === reaches.length,
+    `${new Set(reaches).size} distinct of ${reaches.length}`
+  );
+  check(
+    "the candela falls with the reach, so no band is bright and short",
+    reaches.every((r, i) => i === 0 || L.candelaAt(r) < L.candelaAt(reaches[i - 1])),
+    reaches.map((r) => `${r}:${L.candelaAt(r)}`).join(" ")
+  );
+  /**
+   * The curve is fitted to what shipped, not invented.
+   *
+   * The two-state lantern was 15 units at 24 candela and 5 at 4. Those are
+   * the two brightnesses a player has actually played with, so the curve
+   * that fills in the other three bands has to pass through both of them -
+   * otherwise this change is a re-lighting of the game wearing a bug fix's
+   * name.
+   */
+  check(
+    "and the curve still passes through the two lights the game shipped with",
+    L.candelaAt(15) === 24 && Math.abs(L.candelaAt(5) - 4) < 0.05,
+    `15 units -> ${L.candelaAt(15)}, 5 units -> ${L.candelaAt(5)}`
   );
   check(
     "and lowering it is a real change rather than a dimmer setting",
-    L.LANTERN_INTENSITY_UP > L.LANTERN_INTENSITY_DOWN * 4 &&
-      L.LANTERN_RANGE_UP > L.LANTERN_RANGE_DOWN * 2,
-    `${L.LANTERN_INTENSITY_DOWN}->${L.LANTERN_INTENSITY_UP} candela, ${L.LANTERN_RANGE_DOWN}->${L.LANTERN_RANGE_UP} units`
+    L.candelaAt(top) > L.candelaAt(bottom) * 4 && top > bottom * 2,
+    `${L.candelaAt(bottom)}->${L.candelaAt(top)} candela, ${bottom}->${top} units`
   );
   /**
    * A full flask must not cover a whole run held up.
