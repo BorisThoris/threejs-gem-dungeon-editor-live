@@ -38,9 +38,22 @@ let failures = 0;
  * that survives a rasteriser sampling the arms six times a second.
  */
 let standingStillHits = null;
+/**
+ * A measurement that reads NaN or undefined is not a pass.
+ *
+ * The same guard the layout check carries, and for the same reason: a
+ * check that reads a field which has stopped existing goes green with an
+ * "undefined" printed in its own passing line, which is louder than a red
+ * line because nobody reads a PASS. A check that deliberately measures an
+ * absence should say so in words rather than printing the raw value.
+ */
+const UNMEASURED = /\bNaN\b|\bundefined\b/;
 const ok = (label, cond, detail = "") => {
-  if (!cond) failures++;
-  console.log(`${cond ? "PASS" : "FAIL"}  ${label}${detail ? "  - " + detail : ""}`);
+  const unmeasured = UNMEASURED.test(String(detail));
+  const passed = cond && !unmeasured;
+  const why = unmeasured ? `${detail}  <- NaN or undefined in the measurement` : detail;
+  if (!passed) failures++;
+  console.log(`${passed ? "PASS" : "FAIL"}  ${label}${why ? "  - " + why : ""}`);
 };
 
 /**
@@ -4150,19 +4163,33 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
          * The game announces every one of these; listening costs nothing
          * and turns "a bug" into "which bug".
          */
-        let lastBlow = null;
+        /**
+         * A blow is announced AFTER the blood, not before it.
+         *
+         * Every announcer in the game reads `if (get().damage()) bus.emit(
+         * "wardenStruck")` - the store emits `damaged` from inside
+         * `damage()`, so by the time this hears the hit the strike that
+         * caused it has not been named yet. Looking only BACKWARDS from a
+         * hit, as the first version of this did, therefore named the blow
+         * before last or nothing at all, which is why an arena walk mauled
+         * by a Warden reported "nothing announced" and blamed the room.
+         *
+         * So blows are collected with their times and matched to hits
+         * afterwards, in either direction. Some sources genuinely announce
+         * nothing - the arena's own arms, a spike, a pit - and those are
+         * the ones this check is actually about.
+         */
         const blows = ["wardenStruck", "reaperStruck", "keeperStruck", "harrierStruck", "trapSprung", "sentrySaw", "bombBurst"];
+        const announced = [];
         const heard = blows.map((name) =>
-          window.__bus.on(name, () => {
-            lastBlow = { name, at: performance.now() };
-          })
+          window.__bus.on(name, () => announced.push({ name, at: performance.now() }))
         );
         const off = window.__bus.on("damaged", () => {
-          const recent = lastBlow && performance.now() - lastBlow.at < 250 ? lastBlow.name : "nothing announced";
           struck.push({
             t: +((performance.now() - t0) / 1000).toFixed(1),
+            at: performance.now(),
             d: +toNearestSpike().toFixed(2),
-            by: recent,
+            by: "nothing announced",
           });
         });
         let travelled = 0, lx = p.x, lz = p.z, worst = 0, frames = 0, closest = Infinity;
@@ -4211,6 +4238,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         off();
         const dt = (performance.now() - t0) / 1000;
         heard.forEach((stop) => stop());
+        /**
+         * Match each hit to the nearest blow in TIME, either side of it.
+         *
+         * Either side because the store emits `damaged` from inside
+         * `damage()` and the caller names the strike on the line after, so
+         * the blow that caused a hit lands microseconds later; and a
+         * quarter of a second is wide enough for a slow frame and far too
+         * narrow to reach the next hit.
+         */
+        for (const hit of struck) {
+          let best = null;
+          for (const blow of announced) {
+            const gap = Math.abs(blow.at - hit.at);
+            if (gap < 250 && (!best || gap < best.gap)) best = { name: blow.name, gap };
+          }
+          if (best) hit.by = best.name;
+          delete hit.at;
+        }
         return { hits: struck.length, struck, seconds: +dt.toFixed(1),
                  speed: +(travelled / dt).toFixed(2), frame: +(dt / frames).toFixed(3),
                  drift: +worst.toFixed(2), closest: +closest.toFixed(2),
@@ -4269,10 +4314,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
         standingStillHits !== null && walk.hits < standingStillHits,
         `${walk.hits} hits walking the circle against ${standingStillHits} standing on the plinth`
       );
+      /**
+       * The arena answers for the arena's arms, and for nothing else.
+       *
+       * A Warden can walk into this room while the walker is orbiting, and
+       * a Warden's reach has nothing to do with where a spike is - so a
+       * hit another source announced is not evidence that the arms struck
+       * from out of nowhere, which is the only thing this check is about.
+       * `sentrySaw` is not damage and so never excuses a hit; the rest are.
+       */
+      const OWNED_BY_SOMETHING_ELSE = new Set([
+        "wardenStruck", "reaperStruck", "keeperStruck", "harrierStruck", "trapSprung", "bombBurst",
+      ]);
+      const armsLanded = walk.struck.filter((h) => !OWNED_BY_SOMETHING_ELSE.has(h.by));
       ok(
         "every hit in the gauntlet came from a spike that was actually there",
-        walk.struck.every((h) => h.d <= room),
-        `${walk.hits} hits${walk.hits ? " at " + walk.struck.map((h) => `${h.t}s/${h.d}m by ${h.by}`).join(", ") : ""}, ` +
+        armsLanded.every((h) => h.d <= room),
+        `${armsLanded.length} of ${walk.hits} hits were the arms'` +
+          `${walk.hits ? " (" + walk.struck.map((h) => `${h.t}s/${h.d}m by ${h.by}`).join(", ") + ")" : ""}, ` +
           `nearest spike over the walk ${walk.closest}, a spike reaches ${walk.hazard} (+${slip.toFixed(2)} for a frame)`
       );
     }

@@ -413,6 +413,19 @@ that ships, and the desktop package that would go on Steam.
 | `yarn tour` | Not a check: photographs one room of every kind, a Sentry with its beam this way, the Warden in the room with you, and the eight screens the player reads - title, controls, records, satchel, tome, pause and both run summaries - into `docs/playtest`. Looking at the pictures is the check; the first eight screen shots found three real bugs, and each of them now has one in `test:smoke` or `test:pad` | a dev server, Chromium |
 | `yarn test:desktop` | Packages the Linux build, reads what is inside it, then starts it under a virtual display and plays it. Holds the build config and the Steam instructions to each other | Xvfb, Chromium |
 
+All three suites refuse a passing check whose own measurement reads NaN or
+undefined. It is worth saying because it was earned: the two checks holding
+the delver economy - that no delver can be given a floor it cannot pay to
+leave, and that every one of them still has a gem spare on the worst seed -
+subtracted a relic field that had stopped existing when the toll became
+undiscountable. The toll came out NaN, every comparison against it was
+false, both checks went green, and the worst seed printed "+NaN" in the
+passing line for two systems. That is the worst shape a suite can fail in,
+because it is louder than a red line and nobody reads a PASS. Both hold
+for real now, with two gems spare on the worst seed of three thousand. A
+check that deliberately measures an absence - the one asserting a sound
+four doorways away does not arrive - says so in words instead.
+
 Two of the layout checks hold documents to code rather than code to code,
 which is unusual enough to be worth saying: every deed's Steam API name
 has to appear in `steam/README.md`, the file somebody will type those

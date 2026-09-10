@@ -77,9 +77,22 @@ const BUDGET = {
 const SEEDS = [4242, 77];
 
 let failures = 0;
+/**
+ * A measurement that reads NaN or undefined is not a pass.
+ *
+ * The same guard the layout check carries, and for the same reason: a
+ * check that reads a field which has stopped existing goes green with an
+ * "undefined" printed in its own passing line, which is louder than a red
+ * line because nobody reads a PASS. A check that deliberately measures an
+ * absence should say so in words rather than printing the raw value.
+ */
+const UNMEASURED = /\bNaN\b|\bundefined\b/;
 const ok = (label, cond, detail = "") => {
-  if (!cond) failures++;
-  console.log(`${cond ? "PASS" : "FAIL"}  ${label}${detail ? "  - " + detail : ""}`);
+  const unmeasured = UNMEASURED.test(String(detail));
+  const passed = cond && !unmeasured;
+  const why = unmeasured ? `${detail}  <- NaN or undefined in the measurement` : detail;
+  if (!passed) failures++;
+  console.log(`${passed ? "PASS" : "FAIL"}  ${label}${why ? "  - " + why : ""}`);
 };
 
 const browser = await chromium.launch({

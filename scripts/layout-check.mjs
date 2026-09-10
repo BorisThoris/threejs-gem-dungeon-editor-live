@@ -106,9 +106,28 @@ await build({
 const L = await import(pathToFileURL(out).href);
 
 let failures = 0;
+/**
+ * A measurement that reads NaN or undefined is not a pass.
+ *
+ * The delver economy went unmeasured for two systems because a check
+ * subtracted a field that had stopped existing: the toll came out NaN,
+ * every `free < toll` was false, and the check printed "+NaN" in its own
+ * PASS line for months without one person reading it. That is the worst
+ * shape a suite can fail in - louder than a red line, because it is green.
+ *
+ * A symbol that no longer exists reads `undefined` here rather than
+ * throwing, since the modules are bundled and read as data, so this is the
+ * only place the whole class can be caught: any check whose own detail
+ * carries a NaN or an undefined has not measured what it says it did, and
+ * is failed on that alone whatever its condition returned.
+ */
+const UNMEASURED = /\bNaN\b|\bundefined\b/;
 const check = (name, ok, detail = "") => {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  - " + detail : ""}`);
-  if (!ok) failures++;
+  const unmeasured = UNMEASURED.test(String(detail));
+  const passed = ok && !unmeasured;
+  const why = unmeasured ? `${detail}  <- NaN or undefined in the measurement` : detail;
+  console.log(`${passed ? "PASS" : "FAIL"}  ${name}${why ? "  - " + why : ""}`);
+  if (!passed) failures++;
 };
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
 /**
@@ -919,13 +938,21 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   const delverWorst = {};
   for (const id of L.DELVER_IDS) {
     const delver = L.DELVERS[id];
-    // The relics a delver starts with, priced in: the Ledger takes a gem
-    // off, which would hide a toll bonus that the floor cannot cover.
-    const discount = L.modifiers(delver.relics).tollDiscount;
+    /**
+     * Nothing a delver carries makes the exit cheaper.
+     *
+     * This used to subtract `modifiers(delver.relics).tollDiscount`, and
+     * that field stopped existing when the toll became undiscountable -
+     * "every exit costs one gem less" being a number wearing a name. The
+     * subtraction went on running against `undefined`, so the toll was NaN,
+     * every `free < toll` was false, and BOTH delver checks below passed
+     * for two systems without measuring anything. The worst seed printed
+     * "+NaN" in the passing line the whole time.
+     */
     let tightest = Infinity;
     for (const floor of [1, 2, 3]) {
       const rules = L.floorRules(floor);
-      const toll = Math.max(1, L.tollForFloor(floor) - discount);
+      const toll = L.tollForFloor(floor);
       for (let seed = 1; seed <= 200; seed++) {
         const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
         let free = 0;
@@ -4541,7 +4568,19 @@ check("the shipped room templates reach the floors the game generates", authored
    */
   const six = L.carriesTo(line(6), "r0", 1);
   check("three doorways away it is below everything on the floor that listens", six.get("r3") < 0.3, `${six.get("r3")?.toFixed(4)}`);
-  check("and four doorways away it is not there at all", six.get("r4") === undefined, `${six.get("r4")}`);
+  /**
+   * The one check in the suite whose right answer IS nothing.
+   *
+   * It says so in words rather than printing the raw `undefined`, because
+   * an undefined in a PASS line is exactly what the guard on `check` is
+   * looking for - and a check that deliberately measures an absence should
+   * not be indistinguishable from one that measured nothing by accident.
+   */
+  check(
+    "and four doorways away it is not there at all",
+    six.get("r4") === undefined,
+    six.has("r4") ? `${six.get("r4")} still arrives` : "nothing arrives"
+  );
 
   /** A wall is 0.00, and that is not a rounded-down small number. */
   const split = [
