@@ -334,25 +334,55 @@ const exitDoor = await page.evaluate(() => {
   // not open without a key. That is what "path not walked" was, about one
   // run in five - a real property of the floor, read as a flaky test.
   const shut = s.dungeon.vaultId && !s.unlocked.includes(s.dungeon.vaultId) ? s.dungeon.vaultId : null;
-  const prev = new Map([[s.currentRoomId, null]]);
-  const q = [s.currentRoomId];
-  let neighbour = null;
-  while (q.length) {
-    const id = q.shift();
-    const room = byId.get(id);
-    if (Object.values(room.links).includes(s.dungeon.endId)) { neighbour = id; break; }
-    for (const n of Object.values(room.links)) {
-      if (!n || prev.has(n) || n === shut) continue;
-      prev.set(n, id);
-      q.push(n);
+  /**
+   * Walk to the exit's neighbour, going round the locked vault if it can.
+   *
+   * Routing round the vault fixed most of "path not walked", and not all
+   * of it: on some floors the exit's neighbour is only reachable THROUGH
+   * the vault, and then there is no route at all and the whole exit block
+   * is skipped - which reads as three failing checks in a row about
+   * restarting, none of which are about restarting. It cost two full runs
+   * in one sitting before it was worth chasing.
+   *
+   * So it tries again through the vault, and says so. What is under test
+   * here is the toll on the exit; a locked door between the walker and the
+   * exit is a different check's business, and the caller opens it as a
+   * fixture rather than the suite giving up on the floor it was dealt.
+   */
+  const walk = (avoid) => {
+    const prev = new Map([[s.currentRoomId, null]]);
+    const q = [s.currentRoomId];
+    let neighbour = null;
+    while (q.length) {
+      const id = q.shift();
+      const room = byId.get(id);
+      if (Object.values(room.links).includes(s.dungeon.endId)) { neighbour = id; break; }
+      for (const n of Object.values(room.links)) {
+        if (!n || prev.has(n) || n === avoid) continue;
+        prev.set(n, id);
+        q.push(n);
+      }
     }
-  }
-  if (!neighbour) return null;
-  const path = [];
-  for (let id = neighbour; id; id = prev.get(id)) path.unshift(id);
-  return { path, neighbour, avoided: shut };
+    if (!neighbour) return null;
+    const path = [];
+    for (let id = neighbour; id; id = prev.get(id)) path.unshift(id);
+    return { path, neighbour };
+  };
+  const round = walk(shut);
+  if (round) return { ...round, avoided: shut, mustOpenVault: null };
+  const through = walk(null);
+  return through ? { ...through, avoided: null, mustOpenVault: shut } : null;
 });
 let exitChecked = false;
+if (exitDoor?.mustOpenVault) {
+  // The only way on is through the vault. Opening it is a fixture, and it
+  // is said out loud so a reader of the log knows which floor this was.
+  await page.evaluate((id) => {
+    const run = window.__run;
+    run.setState({ unlocked: [...run.getState().unlocked, id] });
+  }, exitDoor.mustOpenVault);
+  console.log(`NOTE  the exit was only reachable through the vault; opened it to get on`);
+}
 if (exitDoor) {
   // Walk the path with E, one door at a time.
   for (const nextId of exitDoor.path.slice(1)) {
