@@ -17,6 +17,29 @@ import { usePadMenu } from "./padMenu";
 const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
+/**
+ * A thing to look at, rather than a thing to do.
+ *
+ * Quieter than `secondaryButton` - smaller text, dimmer, less air - so the
+ * one button that starts the game does not look like the one that opens
+ * the credits. It stays a full-width row in the same column as everything
+ * else, and that is not a style choice: `usePadMenu` reads its rows off
+ * the boxes on the page, and the d-pad walk that a console player actually
+ * performs is DOWN, over and over. Laid out as a wrapped row these five
+ * became one row, so pressing down stepped past all of them onto whichever
+ * happened to be nearest the last button's centre and the other four could
+ * not be reached without knowing to press left or right. The pad suite
+ * caught it: "the focus can be walked to Controls" got as far as "Start as
+ * the Vagrant" and stopped. A row is the better shape and the wrong shape.
+ */
+const shelfButton: CSSProperties = {
+  ...secondaryButton,
+  margin: "0 0 6px",
+  padding: "9px 16px",
+  fontSize: text.small,
+  color: colors.dim,
+};
+
 export function MainMenu() {
   const [page, setPage] = useState<
     "menu" | "controls" | "records" | "delvers" | "deeds" | "ledger" | "credits"
@@ -60,16 +83,21 @@ export function MainMenu() {
         </div>
         {page === "menu" ? (
           <>
-            <p style={body}>
-              {FLOORS} floors down. Each door out costs gems, and costs more the deeper you
-              are: {Array.from({ length: FLOORS }, (_, i) => tollForFloor(i + 1)).join(", ")}. Whatever you
-              still carry when you climb out is what you got away with.
-              <br />
-              <br />
-              Every gem you take wakes the thing that walks the floor. You cannot fight it,
-              and you cannot outrun it quietly: it hears a sprint.
-              You have {chosen.lives} lives. Each floor down is larger, more closely
-              watched, and wakes sooner than the one above it.
+            {/*
+              One promise, not two paragraphs.
+              
+              The menu used to open with about seventy words in two blocks -
+              the toll on each floor, what happens when you take a gem, how
+              many lives, how each floor differs - and nobody reads seventy
+              words to find the Start button. Everything cut from here is
+              said by the game in the place it matters: the toll is on the
+              door, the alarm is in the readout, the lives are hearts on
+              screen, and the Controls page is one keystroke away.
+            */}
+            <p style={{ ...body, marginBottom: 20 }}>
+              {FLOORS} floors down, and every door out has a price:{" "}
+              {Array.from({ length: FLOORS }, (_, i) => tollForFloor(i + 1)).join(", ")} gems.
+              Whatever you still carry when you climb out is what you got away with.
             </p>
             <button style={button} data-testid="menu-start" onClick={() => begin()}>
               Start as the {chosen.name}
@@ -81,26 +109,40 @@ export function MainMenu() {
             >
               Choose a delver
             </button>
-            <button style={secondaryButton} onClick={() => setPage("controls")}>
-              Controls
-            </button>
-            <button style={secondaryButton} data-testid="menu-records" onClick={() => setPage("records")}>
-              Records
-            </button>
-            <button style={secondaryButton} data-testid="menu-deeds" onClick={() => setPage("deeds")}>
-              Deeds
-            </button>
-            <button style={secondaryButton} data-testid="menu-ledger" onClick={() => setPage("ledger")}>
-              Ledger
-            </button>
-            <button style={secondaryButton} data-testid="menu-credits" onClick={() => setPage("credits")}>
-              Credits
-            </button>
-            {isElectron() && (
-              <button style={secondaryButton} onClick={() => window.close()}>
-                Quit
+            {/*
+              The shelves, quieter than the way in.
+              
+              There was one action on this screen and seven things to look
+              at, and all eight were the same full-width button in the same
+              stack - so the eighth ran off the bottom of the panel on a
+              Steam Deck, and the one button that starts the game looked
+              exactly like the one that opens the credits. These five only
+              ever show you something; they wrap, they never overflow, and
+              they are visibly not the way in, and every one of them is
+              still one press of Down from the last.
+            */}
+            <div style={{ marginTop: 16 }}>
+              <button style={shelfButton} onClick={() => setPage("controls")}>
+                Controls
               </button>
-            )}
+              <button style={shelfButton} data-testid="menu-records" onClick={() => setPage("records")}>
+                Records
+              </button>
+              <button style={shelfButton} data-testid="menu-deeds" onClick={() => setPage("deeds")}>
+                Deeds
+              </button>
+              <button style={shelfButton} data-testid="menu-ledger" onClick={() => setPage("ledger")}>
+                Ledger
+              </button>
+              <button style={shelfButton} data-testid="menu-credits" onClick={() => setPage("credits")}>
+                Credits
+              </button>
+              {isElectron() && (
+                <button style={shelfButton} onClick={() => window.close()}>
+                  Quit
+                </button>
+              )}
+            </div>
           </>
         ) : page === "credits" ? (
           <Credits onBack={() => setPage("menu")} />
