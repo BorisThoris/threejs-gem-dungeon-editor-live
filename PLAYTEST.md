@@ -4751,3 +4751,33 @@ bomb. `useItem` did call `placeDevice`, behind a condition a bomb never
 satisfied, and a gate is not a missing call. Only pressing the button
 finds that. The scan catches the other half, which is what it found the
 first time it was run.
+
+### A third: the relic that was four gems for nothing
+
+Found by generalising the question. The bomb was an action nothing called;
+the naming screen was an action nothing called. So: what else does the game
+compute that nothing reads?
+
+`RunModifiers` is what a relic changes about a run. Every field had a
+reader except one. **The Cutter's Cant** - "you may take the third offer
+the shop was not going to show you" - had none: the shop sliced its list to
+two whatever the player held. It was four gems for nothing at the counter,
+and at the character screen it was worse, because the **Courier** brings it
+and pays **two satchel slots** for it. Playing the Courier was a permanent
+cost for a permanent no-op, and the blurb on the selection screen said
+otherwise.
+
+Two things came out of fixing it that are worth writing down.
+
+The check found a second bug in my own fix. Filtering the held relics out
+of the list and then shuffling draws a *different* shuffle, so the moment
+the Cant was bought the other stand changed identity - in 167 of 200 shops
+- while the player was standing at the counter looking at it. Shuffle the
+whole six, filter afterwards, and the order of everything else stays put.
+
+And the shop's third shelf is reserved whether or not anybody holds the
+Cant, because the anchor list is also what the dressing keeps clear: a spot
+that appears only for one delver is a barrel standing where a relic is
+about to be. Reserving it broke an authored template - the shop-stall's
+barrel stood exactly on the new corner - which the template validator
+caught on the first run, and the barrel moved.

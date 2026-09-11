@@ -1,3 +1,4 @@
+import { createRng, shuffle } from "../rng";
 import { OFFERS, OFFER_IDS, pairFor, type OfferId } from "./offer";
 import { DASH_SPEED, WALK_SPEED } from "../world";
 
@@ -155,3 +156,41 @@ export const LIGHT_TINT_SEAL = "#e2b98a";
  * which is the decision the shop is for.
  */
 export const priceOn = (relic: Relic, _floor: number): number => relic.price;
+
+/**
+ * What a shop puts on its shelves, and how many.
+ *
+ * Extracted from the shop component because the count is a rule and a
+ * component is not somewhere a rule can be checked. The Cutter's Cant
+ * promises "the third offer the shop was not going to show you" and the
+ * shop sliced to two whatever the player held, which made it four gems for
+ * nothing - and made the Courier, who BRINGS it and pays two satchel slots
+ * for it, strictly worse than every other delver. Now there is one
+ * function, the shop draws what it returns, and the layout check holds it
+ * to the relic's own sentence.
+ *
+ * Seeded on the room and the floor, so the same shop offers the same
+ * things every time it is walked back into, and the slice grows from the
+ * FRONT: buying the Cant adds a third stand rather than rearranging the
+ * two already standing there.
+ */
+export const offeredAt = (
+  seed: number,
+  roomId: string,
+  floor: number,
+  held: readonly RelicId[]
+): RelicId[] => {
+  /**
+   * Shuffled WHOLE and filtered after, never filtered and then shuffled.
+   *
+   * Dropping a relic out of the list before the shuffle draws a different
+   * shuffle: the layout check caught 167 of 200 shops rearranging their
+   * other stand the moment the Cant was bought - bought AT a shop, so the
+   * relic beside it would change identity under the player's hand as they
+   * turned round. Shuffling the full six and taking them out afterwards
+   * leaves the order of everything else exactly where it was.
+   */
+  const order = shuffle(createRng(`${seed}:${roomId}:${floor}:shop`), RELIC_IDS);
+  const shows = modifiers(held).thirdOffer ? 3 : 2;
+  return order.filter((id) => !held.includes(id)).slice(0, shows);
+};

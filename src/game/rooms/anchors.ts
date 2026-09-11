@@ -17,11 +17,21 @@ import { challengeAnchors, memoryAnchors } from "../puzzles/anchors";
  * dressed and nothing else.
  */
 
-/** The counter holds near[2]; the shelves the first two far anchors. */
+/**
+ * The counter holds near[2]; the shelves the first three far anchors.
+ *
+ * Three shelves, always, even though most runs only ever see two relics on
+ * them. The Cutter's Cant puts a third offer out, and a shelf that only
+ * exists when the player holds it would move the furniture: this list is
+ * also what the dressing keeps clear, so a spot that comes and goes is a
+ * barrel standing where a relic is about to appear. The room is laid out
+ * the same either way and the third stand is simply empty.
+ */
 export const shopAnchors = (room: Room): Vec3[] => [
   quadrantSpots(room, "near")[2],
   quadrantSpots(room, "far")[0],
   quadrantSpots(room, "far")[1],
+  quadrantSpots(room, "far")[2],
 ];
 
 /**

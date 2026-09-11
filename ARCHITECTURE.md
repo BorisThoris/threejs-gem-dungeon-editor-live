@@ -337,6 +337,20 @@ Two stores that both claimed the player's stats. So:
   room is routed through `routWarden` (the same owner a second spike wound
   uses, so a bomb and the spikes can never come to differ), the thief
   drops what it holds, and a cracked wall in reach gives.
+- **A relic that promises something must have a reader.** The Cutter's Cant
+  said "you may take the third offer the shop was not going to show you"
+  and the shop sliced its list to two unconditionally - nothing in the tree
+  read `thirdOffer`. Four gems for nothing, and the Courier *brings* it and
+  pays two satchel slots for it at the character screen, so choosing that
+  delver was a permanent cost for a permanent no-op. `offeredAt` is the one
+  owner of what a shop shows now, read by the shop and by the checks, and
+  the layout check fails on any `RunModifiers` field nothing reads. Note
+  the second bug the check found on the way: the list has to be shuffled
+  WHOLE and filtered afterwards, because filtering first draws a different
+  shuffle - the relic beside the Cant changed identity in 167 of 200 shops
+  the moment it was bought, which is under the player's hand as they turn
+  round. The shop's third shelf anchor is reserved whether or not anyone
+  holds the Cant, so the furniture does not move either.
 - **Naming is batched, locking, and free, and it lives in the pause menu.**
   A run learns what a bottle is by drinking it, by paying the shop, or by
   working it out - and the third of those was written down, built, and

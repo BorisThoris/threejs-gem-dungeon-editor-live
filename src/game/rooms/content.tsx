@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { quadrantSpots, type Vec3 } from "../dungeon/layout";
 import { secretFlavour } from "../dungeon/secret";
 import type { Room } from "../dungeon/types";
-import { priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
+import { offeredAt, priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -92,14 +92,29 @@ function Shop({ room }: RoomKindProps) {
   const identified = useRun((s) => s.identified);
   const appearances = useRun((s) => s.appearances);
 
-  // Two relics the player does not already hold, the same two every visit.
-  const offer = useMemo(() => {
-    const rng = createRng(`${seed}:${room.id}:${floor}:shop`);
-    return shuffle(rng, RELIC_IDS.filter((id) => !held.includes(id))).slice(0, 2);
-    // `held` is deliberately not a dependency: buying the left-hand relic
-    // must not reshuffle the right-hand one under the player's hand.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seed, room.id, floor]);
+  /**
+   * Two relics the player does not already hold, the same two every visit -
+   * or three, for as long as they carry the Cutter's Cant.
+   *
+   * The Cant promises "the third offer the shop was not going to show you"
+   * and for its whole existence the shop sliced to two whatever the player
+   * held: four gems for nothing, and the Courier paid two satchel slots
+   * for it at the character screen. `thirdOffer` is the one owner of the
+   * count, so the relic's sentence and the shop's behaviour cannot drift
+   * again.
+   *
+   * The shuffle is seeded and the slice grows from its front, so buying
+   * the Cant mid-run ADDS a third stand rather than rearranging the two
+   * already standing there.
+   */
+  // Read from the one owner rather than shuffled here. `held` is a
+  // dependency now because a third stand appearing when the Cant is bought
+  // is the whole point - and `offeredAt` grows its slice from the front,
+  // so the two already standing there do not move.
+  const offer = useMemo(
+    () => offeredAt(seed, room.id, floor, held),
+    [seed, room.id, floor, held]
+  );
 
   const needsLife = lives < maxLives;
   const canAffordLife = gems >= GEMS_PER_LIFE;

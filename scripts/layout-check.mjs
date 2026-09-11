@@ -5591,6 +5591,80 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
+// --- No relic is a purchase that changes nothing -----------------------------
+//
+// The Cutter's Cant promised "the third offer the shop was not going to
+// show you" and the shop sliced its list to two, unconditionally. Nothing
+// anywhere read `thirdOffer`. It was four gems for nothing - and worse,
+// the Courier BRINGS it and pays two satchel slots for it, so choosing
+// that delver was a permanent cost for a permanent no-op.
+//
+// Same shape as the bomb, in a different corner: a fact the store computes
+// that no reader consumes. A modifier with no reader is a promise the shop
+// makes and the game does not keep.
+{
+  const cat = readFileSync(join(root, "src/game/relics/catalog.ts"), "utf8");
+  const body = cat.slice(cat.indexOf("interface RunModifiers"));
+  const declared = [...body.slice(0, body.indexOf("\n}")).matchAll(/^  (\w+)[?:]/gm)].map((m) => m[1]);
+  // By name rather than by `.name`: `modifiers()` is as often destructured
+  // as it is read through - `const { walkSpeed } = modifiers(relics)` is a
+  // reader, and a scan for property access cannot see it. Counted in the
+  // whole tree and again in the catalogue, so the declaration and the
+  // computation do not count as somebody reading it.
+  const uses = (name) => {
+    const where = (path) => {
+      try {
+        return execFileSync("grep", ["-rcwE", name, "--include=*.ts", "--include=*.tsx", path], {
+          encoding: "utf8",
+        })
+          .split("\n")
+          .filter(Boolean)
+          .reduce((n, line) => n + Number(line.split(":").pop()), 0);
+      } catch {
+        return 0;
+      }
+    };
+    return where(join(root, "src")) - where(join(root, "src/game/relics/catalog.ts"));
+  };
+  const inert = declared.filter((n) => uses(n) === 0);
+  check(
+    "every rule a relic changes is read by something",
+    inert.length === 0,
+    inert.length ? `NOBODY READS: ${inert.join(", ")}` : `${declared.length} modifiers, every one of them read`
+  );
+}
+
+// --- And the Cant puts the third thing out ----------------------------------
+//
+// The relic's own sentence, held to the shop's behaviour over many shops:
+// the promise is a third offer, so a third stand has to be there, and the
+// two the player was already looking at must not move under their hand
+// when they buy it.
+{
+  let withCant = 0;
+  let without = 0;
+  let moved = 0;
+  let dupes = 0;
+  for (let seed = 1; seed <= 200; seed++) {
+    const room = `room_${seed % 7}`;
+    const floor = (seed % 3) + 1;
+    const plain = L.offeredAt(seed, room, floor, []);
+    const canted = L.offeredAt(seed, room, floor, ["cant"]);
+    if (plain.length === 2) without++;
+    if (canted.length === 3) withCant++;
+    // Buying the Cant takes it off the shelf, so the two it leaves are the
+    // two that were not it - what must hold is that nothing the player can
+    // still buy is rearranged, and that the third is a NEW relic.
+    const stayed = plain.filter((id) => id !== "cant");
+    if (!stayed.every((id, i) => canted[i] === id)) moved++;
+    if (new Set(canted).size !== canted.length || canted.includes("cant")) dupes++;
+  }
+  check("a shop shows two relics", without === 200, `${without} of 200`);
+  check("and three to a delver carrying the Cutter's Cant", withCant === 200, `${withCant} of 200`);
+  check("and buying it adds a stand rather than rearranging the ones already there", moved === 0, `${moved} of 200 moved`);
+  check("and never offers the same relic twice, nor one already held", dupes === 0, `${dupes} of 200`);
+}
+
 // --- Every action the store offers can be reached by playing -------------------
 //
 // The bomb was built, correct, and unreachable for its whole existence:

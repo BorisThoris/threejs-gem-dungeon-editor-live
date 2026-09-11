@@ -6031,6 +6031,58 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("and it costs no resource at all, which is the whole point", bag.batch.free === true, JSON.stringify(bag.batch));
 
 /**
+ * The Cutter's Cant puts a third thing on the shelf.
+ *
+ * It promised "the third offer the shop was not going to show you" and the
+ * shop sliced its list to two whatever the player held - four gems for
+ * nothing, and worse than nothing for the Courier, who BRINGS it and pays
+ * two satchel slots at the character screen for a relic that did not
+ * exist. Counted in the scene rather than off the rule: the rule is held
+ * by the layout check, and what is being claimed here is that the stand is
+ * standing in the room.
+ */
+{
+  const shelves = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    // A relic stand is the one icosahedron in the game.
+    const stands = () => {
+      let n = 0;
+      window.__scene?.traverse?.((o) => {
+        if (o.geometry?.type === "IcosahedronGeometry") n += 1;
+      });
+      return n;
+    };
+    const visit = async (delver) => {
+      run.getState().startRun(777, delver);
+      await wait(1600);
+      const shop = run.getState().dungeon.rooms.find((r) => r.kind === "shop");
+      if (!shop) return { error: "no shop on this floor" };
+      run.setState({ transitioning: true, currentRoomId: shop.id });
+      run.getState().roomReady(shop.id);
+      await wait(1800);
+      const now = run.getState();
+      return {
+        relics: now.relics.slice(),
+        kind: now.dungeon.rooms.find((r) => r.id === now.currentRoomId)?.kind,
+        stands: stands(),
+      };
+    };
+    return { plain: await visit("vagrant"), cant: await visit("courier") };
+  });
+  ok(
+    "a shop puts two relics on its shelves",
+    shelves.plain.kind === "shop" && shelves.plain.stands === 2,
+    JSON.stringify(shelves.plain)
+  );
+  ok(
+    "and a third for the Courier, who paid two satchel slots for exactly that",
+    shelves.cant.kind === "shop" && shelves.cant.relics.includes("cant") && shelves.cant.stands === 3,
+    JSON.stringify(shelves.cant)
+  );
+}
+
+/**
  * And a player can actually do it.
  *
  * This is the check the bomb earned. `identifyBatch` was correct, tested,
