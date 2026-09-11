@@ -5556,5 +5556,83 @@ check("the shipped room templates reach the floors the game generates", authored
   check("and stops being a spreadsheet", L.namesOn(400) === L.NAMES_SHOWN, `${L.namesOn(400)}`);
 }
 
+
+// --- Every action the store offers can be reached by playing -------------------
+//
+// The bomb was built, correct, and unreachable for its whole existence:
+// `useItem` is the only thing a slot press calls, and it handed the slot
+// to `placeDevice` under `isDevice(id)` alone, so a bomb matched nothing
+// and the press spent it for nothing. This is the cheap half of guarding
+// against that - the half a source scan can see.
+//
+// An action is REACHED if anything outside the store names it (by call or
+// by selector - both are a way in), or if an action that is itself reached
+// calls it through `get()`. Anything left over is code the player has no
+// way to run, whatever the tests say about it. The test scripts are
+// deliberately not seeds: a check calling an action directly is the exact
+// thing that hid the bomb for sixty cycles.
+//
+// Be honest about its reach: it would NOT have caught the bomb, because
+// `useItem` did call `placeDevice` - behind a condition a bomb never
+// satisfied. A gate is not a missing call, and only playing finds it. The
+// smoke test's family check is the one that presses the slot. This check
+// catches the other half: an action with no caller at all, which is what
+// it found the first time it was run.
+{
+  const whole = readFileSync(join(root, "src/game/state/run.ts"), "utf8");
+  // Only the store's own creator - the file also carries a dev-only probe
+  // object whose members look identical and are not actions.
+  const from = whole.indexOf("export const useRun = create");
+  const to = whole.indexOf("\n);", from);
+  const src = whole.slice(from, to);
+
+  // The action definitions, at one indent inside the object the creator
+  // returns. The body of each is the text up to the next one - good
+  // enough to attribute a `get().other()` call to the action it sits in.
+  const defs = [...src.matchAll(/^ {4}(\w+):\s*(?:async\s*)?\(/gm)].map((m) => ({ name: m[1], at: m.index }));
+  const bodyOf = new Map(
+    defs.map((d, i) => [d.name, src.slice(d.at, i + 1 < defs.length ? defs[i + 1].at : src.length)])
+  );
+  const names = new Set(defs.map((d) => d.name));
+
+  // Seeds: named anywhere in src outside the store itself. By call
+  // (`run.travel()`) or by selector (`useRun((s) => s.startRun)`), because
+  // both are a way in.
+  const sweep = (paths) =>
+    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8" })
+      .split("\n")
+      .map((l) => l.slice(1));
+  const outside = sweep([join(root, "src")]);
+  const own = sweep([join(root, "src/game/state/run.ts")]);
+  const count = (list) => {
+    const c = new Map();
+    for (const n of list) if (names.has(n)) c.set(n, (c.get(n) ?? 0) + 1);
+    return c;
+  };
+  const all = count(outside);
+  const mine = count(own);
+  const reached = new Set([...all].filter(([n, c]) => c - (mine.get(n) ?? 0) > 0).map(([n]) => n));
+
+  // And everything those reach, transitively, through `get()`.
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const name of [...reached]) {
+      for (const m of (bodyOf.get(name) ?? "").matchAll(/get\(\)\.(\w+)\(/g)) {
+        if (names.has(m[1]) && !reached.has(m[1])) {
+          reached.add(m[1]);
+          grew = true;
+        }
+      }
+    }
+  }
+
+  const unreachable = [...names].filter((n) => !reached.has(n)).sort();
+  check(
+    "every action the run store offers can be reached by playing the game",
+    unreachable.length === 0,
+    unreachable.length ? `NO WAY IN: ${unreachable.join(", ")}` : `${names.size} actions, every one of them reachable`
+  );
+}
+
 console.log(failures === 0 ? "\nAll layout checks passed." : `\n${failures} layout check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
