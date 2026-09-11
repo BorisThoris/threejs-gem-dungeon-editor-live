@@ -49,6 +49,8 @@ export interface CarryableProps {
   id: string;
   /** Shown in the prompt: "Pick up the idol". */
   name: string;
+  /** One short line saying what it is for, shown on the prompt. */
+  purpose?: string;
   position: [number, number, number];
   children: ReactNode;
   /** Called the moment it leaves the ground. */
@@ -69,7 +71,7 @@ const DROP_DISTANCE = 1.4;
  * down where you are looking. One thing at a time. The trigger lives inside
  * the moving group, so while carried it is always in reach.
  */
-export function Carryable({ id, name, position, children, onPickUp, snapDrop }: CarryableProps) {
+export function Carryable({ id, name, purpose, position, children, onPickUp, snapDrop }: CarryableProps) {
   const group = useRef<Group>(null);
   const [carried, setCarried] = useState(false);
   const rest = useRef(new Vector3(...position));
@@ -130,6 +132,7 @@ export function Carryable({ id, name, position, children, onPickUp, snapDrop }: 
       {children}
       <CarryTrigger
         name={name}
+        purpose={purpose}
         carried={carried}
         someoneElseCarried={!carried && carriedId !== null}
         onPickUp={pickUp}
@@ -139,14 +142,31 @@ export function Carryable({ id, name, position, children, onPickUp, snapDrop }: 
   );
 }
 
+/**
+ * What it is, and what it is FOR.
+ *
+ * A carryable offered "Pick up the candle" and nothing else, ever. So a
+ * player picks one up, carries it around, puts it down, and nothing has
+ * happened - it does not go in the satchel, it has no use in hand, and the
+ * one thing it is actually for (holding a pressure plate down so the idol
+ * comes away safely) is said in a hint box on the other side of the screen
+ * and never on the object itself. That reads exactly like a thing that
+ * does not work, which is what it was reported as.
+ *
+ * So a carryable may say what it is for, on the prompt, where the player is
+ * already looking - and when it has no purpose left, it says that instead
+ * of offering the same invitation a fourth time.
+ */
 function CarryTrigger({
   name,
+  purpose,
   carried,
   someoneElseCarried,
   onPickUp,
   onPutDown,
 }: {
   name: string;
+  purpose?: string;
   carried: boolean;
   someoneElseCarried: boolean;
   onPickUp: () => void;
@@ -159,7 +179,11 @@ function CarryTrigger({
   return (
     <InteractTrigger
       position={[0, 0, 0]}
-      label={carried ? `Put down the ${name}` : `Pick up the ${name}`}
+      label={
+        carried
+          ? `Put down the ${name}`
+          : `Pick up the ${name}${purpose ? `   ·   ${purpose}` : ""}`
+      }
       enabled={!someoneElseCarried}
       blockedReason="Your hands are full"
       radius={carried ? 4 : undefined}

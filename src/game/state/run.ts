@@ -1435,9 +1435,28 @@ export const useRun = create<RunState>()(
       const charge = s.charges[id];
       const until = (seconds: number) => now + scaled(seconds, charge);
 
-      // A device is not drunk or read: it goes on the floor where the
-      // player is standing, and it is still there when they come back.
-      if (isDevice(id)) {
+      /**
+       * A device is not drunk or read: it goes on the floor where the
+       * player is standing, and it is still there when they come back.
+       *
+       * A BOMB is not a device. It is its own family - it is spent the
+       * moment it lands rather than waiting for something to walk into it -
+       * and this branch asked only `isDevice`, so a bomb in a satchel slot
+       * fell straight through to the potion and scroll switch below,
+       * matched no case, and did nothing at all. `placeDevice` had always
+       * accepted both (`isDevice(id) || isBomb(id)`), the fuse was set, the
+       * driver was mounted, the burst hurt what stood in it and opened
+       * cracked walls - and none of it could be reached by a player,
+       * because the one line that hands a slot press to it named one of
+       * the two families.
+       *
+       * The item's own blurb says "Set it down and walk. Three seconds."
+       * It could not be set down. And with no bomb there is no way through
+       * a cracked wall, so the hidden room a floor spends its draft and its
+       * gap in the map hinting at could not be entered either: one missing
+       * term, two systems dead.
+       */
+      if (isDevice(id) || isBomb(id)) {
         set({ floorRecord: { ...s.floorRecord, spentAnItem: true } });
         get().placeDevice(slot);
         return;

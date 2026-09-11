@@ -138,6 +138,26 @@ export function ChallengeRoom({ room }: RoomKindProps) {
       <Carryable
         id={IDOL}
         name="idol"
+        /**
+         * What lifting it will do, said on the idol itself.
+         *
+         * The room's hint line has always spelled the rule out, but it
+         * lives at the bottom of the screen and the thing the player is
+         * looking at said only "Pick up the idol". So the prompt now
+         * carries the consequence of the press being offered, which is the
+         * only place a player is certain to read it - and once the room
+         * has answered one way or the other it says so, instead of
+         * offering the same invitation over a thing that has already paid.
+         */
+        purpose={
+          outcome === "solved"
+            ? "already yours"
+            : outcome === "sprung"
+              ? "the trap is spent; it pays nothing now"
+              : safeNow
+                ? "the plate is held: it comes away safely"
+                : "the plate is bare: this springs the trap"
+        }
         position={[plate[0], GROUND_Y + 0.35, plate[2]]}
         onPickUp={onIdolLifted}
         snapDrop={snapToPlate}
@@ -149,7 +169,17 @@ export function ChallengeRoom({ room }: RoomKindProps) {
       </Carryable>
 
       {candleSpots.map((p, i) => (
-        <Carryable key={i} id={`candle-${i}`} name="candle" position={[p[0], GROUND_Y, p[2]]} snapDrop={snapToPlate}>
+        <Carryable
+          key={i}
+          id={`candle-${i}`}
+          name="candle"
+          // The one thing a candle is for here. Without this it was an
+          // object you could pick up and put down to no effect at all,
+          // which is exactly what it was reported as.
+          purpose="heavy enough to hold the plate down"
+          position={[p[0], GROUND_Y, p[2]]}
+          snapDrop={snapToPlate}
+        >
           <mesh position={[0, 0.16, 0]}>
             <cylinderGeometry args={[0.07, 0.08, 0.32, 10]} />
             <meshStandardMaterial color="#efe6c8" />

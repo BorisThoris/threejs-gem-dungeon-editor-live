@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useRef, useState } from "react";
+import { Fragment, useCallback, useRef, useState, type CSSProperties } from "react";
 
 import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";

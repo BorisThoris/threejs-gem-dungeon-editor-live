@@ -1458,7 +1458,24 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     await wait(200);
     run.setState({ wardenRoomId: host.id, wardenCameFrom: null, alarm: 4 });
     const before = run.getState();
-    const placed = run.getState().placeDevice(0);
+    /**
+     * Through the satchel, not through the store.
+     *
+     * This called `placeDevice(0)` directly for as long as it has existed,
+     * and `placeDevice` is not what a player can reach: the slot press
+     * lands on `useItem`, and `useItem` handed a slot to `placeDevice`
+     * only when the item was a DEVICE. A bomb is its own family, so the
+     * press did nothing, and this check - named "a bomb can be set down
+     * from the satchel" - went green the whole time without once touching
+     * the satchel. It is the same shape as a check that reads a field
+     * which stopped existing: the machinery under it was perfect and the
+     * one line a player actually presses was not wired to it.
+     *
+     * `useItem` is what the keyboard, the pad and the touch button all
+     * call, so this is now the path the player has.
+     */
+    run.getState().useItem(0);
+    const placed = run.getState().placed.some((d) => d.id === "bomb");
     const fuse = window.__world.BOMB_FUSE_S;
     let burst = false;
     const off = window.__bus.on("bombBurst", () => (burst = true));
@@ -1496,6 +1513,75 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       secretId: d.secretId,
     };
   });
+  /**
+   * Every kind of thing the satchel can hold does SOMETHING when pressed.
+   *
+   * The bomb was unreachable for as long as it has existed. `useItem` is
+   * what a slot press calls from the keyboard, the pad and the touch
+   * button, and it handed the slot on to `placeDevice` only when the item
+   * was a device - a bomb is its own family, so the press fell through the
+   * potion and scroll switch, matched nothing, and did nothing at all. The
+   * fuse, the driver, the burst, the wall it opens: all built, all correct,
+   * none of it reachable. And with no bomb there was no way through a
+   * cracked wall, so the hidden room a floor spends its draft and its gap
+   * in the map hinting at could not be entered either.
+   *
+   * Every bomb check passed the whole time, because they all called
+   * `placeDevice` directly - including the one named "a bomb can be set
+   * down from the satchel", which never touched the satchel.
+   *
+   * So this presses a slot, once per family, and asks that the press did
+   * the thing that family is FOR. A potion or a scroll works on the
+   * player, so leaving the satchel or saying a word is the whole of it.
+   * A device and a bomb are things you put on the ground: the only proof
+   * they answered is that one more of them is standing on the floor.
+   *
+   * That distinction is the bug itself. The broken bomb was not inert -
+   * it was worse: the press ate the bomb out of the satchel and nothing
+   * came of it. A check that accepted "it left the satchel" called that
+   * a pass. Landing is what a player sees, so landing is what is asked.
+   */
+  const families = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const { ITEMS, ITEM_IDS } = await import("/src/game/items/catalog.ts");
+    const seen = new Map();
+    for (const id of ITEM_IDS) {
+      const family = ITEMS[id].family;
+      if (seen.has(family)) continue;
+      let said = false;
+      const off = window.__bus.on("notice", () => (said = true));
+      run.setState({ satchel: [id], identified: [id], lives: 3, placed: [] });
+      const before = { satchel: 1, placed: 0 };
+      run.getState().useItem(0);
+      await wait(120);
+      const after = { satchel: run.getState().satchel.length, placed: run.getState().placed.length };
+      off();
+      seen.set(family, {
+        id,
+        gone: after.satchel < before.satchel,
+        landed: after.placed > before.placed,
+        said,
+      });
+    }
+    return Object.fromEntries(seen);
+  });
+  // What counts as an answer, per family: the ones you set down have to
+  // land, the ones you drink or read only have to happen.
+  const answered = (family, r) => (family === "device" || family === "bomb" ? r.landed : r.gone || r.said);
+  const inert = Object.entries(families).filter(([f, r]) => !answered(f, r));
+  ok(
+    "every kind of thing the satchel holds answers a slot press",
+    inert.length === 0,
+    Object.entries(families)
+      .map(
+        ([f, r]) =>
+          `${f}:${r.id} ${answered(f, r) ? "answered" : "NO ANSWER"}` +
+          `(${[r.gone && "spent", r.landed && "landed", r.said && "said"].filter(Boolean).join(" ") || "nothing"})`
+      )
+      .join(", ")
+  );
+
   ok("a bomb can be set down from the satchel", !bombed.error && bombed.placed === true, bombed.error || JSON.stringify(bombed));
   ok("and it goes off after its fuse", bombed.burst === true, JSON.stringify(bombed));
   ok(

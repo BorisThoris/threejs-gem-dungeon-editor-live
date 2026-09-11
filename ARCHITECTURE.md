@@ -337,6 +337,17 @@ Two stores that both claimed the player's stats. So:
   room is routed through `routWarden` (the same owner a second spike wound
   uses, so a bomb and the spikes can never come to differ), the thief
   drops what it holds, and a cracked wall in reach gives.
+- **A slot press is `useItem`, and `useItem` is the only door into all four
+  families.** Nothing else is wired to the keyboard, the pad or the touch
+  button, so a family `useItem` does not name is a family that cannot be
+  reached at all. The bomb was that family for as long as it existed:
+  `useItem` delegated to `placeDevice` under `isDevice(id)` alone, so the
+  press fell past the potion and scroll switches, matched nothing, and
+  spent the slot anyway - the bomb was eaten and nothing was set down, and
+  the whole chain below it (the fuse, the burst, the wall it opens, the
+  room behind that wall) was unreachable from play. Every bomb check
+  passed throughout, because each called `placeDevice` directly. A check
+  that stands in for a player has to press what the player presses.
 - A secret is an edge, not a link. `room.secret = { dir, to }` names the
   room behind a cracked wall; `links` are what the walls cut doorways
   for, what the minimap draws and what the Warden walks, and a secret is
