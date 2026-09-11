@@ -5557,6 +5557,40 @@ check("the shipped room templates reach the floors the game generates", authored
 }
 
 
+// --- What a batch is, said once ----------------------------------------------
+//
+// The screen that names things and the store that accepts the names have
+// to agree about how many a batch is, or the button offers a batch the
+// store refuses. `unknownKinds` and `batchSize` are that one owner: the
+// screen reads them rather than counting for itself, and `BATCH` itself is
+// spelled out only where the rule is written down.
+{
+  const menu = readFileSync(join(root, "src/ui/PauseMenu.tsx"), "utf8");
+  check(
+    "the naming screen reads what a batch is rather than deciding for itself",
+    /batchSize/.test(menu) && /unknownKinds/.test(menu) && !/\bBATCH\b/.test(menu),
+    /\bBATCH\b/.test(menu) ? "PauseMenu spells BATCH out" : "reads batchSize and unknownKinds"
+  );
+  const owners = ["src/game/items/afflictions.ts", "src/game/state/run.ts"];
+  const spelled = execFileSync("grep", ["-rlE", "\\bBATCH\\b", "--include=*.ts", "--include=*.tsx", join(root, "src")], { encoding: "utf8" })
+    .split("\n")
+    .filter(Boolean)
+    .map((f) => f.slice(root.length));
+  check(
+    "and only the rule and the store name the number at all",
+    spelled.every((f) => owners.includes(f)),
+    spelled.join(", ")
+  );
+  // The README is what a player reads, and the rule it states is the one
+  // the store enforces: all of them or none, and never which was wrong.
+  const readme = readFileSync(join(root, "README.md"), "utf8");
+  check(
+    "the README says what naming costs and what it does not tell you",
+    /none of them settle/i.test(readme) && /not told which/i.test(readme),
+    "the batch rule is written down where a player can find it"
+  );
+}
+
 // --- Every action the store offers can be reached by playing -------------------
 //
 // The bomb was built, correct, and unreachable for its whole existence:

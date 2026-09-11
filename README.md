@@ -242,11 +242,17 @@ between here and a Steam demo.
 | `M`, or d-pad up | Mark the room on the map, or unmark it. Nothing reads the mark but you. |
 | `B`, or d-pad down | Bar the doorway you are standing at. Loud. |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
-| `Esc`, or Start on a pad | Pause, and the two settings: head bob and sound |
+| `Esc`, or Start on a pad | Pause: the settings, and naming what you carry |
 | D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |
 
 There is one interaction verb. Anything you can act on tells you so when
 you are close enough, and E does it.
+
+Working out what is in your satchel is done in the pause menu, where it
+costs nothing but being wrong. Name all three unknown kinds at once: get
+one wrong and none of them settle, and you are not told which one it was.
+Drinking one tells you too, of course, and the shop will name one for a
+gem - what the shop is really selling is finding out sooner.
 
 Every menu can be driven from the pad alone - the title screen, the pause
 menu, the end of a run - so the game can be played on a machine with no

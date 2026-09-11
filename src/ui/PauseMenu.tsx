@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ACTIONS,
@@ -9,7 +9,8 @@ import {
   type Action,
 } from "../game/input/bindings";
 import { device } from "../game/input/device";
-import { useRun } from "../game/state/run";
+import { ITEMS, ITEM_IDS, type ItemId } from "../game/items/catalog";
+import { batchSize, unknownKinds, useRun } from "../game/state/run";
 import type { TouchControls } from "../game/state/settings";
 import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
@@ -30,10 +31,165 @@ export function PauseMenu() {
         <button style={button} data-testid="pause-resume" onClick={resume}>
           Resume
         </button>
+        <Naming />
         <Options />
         <button style={secondaryButton} data-testid="pause-quit" onClick={quitToMenu}>
           Quit to menu
         </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Working out what you are carrying, which is the only place in the game
+ * a player can do it without paying the shop.
+ *
+ * The rule was written down and built and then reached by nothing: the
+ * store's `identifyBatch` had no caller in the whole tree, so batched
+ * validation - the answer to potions rotting unnamed in the satchel -
+ * existed only for a test to call. This is the screen it was missing.
+ *
+ * It is a pause screen rather than a key, because it is the one thing in
+ * the dungeon that is pure thinking: nothing about it wants to be done
+ * while a Warden is crossing the room. Every control is a button, so the
+ * pad walks it with everything else here and no new binding is needed.
+ *
+ * Rows are per KIND, not per slot: two of the same bottle are one thing to
+ * name. The store decides the same way, from the same two functions, so
+ * the screen can never offer a batch the store will refuse.
+ */
+function Naming() {
+  const satchel = useRun((s) => s.satchel);
+  const identified = useRun((s) => s.identified);
+  const appearances = useRun((s) => s.appearances);
+  // Memoised on the two lists rather than selected: both of these build a
+  // new array, and a selector that never returns an equal value re-renders
+  // for ever. See the note on `Held` in the run store.
+  const held = useMemo(() => ({ satchel, identified }), [satchel, identified]);
+  const unknown = useMemo(() => unknownKinds(held), [held]);
+  const wanted = useMemo(() => batchSize(held), [held]);
+  /** What the player is calling each kind, so far. */
+  const [said, setSaid] = useState<Partial<Record<ItemId, ItemId>>>({});
+  /** What happened to the last batch, in words. */
+  const [answer, setAnswer] = useState<string | null>(null);
+
+  // A name can be used once across the batch: two bottles cannot both be
+  // the healing draught, and offering that is offering a refusal.
+  const taken = useMemo(() => new Set(Object.values(said).filter(Boolean)), [said]);
+  const chosen = unknown.filter((id) => said[id]).length;
+
+  // Gone once there is nothing left to name - but not before the player
+  // has been told what the last batch did. Pressing the button and having
+  // the whole section vanish is not an answer.
+  if (unknown.length === 0 && !answer) return null;
+
+  /** The names still available for a kind: its own family, still unnamed. */
+  const candidates = (carried: ItemId): readonly ItemId[] =>
+    ITEM_IDS.filter(
+      (id) =>
+        ITEMS[id].family === ITEMS[carried].family &&
+        !identified.includes(id) &&
+        (!taken.has(id) || said[carried] === id)
+    );
+
+  /** Pressing a row steps to the next name it could be, then back to none. */
+  const step = (carried: ItemId) => {
+    const options = candidates(carried);
+    const here = said[carried];
+    const next = here ? options[options.indexOf(here) + 1] : options[0];
+    setSaid((was) => ({ ...was, [carried]: next }));
+    setAnswer(null);
+  };
+
+  const name = () => {
+    const guesses = unknown
+      .filter((carried) => said[carried])
+      .map((carried) => ({ carried, named: said[carried] as ItemId }));
+    const settled = useRun.getState().identifyBatch(guesses);
+    // What it does NOT say is which one was wrong. Telling them that turns
+    // a batch into three single guesses, which is the thing the batch is
+    // for.
+    setAnswer(
+      settled
+        ? guesses.length === 1
+          ? "That is what it is."
+          : "All of them. They settle."
+        : "Not all of them. Nothing settles."
+    );
+    setSaid({});
+  };
+
+  return (
+    <div style={{ margin: "4px 0 14px", textAlign: "left" }}>
+      <Group label="What you carry" />
+      {unknown.length > 0 && (
+        <div style={{ fontSize: text.small, color: colors.dim, lineHeight: 1.5, margin: "0 0 6px" }}>
+          Name {wanted === 1 ? "it" : `all ${wanted}`} at once. Get one wrong and none of them
+          settle - and you are not told which. It costs nothing but being wrong.
+        </div>
+      )}
+      {unknown.map((carried) => {
+        const guess = said[carried];
+        return (
+          <button
+            key={carried}
+            style={{
+              ...secondaryButton,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              fontSize: text.small,
+            }}
+            data-testid={`name-${carried}`}
+            data-guess={guess ?? ""}
+            onClick={() => step(carried)}
+          >
+            <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: 2,
+                  background: appearances[carried].colour,
+                }}
+              />
+              {appearances[carried].unknown}
+            </span>
+            <span style={{ color: guess ? colors.accent : colors.dim }}>
+              {guess ? ITEMS[guess].name : "…"}
+            </span>
+          </button>
+        );
+      })}
+      {unknown.length > 0 && (
+        <button
+          style={{
+            ...secondaryButton,
+            fontSize: text.small,
+            color: chosen === wanted ? colors.gold : colors.dim,
+            borderColor: chosen === wanted ? colors.gold : colors.line,
+          }}
+          data-testid="name-submit"
+          data-ready={chosen === wanted ? "yes" : "no"}
+          disabled={chosen !== wanted}
+          onClick={chosen === wanted ? name : undefined}
+        >
+          {chosen === wanted
+            ? `Name ${wanted === 1 ? "it" : `all ${wanted}`}`
+            : `${chosen} of ${wanted} named`}
+        </button>
+      )}
+      {answer && (
+        <div data-testid="name-answer" style={{ fontSize: text.small, color: colors.ink, margin: "4px 0" }}>
+          {answer}
+        </div>
+      )}
+      {/* Naming resolves: once everything is known this section is gone,
+          and the run has finished a thing rather than lost a menu. */}
+      <div style={{ fontSize: text.small, color: colors.dim, margin: "2px 0" }}>
+        {identified.length} of {ITEM_IDS.length} known · {satchel.filter(Boolean).length} carried
       </div>
     </div>
   );

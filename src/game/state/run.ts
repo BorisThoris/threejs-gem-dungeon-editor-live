@@ -126,6 +126,19 @@ export interface PlacedDevice {
 /** What can set a snare off: the thing it was set for, or something small. */
 export type SnareSpringer = "warden" | "rat";
 
+/**
+ * One line of a named batch: this bottle, the player says, is that potion.
+ *
+ * `carried` is the kind actually in the satchel - what the player is
+ * pointing at, which they know only by its look - and `named` is what they
+ * are calling it. The two being equal is what it means to be right, and
+ * the player finds out only whether the whole batch was.
+ */
+export interface Guess {
+  carried: ItemId;
+  named: ItemId;
+}
+
 export interface RunState {
   phase: Phase;
   paused: boolean;
@@ -525,17 +538,26 @@ export interface RunState {
   /** Learn what a slot holds without spending it. The shop charges for this. */
   identifySlot: (slot: number) => boolean;
   /**
-   * Name several at once, and they lock in together.
+   * Name several at once, and they lock in TOGETHER or not at all.
    *
    * The designer who rejected limiting or punishing guesses put the reason
    * plainly - "I'd expect people to just not make guesses until the very
    * end" - which is exactly why our potions rotted in the satchel. The
    * shipped answer was batched, locking validation: guessing costs more
    * than deducing because a wrong guess in a batch wastes the right ones
-   * beside it, and nothing costs a resource at all. Returns how many were
-   * newly named.
+   * beside it, and nothing costs a resource at all.
+   *
+   * It used to take slots and name whatever was in them, which is a free
+   * reveal wearing the words of a guess, and nothing in the game called
+   * it. A guess has to be able to be wrong: this takes what the player
+   * SAYS each unknown kind is, and either every one of them is right and
+   * they all settle, or none of them do and the player is told only that.
+   * Learning which of the three was wrong would make single-item guessing
+   * out of a batch, which is the thing the batch exists to prevent.
+   *
+   * Returns whether the batch settled.
    */
-  identifyBatch: (slots: readonly number[]) => number;
+  identifyBatch: (guesses: readonly Guess[]) => boolean;
   /** Stand in a brazier's light: the dark stops clinging. */
   clearGloom: () => void;
   /** A container opened, which is what works the mire out of your hands. */
@@ -1825,16 +1847,32 @@ export const useRun = create<RunState>()(
       return true;
     },
 
-    identifyBatch: (slots) => {
+    identifyBatch: (guesses) => {
       const s = get();
-      // At most a batch at a time, and each slot counted once however many
-      // times it was named: the lock is on the batch, not on the presses.
-      const ids = [...new Set(slots.slice(0, BATCH).map((i) => s.satchel[i]))]
-        .filter((id): id is ItemId => Boolean(id) && !s.identified.includes(id as ItemId));
-      if (ids.length === 0) return 0;
-      set({ identified: [...s.identified, ...ids] });
-      for (const id of ids) bus.emit("itemNamed", { id });
-      return ids.length;
+      const unknown = unknownKinds(s);
+      // A batch is a batch. Naming one at a time with nothing at stake is
+      // free brute force through the whole catalogue, and the size is the
+      // only thing standing between the player and it - so a short batch
+      // is refused rather than quietly allowed.
+      if (unknown.length === 0 || guesses.length !== batchSize(s)) return false;
+      const about = new Set(guesses.map((g) => g.carried));
+      const called = new Set(guesses.map((g) => g.named));
+      if (about.size !== guesses.length || called.size !== guesses.length) return false;
+      // Every guess is about something still unknown, and calls it
+      // something of its own family: a potion is visibly a potion, so
+      // naming one after a scroll is not a guess, it is a typo.
+      const sound = guesses.every(
+        (g) =>
+          unknown.includes(g.carried) &&
+          !s.identified.includes(g.named) &&
+          ITEMS[g.named].family === ITEMS[g.carried].family
+      );
+      if (!sound) return false;
+      // All of them, or none of them.
+      if (!guesses.every((g) => g.carried === g.named)) return false;
+      set({ identified: [...s.identified, ...called] });
+      for (const id of called) bus.emit("itemNamed", { id });
+      return true;
     },
 
     clearGloom: () => {
@@ -2897,6 +2935,36 @@ export const tollNow = (s: RunState): number =>
  * Courier, who trades two of them for the boots.
  */
 export const satchelSlots = (s: RunState): number => DELVERS[s.delver].slots;
+
+/**
+ * What a naming screen needs off the run, and no more.
+ *
+ * Both of these build a fresh array every call, so a component that hands
+ * one to `useRun` as a selector never settles: zustand compares the result
+ * with the last one, two different arrays are never equal, and the render
+ * loops until React gives up and the screen is gone. Narrowing what they
+ * take is what lets the caller memoise them on the two lists they actually
+ * read, which are stable between changes.
+ */
+type Held = Pick<RunState, "satchel" | "identified">;
+
+/**
+ * The distinct kinds in the satchel the run has not worked out yet.
+ *
+ * Distinct KINDS, not slots: two of the same bottle are one thing to name,
+ * and a batch that counted them twice would let a player fill it with
+ * duplicates and get the size for free.
+ */
+export const unknownKinds = (s: Held): readonly ItemId[] => [
+  ...new Set(s.satchel.filter((id): id is ItemId => Boolean(id) && !s.identified.includes(id))),
+];
+
+/**
+ * How many names a batch takes right now: a batch, or everything unknown
+ * if that is fewer. The store and the screen read the same number, so the
+ * button can never offer a batch the store will refuse.
+ */
+export const batchSize = (s: Held): number => Math.min(BATCH, unknownKinds(s).length);
 
 /** Gems held over what the exit will cost: what the run is actually earning. */
 export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s));

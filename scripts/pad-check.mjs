@@ -808,6 +808,69 @@ const standAtLectern = () =>
   }
 }
 
+// --- Naming what you carry, on a Deck --------------------------------------
+//
+// The tome could not be answered with a controller for thirty-two cycles
+// because it had its own idea of what a press was. The naming screen is
+// buttons in a column, which `usePadMenu` already walks - but "should
+// walk" is what was said about the tome, so it is walked here.
+{
+  await page.evaluate(async () => {
+    const run = window.__run;
+    if (run.getState().phase !== "playing") run.getState().startRun(1357);
+    await new Promise((r) => setTimeout(r, 1200));
+    run.setState({ satchel: ["gloom", "mire", "dread"], identified: [], paused: false });
+    run.getState().pause();
+  });
+  await page.waitForTimeout(500);
+
+  // Walk to each row and press A until it is calling the thing by its own
+  // name. A row says what it is currently guessing, so the walk can tell.
+  const guessOf = (id) =>
+    page.evaluate(
+      (i) => document.querySelector(`[data-testid="name-${i}"]`)?.getAttribute("data-guess") ?? null,
+      id
+    );
+  /**
+   * Walk the focus onto one particular row.
+   *
+   * By the row's own testid rather than by the words on it: the rows say
+   * what the bottle LOOKS like, and two runs give the same bottle two
+   * different looks, so matching on text would be matching on the seed.
+   */
+  const walkTo = async (testid) => {
+    for (let i = 0; i < 40; i++) {
+      if (await page.evaluate((t) => document.activeElement?.getAttribute("data-testid") === t, testid)) {
+        return true;
+      }
+      await tap(page, BUTTON.down, 1);
+    }
+    return false;
+  };
+
+  let walked = true;
+  for (const id of ["gloom", "mire", "dread"]) {
+    if (!(await walkTo(`name-${id}`))) {
+      walked = false;
+      break;
+    }
+    for (let i = 0; i < 8 && (await guessOf(id)) !== id; i++) await tap(page, BUTTON.a);
+  }
+  ok("every row of the naming screen can be reached and set with the d-pad", walked, `walked: ${walked}`);
+
+  const onSubmit = await walkTo("name-submit");
+  if (onSubmit) await tap(page, BUTTON.a);
+  await page.waitForTimeout(300);
+  const known = await page.evaluate(() => window.__run.getState().identified.slice());
+  ok(
+    "and the batch can be named on a pad alone",
+    onSubmit && ["gloom", "mire", "dread"].every((id) => known.includes(id)),
+    `submit reached: ${onSubmit}, known: ${known.join(", ") || "nothing"}`
+  );
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForTimeout(300);
+}
+
 // --- What happens when the pad is put down ---------------------------------
 
 await page.evaluate(() => window.__pad.unplug());

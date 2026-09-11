@@ -5943,23 +5943,51 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      * Naming is BATCHED and LOCKING. Guessing costs more than deducing
      * because a wrong guess in a batch wastes the right ones beside it,
      * and nothing costs a resource at all.
+     *
+     * This used to hand `identifyBatch` a list of slots and watch them all
+     * be named, which is a free reveal wearing the words of a guess - and
+     * it was the only caller the action had anywhere, src included. A
+     * guess has to be able to be WRONG, so the wrong batch is checked
+     * first and the right one after it.
      */
     {
       const { BATCH } = await import("/src/game/items/afflictions.ts");
-      run.setState({ satchel: ["gloom", "mire", "dread", "healing"], identified: [], gems: 0 });
+      const carried = ["gloom", "mire", "dread"];
+      const reset = () => run.setState({ satchel: [...carried], identified: [], gems: 0 });
+
+      reset();
       await wait(120);
-      const named = run.getState().identifyBatch([0, 1, 2, 3]);
+      // Two right, one wrong. Nothing settles, the two right ones included.
+      const wrong = run.getState().identifyBatch([
+        { carried: "gloom", named: "gloom" },
+        { carried: "mire", named: "mire" },
+        { carried: "dread", named: "healing" },
+      ]);
+      const afterWrong = run.getState().identified.slice();
+
+      reset();
+      await wait(120);
+      // And a batch short of its size is refused outright: naming one at a
+      // time with nothing at stake is free brute force.
+      const short = run.getState().identifyBatch([{ carried: "gloom", named: "gloom" }]);
+
+      reset();
+      await wait(120);
+      const right = run.getState().identifyBatch(
+        carried.map((id) => ({ carried: id, named: id }))
+      );
       const known = run.getState().identified;
       out.batch = {
         size: BATCH,
-        named,
-        atMostABatch: named <= BATCH,
-        locked: ["gloom", "mire", "dread"].every((id) => known.includes(id)),
+        wrong,
+        // The whole point: the two right ones beside the wrong one are wasted.
+        wastedTheRightOnes: afterWrong.length === 0,
+        short,
+        right,
+        locked: carried.every((id) => known.includes(id)),
         // Nothing was spent for it: the whole point of batching instead of
         // pricing is that knowledge-checking costs no resource.
         free: run.getState().gems === 0,
-        // And naming the same three again names nothing new.
-        again: run.getState().identifyBatch([0, 1, 2]),
       };
     }
 
@@ -5993,9 +6021,70 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   ok("what followed you is somewhere, and it is not where you are", bag.dread.somewhere && bag.dread.notHere, JSON.stringify(bag.dread));
   ok("and everything that hears goes to it", bag.dread.lured === true, JSON.stringify(bag.dread));
   ok("both edges and the cure are said the moment it lands", bag.told.lands && bag.told.edge && bag.told.cure, JSON.stringify(bag.told));
-  ok("naming is batched, and the batch locks in together", bag.batch.locked && bag.batch.atMostABatch, JSON.stringify(bag.batch));
+  ok("naming is batched, and a batch of right names locks in together", bag.batch.right === true && bag.batch.locked, JSON.stringify(bag.batch));
+  ok(
+    "one wrong name in the batch wastes the right ones beside it",
+    bag.batch.wrong === false && bag.batch.wastedTheRightOnes,
+    JSON.stringify(bag.batch)
+  );
+  ok("and a batch short of its size is refused, so guessing cannot be done one at a time", bag.batch.short === false, JSON.stringify(bag.batch));
   ok("and it costs no resource at all, which is the whole point", bag.batch.free === true, JSON.stringify(bag.batch));
-  ok("naming the same three again names nothing new", bag.batch.again === 0, JSON.stringify(bag.batch));
+
+/**
+ * And a player can actually do it.
+ *
+ * This is the check the bomb earned. `identifyBatch` was correct, tested,
+ * documented at length - and called by nothing in src, so no player had
+ * ever named anything with it. Driving the store proves the rule; only
+ * clicking the thing on the screen proves there is a way in. So this
+ * presses the buttons: it opens the pause menu, steps each row to a name
+ * the way a player does, presses the one that submits, and reads what the
+ * screen says back.
+ */
+{
+  const named = await page.evaluate(async () => {
+    const run = window.__run;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    run.getState().startRun(2468);
+    await wait(1200);
+    run.setState({ satchel: ["gloom", "mire", "dread"], identified: [] });
+    run.getState().pause();
+    await wait(300);
+    return run.getState().satchel.slice();
+  });
+
+  const rows = await page.$$eval("[data-testid^='name-']", (els) =>
+    els.map((e) => e.getAttribute("data-testid"))
+  );
+  const carried = named.map((id) => `name-${id}`);
+  ok(
+    "the pause menu offers a row for each unnamed thing in the satchel",
+    carried.every((t) => rows.includes(t)) && rows.includes("name-submit"),
+    `rows: ${rows.join(", ")}`
+  );
+
+  // Step each row until it is calling the thing by its own name, which is
+  // what a player who has worked it out does.
+  for (const id of named) {
+    const row = page.locator(`[data-testid="name-${id}"]`);
+    for (let i = 0; i < 8 && (await row.getAttribute("data-guess")) !== id; i++) {
+      await row.click();
+    }
+  }
+  const ready = await page.locator('[data-testid="name-submit"]').getAttribute("data-ready");
+  ok("the button that names them waits until the batch is full", ready === "yes", `ready: ${ready}`);
+
+  await page.locator('[data-testid="name-submit"]').click();
+  await page.waitForTimeout(200);
+  const answer = await page.locator('[data-testid="name-answer"]').textContent().catch(() => null);
+  const after = await page.evaluate(() => window.__run.getState().identified.slice());
+  ok(
+    "and pressing it names them, from the screen and nowhere else",
+    named.every((id) => after.includes(id)),
+    `${answer} | known: ${after.join(", ")}`
+  );
+  await page.evaluate(() => window.__run.getState().resume());
+}
   ok("naming every draught is reachable inside one run, and is a deed", bag.deed.earned === true, JSON.stringify(bag.deed));
 }
 

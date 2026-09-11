@@ -337,6 +337,21 @@ Two stores that both claimed the player's stats. So:
   room is routed through `routWarden` (the same owner a second spike wound
   uses, so a bomb and the spikes can never come to differ), the thief
   drops what it holds, and a cracked wall in reach gives.
+- **Naming is batched, locking, and free, and it lives in the pause menu.**
+  A run learns what a bottle is by drinking it, by paying the shop, or by
+  working it out - and the third of those was written down, built, and
+  reachable by nothing: `identifyBatch` had no caller anywhere in `src`.
+  It also was not a guess. It took slots and named whatever was in them,
+  which is a free reveal wearing the words of a guess. It takes what the
+  player SAYS each unknown kind is now, and either every name in the batch
+  is right and they all settle or none of them do - and the game does not
+  say which one was wrong, because telling them that turns one batch into
+  three single guesses, which is the thing a batch exists to prevent. A
+  batch short of its size is refused for the same reason. Nothing is spent
+  either way: the cost of guessing is the right answers wasted beside the
+  wrong one. `unknownKinds` and `batchSize` are the one owner of what a
+  batch is, read by the store and by the screen, so the button can never
+  offer a batch the store will refuse.
 - **A slot press is `useItem`, and `useItem` is the only door into all four
   families.** Nothing else is wired to the keyboard, the pad or the touch
   button, so a family `useItem` does not name is a family that cannot be

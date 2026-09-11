@@ -4698,3 +4698,56 @@ least defensible of the three: a number attached to a resource the player
 cannot spend deliberately, so all it ever did was tell them precisely when
 to worry.
 
+
+## Two systems the player could not reach
+
+Both found the same way: by asking not "does this work" but "is there a
+way in".
+
+**The bomb could never be set down.** A slot press calls `useItem`, and
+`useItem` handed the slot to `placeDevice` only when the item was a
+device. A bomb is its own family, so the press fell past the potion
+switch, past the scroll switch, matched nothing - and spent the slot
+anyway. The bomb was eaten and nothing arrived on the floor.
+
+Everything downstream of it was built and correct and unreachable: the
+three-second fuse, the burst, the light and embers, the Warden it routs,
+the Harrier it downs, the Keeper it kneels, the cracked wall it opens.
+And with no way through a cracked wall, the room behind one could not be
+entered either - so a floor would draft air across a doorway and leave a
+room-shaped gap in the minimap and then never let the player in. Two
+separate reports from playing, one cause.
+
+Every bomb check passed the whole time. All of them called `placeDevice`
+directly, including the one named "a bomb can be set down from the
+satchel", which never touched the satchel.
+
+**Naming what you carry had no screen.** `identifyBatch` - batched,
+locking validation, the answer to potions rotting unnamed, written up at
+length in `items/afflictions.ts` - was called by nothing in `src`. It
+existed for the smoke test. It was also not a guess: it took slots and
+named whatever was in them, which is a free reveal wearing the words of a
+guess.
+
+It is a guess now, in the pause menu, and it is the one place in the
+dungeon that costs nothing: name all three unknown kinds at once, and
+either every name is right and they all settle or none of them do. The
+game does not say which one was wrong - telling the player that turns one
+batch into three single guesses, which is the thing the batch prevents. A
+batch short of its size is refused for the same reason.
+
+**What the checks learned.** Two guards, because the two halves fail
+differently. The smoke test presses a satchel slot once per item family
+and asks that the press did what that family is FOR - a potion or a
+scroll only has to happen, but a device and a bomb have to LAND. Landing
+is what the player sees, and the broken bomb passed a weaker predicate
+that only asked whether the slot emptied. The layout check reads the run
+store's call graph from real player entry points and fails on any action
+with no way in; the test scripts are deliberately not entry points, since
+a check calling an action directly is exactly what hid both of these.
+
+Be plain about the division: the source scan would NOT have caught the
+bomb. `useItem` did call `placeDevice`, behind a condition a bomb never
+satisfied, and a gate is not a missing call. Only pressing the button
+finds that. The scan catches the other half, which is what it found the
+first time it was run.
