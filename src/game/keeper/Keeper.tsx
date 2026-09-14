@@ -6,6 +6,8 @@ import { keeperPostPosition } from "./posts";
 import type { Dir, Room } from "../dungeon/types";
 import { bus } from "../events";
 import { canControl, keeperStalled, runClock, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { GROUND_Y, KEEPER_REACH } from "../world";
 
 /**
@@ -22,6 +24,8 @@ export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
   const halberd = useRef<Group>(null);
   const post = keeperPostPosition(room, dir);
   const knelt = useRun(keeperStalled);
+  /** Whether the halberd was heard coming down, so it is heard once per approach. */
+  const swung = useRef(false);
 
   useEffect(() => {
     bus.emit("keeperBars");
@@ -48,6 +52,14 @@ export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
      */
     const tell = down ? 0 : Math.max(0, Math.min(1, 1 - (distance - KEEPER_REACH) / KEEPER_REACH));
     if (arm) arm.rotation.z = -tell * 0.9;
+    // The creak of it, once, as the swing begins - and again only after
+    // the player has backed well off and it has gone up.
+    if (tell > 0.3 && !swung.current) {
+      swung.current = true;
+      sfx.keeperSwing(sideOf(post.x - cam.x, post.z - cam.z));
+    } else if (tell < 0.1) {
+      swung.current = false;
+    }
     g.rotation.y = Math.atan2(dxp, dzp);
     g.scale.y = down ? 0.55 : 1;
     g.position.set(post.x, GROUND_Y + (down ? 0 : Math.sin(t * 1.3) * 0.02), post.z);

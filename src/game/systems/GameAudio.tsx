@@ -116,18 +116,25 @@ export function Audio() {
       }),
       bus.on("mothLanded", () => sfx.named()),
       bus.on("mothLeft", () => sfx.take()),
-      bus.on("batsRoused", () => sfx.thiefFled()),
+      // Dead centre: the store rouses a roost the heat can put up in a
+      // room the player is not in. The flock that follows is held from
+      // the roost itself, with a side, while the player is in its room.
+      bus.on("batsRoused", () => sfx.batsBurst()),
       bus.on("draftFelt", () => sfx.draft()),
       bus.on("propBroken", () => sfx.clatter()),
       bus.on("wallSound", ({ flavour }) => sfx.throughWall(flavour)),
       bus.on("mapMarked", () => sfx.setDown()),
       bus.on("wispCame", () => sfx.named()),
       bus.on("wispLeft", () => sfx.lanternOut()),
-      bus.on("harrierWoke", () => sfx.thiefFled()),
-      bus.on("harrierStruck", () => sfx.wardenStrike()),
-      bus.on("harrierDowned", () => sfx.grind()),
-      bus.on("harrierSlain", () => sfx.clatter()),
-      bus.on("keeperBars", () => sfx.wardenHere()),
+      // Its own voice at each of its moments; the wings between them are
+      // held from the Harrier itself. These four were borrowed from the
+      // thief, the Warden, the arena and a barrel, so a player who had
+      // learned those sounds was told the wrong thing four times.
+      bus.on("harrierWoke", () => sfx.harrierCry()),
+      bus.on("harrierStruck", () => sfx.harrierSwoop()),
+      bus.on("harrierDowned", () => sfx.harrierFall()),
+      bus.on("harrierSlain", () => sfx.harrierDie()),
+      bus.on("keeperBars", () => sfx.keeperClank()),
       bus.on("keeperStruck", () => sfx.wardenStrike()),
       bus.on("keeperKnelt", () => sfx.grind()),
       bus.on("keeperRose", () => sfx.barDoor()),

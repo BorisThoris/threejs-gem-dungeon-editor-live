@@ -1,9 +1,11 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import type { Room } from "../dungeon/types";
 import { canControl, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { WISP_LEAD, WISP_SPEED } from "../world";
 import { wispAt, wispTargetFor } from "./lamplighter";
 
@@ -21,11 +23,17 @@ export function Wisp({ room }: { room: Room }) {
   const dungeon = useRun((s) => s.dungeon);
   const target = useMemo(() => (dungeon ? wispTargetFor(dungeon, room.id) : null), [dungeon, room.id]);
 
+  // Gone with the room, or with the lantern: its hum goes too.
+  useEffect(() => () => sfx.wispHumStop(), []);
+
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      sfx.wispHumStop();
+      return;
+    }
     const cam = state.camera.position;
     const p = pos.current;
     const t = state.clock.elapsedTime;
@@ -56,6 +64,8 @@ export function Wisp({ room }: { room: Room }) {
       }
     }
     g.position.set(p.x, 1.6 + Math.sin(t * 2.3) * 0.15, p.z);
+    // Its hum, from where it waits: the way it lights is the way it sounds.
+    sfx.wispHum(1 - Math.hypot(cam.x - p.x, cam.z - p.z) / (WISP_LEAD * 2.5), sideOf(p.x - cam.x, p.z - cam.z));
     wispAt.x = p.x;
     wispAt.z = p.z;
     wispAt.roomId = room.id;

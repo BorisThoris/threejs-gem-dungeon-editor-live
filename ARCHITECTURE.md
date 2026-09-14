@@ -22,12 +22,24 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
-- Every sound is a one-shot except the Warden crossing your room, which is
-  built once and then written to every frame - three AudioParam values, no
-  new nodes. A cue rebuilt per frame would allocate an oscillator, a gain
-  and a panner sixty times a second, which is the shape of every stutter
-  this project has had; `yarn test:perf` drives it twenty thousand times and
-  checks that one sound came out rather than twenty thousand.
+- Every sound is a one-shot except a creature moving in your room, which
+  is a held voice: built once and then written to every frame - a level, a
+  side and at most a filter, a beat rate or a pitch, no new nodes. The
+  Warden's stalk was the first and the registry in `audio.ts` is what made
+  the rest cheap: the roost while it is up, the Harrier's wings (the beat
+  quickens as it dives, which is the tell from behind), the moth at the
+  lantern, the wisp's hum, the Sentry's beam acquiring you and the
+  Reaper. Each creature writes its voice from its own frame loop, because
+  that is where its position is, and stops it on unmount. A cue rebuilt
+  per frame would allocate an oscillator, a gain and a panner sixty times
+  a second, which is the shape of every stutter this project has had;
+  `yarn test:perf` drives the stalk twenty thousand times and checks that
+  one sound came out rather than twenty thousand, and `yarn test:audio`
+  starts and stops every held voice and checks the room goes back to the
+  room. The one-shots at a creature's moments - waking, striking, falling,
+  wheeling away - are its own rather than borrowed from another creature,
+  so a player who has learned what the Cutpurse sounds like is not told
+  the Cutpurse is here when the Harrier wakes.
 - **What a thing on the floor IS lives in `src/game/din/`, and what a
   creature ANSWERS TO lives beside it in `susceptibility.ts`.** This is the
   same rule pushed one level further and it is the one worth understanding.
@@ -142,8 +154,9 @@ Two stores that both claimed the player's stats. So:
   satchel - so nothing is tracked FOR the pledge and it never becomes a
   second economy running beside the first.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
-  nowhere else. Two things need it - the Warden through a wall and a Sentry
-  from its post - and they have to agree, because a cue panned the wrong way
+  nowhere else. Everything that makes a sound from somewhere needs it - the
+  Warden through a wall, a Sentry from its post, every creature's held
+  voice - and they have to agree, because a cue panned the wrong way
   sends the player towards the thing it is warning them about. It is pure so
   the layout check can walk it from all 360 headings; the same sign was
   already got backwards once on the minimap, where it survived because it

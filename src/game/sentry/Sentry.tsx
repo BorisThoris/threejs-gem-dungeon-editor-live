@@ -8,6 +8,7 @@ import { bus } from "../events";
 import { canControl, lanternLit, runClock, useCurrentRoom, useRun } from "../state/run";
 import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint";
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
+import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
@@ -64,6 +65,9 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   const lastCall = useRef(-Infinity);
   const [seen, setSeen] = useState(false);
 
+  // Off with the post: a beam that is not drawn does not whine.
+  useEffect(() => () => sfx.beamStop(), []);
+
   useFrame((state) => {
     const g = head.current;
     if (!g) return;
@@ -99,7 +103,10 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     }
     vertices.needsUpdate = true;
 
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      sfx.beamStop();
+      return;
+    }
 
     const cam = state.camera.position;
     const dx = cam.x - position[0];
@@ -170,6 +177,10 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
      * asked by the other threat.
      */
     const patience = lanternLit(run) ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    // The light on you, out loud: a whine that climbs as it acquires, on
+    // the post's side. A beam arriving from behind was a brightening of
+    // the floor and nothing else.
+    sfx.beam(inside ? Math.max(0.05, held / patience) : 0, sideOf(position[0] - cam.x, position[2] - cam.z));
     if (held >= patience && now - lastCall.current > SENTRY_COOLDOWN_S) {
       lastCall.current = now;
       litSince.current = now;

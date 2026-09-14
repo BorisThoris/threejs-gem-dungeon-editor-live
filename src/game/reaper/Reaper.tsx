@@ -5,6 +5,8 @@ import { Group, Vector3 } from "three";
 import { halfSize, type Room } from "../dungeon/types";
 import { doorReach } from "../dungeon/footprint";
 import { canControl, reaperStalled, runClock, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { GROUND_Y, REAPER_MAX_STEP, REAPER_SPEED, REAPER_TOUCH_RADIUS } from "../world";
 import { reaperAt } from "./position";
 
@@ -29,6 +31,8 @@ export function Reaper({ room }: { room: Room }) {
   const placed = useRef(false);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
   useEffect(() => () => { reaperAt.roomId = null; }, []);
+  // Remounted with the room, so the voice restarts a frame later: fine.
+  useEffect(() => () => sfx.reapStop(), []);
 
   useFrame((state, delta) => {
     const g = group.current;
@@ -36,7 +40,10 @@ export function Reaper({ room }: { room: Room }) {
     const run = useRun.getState();
     // Arrival uses the controlled camera, after travel has landed. The
     // entire pose freezes with the run, including facing and the blast tell.
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      sfx.reapStop();
+      return;
+    }
     const cam = state.camera.position;
     const half = halfSize(room);
     // Placed on its first frame rather than at mount, because that is the
@@ -69,6 +76,10 @@ export function Reaper({ room }: { room: Room }) {
       probe.room = room.id;
     }
 
+    // Its voice, from where it is: the one thing on the floor that cannot
+    // be fought is also the one thing that must never arrive unheard.
+    // Quieter while the blast holds it, never off.
+    sfx.reap(Math.max(0.15, 1 - distance / (half * 2)) * (stalled ? 0.5 : 1), sideOf(-dx, -dz));
     if (stalled) {
       // Held by the blast: a shudder in place, so the hold can be seen.
       return;

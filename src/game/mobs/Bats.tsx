@@ -1,8 +1,10 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { canControl, runClock, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import * as din from "../din/din";
 import { SUSCEPTIBILITY } from "../din/susceptibility";
 import type { Room } from "../dungeon/types";
@@ -28,12 +30,32 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   const arrivedAt = useRef<number | null>(null);
   const stirringAt = useRef<number | null>(null);
 
+  // The room changed, or the run ended: a roost that is not drawn is not heard.
+  useEffect(() => () => sfx.flockStop(), []);
+
   useFrame((state) => {
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
     const now = runClock(run);
     const roused = now < run.batsRousedUntil;
+    /**
+     * Heard while it is up, from wherever in the room the player stands.
+     *
+     * The roost going up was a one-shot borrowed from the Cutpurse and
+     * then five seconds of a flock wheeling in silence, in a room the
+     * player might be facing away from: the noise that carries twice as
+     * far as a dash - the whole cost of the thing - was inaudible to the
+     * one person paying it. Never quieter than a third in the room, and
+     * louder underneath, with the side it is on.
+     */
+    const cam = state.camera.position;
+    const overhead = Math.hypot(cam.x - at.x, cam.z - at.z);
+    if (roused && canControl(run)) {
+      sfx.flock(Math.max(0.3, 1 - overhead / (room.size * 0.6)), sideOf(at.x - cam.x, at.z - cam.z));
+    } else {
+      sfx.flockStop();
+    }
     if (canControl(run)) {
       if (arrivedAt.current === null) arrivedAt.current = now;
       const settled = now - arrivedAt.current >= 1.8;
@@ -79,6 +101,7 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
           if (stirringAt.current === null && (freshDash || loud)) {
             stirringAt.current = now;
             bus.emit("notice", "Bats stir overhead. Move clear of the roost.");
+            sfx.batsStir(sideOf(at.x - cam.x, at.z - cam.z));
           }
           if (stirringAt.current !== null && now - stirringAt.current >= STARTLE_WARNING_S) {
             stirringAt.current = null;

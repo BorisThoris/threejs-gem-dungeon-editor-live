@@ -251,6 +251,19 @@ const CUES = [
   ["relic", 600, []],
   ["wardenNear", 500, [-0.5]],
   ["wardenHere", 600, [0.5]],
+  // The creatures' own voices. Every one of these was either silent or
+  // borrowed from another creature before it had a cue of its own.
+  ["scurry", 200, [0.6, 0.3]],
+  ["batsStir", 400, [0.3]],
+  ["batsBurst", 500, [0]],
+  ["harrierCry", 500, []],
+  ["harrierWind", 500, [-0.3]],
+  ["harrierSwoop", 600, []],
+  ["harrierAway", 900, [0.5]],
+  ["harrierFall", 800, [0.2]],
+  ["harrierDie", 400, []],
+  ["keeperClank", 900, []],
+  ["keeperSwing", 500, [0.4]],
 ];
 
 /** The room with nothing played into it: the bed, and whatever else runs. */
@@ -376,6 +389,41 @@ ok(
   held.after < AUDIBLE && !held.stillOn,
   `${held.after.toFixed(4)} after, room tone ${floorLevel.toFixed(4)}`
 );
+
+/**
+ * The other creatures that are heard for as long as they are there. Same
+ * contract as the stalk - write it every frame, nought stops it - and the
+ * same two questions: does it sound while it is on, and is the room back
+ * to the room when it is off. A bats' roost that stayed audible after the
+ * five seconds, or a Harrier whose wings outlived the Harrier, would be a
+ * worse bug than either being silent.
+ */
+const VOICES = [
+  ["flock", "flockStop", [0.8, 0.2]],
+  ["wingbeat", "wingbeatStop", [0.8, -0.2, 0.5]],
+  ["flutter", "flutterStop", [1, 0]],
+  ["wispHum", "wispHumStop", [1, 0]],
+  ["beam", "beamStop", [0.9, 0.3]],
+  ["reap", "reapStop", [0.8, 0]],
+];
+for (const [start, stop, args] of VOICES) {
+  const voice = await page.evaluate(
+    async ([startName, stopName, withArgs, flush]) => {
+      const sfx = window.__sfx;
+      await new Promise((r) => setTimeout(r, flush));
+      const heard = window.__listen(500);
+      sfx[startName](...withArgs);
+      const during = await heard;
+      sfx[stopName]();
+      await new Promise((r) => setTimeout(r, 400 + flush));
+      const after = await window.__listen(400);
+      return { during, after };
+    },
+    [start, stop, args, FLUSH_MS]
+  );
+  ok(`the held voice \`${start}\` plays while it is on`, voice.during >= AUDIBLE, voice.during.toFixed(4));
+  ok(`and \`${stop}\` returns the room to the room`, voice.after < AUDIBLE, `${voice.after.toFixed(4)} after`);
+}
 
 // --- The setting that turns it off -----------------------------------------
 

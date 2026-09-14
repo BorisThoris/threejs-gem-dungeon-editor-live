@@ -5,6 +5,8 @@ import { Group } from "three";
 
 import { halfSize, type Room } from "../dungeon/types";
 import { canControl, lanternRaised, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { steerInRoom, type Patch } from "../warden/steer";
 import { MOTH_SPEED } from "../world";
 
@@ -24,18 +26,32 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
   }, [room]);
   const pos = useRef({ x: perch.x, y: perch.y, z: perch.z });
 
-  // Leaving the room takes it off the lantern.
-  useEffect(() => () => useRun.getState().mothLeaves(), []);
+  // Leaving the room takes it off the lantern, and its wings with it.
+  useEffect(
+    () => () => {
+      useRun.getState().mothLeaves();
+      sfx.flutterStop();
+    },
+    []
+  );
 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      sfx.flutterStop();
+      return;
+    }
     const cam = state.camera.position;
     const p = pos.current;
     const t = state.clock.elapsedTime;
     const drawn = lanternRaised(run);
+    // Its wings, while the lantern has it: at your ear when it is on you,
+    // and nothing when it is back on its perch across the room.
+    const toCam = Math.hypot(cam.x - p.x, cam.z - p.z);
+    if (drawn) sfx.flutter(1 - toCam / 4, sideOf(p.x - cam.x, p.z - cam.z));
+    else sfx.flutterStop();
     const target = drawn
       ? { x: cam.x + Math.cos(t * 2.2) * 0.7, y: cam.y + 0.2 + Math.sin(t * 3) * 0.1, z: cam.z + Math.sin(t * 2.2) * 0.7 }
       : perch;

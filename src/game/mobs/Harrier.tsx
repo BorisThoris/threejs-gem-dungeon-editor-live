@@ -10,6 +10,8 @@ import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
 import { type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
+import { sfx } from "../systems/audio";
+import { sideOf } from "../systems/bearing";
 import { barKey } from "../warden/bars";
 import { patchAt, steerInRoom } from "../warden/steer";
 import { FLIGHT_HEIGHT, GROUND_Y, HARRIER_MAX_STEP, HARRIER_SPEED, HARRIER_TOUCH_RADIUS } from "../world";
@@ -37,6 +39,8 @@ export function Harrier({ room }: { room: Room }) {
   const pos = useRef({ x: 0, z: 0, placed: false });
   const arrivedAt = useRef<number | null>(null);
   const windingAt = useRef<number | null>(null);
+  /** Whether it was wheeling away last frame, so the frame it starts to is heard once. */
+  const wasAway = useRef(false);
   const dungeon = useRun((s) => s.dungeon);
   const floor = useRun((s) => s.floor);
   const placed = useRun((s) => s.placed);
@@ -59,6 +63,7 @@ export function Harrier({ room }: { room: Room }) {
       harrierAt.roomId = null;
       harrierAt.down = false;
       harrierAt.away = false;
+      sfx.wingbeatStop();
     },
     []
   );
@@ -102,6 +107,24 @@ export function Harrier({ room }: { room: Room }) {
     };
 
     g.visible = !kept;
+    /**
+     * Its wings, while it is in the air in this room.
+     *
+     * A flying thing that comes for you wherever you are, and until now
+     * the only sounds it made were borrowed one-shots at the moments it
+     * woke, hit, fell and died. Between those it crossed the room and
+     * dived at the back of your head in silence. The beat quickens with
+     * the dive, so this is the tell for a player facing the wrong way.
+     */
+    const side = sideOf(-dx, -dz);
+    if (away && !wasAway.current && arrivedAt.current !== null) sfx.harrierAway(side);
+    wasAway.current = away;
+    if (kept || down || !canControl(run)) {
+      sfx.wingbeatStop();
+    } else {
+      const dive = windingAt.current !== null ? tell.current : Math.max(0, Math.min(1, 1 - distance / 4));
+      sfx.wingbeat(Math.max(0.25, 1 - distance / 12), side, dive);
+    }
     if (kept) {
       arrivedAt.current = null;
       windingAt.current = null;
@@ -135,6 +158,7 @@ export function Harrier({ room }: { room: Room }) {
       if (windingAt.current === null) {
         windingAt.current = now;
         bus.emit("notice", "The Harrier draws back. Dodge or shove.");
+        sfx.harrierWind(side);
       }
       tell.current = Math.min(1, (now - windingAt.current) / HARRIER_WINDUP_S);
     } else {

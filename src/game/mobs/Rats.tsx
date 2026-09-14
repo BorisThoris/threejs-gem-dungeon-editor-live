@@ -74,6 +74,12 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       // there, which is neither a scatter nor a tell.
       const threatened = td < RAT_FLEE_RADIUS || (rat.fleeing && td < RAT_FLEE_RADIUS * 2);
       if (threatened && !rat.fleeing) sfx.skitter(0.35, sideOf(rat.x - cam.x, rat.z - cam.z));
+      // And feet while it runs, from where it is: a rat scattering from
+      // the Warden behind you is the tell, and a silent one is not.
+      if (threatened) {
+        const toCam = Math.hypot(cam.x - rat.x, cam.z - rat.z);
+        sfx.scurry(1 - toCam / (RAT_FLEE_RADIUS * 2.5), sideOf(rat.x - cam.x, rat.z - cam.z));
+      }
       rat.fleeing = threatened;
       let dx: number;
       let dz: number;
