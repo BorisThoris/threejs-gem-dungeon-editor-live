@@ -31,7 +31,7 @@ import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
-import { device } from "../game/input/device";
+import { device, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
@@ -58,6 +58,11 @@ export function Hud() {
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
   const keys = useRun((s) => s.keys);
+  const stairsKnown = useRun((s) => !!s.dungeon && s.dungeon.rooms.some((r) => s.visited.includes(r.id)
+    && Object.values(r.links).includes(s.dungeon!.endId)));
+  const cutpurse = useRun((s) => s.thiefPhase === "away" ? null : s.thiefPhase);
+  const thiefHolding = useRun((s) => s.thiefHolding);
+  const thiefKey = useRun((s) => s.thiefKey);
   const nestGems = useRun((s) => s.nestGems);
   // Nothing said in colour alone. The alarm was a word whose *colour*
   // carried half its meaning and the gem count's danger likewise, which is
@@ -126,6 +131,10 @@ export function Hud() {
     toll,
     spare,
     owed,
+    stairsKnown,
+    cutpurse,
+    thiefHolding,
+    thiefKey,
     floor,
     floors: FLOORS,
     roomTitle: room ? KIND_TITLE[room.kind] : "",
@@ -254,12 +263,13 @@ function ShoveReadout() {
   const read = () => Math.max(0, Math.ceil((useRun.getState().shoveReadyAt - runClock(useRun.getState())) * 10) / 10);
   const [remaining, setRemaining] = useState(read);
   const binding = useSettings((s) => s.bindings.shove);
+  const touch = useTouchControls();
   useEffect(() => {
     const timer = window.setInterval(() => setRemaining(read()), 100);
     return () => window.clearInterval(timer);
   }, []);
   return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: remaining ? colors.dim : colors.accent }}>
-    SHOVE · {remaining ? `recovering ${remaining.toFixed(1)}s` : `${keysLabel(binding)} / RT · ready`}
+    SHOVE · {remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : `${keysLabel(binding)} / RT`} · face a close threat`}
   </div>;
 }
 

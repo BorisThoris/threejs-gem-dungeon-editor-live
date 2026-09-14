@@ -113,6 +113,7 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5198"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
+  assert.match(await page.locator('[data-testid="hud-gems"]').innerText(), /explore for gems/);
   await page.keyboard.press("Space");
   await page.waitForFunction(() => window.__run.getState().shoveReadyAt > window.__derived.clock());
   await page.waitForFunction(() => document.querySelector('[data-testid="shove-status"]')?.textContent.includes("recovering"));
@@ -130,6 +131,21 @@ try {
   await page.waitForFunction(() => window.__run.getState().shoveReadyAt > window.__derived.clock());
   console.log("PASS controller RT shove");
   await page.evaluate(() => { window.testPad = null; });
+  await page.evaluate(() => window.__run.setState({ paused: true, shoveReadyAt: 0, gems: 10, thiefPhase: "stalking" }));
+  await page.waitForFunction(() => document.querySelector('[data-testid="shove-status"]')?.textContent.includes("SHOVE button"));
+  assert.match(await page.locator('[data-testid="hud-cutpurse"]').innerText(), /face it and shove/);
+  assert.match(await page.locator('[data-testid="hud-gems"]').innerText(), /find the stairs/);
+  await page.evaluate(() => {
+    const s = window.__run.getState();
+    const doorway = s.dungeon.rooms.find((r) => Object.values(r.links).includes(s.dungeon.endId));
+    window.__run.setState({ visited: [...s.visited, doorway.id], thiefPhase: "fleeing", thiefHolding: 1, thiefKey: true });
+  });
+  assert.match(await page.locator('[data-testid="hud-cutpurse"]').innerText(), /1 stolen gem and your iron key.*catch or shove it to recover/);
+  assert.match(await page.locator('[data-testid="hud-gems"]').innerText(), /return to the stairs/);
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  assert.equal(await page.locator('[data-testid="hud-cutpurse"]').count(), 0, "chase guidance clears on a fresh run");
+  console.log("PASS exploration objective, known stairs, theft recovery and touch shove guidance");
   const combat = await page.evaluate(async () => {
     const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
     const { wardenAt } = await import("/src/game/warden/position.ts");

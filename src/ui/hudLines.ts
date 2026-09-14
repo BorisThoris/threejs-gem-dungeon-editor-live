@@ -62,6 +62,11 @@ export interface HudFacts {
   toll: number;
   spare: number;
   owed: number;
+  /** A doorway to the stairs has been seen, so the player can return to it. */
+  stairsKnown?: boolean;
+  cutpurse?: "stalking" | "fleeing" | null;
+  thiefHolding?: number;
+  thiefKey?: boolean;
   floor: number;
   floors: number;
   roomTitle: string;
@@ -167,7 +172,14 @@ export function hudLines(f: HudFacts): HudLine[] {
     });
   }
   if (f.harrier === "hunting") {
-    add({ id: "harrier", label: "ABOVE", body: `a harrier hunts you${DOT}a blast downs it`, rank: 0, tone: "danger", mark: "!!!" });
+    add({ id: "harrier", label: "ABOVE", body: `face it and shove when close${DOT}a blast downs it`, rank: 0, tone: "danger", mark: "!!!" });
+  }
+  if (f.cutpurse === "stalking") {
+    add({ id: "cutpurse", label: "CUTPURSE", body: "protect your pockets · face it and shove", rank: 0, tone: "danger", mark: "!!" });
+  } else if (f.cutpurse === "fleeing") {
+    const stolen = [f.thiefHolding ? `${f.thiefHolding} stolen gem${f.thiefHolding === 1 ? "" : "s"}` : "",
+      f.thiefKey ? "your iron key" : ""].filter(Boolean).join(" and ");
+    if (stolen) add({ id: "cutpurse", label: "CUTPURSE", body: `${stolen}${DOT}catch or shove it to recover`, rank: 0, tone: "gold", mark: "!!" });
   }
   if (f.wardenAwake) {
     add({
@@ -232,7 +244,8 @@ export function hudLines(f: HudFacts): HudLine[] {
   add({
     id: "gems",
     label: "GEMS",
-    body: `${f.gems}${DOT}toll ${f.toll}${DOT}${f.owed > 0 ? `${f.owed} short` : `${f.spare} spare`}`,
+    body: `${f.gems}${DOT}toll ${f.toll}${DOT}${f.owed > 0 ? `${f.owed} short · explore for gems`
+      : `${f.spare} spare · ${f.stairsKnown ? "return to" : "find"} the stairs`}`,
     rank: 2,
     tone: f.owed > 0 ? "danger" : "gold",
     mark: f.owed > 0 ? "!" : undefined,
