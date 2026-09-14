@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { bus, type BusEvents } from "../events";
 import { touchControlsActive } from "../input/device";
 import { useRun } from "../state/run";
-import { BOMB_PRICE, KEEPER_STALL_S, floorRules } from "../world";
+import { BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 
@@ -47,6 +47,7 @@ export interface Lesson<K extends keyof BusEvents = keyof BusEvents> {
 
 const lesson = <K extends keyof BusEvents>(l: Lesson<K>): Lesson => l as unknown as Lesson;
 const shoveControl = (touch: boolean) => touch ? "SHOVE" : `${keysLabel(useSettings.getState().bindings.shove)} or RT`;
+const sprintControl = (touch: boolean) => touch ? "RUN" : `${keysLabel(useSettings.getState().bindings.sprint)} or L3`;
 
 export const LESSONS: readonly Lesson[] = [
   // The Warden, and what it hears and sees.
@@ -139,6 +140,8 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
   lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
   lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper. Save ${BOMB_PRICE} gems beyond the toll for a shop bomb. Set a bomb from your satchel and move clear of its blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
+  lesson({ id: "reaper", event: "reaperWoke", every: true,
+    line: (_, touch) => `The Reaper is here. Sprint with ${sprintControl(touch)} to the stairs. Shoves cannot stop it. A bomb holds it for ${REAPER_STALL_S} seconds; keep moving while its fuse burns.` }),
 
   // Every floor, on arriving: what this one is like.
   /**

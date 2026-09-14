@@ -2407,7 +2407,6 @@ export const useRun = create<RunState>()(
       if (s.reaperAwake || s.phase !== "playing") return;
       set({ reaperAwake: true });
       bus.emit("reaperWoke");
-      bus.emit("notice", "The floor has had enough of you. The exit, now.");
     },
 
     reaperStrike: () => {

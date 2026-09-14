@@ -161,7 +161,9 @@ which cannot be walked from and can be dashed from, and which a blast
 knocks out of the air - and a flier on the ground is just another thing
 the floor can bite. On the last floor the stairs are kept. The Keeper
 stands in that doorway, cannot be walked past, and kneels for nine
-seconds when a bomb goes off in its room. Bring one.
+seconds when a bomb goes off in its room. Keep two gems beyond the toll
+for the shop's bomb. Move clear of its blast and keep moving while the
+fuse burns, then take the stairs while the Keeper kneels.
 
 From the second floor down there is also something small in the dark that
 wants what you are carrying. The Cutpurse cannot hurt you. It waits until
@@ -441,7 +443,8 @@ template legal in all eight ways round a room can be furnished, and every
 item findable with a look nothing else has.
 
 `yarn test:walk` checks the collect–pay–descend loop using physical walking,
-door interaction and shoves. It never teleports or restores lives. The
+door interaction, shoves, a shop bomb purchase and the Keeper escape. It
+never teleports or restores lives. The
 walker knows the full generated map and avoids known furniture and hazards;
 this is traversal and counterplay evidence, not a human balance playtest.
 Set `PORT` to the running dev server (default 5200), `CHROMIUM_PATH` to your

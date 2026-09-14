@@ -46,12 +46,19 @@ try {
     assert.match(keeperHelp, /kneels for 9 seconds/);
     assert.ok(await page.getByTestId("guidance").evaluate((g) => g.scrollWidth <= g.clientWidth), "Keeper instructions wrap inside the guidance panel");
     console.log(`PASS ${name}: Keeper lesson explains bomb budget, satchel use, blast escape and stairs window`);
+    await page.evaluate(() => window.__run.getState().wakeReaper());
+    await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Sprint with RUN to the stairs"));
+    const reaperHelp = await page.getByTestId("guidance").innerText();
+    assert.match(reaperHelp, /Shoves cannot stop it/);
+    assert.match(reaperHelp, /keep moving while its fuse burns/);
+    console.log(`PASS ${name}: Reaper warning explains running, shove immunity and moving during a bomb fuse`);
     if (name === "desktop") {
       await page.evaluate(async () => {
         const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
         settings.setTouchControls("off");
         settings.bind("shove", "KeyQ");
         settings.bind("lantern", "KeyL");
+        settings.bind("sprint", "KeyR");
         window.__bus.emit("wardenEntered", { roomId: window.__run.getState().currentRoomId });
       });
       await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT briefly staggers"));
@@ -59,6 +66,11 @@ try {
       await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT to drive it off"));
       await page.evaluate(() => window.__bus.emit("lanternToggled", { raised: true }));
       await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("L puts it down"));
+      await page.evaluate(() => {
+        window.__run.setState({ reaperAwake: false });
+        window.__run.getState().wakeReaper();
+      });
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Sprint with R or L3 to the stairs"));
       await page.evaluate(async () => {
         (await import("/src/game/state/settings.ts")).useSettings.getState().setTouchControls("on");
         window.__bus.emit("thiefCame", { roomId: window.__run.getState().currentRoomId });

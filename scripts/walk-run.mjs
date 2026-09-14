@@ -24,7 +24,7 @@ const snapshot = () => page.evaluate(() => {
       window.__harrier?.room === s.currentRoomId && !window.__harrier.away && !window.__harrier.down ? window.__harrier : null].filter(Boolean) };
 });
 
-async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
+async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper = false } = {}) {
   // A room can report ready before the player probe has sampled its new pose.
   const frame = (await snapshot()).frames;
   if (!prepared) await page.waitForFunction((frame) => window.__perf.frames >= frame + 2, frame);
@@ -32,10 +32,15 @@ async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
     const { roomSegmentClear, insideRoom, doorReach } = await import("/src/game/dungeon/footprint.ts");
     const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
     const { trapsFor } = await import("/src/game/traps/placement.ts");
+    const { sentryFor } = await import("/src/game/sentry/placement.ts");
+    const { keyFor } = await import("/src/game/rooms/kinds.ts");
     const { PIT_RADIUS } = await import("/src/game/world.ts");
     const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
     const start = { x: window.__playerDebug.x, z: window.__playerDebug.z };
+    const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
+    const sentry = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : []);
     const blockers = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken),
+      ...(sentry ? [{ x: sentry.at[0], z: sentry.at[2], r: 0.22 + 0.35 }] : []),
       ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
       ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1 }))];
     const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.65) && blockers.every((p) => {
@@ -43,6 +48,13 @@ async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
       const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
       return Math.hypot(p.x - a.x - dx * t, p.z - a.z - dz * t) > p.r + 0.12;
     });
+    if (target.reach) {
+      // Add a continuous approach for a stand almost flush with the wall.
+      // A coarse grid can miss its reachable strip by a few centimetres.
+      const half = room.size / 2 - 0.7;
+      const approach = { x: Math.max(-half, Math.min(half, target.x)), z: Math.max(-half, Math.min(half, target.z)) };
+      if (Math.hypot(approach.x - target.x, approach.z - target.z) < target.reach - 0.6 && clear(approach, approach)) target = approach;
+    }
     const spacing = 0.75, nodes = [], byGrid = new Map();
     const reach = Math.max(...["north", "south", "east", "west"].map((dir) => doorReach(room, dir)));
     const n = Math.ceil(reach / spacing);
@@ -59,7 +71,8 @@ async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
     let end;
     for (let cursor = 0; cursor < queue.length; cursor++) {
       const index = queue[cursor], a = nodes[index];
-      if (Math.hypot(a.x - target.x, a.z - target.z) < 1.5 && clear(a, target)) { end = index; break; }
+      if (target.reach ? Math.hypot(a.x - target.x, a.z - target.z) < target.reach - 0.6
+        : Math.hypot(a.x - target.x, a.z - target.z) < 1.5 && clear(a, target)) { end = index; break; }
       for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const next = byGrid.get(`${a.ix + dx},${a.iz + dz}`);
         if (next !== undefined && !previous.has(next) && clear(a, nodes[next])) { previous.set(next, index); queue.push(next); }
@@ -67,7 +80,9 @@ async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
     }
     if (clear(start, target)) return [target];
     if (end === undefined) return null;
-    const path = [target];
+    // Goods can stand against a wall: the player needs to reach their
+    // interaction radius, rather than stand at the goods' exact centre.
+    const path = target.reach ? [] : [target];
     for (let index = end; index !== -1; index = previous.get(index)) path.unshift(nodes[index]);
     const smooth = [], points = [start, ...path];
     for (let i = 0; i < points.length - 1;) {
@@ -89,6 +104,7 @@ async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
       let lastDistance = Infinity, stuckSince = Date.now();
       while (true) {
         const s = await snapshot();
+        if (untilKeeper && s.keeper.stalled) return;
         if (s.phase !== "playing" || s.roomId !== initial.roomId) throw new Error(`walk interrupted: ${s.phase}, lives ${s.lives}`);
         const wantsSprint = s.reaper || s.threats.some((p) => p.kind === "warden" && Math.hypot(p.x - s.player.x, p.z - s.player.z) < 5);
         if (wantsSprint !== sprinting) {
@@ -191,10 +207,18 @@ try {
       const spots = await page.evaluate(async (dir) => {
         const { insideRoom, roomSegmentClear } = await import("/src/game/dungeon/footprint.ts");
         const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
+        const { trapsFor } = await import("/src/game/traps/placement.ts");
+        const { PIT_RADIUS, BOMB_RADIUS } = await import("/src/game/world.ts");
         const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
         const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
         const door = window.__derived.door(room.id, dir), post = { x: door[0] * 0.72, z: door[2] * 0.72 };
-        const blocks = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken), ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung)];
+        const blocks = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken), ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
+          ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1 }))];
+        const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.6) && blocks.every((p) => {
+          const dx = b.x - a.x, dz = b.z - a.z;
+          const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+          return Math.hypot(p.x - a.x - dx * t, p.z - a.z - dz * t) > p.r + 0.3;
+        });
         const safe = (p) => insideRoom(room, p.x, p.z, 0.6) && Math.hypot(p.x - post.x, p.z - post.z) > 3 &&
           blocks.every((b) => Math.hypot(p.x - b.x, p.z - b.z) > b.r + 0.3);
         for (const side of [0, 1.5, -1.5, 2.5, -2.5]) {
@@ -202,7 +226,20 @@ try {
           if (!safe(bomb)) continue;
           for (let i = 0; i < 16; i++) {
             const angle = i * Math.PI / 8, retreat = { x: bomb.x + Math.cos(angle) * 4.5, z: bomb.z + Math.sin(angle) * 4.5 };
-            if (safe(retreat) && roomSegmentClear(room, bomb.x, bomb.z, retreat.x, retreat.z, 0.6)) return { bomb, retreat };
+            if (!safe(retreat) || !clear(bomb, retreat)) continue;
+            // Stay moving during the fuse. Standing at the first safe point
+            // lets the faster-than-walking Reaper close before detonation.
+            for (const turn of [1, -1]) {
+              const orbit = [retreat];
+              for (let j = 1; j <= 10; j++) {
+                const a = angle + turn * j * Math.PI / 4;
+                const p = { x: bomb.x + Math.cos(a) * 4.5, z: bomb.z + Math.sin(a) * 4.5 };
+                if (!safe(p) || !clear(orbit.at(-1), p)) break;
+                orbit.push(p);
+              }
+              // Every chord stays outside the blast, even with arrival error.
+              if (orbit.length >= 3 && 4.5 * Math.cos(Math.PI / 8) - 0.55 > BOMB_RADIUS) return { bomb, orbit };
+            }
           }
         }
         return null;
@@ -210,12 +247,17 @@ try {
       assert.ok(spots, "Keeper room offers a bomb placement and escape outside halberd reach");
       await walkTo(spots.bomb);
       // Plan before lighting the fuse so planning cannot consume the escape window.
-      const escape = await walkTo(spots.retreat, { prepareOnly: true });
+      const escape = await walkTo(spots.orbit[0], { prepareOnly: true });
       const slot = (await snapshot()).satchel.indexOf("bomb");
       await page.keyboard.press(`Digit${slot + 1}`);
       await page.waitForFunction(() => !window.__run.getState().satchel.includes("bomb"));
       console.log("BOMB", JSON.stringify((await snapshot()).bombs));
-      await walkTo(spots.retreat, { plan: escape });
+      await walkTo(spots.orbit[0], { plan: escape });
+      const orbit = [...spots.orbit.slice(1), ...spots.orbit.slice(0, -1).reverse()];
+      const fuseDeadline = Date.now() + 5000;
+      while (!(await snapshot()).keeper.stalled && Date.now() < fuseDeadline) {
+        await walkTo(orbit.at(-1), { plan: orbit, untilKeeper: true });
+      }
       await page.waitForFunction(() => window.__derived.keeper().stalled, null, { timeout: 5000 });
       console.log("PASS bomb set with satchel key, escaped blast, Keeper kneels");
       continue;
@@ -238,6 +280,19 @@ try {
   }
   assert.deepEqual(errors, [], "no browser runtime errors");
   console.log(`PASS movement-only collect/pay/descend: ${doors} doors, no teleports or restored lives`);
+  if (stopFloor === 4) {
+    assert.equal((await snapshot()).phase, "won", "the final paid stairs complete the run");
+    await page.getByTestId("summary-again").click();
+    await page.waitForFunction(() => {
+      const s = window.__run.getState();
+      return s.phase === "playing" && s.floor === 1 && !s.transitioning;
+    });
+    const fresh = await snapshot();
+    assert.equal(fresh.gems, 0, "a new run starts without the previous haul");
+    assert.equal(fresh.lives, 3, "a new run restores its initial health");
+    assert.ok(!fresh.reaper && fresh.bombs.length === 0, "previous pursuit and placed bombs do not persist");
+    console.log("PASS escaped summary starts a fresh playable run through Run again");
+  }
 } catch (e) {
   console.error(e);
   const s = await snapshot();
