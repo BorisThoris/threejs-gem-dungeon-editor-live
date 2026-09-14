@@ -1,0 +1,17 @@
+{
+  "slug": "threejs-gem-dungeon-editor",
+  "source": "public/favicon.svg",
+  "sourceHash": "ae09b87e0db417d6",
+  "outputDir": "public",
+  "urlPrefix": "/",
+  "renderedAt": "2026-09-14T20:12:57.411Z",
+  "files": [
+    "favicon.ico",
+    "apple-touch-icon.png",
+    "icon-192.png",
+    "icon-512.png",
+    "icon-maskable-512.png",
+    "favicon.svg",
+    "site.webmanifest"
+  ]
+}

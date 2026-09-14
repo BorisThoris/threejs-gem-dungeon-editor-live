@@ -1,0 +1,62 @@
+{
+  "slug": "threejs-gem-dungeon-editor",
+  "capturedAt": "2026-09-14T20:13:43.054Z",
+  "source": "deployment",
+  "url": "https://threejs-gem-dungeon-editor-git.pages.dev/",
+  "recipe": {
+    "route": "/",
+    "actions": [
+      {
+        "type": "waitFor",
+        "target": {
+          "selector": "canvas"
+        },
+        "state": "visible",
+        "label": "wait for the loaded 3D scene"
+      }
+    ],
+    "waitAfterReadyMs": 3000
+  },
+  "profiles": [
+    {
+      "profile": "card",
+      "file": "card.jpg",
+      "width": 1600,
+      "height": 900,
+      "bytes": 49226,
+      "status": "captured"
+    },
+    {
+      "profile": "desktop",
+      "file": "desktop.jpg",
+      "width": 1440,
+      "height": 900,
+      "bytes": 48200,
+      "status": "captured"
+    },
+    {
+      "profile": "mobile",
+      "file": "mobile.jpg",
+      "width": 430,
+      "height": 932,
+      "bytes": 27333,
+      "status": "captured"
+    },
+    {
+      "profile": "full",
+      "file": "full.jpg",
+      "width": 1440,
+      "height": 900,
+      "bytes": 43342,
+      "status": "captured"
+    },
+    {
+      "profile": "og",
+      "file": "og.jpg",
+      "width": 1200,
+      "height": 630,
+      "bytes": 39491,
+      "status": "captured"
+    }
+  ]
+}

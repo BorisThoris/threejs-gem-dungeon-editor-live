@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Gem Dungeon">
+  <defs>
+    <radialGradient id="glow" cx="32" cy="34" r="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3b2a6b"/>
+      <stop offset="1" stop-color="#050608"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="url(#glow)"/>
+  <path d="M8 52h48v4H8z" fill="#1c1b24"/>
+  <path d="M18 14h28l8 12-22 26L10 26l8-12Z" fill="#7c3aed"/>
+  <path d="M18 14h28l-8 12H26l-8-12Z" fill="#c4b5fd"/>
+  <path d="M10 26h16l6 26L10 26Z" fill="#5b21b6"/>
+  <path d="M54 26H38l-6 26 22-26Z" fill="#8b5cf6"/>
+  <path d="M26 26h12l-6 26-6-26Z" fill="#ddd6fe"/>
+  <path d="M22 18l4-3 3 3-4 3Z" fill="#ffffff" fill-opacity="0.85"/>
+</svg>
