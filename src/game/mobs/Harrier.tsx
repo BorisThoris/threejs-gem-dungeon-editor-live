@@ -4,12 +4,12 @@ import { Group } from "three";
 
 import { doorPosition } from "../dungeon/layout";
 import { bus } from "../events";
-import { roomStep } from "../dungeon/footprint";
+import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_S } from "../player/combat";
 import { halfSize, type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
-import { patchAt, steerAround } from "../warden/steer";
+import { patchAt, steerInRoom } from "../warden/steer";
 import { FLIGHT_HEIGHT, GROUND_Y, HARRIER_MAX_STEP, HARRIER_SPEED, HARRIER_TOUCH_RADIUS } from "../world";
 import { BODIES, bitesFor, obstaclesFor } from "./body";
 import { harrierAt, harrierEntryFor, harrierRoostFor } from "./harrierRoost";
@@ -130,7 +130,7 @@ export function Harrier({ room }: { room: Room }) {
     }
     g.rotation.z = 0;
     g.rotation.y = Math.atan2(dx, dz);
-    if (distance <= 3.5) {
+    if (distance <= 3.5 && roomSegmentClear(room, p.x, p.z, cam.x, cam.z)) {
       if (windingAt.current === null) {
         windingAt.current = now;
         bus.emit("notice", "The Harrier draws back. Dodge or shove.");
@@ -156,9 +156,7 @@ export function Harrier({ room }: { room: Room }) {
       return;
     }
     const step = Math.min(HARRIER_SPEED * delta, HARRIER_MAX_STEP, Math.max(0, distance - HARRIER_TOUCH_RADIUS * 0.5));
-    const heading = obstacles.length
-      ? steerAround(p.x, p.z, cam.x, cam.z, obstacles, 0)
-      : { dx: dx / distance, dz: dz / distance };
+    const heading = steerInRoom(room, p.x, p.z, cam.x, cam.z, obstacles, 0, 0.5);
     [p.x, p.z] = roomStep(room, p.x, p.z, heading.dx * step, heading.dz * step, 0.5);
     // It dives as it closes: at height across the room, at head height on
     // you. That descent is its tell - the same number the Warden's grace

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { roomStep } from "../dungeon/footprint";
+import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group, PointLight, Vector3 } from "three";
 
@@ -24,7 +24,7 @@ import {
   WARDEN_TURN_RATE,
 } from "../world";
 import { wardenAt } from "./position";
-import { patchAt, steerAround, type Patch } from "./steer";
+import { patchAt, steerInRoom, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 
 interface WardenProps {
@@ -299,7 +299,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       return;
     }
 
-    if (distance <= WARDEN_TOUCH_RADIUS) {
+    if (distance <= WARDEN_TOUCH_RADIUS && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) {
       /**
        * Not on the frame it walked in on.
        *
@@ -327,9 +327,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     // Round the furniture from the first step - it has a body, and a table
     // is a table - and round the spikes only once they have taught it.
     const round = wary ? [...avoid, ...obstacles] : obstacles;
-    const heading = round.length
-      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, round, WARDEN_HAZARD_BERTH)
-      : { dx: dx / distance, dz: dz / distance };
+    const heading = steerInRoom(room, g.position.x, g.position.z, cam.x, cam.z, round, WARDEN_HAZARD_BERTH);
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z);
 

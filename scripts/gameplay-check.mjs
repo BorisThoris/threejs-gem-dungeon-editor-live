@@ -11,13 +11,13 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
 const summary = [];
-let landings = 0, trapChecks = 0, corridorChecks = 0;
+let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0;
 for (const floor of [1, 2, 3]) {
   let area = 0, wings = 0, rooms = 0, irregular = 0;
   for (let seed = 1; seed <= 120; seed++) {
@@ -45,6 +45,21 @@ for (const floor of [1, 2, 3]) {
           }
           assert.ok(Math.hypot(x, z) <= 0.11, "ground creatures can follow through a wing");
           corridorChecks++;
+          const targets = [[room.size / 2 - 1, room.size / 2 - 1], ...L.DIRS
+            .filter((other) => other !== dir && room.wings?.[other])
+            .map((other) => { const p = L.doorPosition(room, other); return [p[0] * 0.9, p[2] * 0.9]; })];
+          for (const [tx, tz] of targets) {
+            x = spawn[0]; z = spawn[2];
+            for (let i = 0; i < 1500 && Math.hypot(tx - x, tz - z) > 0.11; i++) {
+              const heading = L.steerInRoom(room, x, z, tx, tz, [], 0);
+              const step = Math.min(0.1, Math.hypot(tx - x, tz - z));
+              const [nx, nz] = L.roomStep(room, x, z, heading.dx * step, heading.dz * step);
+              assert.ok(L.roomSegmentClear(room, x, z, nx, nz, 0.6), "pursuer never crosses a corner wall");
+              x = nx; z = nz;
+            }
+            assert.ok(Math.hypot(tx - x, tz - z) <= 0.11, "pursuer reaches off-axis chamber and adjacent wings");
+            cornerRoutes++;
+          }
         }
         const traps = L.trapsFor(room, d.seed, d.endId).filter((t) => t.kind !== "grate");
         const gem = L.gemFor(room, d.seed);
@@ -74,7 +89,14 @@ assert.ok(!L.inShoveArc(2, 0, 0, -1));
 const chamber = L.generateDungeon({ seed: 11 }).rooms[0];
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "pillar", x: 0, z: -1 }]));
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
-console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks }));
+const crossRoom = { ...chamber, size: 20, wings: { north: 10, east: 10 } };
+assert.ok(L.insideRoom(crossRoom, 0, -18, 0.6) && L.insideRoom(crossRoom, 18, 0, 0.6));
+assert.ok(!L.roomSegmentClear(crossRoom, 0, -18, 18, 0, 0.6), "inside endpoints cannot tunnel through void");
+assert.ok(L.insideRoom(crossRoom, 3.3, -10.8) && L.insideRoom(crossRoom, 4.2, -9.8));
+assert.ok(!L.roomSegmentClear(crossRoom, 3.3, -10.8, 4.2, -9.8), "nearby bodies across a corner have no attack line");
+const swept = L.roomStep(crossRoom, 0, -18, 18, 18);
+assert.ok(L.roomSegmentClear(crossRoom, 0, -18, ...swept, 0.6));
+console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes }));
 if (process.argv.includes("--geometry-only")) process.exit(0);
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,

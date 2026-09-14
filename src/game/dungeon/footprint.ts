@@ -58,10 +58,56 @@ export function insideRoom(room: Room, x: number, z: number, margin = 0): boolea
   });
 }
 
+/** Clip a movement segment against the union of inset floor rectangles. */
+export function roomSegmentClear(room: Room, x: number, z: number, tx: number, tz: number, margin = 0): boolean {
+  if (![x, z, tx, tz].every(Number.isFinite)) return false;
+  const half = halfSize(room) - margin;
+  const bounds = [[-half, half, -half, half]];
+  for (const dir of DIRS) {
+    if (!room.wings?.[dir]) continue;
+    const reach = doorReach(room, dir) - margin, c = CORRIDOR_WIDTH / 2 - margin;
+    bounds.push(dir === "north" ? [-c, c, -reach, 0] : dir === "south" ? [-c, c, 0, reach]
+      : dir === "west" ? [-reach, 0, -c, c] : [0, reach, -c, c]);
+  }
+  const intervals: [number, number][] = [];
+  for (const [left, right, top, bottom] of bounds) {
+    let start = 0, end = 1;
+    for (const [from, delta, low, high] of [[x, tx - x, left, right], [z, tz - z, top, bottom]]) {
+      if (delta === 0) { if (from < low || from > high) end = -1; }
+      else {
+        const a = (low - from) / delta, b = (high - from) / delta;
+        start = Math.max(start, Math.min(a, b));
+        end = Math.min(end, Math.max(a, b));
+      }
+    }
+    if (start <= end) intervals.push([start, end]);
+  }
+  intervals.sort((a, b) => a[0] - b[0]);
+  let covered = 0;
+  for (const [start, end] of intervals) {
+    if (start > covered + 1e-9) return false;
+    covered = Math.max(covered, end);
+    if (covered >= 1) return true;
+  }
+  return false;
+}
+
+/** Route through a corridor mouth before turning into an off-axis destination. */
+export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: number, margin = 0.6): { x: number; z: number } {
+  if (roomSegmentClear(room, x, z, tx, tz, margin)) return { x: tx, z: tz };
+  const half = halfSize(room) - margin;
+  const mouth = (px: number, pz: number) => {
+    if (Math.abs(px) > half) return { x: Math.sign(px) * (half - 0.05), z: 0 };
+    if (Math.abs(pz) > half) return { x: 0, z: Math.sign(pz) * (half - 0.05) };
+    return null;
+  };
+  return mouth(x, z) ?? mouth(tx, tz) ?? { x: tx, z: tz };
+}
+
 /** Slide along a wall without cutting through a concave corner. */
 export function roomStep(room: Room, x: number, z: number, dx: number, dz: number, margin = 0.6): [number, number] {
-  if (insideRoom(room, x + dx, z + dz, margin)) return [x + dx, z + dz];
-  if (insideRoom(room, x + dx, z, margin)) return [x + dx, z];
-  if (insideRoom(room, x, z + dz, margin)) return [x, z + dz];
+  if (roomSegmentClear(room, x, z, x + dx, z + dz, margin)) return [x + dx, z + dz];
+  if (roomSegmentClear(room, x, z, x + dx, z, margin)) return [x + dx, z];
+  if (roomSegmentClear(room, x, z, x, z + dz, margin)) return [x, z + dz];
   return [x, z];
 }

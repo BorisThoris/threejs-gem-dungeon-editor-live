@@ -5,7 +5,7 @@ import { Group } from "three";
 
 import { halfSize, type Room } from "../dungeon/types";
 import { canControl, lanternRaised, useRun } from "../state/run";
-import { steerAround, type Patch } from "../warden/steer";
+import { steerInRoom, type Patch } from "../warden/steer";
 import { MOTH_SPEED } from "../world";
 
 /**
@@ -39,7 +39,7 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
     const target = drawn
       ? { x: cam.x + Math.cos(t * 2.2) * 0.7, y: cam.y + 0.2 + Math.sin(t * 3) * 0.1, z: cam.z + Math.sin(t * 2.2) * 0.7 }
       : perch;
-    const h = steerAround(p.x, p.z, target.x, target.z, obstacles, 0);
+    const h = steerInRoom(room, p.x, p.z, target.x, target.z, obstacles, 0, 0.15);
     const flat = Math.hypot(target.x - p.x, target.z - p.z);
     const stepFlat = Math.min(MOTH_SPEED * delta, flat, 0.5);
     [p.x, p.z] = roomStep(room, p.x, p.z, h.dx * stepFlat, h.dz * stepFlat, 0.15);

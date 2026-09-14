@@ -3,13 +3,13 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
-import { roomStep } from "../dungeon/footprint";
+import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { cutpurseAt } from "./position";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
 import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { patchAt, steerAround, type Patch } from "../warden/steer";
+import { patchAt, steerInRoom, type Patch } from "../warden/steer";
 import {
   CUTPURSE_SPEED,
   CUTPURSE_TOUCH_RADIUS,
@@ -123,9 +123,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const step = Math.min(CUTPURSE_SPEED * delta, distance);
     // It has a body: it goes round the furniture rather than through it.
     // The spikes it runs into like anything else on the floor.
-    const heading = obstacles.length
-      ? steerAround(g.position.x, g.position.z, target.x, target.z, obstacles, 0.2)
-      : { dx: dx / distance, dz: dz / distance };
+    const heading = steerInRoom(room, g.position.x, g.position.z, target.x, target.z, obstacles, 0.2, 0.4);
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
     [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z, 0.4);
     cutpurseAt.x = g.position.x;
@@ -143,14 +141,15 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     }
 
     if (run.thiefPhase === "stalking") {
-      if (distance <= CUTPURSE_TOUCH_RADIUS) useRun.getState().thiefSteals();
+      if (Math.hypot(cam.x - g.position.x, cam.z - g.position.z) <= CUTPURSE_TOUCH_RADIUS
+        && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) useRun.getState().thiefSteals();
       return;
     }
 
     // Fleeing. The player catching it is the same test in reverse: they
     // have to be on it, not near it, and the reach is the one it stole from.
     const toPlayer = Math.hypot(cam.x - g.position.x, cam.z - g.position.z);
-    if (toPlayer <= CUTPURSE_TOUCH_RADIUS) {
+    if (toPlayer <= CUTPURSE_TOUCH_RADIUS && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) {
       useRun.getState().thiefCaught();
       return;
     }
