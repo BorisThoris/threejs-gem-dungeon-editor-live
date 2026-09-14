@@ -633,6 +633,30 @@ try {
   assert.equal(await page.evaluate(() => window.__derived.bombs().length), 0, "frame-driven explosion consumes the bomb");
   assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "escaping the blast avoids damage");
   console.log("PASS satchel bomb fuse freezes on pause, detonates on resume, and opens Keeper stairs");
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId,
+    floor: 3, transitioning: true, enteredBy: null, wardenRoomId: null,
+    harrierAwake: false, reaperAwake: false, thiefPhase: "away", alarm: 0 }), galleryFixture);
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate((reach) => window.__bus.emit("teleport", { position: [0, 1.5, -reach + 1] }), galleryFixture.reach);
+  await page.waitForTimeout(150);
+  await page.evaluate(() => window.__run.getState().wakeReaper());
+  await page.waitForFunction((roomId) => window.__reaper?.room === roomId, galleryFixture.roomId);
+  assert.ok(await page.evaluate(() => window.__reaper.distance >= 5), "Reaper arrival gives the gallery player room to react");
+  const pausedReaper = await page.evaluate(() => {
+    window.__run.getState().pause();
+    return { x: window.__reaper.x, y: window.__reaper.y, z: window.__reaper.z, facing: window.__reaper.facing };
+  });
+  await page.waitForTimeout(1200);
+  assert.deepEqual(await page.evaluate(() => ({ x: window.__reaper.x, y: window.__reaper.y,
+    z: window.__reaper.z, facing: window.__reaper.facing })), pausedReaper, "Reaper movement, bob and facing freeze on pause");
+  assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "paused Reaper cannot strike");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction((half) => window.__reaper.z < -half - 0.5, galleryFixture.half, { timeout: 12000 });
+  await page.waitForFunction(() => window.__run.getState().lives < 3, null, { timeout: 12000 });
+  assert.equal(await page.evaluate(() => window.__run.getState().lives), 2, "Reaper reaches and strikes a stationary gallery player");
+  console.log("PASS Reaper gallery pursuit, arrival clearance and paused pose and damage");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }

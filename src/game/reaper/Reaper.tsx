@@ -3,7 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { halfSize, type Room } from "../dungeon/types";
-import { canControl, reaperStalled, useRun } from "../state/run";
+import { doorReach } from "../dungeon/footprint";
+import { canControl, reaperStalled, runClock, useRun } from "../state/run";
 import { GROUND_Y, REAPER_MAX_STEP, REAPER_SPEED, REAPER_TOUCH_RADIUS } from "../world";
 
 /**
@@ -31,6 +32,9 @@ export function Reaper({ room }: { room: Room }) {
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
+    // Arrival uses the controlled camera, after travel has landed. The
+    // entire pose freezes with the run, including facing and the blast tell.
+    if (!canControl(run)) return;
     const cam = state.camera.position;
     const half = halfSize(room);
     // Placed on its first frame rather than at mount, because that is the
@@ -39,14 +43,15 @@ export function Reaper({ room }: { room: Room }) {
       placed.current = true;
       g.position.set(Math.sign(-cam.x || 1) * half * 0.8, GROUND_Y, Math.sign(-cam.z || 1) * half * 0.8);
     }
-    const t = state.clock.elapsedTime;
-    g.position.y = GROUND_Y + 0.3 + Math.sin(t * 1.1) * 0.12;
+    const t = runClock(run);
+    const stalled = reaperStalled(run);
+    g.position.y = stalled ? GROUND_Y + 0.1 + Math.sin(t * 18) * 0.03
+      : GROUND_Y + 0.3 + Math.sin(t * 1.1) * 0.12;
 
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
-    const stalled = reaperStalled(run);
 
     if (import.meta.env.DEV) {
       // Where it actually is, for the checks, in one object at frame rate.
@@ -54,15 +59,15 @@ export function Reaper({ room }: { room: Room }) {
       const probe = (w.__reaper ??= { x: 0, z: 0, distance: 0, stalled: 0, room: "" });
       probe.x = g.position.x;
       probe.z = g.position.z;
+      probe.y = g.position.y;
+      probe.facing = g.rotation.y;
       probe.distance = distance;
       probe.stalled = stalled ? 1 : 0;
       probe.room = room.id;
     }
 
-    if (!canControl(run)) return;
     if (stalled) {
       // Held by the blast: a shudder in place, so the hold can be seen.
-      g.position.y = GROUND_Y + 0.1 + Math.sin(t * 18) * 0.03;
       return;
     }
     if (distance <= REAPER_TOUCH_RADIUS) {
@@ -75,12 +80,13 @@ export function Reaper({ room }: { room: Room }) {
       Math.max(0, distance - REAPER_TOUCH_RADIUS * 0.5)
     );
     scratch.to.set(dx / distance, 0, dz / distance).multiplyScalar(step);
-    // Kept inside the room like the Warden is - not because a wall stops
-    // it, but because a thing drawn outside the room is a thing nobody
-    // can see coming.
-    const limit = half - 0.3;
-    g.position.x = Math.max(-limit, Math.min(limit, g.position.x + scratch.to.x));
-    g.position.z = Math.max(-limit, Math.min(limit, g.position.z + scratch.to.z));
+    // A ghost crosses solid cover and concave corners. Its outer bounds
+    // still include every wing, so a closed gallery cannot shelter the
+    // player forever merely by sitting beyond the furnished chamber.
+    g.position.x = Math.max(-doorReach(room, "west") + 0.3,
+      Math.min(doorReach(room, "east") - 0.3, g.position.x + scratch.to.x));
+    g.position.z = Math.max(-doorReach(room, "north") + 0.3,
+      Math.min(doorReach(room, "south") - 0.3, g.position.z + scratch.to.z));
   });
 
   return (

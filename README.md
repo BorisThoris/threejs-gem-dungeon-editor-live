@@ -49,6 +49,9 @@ look-ahead checks the whole path so small props cannot be skipped over.
 When you leave its view quietly, the Warden pursues your last known spot
 instead of tracking your movement through walls. Noise or the moth's
 light signal gives it a fresh destination.
+The Reaper follows through corridor wings and closed galleries as well as
+the main chamber; a dead end buys time rather than permanent shelter.
+Its movement, facing and ghostly bob freeze while the run is paused.
 Entrance lanes stay clear of damaging traps; dart plates sit off those
 lanes, light before firing, and hurt only across their visible footprint.
 Grates wait until you have moved clear of the landing before dropping.
