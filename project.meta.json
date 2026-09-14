@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T20:52:48.447Z",
+  "generatedAt": "2026-09-14T21:36:28.821Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -185,7 +185,7 @@
   "metrics": {
     "sourceFiles": 206,
     "testFiles": 1,
-    "sourceLines": 52952,
+    "sourceLines": 52963,
     "largestDirectories": [
       {
         "directory": "src",
@@ -206,7 +206,7 @@
     ],
     "hasReadme": true,
     "hasTests": true,
-    "hasCi": false,
+    "hasCi": true,
     "hasDocs": true
   },
   "scores": {
@@ -220,10 +220,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "1f281e8",
-    "lastCommitDate": "2026-09-14T23:28:48+03:00",
-    "lastCommitSubject": "Name the game in its head, add a preview card, an icon set and metadata scripts",
-    "commitCount": 295,
+    "head": "06cd138",
+    "lastCommitDate": "2026-09-14T23:56:45+03:00",
+    "lastCommitSubject": "Sync the metadata toolkit scripts and regenerate project.meta.json",
+    "commitCount": 296,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
   },
   "readme": {
