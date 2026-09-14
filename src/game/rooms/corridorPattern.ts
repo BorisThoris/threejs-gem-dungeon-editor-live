@@ -1,4 +1,4 @@
-import { corridorWidth } from "../dungeon/footprint";
+import { corridorOffset, corridorWidth } from "../dungeon/footprint";
 import { DIRS, DIR_STEP, halfSize, type Room } from "../dungeon/types";
 import { createRng } from "../rng";
 import { GROUND_Y, WALL_HEIGHT, WALL_THICKNESS } from "../world";
@@ -15,8 +15,10 @@ export function corridorDetails(room: Room, seed: number): { ribs: CorridorBlock
     const width = corridorWidth(room, dir), side = width / 2 - WALL_THICKNESS / 2 + 0.07;
     const length = room.wings?.[dir] ?? 0;
     const axis = DIR_STEP[dir];
+    const shift = corridorOffset(room, dir);
     const block = (into: CorridorBlock[], along: number, across: number, y: number, width: number, height: number, depth: number) => {
-      into.push({ position: [axis.x * along + axis.z * across, GROUND_Y + y, axis.z * along + axis.x * across],
+      into.push({ position: [axis.x * along + axis.z * across + (axis.x ? 0 : shift), GROUND_Y + y,
+        axis.z * along + axis.x * across + (axis.x ? shift : 0)],
         size: axis.x ? [depth, height, width] : [width, height, depth] });
     };
     for (let bay = 1.5; bay <= length - 1.5; bay += 4) {

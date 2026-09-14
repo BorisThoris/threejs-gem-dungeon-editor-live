@@ -388,6 +388,9 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
       if (gallery) {
         room.wings[gallery] = 3 + floor * 2;
         room.wingWidths = { [gallery]: Math.min(room.size - 4, CORRIDOR_WIDTH + (floor - 1) * 2) };
+        const width = room.wingWidths[gallery]!;
+        const shift = Math.max(0, Math.min(width / 2 - 1, room.size / 2 - width / 2 - 2));
+        room.wingOffsets = { [gallery]: (galleryRng() < 0.5 ? -1 : 1) * shift };
       }
     }
   }

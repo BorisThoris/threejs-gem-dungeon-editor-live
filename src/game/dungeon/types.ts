@@ -175,6 +175,8 @@ export interface Room {
   wings?: Partial<Record<Dir, number>>;
   /** Optional wider wings, used for the deeper floors' closed side galleries. */
   wingWidths?: Partial<Record<Dir, number>>;
+  /** Lateral shifts for closed galleries; linked travel wings stay centred. */
+  wingOffsets?: Partial<Record<Dir, number>>;
   /**
    * A wall with a crack in it, and the room behind it.
    *

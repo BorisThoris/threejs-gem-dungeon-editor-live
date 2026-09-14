@@ -6,6 +6,9 @@ export interface WallEdge { x: number; z: number; length: number; along: "x" | "
 export const CORRIDOR_WIDTH = 7;
 export const corridorWidth = (room: Room, dir: Dir): number =>
   Math.min(room.size, Math.max(CORRIDOR_WIDTH, room.wingWidths?.[dir] ?? CORRIDOR_WIDTH));
+export const corridorOffset = (room: Room, dir: Dir): number => room.links[dir] ? 0
+  : Math.max(-halfSize(room) + corridorWidth(room, dir) / 2,
+    Math.min(halfSize(room) - corridorWidth(room, dir) / 2, room.wingOffsets?.[dir] ?? 0));
 
 export const doorReach = (room: Room, dir: Dir): number => halfSize(room) + (room.wings?.[dir] ?? 0);
 
@@ -20,7 +23,7 @@ export function floorRects(room: Room): FloorRect[] {
     const vertical = dir === "north" || dir === "south";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
     const offset = sign * (half + length / 2);
-    rects.push({ x: vertical ? 0 : offset, z: vertical ? offset : 0,
+    rects.push({ x: vertical ? corridorOffset(room, dir) : offset, z: vertical ? offset : corridorOffset(room, dir),
       width: vertical ? width : length, depth: vertical ? length : width });
   }
   return rects;
@@ -32,6 +35,7 @@ export function wallEdges(room: Room): WallEdge[] {
   const edges: WallEdge[] = [];
   for (const dir of DIRS) {
     const width = corridorWidth(room, dir), c = width / 2;
+    const shift = corridorOffset(room, dir);
     const along = dir === "north" || dir === "south" ? "x" : "z";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
     const length = room.wings?.[dir] ?? 0;
@@ -40,11 +44,12 @@ export function wallEdges(room: Room): WallEdge[] {
     };
     if (!length) { edge(0, sign * half, room.size, along, dir); continue; }
     for (const side of [-1, 1]) {
-      edge(side * (half + c) / 2, sign * half, half - c, along, dir);
+      const mouthEdge = shift + side * c;
+      edge((side * half + mouthEdge) / 2, sign * half, half - side * mouthEdge, along, dir);
       const facing = along === "x" ? (side < 0 ? "west" : "east") : (side < 0 ? "north" : "south");
-      edge(sign * (half + length / 2), side * c, length, along === "x" ? "z" : "x", facing);
+      edge(sign * (half + length / 2), mouthEdge, length, along === "x" ? "z" : "x", facing);
     }
-    edge(0, sign * (half + length), width, along, dir);
+    edge(shift, sign * (half + length), width, along, dir);
   }
   return edges;
 }
@@ -72,7 +77,7 @@ export function insideRoom(room: Room, x: number, z: number, margin = 0): boolea
     if (!room.wings?.[dir]) return false;
     const vertical = dir === "north" || dir === "south";
     const along = (vertical ? z : x) * (dir === "north" || dir === "west" ? -1 : 1);
-    return along >= 0 && along <= doorReach(room, dir) - margin && Math.abs(vertical ? x : z) <= corridorWidth(room, dir) / 2 - margin;
+    return along >= 0 && along <= doorReach(room, dir) - margin && Math.abs((vertical ? x : z) - corridorOffset(room, dir)) <= corridorWidth(room, dir) / 2 - margin;
   });
 }
 
@@ -84,8 +89,9 @@ export function roomSegmentClear(room: Room, x: number, z: number, tx: number, t
   for (const dir of DIRS) {
     if (!room.wings?.[dir]) continue;
     const reach = doorReach(room, dir) - margin, c = corridorWidth(room, dir) / 2 - margin;
-    bounds.push(dir === "north" ? [-c, c, -reach, 0] : dir === "south" ? [-c, c, 0, reach]
-      : dir === "west" ? [-reach, 0, -c, c] : [0, reach, -c, c]);
+    const shift = corridorOffset(room, dir);
+    bounds.push(dir === "north" ? [shift - c, shift + c, -reach, 0] : dir === "south" ? [shift - c, shift + c, 0, reach]
+      : dir === "west" ? [-reach, 0, shift - c, shift + c] : [0, reach, shift - c, shift + c]);
   }
   const intervals: [number, number][] = [];
   for (const [left, right, top, bottom] of bounds) {
@@ -115,8 +121,8 @@ export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: n
   if (roomSegmentClear(room, x, z, tx, tz, margin)) return { x: tx, z: tz };
   const half = halfSize(room) - margin;
   const mouth = (px: number, pz: number) => {
-    if (Math.abs(px) > half) return { x: Math.sign(px) * (half - 0.05), z: 0 };
-    if (Math.abs(pz) > half) return { x: 0, z: Math.sign(pz) * (half - 0.05) };
+    if (Math.abs(px) > half) return { x: Math.sign(px) * (half - 0.05), z: corridorOffset(room, px < 0 ? "west" : "east") };
+    if (Math.abs(pz) > half) return { x: corridorOffset(room, pz < 0 ? "north" : "south"), z: Math.sign(pz) * (half - 0.05) };
     return null;
   };
   return mouth(x, z) ?? mouth(tx, tz) ?? { x: tx, z: tz };
