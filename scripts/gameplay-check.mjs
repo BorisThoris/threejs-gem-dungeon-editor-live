@@ -405,6 +405,28 @@ try {
   console.log("PASS Harrier arrival grace and attack windup");
   await page.evaluate(() => window.__run.getState().startRun(11));
   await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(() => {
+    const off = window.__bus.on("notice", (text) => {
+      if (text === "The Harrier draws back. Dodge or shove.") {
+        window.__run.getState().pause();
+        off();
+      }
+    });
+    window.__run.setState({ floor: 2, harrierAwake: true, harrierSlain: false,
+      harrierRetreatUntil: 0, shoveReadyAt: 0, lives: 3, lastDamageAt: -100 });
+  });
+  await page.waitForFunction(() => window.__run.getState().paused, null, { timeout: 10000 });
+  assert.ok(await page.evaluate(() => window.__harrier.distance <= 3), "natural Harrier warning starts inside shove range");
+  const warnedShove = await page.evaluate(() => {
+    const p = window.__playerDebug, h = window.__harrier, run = window.__run;
+    run.getState().resume();
+    run.getState().shove(h.x - p.x, h.z - p.z);
+    return { retreat: run.getState().harrierRetreatUntil > window.__derived.clock(), lives: run.getState().lives };
+  });
+  assert.ok(warnedShove.retreat && warnedShove.lives === 3, "facing and shoving immediately on the warning defends without a hit");
+  console.log("PASS natural Harrier warning offers an immediately reachable shove");
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
   const memoryRoom = L.generateDungeon({ seed: 41, floor: 3 });
   const memoryWing = memoryRoom.rooms.find((r) => r.wings?.north);
   await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3,

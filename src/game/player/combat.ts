@@ -7,6 +7,8 @@ export const SHOVE_COOLDOWN_S = 2.4;
 export const SHOVE_STAGGER_S = 0.9;
 export const HARRIER_ENTRY_GRACE_S = 1.8;
 export const HARRIER_WINDUP_S = 0.7;
+/** The warning must begin where the suggested shove can already reach. */
+export const HARRIER_WINDUP_REACH = SHOVE_REACH - 0.25;
 
 /** A forward 100-degree arc. Looking away is a miss, even at close range. */
 export function inShoveArc(x: number, z: number, fx: number, fz: number): boolean {

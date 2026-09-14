@@ -5,7 +5,7 @@ import { Group } from "three";
 import { encounterArrival } from "../dungeon/arrival";
 import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
-import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_S } from "../player/combat";
+import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
 import { type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
@@ -125,7 +125,7 @@ export function Harrier({ room }: { room: Room }) {
     }
     g.rotation.z = 0;
     g.rotation.y = Math.atan2(dx, dz);
-    if (distance <= 3.5 && roomSegmentClear(room, p.x, p.z, cam.x, cam.z)) {
+    if (distance <= HARRIER_WINDUP_REACH && roomSegmentClear(room, p.x, p.z, cam.x, cam.z)) {
       if (windingAt.current === null) {
         windingAt.current = now;
         bus.emit("notice", "The Harrier draws back. Dodge or shove.");
