@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T20:27:14.526Z",
+  "generatedAt": "2026-09-14T20:52:48.447Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -185,7 +185,7 @@
   "metrics": {
     "sourceFiles": 206,
     "testFiles": 1,
-    "sourceLines": 52929,
+    "sourceLines": 52952,
     "largestDirectories": [
       {
         "directory": "src",
@@ -220,10 +220,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "6f56cb2",
-    "lastCommitDate": "2026-09-14T16:11:24+03:00",
-    "lastCommitSubject": "Add deeper corridor rooms and fair close-range counterplay",
-    "commitCount": 294,
+    "head": "1f281e8",
+    "lastCommitDate": "2026-09-14T23:28:48+03:00",
+    "lastCommitSubject": "Name the game in its head, add a preview card, an icon set and metadata scripts",
+    "commitCount": 295,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
   },
   "readme": {
