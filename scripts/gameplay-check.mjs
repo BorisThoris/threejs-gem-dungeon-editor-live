@@ -359,7 +359,8 @@ try {
   assert.ok(galleryFixture, "a rendered closed north gallery exists");
   await page.evaluate(({ dungeon, roomId }) => {
     window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: true,
-      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, enteredBy: null, gemRooms: [] });
+      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, enteredBy: null,
+      gemRooms: [], visited: [roomId] });
   }, galleryFixture);
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   await page.evaluate(({ half }) => {
@@ -367,6 +368,25 @@ try {
     window.__bus.emit("lookSet", { yaw: 0, pitch: 0 });
   }, galleryFixture);
   await page.waitForTimeout(300);
+  const mapGallery = await page.evaluate((roomId) => {
+    const room = document.querySelector(`[data-testid="map-room"][data-room-id="${roomId}"]`);
+    const footprint = room?.querySelector('[data-testid="map-room-footprint"]');
+    const bounds = footprint?.getBBox();
+    return { slabs: footprint?.querySelector("path")?.getAttribute("d").match(/M /g)?.length ?? 0,
+      width: bounds?.width, height: bounds?.height, links: room?.querySelectorAll("line").length,
+      playerHeight: document.querySelector('[data-testid="map-player"]')?.getBoundingClientRect().height,
+      unknownOutlines: document.querySelectorAll('[data-map-state="known"] [data-testid="map-room-footprint"]').length };
+  }, galleryFixture.roomId);
+  assert.equal(mapGallery.slabs, L.floorRects(galleryFixture.dungeon.rooms.find((r) => r.id === galleryFixture.roomId)).length,
+    "visited map room includes every travel wing and closed gallery");
+  assert.ok(mapGallery.width <= 26.001 && mapGallery.height <= 26.001, "room outlines fit their map cells");
+  assert.equal(mapGallery.links, Object.keys(galleryFixture.dungeon.rooms.find((r) => r.id === galleryFixture.roomId).links).length,
+    "a closed gallery does not become a map travel connection");
+  assert.equal(mapGallery.unknownOutlines, 0, "unexplored rooms do not reveal their internal layouts");
+  assert.ok(mapGallery.playerHeight > 7 && mapGallery.playerHeight < 13,
+    "corridor room marker remains visible without covering the smaller chamber outline");
+  if (process.env.GAMEPLAY_GALLERY_SCREENSHOT) await page.screenshot({ path: process.env.GAMEPLAY_GALLERY_SCREENSHOT });
+  console.log("PASS visited minimap footprints, cell bounds, closed galleries and unexplored layout privacy");
   await page.keyboard.down("KeyW");
   await page.waitForFunction((reach) => window.__playerDebug.z < -reach + 1, galleryFixture.reach, { timeout: 20000 });
   await page.waitForTimeout(1500);

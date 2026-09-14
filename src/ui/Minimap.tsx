@@ -6,6 +6,7 @@ import { useLedger } from "../game/state/ledger";
 import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, text } from "./overlay";
+import { minimapFootprint } from "./minimapGeometry";
 
 const SIZE = MINIMAP_SIZE;
 const CELL = 26;
@@ -158,6 +159,8 @@ export function Minimap() {
       x: (r.grid.x - here.grid.x) * spacing,
       y: (r.grid.z - here.grid.z) * spacing,
       state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
+      footprint: Object.keys(r.wings ?? {}).length && (seen.has(r.id) || mapped || r.id === currentRoomId)
+        ? minimapFootprint(r, cell) : null,
       isExit: r.id === dungeon.endId,
       isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),
       isNest: r.id === nestRoomId,
@@ -183,6 +186,8 @@ export function Minimap() {
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
+  const playerScale = cells.some((c) => c.state === "here" && c.footprint)
+    ? Math.max(0.45, Math.min(0.7, cell / 26 * 0.7)) : 1;
 
   return (
     <div
@@ -222,15 +227,16 @@ export function Minimap() {
         <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
           <g ref={dial}>
             {cells.map((c) => (
-              <g key={c.id} transform={`translate(${c.x} ${c.y})`}>
+              <g key={c.id} data-testid="map-room" data-room-id={c.id} data-map-state={c.state}
+                transform={`translate(${c.x} ${c.y})`}>
                 {c.links.map((dir) => {
                   const dx = dir === "east" ? 1 : dir === "west" ? -1 : 0;
                   const dy = dir === "south" ? 1 : dir === "north" ? -1 : 0;
                   return (
                     <line
                       key={dir}
-                      x1={dx * (cell / 2)}
-                      y1={dy * (cell / 2)}
+                      x1={dx * (c.footprint?.doors[dir] ?? cell / 2)}
+                      y1={dy * (c.footprint?.doors[dir] ?? cell / 2)}
                       x2={dx * (spacing / 2)}
                       y2={dy * (spacing / 2)}
                       stroke="rgba(255,255,255,0.3)"
@@ -238,7 +244,16 @@ export function Minimap() {
                     />
                   );
                 })}
-                <rect
+                {c.footprint ? (
+                  <g data-testid="map-room-footprint" data-room-id={c.id}>
+                    <path d={c.footprint.floor}
+                      fill={c.state === "here" ? colors.accent : "#3a3f4b"} />
+                    <path d={c.footprint.walls} fill="none"
+                      stroke={c.isExit || c.isVault ? colors.gold : colors.line}
+                      strokeWidth={c.isExit || c.isVault ? 2.5 : 1}
+                      strokeDasharray={c.isVault ? "4 3" : undefined} />
+                  </g>
+                ) : <rect
                   x={-cell / 2}
                   y={-cell / 2}
                   width={cell}
@@ -250,7 +265,7 @@ export function Minimap() {
                   }
                   strokeWidth={c.isExit || c.isVault ? 2.5 : 1}
                   strokeDasharray={c.isVault ? "4 3" : undefined}
-                />
+                />}
                 {/* A wall this delver stood at and felt the draft from,
                     marked because they are carrying the rod that writes
                     such things down. Never a room they have not been in:
@@ -324,8 +339,10 @@ export function Minimap() {
         </g>
         {/* The player: always at the centre, always pointing up. */}
         <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
-          <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={onAccent} stroke={onAccent} strokeWidth={3} />
-          <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
+          <g data-testid="map-player" transform={`scale(${playerScale})`}>
+            <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={onAccent} stroke={onAccent} strokeWidth={3} />
+            <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
+          </g>
         </g>
       </svg>
       {dark && (
