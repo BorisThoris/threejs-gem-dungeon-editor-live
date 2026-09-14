@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
+import { encounterArrival } from "../dungeon/arrival";
+import { playerAt } from "../player/where";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { cutpurseAt } from "./position";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
@@ -83,7 +85,13 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const run = useRun.getState();
     Object.assign(cutpurseAt, { x: g.position.x, z: g.position.z, roomId: room.id });
     if (!canControl(run)) return;
-    if (arrivedAt.current === null) arrivedAt.current = runClock(run);
+    if (arrivedAt.current === null) {
+      const start = encounterArrival(room, door.dir, state.camera.position, [...obstacles, ...hazards], 0.4);
+      g.position.x = start.x;
+      g.position.z = start.z;
+      Object.assign(cutpurseAt, { x: start.x, z: start.z });
+      arrivedAt.current = runClock(run);
+    }
     if (runClock(run) - arrivedAt.current < 1.5) return;
     // The same cap everything that moves on a delta uses. A hitch must not
     // teleport it out of the room with your gem any more than it may
@@ -159,8 +167,13 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   // It enters at its doorway and, if the room is already mid-visit when
   // this mounts, near it: the position is a ref, not state, so nothing
   // here re-renders while it runs.
-  const start: [number, number, number] = [Math.sign(door.at[0]) * Math.max(0, halfSize(room) - 5), GROUND_Y,
-    Math.sign(door.at[1]) * Math.max(0, halfSize(room) - 5)];
+  const start = useMemo<[number, number, number]>(() => {
+    const p = encounterArrival(room, door.dir, playerAt, [...obstacles, ...hazards], 0.4);
+    return [p.x, GROUND_Y, p.z];
+    // The arrival frame checks the current camera position again. Subsequent
+    // inventory changes must not reset the creature's position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room, door.dir]);
   const eye = phase === "fleeing" ? "#ffd23a" : "#7fe0a0";
 
   return (

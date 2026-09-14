@@ -11,13 +11,13 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
 const summary = [];
-let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0;
+let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0, arrivals = 0;
 for (const floor of [1, 2, 3]) {
   let area = 0, wings = 0, rooms = 0, irregular = 0;
   for (let seed = 1; seed <= 120; seed++) {
@@ -33,6 +33,21 @@ for (const floor of [1, 2, 3]) {
         const spawn = L.spawnAfterTravel(room, L.OPPOSITE[dir]).position;
         assert.ok(L.insideRoom(room, spawn[0], spawn[2], L.PLAYER_CAPSULE_RADIUS), "arrival is on walkable floor");
         landings++;
+        for (const body of ["ground", "flying"]) {
+          const blockers = [...L.obstaclesFor(body, room, d.seed, []), ...L.bitesFor(body, room, d.seed, [])];
+          for (const player of [{ x: 0, z: 0 }, { x: spawn[0], z: spawn[2] }]) {
+            const at = L.encounterArrival(room, dir, player, blockers);
+            assert.ok(L.insideRoom(room, at.x, at.z, 0.6), "arrival stays on the actual room floor");
+            assert.ok(Math.hypot(at.x - player.x, at.z - player.z) >= L.ENCOUNTER_CLEARANCE,
+              `arrival gives player breathing room: seed ${seed} floor ${floor} room ${room.id}`);
+            assert.ok(blockers.every((p) => Math.hypot(at.x - p.x, at.z - p.z) > p.r + 0.6), "arrival avoids furniture and hazards");
+            for (const entrance of L.DIRS.filter((other) => room.links[other])) {
+              const landing = L.spawnAfterTravel(room, L.OPPOSITE[entrance]).position;
+              assert.ok(Math.hypot(at.x - landing[0], at.z - landing[2]) >= L.ENCOUNTER_CLEARANCE, "all entrances remain clear of arriving threats");
+            }
+            arrivals++;
+          }
+        }
         const door = L.doorPosition(room, dir);
         const edge = L.wallEdges(room).find((e) => e.x === door[0] && e.z === door[2]);
         assert.ok(edge && edge.length >= L.DOOR_WIDTH, "every portal has a matching physical wall opening");
@@ -96,7 +111,7 @@ assert.ok(L.insideRoom(crossRoom, 3.3, -10.8) && L.insideRoom(crossRoom, 4.2, -9
 assert.ok(!L.roomSegmentClear(crossRoom, 3.3, -10.8, 4.2, -9.8), "nearby bodies across a corner have no attack line");
 const swept = L.roomStep(crossRoom, 0, -18, 18, 18);
 assert.ok(L.roomSegmentClear(crossRoom, 0, -18, ...swept, 0.6));
-console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes }));
+console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, arrivals }));
 if (process.argv.includes("--geometry-only")) process.exit(0);
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
@@ -239,6 +254,7 @@ try {
     return window.__derived.clock();
   });
   await page.waitForFunction(() => window.__harrier?.room === window.__run.getState().currentRoomId);
+  assert.ok(await page.evaluate(() => window.__harrier.distance >= 5), "rendered Harrier arrives away from the player");
   await page.evaluate(() => window.__bus.emit("teleport", { position: [window.__harrier.x, 1.5, window.__harrier.z] }));
   await page.waitForTimeout(600);
   assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "Harrier cannot strike immediately on arrival");

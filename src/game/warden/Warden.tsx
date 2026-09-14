@@ -3,6 +3,7 @@ import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group, PointLight, Vector3 } from "three";
 
+import { encounterArrival } from "../dungeon/arrival";
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
@@ -56,14 +57,10 @@ const bandFor = (distance: number): number => {
 /**
  * The Warden, in the room the player is standing in.
  *
- * It has no rigid body and no collider: it walks through barrels and
- * pillars, and the only thing in the dungeon that stops it is a wall it
- * never crosses because it moves room to room, not through geometry. That
- * is deliberate. A threat you can pin behind a crate is a puzzle; one that
- * simply keeps coming is a reason to leave, which is the decision this
- * whole floor is built around.
+ * It steers around solid furniture and follows the room's corridor
+ * outline. Arrival leaves the player and every landing room to react.
  *
- * It cannot be fought. Its speed is under the player's walk at every alarm
+ * Shoves buy an escape window; traps and bombs wound it. Its speed is under the player's walk at every alarm
  * level, so it never wins a straight race - it wins by being between you
  * and the door, and by arriving while you are deciding whether to be greedy.
  */
@@ -92,13 +89,9 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   // It comes in through the doorway it walked in from, so its arrival has
   // a direction the player can learn to read.
   const entry = useMemo<[number, number, number]>(() => {
-    const half = halfSize(room);
     const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
-    if (dir) {
-      const [x, , z] = doorPosition(room, dir);
-      return [Math.sign(x) * Math.max(0, half - 5), GROUND_Y, Math.sign(z) * Math.max(0, half - 5)];
-    }
-    return [half * 0.7, GROUND_Y, -half * 0.7];
+    const p = encounterArrival(room, dir ?? null, playerAt, [...obstacles, ...hazards]);
+    return [p.x, GROUND_Y, p.z];
     // `cameFrom` is read once, at the moment it enters: it must not move the
     // Warden again while it is in the room.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -144,7 +137,11 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
-    if (arrivedIn.current !== room.id) {
+    if (arrivedIn.current !== room.id && canControl(useRun.getState())) {
+      const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
+      const p = encounterArrival(room, dir ?? null, state.camera.position, [...obstacles, ...hazards]);
+      g.position.x = p.x;
+      g.position.z = p.z;
       arrivedIn.current = room.id;
       arrivedAt.current = runClock(useRun.getState());
     }

@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
-import { doorPosition } from "../dungeon/layout";
+import { encounterArrival } from "../dungeon/arrival";
 import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_S } from "../player/combat";
-import { halfSize, type Room } from "../dungeon/types";
+import { type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
 import { patchAt, steerInRoom } from "../warden/steer";
@@ -43,7 +43,6 @@ export function Harrier({ room }: { room: Room }) {
   const seed = dungeon?.seed ?? 0;
   const roost = useMemo(() => (dungeon ? harrierRoostFor(dungeon, floor) : null), [dungeon, floor]);
   const entry = useMemo(() => (dungeon && roost ? harrierEntryFor(dungeon, roost, room.id) : null), [dungeon, roost, room.id]);
-  const door = useMemo(() => (entry ? doorPosition(room, entry) : null), [room, entry]);
   const to = entry ? room.links[entry] : undefined;
   const obstacles = useMemo(() => obstaclesFor(BODIES.harrier, room, seed, placed, broken), [room, seed, placed, broken]);
   // What would bite it on the ground: the ground body's list, read only while it is down.
@@ -65,20 +64,17 @@ export function Harrier({ room }: { room: Room }) {
     const now = runClock(run);
     const cam = state.camera.position;
     const p = pos.current;
-    const half = halfSize(room);
-    // Approach from inside the chamber, leaving every doorway's landing clear.
-    const startX = door ? Math.sign(door[0]) * Math.max(0, half - 5) : 0;
-    const startZ = door ? Math.sign(door[2]) * Math.max(0, half - 5) : 0;
-    if (!p.placed) {
-      p.placed = true;
-      p.x = startX;
-      p.z = startZ;
-    }
     const away = now < run.harrierRetreatUntil;
     const down = now < run.harrierDownedUntil;
     const barred = to !== undefined && barredNow(run) === barKey(room.id, to);
-    // Wheeling away, or kept out by the grate: at its doorway, unseen.
+    // Wheeling away, or kept out by the grate: unseen until it returns.
     const kept = away || barred;
+    if (!p.placed && !kept && canControl(run)) {
+      const start = encounterArrival(room, entry, cam, obstacles, 0.5);
+      p.placed = true;
+      p.x = start.x;
+      p.z = start.z;
+    }
     const t = state.clock.elapsedTime;
     const dx = cam.x - p.x;
     const dz = cam.z - p.z;
@@ -103,8 +99,7 @@ export function Harrier({ room }: { room: Room }) {
     if (kept) {
       arrivedAt.current = null;
       windingAt.current = null;
-      p.x = startX;
-      p.z = startZ;
+      p.placed = false;
       report();
       return;
     }

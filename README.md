@@ -33,6 +33,12 @@ more branching, concave room outlines, with matching walls and collisions.
 Entrance lanes stay clear of damaging traps; dart plates sit off those
 lanes, light before firing, and hurt only across their visible footprint.
 Grates wait until you have moved clear of the landing before dropping.
+Pursuers enter off the doorway lane, using the full corridor outline.
+Placement seeks five metres between arrivals and both the player and every
+landing, with furniture and live hazards checked before placement. Crowded
+authored rooms use the greatest available clearance and retain arrival grace.
+Returning Harriers choose a fresh clear approach, so waiting at their old
+position does not make them reappear on top of you.
 
 The dungeon is not on its side, though. The spikes in a trap room do not
 care which of you stands on them, so a trap room is somewhere you can
