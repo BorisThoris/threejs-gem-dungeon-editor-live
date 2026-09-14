@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T22:04:00.880Z",
+  "generatedAt": "2026-09-14T22:06:40.225Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -187,7 +187,7 @@
   "metrics": {
     "sourceFiles": 211,
     "testFiles": 1,
-    "sourceLines": 54045,
+    "sourceLines": 54152,
     "largestDirectories": [
       {
         "directory": "src",
@@ -222,10 +222,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "fe24885",
-    "lastCommitDate": "2026-09-15T00:40:11+03:00",
-    "lastCommitSubject": "Gate pushes on a current link-preview card and icon set",
-    "commitCount": 317,
+    "head": "a046bee",
+    "lastCommitDate": "2026-09-15T01:06:39+03:00",
+    "lastCommitSubject": "Refresh screenshots, card, icons and metadata after every deployment",
+    "commitCount": 322,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
   },
   "readme": {
