@@ -30,7 +30,15 @@
         "test:audio": "node scripts/audio-check.mjs",
         "test:run": "node scripts/run-through.mjs",
         "test:gameplay": "node scripts/gameplay-check.mjs",
-        "tour": "node scripts/tour.mjs"
+        "tour": "node scripts/tour.mjs",
+        "meta": "node scripts/generate-project-meta.mjs",
+        "meta:check": "node scripts/generate-project-meta.mjs --check",
+        "shots": "node scripts/capture-project-shots.mjs",
+        "social": "node scripts/generate-social-preview.mjs",
+        "social:check": "node scripts/generate-social-preview.mjs --check",
+        "icons": "node scripts/generate-app-icons.mjs",
+        "icons:check": "node scripts/generate-app-icons.mjs --check",
+        "meta:refresh": "node scripts/refresh-project-meta.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
@@ -75,7 +83,10 @@
             "!node_modules/**/*"
         ],
         "win": {
-            "target": ["nsis", "zip"],
+            "target": [
+                "nsis",
+                "zip"
+            ],
             "icon": "build/icon.png"
         },
         "nsis": {
@@ -85,7 +96,10 @@
             "createStartMenuShortcut": true
         },
         "mac": {
-            "target": ["dmg", "zip"],
+            "target": [
+                "dmg",
+                "zip"
+            ],
             "icon": "build/icon.png",
             "category": "public.app-category.games"
         },

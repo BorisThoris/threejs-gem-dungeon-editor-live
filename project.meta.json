@@ -1,0 +1,233 @@
+{
+  "$schema": "./scripts/project.meta.schema.json",
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-14T20:27:14.526Z",
+  "generatedBy": "scripts/generate-project-meta.mjs",
+  "identity": {
+    "slug": "threejs-gem-dungeon-editor",
+    "repoName": "threejs-gem-dungeon-editor-live",
+    "packageName": "threejs-gem-dungeon-editor",
+    "version": "1.0.0",
+    "title": "Gem Dungeon",
+    "subtitle": "First-person gem run in a procedural dungeon",
+    "description": "A first-person dungeon run: collect gems, outpace the pursuers, and spend what you carry at the exit. React Three Fiber, Rapier physics and Zustand, with an Electron shell for the Steam demo.",
+    "tags": [
+      "React Three Fiber",
+      "Rapier",
+      "Zustand",
+      "Electron",
+      "Steam"
+    ],
+    "accent": "#a78bfa",
+    "classification": "web-app",
+    "showcaseTier": "showcase",
+    "showcaseOrder": 4
+  },
+  "links": {
+    "deploymentUrl": "https://threejs-gem-dungeon-editor-git.pages.dev/",
+    "localUrl": "http://127.0.0.1:4116/",
+    "homepage": "./",
+    "repository": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
+  },
+  "runtime": {
+    "packageManager": "yarn",
+    "buildCommand": "yarn build",
+    "buildOutput": "dist",
+    "runCommand": "yarn dev --host 127.0.0.1 --port 4116",
+    "devPort": 4116,
+    "scripts": [
+      "start",
+      "dev",
+      "build",
+      "typecheck",
+      "lint",
+      "preview",
+      "electron",
+      "electron-dev",
+      "electron-pack",
+      "electron-dist",
+      "generate-icon",
+      "test:smoke",
+      "test:layout",
+      "test:perf",
+      "test:prod",
+      "test:desktop",
+      "test:pad",
+      "test:touch",
+      "test:audio",
+      "test:run",
+      "test:gameplay",
+      "tour",
+      "meta",
+      "meta:check",
+      "shots",
+      "social",
+      "social:check",
+      "icons",
+      "icons:check",
+      "meta:refresh"
+    ]
+  },
+  "capture": {
+    "route": "/",
+    "actions": [
+      {
+        "type": "waitFor",
+        "target": {
+          "selector": "canvas"
+        },
+        "state": "visible",
+        "label": "wait for the loaded 3D scene"
+      }
+    ],
+    "waitAfterReadyMs": 3000
+  },
+  "media": {
+    "source": "repo-local",
+    "directory": "C:/Users/Gaming PC/Desktop/Repos/threejs-gem-dungeon-editor-live/project-media",
+    "primary": "project-media/card.jpg",
+    "images": [
+      {
+        "profile": "card",
+        "file": "card.jpg",
+        "path": "project-media/card.jpg",
+        "bytes": 49226,
+        "width": 1600,
+        "height": 900,
+        "capturedAt": "2026-09-14T20:12:29.490Z"
+      },
+      {
+        "profile": "desktop",
+        "file": "desktop.jpg",
+        "path": "project-media/desktop.jpg",
+        "bytes": 48200,
+        "width": 1440,
+        "height": 900,
+        "capturedAt": "2026-09-14T20:12:47.874Z"
+      },
+      {
+        "profile": "full",
+        "file": "full.jpg",
+        "path": "project-media/full.jpg",
+        "bytes": 43342,
+        "width": 1440,
+        "height": 900,
+        "capturedAt": "2026-09-14T20:13:24.668Z"
+      },
+      {
+        "profile": "mobile",
+        "file": "mobile.jpg",
+        "path": "project-media/mobile.jpg",
+        "bytes": 27333,
+        "width": 430,
+        "height": 932,
+        "capturedAt": "2026-09-14T20:13:06.326Z"
+      },
+      {
+        "profile": "og",
+        "file": "og.jpg",
+        "path": "project-media/og.jpg",
+        "bytes": 39491,
+        "width": 1200,
+        "height": 630,
+        "capturedAt": "2026-09-14T20:13:42.976Z"
+      }
+    ]
+  },
+  "stack": {
+    "framework": "React Three Fiber",
+    "language": "TypeScript",
+    "runtimeTargets": [
+      "web",
+      "desktop-electron"
+    ],
+    "libraries": [
+      {
+        "name": "react",
+        "version": "^19.1.1"
+      },
+      {
+        "name": "react-dom",
+        "version": "^19.1.1"
+      },
+      {
+        "name": "zustand",
+        "version": "^5.0.8"
+      },
+      {
+        "name": "three",
+        "version": "^0.180.0"
+      },
+      {
+        "name": "@react-three/fiber",
+        "version": "^9.3.0"
+      },
+      {
+        "name": "@react-three/drei",
+        "version": "^10.7.6"
+      },
+      {
+        "name": "vite",
+        "version": "^5.4.20"
+      },
+      {
+        "name": "electron",
+        "version": "^38.1.2"
+      },
+      {
+        "name": "typescript",
+        "version": "~5.8.3"
+      }
+    ],
+    "dependencyCount": 7,
+    "devDependencyCount": 20
+  },
+  "metrics": {
+    "sourceFiles": 206,
+    "testFiles": 1,
+    "sourceLines": 52929,
+    "largestDirectories": [
+      {
+        "directory": "src",
+        "files": 175
+      },
+      {
+        "directory": "scripts",
+        "files": 26
+      },
+      {
+        "directory": ".",
+        "files": 3
+      },
+      {
+        "directory": "electron",
+        "files": 2
+      }
+    ],
+    "hasReadme": true,
+    "hasTests": true,
+    "hasCi": false,
+    "hasDocs": true
+  },
+  "scores": {
+    "priorityScore": 90,
+    "demoabilityScore": 88,
+    "depthScore": 83,
+    "polishScore": 80,
+    "uniquenessScore": 86,
+    "maintenanceScore": 74
+  },
+  "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
+  "git": {
+    "branch": "main",
+    "head": "6f56cb2",
+    "lastCommitDate": "2026-09-14T16:11:24+03:00",
+    "lastCommitSubject": "Add deeper corridor rooms and fair close-range counterplay",
+    "commitCount": 294,
+    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
+  },
+  "readme": {
+    "file": "README.md",
+    "heading": "Gem Dungeon"
+  }
+}
