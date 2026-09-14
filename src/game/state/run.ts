@@ -35,6 +35,10 @@ import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
+import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../player/combat";
+import { wardenAt } from "../warden/position";
+import { harrierAt } from "../mobs/harrierRoost";
+import { cutpurseAt } from "../thief/position";
 import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { chestKey, placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
@@ -437,6 +441,8 @@ export interface RunState {
   harrierSlain: boolean;
   /** Run-clock second it gets back off the floor after a blast. */
   harrierDownedUntil: number;
+  shoveReadyAt: number;
+  shove: (forwardX: number, forwardZ: number) => boolean;
   /** Run-clock second it comes back after a strike. */
   harrierRetreatUntil: number;
   /** Run-clock second the Keeper gets back up after a blast. */
@@ -866,6 +872,7 @@ export const useRun = create<RunState>()(
     keeperLastStrikeAt: 0,
     harrierSlain: false,
     harrierDownedUntil: 0,
+    shoveReadyAt: 0,
     harrierRetreatUntil: 0,
     reaperStalledUntil: 0,
     reaperLastStrikeAt: 0,
@@ -896,6 +903,7 @@ export const useRun = create<RunState>()(
       const delver = delverOr(delverId ?? useRecords.getState().lastDelver);
       const dungeon = generateDungeon({
         seed,
+        floor,
         minRooms: rules.minRooms,
         maxRooms: rules.maxRooms,
         // No `lastFloor` here: a run begins on floor one, which is never
@@ -990,6 +998,7 @@ export const useRun = create<RunState>()(
         keeperLastStrikeAt: 0,
         harrierSlain: false,
         harrierDownedUntil: 0,
+        shoveReadyAt: 0,
         harrierRetreatUntil: 0,
         reaperStalledUntil: 0,
         reaperLastStrikeAt: 0,
@@ -1153,6 +1162,7 @@ export const useRun = create<RunState>()(
         const rules = floorRules(floor);
         const dungeon = generateDungeon({
           seed: (s.dungeon.seed * 7919 + floor) >>> 0,
+          floor,
           minRooms: rules.minRooms,
           maxRooms: rules.maxRooms,
           lastFloor: floor === FLOORS,
@@ -2317,6 +2327,36 @@ export const useRun = create<RunState>()(
       bus.emit("harrierWoke");
     },
 
+    shove: (forwardX, forwardZ) => {
+      const s = get();
+      const now = runClock(s);
+      if (!canControl(s) || !s.currentRoomId || !s.dungeon || now < s.shoveReadyAt) return false;
+      if (!Number.isFinite(forwardX) || !Number.isFinite(forwardZ) || Math.hypot(forwardX, forwardZ) < 0.01) return false;
+      const room = roomById(s.dungeon, s.currentRoomId);
+      if (!room) return false;
+      const standing = placementsFor(room, s.dungeon.seed).filter((p) => !s.broken.includes(breakKey(room, p)));
+      const reaches = (target: { x: number; z: number; roomId: string | null }) =>
+        target.roomId === room.id && inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ) &&
+        clearShove(room, playerAt, target, standing);
+      set({ shoveReadyAt: now + SHOVE_COOLDOWN_S });
+      let hit = false;
+      if (s.thiefPhase !== "away" && reaches(cutpurseAt)) {
+        get().thiefCaught();
+        hit = true;
+      }
+      if (s.harrierAwake && !s.harrierSlain && !harrierAt.away && reaches(harrierAt)) {
+        // A defence buys space; bombs still own downing it onto traps.
+        set({ harrierRetreatUntil: Math.max(s.harrierRetreatUntil, now + 4) });
+        hit = true;
+      }
+      if (s.wardenRoomId === room.id && reaches(wardenAt)) {
+        set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
+        hit = true;
+      }
+      bus.emit("notice", hit ? "Shove! Move while it recoils." : "Shove missed. Face the threat and let it come closer.");
+      return true;
+    },
+
     harrierStrike: () => {
       const s = get();
       if (!s.harrierAwake || s.harrierSlain) return;
@@ -3098,6 +3138,11 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // A probe that reads a deadline needs the clock it was set against;
     // `performance.now()` is not it once the pause menu has been opened.
     clock: () => runClock(useRun.getState()),
+    door: (roomId: string, dir: Dir) => {
+      const d = useRun.getState().dungeon;
+      const r = d ? roomById(d, roomId) : undefined;
+      return r ? doorPosition(r, dir) : null;
+    },
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();

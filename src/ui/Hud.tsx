@@ -37,6 +37,7 @@ import { FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 import { hudLines, type HudLine } from "./hudLines";
+import { keysLabel } from "../game/input/bindings";
 
 /**
  * What the player needs to decide with: how deep they are, what the door
@@ -180,6 +181,7 @@ export function Hud() {
         zIndex: 900,
       }}
     >
+      <ShoveReadout />
       {lines.map((line, i) => {
         /**
          * The rank the line already carries, spent on the screen.
@@ -246,6 +248,19 @@ export function Hud() {
       })}
     </div>
   );
+}
+
+function ShoveReadout() {
+  const read = () => Math.max(0, Math.ceil((useRun.getState().shoveReadyAt - runClock(useRun.getState())) * 10) / 10);
+  const [remaining, setRemaining] = useState(read);
+  const binding = useSettings((s) => s.bindings.shove);
+  useEffect(() => {
+    const timer = window.setInterval(() => setRemaining(read()), 100);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: remaining ? colors.dim : colors.accent }}>
+    SHOVE · {remaining ? `recovering ${remaining.toFixed(1)}s` : `${keysLabel(binding)} / RT · ready`}
+  </div>;
 }
 
 /** The palette, by the name a line asks for. One place turns one into the other. */

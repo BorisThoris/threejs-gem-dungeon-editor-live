@@ -15,10 +15,24 @@ short of being hunted the moment you step off the stair, and dark enough that
 the braziers are the only reason a corner has anything in it.
 
 The catch is that every gem you take wakes the thing that walks the floor.
-The Warden cannot be fought and cannot be blocked - it drifts through
-barrels and pillars - but it is slower than you are, so the question is
+The Warden can be briefly staggered with a shove and respects solid
+furniture, but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
+
+Space (or RT on a controller, SHOVE on touch) pushes back a threat within
+three metres in front of you. It drives off the Harrier, scatters the
+Cutpurse and recovers anything it stole, or staggers the Warden for a short
+escape window. Each shove needs 2.4 seconds to recover. Shoves do not wound
+the Warden; traps and bombs remain the stronger tools. Ordinary rats flee
+and do not attack. The Harrier gives you time to orient after entering and
+hovers before committing to a dive.
+
+Chambers grow as you descend. Later floors have longer corridor wings and
+more branching, concave room outlines, with matching walls and collisions.
+Entrance lanes stay clear of damaging traps; dart plates sit off those
+lanes, light before firing, and hurt only across their visible footprint.
+Grates wait until you have moved clear of the landing before dropping.
 
 The dungeon is not on its side, though. The spikes in a trap room do not
 care which of you stands on them, so a trap room is somewhere you can

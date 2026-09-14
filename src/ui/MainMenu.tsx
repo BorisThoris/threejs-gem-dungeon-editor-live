@@ -175,6 +175,8 @@ export function MainMenu() {
               <dd style={{ margin: 0 }}>Click the game to take the mouse, Esc gives it back; or the right stick</dd>
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
+              <dt style={{ color: colors.accent }}>Shove</dt>
+              <dd style={{ margin: 0 }}>Space or RT shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
               <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X, Y and the shoulders on a pad</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
@@ -225,6 +227,7 @@ function TouchHelp() {
     ["Look", "Drag on the other half."],
     ["Use", "USE at a door, counter, chest or lectern. It lights when something is in reach."],
     ["Satchel", "Tap a slot to drink, read, or set down what is in it."],
+    ["Shove", "SHOVE a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves."],
     [
       "Run",
       "Shove the stick past its rim, or tap RUN. It ends when you let the stick go. The Warden is slower than you are - but running is loud, and while it can hear you it walks straight for you.",

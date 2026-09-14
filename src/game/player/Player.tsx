@@ -184,6 +184,11 @@ export function Player() {
     const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
+    if (keyboard.consumeAction("shove") || pad.shovePressed) {
+      const facing = new Vector3();
+      camera.getWorldDirection(facing);
+      run.shove(facing.x, facing.z);
+    }
     const stick = readTouch();
     const forward = keyboard.actionDown("forward");
     const back = keyboard.actionDown("back");

@@ -1,4 +1,5 @@
 import { createRng } from "../rng";
+import { doorReach } from "./footprint";
 import {
   CLOSE_REACH,
   DOOR_WIDTH,
@@ -45,7 +46,7 @@ export type Vec3 = [number, number, number];
 
 /** Centre of the doorway in a wall. */
 export function doorPosition(room: Room, dir: Dir): Vec3 {
-  const half = halfSize(room);
+  const half = doorReach(room, dir);
   const step = DIR_STEP[dir];
   return [step.x * half, GROUND_Y, step.z * half];
 }
@@ -61,7 +62,7 @@ export interface Spawn {
  * just inside the wall they came through, facing onward.
  */
 export function spawnAfterTravel(room: Room, heading: Dir): Spawn {
-  const half = halfSize(room);
+  const half = doorReach(room, OPPOSITE[heading]);
   const depth = entranceDepth(half);
   const from = DIR_STEP[OPPOSITE[heading]];
   return {
@@ -449,7 +450,7 @@ const WALL_CORRIDOR = 0.5;
  */
 export function crackSpot(room: Room): Vec3 | null {
   if (!room.secret || room.links[room.secret.dir]) return null;
-  const half = halfSize(room);
+  const half = doorReach(room, room.secret.dir);
   const step = DIR_STEP[room.secret.dir];
   return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
 }

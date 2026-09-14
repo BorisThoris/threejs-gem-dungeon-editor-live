@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group, PointLight, Vector3 } from "three";
 
@@ -95,7 +96,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
     if (dir) {
       const [x, , z] = doorPosition(room, dir);
-      return [x * 0.86, GROUND_Y, z * 0.86];
+      return [Math.sign(x) * Math.max(0, half - 5), GROUND_Y, Math.sign(z) * Math.max(0, half - 5)];
     }
     return [half * 0.7, GROUND_Y, -half * 0.7];
     // `cameFrom` is read once, at the moment it enters: it must not move the
@@ -330,9 +331,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       ? steerAround(g.position.x, g.position.z, cam.x, cam.z, round, WARDEN_HAZARD_BERTH)
       : { dx: dx / distance, dz: dz / distance };
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
-    const limit = halfSize(room) - 0.6;
-    g.position.x = Math.max(-limit, Math.min(limit, g.position.x + scratch.to.x));
-    g.position.z = Math.max(-limit, Math.min(limit, g.position.z + scratch.to.z));
+    [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z);
 
     // What it just walked into. Tested after the step, against the position
     // it actually ended the frame at, so a patch it was steered round is

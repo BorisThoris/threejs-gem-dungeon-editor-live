@@ -129,6 +129,7 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
   const walls = (["north", "east", "south", "west"] as const).filter(
     (d) => !room.links[d] && room.secret?.dir !== d
   );
+  if (!walls.length) return out;
   for (let i = 0; i < Math.min(many, MOST_PER_ROOM); i++) {
     // One fragment twice in a room reads as a misprint.
     let fragment: Fragment | undefined;

@@ -3,8 +3,10 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
+import { roomStep } from "../dungeon/footprint";
+import { cutpurseAt } from "./position";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { patchAt, steerAround, type Patch } from "../warden/steer";
@@ -45,6 +47,7 @@ interface CutpurseProps {
  */
 export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) {
   const group = useRef<Group>(null);
+  const arrivedAt = useRef<number | null>(null);
   const phase = useRun((s) => s.thiefPhase);
   const holding = useRun((s) => s.thiefHolding);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
@@ -70,6 +73,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     return () => {
       // It left, or the room did. Nothing here outlives the visit.
       inHazard.current = false;
+      cutpurseAt.roomId = null;
     };
   }, []);
 
@@ -77,7 +81,10 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
+    Object.assign(cutpurseAt, { x: g.position.x, z: g.position.z, roomId: room.id });
     if (!canControl(run)) return;
+    if (arrivedAt.current === null) arrivedAt.current = runClock(run);
+    if (runClock(run) - arrivedAt.current < 1.5) return;
     // The same cap everything that moves on a delta uses. A hitch must not
     // teleport it out of the room with your gem any more than it may
     // teleport the Warden onto you.
@@ -120,8 +127,9 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
       ? steerAround(g.position.x, g.position.z, target.x, target.z, obstacles, 0.2)
       : { dx: dx / distance, dz: dz / distance };
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
-    g.position.x += scratch.to.x;
-    g.position.z += scratch.to.z;
+    [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z, 0.4);
+    cutpurseAt.x = g.position.x;
+    cutpurseAt.z = g.position.z;
 
     // The floor does not care what walks into it. Latched on entry, like
     // every other thing in this game that stands on spikes.
@@ -152,7 +160,8 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   // It enters at its doorway and, if the room is already mid-visit when
   // this mounts, near it: the position is a ref, not state, so nothing
   // here re-renders while it runs.
-  const start: [number, number, number] = [door.at[0], GROUND_Y, door.at[1]];
+  const start: [number, number, number] = [Math.sign(door.at[0]) * Math.max(0, halfSize(room) - 5), GROUND_Y,
+    Math.sign(door.at[1]) * Math.max(0, halfSize(room) - 5)];
   const eye = phase === "fleeing" ? "#ffd23a" : "#7fe0a0";
 
   return (

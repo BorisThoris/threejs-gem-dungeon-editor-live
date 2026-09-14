@@ -3,6 +3,9 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { doorPosition } from "../dungeon/layout";
+import { bus } from "../events";
+import { roomStep } from "../dungeon/footprint";
+import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_S } from "../player/combat";
 import { halfSize, type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
@@ -30,6 +33,8 @@ export function Harrier({ room }: { room: Room }) {
   /** How near it is to a strike, nought to one: the dive it is already flying. */
   const tell = useRef(0);
   const pos = useRef({ x: 0, z: 0, placed: false });
+  const arrivedAt = useRef<number | null>(null);
+  const windingAt = useRef<number | null>(null);
   const dungeon = useRun((s) => s.dungeon);
   const floor = useRun((s) => s.floor);
   const placed = useRun((s) => s.placed);
@@ -61,8 +66,9 @@ export function Harrier({ room }: { room: Room }) {
     const cam = state.camera.position;
     const p = pos.current;
     const half = halfSize(room);
-    const startX = door ? door[0] * 0.9 : 0;
-    const startZ = door ? door[2] * 0.9 : 0;
+    // Approach from inside the chamber, leaving every doorway's landing clear.
+    const startX = door ? Math.sign(door[0]) * Math.max(0, half - 5) : 0;
+    const startZ = door ? Math.sign(door[2]) * Math.max(0, half - 5) : 0;
     if (!p.placed) {
       p.placed = true;
       p.x = startX;
@@ -95,12 +101,21 @@ export function Harrier({ room }: { room: Room }) {
 
     g.visible = !kept;
     if (kept) {
+      arrivedAt.current = null;
+      windingAt.current = null;
       p.x = startX;
       p.z = startZ;
       report();
       return;
     }
     if (!canControl(run)) {
+      report();
+      return;
+    }
+    if (arrivedAt.current === null) arrivedAt.current = now;
+    if (now - arrivedAt.current < HARRIER_ENTRY_GRACE_S) {
+      g.position.set(p.x, FLIGHT_HEIGHT, p.z);
+      tell.current = 0;
       report();
       return;
     }
@@ -115,8 +130,28 @@ export function Harrier({ room }: { room: Room }) {
     }
     g.rotation.z = 0;
     g.rotation.y = Math.atan2(dx, dz);
-    if (distance <= HARRIER_TOUCH_RADIUS) {
+    if (distance <= 3.5) {
+      if (windingAt.current === null) {
+        windingAt.current = now;
+        bus.emit("notice", "The Harrier draws back. Dodge or shove.");
+      }
+      tell.current = Math.min(1, (now - windingAt.current) / HARRIER_WINDUP_S);
+    } else {
+      windingAt.current = null;
+      tell.current = 0;
+    }
+    if (distance <= HARRIER_TOUCH_RADIUS && tell.current >= 1) {
       run.harrierStrike();
+      windingAt.current = null;
+      report();
+      return;
+    }
+    if (windingAt.current !== null && tell.current < 1) {
+      // Hover and spread the wings before committing. Walking back cancels the dive.
+      g.position.set(p.x, FLIGHT_HEIGHT + Math.sin(t * 12) * 0.1, p.z);
+      g.rotation.x = -tell.current * 0.65;
+      g.children[1].rotation.z = 0.35 + tell.current * 0.6;
+      g.children[2].rotation.z = -0.35 - tell.current * 0.6;
       report();
       return;
     }
@@ -124,15 +159,12 @@ export function Harrier({ room }: { room: Room }) {
     const heading = obstacles.length
       ? steerAround(p.x, p.z, cam.x, cam.z, obstacles, 0)
       : { dx: dx / distance, dz: dz / distance };
-    const limit = half - 0.5;
-    p.x = Math.max(-limit, Math.min(limit, p.x + heading.dx * step));
-    p.z = Math.max(-limit, Math.min(limit, p.z + heading.dz * step));
+    [p.x, p.z] = roomStep(room, p.x, p.z, heading.dx * step, heading.dz * step, 0.5);
     // It dives as it closes: at height across the room, at head height on
     // you. That descent is its tell - the same number the Warden's grace
     // and the Keeper's halberd publish - so it tips its nose with it and a
     // check can read the warning rather than the hit.
     const dive = Math.max(0, Math.min(1, 1 - distance / 4));
-    tell.current = dive;
     g.rotation.x = -dive * 0.45;
     const y = FLIGHT_HEIGHT - (FLIGHT_HEIGHT - 1.4) * dive + Math.sin(t * 6) * 0.12;
     g.position.set(p.x, y, p.z);

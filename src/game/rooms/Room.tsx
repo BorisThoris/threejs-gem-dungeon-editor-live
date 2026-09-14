@@ -3,6 +3,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { CircleGeometry, PlaneGeometry } from "three";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
+import { floorRects } from "../dungeon/footprint";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
@@ -215,6 +216,7 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
 
 export function Room({ room, seed }: RoomProps) {
   const half = halfSize(room);
+  const floors = useMemo(() => floorRects(room), [room]);
   // What the room is made of, as distinct from what it is for. Rolled from
   // the room's own seed, so it is the same place every time you walk back
   // into it.
@@ -274,16 +276,24 @@ export function Room({ room, seed }: RoomProps) {
   return (
     <group>
       {/* Solid floor slab, top face exactly at GROUND_Y. */}
-      <RigidBody type="fixed" colliders={false}>
-        <mesh position={[0, GROUND_Y - FLOOR_THICKNESS / 2, 0]} receiveShadow>
-          <boxGeometry args={[room.size, FLOOR_THICKNESS, room.size]} />
-          <meshStandardMaterial color="#2c2b30" roughness={1} />
-        </mesh>
-        <CuboidCollider
-          args={[half, FLOOR_THICKNESS / 2, half]}
-          position={[0, GROUND_Y - FLOOR_THICKNESS / 2, 0]}
-        />
-      </RigidBody>
+      {floors.map((r, i) => (
+        <group key={`floor-${i}`}>
+          <RigidBody type="fixed" colliders={false}>
+            <mesh position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} receiveShadow>
+              <boxGeometry args={[r.width, FLOOR_THICKNESS, r.depth]} />
+              <meshStandardMaterial color={tint.floor} map={floorSurface} roughness={1} />
+            </mesh>
+            <CuboidCollider args={[r.width / 2, FLOOR_THICKNESS / 2, r.depth / 2]}
+              position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} />
+          </RigidBody>
+          <mesh position={[r.x, GROUND_Y + WALL_HEIGHT, r.z]} rotation={[Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[r.width + 0.5, r.depth + 0.5]} />
+            <meshStandardMaterial color="#1a191d" roughness={1} />
+          </mesh>
+          {i > 0 && <pointLight position={[r.x, GROUND_Y + WALL_HEIGHT - 0.5, r.z]}
+            color={tint.glow} intensity={light.fillIntensity * 0.6} distance={16} decay={1.5} />}
+        </group>
+      ))}
 
       {/* The shaped, tinted floor the player actually sees. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y + 0.01, 0]} receiveShadow>
@@ -292,12 +302,6 @@ export function Room({ room, seed }: RoomProps) {
       </mesh>
 
       <Walls room={room} color={tint.wall} />
-
-      {/* Ceiling, so there is never sky in a dungeon. */}
-      <mesh position={[0, GROUND_Y + WALL_HEIGHT, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[room.size + 1, room.size + 1]} />
-        <meshStandardMaterial color="#1a191d" roughness={1} />
-      </mesh>
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do
           the rest, and do more of it the deeper the floor is. */}

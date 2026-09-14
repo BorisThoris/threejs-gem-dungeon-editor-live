@@ -11,9 +11,9 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/");
 const dir = mkdtempSync(join(tmpdir(), "layout-check-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(
@@ -24,6 +24,7 @@ writeFileSync(
   // validating dungeons the game never builds.
   `import "${root}src/game/rooms/shipped";
    export * from "${root}src/game/dungeon/layout";
+   export * from "${root}src/game/dungeon/footprint";
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
@@ -1591,8 +1592,10 @@ check("the shipped room templates reach the floors the game generates", authored
   // The definition in world.ts and the one owner in run.ts are the only
   // places the number itself is allowed to appear. Comments are prose.
   const offenders = src.filter((line) => {
-    const [file, , ...rest] = line.split(":");
-    const text = rest.join(":").trim();
+    const match = line.replaceAll("\\", "/").match(/^(.*?):\d+:(.*)$/);
+    if (!match) return false;
+    const [, file, source] = match;
+    const text = source.trim();
     if (text.startsWith("*") || text.startsWith("//")) return false;
     if (file.endsWith("src/game/world.ts")) return false;
     if (text.includes("alarmFloorOn") || text.includes("alarmFloorFor")) return false;
@@ -1879,7 +1882,6 @@ check("the shipped room templates reach the floors the game generates", authored
       for (const r of dd.rooms) {
         const target = L.gemFor(r, dd.seed);
         if (!target) continue;
-        const half = r.size / 2;
         const obs = L.obstaclesFor("ground", r, dd.seed, []);
         // The obstacle list already carries the body's width - `obstaclesFor`
         // is the one owner of it, and each patch names its own berth - so
@@ -1887,12 +1889,12 @@ check("the shipped room templates reach the floors the game generates", authored
         // Warden does. A fill at any other width tests a creature that does
         // not exist.
         const WALL = 0.6;
-        const blocked = (x, z) => Math.abs(x) > half - WALL || Math.abs(z) > half - WALL || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
+        const blocked = (x, z) => !L.insideRoom(r, x, z, WALL) || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
         for (const dir of Object.keys(r.links)) {
           walked++;
           // Where travel puts a body that came in this way - a position,
           // not a triple.
-          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir)?.position : null;
+          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, L.OPPOSITE[dir])?.position : null;
           if (!start) { walked--; continue; }
           // Coarse flood fill on a half-metre grid.
           const step = 0.5, seen = new Set(), queue = [[start[0], start[2]]];
@@ -2821,7 +2823,7 @@ check("the shipped room templates reach the floors the game generates", authored
     return doors;
   };
   const routeToGem = (room, seed, doors = Object.keys(room.links)) => {
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     if (!gem) return null;
     const spikes = room.kind === "trap" ? L.trapHazards(room, gem) : [];
@@ -2829,8 +2831,7 @@ check("the shipped room templates reach the floors the game generates", authored
     // The hazard tests the camera's own point, so a patch blocks a disc of
     // exactly its radius - the body's width is what the walls take.
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((p) => Math.hypot(x - p.x, z - p.z) < L.PROP_SPECS[p.kind].radius + BODY);
 
@@ -2901,13 +2902,12 @@ check("the shipped room templates reach the floors the game generates", authored
   const crossable = (room, seed) => {
     const dirs = ["north", "south", "east", "west"].filter((x) => room.links[x]);
     if (dirs.length < 2) return null;
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
     const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
     const n = Math.ceil((half * 2) / CELL);
@@ -2953,13 +2953,12 @@ check("the shipped room templates reach the floors the game generates", authored
    * counter reach further and are only easier.
    */
   const reachable = (room, seed, target) => {
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
     const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
     const n = Math.ceil((half * 2) / CELL);
@@ -5707,7 +5706,7 @@ check("the shipped room templates reach the floors the game generates", authored
   // (`run.travel()`) or by selector (`useRun((s) => s.startRun)`), because
   // both are a way in.
   const sweep = (paths) =>
-    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8" })
+    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })
       .split("\n")
       .map((l) => l.slice(1));
   const outside = sweep([join(root, "src")]);

@@ -35,9 +35,6 @@ export const TRAPS: Record<TrapKind, { springs: readonly Body[]; hurts: readonly
 };
 
 const TRAP_KINDS: ReadonlySet<RoomKind> = new Set<RoomKind>(["normal", "treasure", "trap", "arena", "shrine"]);
-/** How far inside the doorway a dart plate sits, as a share of the door's distance from the middle. */
-const PLATE_INSET = 0.55;
-
 const inLane = (x: number, z: number, room: Room): boolean =>
   DIRS.some((d) => {
     if (!room.links[d]) return false;
@@ -70,8 +67,16 @@ export function trapsFor(room: Room, seed: number, endId: string | null): Trap[]
     if (out.length >= count) break;
     if (kind === "darts" && doors.length) {
       const dir = doors[Math.floor(rng() * doors.length)];
-      const [dx, , dz] = doorPosition(room, dir);
-      out.push({ key: `${room.id}:darts:${dir}`, kind, x: dx * PLATE_INSET, z: dz * PLATE_INSET, dir });
+      for (let tries = 0; tries < 24; tries++) {
+        const x = (rng() * 2 - 1) * (half - 2);
+        const z = (rng() * 2 - 1) * (half - 2);
+        if (inLane(x, z, room)) continue;
+        if (solid.some((p) => Math.hypot(x - p.x, z - p.z) < PROP_SPECS[p.kind].radius + 1.6)) continue;
+        if (gem && Math.hypot(x - gem[0], z - gem[2]) < 2) continue;
+        if (Math.hypot(x - key[0], z - key[2]) < 2) continue;
+        out.push({ key: `${room.id}:darts:${dir}`, kind, x, z, dir });
+        break;
+      }
     } else if (kind === "grate" && doors.length >= 2) {
       const dir = doors[Math.floor(rng() * doors.length)];
       const [dx, , dz] = doorPosition(room, dir);

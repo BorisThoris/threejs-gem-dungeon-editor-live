@@ -29,6 +29,7 @@
         "test:touch": "node scripts/touch-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
         "test:run": "node scripts/run-through.mjs",
+        "test:gameplay": "node scripts/gameplay-check.mjs",
         "tour": "node scripts/tour.mjs"
     },
     "dependencies": {

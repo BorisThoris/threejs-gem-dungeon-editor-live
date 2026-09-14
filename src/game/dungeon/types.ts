@@ -165,12 +165,14 @@ export interface Room {
    */
   seed: number;
   grid: GridPos;
-  /** Side length of the square the room is built on. */
+  /** Side length of the furnished chamber; corridor wings extend beyond it. */
   size: number;
-  /** Outline drawn on the floor inside that square. */
+  /** Decorative floor outline within the furnished chamber. */
   shape: Shape;
   /** Neighbouring room in each direction that has a doorway. */
   links: Partial<Record<Dir, string>>;
+  /** Walkable corridor wings beyond the furnished chamber, in metres. */
+  wings?: Partial<Record<Dir, number>>;
   /**
    * A wall with a crack in it, and the room behind it.
    *

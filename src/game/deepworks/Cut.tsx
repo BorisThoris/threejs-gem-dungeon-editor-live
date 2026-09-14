@@ -72,7 +72,7 @@ export function Names({ room }: { room: Room }) {
   const many = namesOn(runs);
   return (
     <InteractTrigger
-      position={[0, GROUND_Y, -half * 0.9]}
+      position={[half * 0.65, GROUND_Y, -half * 0.9]}
       label="Read the names"
       onInteract={() => {
         bus.emit(

@@ -23,6 +23,8 @@ import {
 
 export interface GenerateOptions {
   seed?: number;
+  /** Descent depth controls chamber scale and corridor complexity. */
+  floor?: number;
   /**
    * Rooms including start and end. How big a floor is belongs to the floor,
    * so callers pass `floorRules(floor)`; the default is the first floor's,
@@ -153,9 +155,10 @@ const key = (x: number, z: number) => `${x},${z}`;
 export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   const seed = options.seed ?? (Math.random() * 0xffffffff) >>> 0;
   const rng = createRng(seed);
-  const minRooms = options.minRooms ?? floorRules(1).minRooms;
-  const maxRooms = options.maxRooms ?? floorRules(1).maxRooms;
-  const loopChance = options.loopChance ?? 0.3;
+  const floor = Math.max(1, Math.min(3, Math.round(options.floor ?? 1)));
+  const minRooms = options.minRooms ?? floorRules(floor).minRooms;
+  const maxRooms = options.maxRooms ?? floorRules(floor).maxRooms;
+  const loopChance = options.loopChance ?? (0.24 + (floor - 1) * 0.06);
 
   const target =
     minRooms + Math.floor(rng() * Math.max(1, maxRooms - minRooms + 1));
@@ -184,7 +187,8 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // backwards the more content there was.
     const authored = templatesForKind(kind);
     const template = authored.length && rng() < AUTHORED_CHANCE ? pick(rng, authored) : undefined;
-    const size = template?.size ?? pick(rng, sizesFor(kind));
+    const grows = ["normal", "treasure", "trap"].includes(kind);
+    const size = template?.size ?? (pick(rng, sizesFor(kind)) + (grows ? (floor - 1) * 2 : 0));
     // Only shapes with the floor to hold their props at this size.
     const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>
       shapeFits(s, size)
@@ -361,6 +365,18 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     host.secret = { dir, to: secret.id };
     secretId = secret.id;
     break;
+  }
+
+  // Separate stream: adding architecture does not reshuffle keys or room roles.
+  const architecture = createRng(`${seed}:architecture`);
+  const candidates = shuffle(architecture, rooms.filter((r) =>
+    !r.template && ["normal", "treasure", "trap"].includes(r.kind)));
+  const count = Math.min(candidates.length, floor === 1 ? 1 : floor === 2 ? 3 : 5);
+  for (const room of candidates.slice(0, count)) {
+    const doors = DIRS.filter((dir) => room.links[dir]);
+    const selected = shuffle(architecture, doors).slice(0, floor === 1 ? 1 : floor === 2 ? 2 : 4);
+    room.wings = {};
+    for (const dir of selected) room.wings[dir] = 3 + floor * 2 + Math.floor(architecture() * floor) * 2;
   }
 
   return {

@@ -2,7 +2,8 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
-import { halfSize, type Room } from "../dungeon/types";
+import { type Room } from "../dungeon/types";
+import { roomStep } from "../dungeon/footprint";
 import { canControl, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
@@ -48,7 +49,6 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
     const run = useRun.getState();
     if (!canControl(run)) return;
     const cam = state.camera.position;
-    const limit = halfSize(room) - 0.5;
     const t = state.clock.elapsedTime;
     rats.forEach((rat, i) => {
       const g = groups.current[i];
@@ -105,8 +105,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
         speed = RAT_SPEED * 0.25;
       }
       const step = Math.min(speed * delta, 0.5);
-      rat.x = Math.max(-limit, Math.min(limit, rat.x + dx * step));
-      rat.z = Math.max(-limit, Math.min(limit, rat.z + dz * step));
+      [rat.x, rat.z] = roomStep(room, rat.x, rat.z, dx * step, dz * step, 0.5);
       g.position.set(rat.x, GROUND_Y + 0.02 + Math.abs(Math.sin(t * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
       g.rotation.y = Math.atan2(dx, dz);
       // What it ran into: a snare is sprung for nothing, the spikes are the end of it.

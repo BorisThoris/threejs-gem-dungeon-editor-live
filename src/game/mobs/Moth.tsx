@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
@@ -40,9 +41,8 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
       : perch;
     const h = steerAround(p.x, p.z, target.x, target.z, obstacles, 0);
     const flat = Math.hypot(target.x - p.x, target.z - p.z);
-    const stepFlat = Math.min(MOTH_SPEED * delta, flat);
-    p.x += h.dx * stepFlat;
-    p.z += h.dz * stepFlat;
+    const stepFlat = Math.min(MOTH_SPEED * delta, flat, 0.5);
+    [p.x, p.z] = roomStep(room, p.x, p.z, h.dx * stepFlat, h.dz * stepFlat, 0.15);
     p.y += Math.sign(target.y - p.y) * Math.min(MOTH_SPEED * delta, Math.abs(target.y - p.y));
     const near = Math.hypot(cam.x - p.x, cam.z - p.z) < 1.2;
     if (drawn && near) run.mothLands();

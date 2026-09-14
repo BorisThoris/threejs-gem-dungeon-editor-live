@@ -22,6 +22,7 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   const group = useRef<Group>(null);
   /** The player's own noise deadline as last seen, so a fresh dash is told from a held one. */
   const seen = useRef(-1);
+  const arrivedAt = useRef<number | null>(null);
 
   useFrame((state) => {
     const g = group.current;
@@ -30,10 +31,13 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
     const now = runClock(run);
     const roused = now < run.batsRousedUntil;
     if (canControl(run)) {
+      if (arrivedAt.current === null) arrivedAt.current = now;
+      const settled = now - arrivedAt.current >= 1.8;
+      const nearby = Math.hypot(state.camera.position.x - at.x, state.camera.position.z - at.z) < 5;
       if (seen.current < 0) seen.current = run.noisyUntil;
       if (run.noisyUntil > seen.current + 0.01) {
         seen.current = run.noisyUntil;
-        if (!roused && now < run.noisyUntil) run.rouseBats();
+        if (settled && nearby && !roused && now < run.noisyUntil) run.rouseBats();
       }
       /**
        * And anything else the floor is loud enough about.
@@ -56,11 +60,11 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
        * that answers to a tag it also emits is one tuning change away
        * from never settling again.
        */
-      if (!roused) {
+      if (settled && !roused) {
         const sus = SUSCEPTIBILITY.bat;
         const loud = din.arriving("loud", room.id) >= (sus.answers.loud ?? 1);
         const blast = din.arriving("blast", room.id) >= (sus.answers.blast ?? 1);
-        if (loud || blast) run.rouseBats();
+        if ((nearby && loud) || blast) run.rouseBats();
       }
     }
     const t = state.clock.elapsedTime;
