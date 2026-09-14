@@ -138,7 +138,10 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
-    if (arrivedIn.current !== room.id && canControl(useRun.getState())) {
+    const run = useRun.getState();
+    const controlled = canControl(run);
+    if (!controlled) { sfx.stalkStop(); return; }
+    if (arrivedIn.current !== room.id) {
       const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
       const p = encounterArrival(room, dir ?? null, state.camera.position, [...obstacles, ...hazards]);
       g.position.x = p.x;
@@ -147,7 +150,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       arrivedIn.current = room.id;
       arrivedAt.current = runClock(useRun.getState());
     }
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
     const behaviour = behaviourFor(alarm);
 
     // It drifts rather than walks: a slow bob, and eyes that always face you.
@@ -157,7 +160,6 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
-    const controlled = canControl(useRun.getState());
     if (controlled && wardenSenses(useRun.getState())) remembered.current = { x: cam.x, z: cam.z };
 
     /**
@@ -257,6 +259,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       probe.targetX = remembered.current.x;
       probe.targetZ = remembered.current.z;
       probe.canSee = canSee ? 1 : 0;
+      probe.facing = facing.current;
     }
 
     const level = bandFor(distance);

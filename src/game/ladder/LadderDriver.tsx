@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
-import { runClock, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import * as ladder from "./state";
 
 /**
@@ -25,11 +25,14 @@ import * as ladder from "./state";
 export function LadderDriver() {
   useFrame(() => {
     const s = useRun.getState();
-    if (s.phase !== "playing") return;
+    if (!canControl(s)) return;
     ladder.advance(runClock(s));
   });
 
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      (window as unknown as { __awareness?: typeof ladder }).__awareness = ladder;
+    }
     const off = [
       bus.on("runStarted", () => ladder.reset()),
       bus.on("runLost", () => ladder.reset()),

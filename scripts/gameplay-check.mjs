@@ -388,6 +388,21 @@ try {
   await page.evaluate(() => window.__run.setState({ noisyUntil: window.__derived.clock() + 10 }));
   await page.waitForFunction((position) => Math.hypot(window.__warden.targetX - position[0], window.__warden.targetZ - position[2]) < 0.2, hidden);
   console.log("PASS Warden retains last known position when hidden and reacquires through noise");
+  const pausedWarden = await page.evaluate(() => {
+    window.__run.getState().pause();
+    window.__awareness.reset();
+    window.__awareness.wake("cutpurse");
+    window.__awareness.report("cutpurse", 2, true, true, window.__run.getState().currentRoomId);
+    return { x: window.__warden.x, z: window.__warden.z, facing: window.__warden.facing,
+      targetX: window.__warden.targetX, targetZ: window.__warden.targetZ };
+  });
+  await page.waitForTimeout(1200);
+  assert.deepEqual(await page.evaluate(() => ({ x: window.__warden.x, z: window.__warden.z, facing: window.__warden.facing,
+    targetX: window.__warden.targetX, targetZ: window.__warden.targetZ })), pausedWarden, "Warden pose and pursuit memory freeze during pause");
+  assert.equal(await page.evaluate(() => window.__awareness.rungOf("cutpurse")), 0, "even an immediate awareness report waits while paused");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction(() => window.__awareness.rungOf("cutpurse") === 2);
+  console.log("PASS pause freezes Warden facing and awareness; reports apply after resume");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }
