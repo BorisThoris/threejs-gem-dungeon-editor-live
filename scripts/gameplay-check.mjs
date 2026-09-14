@@ -55,6 +55,15 @@ for (const floor of [1, 2, 3]) {
           "movement reaches the widened gallery edges");
         assert.ok(Math.abs(L.roomRayReach(axis.x * middle, axis.z * middle, axis.z, axis.x, 20,
           L.wallEdges(room)) - width / 2) < 1e-8, "gallery side walls match their widened floors");
+        if (!room.template && ["normal", "treasure"].includes(room.kind)) {
+          const gem = L.gemFor(room, d.seed);
+          assert.deepEqual(gem, L.gemFor(room, d.seed), "gallery reward stays put on revisiting");
+          assert.ok(axis.x * gem[0] + axis.z * gem[2] > room.size / 2 + 2,
+            "the room reward gives a reason to explore its closed gallery");
+          assert.ok(L.insideRoom(room, gem[0], gem[2], 1.1), "gallery reward clears its walls");
+          assert.ok(L.roomSegmentClear(room, axis.x * middle, axis.z * middle, gem[0], gem[2], 0.6),
+            "gallery reward is reachable from the mouth without crossing a wall");
+        }
         const distance = L.doorReach(room, dir) - 1;
         let x = 0, z = 0;
         for (let i = 0; i < 600 && Math.hypot(x - axis.x * distance, z - axis.z * distance) > 0.11; i++) {
@@ -342,14 +351,15 @@ try {
   let galleryFixture;
   for (let seed = 1; seed <= 120 && !galleryFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
-    const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north);
+    const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north
+      && ["normal", "treasure"].includes(r.kind));
     if (room) galleryFixture = { dungeon, roomId: room.id, half: room.size / 2,
-      reach: L.doorReach(room, "north"), width: L.corridorWidth(room, "north") };
+      reach: L.doorReach(room, "north"), width: L.corridorWidth(room, "north"), gem: L.gemFor(room, dungeon.seed) };
   }
   assert.ok(galleryFixture, "a rendered closed north gallery exists");
   await page.evaluate(({ dungeon, roomId }) => {
     window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: true,
-      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, enteredBy: null });
+      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, enteredBy: null, gemRooms: [] });
   }, galleryFixture);
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   await page.evaluate(({ half }) => {
@@ -371,6 +381,16 @@ try {
     && window.__playerDebug.y > 0.8 && window.__run.getState().currentRoomId === roomId, galleryFixture),
     "player walks beyond the old gallery width and stops at the new solid side wall");
   console.log("PASS physical widened side-gallery traversal and solid end and side walls");
+  await page.keyboard.down("KeyA");
+  await page.waitForFunction((gem) => window.__playerDebug.x < gem[0] + 0.45, galleryFixture.gem, { timeout: 20000 });
+  await page.keyboard.up("KeyA");
+  await page.keyboard.down("KeyS");
+  await page.waitForFunction((gem) => window.__playerDebug.z > gem[2] - 0.45, galleryFixture.gem, { timeout: 20000 });
+  await page.keyboard.up("KeyS");
+  await page.waitForFunction((roomId) => window.__run.getState().gemRooms.includes(roomId), galleryFixture.roomId);
+  assert.equal(await page.evaluate((roomId) => window.__run.getState().collectGem(roomId), galleryFixture.roomId), false,
+    "a gallery gem remains the room's single reward and cannot be collected twice");
+  console.log("PASS physical gallery gem pickup and single room reward");
   let sightFixture;
   for (let seed = 1; seed <= 300 && !sightFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });

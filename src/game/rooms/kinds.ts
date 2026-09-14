@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 
 import { gemPosition, keyPosition, type Vec3 } from "../dungeon/layout";
+import { corridorWidth, doorReach } from "../dungeon/footprint";
+import { DIRS, DIR_STEP } from "../dungeon/types";
+import { createRng } from "../rng";
 import { reservedAnchorsFor } from "./anchors";
 import { authoredProps } from "./templates";
 import type { Room, RoomKind } from "../dungeon/types";
@@ -75,7 +78,19 @@ export function claimedSpots(room: Room): Vec3[] {
  */
 export function gemFor(room: Room, seed: number): Vec3 | null {
   if (room.kind === "start" || room.kind === "end" || room.kind === "arena") return null;
-  return gemPosition(room, seed, claimedSpots(room));
+  const gem = gemPosition(room, seed, claimedSpots(room));
+  // The wider dead end is an exploration destination. Keep the room's
+  // existing reward rather than adding income, and leave authored and trap
+  // compositions intact. Travel entrances never hold this reward.
+  const gallery = !room.template && (room.kind === "normal" || room.kind === "treasure")
+    ? DIRS.find((dir) => (room.wings?.[dir] ?? 0) >= 5 && !room.links[dir] && room.secret?.dir !== dir)
+    : undefined;
+  if (!gallery) return gem;
+  const axis = DIR_STEP[gallery];
+  const rng = createRng(`${seed}:${room.id}:gallery-gem`);
+  const across = (rng() < 0.5 ? -1 : 1) * corridorWidth(room, gallery) * 0.18;
+  const along = doorReach(room, gallery) - 2;
+  return [axis.x * along + axis.z * across, gem[1], axis.z * along + axis.x * across];
 }
 
 /**

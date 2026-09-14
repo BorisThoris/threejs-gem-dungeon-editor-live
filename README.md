@@ -35,6 +35,9 @@ startle them immediately. Their noise draws attention but does not hurt you.
 
 Chambers grow as you descend. Later floors have longer corridor wings and
 more branching, concave room outlines, with matching walls and collisions.
+Closed side galleries widen on deeper floors. In generated chambers and
+treasure rooms, the room's gem waits inside that gallery, rewarding a detour
+without adding extra income. Trap gems keep their chamber positions.
 Corridor wings carry seeded ceiling ribs and wall markings, giving long
 passages stable landmarks without obstructing their travel lanes.
 Watcher beams stop at room walls, and corridor corners block visual
