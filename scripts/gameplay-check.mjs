@@ -167,6 +167,8 @@ for (const body of ["ground", "flying"]) {
   assert.deepEqual(L.obstaclesFor("ghost", room, 11, [], [], [0, 0, 0]), [], "ghosts still ignore watcher bodies");
 }
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
+assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [], [0, 0, -1]), "watcher post blocks a shove through its body");
+assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [], [0.3, 0, -1]), "a shove passing beside the watcher remains clear");
 for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {
   assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind, x: 0, z: -1 }]),
     `shove reaches above low ${kind} furniture`);
@@ -269,6 +271,38 @@ try {
   });
   assert.ok(Object.values(combat).every(Boolean), JSON.stringify(combat));
   console.log("PASS combat range, facing, retreat, stagger, stolen-gem recovery, cooldown and pause guards");
+  const watchedDungeon = L.generateDungeon({ seed: 11, floor: 3 });
+  const watchedRoom = watchedDungeon.rooms.find((r) => r.kind === "normal" && L.sentryFor(r, watchedDungeon.seed, 3,
+    watchedDungeon.keyRoomId === r.id ? [L.keyFor(r, watchedDungeon.seed)] : []));
+  assert.ok(watchedRoom, "a generated room has a real watcher for shove cover");
+  const watcherCover = await page.evaluate(async ({ dungeon, roomId }) => {
+    const { playerAt } = await import("/src/game/player/where.ts");
+    const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
+    const { sentryFor } = await import("/src/game/sentry/placement.ts");
+    const { keyFor } = await import("/src/game/rooms/kinds.ts");
+    const run = window.__run, room = dungeon.rooms.find((r) => r.id === roomId);
+    const key = dungeon.keyRoomId === roomId ? keyFor(room, dungeon.seed) : null;
+    const post = sentryFor(room, dungeon.seed, 3, key ? [key] : []).at;
+    run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: false, paused: false, inputLocks: 0,
+      wardenRoomId: null, thiefPhase: "away", harrierAwake: true, harrierSlain: false, broken: [] });
+    let notice = "";
+    const off = window.__bus.on("notice", (line) => { notice = line; });
+    const shove = (offset) => {
+      Object.assign(playerAt, { x: post[0] - 0.9, z: post[2] + offset });
+      Object.assign(harrierAt, { x: post[0] + 0.9, z: post[2] + offset, roomId, away: false, down: false });
+      run.setState({ shoveReadyAt: 0, harrierRetreatUntil: 0 });
+      run.getState().shove(1, 0);
+      return { retreat: run.getState().harrierRetreatUntil > window.__derived.clock(), notice };
+    };
+    const blocked = shove(0), beside = shove(0.5);
+    off();
+    run.getState().startRun(11);
+    return { blocked, beside };
+  }, { dungeon: watchedDungeon, roomId: watchedRoom.id });
+  assert.ok(!watcherCover.blocked.retreat, "shove cannot reach the Harrier through a watcher post");
+  assert.match(watcherCover.blocked.notice, /blocked by solid cover/);
+  assert.ok(watcherCover.beside.retreat, "stepping beside the post restores shove counterplay");
+  console.log("PASS watcher cover blocks shoves with actionable feedback; stepping aside reaches the threat");
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   // A real rendered wing: walk from its landing back into the furnished chamber.
   const wing = await page.evaluate(async () => {

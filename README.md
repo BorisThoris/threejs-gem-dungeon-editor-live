@@ -23,8 +23,10 @@ having it between you and the door.
 Space (or RT on a controller, SHOVE on touch) pushes back a threat within
 three metres in front of you. It drives off the Harrier, scatters the
 Cutpurse and recovers anything it stole, or staggers the Warden for a short
-escape window. Each shove needs 2.4 seconds to recover. Shoves do not wound
-the Warden; traps and bombs remain the stronger tools. Ordinary rats flee
+escape window. Each shove needs 2.4 seconds to recover. Solid cover,
+including watcher posts, blocks the hand; a blocked shove prompts you to
+step around it. Shoves do not wound the Warden; traps and bombs remain
+the stronger tools. Ordinary rats flee
 and do not attack. The Harrier gives you time to orient after entering and
 hovers before committing to a dive.
 Ceiling bats stir and flutter for 1.2 seconds before bursting in response

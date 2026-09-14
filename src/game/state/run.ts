@@ -2334,10 +2334,17 @@ export const useRun = create<RunState>()(
       if (!Number.isFinite(forwardX) || !Number.isFinite(forwardZ) || Math.hypot(forwardX, forwardZ) < 0.01) return false;
       const room = roomById(s.dungeon, s.currentRoomId);
       if (!room) return false;
-      const standing = placementsFor(room, s.dungeon.seed).filter((p) => !s.broken.includes(breakKey(room, p)));
-      const reaches = (target: { x: number; z: number; roomId: string | null }) =>
-        target.roomId === room.id && inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ) &&
-        clearShove(room, playerAt, target, standing);
+      const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
+      const watcher = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : [])?.at ?? null;
+      const standing = placementsFor(room, s.dungeon.seed, { asVault: s.dungeon.vaultId === room.id, key, sentry: watcher })
+        .filter((p) => !s.broken.includes(breakKey(room, p)));
+      let blocked = false;
+      const reaches = (target: { x: number; z: number; roomId: string | null }) => {
+        if (target.roomId !== room.id || !inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ)) return false;
+        if (clearShove(room, playerAt, target, standing, watcher)) return true;
+        blocked = true;
+        return false;
+      };
       set({ shoveReadyAt: now + SHOVE_COOLDOWN_S });
       let hit = false;
       if (s.thiefPhase !== "away" && reaches(cutpurseAt)) {
@@ -2353,7 +2360,9 @@ export const useRun = create<RunState>()(
         set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
         hit = true;
       }
-      bus.emit("notice", hit ? "Shove! Move while it recoils." : "Shove missed. Face the threat and let it come closer.");
+      bus.emit("notice", hit ? "Shove! Move while it recoils." : blocked
+        ? "Shove blocked by solid cover. Step around it."
+        : "Shove missed. Face the threat and let it come closer.");
       return true;
     },
 

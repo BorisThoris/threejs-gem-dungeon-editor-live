@@ -1,6 +1,8 @@
 import { roomSegmentClear } from "../dungeon/footprint";
 import type { PropPlacement, Room } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
+import type { Vec3 } from "../dungeon/layout";
+import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "../sentry/placement";
 
 export const SHOVE_REACH = 3;
 export const SHOVE_COOLDOWN_S = 2.4;
@@ -20,11 +22,15 @@ export function inShoveArc(x: number, z: number, fx: number, fz: number): boolea
     (distance < 0.01 || (x * fx + z * fz) / (distance * facing) >= Math.cos(50 * Math.PI / 180));
 }
 
-/** Furniture reaching the hand and the room's concave walls stop a shove. */
-export function clearShove(room: Room, from: { x: number; z: number }, to: { x: number; z: number }, props: readonly PropPlacement[]): boolean {
+/** Tall furniture, watcher posts and the room's concave walls stop a shove. */
+export function clearShove(room: Room, from: { x: number; z: number }, to: { x: number; z: number }, props: readonly PropPlacement[], watcher: Vec3 | null = null): boolean {
   const dx = to.x - from.x, dz = to.z - from.z;
   const len2 = dx * dx + dz * dz;
   if (!roomSegmentClear(room, from.x, from.z, to.x, to.z)) return false;
+  if (watcher && SENTRY_POST_HEIGHT >= SHOVE_HEIGHT && len2 >= 0.0001) {
+    const t = Math.max(0, Math.min(1, ((watcher[0] - from.x) * dx + (watcher[2] - from.z) * dz) / len2));
+    if (Math.hypot(watcher[0] - from.x - dx * t, watcher[2] - from.z - dz * t) < SENTRY_POST_RADIUS) return false;
+  }
   return !props.some((p) => {
     const spec = PROP_SPECS[p.kind], collider = spec.collider;
     if (!spec.solid || len2 < 0.0001) return false;
