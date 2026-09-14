@@ -33,6 +33,8 @@ startle them immediately. Their noise draws attention but does not hurt you.
 
 Chambers grow as you descend. Later floors have longer corridor wings and
 more branching, concave room outlines, with matching walls and collisions.
+Corridor wings carry seeded ceiling ribs and wall markings, giving long
+passages stable landmarks without obstructing their travel lanes.
 Entrance lanes stay clear of damaging traps; dart plates sit off those
 lanes, light before firing, and hurt only across their visible footprint.
 Grates wait until you have moved clear of the landing before dropping.

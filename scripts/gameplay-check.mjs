@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -25,6 +25,16 @@ for (const floor of [1, 2, 3]) {
     assert.deepEqual(d, L.generateDungeon({ seed, floor }), "same seed/depth reproduces architecture");
     assert.ok(L.shortestPath(d.rooms, d.startId, d.endId));
     for (const room of d.rooms) {
+      const details = L.corridorDetails(room, d.seed);
+      assert.deepEqual(details, L.corridorDetails(room, d.seed), "corridor landmarks persist on revisiting");
+      if (!Object.keys(room.wings ?? {}).length) assert.equal(details.ribs.length + details.marks.length, 0);
+      for (const block of details.ribs) {
+        if (block.position[1] - block.size[1] / 2 >= L.GROUND_Y + L.DOOR_HEIGHT) continue;
+        const lateralEdge = Math.min(Math.abs(block.position[0]) - block.size[0] / 2,
+          Math.abs(block.position[2]) - block.size[2] / 2);
+        assert.ok(lateralEdge >= L.CORRIDOR_WIDTH / 2 - L.WALL_THICKNESS / 2 - 0.02,
+          "low corridor ribs stay flush with walls and clear of the walking lane");
+      }
       rooms++;
       area += L.floorRects(room).reduce((sum, r) => sum + r.width * r.depth, 0);
       wings += Object.keys(room.wings ?? {}).length;

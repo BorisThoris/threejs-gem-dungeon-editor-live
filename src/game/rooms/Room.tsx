@@ -39,6 +39,7 @@ import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
+import { CorridorDetails } from "./CorridorDetails";
 
 interface RoomProps {
   room: RoomData;
@@ -302,6 +303,7 @@ export function Room({ room, seed }: RoomProps) {
       </mesh>
 
       <Walls room={room} color={tint.wall} />
+      <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do
           the rest, and do more of it the deeper the floor is. */}
