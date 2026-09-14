@@ -21,6 +21,9 @@ const snapshot = () => page.evaluate(() => {
 });
 
 async function walkTo(target) {
+  // A room can report ready before the player probe has sampled its new pose.
+  const frame = (await snapshot()).frames;
+  await page.waitForFunction((frame) => window.__perf.frames >= frame + 2, frame);
   const plan = await page.evaluate(async (target) => {
     const { roomSegmentClear, insideRoom, doorReach } = await import("/src/game/dungeon/footprint.ts");
     const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
@@ -90,7 +93,8 @@ async function walkTo(target) {
         }
         const dx = point.x - s.player.x, dz = point.z - s.player.z, distance = Math.hypot(dx, dz);
         if (distance < 0.55) break;
-        if (distance < lastDistance - 0.1) { stuckSince = Date.now(); lastDistance = distance; }
+        if (distance < lastDistance - 0.03) stuckSince = Date.now();
+        lastDistance = distance;
         if (Date.now() > deadline || Date.now() - stuckSince > 5000) {
           const reason = Date.now() > deadline ? "segment deadline" : "no distance progress";
           throw new Error(`movement stopped by ${reason} in ${s.roomId}: ${JSON.stringify({ player: s.player, point, distance,

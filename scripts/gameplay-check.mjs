@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "rooms/templates", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -132,6 +132,17 @@ assert.ok(!L.inShoveArc(0, 2, 0, -1));
 assert.ok(!L.inShoveArc(0, -3.1, 0, -1));
 assert.ok(!L.inShoveArc(2, 0, 0, -1));
 const chamber = L.generateDungeon({ seed: 11 }).rooms[0];
+const originalTemplate = L.allTemplates()[0];
+try {
+  L.registerTemplate({ ...originalTemplate, props: [{ kind: "crate", x: 0, z: 0, scale: 4 },
+    { kind: "pillar", x: 5, z: 0, scale: 0.25 }], slots: [] });
+  const scaledRoom = { ...chamber, kind: "normal", links: {}, secret: undefined, size: 24, template: originalTemplate.id };
+  const ground = L.obstaclesFor("ground", scaledRoom, 11, []), flying = L.obstaclesFor("flying", scaledRoom, 11, []);
+  assert.equal(ground.length, 2, "ground mobs avoid both scaled solid props");
+  assert.ok(ground.some((p) => Math.abs(p.r - (L.PROP_SPECS.crate.radius * 4 + 0.35)) < 1e-9), "steering keeps the full enlarged crate footprint");
+  assert.equal(flying.length, 1, "flying mobs avoid the tall enlarged crate and clear the shortened pillar");
+  assert.ok(Math.abs(flying[0].r - (L.PROP_SPECS.crate.radius * 4 + 0.35)) < 1e-9);
+} finally { L.registerTemplate(originalTemplate); }
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "pillar", x: 0, z: -1 }]));
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
 for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {

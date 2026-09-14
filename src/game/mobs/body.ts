@@ -58,7 +58,7 @@ const colliderTop = (spec: PropSpec): number =>
   spec.collider ? spec.collider.y + (spec.collider.shape === "cylinder" ? spec.collider.args[0] : spec.collider.args[1]) : 0;
 
 /** Whether a flying body passes over this prop rather than round it. */
-export const clearedInFlight = (spec: PropSpec): boolean => colliderTop(spec) < FLIGHT_HEIGHT;
+export const clearedInFlight = (spec: PropSpec, scale = 1): boolean => colliderTop(spec) * scale < FLIGHT_HEIGHT;
 
 /** What this body has to walk round: the room's solid furniture - the tall pieces of it, for a flier - or nothing. */
 export function obstaclesFor(
@@ -73,8 +73,8 @@ export function obstaclesFor(
   // A barrel that has burst is not in anyone's way any more.
   return placementsFor(room, seed)
     .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
-    .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind]))
-    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius + BODY_HALF_WIDTH, berth: 0 }));
+    .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind], p.scale ?? 1))
+    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius * (p.scale ?? 1) + BODY_HALF_WIDTH, berth: 0 }));
 }
 
 /** What bites this body here: the floor's spikes and any live snare, or nothing. */
