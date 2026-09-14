@@ -1,0 +1,47 @@
+{
+  "lanternDescent": {
+    "before": {
+      "glim": 100,
+      "held": true
+    },
+    "after": {
+      "floor": 2,
+      "glim": 100,
+      "held": false,
+      "signals": []
+    }
+  },
+  "brokenBar": {
+    "actualEdge": [
+      "room_1",
+      "room_2"
+    ],
+    "playerRoom": "start",
+    "reported": {
+      "tag": "loud",
+      "magnitude": 0.5,
+      "fromRoomId": "start",
+      "x": 0,
+      "z": 0,
+      "source": "barBroken"
+    }
+  },
+  "focusLoss": {
+    "paused": false,
+    "phase": "playing",
+    "elapsedMs": 0
+  },
+  "importValidation": {
+    "accepted": true,
+    "renderError": "TypeError: rules is not iterable"
+  },
+  "reaperContract": {
+    "declaredBlast": false,
+    "stalledUntil": 10.884399999999442
+  },
+  "thiefAwareness": {
+    "arrived": true,
+    "phase": "stalking",
+    "rung": 0
+  }
+}
