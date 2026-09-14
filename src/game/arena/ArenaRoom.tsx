@@ -17,11 +17,10 @@ import {
   ARENA_WIND_UP_S,
   GROUND_Y,
 } from "../world";
-import { PLINTH_RADIUS, arenaRings } from "./sweep";
+import { PLINTH_HEIGHT, PLINTH_RADIUS, arenaRings } from "./sweep";
 
 type Phase = "idle" | "winding" | "running" | "done";
 
-const PLINTH_HEIGHT = 1.1;
 
 /**
  * The arena, which until now was the largest room in the game with a gem in

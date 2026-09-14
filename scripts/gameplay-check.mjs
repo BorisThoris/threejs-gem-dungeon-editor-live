@@ -143,6 +143,13 @@ try {
   assert.equal(flying.length, 1, "flying mobs avoid the tall enlarged crate and clear the shortened pillar");
   assert.ok(Math.abs(flying[0].r - (L.PROP_SPECS.crate.radius * 4 + 0.35)) < 1e-9);
 } finally { L.registerTemplate(originalTemplate); }
+for (const [kind, count] of [["arena", 1], ["memory", 4], ["challenge", 1]]) {
+  const room = { ...chamber, kind, size: 24, template: undefined };
+  const ground = L.obstaclesFor("ground", room, 11, []), flying = L.obstaclesFor("flying", room, 11, []);
+  assert.equal(ground.length - flying.length,
+    L.placementsFor(room, 11).filter((p) => L.PROP_SPECS[p.kind].solid && L.clearedInFlight(L.PROP_SPECS[p.kind], p.scale ?? 1)).length + count,
+    `${kind} built-in colliders block ground creatures while low fixtures remain flyable`);
+}
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "pillar", x: 0, z: -1 }]));
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
 for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {

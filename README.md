@@ -449,6 +449,8 @@ Chromium executable, `WALK_SEED` to choose a run (default 11), and
 `WALK_FLOORS=1` to check only the first descent. `WALK_SHOVE=off` compares
 the route without combat counterplay. Notices and damage events are logged
 to help explain failures.
+On Windows, `WALK_RENDERER=hardware` uses D3D11 instead of software rendering;
+the probe reports the actual WebGL renderer so the timing evidence is clear.
 
 `yarn test:audio` listens: it taps whatever the game connects to the
 speakers and measures samples, so a cue that runs without making a sound

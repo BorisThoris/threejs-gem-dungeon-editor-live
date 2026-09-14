@@ -5,7 +5,9 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright-core";
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
-  args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  args: process.env.WALK_RENDERER === "hardware"
+    ? ["--no-sandbox", "--enable-gpu", "--use-angle=d3d11"]
+    : ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 640, height: 480 } });
 const errors = [];
 page.setDefaultTimeout(30000);
@@ -136,6 +138,11 @@ try {
   });
   await page.evaluate((seed) => window.__run.getState().startRun(seed), Number(process.env.WALK_SEED ?? 11));
   await page.waitForFunction(() => window.__playerDebug);
+  console.log("RENDERER", await page.evaluate(() => {
+    const gl = document.querySelector("canvas").getContext("webgl2");
+    const extension = gl.getExtension("WEBGL_debug_renderer_info");
+    return extension ? gl.getParameter(extension.UNMASKED_RENDERER_WEBGL) : "unavailable";
+  }));
   const initialFloor = 1, stopFloor = Number(process.env.WALK_FLOORS ?? 3) + initialFloor;
   let doors = 0;
   while (true) {

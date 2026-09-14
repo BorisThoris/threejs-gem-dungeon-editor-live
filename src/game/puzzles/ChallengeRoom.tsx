@@ -9,7 +9,7 @@ import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
 import { useRun } from "../state/run";
 import { CLOSE_REACH, GROUND_Y, SET_PIECE_GEMS } from "../world";
-import { challengeAnchors } from "./anchors";
+import { CHALLENGE_ALTAR_HALF, CHALLENGE_ALTAR_HEIGHT, challengeAnchors } from "./anchors";
 import { Carryable, carry } from "./Carryable";
 
 const PLATE_RADIUS = 0.9;
@@ -127,7 +127,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
             <cylinderGeometry args={[1.3, 1.4, 0.34, 16]} />
             <meshStandardMaterial color="#5c5a63" roughness={0.9} />
           </mesh>
-          <CuboidCollider args={[1.35, 0.17, 1.35]} position={[0, 0.17, 0]} />
+          <CuboidCollider args={[CHALLENGE_ALTAR_HALF, CHALLENGE_ALTAR_HEIGHT / 2, CHALLENGE_ALTAR_HALF]} position={[0, CHALLENGE_ALTAR_HEIGHT / 2, 0]} />
         </RigidBody>
         <mesh position={[0, 0.36, 0]}>
           <cylinderGeometry args={[PLATE_RADIUS, PLATE_RADIUS, 0.05, 20]} />

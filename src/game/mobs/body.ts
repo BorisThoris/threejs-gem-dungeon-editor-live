@@ -8,6 +8,9 @@ import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
 import { trapsFor } from "../traps/placement";
 import { FLIGHT_HEIGHT, PIT_RADIUS } from "../world";
+import { PLINTH_HEIGHT, PLINTH_RADIUS } from "../arena/sweep";
+import { CHALLENGE_ALTAR_HALF, CHALLENGE_ALTAR_HEIGHT, MEMORY_PEDESTAL_HEIGHT, MEMORY_PEDESTAL_RADIUS,
+  challengeAnchors, memoryAnchors } from "../puzzles/anchors";
 import type { Patch } from "../warden/steer";
 
 /**
@@ -70,11 +73,22 @@ export function obstaclesFor(
 ): Patch[] {
   void placed;
   if (body === "ghost") return [];
+  const fixtures: { x: number; z: number; r: number; height: number }[] = [];
+  if (room.kind === "arena") fixtures.push({ x: 0, z: 0, r: PLINTH_RADIUS, height: PLINTH_HEIGHT });
+  if (room.kind === "memory") {
+    for (const [x, , z] of memoryAnchors(room).slice(0, 4)) fixtures.push({ x, z, r: MEMORY_PEDESTAL_RADIUS, height: MEMORY_PEDESTAL_HEIGHT });
+  }
+  if (room.kind === "challenge") {
+    const [x, , z] = challengeAnchors(room)[0];
+    fixtures.push({ x, z, r: Math.SQRT2 * CHALLENGE_ALTAR_HALF, height: CHALLENGE_ALTAR_HEIGHT });
+  }
+  const content = fixtures.filter((p) => body === "ground" || p.height >= FLIGHT_HEIGHT)
+    .map((p) => ({ x: p.x, z: p.z, r: p.r + BODY_HALF_WIDTH, berth: 0 }));
   // A barrel that has burst is not in anyone's way any more.
-  return placementsFor(room, seed)
+  return [...content, ...placementsFor(room, seed)
     .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
     .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind], p.scale ?? 1))
-    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius * (p.scale ?? 1) + BODY_HALF_WIDTH, berth: 0 }));
+    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius * (p.scale ?? 1) + BODY_HALF_WIDTH, berth: 0 }))];
 }
 
 /** What bites this body here: the floor's spikes and any live snare, or nothing. */
