@@ -377,6 +377,15 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     const selected = shuffle(architecture, doors).slice(0, floor === 1 ? 1 : floor === 2 ? 2 : 4);
     room.wings = {};
     for (const dir of selected) room.wings[dir] = 3 + floor * 2 + Math.floor(architecture() * floor) * 2;
+    // A side gallery creates another place to turn out of sight even in
+    // a room with just one exit. Keep secret walls in the chamber and use
+    // a separate draw so galleries do not change the travel passages.
+    if (floor > 1) {
+      const galleryRng = createRng(`${seed}:${room.id}:side-gallery`);
+      const closed = DIRS.filter((dir) => !room.links[dir] && room.secret?.dir !== dir);
+      const gallery = closed.length ? pick(galleryRng, closed) : undefined;
+      if (gallery) room.wings[gallery] = 3 + floor * 2;
+    }
   }
 
   return {

@@ -127,7 +127,7 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
    * a gate is a fragment that can lock a floor.
    */
   const walls = (["north", "east", "south", "west"] as const).filter(
-    (d) => !room.links[d] && room.secret?.dir !== d
+    (d) => !room.links[d] && !room.wings?.[d] && room.secret?.dir !== d
   );
   if (!walls.length) return out;
   for (let i = 0; i < Math.min(many, MOST_PER_ROOM); i++) {

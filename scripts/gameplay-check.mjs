@@ -19,7 +19,7 @@ const L = await import(pathToFileURL(out).href);
 const summary = [];
 let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0, arrivals = 0;
 for (const floor of [1, 2, 3]) {
-  let area = 0, wings = 0, rooms = 0, irregular = 0;
+  let area = 0, wings = 0, rooms = 0, irregular = 0, galleries = 0;
   for (let seed = 1; seed <= 120; seed++) {
     const d = L.generateDungeon({ seed, floor });
     assert.deepEqual(d, L.generateDungeon({ seed, floor }), "same seed/depth reproduces architecture");
@@ -39,6 +39,22 @@ for (const floor of [1, 2, 3]) {
       area += L.floorRects(room).reduce((sum, r) => sum + r.width * r.depth, 0);
       wings += Object.keys(room.wings ?? {}).length;
       if (Object.keys(room.wings ?? {}).length > 1) irregular++;
+      for (const dir of L.DIRS.filter((dir) => room.wings?.[dir] && !room.links[dir])) {
+        galleries++;
+        assert.notEqual(room.secret?.dir, dir, "galleries leave secret wall approaches unchanged");
+        const axis = L.DIR_STEP[dir];
+        const distance = L.doorReach(room, dir) - 1;
+        let x = 0, z = 0;
+        for (let i = 0; i < 600 && Math.hypot(x - axis.x * distance, z - axis.z * distance) > 0.11; i++) {
+          [x, z] = L.roomStep(room, x, z, axis.x * 0.1, axis.z * 0.1);
+        }
+        assert.ok(Math.hypot(x - axis.x * distance, z - axis.z * distance) <= 0.11, "closed gallery is reachable from the chamber");
+        assert.ok(!L.roomSegmentClear(room, x, z, axis.x * (distance + 2), axis.z * (distance + 2), 0.6), "closed gallery ends in a solid wall");
+        const hidden = { x: room.size / 2 - 1, z: room.size / 2 - 1 };
+        if (axis.x) hidden.x = axis.x * (room.size / 2 - 1);
+        else hidden.z = axis.z * (room.size / 2 - 1);
+        assert.ok(!L.roomSegmentClear(room, x, z, hidden.x, hidden.z), "gallery corner can break chamber sight");
+      }
       for (const dir of L.DIRS.filter((dir) => room.links[dir])) {
         const spawn = L.spawnAfterTravel(room, L.OPPOSITE[dir]).position;
         assert.ok(L.insideRoom(room, spawn[0], spawn[2], L.PLAYER_CAPSULE_RADIUS), "arrival is on walkable floor");
@@ -104,11 +120,13 @@ for (const floor of [1, 2, 3]) {
       }
     }
   }
-  summary.push({ floor, rooms, meanArea: Math.round(area / rooms), wings, irregular });
+  summary.push({ floor, rooms, meanArea: Math.round(area / rooms), wings, irregular, galleries });
 }
 assert.ok(summary[1].meanArea > summary[0].meanArea && summary[2].meanArea > summary[1].meanArea);
 assert.ok(summary[2].wings > summary[1].wings && summary[1].wings > summary[0].wings);
 assert.ok(summary[2].irregular > summary[1].irregular);
+assert.equal(summary[0].galleries, 0, "first floor keeps simpler travel passages");
+assert.ok(summary[1].galleries > 0 && summary[2].galleries > summary[1].galleries, "deeper floors add more side galleries");
 assert.ok(L.inShoveArc(0, -2, 0, -1));
 assert.ok(!L.inShoveArc(0, 2, 0, -1));
 assert.ok(!L.inShoveArc(0, -3.1, 0, -1));
@@ -232,6 +250,30 @@ try {
   await page.waitForFunction((half) => window.__playerDebug.z > -half + 0.5, wing.half, { timeout: 20000 });
   await page.keyboard.up("KeyW");
   console.log("PASS physical corridor traversal into chamber");
+  let galleryFixture;
+  for (let seed = 1; seed <= 120 && !galleryFixture; seed++) {
+    const dungeon = L.generateDungeon({ seed, floor: 3 });
+    const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north);
+    if (room) galleryFixture = { dungeon, roomId: room.id, half: room.size / 2, reach: L.doorReach(room, "north") };
+  }
+  assert.ok(galleryFixture, "a rendered closed north gallery exists");
+  await page.evaluate(({ dungeon, roomId }) => {
+    window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: true,
+      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, enteredBy: null });
+  }, galleryFixture);
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(({ half }) => {
+    window.__bus.emit("teleport", { position: [0, 1.5, -half + 1] });
+    window.__bus.emit("lookSet", { yaw: 0, pitch: 0 });
+  }, galleryFixture);
+  await page.waitForTimeout(300);
+  await page.keyboard.down("KeyW");
+  await page.waitForFunction((reach) => window.__playerDebug.z < -reach + 1, galleryFixture.reach, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  await page.keyboard.up("KeyW");
+  assert.ok(await page.evaluate((reach) => window.__playerDebug.z > -reach && window.__run.getState().currentRoomId === window.__run.getState().dungeon.rooms.find((r) => r.wings?.north && !r.links.north).id, galleryFixture.reach),
+    "gallery end wall stops the player without room travel");
+  console.log("PASS physical side-gallery traversal and solid end wall");
   let sightFixture;
   for (let seed = 1; seed <= 300 && !sightFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
