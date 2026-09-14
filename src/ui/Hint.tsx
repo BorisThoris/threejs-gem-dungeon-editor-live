@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { bus } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
@@ -57,15 +57,20 @@ export function Hint() {
     inControl && !captured && lockable ? "Click the game to look around" : null,
     inControl && touch && !tutored ? "One thumb walks, the other looks" : null,
   ].filter(Boolean);
+  const bounds = useGuidanceBounds(lines.length, touch);
   if (lines.length === 0) return null;
   return (
     <div
+      data-testid="guidance"
       style={{
         position: "fixed",
-        left: "50%",
-        top: 24,
-        transform: "translateX(-50%)",
+        left: bounds.left,
+        right: bounds.right,
+        top: bounds.top,
         maxWidth: 640,
+        marginInline: "auto",
+        boxSizing: "border-box",
+        overflowWrap: "anywhere",
         padding: "10px 16px",
         borderRadius: 6,
         background: colors.panel,
@@ -85,6 +90,32 @@ export function Hint() {
       ))}
     </div>
   );
+}
+
+/** Reserve the actual HUD and map footprints, including scaled text and touch pause. */
+function useGuidanceBounds(lineCount: number, touch: boolean) {
+  const [bounds, setBounds] = useState({ left: 24, right: 24, top: 24 });
+  useLayoutEffect(() => {
+    const hud = document.querySelector('[data-testid="hud"]');
+    const map = document.querySelector('[data-testid="minimap"]');
+    const pause = document.querySelector('[data-testid="touch-pause"]');
+    const measure = () => {
+      const h = hud?.getBoundingClientRect();
+      const rightEdge = Math.min(map?.getBoundingClientRect().left ?? window.innerWidth - 12,
+        pause?.getBoundingClientRect().left ?? window.innerWidth - 12);
+      const left = (h?.right ?? 12) + 12;
+      const right = window.innerWidth - rightEdge + 12;
+      const next = window.innerWidth - left - right >= 180 ? { left, right, top: 24 }
+        : { left: 12, right: 12, top: Math.max(h?.bottom ?? 12, map?.getBoundingClientRect().bottom ?? 12) + 12 };
+      setBounds((old) => old.left === next.left && old.right === next.right && old.top === next.top ? old : next);
+    };
+    const observer = new ResizeObserver(measure);
+    for (const element of [hud, map, pause]) if (element) observer.observe(element);
+    window.addEventListener("resize", measure);
+    measure();
+    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
+  }, [lineCount, touch]);
+  return bounds;
 }
 
 /** Whether the game holds the pointer, so the first-time player is told how to look. */

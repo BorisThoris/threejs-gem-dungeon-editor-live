@@ -1,0 +1,45 @@
+import assert from "node:assert/strict";
+import { chromium } from "playwright-core";
+import { join } from "node:path";
+
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
+  args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+try {
+  for (const [name, width, height, touch] of [["desktop", 1280, 800, false], ["phone", 844, 390, true], ["tablet", 1024, 768, true]]) {
+    const context = await browser.newContext({ viewport: { width, height }, screen: { width, height }, hasTouch: touch, isMobile: touch });
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ touchControls: "on" })));
+    await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5198"}/`);
+    await page.locator('[data-testid="menu-start"]').click();
+    await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
+    await page.evaluate(() => {
+      window.__run.getState().lockInput();
+      window.__bus.emit("notice", "Bats stir overhead. Move clear of the roost.");
+      window.__bus.emit("hint", "Collect gems for the toll, then find the stairs to descend.");
+    });
+    for (const scale of [1, 1.6]) {
+      await page.evaluate(async (value) => {
+        (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(value);
+        window.__run.setState({ thiefPhase: value === 1.6 ? "fleeing" : "away", thiefHolding: 2, thiefKey: true });
+      }, scale);
+      await page.waitForFunction(() => {
+        const g = document.querySelector('[data-testid="guidance"]')?.getBoundingClientRect();
+        const boxes = ["hud", "minimap", "touch-pause"].map((id) => document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()).filter(Boolean);
+        return g && g.left >= 0 && g.right <= innerWidth && boxes.every((b) => g.left >= b.right || g.right <= b.left || g.top >= b.bottom || g.bottom <= b.top);
+      });
+      assert.ok(await page.locator('[data-testid="guidance"]').evaluate((g) => g.scrollWidth <= g.clientWidth), "guidance text wraps inside its panel");
+      console.log(`PASS ${name}: guidance clears HUD, minimap and pause at text scale ${scale}`);
+      if (scale === 1 && process.env.OVERLAY_SCREENSHOTS) await page.screenshot({ path: join(process.env.OVERLAY_SCREENSHOTS, `overlay-${name}.png`) });
+    }
+    await page.setViewportSize({ width: width - 120, height });
+    await page.waitForFunction(() => {
+      const g = document.querySelector('[data-testid="guidance"]').getBoundingClientRect();
+      const h = document.querySelector('[data-testid="hud"]').getBoundingClientRect();
+      return g.right <= innerWidth && (g.left >= h.right || g.top >= h.bottom);
+    });
+    assert.deepEqual(errors, [], "layout has no runtime errors");
+    await context.close();
+  }
+} finally { await browser.close(); }

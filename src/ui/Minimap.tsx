@@ -186,6 +186,7 @@ export function Minimap() {
 
   return (
     <div
+      data-testid="minimap"
       style={{
         position: "fixed",
         top: 20,

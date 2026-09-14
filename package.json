@@ -30,6 +30,7 @@
         "test:audio": "node scripts/audio-check.mjs",
         "test:run": "node scripts/run-through.mjs",
         "test:gameplay": "node scripts/gameplay-check.mjs",
+        "test:overlay": "node scripts/overlay-check.mjs",
         "tour": "node scripts/tour.mjs"
     },
     "dependencies": {
