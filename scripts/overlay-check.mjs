@@ -39,6 +39,26 @@ try {
       const h = document.querySelector('[data-testid="hud"]').getBoundingClientRect();
       return g.right <= innerWidth && (g.left >= h.right || g.top >= h.bottom);
     });
+    if (name === "desktop") {
+      await page.evaluate(async () => {
+        const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
+        settings.setTouchControls("off");
+        settings.bind("shove", "KeyQ");
+        settings.bind("lantern", "KeyL");
+        window.__bus.emit("wardenEntered", { roomId: window.__run.getState().currentRoomId });
+      });
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT briefly staggers"));
+      await page.evaluate(() => window.__bus.emit("harrierWoke"));
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT to drive it off"));
+      await page.evaluate(() => window.__bus.emit("lanternToggled", { raised: true }));
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("L puts it down"));
+      await page.evaluate(async () => {
+        (await import("/src/game/state/settings.ts")).useSettings.getState().setTouchControls("on");
+        window.__bus.emit("thiefCame", { roomId: window.__run.getState().currentRoomId });
+      });
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("use SHOVE when close"));
+      console.log("PASS live encounter lessons use rebound keyboard controls and switch to touch guidance");
+    }
     assert.deepEqual(errors, [], "layout has no runtime errors");
     await context.close();
   }
