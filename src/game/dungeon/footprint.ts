@@ -4,6 +4,8 @@ export interface FloorRect { x: number; z: number; width: number; depth: number 
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
 /** Wide enough to dodge and pass a pursuer; furniture stays in the chamber. */
 export const CORRIDOR_WIDTH = 7;
+export const corridorWidth = (room: Room, dir: Dir): number =>
+  Math.min(room.size, Math.max(CORRIDOR_WIDTH, room.wingWidths?.[dir] ?? CORRIDOR_WIDTH));
 
 export const doorReach = (room: Room, dir: Dir): number => halfSize(room) + (room.wings?.[dir] ?? 0);
 
@@ -13,12 +15,13 @@ export function floorRects(room: Room): FloorRect[] {
   const rects: FloorRect[] = [{ x: 0, z: 0, width: room.size, depth: room.size }];
   for (const dir of DIRS) {
     const length = room.wings?.[dir] ?? 0;
+    const width = corridorWidth(room, dir);
     if (length <= 0) continue;
     const vertical = dir === "north" || dir === "south";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
     const offset = sign * (half + length / 2);
     rects.push({ x: vertical ? 0 : offset, z: vertical ? offset : 0,
-      width: vertical ? CORRIDOR_WIDTH : length, depth: vertical ? length : CORRIDOR_WIDTH });
+      width: vertical ? width : length, depth: vertical ? length : width });
   }
   return rects;
 }
@@ -26,9 +29,9 @@ export function floorRects(room: Room): FloorRect[] {
 /** The real concave outline, shared by meshes, collisions and geometry checks. */
 export function wallEdges(room: Room): WallEdge[] {
   const half = halfSize(room);
-  const c = CORRIDOR_WIDTH / 2;
   const edges: WallEdge[] = [];
   for (const dir of DIRS) {
+    const width = corridorWidth(room, dir), c = width / 2;
     const along = dir === "north" || dir === "south" ? "x" : "z";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
     const length = room.wings?.[dir] ?? 0;
@@ -41,7 +44,7 @@ export function wallEdges(room: Room): WallEdge[] {
       const facing = along === "x" ? (side < 0 ? "west" : "east") : (side < 0 ? "north" : "south");
       edge(sign * (half + length / 2), side * c, length, along === "x" ? "z" : "x", facing);
     }
-    edge(0, sign * (half + length), CORRIDOR_WIDTH, along, dir);
+    edge(0, sign * (half + length), width, along, dir);
   }
   return edges;
 }
@@ -69,7 +72,7 @@ export function insideRoom(room: Room, x: number, z: number, margin = 0): boolea
     if (!room.wings?.[dir]) return false;
     const vertical = dir === "north" || dir === "south";
     const along = (vertical ? z : x) * (dir === "north" || dir === "west" ? -1 : 1);
-    return along >= 0 && along <= doorReach(room, dir) - margin && Math.abs(vertical ? x : z) <= CORRIDOR_WIDTH / 2 - margin;
+    return along >= 0 && along <= doorReach(room, dir) - margin && Math.abs(vertical ? x : z) <= corridorWidth(room, dir) / 2 - margin;
   });
 }
 
@@ -80,7 +83,7 @@ export function roomSegmentClear(room: Room, x: number, z: number, tx: number, t
   const bounds = [[-half, half, -half, half]];
   for (const dir of DIRS) {
     if (!room.wings?.[dir]) continue;
-    const reach = doorReach(room, dir) - margin, c = CORRIDOR_WIDTH / 2 - margin;
+    const reach = doorReach(room, dir) - margin, c = corridorWidth(room, dir) / 2 - margin;
     bounds.push(dir === "north" ? [-c, c, -reach, 0] : dir === "south" ? [-c, c, 0, reach]
       : dir === "west" ? [-reach, 0, -c, c] : [0, reach, -c, c]);
   }

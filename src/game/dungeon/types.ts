@@ -173,6 +173,8 @@ export interface Room {
   links: Partial<Record<Dir, string>>;
   /** Walkable corridor wings beyond the furnished chamber, in metres. */
   wings?: Partial<Record<Dir, number>>;
+  /** Optional wider wings, used for the deeper floors' closed side galleries. */
+  wingWidths?: Partial<Record<Dir, number>>;
   /**
    * A wall with a crack in it, and the room behind it.
    *

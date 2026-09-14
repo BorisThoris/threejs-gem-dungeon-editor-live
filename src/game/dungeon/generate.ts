@@ -1,5 +1,6 @@
 import { shapeFits } from "./layout";
 import { createRng, pick, shuffle } from "../rng";
+import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
 import { foreshadowingTemplate, templatesForKind } from "../rooms/templates";
 import {
@@ -384,7 +385,10 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
       const galleryRng = createRng(`${seed}:${room.id}:side-gallery`);
       const closed = DIRS.filter((dir) => !room.links[dir] && room.secret?.dir !== dir);
       const gallery = closed.length ? pick(galleryRng, closed) : undefined;
-      if (gallery) room.wings[gallery] = 3 + floor * 2;
+      if (gallery) {
+        room.wings[gallery] = 3 + floor * 2;
+        room.wingWidths = { [gallery]: Math.min(room.size - 4, CORRIDOR_WIDTH + (floor - 1) * 2) };
+      }
     }
   }
 

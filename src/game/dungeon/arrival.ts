@@ -1,4 +1,4 @@
-import { insideRoom, doorReach, CORRIDOR_WIDTH } from "./footprint";
+import { insideRoom, doorReach, corridorWidth } from "./footprint";
 import { spawnAfterTravel } from "./layout";
 import { DIRS, DIR_STEP, OPPOSITE, halfSize, type Dir, type Room } from "./types";
 
@@ -17,7 +17,7 @@ export function encounterArrival(room: Room, from: Dir | null, player: Point,
   const candidates: Point[] = [];
   if (from) {
     const axis = DIR_STEP[from];
-    const across = room.wings?.[from] ? CORRIDOR_WIDTH / 2 - margin - 0.2 : half * 0.5;
+    const across = room.wings?.[from] ? corridorWidth(room, from) / 2 - margin - 0.2 : half * 0.5;
     for (let along = doorReach(room, from) - margin - 0.2; along >= 0; along -= 2) {
       for (const side of [-1, 1]) candidates.push({ x: axis.x * along + axis.z * across * side,
         z: axis.z * along + axis.x * across * side });
