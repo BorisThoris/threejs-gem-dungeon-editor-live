@@ -3,11 +3,13 @@ import { Fragment, useCallback, useRef, useState, type CSSProperties } from "rea
 import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
 import { enterImmersive, useTouchControls } from "../game/input/device";
+import { keysLabel } from "../game/input/bindings";
 import { useDeeds } from "../game/state/deeds";
 import { useLedger } from "../game/state/ledger";
 import { LEDGER_LESSONS } from "../game/ledger/lessons";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
+import { useSettings } from "../game/state/settings";
 import { FLOORS, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
@@ -62,6 +64,7 @@ export function MainMenu() {
   usePadMenu({ container: panelRef, onBack: back });
   // The controls page describes whichever is in the player's hands.
   const touch = useTouchControls();
+  const bindings = useSettings((s) => s.bindings);
   // A phone wants the whole screen and wants it sideways, and the tap that
   // starts the run is the gesture the browser needs to be asked on.
   const begin = (seed?: number) => {
@@ -168,31 +171,31 @@ export function MainMenu() {
           </>
         ) : (
           <>
-            <dl style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}>
+            <dl data-testid="controls-help" style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}>
               <dt style={{ color: colors.accent }}>Move</dt>
-              <dd style={{ margin: 0 }}>W A S D, or the left stick</dd>
+              <dd style={{ margin: 0 }}>Forward: {keysLabel(bindings.forward)}; backward: {keysLabel(bindings.back)}; left: {keysLabel(bindings.left)}; right: {keysLabel(bindings.right)}. Or the left stick.</dd>
               <dt style={{ color: colors.accent }}>Look</dt>
               <dd style={{ margin: 0 }}>Click the game to take the mouse, Esc gives it back; or the right stick</dd>
               <dt style={{ color: colors.accent }}>Use</dt>
-              <dd style={{ margin: 0 }}>E at a door, counter or lectern, or A on a pad</dd>
+              <dd style={{ margin: 0 }}>{keysLabel(bindings.interact)} at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Shove</dt>
-              <dd style={{ margin: 0 }}>Space or RT shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
+              <dd style={{ margin: 0 }}>{keysLabel(bindings.shove)} or RT shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
-              <dd style={{ margin: 0 }}>1 to 4 drinks or reads that slot, or X, Y and the shoulders on a pad</dd>
+              <dd style={{ margin: 0 }}>Slots 1–4: {[bindings.slot1, bindings.slot2, bindings.slot3, bindings.slot4].map(keysLabel).join("; ")}. Drink or read that slot, or use X, Y and the shoulders on a pad.</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
               <dd style={{ margin: 0 }}>
-                Hold Shift, or L3. The Warden is slower than you are - but running is
+                Hold {keysLabel(bindings.sprint)}, or L3. The Warden is slower than you are - but running is
                 loud, and while it can hear you it walks straight for you.
               </dd>
               <dt style={{ color: colors.accent }}>Lantern</dt>
               <dd style={{ margin: 0 }}>
-                F, or click the right stick. Up, you see the room and everything down
+                {keysLabel(bindings.lantern)}, or click the right stick. Up, you see the room and everything down
                 here sees you; down, you have a hand's worth of glow and nothing knows
                 where you are. It only burns oil while it is up, and braziers fill it.
               </dd>
               <dt style={{ color: colors.accent }}>Bar a door</dt>
               <dd style={{ margin: 0 }}>
-                B at a doorway, or d-pad down. It goes off the Warden's map for
+                {keysLabel(bindings.bar)} at a doorway, or d-pad down. It goes off the Warden's map for
                 forty-five seconds and it walks round - and hammering it up is the
                 loudest thing you can do down here.
               </dd>

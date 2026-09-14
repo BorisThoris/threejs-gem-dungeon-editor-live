@@ -58,6 +58,26 @@ try {
       });
       await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("use SHOVE when close"));
       console.log("PASS live encounter lessons use rebound keyboard controls and switch to touch guidance");
+      await page.evaluate(async () => {
+        const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
+        settings.setTouchControls("off");
+        settings.bind("forward", "KeyI");
+        settings.bind("interact", "KeyU");
+        settings.bind("slot1", "Digit7");
+        window.__run.getState().quitToMenu();
+      });
+      await page.getByRole("button", { name: "Controls", exact: true }).click();
+      const help = page.getByTestId("controls-help");
+      assert.match(await help.innerText(), /Forward: I/);
+      assert.match(await help.innerText(), /U at a door/);
+      assert.match(await help.innerText(), /Q or RT shoves/);
+      assert.match(await help.innerText(), /Slots 1–4: 7;/);
+      assert.match(await help.innerText(), /L, or click the right stick/);
+      await page.evaluate(async () => {
+        (await import("/src/game/state/settings.ts")).useSettings.getState().bind("shove", "KeyZ");
+      });
+      await page.waitForFunction(() => document.querySelector('[data-testid="controls-help"]').textContent.includes("Z or RT shoves"));
+      console.log("PASS controls menu shows rebound movement, use, shove, satchel and lantern keys and updates live");
     }
     assert.deepEqual(errors, [], "layout has no runtime errors");
     await context.close();
