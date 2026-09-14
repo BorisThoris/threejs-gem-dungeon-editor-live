@@ -5,7 +5,7 @@ import { Group } from "three";
 import { keeperPostPosition } from "./posts";
 import type { Dir, Room } from "../dungeon/types";
 import { bus } from "../events";
-import { canControl, keeperStalled, useRun } from "../state/run";
+import { canControl, keeperStalled, runClock, useRun } from "../state/run";
 import { GROUND_Y, KEEPER_REACH } from "../world";
 
 /**
@@ -32,11 +32,12 @@ export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
     const arm = halberd.current;
     if (!g) return;
     const run = useRun.getState();
+    if (!canControl(run)) return;
     const cam = state.camera.position;
     const dxp = cam.x - post.x;
     const dzp = cam.z - post.z;
     const distance = Math.hypot(dxp, dzp);
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
     const down = keeperStalled(run);
     /**
      * The halberd comes down as the player closes.
@@ -51,14 +52,16 @@ export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
     g.scale.y = down ? 0.55 : 1;
     g.position.set(post.x, GROUND_Y + (down ? 0 : Math.sin(t * 1.3) * 0.02), post.z);
     if (import.meta.env.DEV) {
-      (window as unknown as { __keeper?: Record<string, unknown> }).__keeper = { room: room.id, dir, x: post.x, z: post.z, distance, knelt: down, tell };
+      (window as unknown as { __keeper?: Record<string, unknown> }).__keeper = { room: room.id, dir,
+        x: post.x, z: post.z, y: g.position.y, facing: g.rotation.y, halberd: arm?.rotation.z,
+        scaleY: g.scale.y, distance, knelt: down, tell };
     }
-    if (!canControl(run) || down) return;
+    if (down) return;
     if (distance <= KEEPER_REACH) run.keeperStrike();
   });
 
   return (
-    <group ref={group}>
+    <group ref={group} position={[post.x, GROUND_Y, post.z]}>
       {/* A broad iron figure, taller than the doorway is wide, with a
           visor that glows while it stands and goes dark when it kneels. */}
       <mesh position={[0, 1.4, 0]} castShadow>

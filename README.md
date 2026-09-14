@@ -58,6 +58,7 @@ light signal gives it a fresh destination.
 The Reaper follows through corridor wings and closed galleries as well as
 the main chamber; a dead end buys time rather than permanent shelter.
 Its movement, facing and ghostly bob freeze while the run is paused.
+The Keeper's facing, idle bob and halberd warning freeze with pause too.
 Entrance lanes stay clear of damaging traps; dart plates sit off those
 lanes, light before firing, and hurt only across their visible footprint.
 Grates wait until you have moved clear of the landing before dropping.

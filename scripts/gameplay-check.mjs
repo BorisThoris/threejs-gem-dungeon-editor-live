@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "rooms/templates", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "rooms/templates", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement", "keeper/posts",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -709,6 +709,33 @@ try {
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   assert.equal(await page.evaluate(async () => (await import("/src/game/reaper/position.ts")).reaperAt.roomId), null,
     "Reaper combat position clears when the previous run ends");
+  const keeperDir = Object.keys(bombHost.links).find((dir) => bombHost.links[dir] === bombDungeon.endId);
+  const keeperPost = L.keeperPostPosition(bombHost, keeperDir), keeperAxis = L.DIR_STEP[keeperDir];
+  await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId,
+    floor: 3, transitioning: true, enteredBy: null, wardenRoomId: null,
+    harrierAwake: false, reaperAwake: false, thiefPhase: "away", alarm: 0 }),
+  { dungeon: bombDungeon, roomId: bombHost.id });
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(({ post, axis }) => window.__bus.emit("teleport", {
+    position: [post.x - axis.x * 3, 1.5, post.z - axis.z * 3] }), { post: keeperPost, axis: keeperAxis });
+  await page.waitForTimeout(200);
+  const keeperPose = await page.evaluate(() => {
+    window.__run.getState().pause();
+    return { y: window.__keeper.y, facing: window.__keeper.facing, halberd: window.__keeper.halberd,
+      scaleY: window.__keeper.scaleY, tell: window.__keeper.tell };
+  });
+  await page.evaluate(({ post, axis }) => window.__bus.emit("teleport", {
+    position: [post.x - axis.x + axis.z * 0.4, 1.5, post.z - axis.z + axis.x * 0.4] }),
+  { post: keeperPost, axis: keeperAxis });
+  await page.waitForTimeout(1200);
+  assert.deepEqual(await page.evaluate(() => ({ y: window.__keeper.y, facing: window.__keeper.facing,
+    halberd: window.__keeper.halberd, scaleY: window.__keeper.scaleY, tell: window.__keeper.tell })), keeperPose,
+  "Keeper bob, facing and attack warning remain frozen even when the controlled camera moves during pause");
+  assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "paused Keeper does not strike");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction(() => window.__keeper.tell > 0.9 && window.__run.getState().lives < 3);
+  assert.equal(await page.evaluate(() => window.__run.getState().lives), 2, "Keeper attack resumes inside its reach");
+  console.log("PASS Keeper paused pose and warning, and resumed close-range strike");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }
