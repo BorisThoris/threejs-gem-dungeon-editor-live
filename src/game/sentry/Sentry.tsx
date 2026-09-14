@@ -1,11 +1,12 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
-import type { Group, Mesh, MeshBasicMaterial } from "three";
+import { CircleGeometry, type Group, type Mesh, type MeshBasicMaterial } from "three";
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
-import { canControl, lanternLit, runClock, useRun } from "../state/run";
+import { canControl, lanternLit, runClock, useCurrentRoom, useRun } from "../state/run";
+import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
@@ -45,6 +46,16 @@ function angleBetween(a: number, b: number): number {
  * room is entirely about judging it.
  */
 export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
+  const room = useCurrentRoom();
+  const edges = useMemo(() => room ? wallEdges(room) : [], [room]);
+  const beam = useMemo(() => {
+    const geometry = new CircleGeometry(SENTRY_RANGE, 28,
+      -Math.PI / 2 - SENTRY_HALF_ANGLE, SENTRY_HALF_ANGLE * 2);
+    // Keep the full fan's bounds as clipped rays shorten and lengthen.
+    geometry.computeBoundingSphere();
+    return geometry;
+  }, []);
+  useEffect(() => () => beam.dispose(), [beam]);
   const head = useRef<Group>(null);
   const wedge = useRef<Mesh>(null);
   /** When the light first touched the player, or null while it has not. */
@@ -76,6 +87,16 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     const now = runClock(run);
     const facing = phase + now * SENTRY_SPIN;
     g.rotation.y = facing;
+    // Reuse the fan's vertices; walls trim each ray before the beam is drawn.
+    const vertices = beam.attributes.position;
+    for (let i = 0; i <= 28; i++) {
+      const angle = -Math.PI / 2 - SENTRY_HALF_ANGLE + i / 28 * SENTRY_HALF_ANGLE * 2;
+      const x = Math.cos(angle), z = -Math.sin(angle);
+      const reach = roomRayReach(position[0], position[2], x * Math.cos(facing) + z * Math.sin(facing),
+        -x * Math.sin(facing) + z * Math.cos(facing), SENTRY_RANGE, edges);
+      vertices.setXYZ(i + 1, x * reach, -z * reach, 0);
+    }
+    vertices.needsUpdate = true;
 
     if (!canControl(run)) return;
 
@@ -87,7 +108,8 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     // world (sin, cos) - the same convention the Warden faces by.
     const toPlayer = Math.atan2(dx, dz);
     const inside =
-      distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE;
+      distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE
+      && !!room && roomSegmentClear(room, position[0], position[2], cam.x, cam.z);
 
     /**
      * How long the light has held you: a span, not a sum.
@@ -213,9 +235,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           letting you judge where the light is.
         */}
         <mesh ref={wedge} position={[0, -2.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry
-            args={[SENTRY_RANGE, 28, -Math.PI / 2 - SENTRY_HALF_ANGLE, SENTRY_HALF_ANGLE * 2]}
-          />
+          <primitive object={beam} attach="geometry" />
           <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
         </mesh>
       </group>

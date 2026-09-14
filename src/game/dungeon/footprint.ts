@@ -46,6 +46,21 @@ export function wallEdges(room: Room): WallEdge[] {
   return edges;
 }
 
+/** Distance to the first room wall along a unit ray, including concave corners. */
+export function roomRayReach(x: number, z: number, dx: number, dz: number, range: number,
+  edges: readonly WallEdge[]): number {
+  let reach = range;
+  for (const edge of edges) {
+    const divisor = edge.along === "x" ? dz : dx;
+    if (Math.abs(divisor) < 1e-10) continue;
+    const distance = (edge.along === "x" ? edge.z - z : edge.x - x) / divisor;
+    if (distance < 0 || distance > reach) continue;
+    const across = edge.along === "x" ? x + dx * distance - edge.x : z + dz * distance - edge.z;
+    if (Math.abs(across) <= edge.length / 2 + 1e-9) reach = distance;
+  }
+  return reach;
+}
+
 export function insideRoom(room: Room, x: number, z: number, margin = 0): boolean {
   const half = halfSize(room);
   if (Math.abs(x) <= half - margin && Math.abs(z) <= half - margin) return true;

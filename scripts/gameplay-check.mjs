@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -99,6 +99,8 @@ for (const floor of [1, 2, 3]) {
         const v = L.DIR_STEP[e.dir];
         assert.ok(L.insideRoom(room, e.x - v.x * 0.1, e.z - v.z * 0.1));
         assert.ok(!L.insideRoom(room, e.x + v.x * 0.1, e.z + v.z * 0.1));
+        assert.ok(Math.abs(L.roomRayReach(e.x - v.x * 0.25, e.z - v.z * 0.25, v.x, v.z, 10, L.wallEdges(room)) - 0.25) < 1e-8,
+          "watcher beam stops at the first physical wall");
       }
     }
   }
@@ -230,6 +232,38 @@ try {
   await page.waitForFunction((half) => window.__playerDebug.z > -half + 0.5, wing.half, { timeout: 20000 });
   await page.keyboard.up("KeyW");
   console.log("PASS physical corridor traversal into chamber");
+  let sightFixture;
+  for (let seed = 1; seed <= 300 && !sightFixture; seed++) {
+    const dungeon = L.generateDungeon({ seed, floor: 3 });
+    for (const room of dungeon.rooms.filter((r) => r.kind === "normal")) {
+      const sentry = L.sentryFor(room, seed, 3);
+      if (!sentry) continue;
+      for (const dir of L.DIRS.filter((dir) => room.wings?.[dir])) {
+        const axis = L.DIR_STEP[dir], target = [axis.x * (room.size / 2 + 1), 1.5, axis.z * (room.size / 2 + 1)];
+        const dx = target[0] - sentry.at[0], dz = target[2] - sentry.at[2];
+        if (Math.hypot(dx, dz) < L.SENTRY_RANGE - 0.5 && !L.roomSegmentClear(room, sentry.at[0], sentry.at[2], target[0], target[2])) {
+          sightFixture = { dungeon, roomId: room.id, target, bearing: Math.atan2(dx, dz), distance: Math.hypot(dx, dz) }; break;
+        }
+      }
+    }
+  }
+  assert.ok(sightFixture, "a watcher and player can stand across a corridor corner within beam range");
+  await page.evaluate(({ dungeon, roomId }) => {
+    delete window.__sentry;
+    window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: true, floorRooms: 0, alarm: 0,
+      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, noisyUntil: 0 });
+  }, sightFixture);
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(({ target }) => window.__bus.emit("teleport", { position: target }), sightFixture);
+  await page.waitForFunction(({ bearing, distance, halfAngle }) => {
+    const s = window.__sentry;
+    if (!s) return false;
+    const angle = Math.atan2(Math.sin(s.facing - bearing), Math.cos(s.facing - bearing));
+    return Math.abs(s.distance - distance) < 0.2 && Math.abs(angle) < halfAngle * 0.25;
+  }, { ...sightFixture, halfAngle: L.SENTRY_HALF_ANGLE }, { timeout: 20000 });
+  assert.ok(await page.evaluate(() => !window.__sentry.inside && window.__sentry.lit === 0),
+    "watcher looks directly toward the player within range but the corner blocks acquisition");
+  console.log("PASS watcher does not acquire through a corridor wall");
   let roostFixture;
   for (let seed = 1; seed <= 300 && !roostFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 1 });

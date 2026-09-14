@@ -213,7 +213,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
      * that flickers.
      */
     const cone = coneFor(CONES.warden ?? [], Math.sin(facing.current), Math.cos(facing.current), dx, dz);
-    if (cone) {
+    if (cone && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) {
       const v = visibilityFor("warden", room.id, playerAt.speed, exposureAt(cam.x, cam.z, obstacles));
       const seen = seenAt(cone, v);
       ladder.report("warden", rungFor(seen), closeEnough(distance), seen >= 0.7, room.id);
