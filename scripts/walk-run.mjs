@@ -39,8 +39,7 @@ async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper
     const start = { x: window.__playerDebug.x, z: window.__playerDebug.z };
     const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
     const sentry = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : []);
-    const blockers = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken),
-      ...(sentry ? [{ x: sentry.at[0], z: sentry.at[2], r: 0.22 + 0.35 }] : []),
+    const blockers = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken, sentry?.at ?? null),
       ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
       ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1 }))];
     const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.65) && blockers.every((p) => {
@@ -208,11 +207,15 @@ try {
         const { insideRoom, roomSegmentClear } = await import("/src/game/dungeon/footprint.ts");
         const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
         const { trapsFor } = await import("/src/game/traps/placement.ts");
+        const { sentryFor } = await import("/src/game/sentry/placement.ts");
+        const { keyFor } = await import("/src/game/rooms/kinds.ts");
         const { PIT_RADIUS, BOMB_RADIUS } = await import("/src/game/world.ts");
         const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+        const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
+        const watcher = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : []);
         const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
         const door = window.__derived.door(room.id, dir), post = { x: door[0] * 0.72, z: door[2] * 0.72 };
-        const blocks = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken), ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
+        const blocks = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken, watcher?.at ?? null), ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
           ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1 }))];
         const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.6) && blocks.every((p) => {
           const dx = b.x - a.x, dz = b.z - a.z;

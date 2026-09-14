@@ -37,6 +37,8 @@ Corridor wings carry seeded ceiling ribs and wall markings, giving long
 passages stable landmarks without obstructing their travel lanes.
 Watcher beams stop at room walls, and corridor corners block visual
 detection by watchers and the Warden. Sound can still carry around them.
+Ground creatures and fliers steer around the watcher's solid post. Their
+look-ahead checks the whole path so small props cannot be skipped over.
 When you leave its view quietly, the Warden pursues your last known spot
 instead of tracking your movement through walls. Noise or the moth's
 light signal gives it a fresh destination.

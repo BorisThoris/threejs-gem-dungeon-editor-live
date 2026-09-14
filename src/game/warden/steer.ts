@@ -94,9 +94,18 @@ export function steerAround(
   // How far to probe: never past the player, so it does not swerve round a
   // patch it was going to stop short of anyway.
   const probe = Math.min(LOOKAHEAD, length);
-  const clear = (dx: number, dz: number) =>
-    !inPatch(patches, x + dx * probe, z + dz * probe, berth)
-    && (!canStep || canStep(x + dx * probe, z + dz * probe));
+  const clear = (dx: number, dz: number) => {
+    const sx = dx * probe, sz = dz * probe;
+    return patches.every((p) => {
+      const px = p.x - x, pz = p.z - z, reach = p.r + (p.berth ?? berth);
+      const from = px * px + pz * pz;
+      // A newly discovered obstacle must allow an actor already inside it
+      // to move out, rather than make every escape heading unavailable.
+      if (from < reach * reach) return px * sx + pz * sz < 0;
+      const t = Math.max(0, Math.min(1, (px * sx + pz * sz) / (probe * probe || 1)));
+      return (px - sx * t) ** 2 + (pz - sz * t) ** 2 > reach * reach;
+    }) && (!canStep || canStep(x + sx, z + sz));
+  };
   if (clear(straight.dx, straight.dz)) return straight;
 
   const base = Math.atan2(straight.dz, straight.dx);

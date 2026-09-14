@@ -3,6 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { encounterArrival } from "../dungeon/arrival";
+import { keyFor } from "../rooms/kinds";
+import { sentryFor } from "../sentry/placement";
 import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
@@ -44,7 +46,11 @@ export function Harrier({ room }: { room: Room }) {
   const roost = useMemo(() => (dungeon ? harrierRoostFor(dungeon, floor) : null), [dungeon, floor]);
   const entry = useMemo(() => (dungeon && roost ? harrierEntryFor(dungeon, roost, room.id) : null), [dungeon, roost, room.id]);
   const to = entry ? room.links[entry] : undefined;
-  const obstacles = useMemo(() => obstaclesFor(BODIES.harrier, room, seed, placed, broken), [room, seed, placed, broken]);
+  const obstacles = useMemo(() => {
+    const key = dungeon?.keyRoomId === room.id ? keyFor(room, seed) : null;
+    const watcher = sentryFor(room, seed, floor, key ? [key] : []);
+    return obstaclesFor(BODIES.harrier, room, seed, placed, broken, watcher?.at ?? null);
+  }, [room, seed, placed, broken, dungeon?.keyRoomId, floor]);
   // What would bite it on the ground: the ground body's list, read only while it is down.
   const bites = useMemo(() => bitesFor("ground", room, seed, placed, sprung), [room, seed, placed, sprung]);
 

@@ -33,8 +33,9 @@ export interface SentryPlacement {
  * in the same space, and 27% stood on the gem. Not near it - on it, the
  * same anchor to two decimal places.
  */
-const POST_RADIUS = 0.22;
-const CLEAR_OF_CONTENT = POST_RADIUS + 1.1;
+export const SENTRY_POST_RADIUS = 0.22;
+export const SENTRY_POST_HEIGHT = 2.2;
+const CLEAR_OF_CONTENT = SENTRY_POST_RADIUS + 1.1;
 
 export function sentryFor(room: Room, seed: number, floor: number, alsoTaken: Vec3[] = []): SentryPlacement | null {
   const chance = floorRules(floor).sentryChance;

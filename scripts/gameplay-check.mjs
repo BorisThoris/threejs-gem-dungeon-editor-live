@@ -60,7 +60,9 @@ for (const floor of [1, 2, 3]) {
         assert.ok(L.insideRoom(room, spawn[0], spawn[2], L.PLAYER_CAPSULE_RADIUS), "arrival is on walkable floor");
         landings++;
         for (const body of ["ground", "flying"]) {
-          const blockers = [...L.obstaclesFor(body, room, d.seed, []), ...L.bitesFor(body, room, d.seed, [])];
+          const key = d.keyRoomId === room.id ? L.keyFor(room, d.seed) : null;
+          const watcher = L.sentryFor(room, d.seed, floor, key ? [key] : []);
+          const blockers = [...L.obstaclesFor(body, room, d.seed, [], [], watcher?.at ?? null), ...L.bitesFor(body, room, d.seed, [])];
           for (const player of [{ x: 0, z: 0 }, { x: spawn[0], z: spawn[2] }]) {
             const at = L.encounterArrival(room, dir, player, blockers);
             assert.ok(L.insideRoom(room, at.x, at.z, 0.6), "arrival stays on the actual room floor");
@@ -151,6 +153,19 @@ for (const [kind, count] of [["arena", 1], ["memory", 4], ["challenge", 1]]) {
     `${kind} built-in colliders block ground creatures while low fixtures remain flyable`);
 }
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "pillar", x: 0, z: -1 }]));
+for (const body of ["ground", "flying"]) {
+  const room = { ...chamber, kind: "normal", size: 24, template: undefined };
+  const post = L.obstaclesFor(body, room, 11, [], [], [0, 0, 0]).find((p) => p.x === 0 && p.z === 0);
+  assert.ok(post, `${body} navigation includes the watcher post`);
+  let x = -3, z = 0;
+  for (let i = 0; i < 600 && Math.hypot(x - 3, z) > 0.2; i++) {
+    const direction = L.steerInRoom(room, x, z, 3, 0, [post], 0.15);
+    [x, z] = L.roomStep(room, x, z, direction.dx * 0.05, direction.dz * 0.05);
+    assert.ok(Math.hypot(x, z) >= post.r, `${body} routes outside the watcher collider`);
+  }
+  assert.ok(Math.hypot(x - 3, z) <= 0.2, `${body} reaches the far side of the watcher`);
+  assert.deepEqual(L.obstaclesFor("ghost", room, 11, [], [], [0, 0, 0]), [], "ghosts still ignore watcher bodies");
+}
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
 for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {
   assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind, x: 0, z: -1 }]),

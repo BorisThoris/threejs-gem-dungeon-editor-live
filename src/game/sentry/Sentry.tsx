@@ -7,6 +7,7 @@ import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
 import { canControl, lanternLit, runClock, useCurrentRoom, useRun } from "../state/run";
 import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint";
+import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
 import { sideOf } from "../systems/bearing";
 import {
   GROUND_Y,
@@ -203,7 +204,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           <cylinderGeometry args={[0.14, 0.22, 2.2, 8]} />
           <meshStandardMaterial color="#3c4048" metalness={0.5} roughness={0.6} />
         </mesh>
-        <CylinderCollider args={[1.1, 0.22]} position={[0, 1.1, 0]} />
+        <CylinderCollider args={[SENTRY_POST_HEIGHT / 2, SENTRY_POST_RADIUS]} position={[0, SENTRY_POST_HEIGHT / 2, 0]} />
       </RigidBody>
       <group ref={head} position={[0, 2.3, 0]}>
         <mesh>
