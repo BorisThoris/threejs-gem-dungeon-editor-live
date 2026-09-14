@@ -5,6 +5,8 @@ import { PROP_SPECS } from "../props/specs";
 export const SHOVE_REACH = 3;
 export const SHOVE_COOLDOWN_S = 2.4;
 export const SHOVE_STAGGER_S = 0.9;
+/** The hand is below eye level; knee-high furniture stays below its path. */
+export const SHOVE_HEIGHT = 1.25;
 export const HARRIER_ENTRY_GRACE_S = 1.8;
 export const HARRIER_WINDUP_S = 0.7;
 /** The warning must begin where the suggested shove can already reach. */
@@ -18,13 +20,18 @@ export function inShoveArc(x: number, z: number, fx: number, fz: number): boolea
     (distance < 0.01 || (x * fx + z * fz) / (distance * facing) >= Math.cos(50 * Math.PI / 180));
 }
 
-/** Solid furniture and the room's concave walls stop a shove. */
+/** Furniture reaching the hand and the room's concave walls stop a shove. */
 export function clearShove(room: Room, from: { x: number; z: number }, to: { x: number; z: number }, props: readonly PropPlacement[]): boolean {
   const dx = to.x - from.x, dz = to.z - from.z;
   const len2 = dx * dx + dz * dz;
   if (!roomSegmentClear(room, from.x, from.z, to.x, to.z)) return false;
   return !props.some((p) => {
-    if (!PROP_SPECS[p.kind].solid || len2 < 0.0001) return false;
+    const spec = PROP_SPECS[p.kind], collider = spec.collider;
+    if (!spec.solid || len2 < 0.0001) return false;
+    if (collider) {
+      const top = (collider.y + collider.args[collider.shape === "cylinder" ? 0 : 1]) * (p.scale ?? 1);
+      if (top < SHOVE_HEIGHT) return false;
+    }
     const t = Math.max(0, Math.min(1, ((p.x - from.x) * dx + (p.z - from.z) * dz) / len2));
     return Math.hypot(p.x - from.x - dx * t, p.z - from.z - dz * t) < PROP_SPECS[p.kind].radius * (p.scale ?? 1);
   });

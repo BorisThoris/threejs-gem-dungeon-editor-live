@@ -15,7 +15,7 @@ const snapshot = () => page.evaluate(() => {
   return { phase: s.phase, floor: s.floor, gems: s.gems, lives: s.lives, roomId: s.currentRoomId,
     dungeon: s.dungeon, collected: s.gemRooms, transitioning: s.transitioning, paused: s.paused, inputLocks: s.inputLocks,
     player: window.__playerDebug, toll: window.__derived.toll(),
-    shoveReady: s.shoveReadyAt <= window.__derived.clock(),
+    shoveReady: s.shoveReadyAt <= window.__derived.clock(), frames: window.__perf?.frames,
     threats: [s.wardenRoomId === s.currentRoomId ? window.__warden : null,
       window.__harrier?.room === s.currentRoomId && !window.__harrier.away && !window.__harrier.down ? window.__harrier : null].filter(Boolean) };
 });
@@ -75,6 +75,7 @@ async function walkTo(target) {
   try {
     for (const point of plan) {
       const deadline = Date.now() + 25000;
+      const started = Date.now(), startedFrames = (await snapshot()).frames;
       let lastDistance = Infinity, stuckSince = Date.now();
       while (true) {
         const s = await snapshot();
@@ -90,7 +91,11 @@ async function walkTo(target) {
         const dx = point.x - s.player.x, dz = point.z - s.player.z, distance = Math.hypot(dx, dz);
         if (distance < 0.55) break;
         if (distance < lastDistance - 0.1) { stuckSince = Date.now(); lastDistance = distance; }
-        if (Date.now() > deadline || Date.now() - stuckSince > 5000) throw new Error(`movement stuck in ${s.roomId}: ${JSON.stringify({ player: s.player, point, distance })}`);
+        if (Date.now() > deadline || Date.now() - stuckSince > 5000) {
+          const reason = Date.now() > deadline ? "segment deadline" : "no distance progress";
+          throw new Error(`movement stopped by ${reason} in ${s.roomId}: ${JSON.stringify({ player: s.player, point, distance,
+            elapsed: (Date.now() - started) / 1000, frames: s.frames - startedFrames, paused: s.paused, inputLocks: s.inputLocks })}`);
+        }
         await page.evaluate((yaw) => window.__bus.emit("lookSet", { yaw, pitch: 0 }), Math.atan2(-dx, -dz));
         await page.waitForTimeout(120);
       }

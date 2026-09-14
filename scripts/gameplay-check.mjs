@@ -134,6 +134,16 @@ assert.ok(!L.inShoveArc(2, 0, 0, -1));
 const chamber = L.generateDungeon({ seed: 11 }).rooms[0];
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "pillar", x: 0, z: -1 }]));
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
+for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {
+  assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind, x: 0, z: -1 }]),
+    `shove reaches above low ${kind} furniture`);
+}
+for (const kind of ["bookshelf", "statue", "wall"]) {
+  assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind, x: 0, z: -1 }]),
+    `tall ${kind} furniture still provides cover against a shove`);
+}
+assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind: "crate", x: 0, z: -1, scale: 2 }]),
+  "scaled furniture can grow into the hand's path");
 const crossRoom = { ...chamber, size: 20, wings: { north: 10, east: 10 } };
 assert.ok(L.insideRoom(crossRoom, 0, -18, 0.6) && L.insideRoom(crossRoom, 18, 0, 0.6));
 assert.ok(!L.roomSegmentClear(crossRoom, 0, -18, 18, 0, 0.6), "inside endpoints cannot tunnel through void");
