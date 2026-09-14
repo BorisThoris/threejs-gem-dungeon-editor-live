@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { bus, type BusEvents } from "../events";
 import { touchControlsActive } from "../input/device";
 import { useRun } from "../state/run";
-import { floorRules } from "../world";
+import { BOMB_PRICE, KEEPER_STALL_S, floorRules } from "../world";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 
@@ -112,7 +112,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "smashed", event: "barBroken", every: true, when: ({ byWarden }) => byWarden, line: "It came through the bar. There was no way round, and now it knows exactly where you are.", sample: { byWarden: true } }),
   // Once, to teach the one rule a player cannot see: a device outlives
   // the visit it was set during.
-  lesson({ id: "set", event: "devicePlaced", line: "It stays where you left it, and it is still there when you come back through." }),
+  lesson({ id: "set", event: "devicePlaced", when: ({ id }) => id !== "bomb", line: "It stays where you left it, and it is still there when you come back through.", sample: { id: "snare", cruel: false } }),
 
   // The ten loops. Each names the rule the player has just met and what
   // it is for, in the order they are likely to meet them.
@@ -138,7 +138,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
   lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
-  lesson({ id: "keeper", event: "keeperBars", line: "The Keeper holds the last stairs. It cannot be walked past. A blast in its room makes it kneel - for nine seconds." }),
+  lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper. Save ${BOMB_PRICE} gems beyond the toll for a shop bomb. Set a bomb from your satchel and move clear of its blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
 
   // Every floor, on arriving: what this one is like.
   /**

@@ -16,26 +16,29 @@ const snapshot = () => page.evaluate(() => {
   const s = window.__run.getState();
   return { phase: s.phase, floor: s.floor, gems: s.gems, lives: s.lives, roomId: s.currentRoomId,
     dungeon: s.dungeon, collected: s.gemRooms, transitioning: s.transitioning, paused: s.paused, inputLocks: s.inputLocks,
-    player: window.__playerDebug, toll: window.__derived.toll(),
+    player: window.__playerDebug, toll: window.__derived.toll(), satchel: s.satchel,
+    keeper: window.__derived.keeper(), bombs: window.__derived.bombs(), clock: window.__derived.clock(),
+    bombPrice: window.__world.BOMB_PRICE, reaper: s.reaperAwake,
     shoveReady: s.shoveReadyAt <= window.__derived.clock(), frames: window.__perf?.frames,
-    threats: [s.wardenRoomId === s.currentRoomId ? window.__warden : null,
+    threats: [s.wardenRoomId === s.currentRoomId && window.__warden ? { ...window.__warden, kind: "warden" } : null,
       window.__harrier?.room === s.currentRoomId && !window.__harrier.away && !window.__harrier.down ? window.__harrier : null].filter(Boolean) };
 });
 
-async function walkTo(target) {
+async function walkTo(target, { prepareOnly = false, plan: prepared } = {}) {
   // A room can report ready before the player probe has sampled its new pose.
   const frame = (await snapshot()).frames;
-  await page.waitForFunction((frame) => window.__perf.frames >= frame + 2, frame);
-  const plan = await page.evaluate(async (target) => {
+  if (!prepared) await page.waitForFunction((frame) => window.__perf.frames >= frame + 2, frame);
+  const plan = prepared ?? await page.evaluate(async (target) => {
     const { roomSegmentClear, insideRoom, doorReach } = await import("/src/game/dungeon/footprint.ts");
     const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
     const { trapsFor } = await import("/src/game/traps/placement.ts");
+    const { PIT_RADIUS } = await import("/src/game/world.ts");
     const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
     const start = { x: window.__playerDebug.x, z: window.__playerDebug.z };
     const blockers = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken),
       ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung),
-      ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: 1.1 }))];
-    const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.55) && blockers.every((p) => {
+      ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1 }))];
+    const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, 0.65) && blockers.every((p) => {
       const dx = b.x - a.x, dz = b.z - a.z;
       const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
       return Math.hypot(p.x - a.x - dx * t, p.z - a.z - dz * t) > p.r + 0.12;
@@ -45,7 +48,7 @@ async function walkTo(target) {
     const n = Math.ceil(reach / spacing);
     for (let ix = -n; ix <= n; ix++) for (let iz = -n; iz <= n; iz++) {
       const p = { x: ix * spacing, z: iz * spacing, ix, iz };
-      if (insideRoom(room, p.x, p.z, 0.55) && clear(p, p)) {
+      if (insideRoom(room, p.x, p.z, 0.65) && clear(p, p)) {
         byGrid.set(`${ix},${iz}`, nodes.length); nodes.push(p);
       }
     }
@@ -75,7 +78,9 @@ async function walkTo(target) {
     return smooth;
   }, target);
   assert.ok(plan, `no safe navigation path to ${JSON.stringify(target)}`);
+  if (prepareOnly) return plan;
   const initial = await snapshot();
+  let sprinting = false;
   await page.keyboard.down("KeyW");
   try {
     for (const point of plan) {
@@ -85,6 +90,12 @@ async function walkTo(target) {
       while (true) {
         const s = await snapshot();
         if (s.phase !== "playing" || s.roomId !== initial.roomId) throw new Error(`walk interrupted: ${s.phase}, lives ${s.lives}`);
+        const wantsSprint = s.reaper || s.threats.some((p) => p.kind === "warden" && Math.hypot(p.x - s.player.x, p.z - s.player.z) < 5);
+        if (wantsSprint !== sprinting) {
+          if (wantsSprint) await page.keyboard.down("ShiftLeft");
+          else await page.keyboard.up("ShiftLeft");
+          sprinting = wantsSprint;
+        }
         const threat = s.threats.find((p) => Math.hypot(p.x - s.player.x, p.z - s.player.z) < 2.8);
         if (process.env.WALK_SHOVE !== "off" && s.shoveReady && threat) {
           await page.keyboard.up("KeyW");
@@ -94,7 +105,7 @@ async function walkTo(target) {
           await page.keyboard.down("KeyW");
         }
         const dx = point.x - s.player.x, dz = point.z - s.player.z, distance = Math.hypot(dx, dz);
-        if (distance < 0.55) break;
+        if (distance < (point === plan.at(-1) ? 0.55 : 0.12)) break;
         if (distance < lastDistance - 0.03) stuckSince = Date.now();
         lastDistance = distance;
         if (Date.now() > deadline || Date.now() - stuckSince > 5000) {
@@ -103,10 +114,10 @@ async function walkTo(target) {
             elapsed: (Date.now() - started) / 1000, frames: s.frames - startedFrames, paused: s.paused, inputLocks: s.inputLocks })}`);
         }
         await page.evaluate((yaw) => window.__bus.emit("lookSet", { yaw, pitch: 0 }), Math.atan2(-dx, -dz));
-        await page.waitForTimeout(120);
+        await page.waitForTimeout(Math.max(20, Math.min(120, distance / 8 * 600)));
       }
     }
-  } finally { await page.keyboard.up("KeyW"); }
+  } finally { await page.keyboard.up("KeyW"); await page.keyboard.up("ShiftLeft"); }
 }
 
 function route(s, to) {
@@ -153,20 +164,69 @@ try {
     assert.equal(s.phase, "playing", "walker survives with earned resources");
     assert.ok(doors < 80, "route completes within room budget");
     const room = s.dungeon.rooms.find((r) => r.id === s.roomId);
+    const needsBomb = s.keeper.holds && !s.satchel.includes("bomb");
+    const required = s.toll + (needsBomb ? s.bombPrice : 0);
     const gem = await page.evaluate(() => {
       const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
       return s.gemRooms.includes(room.id) ? null : window.__gemFor(room, s.dungeon.seed);
     });
-    if (gem && s.gems < s.toll) {
+    if (gem && s.gems < required) {
       await walkTo({ x: gem[0], z: gem[2] });
       await page.waitForFunction((id) => window.__run.getState().gemRooms.includes(id), room.id);
+      continue;
+    }
+    if (needsBomb && s.gems >= required && room.kind === "shop") {
+      const offer = await page.evaluate(() => {
+        const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+        return window.__shopOffers(room).find((o) => o.id === "bomb");
+      });
+      await walkTo(offer);
+      await page.keyboard.press("KeyE");
+      await page.waitForFunction(() => window.__run.getState().satchel.includes("bomb"));
+      console.log("PASS purchased Keeper bomb through the shop interaction");
+      continue;
+    }
+    const keeperPost = s.keeper.posts.find((p) => p.roomId === room.id);
+    if (keeperPost && s.keeper.holds && s.satchel.includes("bomb")) {
+      const spots = await page.evaluate(async (dir) => {
+        const { insideRoom, roomSegmentClear } = await import("/src/game/dungeon/footprint.ts");
+        const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");
+        const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+        const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
+        const door = window.__derived.door(room.id, dir), post = { x: door[0] * 0.72, z: door[2] * 0.72 };
+        const blocks = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken), ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung)];
+        const safe = (p) => insideRoom(room, p.x, p.z, 0.6) && Math.hypot(p.x - post.x, p.z - post.z) > 3 &&
+          blocks.every((b) => Math.hypot(p.x - b.x, p.z - b.z) > b.r + 0.3);
+        for (const side of [0, 1.5, -1.5, 2.5, -2.5]) {
+          const bomb = { x: post.x - axis[0] * 4 + axis[1] * side, z: post.z - axis[1] * 4 - axis[0] * side };
+          if (!safe(bomb)) continue;
+          for (let i = 0; i < 16; i++) {
+            const angle = i * Math.PI / 8, retreat = { x: bomb.x + Math.cos(angle) * 4.5, z: bomb.z + Math.sin(angle) * 4.5 };
+            if (safe(retreat) && roomSegmentClear(room, bomb.x, bomb.z, retreat.x, retreat.z, 0.6)) return { bomb, retreat };
+          }
+        }
+        return null;
+      }, keeperPost.dir);
+      assert.ok(spots, "Keeper room offers a bomb placement and escape outside halberd reach");
+      await walkTo(spots.bomb);
+      // Plan before lighting the fuse so planning cannot consume the escape window.
+      const escape = await walkTo(spots.retreat, { prepareOnly: true });
+      const slot = (await snapshot()).satchel.indexOf("bomb");
+      await page.keyboard.press(`Digit${slot + 1}`);
+      await page.waitForFunction(() => !window.__run.getState().satchel.includes("bomb"));
+      console.log("BOMB", JSON.stringify((await snapshot()).bombs));
+      await walkTo(spots.retreat, { plan: escape });
+      await page.waitForFunction(() => window.__derived.keeper().stalled, null, { timeout: 5000 });
+      console.log("PASS bomb set with satchel key, escaped blast, Keeper kneels");
       continue;
     }
     const candidates = await page.evaluate(() => {
       const s = window.__run.getState();
       return s.dungeon.rooms.filter((r) => !s.gemRooms.includes(r.id) && window.__gemFor(r, s.dungeon.seed)).map((r) => r.id);
     });
-    const paths = (s.gems >= s.toll ? [s.dungeon.endId] : candidates).map((id) => route(s, id)).filter((p) => p?.length > 1).sort((a, b) => a.length - b.length);
+    const shop = s.dungeon.rooms.find((r) => r.kind === "shop");
+    const goals = s.gems >= required ? [needsBomb ? shop?.id : s.dungeon.endId] : candidates;
+    const paths = goals.map((id) => route(s, id)).filter((p) => p?.length > 1).sort((a, b) => a.length - b.length);
     assert.ok(paths.length, "uncollected gems or payable stairs remain reachable");
     const next = paths[0][1], dir = Object.keys(room.links).find((dir) => room.links[dir] === next);
     const target = await page.evaluate(({ id, dir }) => window.__derived.door(id, dir), { id: room.id, dir });
@@ -181,6 +241,6 @@ try {
 } catch (e) {
   console.error(e);
   const s = await snapshot();
-  console.error("FINAL", JSON.stringify({ floor: s.floor, room: s.roomId, phase: s.phase, lives: s.lives, gems: s.gems, player: s.player, paused: s.paused, inputLocks: s.inputLocks }));
+  console.error("FINAL", JSON.stringify({ floor: s.floor, room: s.roomId, phase: s.phase, lives: s.lives, gems: s.gems, player: s.player, paused: s.paused, inputLocks: s.inputLocks, bombs: s.bombs, clock: s.clock, keeper: s.keeper }));
   process.exitCode = 1;
 } finally { await browser.close(); }

@@ -495,6 +495,35 @@ try {
   await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => window.__awareness.rungOf("cutpurse") === 2);
   console.log("PASS pause freezes Warden facing and awareness; reports apply after resume");
+  // Fixture setup isolates the real satchel input and frame-driven fuse; this
+  // check does not claim survival or economy evidence for a complete run.
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  const bombDungeon = L.generateDungeon({ seed: 11, floor: 3 });
+  const bombHost = bombDungeon.rooms.find((r) => Object.values(r.links).includes(bombDungeon.endId));
+  await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId,
+    floor: 3, transitioning: true, enteredBy: null, satchel: ["bomb"],
+    wardenRoomId: null, harrierAwake: false, reaperAwake: false, thiefPhase: "away", alarm: 0 }),
+  { dungeon: bombDungeon, roomId: bombHost.id });
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
+  await page.waitForTimeout(150);
+  await page.keyboard.press("Digit1");
+  await page.waitForFunction(() => window.__derived.bombs().length === 1);
+  const pausedFuse = await page.evaluate((half) => {
+    window.__bus.emit("teleport", { position: [half - 1, 1.5, half - 1] });
+    window.__run.getState().pause();
+    return window.__derived.bombs()[0].fuseAt - window.__derived.clock();
+  }, bombHost.size / 2);
+  await page.waitForTimeout(3200);
+  const heldFuse = await page.evaluate(() => window.__derived.bombs()[0].fuseAt - window.__derived.clock());
+  assert.ok(Math.abs(heldFuse - pausedFuse) < 0.02, "pause preserves the remaining bomb fuse");
+  assert.ok(await page.evaluate(() => window.__derived.keeper().holds), "paused bomb does not open the stairs");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction(() => window.__derived.keeper().stalled, null, { timeout: 6000 });
+  assert.equal(await page.evaluate(() => window.__derived.bombs().length), 0, "frame-driven explosion consumes the bomb");
+  assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "escaping the blast avoids damage");
+  console.log("PASS satchel bomb fuse freezes on pause, detonates on resume, and opens Keeper stairs");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }
