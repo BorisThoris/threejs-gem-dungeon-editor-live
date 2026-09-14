@@ -171,15 +171,21 @@ try {
   }));
   const initialFloor = 1, stopFloor = Number(process.env.WALK_FLOORS ?? 3) + initialFloor;
   let doors = 0;
+  let carriedBomb = false;
   while (true) {
     await page.waitForFunction(() => !window.__run.getState().transitioning);
     const s = await snapshot();
     console.log(JSON.stringify({ floor: s.floor, room: s.roomId, gems: s.gems, lives: s.lives, phase: s.phase }));
     if (s.floor >= stopFloor || s.phase === "won") break;
+    if (s.floor === 3 && !carriedBomb) {
+      assert.ok(s.satchel.includes("bomb"), "the earlier shop bomb carries into the final floor");
+      carriedBomb = true;
+      console.log("PASS carried the floor-two shop bomb into the final floor");
+    }
     assert.equal(s.phase, "playing", "walker survives with earned resources");
     assert.ok(doors < 80, "route completes within room budget");
     const room = s.dungeon.rooms.find((r) => r.id === s.roomId);
-    const needsBomb = s.keeper.holds && !s.satchel.includes("bomb");
+    const needsBomb = (s.floor === 2 || s.keeper.holds) && !s.satchel.includes("bomb");
     const required = s.toll + (needsBomb ? s.bombPrice : 0);
     const gem = await page.evaluate(() => {
       const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
@@ -202,7 +208,7 @@ try {
       continue;
     }
     const keeperPost = s.keeper.posts.find((p) => p.roomId === room.id);
-    if (keeperPost && s.keeper.holds && s.satchel.includes("bomb")) {
+    if (keeperPost && s.keeper.holds && s.satchel.includes("bomb") && s.gems >= s.toll) {
       const spots = await page.evaluate(async (dir) => {
         const { insideRoom, roomSegmentClear } = await import("/src/game/dungeon/footprint.ts");
         const { obstaclesFor, bitesFor } = await import("/src/game/mobs/body.ts");

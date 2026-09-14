@@ -651,7 +651,7 @@ const DESCENT: readonly FloorRules[] = [
     wardenGrace: 2,
     startingAlarm: 1,
     sentryChance: 0.45,
-    blurb: "Deeper. The halls are wider, watchers stand in them, and something with wings roosts down here.",
+    blurb: "Deeper. Wider halls, watchers, and a Harrier roost. The next floor's stairs are kept: pack a shop bomb before descending.",
     light: { ambient: 0.5, sky: "#7f96bd", fill: "#cfe0dc", fillIntensity: 14, fogFar: 41 },
   },
   {

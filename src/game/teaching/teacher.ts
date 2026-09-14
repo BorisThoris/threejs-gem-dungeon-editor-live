@@ -139,7 +139,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
   lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
-  lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper. Save ${BOMB_PRICE} gems beyond the toll for a shop bomb. Set a bomb from your satchel and move clear of its blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
+  lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper. Save ${BOMB_PRICE} gems beyond the toll for a shop bomb. Gather the full toll before lighting the fuse. Set a bomb from your satchel and move clear of its blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
   lesson({ id: "reaper", event: "reaperWoke", every: true,
     line: (_, touch) => `The Reaper is here. Sprint with ${sprintControl(touch)} to the stairs. Shoves cannot stop it. A bomb holds it for ${REAPER_STALL_S} seconds; keep moving while its fuse burns.` }),
 

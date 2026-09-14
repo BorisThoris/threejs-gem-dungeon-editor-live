@@ -22,7 +22,7 @@ try {
     for (const scale of [1, 1.6]) {
       await page.evaluate(async (value) => {
         (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(value);
-        window.__run.setState({ thiefPhase: value === 1.6 ? "fleeing" : "away", thiefHolding: 2, thiefKey: true });
+        window.__run.setState({ floor: 2, satchel: [], thiefPhase: value === 1.6 ? "fleeing" : "away", thiefHolding: 2, thiefKey: true });
       }, scale);
       await page.waitForFunction(() => {
         const g = document.querySelector('[data-testid="guidance"]')?.getBoundingClientRect();
@@ -30,6 +30,7 @@ try {
         return g && g.left >= 0 && g.right <= innerWidth && boxes.every((b) => g.left >= b.right || g.right <= b.left || g.top >= b.bottom || g.bottom <= b.top);
       });
       assert.ok(await page.locator('[data-testid="guidance"]').evaluate((g) => g.scrollWidth <= g.clientWidth), "guidance text wraps inside its panel");
+      assert.match(await page.getByTestId("hud-prepare").innerText(), /final stairs need a bomb/);
       console.log(`PASS ${name}: guidance clears HUD, minimap and pause at text scale ${scale}`);
       if (scale === 1 && process.env.OVERLAY_SCREENSHOTS) await page.screenshot({ path: join(process.env.OVERLAY_SCREENSHOTS, `overlay-${name}.png`) });
     }

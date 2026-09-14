@@ -259,6 +259,14 @@ try {
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   assert.equal(await page.locator('[data-testid="hud-cutpurse"]').count(), 0, "chase guidance clears on a fresh run");
   console.log("PASS exploration objective, known stairs, theft recovery and touch shove guidance");
+  await page.evaluate(() => window.__run.setState({ floor: 2, satchel: [] }));
+  await page.waitForFunction(() => document.querySelector('[data-testid="hud-prepare"]')?.textContent.includes("shop 2 gems beyond the toll"));
+  await page.evaluate(() => window.__run.getState().takeItem("bomb", "shop"));
+  await page.waitForFunction(() => document.querySelector('[data-testid="hud-prepare"]')?.textContent.includes("bomb packed"));
+  await page.evaluate(() => window.__run.setState({ floor: 3, gems: 0 }));
+  await page.waitForFunction(() => document.querySelector('[data-testid="hud-keeper"]')?.textContent.includes("gather 7 gems before lighting the bomb"));
+  await page.evaluate(() => window.__run.setState({ floor: 1, satchel: [] }));
+  console.log("PASS pre-descent bomb preparation and live packed-bomb guidance");
   const combat = await page.evaluate(async () => {
     const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
     const { wardenAt } = await import("/src/game/warden/position.ts");

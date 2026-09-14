@@ -40,6 +40,11 @@ treasure rooms, the room's gem waits inside that gallery, rewarding a detour
 without adding extra income. Trap gems keep their chamber positions.
 The minimap records visited corridor rooms with their real concave outlines,
 including closed galleries. Unexplored rooms remain simple markers.
+Floor two advises packing a shop bomb before descending, and the HUD
+confirms when it is packed. Bombs carry between floors, so preparing early
+avoids a final-floor shopping detour while the Reaper is closing in.
+Gather the full final toll before lighting that bomb: the Keeper's kneeling
+window is for escaping, and does not leave time to hunt for missing gems.
 Corridor wings carry seeded ceiling ribs and wall markings, giving long
 passages stable landmarks without obstructing their travel lanes.
 Watcher beams stop at room walls, and corridor corners block visual

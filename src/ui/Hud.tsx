@@ -54,6 +54,7 @@ export function Hud() {
   const toll = useRun(tollNow);
   const spare = useRun(spareGems);
   const floor = useRun((s) => s.floor);
+  const hasBomb = useRun((s) => s.satchel.includes("bomb"));
   const alarm = useRun((s) => s.alarm);
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
@@ -132,6 +133,7 @@ export function Hud() {
     spare,
     owed,
     stairsKnown,
+    hasBomb,
     cutpurse,
     thiefHolding,
     thiefKey,

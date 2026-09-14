@@ -1,3 +1,5 @@
+import { BOMB_PRICE, KEEPER_FLOOR } from "../game/world";
+
 /**
  * What the readout says, in what order, in one voice.
  *
@@ -64,6 +66,7 @@ export interface HudFacts {
   owed: number;
   /** A doorway to the stairs has been seen, so the player can return to it. */
   stairsKnown?: boolean;
+  hasBomb?: boolean;
   cutpurse?: "stalking" | "fleeing" | null;
   thiefHolding?: number;
   thiefKey?: boolean;
@@ -165,7 +168,8 @@ export function hudLines(f: HudFacts): HudLine[] {
       body:
         f.keeper === "kneels"
           ? `kneels${DOT}${f.keeperUp}s${DOT}go`
-          : `holds the stairs${DOT}a blast makes it kneel`,
+          : f.hasBomb && f.owed > 0 ? `holds the stairs${DOT}gather ${f.owed} gems before lighting the bomb`
+            : `holds the stairs${DOT}a blast makes it kneel`,
       rank: f.keeper === "kneels" ? 1 : 0,
       tone: f.keeper === "kneels" ? "gold" : "danger",
       mark: f.keeper === "kneels" ? undefined : "!!!",
@@ -249,6 +253,15 @@ export function hudLines(f: HudFacts): HudLine[] {
     rank: 2,
     tone: f.owed > 0 ? "danger" : "gold",
     mark: f.owed > 0 ? "!" : undefined,
+  });
+
+  if (f.floor === KEEPER_FLOOR - 1) add({
+    id: "prepare",
+    label: "PREPARE",
+    body: f.hasBomb ? "bomb packed · keep it for the final stairs"
+      : `final stairs need a bomb · shop ${BOMB_PRICE} gems beyond the toll`,
+    rank: 2,
+    tone: f.hasBomb ? "gold" : "ink",
   });
 
   // Rank 3: what can be spent or lost.
