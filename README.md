@@ -440,6 +440,16 @@ arrangement standing each prop on an anchor of its own, every shipped
 template legal in all eight ways round a room can be furnished, and every
 item findable with a look nothing else has.
 
+`yarn test:walk` checks the collect–pay–descend loop using physical walking,
+door interaction and shoves. It never teleports or restores lives. The
+walker knows the full generated map and avoids known furniture and hazards;
+this is traversal and counterplay evidence, not a human balance playtest.
+Set `PORT` to the running dev server (default 5200), `CHROMIUM_PATH` to your
+Chromium executable, `WALK_SEED` to choose a run (default 11), and
+`WALK_FLOORS=1` to check only the first descent. `WALK_SHOVE=off` compares
+the route without combat counterplay. Notices and damage events are logged
+to help explain failures.
+
 `yarn test:audio` listens: it taps whatever the game connects to the
 speakers and measures samples, so a cue that runs without making a sound
 fails. Every cue heard over the room, the ones you are meant to notice well

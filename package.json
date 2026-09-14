@@ -29,6 +29,7 @@
         "test:touch": "node scripts/touch-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
         "test:run": "node scripts/run-through.mjs",
+        "test:walk": "node scripts/walk-run.mjs",
         "test:gameplay": "node scripts/gameplay-check.mjs",
         "test:overlay": "node scripts/overlay-check.mjs",
         "tour": "node scripts/tour.mjs"
