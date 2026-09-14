@@ -27,6 +27,9 @@ escape window. Each shove needs 2.4 seconds to recover. Shoves do not wound
 the Warden; traps and bombs remain the stronger tools. Ordinary rats flee
 and do not attack. The Harrier gives you time to orient after entering and
 hovers before committing to a dive.
+Ceiling bats stir and flutter for 1.2 seconds before bursting in response
+to nearby noise. Moving clear of the roost cancels that burst; blasts
+startle them immediately. Their noise draws attention but does not hurt you.
 
 Chambers grow as you descend. Later floors have longer corridor wings and
 more branching, concave room outlines, with matching walls and collisions.

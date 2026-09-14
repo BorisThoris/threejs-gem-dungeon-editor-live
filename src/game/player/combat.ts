@@ -1,3 +1,7 @@
+import { roomSegmentClear } from "../dungeon/footprint";
+import type { PropPlacement, Room } from "../dungeon/types";
+import { PROP_SPECS } from "../props/specs";
+
 export const SHOVE_REACH = 3;
 export const SHOVE_COOLDOWN_S = 2.4;
 export const SHOVE_STAGGER_S = 0.9;
@@ -16,13 +20,10 @@ export function inShoveArc(x: number, z: number, fx: number, fz: number): boolea
 export function clearShove(room: Room, from: { x: number; z: number }, to: { x: number; z: number }, props: readonly PropPlacement[]): boolean {
   const dx = to.x - from.x, dz = to.z - from.z;
   const len2 = dx * dx + dz * dz;
-  for (let t = 0; t <= 1; t += 0.05) if (!insideRoom(room, from.x + dx * t, from.z + dz * t)) return false;
+  if (!roomSegmentClear(room, from.x, from.z, to.x, to.z)) return false;
   return !props.some((p) => {
     if (!PROP_SPECS[p.kind].solid || len2 < 0.0001) return false;
     const t = Math.max(0, Math.min(1, ((p.x - from.x) * dx + (p.z - from.z) * dz) / len2));
     return Math.hypot(p.x - from.x - dx * t, p.z - from.z - dz * t) < PROP_SPECS[p.kind].radius * (p.scale ?? 1);
   });
 }
-import { insideRoom } from "../dungeon/footprint";
-import type { PropPlacement, Room } from "../dungeon/types";
-import { PROP_SPECS } from "../props/specs";

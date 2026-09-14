@@ -11,7 +11,7 @@ const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
-  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body",
+  "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -109,6 +109,8 @@ assert.ok(L.insideRoom(crossRoom, 0, -18, 0.6) && L.insideRoom(crossRoom, 18, 0,
 assert.ok(!L.roomSegmentClear(crossRoom, 0, -18, 18, 0, 0.6), "inside endpoints cannot tunnel through void");
 assert.ok(L.insideRoom(crossRoom, 3.3, -10.8) && L.insideRoom(crossRoom, 4.2, -9.8));
 assert.ok(!L.roomSegmentClear(crossRoom, 3.3, -10.8, 4.2, -9.8), "nearby bodies across a corner have no attack line");
+assert.ok(!L.clearShove(crossRoom, { x: 3.49, z: -10.102 }, { x: 3.52, z: -9.802 }, []),
+  "even a narrow corner crossing blocks a shove between floor points");
 const swept = L.roomStep(crossRoom, 0, -18, 18, 18);
 assert.ok(L.roomSegmentClear(crossRoom, 0, -18, ...swept, 0.6));
 console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, arrivals }));
@@ -218,6 +220,51 @@ try {
   await page.waitForFunction((half) => window.__playerDebug.z > -half + 0.5, wing.half, { timeout: 20000 });
   await page.keyboard.up("KeyW");
   console.log("PASS physical corridor traversal into chamber");
+  let roostFixture;
+  for (let seed = 1; seed <= 300 && !roostFixture; seed++) {
+    const dungeon = L.generateDungeon({ seed, floor: 1 });
+    for (const room of dungeon.rooms.filter((r) => r.kind === "normal")) {
+      const at = L.roostFor(room, seed);
+      if (at && L.trapsFor(room, seed, dungeon.endId).length === 0) { roostFixture = { dungeon, roomId: room.id, at }; break; }
+    }
+  }
+  assert.ok(roostFixture, "a quiet live roost fixture exists");
+  await page.evaluate(({ dungeon, roomId }) => {
+    delete window.__bats;
+    window.__run.setState({ dungeon, currentRoomId: roomId, floor: 1, transitioning: true, floorRooms: 0, alarm: 0,
+      batsRousedUntil: 0, noisyUntil: 0, wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false });
+  }, roostFixture);
+  await page.waitForFunction(() => !window.__run.getState().transitioning && window.__bats?.room === window.__run.getState().currentRoomId);
+  await page.evaluate((at) => window.__bus.emit("teleport", { position: [at.x, 1.5, at.z] }), roostFixture.at);
+  await page.waitForTimeout(1900);
+  await page.evaluate(() => window.__run.setState({ noisyUntil: window.__derived.clock() + 10 }));
+  await page.waitForFunction(() => window.__bats.stirring);
+  assert.ok(await page.evaluate(() => window.__run.getState().batsRousedUntil <= window.__derived.clock()), "local noise warns before the burst");
+  await page.evaluate((at) => window.__bus.emit("teleport", { position: [at.x > 0 ? -7 : 7, 1.5, 0] }), roostFixture.at);
+  await page.waitForFunction(() => !window.__bats.stirring);
+  await page.waitForTimeout(1300);
+  assert.equal(await page.evaluate(() => window.__run.getState().batsRousedUntil), 0, "moving clear cancels the burst");
+  await page.evaluate((at) => {
+    window.__bus.emit("teleport", { position: [at.x, 1.5, at.z] });
+    window.__run.setState({ noisyUntil: window.__derived.clock() + 20 });
+  }, roostFixture.at);
+  await page.waitForFunction(() => window.__bats.stirring);
+  await page.evaluate(() => window.__run.getState().pause());
+  await page.waitForTimeout(1300);
+  assert.equal(await page.evaluate(() => window.__run.getState().batsRousedUntil), 0, "warning time freezes while paused");
+  const stir = await page.evaluate(() => { const now = window.__derived.clock(); window.__run.getState().resume(); return now; });
+  await page.waitForFunction(() => window.__bats.roused);
+  const burstDelay = await page.evaluate((started) => window.__run.getState().batsRousedUntil - 5 - started, stir);
+  assert.ok(burstDelay >= 1, `staying under the roost allows the warning before the burst: ${burstDelay}`);
+  await page.waitForTimeout(5500);
+  assert.ok(await page.evaluate(() => !window.__bats.roused && !window.__bats.stirring), "the flock does not startle itself again");
+  await page.evaluate(async () => {
+    const din = await import("/src/game/din/din.ts");
+    const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+    din.strike("bombBurst", s.dungeon.rooms, room);
+  });
+  await page.waitForFunction(() => window.__bats.roused && !window.__bats.stirring);
+  console.log("PASS roost warning, escape, pause, no repeated self-startling and blast response");
   let dartFixture;
   for (let seed = 1; seed <= 300 && !dartFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 1 });
@@ -232,10 +279,18 @@ try {
     wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false }), dartFixture);
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   const { trap } = dartFixture;
-  await page.evaluate((t) => window.__bus.emit("teleport", { position: [t.x, 1.5, t.z] }), trap);
-  await page.waitForFunction((key) => window.__run.getState().sprung[key] !== undefined, trap.key);
+  await page.evaluate((t) => {
+    const off = window.__run.subscribe((s, previous) => {
+      if (s.sprung[t.key] !== undefined && previous.sprung[t.key] === undefined) {
+        off();
+        window.__run.getState().pause();
+      }
+    });
+    window.__bus.emit("teleport", { position: [t.x, 1.5, t.z] });
+  }, trap);
+  await page.waitForFunction((key) => window.__run.getState().paused && window.__run.getState().sprung[key] !== undefined, trap.key);
   assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "dart plate does not hit on activation");
-  await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
+  await page.evaluate(() => { window.__bus.emit("teleport", { position: [0, 1.5, 0] }); window.__run.getState().resume(); });
   await page.waitForTimeout(900);
   assert.equal(await page.evaluate(() => window.__run.getState().lives), 3, "leaving during the warning avoids the volley");
   await page.evaluate((t) => {

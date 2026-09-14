@@ -8,8 +8,11 @@ import { SUSCEPTIBILITY } from "../din/susceptibility";
 import type { Room } from "../dungeon/types";
 import { WALL_HEIGHT } from "../world";
 import type { Spot } from "./ambient";
+import { bus } from "../events";
+import { roomSegmentClear } from "../dungeon/footprint";
 
 const FLOCK = 7;
+const STARTLE_WARNING_S = 1.2;
 
 /**
  * The room's roost. A dark cluster on the ceiling until something
@@ -23,6 +26,7 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   /** The player's own noise deadline as last seen, so a fresh dash is told from a held one. */
   const seen = useRef(-1);
   const arrivedAt = useRef<number | null>(null);
+  const stirringAt = useRef<number | null>(null);
 
   useFrame((state) => {
     const g = group.current;
@@ -33,11 +37,13 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
     if (canControl(run)) {
       if (arrivedAt.current === null) arrivedAt.current = now;
       const settled = now - arrivedAt.current >= 1.8;
-      const nearby = Math.hypot(state.camera.position.x - at.x, state.camera.position.z - at.z) < 5;
+      const nearby = Math.hypot(state.camera.position.x - at.x, state.camera.position.z - at.z) < 5
+        && roomSegmentClear(room, at.x, at.z, state.camera.position.x, state.camera.position.z);
+      let freshDash = false;
       if (seen.current < 0) seen.current = run.noisyUntil;
       if (run.noisyUntil > seen.current + 0.01) {
         seen.current = run.noisyUntil;
-        if (settled && nearby && !roused && now < run.noisyUntil) run.rouseBats();
+        freshDash = now < run.noisyUntil;
       }
       /**
        * And anything else the floor is loud enough about.
@@ -64,8 +70,23 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
         const sus = SUSCEPTIBILITY.bat;
         const loud = din.arriving("loud", room.id) >= (sus.answers.loud ?? 1);
         const blast = din.arriving("blast", room.id) >= (sus.answers.blast ?? 1);
-        if ((nearby && loud) || blast) run.rouseBats();
+        if (blast) {
+          stirringAt.current = null;
+          run.rouseBats();
+        } else if (!nearby) {
+          stirringAt.current = null;
+        } else {
+          if (stirringAt.current === null && (freshDash || loud)) {
+            stirringAt.current = now;
+            bus.emit("notice", "Bats stir overhead. Move clear of the roost.");
+          }
+          if (stirringAt.current !== null && now - stirringAt.current >= STARTLE_WARNING_S) {
+            stirringAt.current = null;
+            run.rouseBats();
+          }
+        }
       }
+      if (roused) stirringAt.current = null;
     }
     const t = state.clock.elapsedTime;
     g.children.forEach((c, i) => {
@@ -75,11 +96,13 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
         c.rotation.z = Math.sin(t * 30 + i) * 0.6;
       } else {
         c.position.set(Math.cos(i) * 0.25, -0.1 * (i % 3), Math.sin(i) * 0.25);
-        c.rotation.z = 0;
+        c.rotation.z = stirringAt.current === null ? 0 : Math.sin(now * 22 + i) * 0.35;
       }
     });
     if (import.meta.env.DEV) {
-      (window as unknown as { __bats?: { room: string; roused: boolean } }).__bats = { room: room.id, roused };
+      (window as unknown as { __bats?: { room: string; roused: boolean; stirring: boolean } }).__bats = {
+        room: room.id, roused, stirring: stirringAt.current !== null,
+      };
     }
   });
 
