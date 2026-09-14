@@ -32,7 +32,9 @@ for (const floor of [1, 2, 3]) {
         if (block.position[1] - block.size[1] / 2 >= L.GROUND_Y + L.DOOR_HEIGHT) continue;
         const lateralEdge = Math.min(Math.abs(block.position[0]) - block.size[0] / 2,
           Math.abs(block.position[2]) - block.size[2] / 2);
-        assert.ok(lateralEdge >= L.CORRIDOR_WIDTH / 2 - L.WALL_THICKNESS / 2 - 0.02,
+        const dir = Math.abs(block.position[0]) > Math.abs(block.position[2])
+          ? block.position[0] < 0 ? "west" : "east" : block.position[2] < 0 ? "north" : "south";
+        assert.ok(lateralEdge >= L.corridorWidth(room, dir) / 2 - L.WALL_THICKNESS / 2 - 0.02,
           "low corridor ribs stay flush with walls and clear of the walking lane");
       }
       rooms++;
@@ -43,6 +45,16 @@ for (const floor of [1, 2, 3]) {
         galleries++;
         assert.notEqual(room.secret?.dir, dir, "galleries leave secret wall approaches unchanged");
         const axis = L.DIR_STEP[dir];
+        const width = L.corridorWidth(room, dir);
+        assert.ok(width > L.CORRIDOR_WIDTH, "deeper closed galleries widen beyond travel corridors");
+        const middle = room.size / 2 + room.wings[dir] / 2;
+        const edgeX = axis.x * middle + axis.z * (width / 2 - 1);
+        const edgeZ = axis.z * middle + axis.x * (width / 2 - 1);
+        assert.ok(L.insideRoom(room, edgeX, edgeZ, 0.6), "widened gallery edges have walkable floor");
+        assert.ok(L.roomSegmentClear(room, axis.x * middle, axis.z * middle, edgeX, edgeZ, 0.6),
+          "movement reaches the widened gallery edges");
+        assert.ok(Math.abs(L.roomRayReach(axis.x * middle, axis.z * middle, axis.z, axis.x, 20,
+          L.wallEdges(room)) - width / 2) < 1e-8, "gallery side walls match their widened floors");
         const distance = L.doorReach(room, dir) - 1;
         let x = 0, z = 0;
         for (let i = 0; i < 600 && Math.hypot(x - axis.x * distance, z - axis.z * distance) > 0.11; i++) {
@@ -331,7 +343,8 @@ try {
   for (let seed = 1; seed <= 120 && !galleryFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
     const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north);
-    if (room) galleryFixture = { dungeon, roomId: room.id, half: room.size / 2, reach: L.doorReach(room, "north") };
+    if (room) galleryFixture = { dungeon, roomId: room.id, half: room.size / 2,
+      reach: L.doorReach(room, "north"), width: L.corridorWidth(room, "north") };
   }
   assert.ok(galleryFixture, "a rendered closed north gallery exists");
   await page.evaluate(({ dungeon, roomId }) => {
@@ -350,7 +363,14 @@ try {
   await page.keyboard.up("KeyW");
   assert.ok(await page.evaluate((reach) => window.__playerDebug.z > -reach && window.__run.getState().currentRoomId === window.__run.getState().dungeon.rooms.find((r) => r.wings?.north && !r.links.north).id, galleryFixture.reach),
     "gallery end wall stops the player without room travel");
-  console.log("PASS physical side-gallery traversal and solid end wall");
+  await page.keyboard.down("KeyD");
+  await page.waitForFunction(() => window.__playerDebug.x > 4, null, { timeout: 20000 });
+  await page.waitForTimeout(1500);
+  await page.keyboard.up("KeyD");
+  assert.ok(await page.evaluate(({ width, roomId }) => window.__playerDebug.x < width / 2
+    && window.__playerDebug.y > 0.8 && window.__run.getState().currentRoomId === roomId, galleryFixture),
+    "player walks beyond the old gallery width and stops at the new solid side wall");
+  console.log("PASS physical widened side-gallery traversal and solid end and side walls");
   let sightFixture;
   for (let seed = 1; seed <= 300 && !sightFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
