@@ -37,6 +37,9 @@ Corridor wings carry seeded ceiling ribs and wall markings, giving long
 passages stable landmarks without obstructing their travel lanes.
 Watcher beams stop at room walls, and corridor corners block visual
 detection by watchers and the Warden. Sound can still carry around them.
+When you leave its view quietly, the Warden pursues your last known spot
+instead of tracking your movement through walls. Noise or the moth's
+light signal gives it a fresh destination.
 Entrance lanes stay clear of damaging traps; dart plates sit off those
 lanes, light before firing, and hurt only across their visible footprint.
 Grates wait until you have moved clear of the landing before dropping.

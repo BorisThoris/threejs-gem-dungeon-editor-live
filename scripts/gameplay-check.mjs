@@ -361,6 +361,33 @@ try {
   const harrierDelay = await page.evaluate((at) => window.__run.getState().lastDamageAt - at, arrival);
   assert.ok(harrierDelay >= 2.4, `Harrier gives arrival grace plus windup: ${harrierDelay}`);
   console.log("PASS Harrier arrival grace and attack windup");
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  const memoryRoom = L.generateDungeon({ seed: 41, floor: 3 });
+  const memoryWing = memoryRoom.rooms.find((r) => r.wings?.north);
+  await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId, floor: 3,
+    transitioning: true, wardenRoomId: null, harrierAwake: false, reaperAwake: false, thiefPhase: "away",
+    noisyUntil: 0, mothOn: false, floorRooms: 0, alarm: 0 }), { dungeon: memoryRoom, roomId: memoryWing.id });
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
+  await page.waitForTimeout(250);
+  await page.evaluate(() => {
+    const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
+    delete window.__warden;
+    window.__run.setState({ wardenRoomId: room.id, wardenCameFrom: room.links.north,
+      wardenStaggerUntil: window.__derived.clock() + 100 });
+  });
+  await page.waitForFunction(() => window.__warden?.targetX !== undefined);
+  const remembered = await page.evaluate(() => ({ x: window.__warden.targetX, z: window.__warden.targetZ }));
+  const hidden = [memoryWing.size / 2 - 1, 1.5, memoryWing.size / 2 - 1];
+  await page.evaluate((position) => window.__bus.emit("teleport", { position }), hidden);
+  await page.waitForFunction(() => window.__warden.canSee === 0);
+  await page.waitForTimeout(400);
+  assert.deepEqual(await page.evaluate(() => ({ x: window.__warden.targetX, z: window.__warden.targetZ })), remembered,
+    "quiet movement outside sight does not update the Warden's pursuit destination");
+  await page.evaluate(() => window.__run.setState({ noisyUntil: window.__derived.clock() + 10 }));
+  await page.waitForFunction((position) => Math.hypot(window.__warden.targetX - position[0], window.__warden.targetZ - position[2]) < 0.2, hidden);
+  console.log("PASS Warden retains last known position when hidden and reacquires through noise");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }
