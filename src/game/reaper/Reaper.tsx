@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
@@ -6,6 +6,7 @@ import { halfSize, type Room } from "../dungeon/types";
 import { doorReach } from "../dungeon/footprint";
 import { canControl, reaperStalled, runClock, useRun } from "../state/run";
 import { GROUND_Y, REAPER_MAX_STEP, REAPER_SPEED, REAPER_TOUCH_RADIUS } from "../world";
+import { reaperAt } from "./position";
 
 /**
  * The Reaper, in the room the player is standing in - which is the only
@@ -27,6 +28,7 @@ export function Reaper({ room }: { room: Room }) {
   const group = useRef<Group>(null);
   const placed = useRef(false);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
+  useEffect(() => () => { reaperAt.roomId = null; }, []);
 
   useFrame((state, delta) => {
     const g = group.current;
@@ -52,6 +54,7 @@ export function Reaper({ room }: { room: Room }) {
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
+    Object.assign(reaperAt, { x: g.position.x, z: g.position.z, roomId: room.id });
 
     if (import.meta.env.DEV) {
       // Where it actually is, for the checks, in one object at frame rate.
@@ -87,6 +90,8 @@ export function Reaper({ room }: { room: Room }) {
       Math.min(doorReach(room, "east") - 0.3, g.position.x + scratch.to.x));
     g.position.z = Math.max(-doorReach(room, "north") + 0.3,
       Math.min(doorReach(room, "south") - 0.3, g.position.z + scratch.to.z));
+    reaperAt.x = g.position.x;
+    reaperAt.z = g.position.z;
   });
 
   return (

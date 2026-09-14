@@ -39,13 +39,14 @@ import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../pl
 import { wardenAt } from "../warden/position";
 import { harrierAt } from "../mobs/harrierRoost";
 import { cutpurseAt } from "../thief/position";
+import { reaperAt } from "../reaper/position";
 import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { chestKey, placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
 import { sentryFor } from "../sentry/placement";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
-import { keeperPostsFor } from "../keeper/posts";
+import { keeperPostPosition, keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
 import { REAPER_AT, affordable, bandFor, bandName, heatFrom, type PurchaseId } from "../heat/coefficient";
 import {
@@ -2360,7 +2361,12 @@ export const useRun = create<RunState>()(
         set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
         hit = true;
       }
-      bus.emit("notice", hit ? "Shove! Move while it recoils." : blocked
+      const reaper = !hit && s.reaperAwake && reaches(reaperAt);
+      const keeper = !hit && !reaper && keeperHolds(s) && keeperPostsFor(s.dungeon, s.floor)
+        .some((p) => p.roomId === room.id && reaches({ ...keeperPostPosition(room, p.dir), roomId: room.id }));
+      bus.emit("notice", hit ? "Shove! Move while it recoils." : reaper
+        ? "Shoves pass through the Reaper. Sprint to the stairs; a blast buys time." : keeper
+          ? "Shoves cannot move the Keeper. Gather the toll, then use a bomb and escape while it kneels." : blocked
         ? "Shove blocked by solid cover. Step around it."
         : "Shove missed. Face the threat and let it come closer.");
       return true;

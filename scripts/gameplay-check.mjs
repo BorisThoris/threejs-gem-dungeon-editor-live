@@ -300,6 +300,44 @@ try {
   });
   assert.ok(Object.values(combat).every(Boolean), JSON.stringify(combat));
   console.log("PASS combat range, facing, retreat, stagger, stolen-gem recovery, cooldown and pause guards");
+  const immuneDungeon = L.generateDungeon({ seed: 41, floor: 3 });
+  const immunePost = immuneDungeon.rooms.find((r) => Object.values(r.links).includes(immuneDungeon.endId));
+  const immuneShoves = await page.evaluate(async ({ dungeon, roomId }) => {
+    const { keeperPostPosition } = await import("/src/game/keeper/posts.ts");
+    const { playerAt } = await import("/src/game/player/where.ts");
+    const { reaperAt } = await import("/src/game/reaper/position.ts");
+    const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
+    const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
+    const room = dungeon.rooms.find((r) => r.id === roomId);
+    const dir = Object.keys(room.links).find((d) => room.links[d] === dungeon.endId);
+    const post = keeperPostPosition(room, dir), axis = DIR_STEP[dir], run = window.__run;
+    run.setState({ dungeon, floor: 3, currentRoomId: roomId, transitioning: false, paused: false, inputLocks: 0,
+      wardenRoomId: null, harrierAwake: false, thiefPhase: "away", reaperAwake: false, shoveReadyAt: 0 });
+    Object.assign(playerAt, { x: post.x - axis.x * 2, z: post.z - axis.z * 2 });
+    let notice = "";
+    const off = window.__bus.on("notice", (line) => { notice = line; });
+    run.getState().shove(axis.x, axis.z);
+    const keeper = { notice, stalled: window.__derived.keeper().stalled };
+    Object.assign(reaperAt, { ...post, roomId });
+    run.setState({ reaperAwake: true, shoveReadyAt: 0 });
+    run.getState().shove(axis.x, axis.z);
+    const reaper = { notice, stalled: window.__derived.reaper().stalled };
+    Object.assign(harrierAt, { ...post, roomId, away: false, down: false });
+    run.setState({ harrierAwake: true, harrierSlain: false, shoveReadyAt: 0, harrierRetreatUntil: 0 });
+    run.getState().shove(axis.x, axis.z);
+    const mixed = { notice, retreat: run.getState().harrierRetreatUntil > window.__derived.clock() };
+    off();
+    reaperAt.roomId = null;
+    run.getState().startRun(11);
+    return { keeper, reaper, mixed };
+  }, { dungeon: immuneDungeon, roomId: immunePost.id });
+  assert.match(immuneShoves.keeper.notice, /cannot move the Keeper.*Gather the toll.*bomb/);
+  assert.equal(immuneShoves.keeper.stalled, false, "shoving the Keeper grants no escape window");
+  assert.match(immuneShoves.reaper.notice, /pass through the Reaper.*Sprint/);
+  assert.equal(immuneShoves.reaper.stalled, false, "shoving the Reaper grants no hold");
+  assert.ok(immuneShoves.mixed.retreat && immuneShoves.mixed.notice.includes("Move while it recoils"),
+    "a successful shove against another threat takes priority over immunity feedback");
+  console.log("PASS immune shove feedback and unchanged Keeper and Reaper counterplay");
   const watchedDungeon = L.generateDungeon({ seed: 11, floor: 3 });
   const watchedRoom = watchedDungeon.rooms.find((r) => r.kind === "normal" && L.sentryFor(r, watchedDungeon.seed, 3,
     watchedDungeon.keyRoomId === r.id ? [L.keyFor(r, watchedDungeon.seed)] : []));
@@ -665,6 +703,12 @@ try {
   await page.waitForFunction(() => window.__run.getState().lives < 3, null, { timeout: 12000 });
   assert.equal(await page.evaluate(() => window.__run.getState().lives), 2, "Reaper reaches and strikes a stationary gallery player");
   console.log("PASS Reaper gallery pursuit, arrival clearance and paused pose and damage");
+  assert.equal(await page.evaluate(async () => (await import("/src/game/reaper/position.ts")).reaperAt.roomId),
+    galleryFixture.roomId, "Reaper publishes its mounted room for combat");
+  await page.evaluate(() => window.__run.getState().startRun(11));
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  assert.equal(await page.evaluate(async () => (await import("/src/game/reaper/position.ts")).reaperAt.roomId), null,
+    "Reaper combat position clears when the previous run ends");
   assert.deepEqual(errors, [], "no browser exceptions");
   console.log("All gameplay checks passed.");
 } finally { await browser.close(); }

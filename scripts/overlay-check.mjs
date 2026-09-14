@@ -41,9 +41,9 @@ try {
       return g.right <= innerWidth && (g.left >= h.right || g.top >= h.bottom);
     });
     await page.evaluate(() => window.__bus.emit("keeperBars"));
-    await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Save 2 gems beyond the toll for a shop bomb"));
+    await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("save 2 extra gems for a shop bomb"));
     const keeperHelp = await page.getByTestId("guidance").innerText();
-    assert.match(keeperHelp, /Set a bomb from your satchel/);
+    assert.match(keeperHelp, /With the toll ready, set a bomb from your satchel/);
     assert.match(keeperHelp, /kneels for 9 seconds/);
     assert.ok(await page.getByTestId("guidance").evaluate((g) => g.scrollWidth <= g.clientWidth), "Keeper instructions wrap inside the guidance panel");
     console.log(`PASS ${name}: Keeper lesson explains bomb budget, satchel use, blast escape and stairs window`);

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
-import { doorPosition } from "../dungeon/layout";
+import { keeperPostPosition } from "./posts";
 import type { Dir, Room } from "../dungeon/types";
 import { bus } from "../events";
 import { canControl, keeperStalled, useRun } from "../state/run";
@@ -20,8 +20,7 @@ import { GROUND_Y, KEEPER_REACH } from "../world";
 export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
   const group = useRef<Group>(null);
   const halberd = useRef<Group>(null);
-  const [dx, , dz] = doorPosition(room, dir);
-  const post = { x: dx * 0.72, z: dz * 0.72 };
+  const post = keeperPostPosition(room, dir);
   const knelt = useRun(keeperStalled);
 
   useEffect(() => {

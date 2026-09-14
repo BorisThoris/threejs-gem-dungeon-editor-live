@@ -26,7 +26,8 @@ Cutpurse and recovers anything it stole, or staggers the Warden for a short
 escape window. Each shove needs 2.4 seconds to recover. Solid cover,
 including watcher posts, blocks the hand; a blocked shove prompts you to
 step around it. Shoves do not wound the Warden; traps and bombs remain
-the stronger tools. Ordinary rats flee
+the stronger tools. A shove aimed at the Keeper or Reaper explains that
+enemy's counterplay instead of telling you to come closer. Ordinary rats flee
 and do not attack. The Harrier gives you time to orient after entering and
 hovers before committing to a dive.
 Ceiling bats stir and flutter for 1.2 seconds before bursting in response
