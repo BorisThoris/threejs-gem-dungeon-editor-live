@@ -676,8 +676,16 @@ dimensions; book dimensions live in their instance transforms. Existing parent
 rotations, scales, materials and collider specifications remain in effect.
 Native render comparisons cover eight prop views and 23 meshes, including the
 books: maximum pixel difference is one colour level, with mean difference below
-0.000001. Typecheck, lint and build pass. The effect on the full room sweep has
-not yet been measured.
+0.000001. Typecheck, lint and build pass.
+
+The subsequent full sweep measures 78 rooms and meets the 72-call draw budget.
+The remaining failures are 6,635 triangles against 4,800 and 90 live geometries
+against 88. Textures peak at 10. Ten revisited rooms show no geometry growth;
+1,498 sprint frames over 10.4 seconds retain no additional heap after collection,
+and 20,000 held-audio updates retain one voice. The heaviest triangle case remains
+seed 4242, floor 3, trap room_6; the geometry peak is room_7 on that floor.
+These are current sweep measurements, not a claim that all performance work is
+complete. Full per-room results are retained in the local review artifacts.
 
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
