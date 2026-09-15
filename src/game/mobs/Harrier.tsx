@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group } from "three";
+import { DoubleSide, Group } from "three";
+
+import { geo, mat } from "../props/shared";
 
 import { encounterArrival } from "../dungeon/arrival";
 import { keyFor } from "../rooms/kinds";
@@ -82,12 +84,12 @@ export function Harrier({ room }: { room: Room }) {
     // Wheeling away, or kept out by the grate: unseen until it returns.
     const kept = away || barred;
     if (!p.placed && !kept && canControl(run)) {
-      const start = encounterArrival(room, entry, cam, obstacles, 0.5);
+      const start = encounterArrival(room, entry, cam, obstacles, 1);
       p.placed = true;
       p.x = start.x;
       p.z = start.z;
     }
-    const t = state.clock.elapsedTime;
+    const t = now;
     const dx = cam.x - p.x;
     const dz = cam.z - p.z;
     const distance = Math.hypot(dx, dz);
@@ -138,22 +140,29 @@ export function Harrier({ room }: { room: Room }) {
       return;
     }
     if (arrivedAt.current === null) arrivedAt.current = now;
+    if (down) {
+      // On the floor, twitching. The floor decides what happens to it here.
+      g.position.set(p.x, floorHeightAt(room, p.x, p.z) + 0.18 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
+      g.rotation.set(0, g.rotation.y, Math.sin(t * 9) * 0.04);
+      g.children[1].rotation.set(0, 1.15, .08);
+      g.children[2].rotation.set(0, -1.15, -.08);
+      if (patchAt(bites, p.x, p.z)) run.slayHarrier();
+      report();
+      return;
+    }
     if (now - arrivedAt.current < HARRIER_ENTRY_GRACE_S) {
       g.position.set(p.x, FLIGHT_HEIGHT + floorRiseAt(room, p.x, p.z), p.z);
+      g.rotation.set(0, Math.atan2(dx, dz), 0);
+      g.children[1].rotation.set(0, 0, .25 + Math.sin(t * 14) * .45);
+      g.children[2].rotation.set(0, 0, -.25 - Math.sin(t * 14) * .45);
       tell.current = 0;
       report();
       return;
     }
 
-    if (down) {
-      // On the floor, twitching. The floor decides what happens to it here.
-      g.position.set(p.x, floorHeightAt(room, p.x, p.z) + 0.22 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
-      g.rotation.z = Math.PI / 2 + Math.sin(t * 9) * 0.1;
-      if (patchAt(bites, p.x, p.z)) run.slayHarrier();
-      report();
-      return;
-    }
     g.rotation.z = 0;
+    g.children[1].rotation.y = 0;
+    g.children[2].rotation.y = 0;
     g.rotation.y = Math.atan2(dx, dz);
     if (distance <= HARRIER_WINDUP_REACH && roomSegmentClear(room, p.x, p.z, cam.x, cam.z)) {
       if (windingAt.current === null) {
@@ -182,8 +191,8 @@ export function Harrier({ room }: { room: Room }) {
       return;
     }
     const step = Math.min(HARRIER_SPEED * delta, HARRIER_MAX_STEP, Math.max(0, distance - HARRIER_TOUCH_RADIUS * 0.5));
-    const heading = steerInRoom(room, p.x, p.z, cam.x, cam.z, obstacles, 0, 0.5);
-    [p.x, p.z] = roomStep(room, p.x, p.z, heading.dx * step, heading.dz * step, 0.5);
+    const heading = steerInRoom(room, p.x, p.z, cam.x, cam.z, obstacles, 0, 1);
+    [p.x, p.z] = roomStep(room, p.x, p.z, heading.dx * step, heading.dz * step, 1);
     // It dives as it closes: at height across the room, at head height on
     // you. That descent is its tell - the same number the Warden's grace
     // and the Keeper's halberd publish - so it tips its nose with it and a
@@ -199,24 +208,11 @@ export function Harrier({ room }: { room: Room }) {
 
   return (
     <group name="creature-harrier" ref={group}>
-      {/* A body the colour of the dark, two wings that beat, two eyes. */}
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.16, 0.7, 6]} />
-        <meshStandardMaterial color="#17131c" roughness={1} />
-      </mesh>
-      <mesh position={[0.45, 0, 0]}>
-        <planeGeometry args={[0.9, 0.35]} />
-        <meshStandardMaterial color="#221c2a" roughness={1} side={2} />
-      </mesh>
-      <mesh position={[-0.45, 0, 0]}>
-        <planeGeometry args={[0.9, 0.35]} />
-        <meshStandardMaterial color="#221c2a" roughness={1} side={2} />
-      </mesh>
-      {[-0.07, 0.07].map((x) => (
-        <mesh key={x} position={[x, 0.06, 0.3]}>
-          <sphereGeometry args={[0.03, 6, 6]} />
-          <meshBasicMaterial color="#ff6a3a" />
-        </mesh>
+      <mesh geometry={geo("harrier-body")} material={mat({ color: "#49404e", roughness: 1 })} />
+      <mesh name="harrier-right-wing" geometry={geo("harrier-wing")} material={mat({ color: "#66556b", roughness: 1, side: DoubleSide })} />
+      <mesh name="harrier-left-wing" geometry={geo("harrier-wing-left")} material={mat({ color: "#66556b", roughness: 1, side: DoubleSide })} />
+      {[-0.085, 0.085].map((x) => (
+        <mesh key={x} position={[x, .12, .365]} scale={[.045, .045, .025]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#ff6a3a", basic: true })} />
       ))}
     </group>
   );

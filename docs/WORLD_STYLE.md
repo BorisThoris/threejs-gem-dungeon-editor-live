@@ -82,3 +82,10 @@ open wings; wingbeats and movement both use the paused run clock. The creature
 render check includes roosting and airborne states and checks paused instance
 transforms. `npm run test:bat-flight` samples full-wing clearance across generated
 roosts and shaped rooms.
+
+The Harrier uses a block-cut head and beak, a short tail, and swept angular
+feathers. Flight navigation reserves a metre of clearance for the open wings.
+When stunned it rests above the floor with wings folded behind it, rather than
+rolling the full span through the ground. Its animation uses the run clock.
+The creature rendering check covers both airborne and grounded poses and
+asserts that the grounded model's bounds remain above the room floor.

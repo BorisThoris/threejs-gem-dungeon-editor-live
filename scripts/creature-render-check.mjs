@@ -24,11 +24,11 @@ try{
    if(Object.keys(found).length===7)return found;
   }throw Error('missing habitat');
  });
- const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',wisp:'creature-wisp'};
+ const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   await page.evaluate(async({f,kind})=>{
    const {d,r}=f; (await import('/src/game/din/din.ts')).reset();
-   window.__run.setState({dungeon:d,currentRoomId:r.id,floor:3,phase:'playing',paused:false,inputLocks:0,transitioning:false,waterOpenedAt:null,glim:kind==='beetles'?0:90,oil:100,litUntil:kind==='wisp'?1e9:0,wardenRoomId:kind==='warden'?r.id:null,wardenAwake:kind==='warden',harrierAwake:kind==='harrier',harrierSlain:kind!=='harrier',reaperAwake:kind==='reaper',thiefPhase:kind==='cutpurse'?'stalking':'away',invulnerableUntil:1e9,alarm:0});
+   window.__run.setState({dungeon:d,currentRoomId:r.id,floor:3,phase:'playing',paused:false,inputLocks:0,transitioning:false,waterOpenedAt:null,glim:kind==='beetles'?0:90,oil:100,litUntil:kind==='wisp'?1e9:0,wardenRoomId:kind==='warden'?r.id:null,wardenAwake:kind==='warden',harrierAwake:kind.startsWith('harrier'),harrierSlain:!kind.startsWith('harrier'),harrierDownedUntil:kind==='harrierDown'?1e9:0,reaperAwake:kind==='reaper',thiefPhase:kind==='cutpurse'?'stalking':'away',invulnerableUntil:1e9,alarm:0});
    window.__bus.emit('teleport',{position:[0,1.5,0]});
   },{f:fixtures[kind]??(kind==='batFlight'?fixtures.bat:fixtures.actors),kind});
   await page.waitForFunction(name=>!!window.__scene.getObjectByName(name),name);
@@ -72,6 +72,12 @@ try{
    await page.waitForTimeout(300);
    assert.deepEqual(await page.evaluate(()=>window.__scene.getObjectByName('ambient-bats').children.map(m=>Array.from(m.instanceMatrix.array))),matrices,'paused bats freeze their flight and wingbeats');
   }
+  if(kind.startsWith('harrier')){
+   const pose=()=>{const g=window.__scene.getObjectByName('creature-harrier');return [g.position.toArray(),g.rotation.toArray(),...g.children.map(c=>c.rotation.toArray())];};
+   const before=await page.evaluate(pose);await page.waitForTimeout(300);
+   assert.deepEqual(await page.evaluate(pose),before,'Harrier pose freezes while paused');
+  }
+  if(kind==='harrierDown')assert.ok(result.bounds[1]>=result.base,'folded downed Harrier stays above floor');
   if(kind==='frog')assert.ok(result.bounds[1]>=result.base+.04,'frog feet stay above terrain');
  }
  assert.deepEqual(errors,[]);console.log('PASS all 11 creature types contribute visible pixels in native room lighting');
