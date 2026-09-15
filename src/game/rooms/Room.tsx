@@ -1,3 +1,4 @@
+import { CeilingSurface } from "./CeilingSurface";
 import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { FloorSurface } from "./FloorSurface";
@@ -40,7 +41,7 @@ import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
-import { Blocks, CorridorDetails } from "./CorridorDetails";
+import { CorridorDetails } from "./CorridorDetails";
 import { Watercourse } from "../worldbuilding/Waterworks";
 import { ServiceMarks } from "../worldbuilding/ServiceMarks";
 import { BellcapColony } from "../worldbuilding/BellcapColony";
@@ -50,7 +51,6 @@ import { Terraces } from "../worldbuilding/Terraces";
 import { PassageLamps } from "../worldbuilding/PassageLamps";
 import { DistrictLintels } from "../worldbuilding/DistrictLintels";
 import { WallCourses } from "../worldbuilding/WallCourses";
-import type { CorridorBlock } from "./corridorPattern";
 import { Terrain } from "./Terrain";
 
 interface RoomProps {
@@ -243,9 +243,6 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
 
 export function Room({ room, seed, showCeiling = true }: RoomProps) {
   const floors = useMemo(() => floorRects(room), [room]);
-  const ceilings = useMemo(() => floors.map<CorridorBlock>(r => ({
-    position: [r.x, GROUND_Y + WALL_HEIGHT + 0.1, r.z], size: [r.width + 0.5, 0.2, r.depth + 0.5],
-  })), [floors]);
   // What the room is made of, as distinct from what it is for. Rolled from
   // the room's own seed, so it is the same place every time you walk back
   // into it.
@@ -294,7 +291,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
   return (
     <group>
       <FloorSurface room={room} color={tint.floor} map={floorSurface} />
-      {showCeiling && <Blocks blocks={ceilings} color="#1a191d" />}
+      {showCeiling && <CeilingSurface room={room} />}
       {floors.map((r, i) => (
         <group key={`floor-${i}`}>
           <RigidBody type="fixed" colliders={false}>

@@ -4,7 +4,11 @@ import type { Room } from "../dungeon/types";
 /** Disjoint strips of the physical floor union. Door collars may overlap the
  * chamber courses; render their union once instead of coplanar slab faces. */
 export function floorSurfaceRects(room: Room): FloorRect[] {
-  const floors = floorRects(room);
+  return surfaceUnion(floorRects(room));
+}
+
+/** Disjoint rectangles covering the union exactly, without overlapping faces. */
+export function surfaceUnion(floors: readonly FloorRect[]): FloorRect[] {
   const cuts = [...new Set(floors.flatMap(r => [r.z - r.depth / 2, r.z + r.depth / 2]))].sort((a, b) => a - b);
   const result: FloorRect[] = [];
   for (let i = 1; i < cuts.length; i++) {

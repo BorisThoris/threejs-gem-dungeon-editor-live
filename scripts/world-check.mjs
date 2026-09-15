@@ -182,6 +182,16 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     }
     for (const p of physicalFloor) assert.ok(Math.abs(surface.reduce((sum, s) => sum + overlapArea(p, s), 0) - p.width * p.depth) < 1e-6,
       "every physical floor rectangle is completely covered by the visible surface");
+    const roofSlabs = physicalFloor.map(p => ({ ...p, width: p.width + 0.5, depth: p.depth + 0.5 }));
+    const roof = L.surfaceUnion(roofSlabs);
+    for (let i = 0; i < roof.length; i++) {
+      for (let j = i + 1; j < roof.length; j++) assert.ok(overlapArea(roof[i], roof[j]) < 1e-8, "roof panels never overlap");
+      const s = roof[i];
+      for (const dx of [-0.49999, 0, 0.49999]) for (const dz of [-0.49999, 0, 0.49999])
+        assert.ok(roofSlabs.some(p => Math.abs(s.x + dx * s.width - p.x) <= p.width / 2 + 1e-8 && Math.abs(s.z + dz * s.depth - p.z) <= p.depth / 2 + 1e-8), "roof keeps the original slab outline");
+    }
+    for (const p of roofSlabs) assert.ok(Math.abs(roof.reduce((sum, s) => sum + overlapArea(p, s), 0) - p.width * p.depth) < 1e-6,
+      "ceiling covers every original slab, including wall overlaps and gallery collars");
     rooms++;
     const courses = L.wallCoursesFor(r);
     for (const b of [...courses.rails, ...courses.caps]) {

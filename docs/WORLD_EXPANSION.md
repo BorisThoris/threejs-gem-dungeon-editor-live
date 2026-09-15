@@ -583,6 +583,20 @@ selected-room heading also uses the shared place name from clues and arrival
 readouts. Native checks cover all four watercourse rooms of the default atlas
 floor in flowing, half-drained and drained states; typecheck, lint and build pass.
 
+## Continuous ceiling underside
+
+Ceilings now render the disjoint union of their old slab footprints as downward
+faces at the original underside height. The half-metre slab expansion is
+preserved, covering wall tops and gallery collars without overlapping roof
+faces. Physical walls, floors and traversal are unchanged; the existing
+ceiling visibility option still controls the whole surface.
+
+Native room comparisons from below differ by at most one pixel color level,
+with 212 slab-face triangles reduced to 78 in the comparison fixture. Generation
+checks cover all 4,539 rooms: panels do not overlap, stay inside the old outline,
+and completely cover every original slab. Typecheck, lint and build pass. The
+full rendering budget remains unresolved; these are ceiling-specific results.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and
