@@ -14,6 +14,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/wallCoursePattern",
   "rooms/floorSurfacePattern",
   "rooms/underfoot",
+  "rooms/blockFaces",
   "mobs/groundHeading",
   "din/emissions",
   "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
@@ -21,6 +22,11 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+const cube = { position: [0, 0, 0], size: [2, 2, 2] };
+assert.equal(L.blockFaces([cube]).length, 6, "isolated blocks retain all six surfaces");
+assert.equal(L.blockFaces([cube, { position: [2, 0, 0], size: [2, 2, 2] }]).length, 10, "touching blocks omit only their two buried joining faces");
+assert.equal(L.blockFaces([cube, { position: [0, 0, 0], size: [1, 1, 1], rotationY: 0.7 }]).length, 6, "a fully enclosed rotated block has no exposed faces");
+assert.equal(L.blockFaces([cube], [cube, { position: [0, 2, 0], size: [2, 2, 2] }]).length, 5, "opaque blocks in another material batch can cover a face");
 const pen = { ...L.generateDungeon({ seed: 72, floor: 1 }).rooms[0], shape: "square", size: 20, wings: [], links: {} };
 const softRoom = { ...pen, biome: "mossy" };
 assert.ok(L.loudnessIn("sprint", softRoom, "soft") < L.loudnessIn("sprint", softRoom, "stone"), "paving carries more sprint noise than its moss bed");
@@ -298,6 +304,15 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     if (r.secret) assert.equal(byId.get(r.secret.to).district, r.district, "secrets inherit host history");
     for (const id of Object.values(r.links)) { links++; if (byId.get(id).district === r.district) matching++; }
     const terrain = L.terrainFor(r);
+    if (["flooded", "mossy", "fungal"].includes(terrain.biome)) {
+      const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
+      for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
+        const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
+        if (!next || tile.size[0] !== 1.5 || tile.size[2] !== 1.5 || next.size[0] !== 1.5 || next.size[2] !== 1.5) continue;
+        assert.equal(L.footingAt(r, tile.position[0] + dx / 2, tile.position[2] + dz / 2, 0, 100),
+          terrain.biome === "flooded" ? "water" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
+      }
+    }
     for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
       r.biome === "flooded" ? "water" : ["mossy", "fungal"].includes(r.biome) ? "soft" : "stone", "independent terrain beds retain their material after channel drainage");

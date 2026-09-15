@@ -3,9 +3,11 @@ import { Matrix4, Vector3, type InstancedMesh, type Texture } from "three";
 import type { Room } from "../dungeon/types";
 import { corridorDetails, type CorridorBlock } from "./corridorPattern";
 import { geo } from "../props/shared";
+import { blockFaces } from "./blockFaces";
 
 interface BlocksProps {
   blocks: CorridorBlock[];
+  occluders?: readonly CorridorBlock[];
   color: string;
   glow?: boolean;
   map?: Texture | null;
@@ -14,22 +16,23 @@ interface BlocksProps {
   roughness?: number;
 }
 
-export function Blocks({ blocks, color, glow = false, map, emissive, emissiveIntensity = 0.35, roughness = 0.9 }: BlocksProps) {
+export function Blocks({ blocks, occluders, color, glow = false, map, emissive, emissiveIntensity = 0.35, roughness = 0.9 }: BlocksProps) {
   const mesh = useRef<InstancedMesh>(null);
+  const faces = useMemo(() => blockFaces(blocks, occluders), [blocks, occluders]);
   useLayoutEffect(() => {
     const g = mesh.current;
     if (!g) return;
     const matrix = new Matrix4();
-    const scale = new Vector3();
-    blocks.forEach((block, i) => {
-      matrix.makeRotationY(block.rotationY ?? 0).scale(scale.set(...block.size)).setPosition(...block.position);
+    const u = new Vector3(), v = new Vector3(), normal = new Vector3();
+    faces.forEach((face, i) => {
+      matrix.makeBasis(u.set(...face.u), v.set(...face.v), normal.set(...face.normal)).setPosition(...face.position);
       g.setMatrixAt(i, matrix);
     });
     g.instanceMatrix.needsUpdate = true;
     g.computeBoundingSphere();
-  }, [blocks]);
-  if (!blocks.length) return null;
-  return <instancedMesh name="building-blocks" ref={mesh} args={[geo("box", 1, 1, 1), undefined, blocks.length]}>
+  }, [faces]);
+  if (!faces.length) return null;
+  return <instancedMesh name="building-blocks" ref={mesh} args={[geo("plane", 1, 1), undefined, faces.length]}>
     <meshStandardMaterial color={color} map={map} roughness={roughness} emissive={emissive ?? (glow ? color : "#000000")} emissiveIntensity={emissiveIntensity} />
   </instancedMesh>;
 }

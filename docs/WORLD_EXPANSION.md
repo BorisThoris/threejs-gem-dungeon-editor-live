@@ -445,6 +445,30 @@ paused and confirms the animal remains absent. That native Chrome check passes.
 The player follows behind during this test: a stationary initial scare proved
 sensitive to the animal's random wander and could miss the narrow spike patch.
 
+The habitat-checkpoint performance sweep covers 78 rooms and now meets the
+72-call budget. It still exceeds triangle and geometry budgets at 7,500 and
+105 respectively; textures peak at 10. Settled room revisits do not accumulate
+geometry, and sprint/held-audio memory checks pass.
+
+Architectural block batches now instance shared plane faces with the original
+cube UV orientation. A face is omitted only when all four corners just outside
+it lie inside one opaque neighboring block; partial coverage is retained.
+Architecture shares occluders across its three material batches. A textured
+native-render comparison is pixel-identical across three views, including a
+rotated block and a buried joint. In the busiest room the main detail batch
+drops from 1,152 to 1,056 triangles, and its accent batch from 576 to 480; lamp
+frames also lose buried faces. The 78-room totals above predate this change.
+
+Deposit tiles now meet along shared edges instead of leaving four-centimetre
+dry seams through water and planted beds. Paving stones retain their joints.
+Footprint checks use the full expanded tile corners, including tapered gallery
+widths and ramp cuts. Deposits sample world-space texture grain, so neighboring
+tiles do not restart the moss pattern. Generation checks verify continuous
+footing at adjoining wet/soft tile edges after drainage; native fungal, flooded
+and hewn renders have no shader errors. The review exposed a separate existing
+layering issue: the sentry floor beam can sit beneath terrain overlays, which
+remains to be corrected.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

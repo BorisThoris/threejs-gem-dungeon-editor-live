@@ -17,7 +17,7 @@ export function terrainFor(room: Room) {
   for (let x = -half + step; x < half - 0.5; x += step) {
     for (let z = -half + step; z < half - 0.5; z += step) {
       // Keep all four tile corners inside shaped floors.
-      if ([-0.65, 0.65].some(dx => [-0.65, 0.65].some(dz =>
+      if ([-0.75, 0.75].some(dx => [-0.75, 0.75].some(dz =>
         Math.hypot(x + dx, z + dz) > floorReach(room, Math.atan2(z + dz, x + dx)) - 0.15))) continue;
       const lane = Math.abs(x) < 1.7 || Math.abs(z) < 1.7;
       const field = Math.sin(x * 0.23 + room.seed % 13) + Math.cos(z * 0.31 + room.grid.z);
@@ -25,7 +25,7 @@ export function terrainFor(room: Room) {
       const organic = biome === "mossy" || biome === "flooded" || biome === "fungal";
       const deposit = organic ? !lane && field > -0.25 : !lane && Math.abs(x) > half * 0.65;
       const block: CorridorBlock = { position: [x, GROUND_Y + (deposit ? 0.024 : 0.019), z],
-        size: [deposit ? 1.46 : 1.32, 0.012, deposit ? 1.46 : 1.32] };
+        size: [deposit ? step : 1.32, 0.012, deposit ? step : 1.32] };
       if (deposit) deposits.push(block);
       else if (lane || !organic && Math.floor((z + half) / step) % 3 === 0) paving.push(block);
     }
@@ -39,15 +39,15 @@ export function terrainFor(room: Room) {
     const point = (along: number, across: number) => axis.x
       ? [axis.x * along, shift + across] : [shift + across, axis.z * along];
     for (let along = half + step; along < half + length - 0.75; along += step) {
-      const available = Math.min(wingWidthAt(room, dir, along - 0.73), wingWidthAt(room, dir, along + 0.73));
-      for (let across = 0; across + 0.73 < available / 2 - 0.15; across += step) for (const side of across === 0 ? [1] : [-1, 1]) {
+      const available = Math.min(wingWidthAt(room, dir, along - 0.75), wingWidthAt(room, dir, along + 0.75));
+      for (let across = 0; across + 0.75 < available / 2 - 0.15; across += step) for (const side of across === 0 ? [1] : [-1, 1]) {
         const [x, z] = point(along, across * side);
         const organic = biome === "mossy" || biome === "flooded" || biome === "fungal";
         const field = Math.sin(x * 0.23 + room.seed % 13) + Math.cos(z * 0.31 + room.grid.z);
-        const onRamp = terrace && along - 0.73 < terrace.rampEnd;
+        const onRamp = terrace && along - 0.75 < terrace.rampEnd;
         const deposit = across > 1.7 && (organic ? field > -0.25 : across > available * 0.3) && !(biome === "flooded" && onRamp);
         if (!deposit && across > 1.7 && organic) continue;
-        const size = deposit ? 1.46 : 1.32, low = along - size / 2, high = along + size / 2;
+        const size = deposit ? step : 1.32, low = along - size / 2, high = along + size / 2;
         const cuts = [low, ...(terrace && terrace.rampEnd > low && terrace.rampEnd < high ? [terrace.rampEnd] : []), high];
         for (let i = 1; i < cuts.length; i++) {
           const [px, pz] = point((cuts[i - 1] + cuts[i]) / 2, across * side);
