@@ -1,11 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-<<<<<<< Updated upstream
-  "generatedAt": "2026-09-15T12:08:01.162Z",
-=======
-  "generatedAt": "2026-09-15T12:15:35.830Z",
->>>>>>> Stashed changes
+  "generatedAt": "2026-09-15T12:38:33.278Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -53,7 +49,6 @@
       "generate-icon",
       "test:smoke",
       "test:layout",
-      "test:world",
       "test:perf",
       "test:prod",
       "test:desktop",
@@ -92,7 +87,7 @@
   },
   "media": {
     "source": "repo-local",
-    "directory": "C:/Users/Gaming PC/Desktop/Repos/threejs-gem-dungeon-editor-live/project-media",
+    "directory": "/home/runner/work/threejs-gem-dungeon-editor-live/threejs-gem-dungeon-editor-live/project-media",
     "primary": "project-media/card.jpg",
     "images": [
       {
@@ -102,11 +97,7 @@
         "bytes": 49811,
         "width": 1600,
         "height": 900,
-<<<<<<< Updated upstream
-        "capturedAt": "2026-09-15T12:06:47.494Z"
-=======
-        "capturedAt": "2026-09-15T11:52:45.149Z"
->>>>>>> Stashed changes
+        "capturedAt": "2026-09-15T12:37:19.468Z"
       },
       {
         "profile": "desktop",
@@ -115,11 +106,7 @@
         "bytes": 48908,
         "width": 1440,
         "height": 900,
-<<<<<<< Updated upstream
-        "capturedAt": "2026-09-15T12:07:05.891Z"
-=======
-        "capturedAt": "2026-09-15T11:52:45.150Z"
->>>>>>> Stashed changes
+        "capturedAt": "2026-09-15T12:37:37.845Z"
       },
       {
         "profile": "full",
@@ -128,11 +115,7 @@
         "bytes": 43709,
         "width": 1440,
         "height": 900,
-<<<<<<< Updated upstream
-        "capturedAt": "2026-09-15T12:07:42.622Z"
-=======
-        "capturedAt": "2026-09-15T11:52:45.151Z"
->>>>>>> Stashed changes
+        "capturedAt": "2026-09-15T12:38:14.711Z"
       },
       {
         "profile": "mobile",
@@ -141,11 +124,7 @@
         "bytes": 27313,
         "width": 430,
         "height": 932,
-<<<<<<< Updated upstream
-        "capturedAt": "2026-09-15T12:07:24.245Z"
-=======
-        "capturedAt": "2026-09-15T11:52:45.152Z"
->>>>>>> Stashed changes
+        "capturedAt": "2026-09-15T12:37:56.335Z"
       },
       {
         "profile": "og",
@@ -154,11 +133,7 @@
         "bytes": 41806,
         "width": 1200,
         "height": 630,
-<<<<<<< Updated upstream
-        "capturedAt": "2026-09-15T12:08:00.999Z"
-=======
-        "capturedAt": "2026-09-15T11:52:45.153Z"
->>>>>>> Stashed changes
+        "capturedAt": "2026-09-15T12:38:33.121Z"
       }
     ]
   },
@@ -211,10 +186,9 @@
     "devDependencyCount": 20
   },
   "metrics": {
-<<<<<<< Updated upstream
     "sourceFiles": 216,
     "testFiles": 1,
-    "sourceLines": 56230,
+    "sourceLines": 56273,
     "largestDirectories": [
       {
         "directory": "src",
@@ -223,19 +197,6 @@
       {
         "directory": "scripts",
         "files": 29
-=======
-    "sourceFiles": 219,
-    "testFiles": 1,
-    "sourceLines": 55441,
-    "largestDirectories": [
-      {
-        "directory": "src",
-        "files": 184
-      },
-      {
-        "directory": "scripts",
-        "files": 30
->>>>>>> Stashed changes
       },
       {
         "directory": ".",
@@ -262,19 +223,11 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-<<<<<<< Updated upstream
-    "head": "7420f40",
-    "lastCommitDate": "2026-09-15T10:59:31Z",
-    "lastCommitSubject": "Say what a creature and an environment are, and add one of each",
-    "commitCount": 340,
+    "head": "9b2dda8",
+    "lastCommitDate": "2026-09-15T15:20:16+03:00",
+    "lastCommitSubject": "Say what the app actually is: specific title, blurb and tags for the card",
+    "commitCount": 342,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
-=======
-    "head": "be0b4ed",
-    "lastCommitDate": "2026-09-15T08:39:12+00:00",
-    "lastCommitSubject": "Refresh screenshots, card, icons and metadata [meta-bot]",
-    "commitCount": 338,
-    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
->>>>>>> Stashed changes
   },
   "readme": {
     "file": "README.md",
