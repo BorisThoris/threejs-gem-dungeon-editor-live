@@ -1,3 +1,5 @@
+import { TERRAIN_GRAMMAR } from "../game/rooms/terrainGrammar";
+import { biomeIdFor } from "../game/rooms/biomes";
 import { useMemo, useState } from "react";
 import { generateDungeon } from "../game/dungeon/generate";
 import { DIRS, DIR_STEP } from "../game/dungeon/types";
@@ -261,7 +263,7 @@ export function WorldAtlas() {
         </output>
         <p style={small}>Select a floor position to inspect it. Arrow keys move the probe 0.5 m; Shift moves 2 m; Home returns to the room center.</p>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>
-        {terrain && <p style={small}>Terrain tiles show the same paving lanes and biome beds as the game, including raised galleries. Water routes and furnishings appear above them.</p>}
+        {terrain && <p style={small}><strong>{TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].name}</strong> · {TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].description} Raised galleries use the same terrain rules; the drawing matches the game.</p>}
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
         <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
         {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}

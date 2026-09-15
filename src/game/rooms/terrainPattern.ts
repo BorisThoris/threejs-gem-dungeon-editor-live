@@ -1,3 +1,4 @@
+import { chamberTerrainCell, galleryTerrainCell, TERRAIN_GRAMMAR } from "./terrainGrammar";
 import { DIRS, DIR_STEP, floorReach, type Room } from "../dungeon/types";
 import { corridorOffset, wingWidthAt } from "../dungeon/footprint";
 import { floorHeightAt, terracesFor } from "../worldbuilding/elevation";
@@ -19,18 +20,16 @@ export function terrainFor(room: Room) {
       // Keep all four tile corners inside shaped floors.
       if ([-0.75, 0.75].some(dx => [-0.75, 0.75].some(dz =>
         Math.hypot(x + dx, z + dz) > floorReach(room, Math.atan2(z + dz, x + dx)) - 0.15))) continue;
-      const lane = Math.abs(x) < 1.7 || Math.abs(z) < 1.7;
-      const field = Math.sin(x * 0.23 + room.seed % 13) + Math.cos(z * 0.31 + room.grid.z);
-      // Water/moss grow in broad connected beds. Worked stone follows courses.
-      const organic = biome === "mossy" || biome === "flooded" || biome === "fungal";
-      const deposit = organic ? !lane && field > -0.25 : !lane && Math.abs(x) > half * 0.65;
+      const cell = chamberTerrainCell(room, biome, x, z);
+      if (cell === "bare") continue;
+      const deposit = cell === "deposit";
       const block: CorridorBlock = { position: [x, GROUND_Y + (deposit ? 0.024 : 0.019), z],
         size: [deposit ? step : 1.32, 0.012, deposit ? step : 1.32] };
       if (deposit) deposits.push(block);
-      else if (lane || !organic && Math.floor((z + half) / step) % 3 === 0) paving.push(block);
+      else paving.push(block);
     }
   }
-  // Passages use the same world-space deposit field, with a clear central
+  // Passages extend the same land-use rules, with a clear central
   // paving lane. Split tiles at the ramp's knee so no face floats above it.
   for (const dir of DIRS) {
     const length = room.wings?.[dir] ?? 0;
@@ -42,11 +41,10 @@ export function terrainFor(room: Room) {
       const available = Math.min(wingWidthAt(room, dir, along - 0.75), wingWidthAt(room, dir, along + 0.75));
       for (let across = 0; across + 0.75 < available / 2 - 0.15; across += step) for (const side of across === 0 ? [1] : [-1, 1]) {
         const [x, z] = point(along, across * side);
-        const organic = biome === "mossy" || biome === "flooded" || biome === "fungal";
-        const field = Math.sin(x * 0.23 + room.seed % 13) + Math.cos(z * 0.31 + room.grid.z);
-        const onRamp = terrace && along - 0.75 < terrace.rampEnd;
-        const deposit = across > 1.7 && (organic ? field > -0.25 : across > available * 0.3) && !(biome === "flooded" && onRamp);
-        if (!deposit && across > 1.7 && organic) continue;
+        const onRamp = !!terrace && along - 0.75 < terrace.rampEnd;
+        const cell = galleryTerrainCell(biome, along - half, across, available, onRamp);
+        if (cell === "bare") continue;
+        const deposit = cell === "deposit";
         const size = deposit ? step : 1.32, low = along - size / 2, high = along + size / 2;
         const cuts = [low, ...(terrace && terrace.rampEnd > low && terrace.rampEnd < high ? [terrace.rampEnd] : []), high];
         for (let i = 1; i < cuts.length; i++) {
@@ -62,7 +60,7 @@ export function terrainFor(room: Room) {
       }
     }
   }
-  return { paving, deposits, biome };
+  return { paving, deposits, biome, grammar: TERRAIN_GRAMMAR[biome] };
 }
 
 export const TERRAIN_COLORS = {

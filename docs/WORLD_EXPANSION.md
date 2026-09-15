@@ -513,6 +513,30 @@ The surface/winding/containment check now samples 129,080 points and reaches
 at 522 triangles, down from 711 before simplification. These beam-specific
 results are not a claim that the full-world budgets pass.
 
+## Terrain with a purpose
+
+The shared terrain grammar replaces the broad sinusoidal deposit threshold
+with room-scale land use: nursery furrows and tending paths, rounded settling
+basins, mycelium fans, kiln aprons, loading bays, service courses, processional
+and ossuary margins, and a broken mineral ring. Central crossings stay paved;
+gallery beds flank the travel aisle, and standing water stays off ramps.
+Perimeter bands measure the actual shaped chamber boundary instead of its
+bounding square. The World atlas names and explains each pattern beside the
+same floor plan used by the game.
+
+Habitat cells remain available to creatures and footsteps. Rendering coalesces
+touching deposit rectangles only when they share a floor plane, preserving
+holes, ramp knees and world-space grain. Across 4,539 generated rooms, 153,133
+deposit cells become 51,324 render faces. Every original cell remains fully
+covered, with the same floor plane and total area. A native textured comparison
+reduces 78 cells to 20 faces with a maximum one-level pixel difference across
+three views. Paving retains its individual stone joints.
+
+The world check covers 489,928 terrain cells across nine biomes. Native checks
+pass shaped-gallery ascent/descent, toad gathering and retreat, persistent dry
+refuges, material-specific sprint signals, and paused behavior. Typecheck, lint
+and build pass. These rendering changes still need a new full performance sweep.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

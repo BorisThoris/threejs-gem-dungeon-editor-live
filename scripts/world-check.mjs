@@ -15,6 +15,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/floorSurfacePattern",
   "rooms/underfoot",
   "rooms/blockFaces",
+  "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
   "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
@@ -38,6 +39,7 @@ const cage = Array.from({ length: 16 }, (_, i) => ({ x: Math.cos(i * Math.PI / 8
 assert.deepEqual(L.groundHeading(pen, 0, 0, 3, 0, cage), { dx: 0, dz: 0 }, "a cornered ambient animal does not take the enemy fallback through furniture");
 assert.ok(L.groundHeading(pen, 0.1, 0, 3, 0, [{ x: 0, z: 0, r: 0.5 }]).dx > 0,
   "an obstacle newly placed over an animal permits outward escape");
+let terrainBedCells = 0, terrainBedFaces = 0;
 let wallTurns = 0;
 assert.equal(L.croakerMigration(null, 100), 0, "unopened channels keep toads at their feeding positions");
 assert.equal(L.croakerMigration(10, 14), 0, "migration waits for the channel to fall");
@@ -304,6 +306,16 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     if (r.secret) assert.equal(byId.get(r.secret.to).district, r.district, "secrets inherit host history");
     for (const id of Object.values(r.links)) { links++; if (byId.get(id).district === r.district) matching++; }
     const terrain = L.terrainFor(r);
+    const beds = L.mergeTerrainBeds(terrain.deposits);
+    terrainBedCells += terrain.deposits.length; terrainBedFaces += beds.length;
+    const area = tiles => tiles.reduce((sum, t) => sum + t.size[0] * t.size[2], 0);
+    assert.ok(Math.abs(area(beds) - area(terrain.deposits)) < 1e-6, "merged beds retain their full area");
+    for (const tile of terrain.deposits) {
+      const bed = beds.find(b => Math.abs(tile.position[0] - b.position[0]) + tile.size[0] / 2 <= b.size[0] / 2 + 1e-7 && Math.abs(tile.position[2] - b.position[2]) + tile.size[2] / 2 <= b.size[2] / 2 + 1e-7);
+      assert.ok(bed, "every original habitat tile remains fully covered by a rendered bed");
+      const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
+      assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
+    }
     if (["flooded", "mossy", "fungal"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
@@ -362,3 +374,5 @@ assert.equal(L.waterLevel(10, 13), 0.5);
 assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
+
+console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);

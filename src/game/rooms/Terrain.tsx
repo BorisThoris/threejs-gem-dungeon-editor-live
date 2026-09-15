@@ -1,3 +1,4 @@
+import { mergeTerrainBeds } from "./mergeTerrainBeds";
 import { useMemo, useRef, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Matrix4, Vector3, type InstancedMesh } from "three";
@@ -32,6 +33,7 @@ function Tiles({ blocks, name, children }: { blocks: TerrainTile[]; name: string
 /** Broad, block-cut beds with a deliberately stepped water glint. Two draws. */
 export function Terrain({ room }: { room: Room }) {
   const data = useMemo(() => terrainFor(room), [room]);
+  const beds = useMemo(() => mergeTerrainBeds(data.deposits), [data.deposits]);
   const time = useRef({ value: runClock(useRun.getState()) });
   const wet = data.biome === "flooded";
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
@@ -42,7 +44,7 @@ export function Terrain({ room }: { room: Room }) {
   });
   return <group>
     <Tiles blocks={data.paving} name="terrain-paving"><meshStandardMaterial color={stone} map={pavingSurface} roughness={0.9} /></Tiles>
-    <Tiles blocks={data.deposits} name="terrain-deposits">
+    <Tiles blocks={beds} name="terrain-deposits">
       <meshStandardMaterial color={deposit} map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
         userData={{ terrainTime: time.current }}
         emissive={wet ? "#233d42" : "#000000"} emissiveIntensity={0.15}
