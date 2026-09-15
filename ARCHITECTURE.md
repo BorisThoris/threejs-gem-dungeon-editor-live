@@ -6,6 +6,13 @@ built on.
 
 ## The rule: one owner per fact
 
+The art-direction contract is [World Style](docs/WORLD_STYLE.md), also visible
+in Credits and the editor. `rooms/districts.ts` grows connected regions on the
+door graph and assigns each room's biome. Every biome consumer reads that
+assignment. `dungeon/footprint.ts` defines the actual block-cut room outline,
+including round and polygonal chambers, door collars and shifted galleries;
+walls, collisions, navigation and the minimap all use it.
+
 Every bug the previous tree had in its last month was the same bug: two
 modules with different opinions about one fact. Five different ideas of
 where the floor was. Doors placed from one room size and spawns from another.

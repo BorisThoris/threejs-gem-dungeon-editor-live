@@ -159,7 +159,7 @@ export function Minimap() {
       x: (r.grid.x - here.grid.x) * spacing,
       y: (r.grid.z - here.grid.z) * spacing,
       state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
-      footprint: Object.keys(r.wings ?? {}).length && (seen.has(r.id) || mapped || r.id === currentRoomId)
+      footprint: (seen.has(r.id) || mapped || r.id === currentRoomId)
         ? minimapFootprint(r, cell) : null,
       isExit: r.id === dungeon.endId,
       isVault: r.id === dungeon.vaultId && !unlocked.includes(r.id),

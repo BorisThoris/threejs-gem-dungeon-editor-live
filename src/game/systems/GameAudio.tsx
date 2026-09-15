@@ -4,9 +4,10 @@ import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
 import { useRun } from "../state/run";
-import { biomeFor } from "../rooms/biomes";
+import { BIOME } from "../rooms/biomes";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, music, sfx } from "./audio";
+import { biomeIdFor } from "../rooms/biomes";
 
 /** The side a neighbouring room lies on, from the run's own map. */
 function towards(roomId: string): number {
@@ -20,6 +21,10 @@ function towards(roomId: string): number {
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
+  const biome = useRun(s => {
+    const room = s.dungeon?.rooms.find(r => r.id === s.currentRoomId);
+    return room ? biomeIdFor(room.kind, room.id, room.seed, room) : "hewn";
+  });
   // The bed runs while a run is on and fades out when it ends or is quit.
   // The Reaper is the floor fully awake, whatever the alarm says: the
   // score closes up and the heartbeat comes in for as long as it is here.
@@ -30,20 +35,15 @@ export function Audio() {
     return () => ambience.stop();
   }, [playing]);
   useEffect(() => {
-    if (playing) ambience.setTension(rouse);
-  }, [playing, rouse]);
-  /**
-   * The room's air, from its biome: a drip in the cistern, embers in the
-   * foundry. Set on entering, and once when the run starts, from the same
-   * owner that tints the walls.
-   */
-  const roomId = useRun((s) => s.currentRoomId);
-  const dungeon = useRun((s) => s.dungeon);
+    // Shape the existing held voice, with no new nodes on a room change.
+    const air = biome === "flooded" ? 1.35 : biome === "mossy" ? 0.65 : biome === "foundry" ? 1.15 : 1;
+    const resonance = biome === "crystal" ? 27.5 : biome === "bone" ? -9 : 0;
+    if (playing) ambience.setTension(rouse, air, resonance);
+  }, [playing, rouse, biome]);
+
   useEffect(() => {
-    if (!playing || !dungeon || !roomId) return;
-    const room = dungeon.rooms.find((r) => r.id === roomId);
-    ambience.setAir(room ? biomeFor(room.kind, room.id, dungeon.seed).air : null);
-  }, [playing, dungeon, roomId]);
+    if (playing) ambience.setAir(BIOME[biome].air);
+  }, [playing, biome]);
 
   /**
    * The score, which follows the run rather than the room.

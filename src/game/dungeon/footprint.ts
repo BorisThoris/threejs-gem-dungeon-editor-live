@@ -1,4 +1,4 @@
-import { DIRS, halfSize, type Dir, type Room } from "./types";
+import { DIRS, halfSize, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -12,10 +12,45 @@ export const corridorOffset = (room: Room, dir: Dir): number => room.links[dir] 
 
 export const doorReach = (room: Room, dir: Dir): number => halfSize(room) + (room.wings?.[dir] ?? 0);
 
-/** A connected union: every wing overlaps the chamber along its full width. */
+/** Block-cut polygon courses. The outside rounding preserves authored anchors.
+ * Door collars reach the grid's cardinal portals even on pointed rooms. */
+function chamberRects(room: Room): FloorRect[] {
+  if (room.shape === "square") return [{ x: 0, z: 0, width: room.size, depth: room.size }];
+  const half = halfSize(room), sides = SHAPE_SIDES[room.shape];
+  const vertices = Array.from({ length: sides }, (_, i) => ({
+    x: half * Math.cos(i * Math.PI * 2 / sides), z: half * Math.sin(i * Math.PI * 2 / sides),
+  }));
+  const rects: FloorRect[] = [];
+  for (let low = -half; low < half; low += 1) {
+    const high = Math.min(half, low + 1), xs: number[] = [];
+    for (let i = 0; i < sides; i++) {
+      const a = vertices[i], b = vertices[(i + 1) % sides];
+      if (a.z >= low - 1e-8 && a.z <= high + 1e-8) xs.push(a.x);
+      for (const z of [low, high]) if (Math.abs(b.z - a.z) > 1e-8 && z >= Math.min(a.z, b.z) && z <= Math.max(a.z, b.z))
+        xs.push(a.x + (b.x - a.x) * (z - a.z) / (b.z - a.z));
+    }
+    if (!xs.length) continue;
+    const left = Math.max(-half, Math.floor(Math.min(...xs) + 1e-8));
+    const right = Math.min(half, Math.ceil(Math.max(...xs) - 1e-8));
+    if (right > left) rects.push({ x: (left + right) / 2, z: (low + high) / 2, width: right - left, depth: high - low });
+  }
+  // Closed galleries and secret walls have the same traversable approach as doors.
+  for (const dir of DIRS) if (room.links[dir] || room.secret?.dir === dir || room.wings?.[dir]) {
+    const vertical = dir === "north" || dir === "south", sign = dir === "north" || dir === "west" ? -1 : 1;
+    rects.push({ x: vertical ? corridorOffset(room, dir) : sign * half / 2,
+      z: vertical ? sign * half / 2 : corridorOffset(room, dir),
+      width: vertical ? corridorWidth(room, dir) : half, depth: vertical ? half : corridorWidth(room, dir) });
+  }
+  return rects;
+}
+
+const floorsCache = new WeakMap<Room, FloorRect[]>();
+/** One connected floor union, used by the renderer, map and navigation. */
 export function floorRects(room: Room): FloorRect[] {
+  const cached = floorsCache.get(room);
+  if (cached) return cached;
   const half = halfSize(room);
-  const rects: FloorRect[] = [{ x: 0, z: 0, width: room.size, depth: room.size }];
+  const rects: FloorRect[] = chamberRects(room);
   for (const dir of DIRS) {
     const length = room.wings?.[dir] ?? 0;
     const width = corridorWidth(room, dir);
@@ -26,11 +61,12 @@ export function floorRects(room: Room): FloorRect[] {
     rects.push({ x: vertical ? corridorOffset(room, dir) : offset, z: vertical ? offset : corridorOffset(room, dir),
       width: vertical ? width : length, depth: vertical ? length : width });
   }
+  floorsCache.set(room, rects);
   return rects;
 }
 
 /** The real concave outline, shared by meshes, collisions and geometry checks. */
-export function wallEdges(room: Room): WallEdge[] {
+function squareWallEdges(room: Room): WallEdge[] {
   const half = halfSize(room);
   const edges: WallEdge[] = [];
   for (const dir of DIRS) {
@@ -54,6 +90,49 @@ export function wallEdges(room: Room): WallEdge[] {
   return edges;
 }
 
+const edgesCache = new WeakMap<Room, WallEdge[]>();
+export function wallEdges(room: Room): WallEdge[] {
+  const cached = edgesCache.get(room);
+  if (cached) return cached;
+  if (room.shape === "square") {
+    const result = squareWallEdges(room); edgesCache.set(room, result); return result;
+  }
+  const rects = floorRects(room);
+  const xs = [...new Set(rects.flatMap(r => [r.x - r.width / 2, r.x + r.width / 2]))].sort((a, b) => a - b);
+  const zs = [...new Set(rects.flatMap(r => [r.z - r.depth / 2, r.z + r.depth / 2]))].sort((a, b) => a - b);
+  const occupied = xs.slice(1).map((right, i) => zs.slice(1).map((bottom, j) => {
+    const x = (xs[i] + right) / 2, z = (zs[j] + bottom) / 2;
+    return rects.some(r => Math.abs(x - r.x) < r.width / 2 && Math.abs(z - r.z) < r.depth / 2);
+  }));
+  const lines = new Map<string, { along: "x" | "z"; dir: Dir; offset: number; spans: [number, number][] }>();
+  const add = (along: "x" | "z", dir: Dir, offset: number, low: number, high: number) => {
+    const key = `${dir}:${offset}`;
+    if (!lines.has(key)) lines.set(key, { along, dir, offset, spans: [] });
+    lines.get(key)!.spans.push([low, high]);
+  };
+  occupied.forEach((column, i) => column.forEach((yes, j) => {
+    if (!yes) return;
+    if (!occupied[i - 1]?.[j]) add("z", "west", xs[i], zs[j], zs[j + 1]);
+    if (!occupied[i + 1]?.[j]) add("z", "east", xs[i + 1], zs[j], zs[j + 1]);
+    if (!column[j - 1]) add("x", "north", zs[j], xs[i], xs[i + 1]);
+    if (!column[j + 1]) add("x", "south", zs[j + 1], xs[i], xs[i + 1]);
+  }));
+  const edges: WallEdge[] = [];
+  for (const { along, dir, offset, spans } of lines.values()) {
+    spans.sort((a, b) => a[0] - b[0]);
+    const merged: [number, number][] = [];
+    for (const span of spans) {
+      const prev = merged.at(-1);
+      if (prev && span[0] <= prev[1] + 1e-8) prev[1] = Math.max(prev[1], span[1]);
+      else merged.push([...span]);
+    }
+    for (const [low, high] of merged) edges.push({ along, dir, length: high - low,
+      x: along === "x" ? (low + high) / 2 : offset, z: along === "x" ? offset : (low + high) / 2 });
+  }
+  edgesCache.set(room, edges);
+  return edges;
+}
+
 /** Distance to the first room wall along a unit ray, including concave corners. */
 export function roomRayReach(x: number, z: number, dx: number, dz: number, range: number,
   edges: readonly WallEdge[]): number {
@@ -70,6 +149,10 @@ export function roomRayReach(x: number, z: number, dx: number, dz: number, range
 }
 
 export function insideRoom(room: Room, x: number, z: number, margin = 0): boolean {
+  if (room.shape !== "square") {
+    if (!floorRects(room).some(r => Math.abs(x - r.x) <= r.width / 2 && Math.abs(z - r.z) <= r.depth / 2)) return false;
+    return wallEdges(room).every(e => distanceToEdge(x, z, e) >= margin - 1e-8);
+  }
   const half = halfSize(room);
   if (Math.abs(x) <= half - margin && Math.abs(z) <= half - margin) return true;
   // Extend each corridor into the chamber so an inset never creates a seam.
@@ -84,6 +167,23 @@ export function insideRoom(room: Room, x: number, z: number, margin = 0): boolea
 /** Clip a movement segment against the union of inset floor rectangles. */
 export function roomSegmentClear(room: Room, x: number, z: number, tx: number, tz: number, margin = 0): boolean {
   if (![x, z, tx, tz].every(Number.isFinite)) return false;
+  if (room.shape !== "square") {
+    if (!insideRoom(room, x, z, margin) || !insideRoom(room, tx, tz, margin)) return false;
+    const length = Math.hypot(tx - x, tz - z);
+    if (length < 1e-9) return true;
+    const edges = wallEdges(room);
+    if (roomRayReach(x, z, (tx - x) / length, (tz - z) / length, length, edges) < length - 1e-8) return false;
+    // Swept disc clearance at every concave corner, not just the endpoints.
+    return edges.every(e => {
+      for (const sign of [-1, 1]) {
+        const ex = e.x + (e.along === "x" ? sign * e.length / 2 : 0);
+        const ez = e.z + (e.along === "z" ? sign * e.length / 2 : 0);
+        const t = Math.max(0, Math.min(1, ((ex - x) * (tx - x) + (ez - z) * (tz - z)) / (length * length)));
+        if (Math.hypot(ex - x - t * (tx - x), ez - z - t * (tz - z)) < margin - 1e-8) return false;
+      }
+      return true;
+    });
+  }
   const half = halfSize(room) - margin;
   const bounds = [[-half, half, -half, half]];
   for (const dir of DIRS) {
@@ -125,7 +225,13 @@ export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: n
     if (Math.abs(pz) > half) return { x: corridorOffset(room, pz < 0 ? "north" : "south"), z: Math.sign(pz) * (half - 0.05) };
     return null;
   };
-  return mouth(x, z) ?? mouth(tx, tz) ?? { x: tx, z: tz };
+  return mouth(x, z) ?? mouth(tx, tz) ?? (room.shape === "square" ? { x: tx, z: tz } : { x: 0, z: 0 });
+}
+
+function distanceToEdge(x: number, z: number, e: WallEdge): number {
+  const across = e.along === "x" ? x - e.x : z - e.z;
+  const normal = e.along === "x" ? z - e.z : x - e.x;
+  return Math.hypot(Math.max(0, Math.abs(across) - e.length / 2), normal);
 }
 
 /** Slide along a wall without cutting through a concave corner. */

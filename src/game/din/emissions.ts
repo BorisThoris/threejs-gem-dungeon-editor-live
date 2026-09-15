@@ -132,7 +132,7 @@ export const SURFACE_OF: Record<Biome["surface"], Surface> = {
 
 /** What this room's floor is, in the Din's vocabulary. */
 export const surfaceOf = (room: Room): Surface =>
-  SURFACE_OF[BIOME[biomeIdFor(room.kind, room.id, room.seed)].surface];
+  SURFACE_OF[BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].surface];
 
 /**
  * How loud this emission is in this room.
@@ -144,5 +144,5 @@ export const surfaceOf = (room: Room): Surface =>
 export function loudnessIn(id: EmissionId, room: Room): number {
   const emission: Emission = EMISSIONS[id];
   if (!emission.underfoot) return emission.magnitude;
-  return emission.magnitude * BIOME[biomeIdFor(room.kind, room.id, room.seed)].carry;
+  return emission.magnitude * BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].carry;
 }

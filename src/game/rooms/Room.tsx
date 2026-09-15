@@ -4,7 +4,7 @@ import { CircleGeometry, PlaneGeometry } from "three";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { floorRects } from "../dungeon/footprint";
-import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
+import { DIRS, halfSize, inscribedRadius, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
 import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -40,11 +40,15 @@ import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
-import { CorridorDetails } from "./CorridorDetails";
+import { Blocks, CorridorDetails } from "./CorridorDetails";
+import type { CorridorBlock } from "./corridorPattern";
+import { Terrain } from "./Terrain";
 
 interface RoomProps {
   room: RoomData;
   seed: number;
+  /** The authoring camera needs a cutaway view into the room. */
+  showCeiling?: boolean;
 }
 
 /**
@@ -228,13 +232,19 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
   return isNest ? <Hoard roomId={roomId} half={half} /> : null;
 }
 
-export function Room({ room, seed }: RoomProps) {
+export function Room({ room, seed, showCeiling = true }: RoomProps) {
   const half = halfSize(room);
   const floors = useMemo(() => floorRects(room), [room]);
+  const slabs = useMemo(() => floors.map<CorridorBlock>(r => ({
+    position: [r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z], size: [r.width, FLOOR_THICKNESS, r.depth],
+  })), [floors]);
+  const ceilings = useMemo(() => floors.map<CorridorBlock>(r => ({
+    position: [r.x, GROUND_Y + WALL_HEIGHT + 0.1, r.z], size: [r.width + 0.5, 0.2, r.depth + 0.5],
+  })), [floors]);
   // What the room is made of, as distinct from what it is for. Rolled from
   // the room's own seed, so it is the same place every time you walk back
   // into it.
-  const tint = biomeFor(room.kind, room.id, seed);
+  const tint = biomeFor(room.kind, room.id, seed, room);
   const Content = KIND_CONTENT[room.kind];
   // One tile every four units, whatever the room's size.
   const floorSurface = useSurface(tint.surface, room.size / 4);
@@ -290,21 +300,15 @@ export function Room({ room, seed }: RoomProps) {
   return (
     <group>
       {/* Solid floor slab, top face exactly at GROUND_Y. */}
+      <Blocks blocks={slabs} color={tint.floor} map={floorSurface} />
+      {showCeiling && <Blocks blocks={ceilings} color="#1a191d" />}
       {floors.map((r, i) => (
         <group key={`floor-${i}`}>
           <RigidBody type="fixed" colliders={false}>
-            <mesh position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} receiveShadow>
-              <boxGeometry args={[r.width, FLOOR_THICKNESS, r.depth]} />
-              <meshStandardMaterial color={tint.floor} map={floorSurface} roughness={1} />
-            </mesh>
             <CuboidCollider args={[r.width / 2, FLOOR_THICKNESS / 2, r.depth / 2]}
               position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} />
           </RigidBody>
-          <mesh position={[r.x, GROUND_Y + WALL_HEIGHT, r.z]} rotation={[Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[r.width + 0.5, r.depth + 0.5]} />
-            <meshStandardMaterial color="#1a191d" roughness={1} />
-          </mesh>
-          {i > 0 && <pointLight position={[r.x, GROUND_Y + WALL_HEIGHT - 0.5, r.z]}
+          {(Math.abs(r.x) > half || Math.abs(r.z) > half) && <pointLight position={[r.x, GROUND_Y + WALL_HEIGHT - 0.5, r.z]}
             color={tint.glow} intensity={light.fillIntensity * 0.6} distance={16} decay={1.5} />}
         </group>
       ))}
@@ -316,6 +320,7 @@ export function Room({ room, seed }: RoomProps) {
       </mesh>
 
       <Walls room={room} color={tint.wall} />
+      <Terrain room={room} />
       <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do
@@ -355,7 +360,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomHarrier room={room} />
       <RoomKeeper room={room} />
       <PlacedDevices roomId={room.id} />
-      <RoomNest roomId={room.id} half={half} />
+      <RoomNest roomId={room.id} half={inscribedRadius(room)} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

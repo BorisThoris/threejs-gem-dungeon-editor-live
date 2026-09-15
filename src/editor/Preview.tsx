@@ -62,7 +62,7 @@ export function Preview({ template, doors }: PreviewProps) {
       <Suspense fallback={null}>
         <Physics paused timeStep={1 / 60}>
           {/* Keyed so a change of size or shape is a fresh mount, as in the game. */}
-          <Room key={`${template.id}:${template.size}:${template.shape}:${doors.join()}`} room={room} seed={1} />
+          <Room key={`${template.id}:${template.size}:${template.shape}:${doors.join()}`} room={room} seed={1} showCeiling={false} />
         </Physics>
       </Suspense>
       <OrbitControls target={[0, 1, 0]} maxPolarAngle={Math.PI / 2.05} />

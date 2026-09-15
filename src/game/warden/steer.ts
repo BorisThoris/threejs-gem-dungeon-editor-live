@@ -16,6 +16,7 @@
 
 import { roomSegmentClear, roomWaypoint } from "../dungeon/footprint";
 import type { Room } from "../dungeon/types";
+import { obstacleWaypoint } from "./route";
 
 export interface Patch {
   x: number;
@@ -123,6 +124,11 @@ export function steerAround(
 /** Follow the room outline while retaining local furniture and hazard avoidance. */
 export function steerInRoom(room: Room, x: number, z: number, tx: number, tz: number,
   patches: readonly Patch[], berth: number, margin = 0.6): { dx: number; dz: number } {
+  const route = patches.length ? obstacleWaypoint(room, x, z, tx, tz, patches, berth, margin) : null;
+  if (route) {
+    const distance = Math.hypot(route.x - x, route.z - z) || 1;
+    return { dx: (route.x - x) / distance, dz: (route.z - z) / distance };
+  }
   const target = roomWaypoint(room, x, z, tx, tz, margin);
   return steerAround(x, z, target.x, target.z, patches, berth,
     (px, pz) => roomSegmentClear(room, x, z, px, pz, margin));

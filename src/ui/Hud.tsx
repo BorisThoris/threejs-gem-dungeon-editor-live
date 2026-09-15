@@ -30,6 +30,7 @@ import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
 import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
 import { KIND_TITLE } from "../game/rooms/kinds";
+import { DISTRICTS } from "../game/rooms/districts";
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { device, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
@@ -76,7 +77,7 @@ export function Hud() {
   // the same `carry` it reads.
   const ground = (() => {
     if (!room) return null;
-    const b = biomeFor(room.kind, room.id, dungeonSeed);
+    const b = biomeFor(room.kind, room.id, dungeonSeed, room);
     if (b.carry > 1.1) return { name: b.ground, says: "carries", tone: "danger" as const };
     if (b.carry < 0.9) return { name: b.ground, says: "swallows sound", tone: "gold" as const };
     return { name: b.ground, says: "dead", tone: "dim" as const };
@@ -140,7 +141,7 @@ export function Hud() {
     thiefKey,
     floor,
     floors: FLOORS,
-    roomTitle: room ? KIND_TITLE[room.kind] : "",
+    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${KIND_TITLE[room.kind]}` : "",
     ground,
     roost,
     croakers,

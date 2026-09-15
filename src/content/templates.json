@@ -749,7 +749,7 @@
  {
   "id": "vault-tomb",
   "kind": "treasure",
-  "size": 22,
+  "size": 24,
   "shape": "hexagon",
   "props": [
    {
@@ -926,7 +926,7 @@
  {
   "id": "shrine-offerings",
   "kind": "shrine",
-  "size": 16,
+  "size": 20,
   "shape": "octagon",
   "props": [
    {
@@ -1015,7 +1015,7 @@
  {
   "id": "arena-cover",
   "kind": "arena",
-  "size": 26,
+  "size": 28,
   "shape": "circle",
   "props": [
    {
@@ -1460,7 +1460,7 @@
  {
   "id": "end-stair",
   "kind": "end",
-  "size": 24,
+  "size": 26,
   "shape": "octagon",
   "props": [
    {
@@ -1548,7 +1548,7 @@
  {
   "id": "memory-antechamber",
   "kind": "memory",
-  "size": 20,
+  "size": 22,
   "shape": "hexagon",
   "props": [
    {
@@ -1600,14 +1600,14 @@
    {
     "rotation": 0,
     "kind": "skull",
-    "x": -4.3,
-    "z": -5.3
+    "x": -3.2,
+    "z": -6.2
    },
    {
     "rotation": 0,
     "kind": "skull",
-    "x": 4.3,
-    "z": 5.3
+    "x": 3.2,
+    "z": 6.2
    },
    {
     "rotation": 0,

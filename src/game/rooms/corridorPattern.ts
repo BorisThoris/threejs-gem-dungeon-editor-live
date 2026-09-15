@@ -9,7 +9,7 @@ export interface CorridorBlock { position: [number, number, number]; size: [numb
 export function corridorDetails(room: Room, seed: number): { ribs: CorridorBlock[]; marks: CorridorBlock[] } {
   const ribs: CorridorBlock[] = [], marks: CorridorBlock[] = [];
   const rng = createRng(`${seed}:${room.id}:corridor-details`);
-  const style = Math.floor(rng() * 3);
+  const style = room.district === "gardens" ? 2 : room.district === "works" ? 1 : room.district === "tombs" ? 0 : Math.floor(rng() * 3);
   const half = halfSize(room);
   for (const dir of DIRS) {
     const width = corridorWidth(room, dir), side = width / 2 - WALL_THICKNESS / 2 + 0.07;

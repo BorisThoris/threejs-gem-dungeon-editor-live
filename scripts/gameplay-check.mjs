@@ -77,6 +77,11 @@ for (const floor of [1, 2, 3]) {
         const hidden = { x: room.size / 2 - 1, z: room.size / 2 - 1 };
         if (axis.x) { hidden.x = axis.x * (room.size / 2 - 1); hidden.z *= shift > 0 ? -1 : 1; }
         else { hidden.z = axis.z * (room.size / 2 - 1); hidden.x *= shift > 0 ? -1 : 1; }
+        if (room.shape !== "square") {
+          const reach = L.floorReach(room, Math.atan2(hidden.z, hidden.x)) - 1.5;
+          const scale = reach / Math.hypot(hidden.x, hidden.z);
+          hidden.x *= scale; hidden.z *= scale;
+        }
         assert.ok(!L.roomSegmentClear(room, x, z, hidden.x, hidden.z), "gallery corner can break chamber sight");
         let gx = edgeX, gz = edgeZ;
         for (let i = 0; i < 1500 && Math.hypot(gx - hidden.x, gz - hidden.z) > 0.11; i++) {
@@ -105,7 +110,7 @@ for (const floor of [1, 2, 3]) {
             assert.ok(blockers.every((p) => Math.hypot(at.x - p.x, at.z - p.z) > p.r + 0.6), "arrival avoids furniture and hazards");
             for (const entrance of L.DIRS.filter((other) => room.links[other])) {
               const landing = L.spawnAfterTravel(room, L.OPPOSITE[entrance]).position;
-              assert.ok(Math.hypot(at.x - landing[0], at.z - landing[2]) >= L.ENCOUNTER_CLEARANCE, "all entrances remain clear of arriving threats");
+              assert.ok(Math.hypot(at.x - landing[0], at.z - landing[2]) >= L.ENCOUNTER_CLEARANCE, `all entrances remain clear of arriving threats: seed ${seed} floor ${floor} ${room.id} ${room.shape} size ${room.size} at ${JSON.stringify(at)} landing ${landing}`);
             }
             arrivals++;
           }
@@ -122,7 +127,8 @@ for (const floor of [1, 2, 3]) {
           }
           assert.ok(Math.hypot(x, z) <= 0.11, "ground creatures can follow through a wing");
           corridorChecks++;
-          const targets = [[room.size / 2 - 1, room.size / 2 - 1], ...L.DIRS
+          const diagonal = (L.floorReach(room, Math.PI / 4) - 1.5) / Math.SQRT2;
+          const targets = [[diagonal, diagonal], ...L.DIRS
             .filter((other) => other !== dir && room.wings?.[other])
             .map((other) => { const p = L.doorPosition(room, other); return [p[0] * 0.9, p[2] * 0.9]; })];
           for (const [tx, tz] of targets) {
@@ -226,8 +232,9 @@ assert.ok(summary[1].shifted > 0 && summary[2].shifted > 0, "deeper floors conta
 console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, arrivals }));
 if (process.argv.includes("--geometry-only")) process.exit(0);
 
+const softwareGL = process.env.SOFTWARE_GL === "1" || process.platform !== "win32";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
-  args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+  args: ["--no-sandbox", ...(softwareGL ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : [])] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];

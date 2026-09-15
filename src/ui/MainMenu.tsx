@@ -15,6 +15,7 @@ import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { Keypad } from "./Keypad";
 import { usePadMenu } from "./padMenu";
+import { WORLD_STYLE } from "../game/rooms/style";
 
 const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
@@ -286,6 +287,10 @@ function Credits({ onBack }: { onBack: () => void }) {
       <p style={{ ...body, marginBottom: 14 }}>
         A first-person dungeon run: take what you can carry, and pay the door.
       </p>
+      <details style={{ ...body, textAlign: "left", marginBottom: 16 }}>
+        <summary style={{ color: colors.accent, cursor: "pointer" }}>World style · old-school, blocky, handmade</summary>
+        <p>{WORLD_STYLE}</p>
+      </details>
       <dl
         style={{
           ...body,

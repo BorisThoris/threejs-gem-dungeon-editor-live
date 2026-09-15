@@ -1,4 +1,4 @@
-import { cornerSpots, inDoorLane, orientationOf, overhangsLane } from "../dungeon/layout";
+import { cornerSpots, inDoorLane, orientationOf, overhangsLane, shapeFits } from "../dungeon/layout";
 import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
@@ -71,6 +71,7 @@ export function templateProblems(
   grid = { x: 0, z: 0 }
 ): TemplateProblem[] {
   const problems: TemplateProblem[] = [];
+  if (!shapeFits(t.shape, t.size)) problems.push({ index: -1, reason: "This shape needs a larger room to keep its furnishings inside the walls." });
   const room = roomForTemplate(t, grid);
   const reserved = reservedAnchorsFor(t.kind, room);
   const corners = cornerSpots(room);

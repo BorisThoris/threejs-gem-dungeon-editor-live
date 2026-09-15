@@ -143,7 +143,7 @@ export const ROOM_SIZE_HUGE = 30;
  * twenty-eight. Both were declared in the shape table and neither had ever
  * been built, because nothing was ever big enough.
  */
-export const ROOM_SIZES = [14, 16, 18, 20, 22, 24, 26, 28, 30] as const;
+export const ROOM_SIZES = [14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40] as const;
 
 // --- Run rules --------------------------------------------------------------
 

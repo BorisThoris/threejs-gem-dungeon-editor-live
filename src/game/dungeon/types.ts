@@ -150,6 +150,9 @@ export interface GridPos {
 }
 
 export interface Room {
+  /** Connected geographical region; generated once with the room graph. */
+  district?: import("../rooms/districts").DistrictId;
+  biome?: import("../rooms/biomes").BiomeId;
   id: string;
   kind: RoomKind;
   /**
@@ -167,7 +170,7 @@ export interface Room {
   grid: GridPos;
   /** Side length of the furnished chamber; corridor wings extend beyond it. */
   size: number;
-  /** Decorative floor outline within the furnished chamber. */
+  /** Chamber footprint, block-cut into shared floor, wall, collision and map geometry. */
   shape: Shape;
   /** Neighbouring room in each direction that has a doorway. */
   links: Partial<Record<Dir, string>>;

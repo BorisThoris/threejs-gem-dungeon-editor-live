@@ -183,11 +183,12 @@ export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */
-export function biomeIdFor(kind: RoomKind, roomId: string, seed: number): BiomeId {
+export function biomeIdFor(kind: RoomKind, roomId: string, seed: number, room?: { biome?: BiomeId }): BiomeId {
+  if (room?.biome) return room.biome;
   const choices = BIOMES_FOR[kind];
   const rng = createRng(`${seed}:${roomId}:biome`);
   return choices[Math.floor(rng() * choices.length)];
 }
 
-export const biomeFor = (kind: RoomKind, roomId: string, seed: number): Biome =>
-  BIOME[biomeIdFor(kind, roomId, seed)];
+export const biomeFor = (kind: RoomKind, roomId: string, seed: number, room?: { biome?: BiomeId }): Biome =>
+  BIOME[biomeIdFor(kind, roomId, seed, room)];

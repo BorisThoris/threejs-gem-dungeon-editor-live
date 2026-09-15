@@ -2827,7 +2827,7 @@ const roomNow = (s: RunState): Room | undefined =>
  */
 export const noiseHoldFor = (s: RunState): number => {
   const room = roomNow(s);
-  const ground = !room || !s.dungeon ? 1 : biomeFor(room.kind, room.id, s.dungeon.seed).carry;
+  const ground = !room || !s.dungeon ? 1 : biomeFor(room.kind, room.id, s.dungeon.seed, room).carry;
   const legs = running(s, s.effects.mire) ? MIRE_LOUDNESS : 1;
   return NOISE_HOLD_S * ground * legs;
 };

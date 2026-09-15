@@ -7,6 +7,7 @@ import { type Room } from "../dungeon/types";
 import { doorReach, wallEdges } from "../dungeon/footprint";
 import { Prop } from "../props/catalog";
 import { useSurface } from "../textures/registry";
+import { Blocks } from "./CorridorDetails";
 import {
   DOOR_HEIGHT,
   DOOR_WIDTH,
@@ -99,12 +100,9 @@ export function Walls({ room, color }: WallsProps) {
         <Prop key={`rubble-${i}`} kind="rubble" position={at} rotation={i * 2.1} scale={0.9} />
       ))}
       <RigidBody type="fixed" colliders={false}>
+        <Blocks blocks={slabs} color={color} map={surface} />
         {slabs.map((slab, i) => (
           <group key={i}>
-            <mesh position={slab.position} castShadow receiveShadow>
-              <boxGeometry args={slab.size} />
-              <meshStandardMaterial color={color} map={surface} roughness={0.9} />
-            </mesh>
             <CuboidCollider
               args={[slab.size[0] / 2, slab.size[1] / 2, slab.size[2] / 2]}
               position={slab.position}

@@ -42,7 +42,7 @@ const AIRBORNE = new Set(["web", "tile", "spikes"]);
  */
 const SPREAD = 2.1;
 /** Clear of the tinted floor at GROUND_Y + 0.01, and of the slab under it. */
-const HEIGHT = GROUND_Y + 0.02;
+const HEIGHT = GROUND_Y + 0.035;
 
 let blob: Texture | null = null;
 

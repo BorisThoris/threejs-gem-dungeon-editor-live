@@ -1,0 +1,2 @@
+/** The shared art direction, visible in the game and its authoring tools. */
+export const WORLD_STYLE = "Old-school, blocky, handmade. Build with chunky silhouettes, visible stone courses, limited earthy palettes and warm practical light. Keep surfaces imperfect and effects restrained. Every room needs a purpose, every creature a habitat, every secret a clue. Paths, threats and things you can use must stay easy to read.";

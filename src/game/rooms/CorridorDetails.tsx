@@ -1,9 +1,9 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
-import { Matrix4, type InstancedMesh } from "three";
+import { Matrix4, type InstancedMesh, type Texture } from "three";
 import type { Room } from "../dungeon/types";
 import { corridorDetails, type CorridorBlock } from "./corridorPattern";
 
-function Blocks({ blocks, color, glow = false }: { blocks: CorridorBlock[]; color: string; glow?: boolean }) {
+export function Blocks({ blocks, color, glow = false, map }: { blocks: CorridorBlock[]; color: string; glow?: boolean; map?: Texture | null }) {
   const mesh = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     const g = mesh.current;
@@ -19,7 +19,7 @@ function Blocks({ blocks, color, glow = false }: { blocks: CorridorBlock[]; colo
   if (!blocks.length) return null;
   return <instancedMesh ref={mesh} args={[undefined, undefined, blocks.length]}>
     <boxGeometry args={[1, 1, 1]} />
-    <meshStandardMaterial color={color} roughness={0.9} emissive={glow ? color : "#000000"} emissiveIntensity={0.35} />
+    <meshStandardMaterial color={color} map={map} roughness={0.9} emissive={glow ? color : "#000000"} emissiveIntensity={0.35} />
   </instancedMesh>;
 }
 

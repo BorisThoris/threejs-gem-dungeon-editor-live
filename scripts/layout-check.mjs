@@ -3786,20 +3786,20 @@ check("the shipped room templates reach the floors the game generates", authored
         const dt = 1 / 60;
         let arrived = false;
         let hit = false;
-        for (let step = 0; step < 1200 && !arrived; step++) {
+        const travelBudget = Math.max(1200, Math.ceil(r.size * 3 / L.WARDEN_SPEED_ROUSED / dt));
+        for (let step = 0; step < travelBudget && !arrived; step++) {
           const gap = Math.hypot(trick[0] - wx, trick[1] - wz);
           if (gap <= L.WARDEN_TOUCH_RADIUS) {
             arrived = true;
             break;
           }
-          const h = L.steerAround(wx, wz, trick[0], trick[1], patches, L.WARDEN_HAZARD_BERTH);
+          const h = L.steerInRoom(r, wx, wz, trick[0], trick[1], patches, L.WARDEN_HAZARD_BERTH);
           const len = Math.min(
             L.WARDEN_SPEED_ROUSED * dt,
             L.WARDEN_MAX_STEP,
             Math.max(0, gap - L.WARDEN_TOUCH_RADIUS * 0.5)
           );
-          wx = Math.max(-limit, Math.min(limit, wx + h.dx * len));
-          wz = Math.max(-limit, Math.min(limit, wz + h.dz * len));
+          [wx, wz] = L.roomStep(r, wx, wz, h.dx * len, h.dz * len);
           if (L.inPatch(patches, wx, wz)) hit = true;
         }
         if (hit) bitten++;
@@ -3971,7 +3971,7 @@ check("the shipped room templates reach the floors the game generates", authored
       const d = L.generateDungeon({ seed: seed * 31 + floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       for (const r of d.rooms) {
         rooms++;
-        const b = L.biomeIdFor(r.kind, r.id, d.seed);
+        const b = L.biomeIdFor(r.kind, r.id, d.seed, r);
         seen.set(b, (seen.get(b) ?? 0) + 1);
         if (!perKind.has(r.kind)) perKind.set(r.kind, new Set());
         perKind.get(r.kind).add(b);
@@ -4021,7 +4021,7 @@ check("the shipped room templates reach the floors the game generates", authored
       const d = L.generateDungeon({ seed: seed * 31 + 2, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       for (const r of d.rooms) {
         if (r.template) continue;
-        const want = L.BIOME[L.biomeIdFor(r.kind, r.id, d.seed)].litter;
+        const want = L.BIOME[L.biomeIdFor(r.kind, r.id, d.seed, r)].litter;
         if (!want.length) continue;
         looked++;
         const placed = L.placementsFor(r, d.seed, {});

@@ -185,7 +185,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
    */
   const scatter = (placed: PropPlacement[]): PropPlacement[] => {
     if (room.template) return placed;
-    const biome = biomeFor(room.kind, room.id, seed);
+    const biome = biomeFor(room.kind, room.id, seed, room);
     if (!biome.litter.length) return placed;
     const rng = createRng(`${seed}:${room.id}:litter`);
     const spots = shuffle(rng, [...corners, ...far, ...near, ...centre]);

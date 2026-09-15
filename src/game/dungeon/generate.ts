@@ -1,4 +1,5 @@
 import { shapeFits } from "./layout";
+import { assignDistricts } from "../rooms/districts";
 import { createRng, pick, shuffle } from "../rng";
 import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
@@ -186,21 +187,21 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // moment four more shipped, five normal rooms in six were one of five
     // hand-made rooms. The measurement authoring is supposed to serve went
     // backwards the more content there was.
-    const authored = templatesForKind(kind);
+    const authored = templatesForKind(kind).filter(t => shapeFits(t.shape, t.size));
     const template = authored.length && rng() < AUTHORED_CHANCE ? pick(rng, authored) : undefined;
     const grows = ["normal", "treasure", "trap"].includes(kind);
-    const size = template?.size ?? (pick(rng, sizesFor(kind)) + (grows ? (floor - 1) * 2 : 0));
-    // Only shapes with the floor to hold their props at this size.
-    const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>
-      shapeFits(s, size)
-    );
+    let size = template?.size ?? (pick(rng, sizesFor(kind)) + (grows ? (floor - 1) * 2 : 0));
+    const shape = template?.shape ?? pick(rng, SHAPES_FOR[kind] ?? ["square", "square", "circle"]);
+    // Grow a pointed chamber to fit its contents instead of drawing props through
+    // its walls or silently replacing every small unusual room with a square.
+    if (!template) size = ROOM_SIZES.find(s => s >= size && shapeFits(shape, s)) ?? size;
     const room: Room = {
       id: rooms.length === 0 ? "start" : `room_${rooms.length}`,
       kind,
       seed,
       grid: { x, z },
       size,
-      shape: template?.shape ?? (wanted.length ? pick(rng, wanted) : "square"),
+      shape,
       links: {},
       ...(template ? { template: template.id } : {}),
     };
@@ -395,6 +396,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     }
   }
 
+  assignDistricts(rooms, "start", endId, floor);
   return {
     seed,
     rooms,

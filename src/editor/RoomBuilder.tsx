@@ -1,6 +1,8 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 
-import { inDoorLane, LANE_HALF_WIDTH } from "../game/dungeon/layout";
+import { inDoorLane, LANE_HALF_WIDTH, shapeFits } from "../game/dungeon/layout";
+import { insideRoom } from "../game/dungeon/footprint";
+import { minimapFootprint } from "../ui/minimapGeometry";
 import {
   DIRS,
   PROP_KINDS,
@@ -15,7 +17,7 @@ import {
 } from "../game/dungeon/types";
 import { CATALOG } from "../game/props/catalog";
 import { KIND_TITLE } from "../game/rooms/kinds";
-import { templateProblems } from "../game/rooms/validate";
+import { roomForTemplate, templateProblems } from "../game/rooms/validate";
 import { ROOM_SIZE_DEFAULT, ROOM_SIZES } from "../game/world";
 import { colors } from "../ui/overlay";
 import { download, draftStore, isRoomTemplate, newDraftId, useDrafts } from "./drafts";
@@ -51,10 +53,15 @@ export function RoomBuilder() {
   // The game's own rules, not a copy of them: the layout check holds what
   // ships to exactly this list.
   const problems = useMemo(() => (template ? templateProblems(template) : []), [template]);
+  const previewRoom = useMemo(() => template ? { ...roomForTemplate(template),
+    links: Object.fromEntries(doors.map(dir => [dir, "preview"])) } : null, [template, doors]);
+  const footprint = useMemo(() => previewRoom ? minimapFootprint(previewRoom, previewRoom.size * CELL_PX) : null, [previewRoom]);
 
   const update = (patch: Partial<RoomTemplate>) => {
     if (!template) return;
-    draftStore.put({ ...template, ...patch });
+    const next = { ...template, ...patch };
+    if (!shapeFits(next.shape, next.size)) next.size = ROOM_SIZES.find(size => size >= next.size && shapeFits(next.shape, size)) ?? next.size;
+    draftStore.put(next);
   };
 
   const create = (kind: RoomKind) => {
@@ -90,6 +97,7 @@ export function RoomBuilder() {
       setSelected(hit);
       return;
     }
+    if (previewRoom && !insideRoom(previewRoom, x, z, 0.2)) return;
     update({ props: [...template.props, { kind: tool, x, z, rotation: 0 }] });
     setSelected(template.props.length);
   };
@@ -196,6 +204,7 @@ export function RoomBuilder() {
             </div>
 
             <div style={{ ...label, marginTop: 12 }}>PLACE</div>
+            <p style={small}>Shape defines the walls, walkable floor and map. The room grows when a shape needs more space. Dark cells are outside its footprint.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
               {PROP_KINDS.map((k) => (
                 <button
@@ -251,12 +260,14 @@ export function RoomBuilder() {
                   y={cz * CELL_PX}
                   width={CELL_PX}
                   height={CELL_PX}
-                  fill="transparent"
+                  fill={previewRoom && !insideRoom(previewRoom, cx - template.size / 2 + 0.5, cz - template.size / 2 + 0.5) ? "#07080c" : "transparent"}
                   stroke="rgba(255,255,255,0.06)"
                   onClick={() => placeAt(cx, cz)}
                   style={{ cursor: "crosshair" }}
                 />
               ))}
+              {footprint && <path d={footprint.walls} transform={`translate(${gridPx / 2} ${gridPx / 2})`}
+                fill="none" stroke={colors.accent} strokeWidth={2} pointerEvents="none" />}
               {template.props.map((p, i) => {
                 const info = CATALOG[p.kind];
                 const bad = info.solid && inDoorLane(p.x, p.z);

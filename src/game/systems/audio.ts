@@ -646,7 +646,7 @@ export const ambience = {
    * comes up and the air moves faster, so a floor being emptied of gems is
    * audibly a worse place to be standing.
    */
-  setTension(rouse: number) {
+  setTension(rouse: number, air = 1, resonance = 0) {
     if (!bed || !context) return;
     const at = context.currentTime + 0.6;
     // These numbers are the ones that were here, and they are right:
@@ -657,8 +657,8 @@ export const ambience = {
     // that had never been started - the replacement tuning measured
     // slightly worse once the check was fixed.
     bed.gain.gain.linearRampToValueAtTime(0.11 + rouse * 0.1, at);
-    bed.filter.frequency.linearRampToValueAtTime(320 + rouse * 420, at);
-    bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6, at);
+    bed.filter.frequency.linearRampToValueAtTime((320 + rouse * 420) * air, at);
+    bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6 + resonance, at);
   },
   /**
    * The room's own air, by biome. The same id again is a no-op, so a

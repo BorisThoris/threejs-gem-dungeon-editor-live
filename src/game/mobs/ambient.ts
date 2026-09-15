@@ -1,4 +1,6 @@
 import type { Dungeon, Room, RoomKind } from "../dungeon/types";
+import { diagonalReach } from "../dungeon/types";
+import { insideRoom } from "../dungeon/footprint";
 import { PROP_SPECS } from "../props/specs";
 import { createRng } from "../rng";
 import { BIOME, biomeIdFor } from "../rooms/biomes";
@@ -23,7 +25,7 @@ export interface Spot {
  * a new biome could be added without anything living in it.
  */
 const livesHere = (who: MobId, room: Room, seed: number): boolean =>
-  BIOME[biomeIdFor(room.kind, room.id, seed)].life.includes(who);
+  BIOME[biomeIdFor(room.kind, room.id, seed, room)].life.includes(who);
 /** Rats and toads live where nothing is being played: never in a puzzle. */
 const RAT_KINDS: ReadonlySet<RoomKind> = new Set<RoomKind>(["normal", "treasure", "trap", "arena", "shrine"]);
 /** Bats want height: the big rooms of the biomes that keep them. */
@@ -36,7 +38,7 @@ export function ratsFor(room: Room, seed: number): Spot[] {
   const rng = createRng(`${seed}:${room.id}:rats`);
   const count = rng() < 0.25 ? 0 : 1 + Math.floor(rng() * 3);
   if (!count) return [];
-  const inset = room.size / 2 - 1.4;
+  const inset = Math.min(room.size / 2, diagonalReach(room) / Math.SQRT2) - 1.4;
   const corners: Spot[] = [
     { x: inset, z: inset },
     { x: -inset, z: inset },
@@ -45,7 +47,7 @@ export function ratsFor(room: Room, seed: number): Spot[] {
   ];
   const solid = placementsFor(room, seed).filter((p) => PROP_SPECS[p.kind].solid);
   const clear = corners.filter(
-    (c) => !solid.some((p) => Math.hypot(c.x - p.x, c.z - p.z) < PROP_SPECS[p.kind].radius + 0.6)
+    (c) => insideRoom(room, c.x, c.z, 0.6) && !solid.some((p) => Math.hypot(c.x - p.x, c.z - p.z) < PROP_SPECS[p.kind].radius + 0.6)
   );
   for (let i = clear.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -85,6 +87,7 @@ export function croakersFor(room: Room, seed: number): Spot[] {
     const z = Math.sin(angle) * inset;
     if (Math.abs(x) < 2.4 || Math.abs(z) < 2.4) continue;
     const at = { x: Math.max(-inset, Math.min(inset, x)), z: Math.max(-inset, Math.min(inset, z)) };
+    if (!insideRoom(room, at.x, at.z, 0.6)) continue;
     if (solid.some((p) => Math.hypot(at.x - p.x, at.z - p.z) < PROP_SPECS[p.kind].radius + 0.5)) continue;
     if (spots.some((s) => Math.hypot(at.x - s.x, at.z - s.z) < 1.5)) continue;
     spots.push(at);
@@ -94,7 +97,9 @@ export function croakersFor(room: Room, seed: number): Spot[] {
 
 /** The one room on the floor the moth perches in, or null on a floor with nowhere. */
 export function mothRoom(d: Dungeon): string | null {
-  const rooms = d.rooms.filter((r) => r.id !== d.startId && r.id !== d.endId && r.kind !== "secret");
+  const eligible = d.rooms.filter((r) => r.id !== d.startId && r.id !== d.endId && r.kind !== "secret");
+  const habitat = eligible.filter(r => r.district === "gardens");
+  const rooms = habitat.length ? habitat : eligible;
   if (!rooms.length) return null;
   const rng = createRng(`${d.seed}:moth`);
   return rooms[Math.floor(rng() * rooms.length)].id;
