@@ -2,7 +2,8 @@ import { useEffect } from "react";
 
 import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
-import { sideOfNeighbour } from "./bearing";
+import { sideOf, sideOfNeighbour } from "./bearing";
+import { playerAt } from "../player/where";
 import { useRun } from "../state/run";
 import { BIOME } from "../rooms/biomes";
 import { behaviourFor } from "../warden/tuning";
@@ -84,6 +85,8 @@ export function Audio() {
       bus.on("secretRevealed", () => sfx.unlock2()),
       bus.on("sluiceOpened", () => sfx.sluice()),
       bus.on("waterCacheTaken", () => sfx.gem()),
+      bus.on("bellcapWarning", ({ x, z }) => sfx.bellcapWarning(sideOf(x - playerAt.x, z - playerAt.z))),
+      bus.on("bellcapBurst", ({ x, z }) => sfx.bellcapBurst(sideOf(x - playerAt.x, z - playerAt.z))),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("fragmentRead", () => sfx.named()),

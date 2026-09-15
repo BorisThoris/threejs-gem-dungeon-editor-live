@@ -42,6 +42,9 @@ import { Draft } from "./Draft";
 import { Walls } from "./Walls";
 import { Blocks, CorridorDetails } from "./CorridorDetails";
 import { Watercourse } from "../worldbuilding/Waterworks";
+import { ServiceMarks } from "../worldbuilding/ServiceMarks";
+import { BellcapColony } from "../worldbuilding/BellcapColony";
+import { GlowBeetles } from "../mobs/GlowBeetles";
 import { Architecture } from "../worldbuilding/Architecture";
 import { Terraces } from "../worldbuilding/Terraces";
 import type { CorridorBlock } from "./corridorPattern";
@@ -327,6 +330,9 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <Terrain room={room} />
       <Terraces room={room} />
       {room.waterway && <Watercourse room={room} />}
+      <ServiceMarks room={room} />
+      <BellcapColony room={room} />
+      <GlowBeetles room={room} />
       <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do

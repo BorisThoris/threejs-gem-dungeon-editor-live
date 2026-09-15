@@ -136,9 +136,9 @@ export const BIOME: Record<BiomeId, Biome> = {
    * cold, and they read as deliberate now rather than as more of the same.
    */
   hewn: { name: "Hewn stone", floor: "#b3aa9c", wall: "#6b665e", surface: "stone", glow: "#a8917a", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone", life: [], air: "still" },
-  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss", life: [], air: "wind" },
+  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss", life: ["beetle"], air: "wind" },
   catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick", life: ["rat", "bat"], air: "hollow" },
-  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water", life: ["rat", "croaker"], air: "drip" },
+  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water", life: ["rat", "croaker", "beetle"], air: "drip" },
   foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating", life: [], air: "ember" },
   timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"], carry: 1.25, ground: "loose boards", life: ["rat"], air: "creak" },
   bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"], carry: 1.5, ground: "old bone", life: ["rat", "bat"], air: "wind" },
@@ -150,7 +150,7 @@ export const BIOME: Record<BiomeId, Biome> = {
    * Its light is the one cold-green thing on the floor, so it reads as a
    * place rather than a tint.
    */
-  fungal: { name: "Fungal", floor: "#9aa886", wall: "#55604f", surface: "moss", glow: "#7fc9a0", light: 0.9, litter: ["web", "rubble"], carry: 0.6, ground: "spore mat", life: ["rat", "croaker"], air: "spore" },
+  fungal: { name: "Fungal", floor: "#9aa886", wall: "#55604f", surface: "moss", glow: "#7fc9a0", light: 0.9, litter: ["web", "rubble"], carry: 0.6, ground: "spore mat", life: ["rat", "croaker", "beetle"], air: "spore" },
 };
 
 /**

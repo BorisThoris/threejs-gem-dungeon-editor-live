@@ -53,6 +53,9 @@ export function Captions() {
     const side = (pan: number) => (pan < -0.2 ? " (left)" : pan > 0.2 ? " (right)" : "");
     const offs = [
       bus.on("sluiceOpened", () => say("Iron teeth turn. Water rushes down the channel.")),
+      bus.on("bellcapWarning", () => say("The bellcaps swell toward your light. Lower the lantern or step away.")),
+      bus.on("bellcapBurst", () => say("The bellcaps pop. Spores hiss across the channel.")),
+      bus.on("beetlesScattered", () => say("Tiny wings fold beneath the bellcaps. Their glow fades.")),
       bus.on("waterCacheTaken", () => say("The dry seal lifts; gems chime inside.")),
       bus.on("wardenWoke", () => say("Something wakes, far off")),
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),

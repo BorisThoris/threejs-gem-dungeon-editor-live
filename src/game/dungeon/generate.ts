@@ -1,6 +1,7 @@
 import { shapeFits } from "./layout";
 import { assignDistricts } from "../rooms/districts";
 import { assignWatercourse } from "../worldbuilding/watercourse";
+import { serviceTrailFor } from "../worldbuilding/serviceTrail";
 import { createRng, pick, shuffle } from "../rng";
 import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
@@ -398,8 +399,13 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   }
 
   assignDistricts(rooms, "start", endId, floor);
+  for (const room of rooms) for (const dir of DIRS) {
+    if (!room.wings?.[dir] || room.links[dir] || room.secret?.dir === dir || room.district === "works") continue;
+    if (createRng(`${seed}:${room.id}:${dir}:apse`)() < 0.7) room.wingProfiles = { ...room.wingProfiles, [dir]: "apse" };
+  }
   assignWatercourse(rooms, "start", vault?.id ?? null);
   return {
+    serviceTrail: serviceTrailFor(rooms, vault?.id ?? null),
     seed,
     rooms,
     startId: "start",

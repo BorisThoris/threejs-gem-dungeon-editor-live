@@ -9,7 +9,7 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/")
 const temp = mkdtempSync(join(tmpdir(), "world-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -20,10 +20,33 @@ const identities = new Set();
 let migratingToads = 0;
 const terraceDirs = new Set();
 let terraceCount = 0;
+let serviceTrails = 0;
+let colonies = 0;
+let beetles = 0;
+const apseDirs = new Set();
+let apses = 0;
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
   assert.deepEqual(d, L.generateDungeon({ seed, floor }), "geography reproduces from seed and depth");
   const byId = new Map(d.rooms.map(r => [r.id, r]));
+  if (d.serviceTrail) {
+    serviceTrails++;
+    const { route, hostId } = d.serviceTrail;
+    assert.ok(route.length >= 2 && new Set(route).size === route.length, "maintenance routes lead through multiple rooms without loops");
+    assert.equal(byId.get(route[0]).waterway.role, "outfall");
+    assert.equal(route.at(-1), hostId);
+    const host = byId.get(hostId);
+    assert.ok(host.secret && !host.links[host.secret.dir], "the rubbing leads to a real unopened secret");
+    for (let i = 0; i < route.length; i++) {
+      const room = byId.get(route[i]);
+      assert.ok(room.kind !== "end" && room.id !== d.vaultId, "maintenance routes never require descent or a vault key");
+      if (i) assert.ok(Object.values(byId.get(route[i - 1]).links).includes(room.id), "each clue follows an actual doorway");
+    }
+    const step = L.DIR_STEP[host.secret.dir], distance = L.doorReach(host, host.secret.dir) - 1.3;
+    const x = step.x * distance, z = step.z * distance;
+    for (const prop of L.placementsFor(host, host.seed).filter(p => L.PROP_SPECS[p.kind].solid))
+      assert.ok(Math.hypot(prop.x - x, prop.z - z) > L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.5, "the service catch is not buried in furniture");
+  }
   const source = d.rooms.find(r => r.waterway?.role === "sluice");
   const destination = d.rooms.find(r => r.waterway?.role === "outfall");
   if (source) {
@@ -76,12 +99,49 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   }
   for (const r of d.rooms) {
     rooms++;
+    for (const home of L.beetlesFor(r)) {
+      beetles++;
+      assert.ok(L.BIOME[r.biome].life.includes("beetle") && L.bellcapsFor(r).some(c => c.x === home.x && c.z === home.z));
+      for (const cover of [0, 0.25, 0.5, 0.75, 1]) for (let time = 0; time < 10; time += 0.5) {
+        const pose = L.beetlePose(home, time, cover);
+        assert.ok(L.insideRoom(r, pose.x, pose.z, 0.18), "the whole beetle remains inside the floor while foraging and retreating");
+        assert.ok(L.roomSegmentClear(r, pose.x, pose.z, home.x, home.z, 0.18), "retreat stays in its connected habitat");
+        for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid))
+          assert.ok(Math.hypot(pose.x - prop.x, pose.z - prop.z) > L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.18);
+      }
+    }
+    for (const dir of L.DIRS.filter(dir => r.wingProfiles?.[dir] === "apse")) {
+      apses++; apseDirs.add(dir);
+      assert.ok(!r.links[dir] && r.secret?.dir !== dir && r.district !== "works");
+      const courses = L.wingCourses(r, dir), axis = L.DIR_STEP[dir], shift = L.corridorOffset(r, dir);
+      assert.equal(courses[0].width, L.corridorWidth(r, dir), "apse mouth retains its full width");
+      assert.ok(courses.at(-1).width < courses[0].width, "apse has an actual tapered end");
+      for (const c of courses) {
+        const along = (c.start + c.end) / 2;
+        const x = axis.x * along + (axis.x ? 0 : shift), z = axis.z * along + (axis.x ? shift : 0);
+        assert.ok(L.insideRoom(r, x, z, 0.5));
+        assert.ok(!L.insideRoom(r, x + (axis.x ? 0 : c.width / 2 + 0.1), z + (axis.x ? c.width / 2 + 0.1 : 0)), "outside each curved course is solid wall, not phantom floor");
+      }
+    }
+    for (const cap of L.bellcapsFor(r)) {
+      colonies++;
+      assert.equal(r.district, "gardens");
+      assert.ok(r.waterway && L.insideRoom(r, cap.x, cap.z, 0.7));
+      assert.deepEqual(L.bellcapsFor(r), L.bellcapsFor(JSON.parse(JSON.stringify(r))), "colonies reproduce from real channel banks");
+      for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid))
+        assert.ok(Math.hypot(cap.x - prop.x, cap.z - prop.z) >= L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.8);
+      assert.ok(L.bellcapExposed(r, cap, cap.x, cap.z, 100, 1));
+      assert.ok(!L.bellcapExposed(r, cap, cap.x, cap.z, 0, 1), "lowering the lamp cancels exposure");
+      assert.ok(!L.bellcapExposed(r, cap, cap.x, cap.z, 100, 0), "drained colonies are dormant");
+      assert.ok(!L.bellcapExposed(r, cap, cap.x + 4, cap.z, 100, 1), "backing away cancels exposure");
+    }
     for (const t of L.terracesFor(r)) {
       terraceCount++;
       terraceDirs.add(t.dir);
       assert.ok(!r.links[t.dir] && r.secret?.dir !== t.dir, "raised galleries preserve travel and secret thresholds");
       for (let along = t.start; along <= t.end; along += 0.25) {
-        for (const across of [-t.width / 2 + 0.3, 0, t.width / 2 - 0.3]) {
+        const width = L.wingWidthAt(r, t.dir, along);
+        for (const across of [-width / 2 + 0.3, 0, width / 2 - 0.3]) {
           const [x, , z] = L.terracePoint(t, along, across, 0);
           assert.ok(L.insideRoom(r, x, z), "the whole ramp stays inside the true gallery footprint");
           const rise = L.floorRiseAt(r, x, z);
@@ -89,12 +149,15 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         }
       }
       const mesh = L.terraceMesh(t);
-      for (const base of [0, 36]) {
+      for (let base = 0; base < mesh.indices.length; base += 36) {
         const vertices = Array.from(mesh.indices.slice(base, base + 3), i => Array.from(mesh.positions.slice(i * 3, i * 3 + 3)));
         const [a, b, c] = vertices;
         assert.ok((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) > 0,
           "rendered and physical ramp/landing top faces point upward in every direction");
-        for (const [x, y, z] of vertices) assert.ok(Math.abs(y - L.floorHeightAt(r, x, z)) < 1e-5);
+        for (const [x, y, z] of vertices) {
+          assert.ok(L.insideRoom(r, x, z), "every physical ramp vertex lies within the shaped floor");
+          assert.ok(Math.abs(y - L.floorHeightAt(r, x, z)) < 1e-5);
+        }
       }
     }
     identities.add(L.identityFor(r));
@@ -137,7 +200,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   if (shut) assert.ok(shut.has(d.endId), "district assignment preserves the unlocked exit route");
 }
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
+assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
+console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
+assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
+console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);
+assert.ok(colonies > 100, `bellcap colonies occupy the channel ecosystem: ${colonies}`);
+assert.equal(L.bellcapCharge(1, false, 0.1), 0);
+assert.equal(L.bellcapCharge(1, true, 0), 1);
+assert.ok(L.bellcapCharge(0, true, 20) < L.BELLCAP_WARNING, "one slow frame cannot skip the warning");
+console.log(`Bellcaps: ${colonies} clear channel-bank colonies with light, distance and drainage counterplay.`);
 assert.equal(terraceDirs.size, 4, "raised terrain is checked in every cardinal direction");
+assert.ok(serviceTrails > 150, `linked maintenance discoveries occur throughout the world: ${serviceTrails}`);
+console.log(`Discovery: ${serviceTrails} reliquary-to-secret expeditions through real doors.`);
 console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
 assert.equal(identities.size, Object.keys(L.PLACE_IDENTITIES).length, "all building identities occur in the generated world");
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);

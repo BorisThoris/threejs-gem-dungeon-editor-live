@@ -35,6 +35,7 @@ function Inscription({ lines }: { lines: string[] }) {
 export function Watercourse({ room }: { room: Room }) {
   const openedAt = useRun(s => s.waterOpenedAt);
   const taken = useRun(s => s.waterCacheTaken);
+  const hasRubbing = useRun(s => !!s.dungeon?.serviceTrail);
   const [drained, setDrained] = useState(false);
   const wheel = useRef<Group>(null);
   const flowTime = useRef({ value: 0 });
@@ -89,7 +90,7 @@ export function Watercourse({ room }: { room: Room }) {
     {station && <>
       <group position={[station.x, floorHeightAt(room, station.x, station.z), station.z]} rotation={[0, station.yaw, 0]}>
         <mesh position={[0, 1.45, -0.1]}><boxGeometry args={[1.5, 1.9, 0.12]} /><meshStandardMaterial color="#4d5a4b" /></mesh>
-        <Inscription lines={role === "sluice" ? ["OLD WATERWORKS", "TURN TO DRAIN", "FOLLOW BRONZE ARROWS"] : ["DROWNED RELIQUARY", "DRAIN AT THE SLUICE", "THEN LIFT THE SEAL"]} />
+        <Inscription lines={role === "sluice" ? ["OLD WATERWORKS", "TURN TO DRAIN", "FOLLOW BRONZE ARROWS"] : taken && hasRubbing ? ["MAINTENANCE RUBBING", "FOLLOW THREE NOTCHES", "PRESS THE FINAL CATCH"] : ["DROWNED RELIQUARY", "DRAIN AT THE SLUICE", "THEN LIFT THE SEAL"]} />
         {role === "sluice" ? <group ref={wheel} position={[0, 1.45, 0]}>
           <mesh><torusGeometry args={[0.52, 0.065, 4, 8]} /><meshStandardMaterial color="#bc8c45" metalness={0.4} roughness={0.7} /></mesh>
           {[0, Math.PI / 2].map(angle => <mesh key={angle} rotation={[0, 0, angle]}>

@@ -181,6 +181,8 @@ export interface Room {
   wingWidths?: Partial<Record<Dir, number>>;
   /** Lateral shifts for closed galleries; linked travel wings stay centred. */
   wingOffsets?: Partial<Record<Dir, number>>;
+  /** Closed galleries may end in a block-cut half-round apse. */
+  wingProfiles?: Partial<Record<Dir, "apse">>;
   /**
    * A wall with a crack in it, and the room behind it.
    *
@@ -195,6 +197,7 @@ export interface Room {
 }
 
 export interface Dungeon {
+  serviceTrail?: import("../worldbuilding/serviceTrail").ServiceTrail;
   /**
    * The room whose doors are locked, and the room its key lies in.
    *

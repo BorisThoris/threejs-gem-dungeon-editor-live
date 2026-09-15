@@ -765,6 +765,17 @@ export const ambience = {
 };
 
 export const sfx = {
+  beetleScatter(pan = 0) {
+    noiseBurst(0.14, 0.14, 2100, pan);
+    tone(690, 0.12, "triangle", 0.14, 420, pan);
+  },
+  bellcapWarning(pan = 0) {
+    tone(310, 0.45, "triangle", 0.09, 470, pan);
+  },
+  bellcapBurst(pan = 0) {
+    noiseBurst(0.5, 0.22, 1100, pan);
+    tone(170, 0.17, "triangle", 0.14, 75, pan);
+  },
   /** A heavy wheel ratchets, then water pulls through a stone throat. */
   sluice() {
     tone(92, 0.6, "sawtooth", 0.14, 48);

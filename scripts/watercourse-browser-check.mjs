@@ -18,7 +18,8 @@ try {
       const dungeon = generateDungeon({ seed, floor: 1 });
       const sluice = dungeon.rooms.find(r => r.waterway?.role === "sluice");
       const cache = dungeon.rooms.find(r => r.waterway?.role === "outfall");
-      if (sluice && cache) return { dungeon, sluice: sluice.id, cache: cache.id };
+      if (sluice && cache && dungeon.serviceTrail && dungeon.serviceTrail.route.every(id => dungeon.rooms.find(r => r.id === id).kind !== "arena"))
+        return { dungeon, sluice: sluice.id, cache: cache.id };
     }
     throw Error("No circuit generated");
   });
@@ -42,10 +43,26 @@ try {
     await page.waitForTimeout(150);
   };
   await visit(fixture.cache);
+  assert.equal(await page.locator('[data-testid="service-rubbing"]').count(), 0, "the route is not explained before the rubbing is found");
+  assert.equal(await page.locator('[data-water-role="sluice"]').count(), 0, "unvisited valve is not revealed on the map");
+  const visitCatch = async () => {
+    await page.evaluate(async () => {
+      const { serviceCatch } = await import("/src/game/worldbuilding/serviceTrail.ts");
+      const { DIR_YAW } = await import("/src/game/dungeon/types.ts");
+      const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.dungeon.serviceTrail.hostId);
+      const at = serviceCatch(room);
+      window.__run.setState({ currentRoomId: room.id, transitioning: false, visited: [...new Set([...s.visited, room.id])], harrierSlain: true });
+      window.__bus.emit("teleport", { position: [at[0], 1.5, at[2]] });
+      window.__bus.emit("lookSet", { yaw: DIR_YAW[room.secret.dir], pitch: 0 });
+    });
+    await page.waitForTimeout(900);
+  };
+  await visitCatch();
+  assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "catch requires the recovered rubbing");
+  await visit(fixture.cache);
   const initialGems = await page.evaluate(() => window.__run.getState().gems);
   await page.keyboard.press("KeyE");
   assert.equal(await page.evaluate(() => window.__run.getState().gems), initialGems, "submerged cache cannot be looted");
-  assert.equal(await page.locator('[data-water-role="sluice"]').count(), 0, "unvisited valve is not revealed on the map");
   await visit(fixture.sluice);
   await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
   await page.waitForTimeout(120);
@@ -86,6 +103,41 @@ try {
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "dry cache pays two gems");
   await page.keyboard.press("KeyE");
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "cache pays only once");
+  assert.match(await page.locator('[data-testid="service-rubbing"]').innerText(), /three-notch copper marks/);
+  assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "rubbing cannot open the passage remotely");
+  assert.equal(await page.locator('[data-map-state="known"] [data-testid="map-service-mark"]').count(), 0,
+    "the rubbing does not mark unexplored room interiors");
+  for (const id of fixture.dungeon.serviceTrail.route.slice(1)) {
+    const dir = await page.evaluate(async next => {
+      const { doorReach } = await import("/src/game/dungeon/footprint.ts");
+      const { DIR_STEP, DIR_YAW } = await import("/src/game/dungeon/types.ts");
+      const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
+      const dir = Object.keys(room.links).find(dir => room.links[dir] === next), step = DIR_STEP[dir];
+      const reach = doorReach(room, dir) - 0.9;
+      window.__bus.emit("teleport", { position: [step.x * reach, 1.5, step.z * reach] });
+      window.__bus.emit("lookSet", { yaw: DIR_YAW[dir], pitch: 0 });
+      return dir;
+    }, id);
+    assert.ok((await page.locator('[data-testid="service-rubbing"]').innerText()).includes(dir), "the written clue agrees with the actual exit");
+    await page.waitForTimeout(500);
+    await page.keyboard.press("KeyE");
+    await page.waitForFunction(id => window.__run.getState().currentRoomId === id && !window.__run.getState().transitioning, id);
+  }
+  await visitCatch();
+  await page.evaluate(() => window.__run.getState().pause());
+  assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "paused catch is guarded");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.screenshot({ path: "output/world-review/service-catch.png" });
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => {
+    const s = window.__run.getState(), host = s.dungeon.rooms.find(r => r.id === s.dungeon.serviceTrail.hostId);
+    return host.links[host.secret.dir] === host.secret.to;
+  });
+  assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "opened catch cannot repeat");
+  assert.match(await page.locator('[data-testid="service-rubbing"]').innerText(), /passage opened/);
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__run.getState().currentRoomId === window.__run.getState().dungeon.secretId);
+  console.log("PASS service rubbing: learned guidance, proximity and pause guards, keyboard catch, real passage travel and one-time opening");
   await visit(fixture.sluice);
   assert.equal(await page.evaluate(() => window.__watercourse.drained), true, "drainage persists on revisit");
   await page.evaluate(() => {
@@ -94,6 +146,7 @@ try {
     window.__run.getState().roomReady(s.dungeon.endId);
   });
   await page.waitForFunction(() => window.__run.getState().floor === 2);
+  assert.equal(await page.locator('[data-testid="service-rubbing"]').count(), 0, "descent clears the learned rubbing");
   assert.deepEqual(await page.evaluate(() => [window.__run.getState().waterOpenedAt, window.__run.getState().waterCacheTaken]), [null, false], "descent resets circuit state");
   await page.evaluate(() => window.__run.setState({ waterOpenedAt: 3, waterCacheTaken: true }));
   await page.evaluate(() => window.__run.getState().startRun(72));

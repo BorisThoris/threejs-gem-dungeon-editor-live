@@ -13,6 +13,12 @@ assignment. `dungeon/footprint.ts` defines the actual block-cut room outline,
 including round and polygonal chambers, door collars and shifted galleries;
 walls, collisions, navigation and the minimap all use it.
 
+`wingCourses` supplies the longitudinal floor courses for both rectangular and
+half-round side galleries. A room with a shaped wing uses the union outline
+for wall and movement checks even when its central chamber is square. Terraces
+and roof ribs read those same course widths rather than spanning the gallery's
+bounding rectangle.
+
 `worldbuilding/watercourse.ts` owns the optional watercourse: its directed door
 route, shallow channel geometry, safe wall anchors and drainage curve. The run
 store owns opening time and the one-time reliquary reward. The renderer, wet
@@ -23,6 +29,19 @@ The editor's World tab inspects the full generated graph and room blueprints;
 the player's minimap remembers only visited waterworks landmarks.
 
 The ongoing expansion is tracked in [The inhabited dungeon](docs/WORLD_EXPANSION.md).
+
+`worldbuilding/serviceTrail.ts` selects the optional real-door route from the
+reliquary to an existing secret wall. Its stored route drives copper masonry
+marks, rubbing guidance and the authoring atlas. Reading the reliquary enables
+the guarded catch interaction; opening it delegates to `revealSecret`, keeping
+the actual passage, collision and map changes under their existing owner.
+
+`worldbuilding/bellcaps.ts` places light-sensitive colonies on clear channel
+banks and owns exposure, warning and recovery constants. `BellcapColony.tsx`
+animates their warning and spore puff; `bellcapBursts` keeps floor-local recovery
+times. Discharges go through the event bus, positional audio and Din, so the
+existing creatures hear the actual environmental event. Drainage is sampled
+from the watercourse's shared curve.
 
 `worldbuilding/identity.ts` names the nine building identities and their three
 traditions. `structuralPattern.ts` fits their overhead bays to the same floor

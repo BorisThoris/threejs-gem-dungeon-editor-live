@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  beetle: {
+    name: "glow beetles", role: "ambient", body: "flying",
+    lives: "They feed in low flights around bellcaps on damp channel banks, sheltering beneath the caps when the bed dries, bright light approaches or a noise arrives.",
+    harm: "none", answers: ["lower the lantern and let them settle", "watch their glow to find living bellcaps", "drain the channel and they shelter"],
+    voice: { held: null, moments: ["beetleScatter"] }, events: ["beetlesScattered"],
+    lesson: "beetle", component: "mobs/GlowBeetles.tsx", probe: "__beetles", tell: false,
+  },
   warden: {
     name: "the Warden",
     role: "threat",

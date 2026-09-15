@@ -266,6 +266,9 @@ const CUES = [
   ["keeperSwing", 500, [0.4]],
   ["splash", 500, [0.3]],
   ["sluice", 2000, []],
+  ["bellcapWarning", 600, [0.3]],
+  ["bellcapBurst", 650, [-0.3]],
+  ["beetleScatter", 350, [0.3]],
 ];
 
 /**

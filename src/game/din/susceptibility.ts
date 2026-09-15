@@ -39,6 +39,10 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  beetle: {
+    answers: { loud: 0.3, blast: 0.1, bright: 0.35 },
+    tell: "They feed around living bellcaps. Light or noise sends them into cover, and their glow goes with them.",
+  },
   /**
    * The foreman. It hears the floor and it fears a blast, and it cannot be
    * dazzled because it has been holding the lamp since the company left.

@@ -35,6 +35,7 @@ export interface Emission {
 
 export const EMISSIONS = {
   sluiceOpened: { tags: ["loud", "metal"], magnitude: 0.65 },
+  bellcapBurst: { tags: ["loud"], magnitude: 0.5 },
   /** The floor's loudest event, and the only one that declares [blast]. */
   bombBurst: { tags: ["blast", "loud", "bright", "hot"], magnitude: 1.0 },
   /** A ton of iron arriving in a doorway. */

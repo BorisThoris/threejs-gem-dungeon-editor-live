@@ -52,6 +52,7 @@ export function Minimap() {
   const currentRoomId = useRun((s) => s.currentRoomId);
   const visited = useRun((s) => s.visited);
   const marks = useRun((s) => s.marks);
+  const rubbing = useRun(s => s.waterCacheTaken);
   /**
    * A wall you felt a draft at, marked without a bomb - but only for a
    * delver carrying the Sounding Rod, and only for a draft they stood in
@@ -168,6 +169,7 @@ export function Minimap() {
       isKept: r.id === keeperKeeps,
       marked: marks.includes(r.id),
       waterLandmark: seen.has(r.id) && r.waterway && r.waterway.role !== "channel" ? r.waterway.role : null,
+      serviceMark: rubbing && seen.has(r.id) && dungeon.serviceTrail?.route.includes(r.id),
       /**
        * The map no longer knows where the Warden is or which rooms still
        * hold a gem. Both were SUBSTITUTES for knowing rather than
@@ -183,7 +185,7 @@ export function Minimap() {
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps]);
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -277,6 +279,8 @@ export function Minimap() {
                   x={cell * 0.25} y={-cell * 0.2} textAnchor="middle" fontSize={8} fill={c.state === "here" ? onAccent : "#a6c9bf"}>
                   {c.waterLandmark === "sluice" ? "⚙" : "◇"}
                 </text>}
+                {c.serviceMark && <text data-testid="map-service-mark" x={-cell * 0.25} y={cell * 0.35}
+                  textAnchor="middle" fontSize={7} fill={c.state === "here" ? onAccent : "#cc9869"}>Ⅲ</text>}
                 {c.felt && (
                   <circle
                     data-testid="map-felt"

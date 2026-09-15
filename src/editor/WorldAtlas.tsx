@@ -12,6 +12,11 @@ import { colors } from "../ui/overlay";
 import { button, field, label, panel, small } from "./styles";
 import "../game/rooms/shipped";
 import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
+import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
+import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from "../game/worldbuilding/bellcaps";
+import { croakersFor } from "../game/mobs/ambient";
+import { croakerHabitats } from "../game/mobs/croakerHabitat";
+import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
@@ -22,6 +27,8 @@ export function WorldAtlas() {
   const [seed, setSeed] = useState(72);
   const [floor, setFloor] = useState(2);
   const [selected, setSelected] = useState("start");
+  const [drained, setDrained] = useState(false);
+  const [ecology, setEcology] = useState(true);
   const dungeon = useMemo(() => generateDungeon({ seed, floor }), [seed, floor]);
   const room = dungeon.rooms.find(r => r.id === selected) ?? dungeon.rooms[0];
   const byId = useMemo(() => new Map(dungeon.rooms.map(r => [r.id, r])), [dungeon]);
@@ -37,6 +44,10 @@ export function WorldAtlas() {
   const station = useMemo(() => room.waterway && room.waterway.role !== "channel" ? waterStation(room) : null, [room]);
   const ink = INK[room.district ?? "tombs"];
   const identity = PLACE_IDENTITIES[identityFor(room)];
+  const colonies = useMemo(() => bellcapsFor(room), [room]);
+  const beetles = useMemo(() => beetlesFor(room), [room]);
+  const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, room.seed)), [room]);
+  const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, r.seed).length), [dungeon]);
   const source = dungeon.rooms.find(r => r.waterway?.role === "sluice");
   const outfall = dungeon.rooms.find(r => r.waterway?.role === "outfall");
   return <div>
@@ -51,12 +62,16 @@ export function WorldAtlas() {
         </select>
       </label>
       <button style={{ ...button, width: "auto" }} onClick={() => setSeed(s => (s + 1) >>> 0 || 1)}>Next seed</button>
+      <button style={{ ...button, width: "auto" }} disabled={!livingRooms.length} onClick={() => {
+        const next = (livingRooms.findIndex(r => r.id === room.id) + 1) % livingRooms.length;
+        if (livingRooms[next]) setSelected(livingRooms[next].id);
+      }}>Next habitat</button>
       <span style={small}>{dungeon.rooms.length} rooms · {dungeon.rooms.filter(r => r.waterway).length} on the watercourse</span>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1.4fr) minmax(340px, 1fr)", gap: 20 }}>
       <section style={panel}>
         <div style={label}>THE CONNECTED FLOOR</div>
-        <p style={small}>Select a room to inspect its true footprint. Bronze arrows follow the water downstream. Dashed branches are hidden walls.</p>
+        <p style={small}>Select a room to inspect its true footprint. Bronze arrows follow the water downstream. Dashed branches are hidden walls. Copper dotted lines follow the maintenance rubbing.</p>
         <svg aria-label="Generated world map" role="img" viewBox={`${extent.x} ${extent.y} ${extent.width} ${extent.height}`}
           style={{ width: "100%", height: 540, background: "#0b1012", borderRadius: 8 }}>
           <defs><marker id="atlas-flow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -66,6 +81,11 @@ export function WorldAtlas() {
             const next = byId.get(id)!;
             return <line key={`${r.id}:${id}`} x1={r.grid.x * GRID} y1={r.grid.z * GRID} x2={next.grid.x * GRID} y2={next.grid.z * GRID} stroke="#49514f" strokeWidth={3} />;
           }))}
+          {dungeon.serviceTrail?.route.slice(1).map((id, i) => {
+            const a = byId.get(dungeon.serviceTrail!.route[i])!, b = byId.get(id)!;
+            return <line key={`service-${id}`} x1={a.grid.x * GRID + 6} y1={a.grid.z * GRID + 6}
+              x2={b.grid.x * GRID + 6} y2={b.grid.z * GRID + 6} stroke="#cc9869" strokeWidth={3} strokeDasharray="2 6" />;
+          })}
           {dungeon.rooms.map(r => r.secret && <line key={`secret-${r.id}`} x1={r.grid.x * GRID} y1={r.grid.z * GRID}
             x2={byId.get(r.secret.to)!.grid.x * GRID} y2={byId.get(r.secret.to)!.grid.z * GRID} stroke="#9c79a9" strokeDasharray="4 5" />)}
           {dungeon.rooms.map(r => {
@@ -92,14 +112,43 @@ export function WorldAtlas() {
         <div style={{ ...label, color: ink }}>{room.district ? DISTRICTS[room.district].name : "UNASSIGNED"}</div>
         <h2 style={{ fontSize: 17, color: colors.ink }}>{room.waterway ? WATERWAY_NAMES[room.waterway.role] : KIND_TITLE[room.kind]}</h2>
         <p style={small}>{room.shape} · {room.size} m chamber · {room.biome} · {KIND_TITLE[room.kind]}</p>
+        {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
+          <label style={small}>Water preview <select aria-label="Water preview" value={drained ? "drained" : "flowing"}
+            style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setDrained(e.target.value === "drained")}>
+            <option value="flowing">Flowing</option><option value="drained">Drained</option>
+          </select></label>
+          <label style={small}><input type="checkbox" checked={ecology} onChange={e => setEcology(e.target.checked)} /> Show habitats</label>
+        </div>
+        {dungeon.serviceTrail?.route.includes(room.id) && <p style={small}>{serviceTrailText(dungeon, room.id)}</p>}
         <svg aria-label="Selected room blueprint" viewBox="-200 -200 400 400" style={{ width: "100%", maxHeight: 400, background: "#0b1012", borderRadius: 8 }}>
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
           {watercourseBlocks(room).map((b, i) => <rect key={i} x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
-            width={b.size[0] * scale} height={b.size[2] * scale} fill="#559eac" />)}
+            width={b.size[0] * scale} height={b.size[2] * scale} fill={drained ? "#354641" : "#559eac"} />)}
           {props.map((p, i) => <circle key={i} cx={p.x * scale} cy={p.z * scale} r={Math.max(2, PROP_SPECS[p.kind].radius * scale)}
             fill={PROP_SPECS[p.kind].solid ? "#706b57" : "#49583e"} opacity={0.85}><title>{PROP_SPECS[p.kind].title}</title></circle>)}
+          {ecology && habitats.map((h, i) => {
+            const at = drained ? h.refuge : h.wet;
+            return <g key={`habitat-${i}`}>
+              {h.followsChannel && <line x1={h.wet.x * scale} y1={h.wet.z * scale} x2={h.refuge.x * scale} y2={h.refuge.z * scale}
+                stroke="#83b3ac" strokeDasharray="2 4" opacity={0.7} />}
+              <circle data-testid="atlas-toad" cx={at.x * scale} cy={at.z * scale} r={4} fill="#91c2a9">
+                <title>{h.followsChannel ? drained ? "Toad in its damp refuge; chorus hushed" : "Toad at the live channel; dotted route leads to its refuge" : "Toad in an independent damp habitat"}</title>
+              </circle>
+            </g>;
+          })}
+          {ecology && colonies.map((cap, i) => <g key={`colony-${i}`} data-testid="atlas-colony" data-dormant={drained}>
+            {!drained && <circle cx={cap.x * scale} cy={cap.z * scale} r={BELLCAP_REACH * scale} fill="none" stroke="#c4c98b" strokeDasharray="3 4" opacity={0.45} />}
+            <rect x={cap.x * scale - 4} y={cap.z * scale - 4} width={8} height={8} fill={drained ? "#776c4e" : "#d0cd83"}>
+              <title>{drained ? "Dormant bellcaps" : `Bellcaps: raised light within ${BELLCAP_REACH} m causes a ${BELLCAP_WARNING}-second swelling warning`}</title>
+            </rect>
+          </g>)}
+          {ecology && !drained && beetles.map((home, i) => {
+            const p = beetlePose(home, 0, 0);
+            return <circle key={`beetle-${i}`} cx={p.x * scale} cy={p.z * scale} r={2} fill="#f0cc62"><title>Glow beetle feeding around living bellcaps</title></circle>;
+          })}
           <path d={blueprint.walls} fill="none" stroke={ink} strokeWidth={2} />
           {station && <>
             <line x1={0} y1={0} x2={station.approach.x * scale} y2={station.approach.z * scale} stroke="#e0bf75" strokeDasharray="3 4" />
@@ -108,6 +157,11 @@ export function WorldAtlas() {
           <circle r={3} fill="#eee0b4" />
         </svg>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>
+        {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
+        {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {drained
+          ? "Draining collapses the caps and prevents further spore bursts."
+          : `Lower the lantern one band or retreat during the ${BELLCAP_WARNING}-second warning. Bursts carry sound through the room graph; recovery lasts ${BELLCAP_COOLDOWN} seconds.`}</p>}
+        {beetles.length > 0 && <p style={small}>{beetles.length} glow beetles feed here. Their low lights reveal the bellcaps in darkness; nearby light and noise send them into cover. Dry beds keep them sheltered.</p>}
         {room.waterway && <p style={{ ...small, color: "#d0b477" }}>Water {room.waterway.upstream ? `arrives from the ${room.waterway.upstream}` : "begins at the sluice"}
           {room.waterway.downstream ? ` and leaves to the ${room.waterway.downstream}.` : "; the reliquary lies at its outfall."}</p>}
         {source && outfall ? <p style={small}>The sluice at {source.id} drains the channel to {outfall.id}. Both endpoints are reachable without the vault key; the circuit never enters the exit stairs.</p>

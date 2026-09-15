@@ -12,6 +12,29 @@ export const corridorOffset = (room: Room, dir: Dir): number => room.links[dir] 
 
 export const doorReach = (room: Room, dir: Dir): number => halfSize(room) + (room.wings?.[dir] ?? 0);
 
+export interface WingCourse { start: number; end: number; width: number }
+export const hasShapedWings = (room: Room): boolean => DIRS.some(dir => room.wingProfiles?.[dir] === "apse" && !room.links[dir]);
+
+/** One-metre masonry courses form a half-round end, preserving the full mouth.
+ * Courses are shared by floor, ramp, roof and navigation rather than clipped only visually. */
+export function wingCourses(room: Room, dir: Dir): WingCourse[] {
+  const start = halfSize(room), end = doorReach(room, dir), width = corridorWidth(room, dir);
+  if (end <= start) return [];
+  if (room.wingProfiles?.[dir] !== "apse" || room.links[dir]) return [{ start, end, width }];
+  const radius = Math.min(width / 2, end - start - 2), shoulder = end - radius;
+  const courses: WingCourse[] = [];
+  for (let low = start; low < end; low += 1) {
+    const into = Math.max(0, low - shoulder);
+    const halfWidth = Math.min(width / 2, Math.ceil(Math.sqrt(Math.max(0, radius * radius - into * into)) * 2) / 2);
+    courses.push({ start: low, end: Math.min(end, low + 1), width: low <= shoulder ? width : halfWidth * 2 });
+  }
+  return courses;
+}
+
+export function wingWidthAt(room: Room, dir: Dir, along: number): number {
+  return Math.max(0, ...wingCourses(room, dir).filter(c => along >= c.start && along <= c.end).map(c => c.width));
+}
+
 /** Block-cut polygon courses. The outside rounding preserves authored anchors.
  * Door collars reach the grid's cardinal portals even on pointed rooms. */
 function chamberRects(room: Room): FloorRect[] {
@@ -49,17 +72,17 @@ const floorsCache = new WeakMap<Room, FloorRect[]>();
 export function floorRects(room: Room): FloorRect[] {
   const cached = floorsCache.get(room);
   if (cached) return cached;
-  const half = halfSize(room);
   const rects: FloorRect[] = chamberRects(room);
   for (const dir of DIRS) {
     const length = room.wings?.[dir] ?? 0;
-    const width = corridorWidth(room, dir);
     if (length <= 0) continue;
     const vertical = dir === "north" || dir === "south";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
-    const offset = sign * (half + length / 2);
-    rects.push({ x: vertical ? corridorOffset(room, dir) : offset, z: vertical ? offset : corridorOffset(room, dir),
-      width: vertical ? width : length, depth: vertical ? length : width });
+    for (const course of wingCourses(room, dir)) {
+      const offset = sign * (course.start + course.end) / 2, depth = course.end - course.start;
+      rects.push({ x: vertical ? corridorOffset(room, dir) : offset, z: vertical ? offset : corridorOffset(room, dir),
+        width: vertical ? course.width : depth, depth: vertical ? depth : course.width });
+    }
   }
   floorsCache.set(room, rects);
   return rects;
@@ -94,7 +117,7 @@ const edgesCache = new WeakMap<Room, WallEdge[]>();
 export function wallEdges(room: Room): WallEdge[] {
   const cached = edgesCache.get(room);
   if (cached) return cached;
-  if (room.shape === "square") {
+  if (room.shape === "square" && !hasShapedWings(room)) {
     const result = squareWallEdges(room); edgesCache.set(room, result); return result;
   }
   const rects = floorRects(room);
@@ -149,7 +172,7 @@ export function roomRayReach(x: number, z: number, dx: number, dz: number, range
 }
 
 export function insideRoom(room: Room, x: number, z: number, margin = 0): boolean {
-  if (room.shape !== "square") {
+  if (room.shape !== "square" || hasShapedWings(room)) {
     if (!floorRects(room).some(r => Math.abs(x - r.x) <= r.width / 2 && Math.abs(z - r.z) <= r.depth / 2)) return false;
     return wallEdges(room).every(e => distanceToEdge(x, z, e) >= margin - 1e-8);
   }
@@ -167,7 +190,7 @@ export function insideRoom(room: Room, x: number, z: number, margin = 0): boolea
 /** Clip a movement segment against the union of inset floor rectangles. */
 export function roomSegmentClear(room: Room, x: number, z: number, tx: number, tz: number, margin = 0): boolean {
   if (![x, z, tx, tz].every(Number.isFinite)) return false;
-  if (room.shape !== "square") {
+  if (room.shape !== "square" || hasShapedWings(room)) {
     if (!insideRoom(room, x, z, margin) || !insideRoom(room, tx, tz, margin)) return false;
     const length = Math.hypot(tx - x, tz - z);
     if (length < 1e-9) return true;

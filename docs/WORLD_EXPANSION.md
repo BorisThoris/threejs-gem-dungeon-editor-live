@@ -47,7 +47,12 @@ reliquary pays once, and both states reset on descent or a new run.
 
 The World atlas supports seed/depth selection, connected districts, hidden
 branches, directional water routes and room blueprints with furniture and
-mechanism approaches. This is the first infrastructure layer; the broader
+mechanism approaches. Its habitat overlay also previews flowing and drained
+water: toads move between actual channel edges and refuges, bellcaps become
+dormant, and exposure ranges remain visible alongside furnishings. A habitat
+button locates populated rooms without scanning every blueprint. The preview
+reads the same habitat functions as the game and never changes the live run.
+This is the first infrastructure layer; the broader
 ecology, landmarks, vertical terrain and longer discovery chains below remain
 open work. The expansion goal is not complete.
 
@@ -85,6 +90,46 @@ Generation checks cover 645 galleries in all four directions. Broader vertical
 landforms and longer linked discoveries remain open expansion work.
 
 ## Completion evidence
+
+Rootwater and choir side galleries can now end in block-cut half-round apses.
+Their one-metre floor courses taper toward the end wall while retaining the
+full shifted mouth. The same courses shape the floor, raised ramp/landing,
+physical walls, roof ribs and minimap fill. Industrial galleries retain their
+rectangular service geometry, and connected travel doorways stay unchanged.
+The world sweep covers 234 apses in all four directions; navigation checks
+cover real gallery centers and the changing side clearances.
+
+The reliquary now holds a maintenance rubbing on floors with a valid service
+route. Three-notch copper marks run through real doors to an existing secret
+wall. The rubbing teaches the catch, supplies persistent room-specific guidance
+and records already visited marks on the minimap. The service catch opens the
+same passage as the existing bomb/darkness interactions. It does not generate
+a second secret, spend a bomb or alter the required exit route. Its knowledge
+is owned by the reliquary's floor-local state and clears on descent. The atlas
+shows the route for authoring. Generation checks cover 292 linked expeditions.
+
+Further work remains in larger landforms, richer creature encounters and
+multi-stage environmental consequences beyond the first waterworks circuit.
+
+Bellcap colonies now occupy clear Rootwater channel banks. A raised lantern
+within three metres causes a 2.8-second swelling warning; lowering one light
+band or retreating cancels it. A discharge produces a positional spore hiss and
+a real Din noise signal, allowing the existing listeners to react. Twelve
+seconds of recovery persist across revisits. Drainage collapses the caps,
+extinguishes their glow and prevents further discharges. The colonies use
+instanced block geometry and a short, sparse cube-particle puff. Generation
+checks cover 492 colonies, with real keyboard lantern counterplay tested in
+the browser alongside pause, recovery and floor/run resets.
+
+Glow beetles now feed around bellcaps in mossy, flooded and fungal habitats.
+They make low flights within the colony's clear space, lighting the living
+bank in darkness. Bright light or a Din noise signal sends them under the caps;
+they return after quiet settles, and dry beds keep them sheltered. Their body,
+hearing thresholds, awareness cap, lesson, positional voice and runtime probe
+are registered alongside the other creatures. Three instanced batches draw a
+room's beetles, with one small pooled light per colony. The generation sweep
+checks 1,140 beetles and their full foraging/retreat paths against walls and
+furniture. The atlas includes their feeding positions and habitat rules.
 
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected

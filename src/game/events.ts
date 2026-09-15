@@ -22,6 +22,9 @@ export interface PuzzleRequest {
 
 export interface BusEvents {
   sluiceOpened: { roomId: string; x: number; z: number };
+  bellcapWarning: { roomId: string; x: number; z: number };
+  bellcapBurst: { roomId: string; x: number; z: number };
+  beetlesScattered: { roomId: string };
   waterCacheTaken: { roomId: string };
   runStarted: undefined;
   runWon: undefined;

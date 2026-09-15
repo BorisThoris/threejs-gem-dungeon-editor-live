@@ -34,7 +34,7 @@ for (const floor of [1, 2, 3]) {
           ? block.position[0] < 0 ? "west" : "east" : block.position[2] < 0 ? "north" : "south";
         const lateral = dir === "north" || dir === "south" ? 0 : 2;
         const lateralEdge = Math.abs(block.position[lateral] - L.corridorOffset(room, dir)) - block.size[lateral] / 2;
-        assert.ok(lateralEdge >= L.corridorWidth(room, dir) / 2 - L.WALL_THICKNESS / 2 - 0.02,
+        assert.ok(lateralEdge >= L.wingWidthAt(room, dir, Math.abs(block.position[lateral === 0 ? 2 : 0])) / 2 - L.WALL_THICKNESS / 2 - 0.02,
           "low corridor ribs stay flush with walls and clear of the walking lane");
       }
       rooms++;
@@ -50,14 +50,15 @@ for (const floor of [1, 2, 3]) {
         if (shift) shifted++;
         assert.ok(width > L.CORRIDOR_WIDTH, "deeper closed galleries widen beyond travel corridors");
         const middle = room.size / 2 + room.wings[dir] / 2;
+        const middleWidth = L.wingWidthAt(room, dir, middle);
         const centreX = axis.x * middle + (axis.x ? 0 : shift), centreZ = axis.z * middle + (axis.x ? shift : 0);
-        const edgeX = centreX + axis.z * (width / 2 - 1);
-        const edgeZ = centreZ + axis.x * (width / 2 - 1);
+        const edgeX = centreX + axis.z * (middleWidth / 2 - 1);
+        const edgeZ = centreZ + axis.x * (middleWidth / 2 - 1);
         assert.ok(L.insideRoom(room, edgeX, edgeZ, 0.6), "widened gallery edges have walkable floor");
         assert.ok(L.roomSegmentClear(room, centreX, centreZ, edgeX, edgeZ, 0.6),
           "movement reaches the widened gallery edges");
         assert.ok(Math.abs(L.roomRayReach(centreX, centreZ, axis.z, axis.x, 20,
-          L.wallEdges(room)) - width / 2) < 1e-8, "gallery side walls match their widened floors");
+          L.wallEdges(room)) - middleWidth / 2) < 1e-8, "gallery side walls match their actual floor course");
         if (!room.template && ["normal", "treasure"].includes(room.kind)) {
           const gem = L.gemFor(room, d.seed);
           assert.deepEqual(gem, L.gemFor(room, d.seed), "gallery reward stays put on revisiting");
@@ -68,12 +69,14 @@ for (const floor of [1, 2, 3]) {
             "gallery reward is reachable from the mouth without crossing a wall");
         }
         const distance = L.doorReach(room, dir) - 1;
+        const target = { x: axis.x * distance + (axis.x ? 0 : shift), z: axis.z * distance + (axis.x ? shift : 0) };
         let x = 0, z = 0;
-        for (let i = 0; i < 600 && Math.hypot(x - axis.x * distance, z - axis.z * distance) > 0.11; i++) {
-          [x, z] = L.roomStep(room, x, z, axis.x * 0.1, axis.z * 0.1);
+        for (let i = 0; i < 600 && Math.hypot(x - target.x, z - target.z) > 0.11; i++) {
+          const distance = Math.hypot(target.x - x, target.z - z);
+          [x, z] = L.roomStep(room, x, z, (target.x - x) / distance * 0.1, (target.z - z) / distance * 0.1);
         }
-        assert.ok(Math.hypot(x - axis.x * distance, z - axis.z * distance) <= 0.11, "closed gallery is reachable from the chamber");
-        assert.ok(!L.roomSegmentClear(room, x, z, axis.x * (distance + 2), axis.z * (distance + 2), 0.6), "closed gallery ends in a solid wall");
+        assert.ok(Math.hypot(x - target.x, z - target.z) <= 0.11, "closed gallery is reachable from the chamber");
+        assert.ok(!L.roomSegmentClear(room, x, z, target.x + axis.x * 2, target.z + axis.z * 2, 0.6), "closed gallery ends in a solid wall");
         const hidden = { x: room.size / 2 - 1, z: room.size / 2 - 1 };
         if (axis.x) { hidden.x = axis.x * (room.size / 2 - 1); hidden.z *= shift > 0 ? -1 : 1; }
         else { hidden.z = axis.z * (room.size / 2 - 1); hidden.x *= shift > 0 ? -1 : 1; }
@@ -130,8 +133,12 @@ for (const floor of [1, 2, 3]) {
           const diagonal = (L.floorReach(room, Math.PI / 4) - 1.5) / Math.SQRT2;
           const targets = [[diagonal, diagonal], ...L.DIRS
             .filter((other) => other !== dir && room.wings?.[other])
-            .map((other) => { const p = L.doorPosition(room, other); return [p[0] * 0.9, p[2] * 0.9]; })];
+            .map((other) => {
+              const axis = L.DIR_STEP[other], along = L.doorReach(room, other) - 2, shift = L.corridorOffset(room, other);
+              return [axis.x * along + (axis.x ? 0 : shift), axis.z * along + (axis.x ? shift : 0)];
+            })];
           for (const [tx, tz] of targets) {
+            assert.ok(L.insideRoom(room, tx, tz, 0.6), "pursuit target is on the actual gallery floor");
             x = spawn[0]; z = spawn[2];
             for (let i = 0; i < 1500 && Math.hypot(tx - x, tz - z) > 0.11; i++) {
               const heading = L.steerInRoom(room, x, z, tx, tz, [], 0);
@@ -418,7 +425,7 @@ try {
   let galleryFixture;
   for (let seed = 1; seed <= 120 && !galleryFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
-    const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north && L.corridorOffset(r, "north") > 1
+    const room = dungeon.rooms.find((r) => r.wings?.north && !r.links.north && !r.wingProfiles?.north && L.corridorOffset(r, "north") > 1
       && ["normal", "treasure"].includes(r.kind));
     if (room) galleryFixture = { dungeon, roomId: room.id, half: room.size / 2,
       reach: L.doorReach(room, "north"), width: L.corridorWidth(room, "north"), shift: L.corridorOffset(room, "north"),

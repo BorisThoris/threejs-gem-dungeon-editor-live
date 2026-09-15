@@ -4,6 +4,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
 import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
+import { serviceCatch } from "../worldbuilding/serviceTrail";
+import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
 import { roomSegmentClear } from "../dungeon/footprint";
 import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
@@ -151,6 +153,9 @@ export interface RunState {
   waterOpenedAt: number | null;
   waterCacheTaken: boolean;
   operateWaterway: () => void;
+  openServiceCatch: () => boolean;
+  bellcapBursts: Record<string, number>;
+  burstBellcap: (index: number) => boolean;
   phase: Phase;
   paused: boolean;
   dungeon: Dungeon | null;
@@ -810,6 +815,7 @@ export const useRun = create<RunState>()(
     dungeon: null,
     waterOpenedAt: null,
     waterCacheTaken: false,
+    bellcapBursts: {},
     floor: 1,
     runSeed: 0,
     roomsSeen: 0,
@@ -916,8 +922,32 @@ export const useRun = create<RunState>()(
       } else if (!s.waterCacheTaken && waterLevel(s.waterOpenedAt, runClock(s)) === 0) {
         set({ waterCacheTaken: true, gems: s.gems + WATER_CACHE_GEMS, gemsTotal: s.gemsTotal + WATER_CACHE_GEMS });
         bus.emit("waterCacheTaken", { roomId: room.id });
-        bus.emit("notice", `The drained reliquary yields ${WATER_CACHE_GEMS} gems.`);
+        bus.emit("notice", s.dungeon?.serviceTrail
+          ? `Found ${WATER_CACHE_GEMS} gems and a maintenance rubbing. Follow the three-notch copper trail; press its final wall catch.`
+          : `The drained reliquary yields ${WATER_CACHE_GEMS} gems.`);
       }
+    },
+
+    burstBellcap: (index) => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !room) return false;
+      const cap = bellcapsFor(room)[index], now = runClock(s), key = `${room.id}:${index}`;
+      if (!cap || now - (s.bellcapBursts[key] ?? -Infinity) < BELLCAP_COOLDOWN ||
+        !bellcapExposed(room, cap, playerAt.x, playerAt.z, s.glim, waterLevel(s.waterOpenedAt, now))) return false;
+      set({ bellcapBursts: { ...s.bellcapBursts, [key]: now } });
+      bus.emit("bellcapBurst", { roomId: room.id, x: cap.x, z: cap.z });
+      return true;
+    },
+
+    openServiceCatch: () => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !s.waterCacheTaken || !room?.secret || s.dungeon?.serviceTrail?.hostId !== room.id || room.links[room.secret.dir]) return false;
+      const at = serviceCatch(room);
+      if (!at || Math.hypot(playerAt.x - at[0], playerAt.z - at[2]) > 1.5 ||
+        !roomSegmentClear(room, playerAt.x, playerAt.z, at[0], at[2], 0.2)) return false;
+      get().revealSecret(room.id);
+      bus.emit("notice", "The three-notch catch turns. The old service passage opens.");
+      return true;
     },
 
     startRun: (seed, delverId) => {
@@ -948,6 +978,7 @@ export const useRun = create<RunState>()(
         runSeed: dungeon.seed,
         waterOpenedAt: null,
         waterCacheTaken: false,
+        bellcapBursts: {},
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
@@ -1207,6 +1238,7 @@ export const useRun = create<RunState>()(
           roomsSeen: s.roomsSeen + 1,
           waterOpenedAt: null,
           waterCacheTaken: false,
+          bellcapBursts: {},
           gemRooms: [],
           cleared: [],
           failed: [],

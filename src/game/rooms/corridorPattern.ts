@@ -1,4 +1,4 @@
-import { corridorOffset, corridorWidth } from "../dungeon/footprint";
+import { corridorOffset, wingWidthAt } from "../dungeon/footprint";
 import { DIRS, DIR_STEP, halfSize, type Room } from "../dungeon/types";
 import { createRng } from "../rng";
 import { GROUND_Y, WALL_HEIGHT, WALL_THICKNESS } from "../world";
@@ -12,7 +12,6 @@ export function corridorDetails(room: Room, seed: number): { ribs: CorridorBlock
   const style = room.district === "gardens" ? 2 : room.district === "works" ? 1 : room.district === "tombs" ? 0 : Math.floor(rng() * 3);
   const half = halfSize(room);
   for (const dir of DIRS) {
-    const width = corridorWidth(room, dir), side = width / 2 - WALL_THICKNESS / 2 + 0.07;
     const length = room.wings?.[dir] ?? 0;
     const axis = DIR_STEP[dir];
     const shift = corridorOffset(room, dir);
@@ -23,13 +22,15 @@ export function corridorDetails(room: Room, seed: number): { ribs: CorridorBlock
     };
     for (let bay = 1.5; bay <= length - 1.5; bay += 4) {
       const along = half + bay;
+      const width = wingWidthAt(room, dir, along), side = width / 2 - WALL_THICKNESS / 2 + 0.07;
       for (const sign of [-1, 1]) {
         block(ribs, along, sign * side, WALL_HEIGHT / 2, 0.16, WALL_HEIGHT, 0.32);
         block(ribs, along, sign * side, WALL_HEIGHT - 0.65, 0.4, 0.35, 0.5);
       }
       // One, two, or stepped ceiling ribs distinguish the seeded passage.
       block(ribs, along, 0, WALL_HEIGHT - 0.22, width, 0.32, 0.32);
-      if (style === 1) block(ribs, along + 0.55, 0, WALL_HEIGHT - 0.22, width, 0.32, 0.2);
+      if (style === 1) block(ribs, along + 0.55, 0, WALL_HEIGHT - 0.22,
+        Math.min(wingWidthAt(room, dir, along + 0.45), wingWidthAt(room, dir, along + 0.65)), 0.32, 0.2);
       if (style === 2) {
         for (const sign of [-1, 1]) block(ribs, along, sign * (side - 0.5), WALL_HEIGHT - 0.75, 0.7, 0.25, 0.32);
       }

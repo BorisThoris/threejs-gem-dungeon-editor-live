@@ -67,6 +67,7 @@ export function DinDriver() {
 
       /** The loudest thing in the game, and the only source of [blast]. */
       bus.on("bombBurst", ({ roomId, x, z }) => strike("bombBurst", roomId, x, z)),
+      bus.on("bellcapBurst", ({ roomId, x, z }) => strike("bellcapBurst", roomId, x, z)),
 
       bus.on("trapSprung", ({ kind }) =>
         strike(kind === "grate" ? "grateDrop" : kind === "pit" ? "pitOpened" : "dartsFired", null)
