@@ -107,7 +107,7 @@ export function Reaper({ room }: { room: Room }) {
   });
 
   return (
-    <group ref={group}>
+    <group name="creature-reaper" ref={group}>
       {/* A tall shroud with nothing in it, lit from inside, that the room's
           light passes through. Pale where the Warden is dark, so the two
           never read as one thing. */}

@@ -89,7 +89,7 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
   });
 
   return (
-    <group ref={group} position={[perch.x, perch.y, perch.z]}>
+    <group name="creature-moth" ref={group} position={[perch.x, perch.y, perch.z]}>
       <mesh>
         <sphereGeometry args={[0.06, 6, 5]} />
         <meshBasicMaterial color="#e8e0b0" />

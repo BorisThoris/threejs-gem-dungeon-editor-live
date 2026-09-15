@@ -98,20 +98,29 @@ export function croakersFor(room: Room, seed: number): Spot[] {
   if (!livesHere("croaker", room, seed)) return [];
   const rng = createRng(`${seed}:${room.id}:croakers`);
   const count = 2 + Math.floor(rng() * 3);
-  const inset = room.size / 2 - 1.1;
   const solid = placementsFor(room, seed).filter((p) => PROP_SPECS[p.kind].solid);
+  const candidates: Spot[] = [];
+  // Sample actual wall courses, including shifted wings and inset corners.
+  for (const edge of wallEdges(room)) {
+    for (let along = -edge.length / 2 + 0.7; along <= edge.length / 2 - 0.7; along += 1.5) {
+      for (const sign of [-1, 1]) {
+        const x = edge.x + (edge.along === "x" ? along : sign * 1.1);
+        const z = edge.z + (edge.along === "z" ? along : sign * 1.1);
+        if (Math.abs(x) < 2.4 || Math.abs(z) < 2.4 || !insideRoom(room, x, z, 0.6)) continue;
+        if (solid.some(p => Math.hypot(x - p.x, z - p.z) < PROP_SPECS[p.kind].radius * (p.scale ?? 1) + 0.5)) continue;
+        candidates.push({ x, z });
+      }
+    }
+  }
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
   const spots: Spot[] = [];
-  for (let tries = 0; tries < 24 && spots.length < count; tries++) {
-    // Along a wall, at an angle that keeps it out of the four door lanes.
-    const angle = rng() * Math.PI * 2;
-    const x = Math.cos(angle) * inset;
-    const z = Math.sin(angle) * inset;
-    if (Math.abs(x) < 2.4 || Math.abs(z) < 2.4) continue;
-    const at = { x: Math.max(-inset, Math.min(inset, x)), z: Math.max(-inset, Math.min(inset, z)) };
-    if (!insideRoom(room, at.x, at.z, 0.6)) continue;
-    if (solid.some((p) => Math.hypot(at.x - p.x, at.z - p.z) < PROP_SPECS[p.kind].radius + 0.5)) continue;
-    if (spots.some((s) => Math.hypot(at.x - s.x, at.z - s.z) < 1.5)) continue;
+  for (const at of candidates) {
+    if (spots.some(s => Math.hypot(at.x - s.x, at.z - s.z) < 1.5)) continue;
     spots.push(at);
+    if (spots.length === count) break;
   }
   return spots;
 }

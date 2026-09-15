@@ -73,7 +73,7 @@ export function Keeper({ room, dir }: { room: Room; dir: Dir }) {
   });
 
   return (
-    <group ref={group} position={[post.x, GROUND_Y, post.z]}>
+    <group name="creature-keeper" ref={group} position={[post.x, GROUND_Y, post.z]}>
       {/* A broad iron figure, taller than the doorway is wide, with a
           visor that glows while it stands and goes dark when it kneels. */}
       <mesh position={[0, 1.4, 0]} castShadow>

@@ -153,7 +153,7 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
     <>
       {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
       {roost && <Bats room={room} at={roost} />}
-      {pools.length > 0 && <Croakers room={room} spots={pools} />}
+      {pools.length > 0 && <Croakers room={room} spots={pools} seed={seed} />}
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
     </>
   );

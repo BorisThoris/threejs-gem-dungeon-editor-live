@@ -58,3 +58,19 @@ avoiding the damaging area. The navigation suite checks 2,240 such approaches.
 
 Validation: `npm run test:world`, `npm run test:layout`, `npm run typecheck`,
 `npm run lint`, `npm run build`, plus browser gameplay/audio checks.
+
+### Creature readability
+
+Ground creatures need a recognizable silhouette at standing eye height, with
+feet above the terrain surface. Frogs use a block-cut head, folded hind legs,
+front toes, pale throat and amber eyes; only the throat inflates when calling.
+Their wall habitat candidates follow the actual room footprint. Refuges and
+migration paths use the same furniture seed as the rendered room and clear the
+whole body. Noise still makes them dive, and draining still sends them to cover.
+
+`npm run test:creatures` checks all eleven creature types in generated rooms
+using native Chrome rendering. It compares frames with and without creature
+meshes while preserving scene lights, and saves standing-eye-height review
+images in `output/creature-review`. This checks representative visible states;
+intentional hiding, spawning conditions and behavioral transitions have separate
+world, ecology, rat and beetle checks.

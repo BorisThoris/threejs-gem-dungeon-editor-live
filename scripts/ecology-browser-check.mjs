@@ -15,7 +15,7 @@ try {
     for (let seed = 1; seed < 100; seed++) {
       const dungeon = generateDungeon({ seed, floor: 2 });
       for (const room of dungeon.rooms.filter(r => r.waterway)) {
-        const habitats = croakerHabitats(room, croakersFor(room, seed));
+        const habitats = croakerHabitats(room, croakersFor(room, dungeon.seed), dungeon.seed);
         if (habitats.length >= 2 && habitats.every(h => h.followsChannel)) return { dungeon, room, habitats };
       }
     }
@@ -29,6 +29,11 @@ try {
   await page.waitForFunction(id => window.__croakers?.room === id && window.__croakers.singing > 0, fixture.room.id);
   const before = await page.evaluate(() => ({ ...window.__croakers }));
   assert.ok(Math.hypot(before.x - fixture.habitats[0].wet.x, before.z - fixture.habitats[0].wet.z) < 0.01, "colony begins at the live channel");
+  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));
+  await page.waitForFunction(() => window.__croakers.under === window.__croakers.total);
+  assert.equal(await page.evaluate(() => window.__scene.getObjectByName("croaker-0").visible), false, "loud noise hides diving frogs");
+  await page.waitForFunction(() => window.__croakers.under === 0, null, { timeout: 20000 });
+  assert.equal(await page.evaluate(() => window.__scene.getObjectByName("croaker-0").visible), true, "frogs visibly resurface");
   await page.evaluate(() => window.__run.setState({ waterOpenedAt: window.__derived.clock() }));
   await page.waitForFunction(() => window.__croakers.migrating > 0);
   const frozen = await page.evaluate(() => { window.__run.getState().pause(); return { x: window.__croakers.x, z: window.__croakers.z }; });
@@ -44,7 +49,7 @@ try {
     const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
     return habitats.every((h, i) => {
       const body = window.__scene.getObjectByName(`croaker-${i}`);
-      return body && Math.abs(body.position.y - floorHeightAt(room, h.refuge.x, h.refuge.z) - 0.06) < 0.01;
+      return body && Math.abs(body.position.y - floorHeightAt(room, h.refuge.x, h.refuge.z) - 0.045) < 0.01;
     });
   }, fixture.habitats), "sheltered toads stand on the actual refuge floor");
   await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));

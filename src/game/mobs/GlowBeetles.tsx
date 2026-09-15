@@ -77,7 +77,7 @@ export function GlowBeetles({ room }: { room: Room }) {
     if (import.meta.env.DEV) (window as unknown as { __beetles?: unknown }).__beetles = { roomId: room.id, glowing, dry, alarmed, poses };
   });
   if (!habitats.length) return null;
-  return <group>
+  return <group name="creature-beetles">
     <instancedMesh ref={body} args={[geo("box", 1, 1, 1), undefined, habitats.length]} visible={false} frustumCulled={false}><meshStandardMaterial color="#394238" roughness={0.9} /></instancedMesh>
     <instancedMesh ref={abdomen} args={[geo("box", 1, 1, 1), undefined, habitats.length]} visible={false} frustumCulled={false}><meshStandardMaterial ref={material} color="#d8be66" emissive="#bb9538" emissiveIntensity={0.75} /></instancedMesh>
     <instancedMesh ref={wings} args={[geo("box", 1, 1, 1), undefined, habitats.length * 2]} visible={false} frustumCulled={false}><meshStandardMaterial color="#7c816a" roughness={0.9} /></instancedMesh>

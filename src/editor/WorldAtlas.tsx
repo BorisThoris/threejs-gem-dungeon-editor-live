@@ -86,7 +86,7 @@ export function WorldAtlas() {
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
   const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
-  const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed)), [room, dungeon.seed]);
+  const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed), dungeon.seed), [room, dungeon.seed]);
   const ratHomes = useMemo(() => ratsFor(room, dungeon.seed), [room, dungeon.seed]);
   const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, dungeon.seed).length || ratsFor(r, dungeon.seed).length), [dungeon]);
   const source = dungeon.rooms.find(r => r.waterway?.role === "sluice");

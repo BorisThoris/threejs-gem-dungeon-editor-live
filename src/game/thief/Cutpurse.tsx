@@ -178,7 +178,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   const eye = phase === "fleeing" ? "#ffd23a" : "#7fe0a0";
 
   return (
-    <group ref={group} position={start}>
+    <group name="creature-cutpurse" ref={group} position={start}>
       {/* A low body, hunched, about knee height on the player. */}
       <mesh position={[0, 0.3, 0]} castShadow>
         <capsuleGeometry args={[0.18, 0.34, 4, 8]} />

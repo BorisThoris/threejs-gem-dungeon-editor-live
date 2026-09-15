@@ -42,9 +42,10 @@ interface Croaker {
  * `susceptibility.ts` and the emission in `emissions.ts`, and this file
  * reads both rather than deciding either.
  */
-export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
+export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; seed: number }) {
   const groups = useRef<(Group | null)[]>([]);
-  const habitats = useMemo(() => croakerHabitats(room, spots), [room, spots]);
+  const throats = useRef<(Group | null)[]>([]);
+  const habitats = useMemo(() => croakerHabitats(room, spots, seed), [room, spots, seed]);
   const toads = useMemo<Croaker[]>(
     () => {
       const run = useRun.getState(), migration = croakerMigration(run.waterOpenedAt, runClock(run));
@@ -109,9 +110,9 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
         g.visible = !under;
         // The throat, filling and emptying, in its own time.
         const breath = hushed ? 0 : Math.max(0, Math.sin(t * 2.6 + c.phase));
-        g.scale.set(1 + breath * 0.25, 1 + breath * 0.45, 1 + breath * 0.25);
+        throats.current[i]?.scale.set(1 + breath * 0.25, 1 + breath * 0.45, 1 + breath * 0.25);
         const hopping = habitats[i].followsChannel && migration > 0 && migration < 1;
-        g.position.set(c.x, floorHeightAt(room, c.x, c.z) + 0.06 + (hopping ? Math.abs(Math.sin(now * 8 + c.phase)) * 0.13 : 0), c.z);
+        g.position.set(c.x, floorHeightAt(room, c.x, c.z) + 0.045 + (hopping ? Math.abs(Math.sin(now * 8 + c.phase)) * 0.13 : 0), c.z);
       }
       if (!under && !hushed && (!habitats[i].followsChannel || !drained)) {
         singing++;
@@ -154,14 +155,14 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
           ref={(el) => {
             groups.current[i] = el;
           }}
-          position={[s.x, floorHeightAt(room, s.x, s.z) + 0.06, s.z]}
+          position={[s.x, floorHeightAt(room, s.x, s.z) + 0.045, s.z]}
+          rotation={[0, Math.atan2(-s.x, -s.z), 0]}
         >
-          {/* A squat dark-green body and a paler throat, low to the water. */}
-          <mesh geometry={geo("sphere", 0.13, 8, 6)} material={mat({ color: "#3e5a3a", roughness: 1 })} />
-          <mesh position={[0, -0.03, 0.09]} geometry={geo("sphere", 0.08, 8, 6)} material={mat({ color: "#b9c19a", roughness: 1 })} />
-          {[-0.06, 0.06].map((x) => (
-            <mesh key={x} position={[x, 0.09, 0.07]} geometry={geo("sphere", 0.025, 6, 6)} material={mat({ color: "#e6d27a", basic: true })} />
-          ))}
+          <mesh geometry={geo("croaker")} material={mat({ color: "#70894d", roughness: 1 })} />
+          <group ref={el => { throats.current[i] = el; }} position={[0, .16, .245]}>
+            <mesh scale={[.23, .14, .09]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#c5ce91", roughness: 1 })} />
+          </group>
+          <mesh geometry={geo("croaker-eyes")} material={mat({ color: "#e6d27a", basic: true })} />
         </group>
       ))}
     </>

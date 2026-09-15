@@ -198,7 +198,7 @@ export function Harrier({ room }: { room: Room }) {
   });
 
   return (
-    <group ref={group}>
+    <group name="creature-harrier" ref={group}>
       {/* A body the colour of the dark, two wings that beat, two eyes. */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.16, 0.7, 6]} />

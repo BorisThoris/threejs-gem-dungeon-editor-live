@@ -364,7 +364,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   const eyeColour = rouse > 0.6 ? "#ff5c3a" : rouse > 0.3 ? "#ffb03a" : "#9fd8ff";
 
   return (
-    <group ref={group} position={entry}>
+    <group name="creature-warden" ref={group} position={entry}>
       {/* A hooded column that never quite touches the floor. The outer shell
           is a shade off black so the silhouette has an edge against a dark
           wall; without it the whole figure vanishes into the room. */}

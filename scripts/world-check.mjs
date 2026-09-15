@@ -296,13 +296,13 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
         assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "structural spans follow the true floor below them");
     }
-    for (const habitat of L.croakerHabitats(r, L.croakersFor(r, r.seed))) {
+    for (const habitat of L.croakerHabitats(r, L.croakersFor(r, d.seed), d.seed)) {
       if (habitat.refugeBed) assert.ok(L.terrainFor(r).deposits.some(tile =>
         Math.abs(tile.position[0] - habitat.refuge.x) < 1e-6 && Math.abs(tile.position[2] - habitat.refuge.z) < 1e-6), "toad bed refuges occupy visible terrain deposits");
       if (habitat.followsChannel) migratingToads++;
       assert.ok(L.insideRoom(r, habitat.wet.x, habitat.wet.z, 0.25) && L.insideRoom(r, habitat.refuge.x, habitat.refuge.z, 0.25));
       assert.ok(L.roomSegmentClear(r, habitat.wet.x, habitat.wet.z, habitat.refuge.x, habitat.refuge.z, 0.25), "toad migration never crosses a room wall");
-      if (habitat.followsChannel) for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid)) {
+      if (habitat.followsChannel) for (const prop of L.placementsFor(r, d.seed).filter(p => L.PROP_SPECS[p.kind].solid)) {
         const dx = habitat.refuge.x - habitat.wet.x, dz = habitat.refuge.z - habitat.wet.z;
         const len2 = dx * dx + dz * dz;
         const along = len2 ? Math.max(0, Math.min(1, ((prop.x - habitat.wet.x) * dx + (prop.z - habitat.wet.z) * dz) / len2)) : 0;

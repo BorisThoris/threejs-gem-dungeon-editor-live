@@ -85,7 +85,7 @@ export function Wisp({ room }: { room: Room }) {
   });
 
   return (
-    <group ref={group}>
+    <group name="creature-wisp" ref={group}>
       <mesh>
         <sphereGeometry args={[0.12, 10, 8]} />
         <meshBasicMaterial color="#dff4ff" />
