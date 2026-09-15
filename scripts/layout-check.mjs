@@ -4531,6 +4531,60 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the Harrier cannot be sent away with a noise", (sus.harrier.deaf ?? []).includes("loud") && sus.harrier.answers.blast !== undefined);
 
   /**
+   * Who a bomb reaches is decided by each row against what the room graph
+   * delivers, and these are the consequences of the numbers as they
+   * stand. A bomb is 1.00 where it goes off, 0.35 next door and 0.12 two
+   * doors on. The review found the store deciding all of this by "same
+   * room" while the rows said otherwise; now the rows decide, so a
+   * threshold nudged by a hand's width changes the game, and this is what
+   * would go red.
+   */
+  {
+    const here = L.EMISSIONS.bombBurst.magnitude;
+    const nextDoor = here * L.DOORWAY;
+    const twoDoors = nextDoor * L.DOORWAY;
+    const hears = (id, m) => L.answersTo(sus[id], "blast", m);
+    check(
+      "a bomb next door puts up a roost, downs the Harrier and routs the Warden",
+      hears("bat", nextDoor) && hears("harrier", nextDoor) && hears("warden", nextDoor),
+      `arrives at ${nextDoor.toFixed(3)}`
+    );
+    check(
+      "but does not kneel the Keeper: the door is the fight, so the blast must be in the room the door is in",
+      !hears("keeper", nextDoor) && hears("keeper", here),
+      `keeper answers at ${sus.keeper.answers.blast}, next door is ${nextDoor.toFixed(3)}`
+    );
+    check(
+      "and two doors away only the rats notice",
+      hears("rat", twoDoors) && ["bat", "harrier", "warden", "keeper"].every((id) => !hears(id, twoDoors)),
+      `arrives at ${twoDoors.toFixed(3)}`
+    );
+    check("the Reaper is deaf to a blast as a signal: what holds it is the room it stands in", !hears("reaper", here));
+
+    /**
+     * The rows are read by the things they describe. A source check,
+     * because a runtime one passes for as long as the hard-coded rule and
+     * the table happen to agree - which is exactly how the table went
+     * unread for a dozen runs.
+     */
+    const src = (f) => readFileSync(join(root, f), "utf8");
+    const store = src("src/game/state/run.ts");
+    check(
+      "the store asks the Warden's, the Harrier's and the Keeper's rows whether a blast reached them",
+      /dinReaches\("warden", "blast"/.test(store) && /dinReaches\("harrier", "blast"/.test(store) && /dinReaches\("keeper", "blast"/.test(store)
+    );
+    check("and holds the Reaper by the room it stands in, saying so", /reaperAwake && get\(\)\.currentRoomId === roomId\) get\(\)\.stallReaper/.test(store));
+    check("the rats scatter from what their row says, not from feet alone", /din\.answering\(\w+, "rat", room\.id\)/.test(src("src/game/mobs/Rats.tsx")));
+    check("the moth is drawn by light, whoever carries it", /din\.answering\(\w+, "moth", room\.id\)/.test(src("src/game/mobs/Moth.tsx")) && !/lanternRaised/.test(src("src/game/mobs/Moth.tsx")));
+    check("the Sentry's patience is halved by the light its row names, not by a flag about the player", /din\.reaches\("sentry", "bright"/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
+    check("the roost answers to its own row", /SUSCEPTIBILITY\.bat/.test(src("src/game/mobs/Bats.tsx")));
+    check(
+      "a susceptibility block is read in the Din and nowhere else",
+      !["src/game/state/run.ts", "src/game/mobs/Rats.tsx", "src/game/mobs/Moth.tsx", "src/game/sentry/Sentry.tsx"].some((f) => /answersTo\(/.test(src(f)))
+    );
+  }
+
+  /**
    * The design statement at the bottom of the emissions table. Stealing
    * and smashing must not feel alike, and a player who learns the floor
    * does not hear a gem leave its socket has learned the game's actual

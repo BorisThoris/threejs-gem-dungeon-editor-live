@@ -4,12 +4,13 @@ import { Group } from "three";
 
 import { type Room } from "../dungeon/types";
 import { roomStep } from "../dungeon/footprint";
-import { canControl, useRun } from "../state/run";
+import * as din from "../din/din";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { wardenAt } from "../warden/position";
 import { patchAt, steerAround, type Patch } from "../warden/steer";
-import { GROUND_Y, RAT_FLEE_RADIUS, RAT_SPEED } from "../world";
+import { GROUND_Y, RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
 import type { Spot } from "./ambient";
 
 interface Rat {
@@ -21,6 +22,8 @@ interface Rat {
   homing: boolean;
   dead: boolean;
   wander: number;
+  /** Until when it is running from a noise, on the run's clock. */
+  spookedUntil: number;
 }
 
 interface RatsProps {
@@ -41,15 +44,28 @@ interface RatsProps {
 export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
   const groups = useRef<(Group | null)[]>([]);
   const rats = useMemo<Rat[]>(
-    () => holes.map((h) => ({ x: h.x, z: h.z, home: h, fleeing: false, homing: false, dead: false, wander: Math.random() * Math.PI * 2 })),
+    () => holes.map((h) => ({ x: h.x, z: h.z, home: h, fleeing: false, homing: false, dead: false, wander: Math.random() * Math.PI * 2, spookedUntil: 0 })),
     [holes]
   );
+  /** What the floor is loud about, filled in place: the frame loop owns no garbage. */
+  const heard = useMemo(() => din.emptyArrival(), []);
 
   useFrame((state, delta) => {
     const run = useRun.getState();
     if (!canControl(run)) return;
     const cam = state.camera.position;
     const t = state.clock.elapsedTime;
+    const now = runClock(run);
+    /**
+     * Their row: [blast] at 0.10 and [loud] at 0.45. Read once a frame for
+     * the room, not once per rat, and it is the same question the roost
+     * asks - so a barrel bursting, a grate dropping, a bomb two rooms
+     * away and a sprint on tile all scatter them without a line here
+     * naming any of those things. They were declared to answer to this
+     * and did not; they ran from feet and nothing else.
+     */
+    const spooked = din.answering(heard, "rat", room.id);
+    const sourceHere = spooked && heard.fromRoomId === room.id;
     rats.forEach((rat, i) => {
       const g = groups.current[i];
       if (!g) return;
@@ -69,10 +85,22 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
           td = wd;
         }
       }
+      // A noise in this room is a thing to run from, wherever it was;
+      // one from another room sends it home.
+      if (sourceHere) {
+        const sd = Math.hypot(heard.x - rat.x, heard.z - rat.z);
+        if (sd < td) {
+          tx = heard.x;
+          tz = heard.z;
+          td = sd;
+        }
+      }
+      if (spooked) rat.spookedUntil = now + RAT_SPOOK_S;
+      const startled = now < rat.spookedUntil;
       // Startled inside the radius, and not calm again until well outside
       // it: a rat that stopped at the edge and turned round would dither
       // there, which is neither a scatter nor a tell.
-      const threatened = td < RAT_FLEE_RADIUS || (rat.fleeing && td < RAT_FLEE_RADIUS * 2);
+      const threatened = startled || td < RAT_FLEE_RADIUS || (rat.fleeing && td < RAT_FLEE_RADIUS * 2);
       if (threatened && !rat.fleeing) sfx.skitter(0.35, sideOf(rat.x - cam.x, rat.z - cam.z));
       // And feet while it runs, from where it is: a rat scattering from
       // the Warden behind you is the tell, and a silent one is not.
@@ -84,7 +112,17 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       let dx: number;
       let dz: number;
       let speed: number;
-      if (threatened) {
+      const hx = rat.home.x - rat.x;
+      const hz = rat.home.z - rat.z;
+      const hd = Math.hypot(hx, hz);
+      if (threatened && startled && !sourceHere && td >= RAT_FLEE_RADIUS) {
+        // Bolting for the hole from a noise it cannot place, and staying
+        // in it: a rat at its hole with nothing near it has nowhere to run.
+        const h = hd > 0.3 ? steerAround(rat.x, rat.z, rat.home.x, rat.home.z, obstacles, 0) : { dx: 0, dz: 0 };
+        dx = h.dx;
+        dz = h.dz;
+        speed = RAT_SPEED;
+      } else if (threatened) {
         const ax = rat.x - tx;
         const az = rat.z - tz;
         const len = Math.hypot(ax, az) || 1;
@@ -94,9 +132,6 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
         speed = RAT_SPEED;
       } else {
         rat.wander += (Math.random() - 0.5) * delta * 4;
-        const hx = rat.home.x - rat.x;
-        const hz = rat.home.z - rat.z;
-        const hd = Math.hypot(hx, hz);
         // Home is the hole itself, not its neighbourhood: it walks all the
         // way back - across whatever was set down there while it was out.
         if (hd > 0.3 && (hd > 1.5 || rat.homing)) {
@@ -113,7 +148,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       const step = Math.min(speed * delta, 0.5);
       [rat.x, rat.z] = roomStep(room, rat.x, rat.z, dx * step, dz * step, 0.5);
       g.position.set(rat.x, GROUND_Y + 0.02 + Math.abs(Math.sin(t * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
-      g.rotation.y = Math.atan2(dx, dz);
+      if (dx !== 0 || dz !== 0) g.rotation.y = Math.atan2(dx, dz);
       // What it ran into: a snare is sprung for nothing, the spikes are the end of it.
       const standing = patchAt(hazards, rat.x, rat.z);
       if (standing) {
@@ -122,8 +157,8 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       }
     });
     if (import.meta.env.DEV) {
-      (window as unknown as { __rats?: { x: number; z: number; room: string; dead: boolean }[] }).__rats = rats.map(
-        (r) => ({ x: r.x, z: r.z, room: room.id, dead: r.dead })
+      (window as unknown as { __rats?: { x: number; z: number; room: string; dead: boolean; startled: boolean }[] }).__rats = rats.map(
+        (r) => ({ x: r.x, z: r.z, room: room.id, dead: r.dead, startled: now < r.spookedUntil })
       );
     }
   });

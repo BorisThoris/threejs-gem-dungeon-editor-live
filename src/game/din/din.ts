@@ -224,9 +224,9 @@ export function strongest(out: Arrival, tag: Tag, roomId: string): boolean {
  * What this receiver is answering to in this room, strongest first among
  * the tags it declared.
  *
- * The only function in the game that consults a susceptibility block, so
- * the "defaults to answering nothing" rule has exactly one place it could
- * be broken and one place to check.
+ * This and `reaches` below are the only two functions in the game that
+ * consult a susceptibility block, so the "defaults to answering nothing"
+ * rule has two places it could be broken and two places to check.
  */
 export function answering(out: Arrival, who: ReceiverId, roomId: string): boolean {
   const sus = SUSCEPTIBILITY[who];
@@ -255,6 +255,22 @@ export function answering(out: Arrival, who: ReceiverId, roomId: string): boolea
 }
 
 const SCRATCH: Arrival = emptyArrival();
+
+/**
+ * Whether what is arriving in this room is enough for this receiver, for
+ * one tag. The store's blast handling and the Sentry's light ask this:
+ * they do not need where it came from, only whether the table says yes.
+ *
+ * This and `answering` are the only two places a susceptibility block is
+ * read. Before this existed the store decided for itself that a bomb in
+ * the Harrier's room downs it and one in the Keeper's kneels it, which
+ * meant the Harrier's row said "blast 0.20" and nothing on the floor ever
+ * asked - a table that could be changed without changing the game.
+ */
+export function reaches(who: ReceiverId, tag: Tag, roomId: string | null | undefined): boolean {
+  if (!roomId) return false;
+  return answersTo(SUSCEPTIBILITY[who], tag, arriving(tag, roomId));
+}
 
 /** How many sources are live. For the checks and the debug overlay. */
 export const liveCount = (): number => live.length;

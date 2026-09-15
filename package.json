@@ -28,6 +28,7 @@
         "test:pad": "node scripts/pad-check.mjs",
         "test:touch": "node scripts/touch-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
+        "test:rows": "node scripts/rows-check.mjs",
         "test:run": "node scripts/run-through.mjs",
         "test:walk": "node scripts/walk-run.mjs",
         "test:gameplay": "node scripts/gameplay-check.mjs",

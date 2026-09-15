@@ -125,9 +125,12 @@ know which way to go, which is the point of a threat you are only ever
 allowed to run from.
 
 The floor is alive, and it plays by one set of rules. Rats scatter from
-your footsteps and spring the snares you set; a moth settles on a raised
-lantern and carries the light away; bats burst from a roost when you
-dash. Every creature declares a body - ground, flying or ghost - and the
+your footsteps - and from a barrel bursting, a grate dropping, a blast
+two rooms away - and spring the snares you set; a moth goes to the
+brightest thing in its room, which is your raised lantern until you turn
+it down to a glimmer, and the wisp when the wisp is brighter; bats burst
+from a roost when you dash; a Sentry acquires you twice as fast in any
+light over half, yours or the wisp's. Every creature declares a body - ground, flying or ghost - and the
 floor reads it: spikes and snares bite anything with feet, solid props
 are walked round by anything with a body, and a ghost passes through all
 of it. That table is the whole reason the rest of this works. The
@@ -480,6 +483,18 @@ speakers and measures samples, so a cue that runs without making a sound
 fails. Every cue heard over the room, the ones you are meant to notice well
 clear of it, muting silent, and the ambient bed opening up as the floor is
 roused.
+
+`yarn test:rows` asks whether the creatures read their rows. The
+susceptibility table says what each thing on the floor answers to, and
+for a dozen runs most of it was a document: the store put the Harrier
+down by "same room as the bomb" while its row said [blast] 0.20, the rats
+ran from feet while their row said [loud] 0.45. In the running game: a
+barrel bursting across the room scatters the rats, the moth goes to the
+brightest thing in its room and leaves your lantern for the wisp when the
+flame is low, the Sentry's patience follows the light in the room rather
+than the lantern's switch - and the wisp beside you keeps it halved until
+the lantern is down and the wisp gone, which is the wisp's price - and a
+bomb in the room next door puts the Harrier on the floor.
 
 `yarn test:touch` plays it with two thumbs, on an emulated phone, the same
 phone held upright, a tablet, and a desktop that is never touched: the

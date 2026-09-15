@@ -780,6 +780,8 @@ export const REAPER_STRIKE_GRACE_S = 1.5;
  */
 export const RAT_FLEE_RADIUS = 3.5;
 export const RAT_SPEED = 4;
+/** How long a rat keeps running after the noise that spooked it: one bolt, not a nervous breakdown. */
+export const RAT_SPOOK_S = 1.6;
 export const MOTH_SPEED = 3;
 export const MOTH_HOLD_S = 6;
 export const BATS_ROUSED_S = 5;

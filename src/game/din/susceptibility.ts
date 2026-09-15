@@ -85,6 +85,15 @@ export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
     deaf: ["loud", "bright", "blast", "hot", "metal", "wet", "carried"],
     tell: "It answers to nothing. Nothing you carry is for it.",
   },
+  /*
+   * And the one exception, written where the rule is: a blast in the room
+   * the Reaper is in holds it for a few seconds. That is not this table
+   * contradicting itself - the Reaper is deaf to [blast] as a SIGNAL, so
+   * a bomb next door, or one it merely hears, does nothing to it - it is
+   * the pressure wave in the room it stands in, which the store applies
+   * directly and which no threshold could make go away. `detonate` in
+   * the run store says the same in the same words.
+   */
 
   /** Underfoot. Scatters from a blast, and from anything loud enough. */
   rat: {
@@ -127,9 +136,15 @@ export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
    * It does not wander and it cannot be lured off the stair, because
    * somebody told it nothing leaves until the books balance. A blast makes
    * it kneel; nothing else reaches it.
+   *
+   * Half, and not the 0.35 it was: a bomb next door arrives at exactly
+   * 0.35, and now that the store asks this row rather than deciding for
+   * itself, that number would have meant the last stairs could be opened
+   * from the room before them. The door is the fight, so the blast has to
+   * be in the room the door is in.
    */
   keeper: {
-    answers: { blast: 0.35 },
+    answers: { blast: 0.5 },
     deaf: ["loud", "bright", "metal", "carried"],
     tell: "It will not leave the stair. A blast makes it kneel.",
   },

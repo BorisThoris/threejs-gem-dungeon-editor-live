@@ -41,6 +41,8 @@ Reference: [src/App.tsx:20](<src/App.tsx>). The worktree currently contains that
 
 ### 2. P2 — Shared awareness/susceptibility rules do not govern most creatures
 
+> **Update, 15 September 2026.** Wired since this review: the store's blast handling asks the Warden's, Harrier's and Keeper's rows through `din.reaches` (the Keeper's threshold raised to 0.5 so a bomb next door does not open the last stairs); the rats scatter from what their row names through `din.answering`; the moth is drawn by `[bright]` from whoever carries it; the Sentry halves its patience on its declared `[bright]` threshold rather than a flag about the player. The Reaper's blast hold is kept as the explicit exception, documented in the table and in `detonate`. The layout suite checks each wiring by source and the consequences by number. Still separate: the Cutpurse's arrival (heat-driven, its `carried`/`metal` row unread) and the awareness ladder's rung for creatures other than the Warden.
+
 **Verified source tracing and targeted runtime probes.** The Warden reports into and reads the shared awareness ladder. The Harrier, Cutpurse, Keeper, rats, moth, wisp and Sentry largely retain their separate behavior, rather than feeding and obeying that same ladder. Waking a ladder entry is not equivalent to using it.
 
 Concrete measurements:

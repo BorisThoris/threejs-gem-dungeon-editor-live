@@ -5,7 +5,8 @@ import { CircleGeometry, type Group, type Mesh, type MeshBasicMaterial } from "t
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
-import { canControl, lanternLit, runClock, useCurrentRoom, useRun } from "../state/run";
+import * as din from "../din/din";
+import { canControl, runClock, useCurrentRoom, useRun } from "../state/run";
 import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint";
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
 import { sfx } from "../systems/audio";
@@ -176,7 +177,21 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
      * a room with a post in it. That is the same bargain the sprint makes,
      * asked by the other threat.
      */
-    const patience = lanternLit(run) ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    /**
+     * "Holding a raised lantern" was a boolean about the
+     * player. Its row is [bright] at 0.50, and that is what it reads now:
+     * a flame turned down below half is under its threshold and gets the
+     * full patience back, which is the one thing the five bands were for,
+     * and the wisp - brighter than a half-raised lantern - halves it for
+     * a player who has put their own light out, which is the wisp's
+     * price. It is still deaf: the loudest night on the floor goes past.
+     */
+    const lit = din.reaches("sentry", "bright", room?.id);
+    const patience = lit ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __sentry?: Record<string, number | boolean> };
+      if (w.__sentry) w.__sentry.lit_by_light = lit;
+    }
     // The light on you, out loud: a whine that climbs as it acquires, on
     // the post's side. A beam arriving from behind was a brightening of
     // the floor and nothing else.

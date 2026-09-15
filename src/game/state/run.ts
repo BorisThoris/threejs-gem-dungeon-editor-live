@@ -62,6 +62,7 @@ import {
 import { AFFLICTIONS, BATCH, afflictionFor } from "../items/afflictions";
 import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
+import { reaches as dinReaches } from "../din/din";
 import { barKey } from "../warden/bars";
 import { pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
 import { banishTo, wakingRoom } from "../warden/roam";
@@ -2542,19 +2543,31 @@ export const useRun = create<RunState>()(
       }
       // The player, if they did not walk - and nothing stood between.
       if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage();
-      // The Warden, if it is in the room - whether or not the player is.
-      // A bomb left behind in a room the Warden later walks into is a
-      // trap, and a trap that only works while you stand in it is a dud.
-      if (get().wardenRoomId === roomId) get().routWarden();
-      // The Reaper, which is always in the room the player is in: a blast
-      // there is the one thing on the floor that holds it.
+      /**
+       * Who the blast reaches is the receiver's business, not the bomb's.
+       *
+       * `bombBurst` went over the bus a moment ago and the Din turned it
+       * into a [blast] 1.00 in this room, 0.35 next door and nothing two
+       * doors on, so each creature's own row decides: the Warden fears a
+       * blast at 0.25 and is routed by one in the room next to it, the
+       * Harrier is put down at 0.20 - and the Keeper, at half, kneels for
+       * a blast in its own room and for nothing less. Before this the
+       * store decided all three by "same room", and the table was a
+       * document nothing read.
+       */
+      const w = get().wardenRoomId;
+      if (w && dinReaches("warden", "blast", w)) get().routWarden();
+      // The Reaper, which is always in the room the player is in. Its row
+      // is deaf to [blast] and this is the exception the row itself names:
+      // not a signal it answers to, but the pressure wave in the room it
+      // stands in, which holds it.
       if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
-      // The Harrier, if it is in the room rather than wheeling away from
+      // The Harrier, in the player's room rather than wheeling away from
       // it: knocked out of the air, and a ground body until it is up.
-      if (get().harrierAwake && get().currentRoomId === roomId && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
-      // The Keeper, if this is a room it stands in: it kneels. The one
-      // thing on the floor that opens the last stairs.
-      if (keeperPostsFor(s.dungeon, s.floor).some((p) => p.roomId === roomId)) get().stallKeeper();
+      if (get().harrierAwake && dinReaches("harrier", "blast", get().currentRoomId) && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
+      // The Keeper, at whichever of its posts the blast reaches: it kneels.
+      // The one thing on the floor that opens the last stairs.
+      if (keeperPostsFor(s.dungeon, s.floor).some((p) => dinReaches("keeper", "blast", p.roomId))) get().stallKeeper();
       // The moth, if it was on the lantern: scattered, and the light it
       // carried goes with it. The roost hears the blast from its own room.
       if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();

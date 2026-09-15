@@ -57,6 +57,22 @@ Two stores that both claimed the player's stats. So:
   name** - `hears [loud]`, not `hears bombBurst, barrelBurst, grateDrop` -
   so a new noisy thing is heard by everything that listens for `[loud]` the
   day it lands, with no other file touched.
+  A third property was written down and not true for a dozen runs: **the
+  rows are read by the things they describe.** The Harrier's row said
+  `blast 0.20` while the store downed it by "same room as the bomb"; the
+  rats' row said `loud 0.45` while they ran from feet and nothing else;
+  the Sentry's row said `bright 0.50` while it read a boolean about the
+  player's lantern. Each is wired now - the store asks `din.reaches` for
+  the Warden, the Harrier and the Keeper, the rats and the moth ask
+  `din.answering`, the Sentry asks `din.reaches` - and the layout suite
+  greps for each call, because a runtime check passes for as long as the
+  hard-coded rule and the table happen to agree. The consequences are
+  checked too: a bomb next door puts up a roost, downs the Harrier and
+  routs the Warden, does not kneel the Keeper (its row is half, so the
+  blast has to be in the room the door is in), and two doors on only the
+  rats notice. The Reaper is the one exception and it is written where
+  the rule is: deaf to `[blast]` as a signal, held by the pressure wave in
+  the room it stands in, which the store applies directly.
 - **How far a thing is heard is `din/carry.ts` and nothing else.** The room
   graph is `Room.links`, which the generator already writes; a doorway costs
   x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's
