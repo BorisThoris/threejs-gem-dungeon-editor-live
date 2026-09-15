@@ -7,6 +7,9 @@ import { serviceCatch, trailDirection } from "./serviceTrail";
 import { Blocks } from "../rooms/CorridorDetails";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 
+const CATCH_PLATE: CorridorBlock[] = [{ position: [0, 0, 0], size: [0.64, 0.5, 0.08] }];
+const CATCH_NOTCHES: CorridorBlock[] = [-0.18, 0, 0.18].map(x => ({ position: [x, 0, 0.05], size: [0.055, 0.27, 0.04] }));
+
 /** Copper repair marks belong to the masonry even before their meaning is
  * learned. Reading the rubbing enables the catch, not the visible geography. */
 export function ServiceMarks({ room }: { room: Room }) {
@@ -30,9 +33,8 @@ export function ServiceMarks({ room }: { room: Room }) {
       <Blocks blocks={notches} color="#b58558" roughness={0.85} />
       <Blocks blocks={tips} color="#c69b63" roughness={1} />
       {final && !opened && <group position={[0, 1.3, -reach + 0.23]}>
-        <mesh><boxGeometry args={[0.64, 0.5, 0.08]} /><meshStandardMaterial color="#5e5541" roughness={0.95} /></mesh>
-        {[-0.18, 0, 0.18].map(x => <mesh key={x} position={[x, 0, 0.05]}>
-          <boxGeometry args={[0.055, 0.27, 0.04]} /><meshStandardMaterial color="#bf9862" /></mesh>)}
+        <Blocks blocks={CATCH_PLATE} color="#5e5541" roughness={0.95} />
+        <Blocks blocks={CATCH_NOTCHES} color="#bf9862" roughness={1} />
       </group>}
     </group>
     {at && !opened && <InteractTrigger position={at} radius={1.5} enabled={learned}

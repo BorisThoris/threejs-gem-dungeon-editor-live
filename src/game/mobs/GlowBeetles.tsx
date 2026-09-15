@@ -1,3 +1,4 @@
+import { geo } from "../props/shared";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, MeshStandardMaterial, Object3D, PointLight } from "three";
@@ -77,9 +78,9 @@ export function GlowBeetles({ room }: { room: Room }) {
   });
   if (!habitats.length) return null;
   return <group>
-    <instancedMesh ref={body} args={[undefined, undefined, habitats.length]} visible={false} frustumCulled={false}><boxGeometry /><meshStandardMaterial color="#394238" roughness={0.9} /></instancedMesh>
-    <instancedMesh ref={abdomen} args={[undefined, undefined, habitats.length]} visible={false} frustumCulled={false}><boxGeometry /><meshStandardMaterial ref={material} color="#d8be66" emissive="#bb9538" emissiveIntensity={0.75} /></instancedMesh>
-    <instancedMesh ref={wings} args={[undefined, undefined, habitats.length * 2]} visible={false} frustumCulled={false}><boxGeometry /><meshStandardMaterial color="#7c816a" roughness={0.9} /></instancedMesh>
+    <instancedMesh ref={body} args={[geo("box", 1, 1, 1), undefined, habitats.length]} visible={false} frustumCulled={false}><meshStandardMaterial color="#394238" roughness={0.9} /></instancedMesh>
+    <instancedMesh ref={abdomen} args={[geo("box", 1, 1, 1), undefined, habitats.length]} visible={false} frustumCulled={false}><meshStandardMaterial ref={material} color="#d8be66" emissive="#bb9538" emissiveIntensity={0.75} /></instancedMesh>
+    <instancedMesh ref={wings} args={[geo("box", 1, 1, 1), undefined, habitats.length * 2]} visible={false} frustumCulled={false}><meshStandardMaterial color="#7c816a" roughness={0.9} /></instancedMesh>
     {habitats.filter((_, i) => i % 3 === 0).map((h, i) => <pointLight key={i} ref={el => { lamps.current[i] = el; }} position={[h.x, 0.35, h.z]} color="#d9bb69" intensity={(1 - state[i * 3].cover) * 0.3} distance={1.4} />)}
   </group>;
 }

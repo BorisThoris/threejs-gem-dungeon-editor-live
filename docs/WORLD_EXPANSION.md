@@ -484,6 +484,21 @@ surface alignment, pause and resume; a close render shows the marking above
 ramp paving. The initial undersized browser fixture placed its sentry outside
 the octagon; the corrected fixture uses a valid 20m chamber.
 
+The subsequent 78-room sweep measures 73 calls, 7,149 triangles, 104 live
+geometries and 10 textures. Calls, triangles and geometries exceed their existing
+budgets. Settled revisits show no geometry growth; sprinting retains no extra
+heap after collection, and held-audio checks pass. A separate CPU-only beam
+probe over the same seeds finds up to 711 projected triangles in a watched
+room, above the smaller synthetic fixture's 170; its slowest room averages
+about 0.93ms per projection on this machine. This is not a device frame-time
+guarantee.
+
+Waterworks panels, wheel spokes, seal bars, inscriptions, beetles and spore
+clouds now reuse shared geometries. Size changes are mesh transforms, preserving
+their silhouettes and UVs. Service catches batch their three copper notches
+into one draw. These changes follow the performance sweep above; their full
+budget impact still needs measurement.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

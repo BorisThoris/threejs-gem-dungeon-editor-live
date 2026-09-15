@@ -1,3 +1,4 @@
+import { geo } from "../props/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CanvasTexture, NearestFilter, PlaneGeometry, type Group, MeshStandardMaterial } from "three";
@@ -33,8 +34,8 @@ function Inscription({ lines }: { lines: string[] }) {
     return map;
   }, [words]);
   useEffect(() => () => texture.dispose(), [texture]);
-  return <mesh position={[0, 2.55, 0.06]}>
-    <planeGeometry args={[1.5, 0.57]} /><meshBasicMaterial map={texture} />
+  return <mesh position={[0, 2.55, 0.06]} scale={[1.5, 0.57, 1]} geometry={geo("plane", 1, 1)}>
+    <meshBasicMaterial map={texture} />
   </mesh>;
 }
 
@@ -117,20 +118,20 @@ export function Watercourse({ room }: { room: Room }) {
     </group>}
     {station && <>
       <group position={[station.x, floorHeightAt(room, station.x, station.z), station.z]} rotation={[0, station.yaw, 0]}>
-        <mesh position={[0, 1.45, -0.1]}><boxGeometry args={[1.5, 1.9, 0.12]} /><meshStandardMaterial color="#4d5a4b" /></mesh>
+        <mesh position={[0, 1.45, -0.1]} scale={[1.5, 1.9, 0.12]} geometry={geo("box", 1, 1, 1)}><meshStandardMaterial color="#4d5a4b" /></mesh>
         <Inscription lines={role === "sluice" ? ["OLD WATERWORKS", "TURN TO DRAIN", "FOLLOW BRONZE ARROWS"] : taken && hasRubbing ? ["MAINTENANCE RUBBING", "FOLLOW THREE NOTCHES", "PRESS THE FINAL CATCH"] : ["DROWNED RELIQUARY", "DRAIN AT THE SLUICE", "THEN LIFT THE SEAL"]} />
         {role === "sluice" ? <group ref={wheel} position={[0, 1.45, 0]}>
-          <mesh><torusGeometry args={[0.52, 0.065, 4, 8]} /><meshStandardMaterial color="#bc8c45" metalness={0.4} roughness={0.7} /></mesh>
-          {[0, Math.PI / 2].map(angle => <mesh key={angle} rotation={[0, 0, angle]}>
-            <boxGeometry args={[1, 0.09, 0.09]} /><meshStandardMaterial color="#a4814d" />
+          <mesh geometry={geo("torus", 0.52, 0.065, 4, 8)}><meshStandardMaterial color="#bc8c45" metalness={0.4} roughness={0.7} /></mesh>
+          {[0, Math.PI / 2].map(angle => <mesh key={angle} rotation={[0, 0, angle]} scale={[1, 0.09, 0.09]} geometry={geo("box", 1, 1, 1)}>
+            <meshStandardMaterial color="#a4814d" />
           </mesh>)}
-          <mesh><boxGeometry args={[0.19, 0.19, 0.17]} /><meshStandardMaterial color="#d1b879" /></mesh>
+          <mesh scale={[0.19, 0.19, 0.17]} geometry={geo("box", 1, 1, 1)}><meshStandardMaterial color="#d1b879" /></mesh>
         </group> : <group position={[0, 1.45, 0]}>
-          <mesh position={[0, 0, 0.07]}><planeGeometry args={[1.15, 1.2]} /><primitive object={water} attach="material" /></mesh>
-          {(!drained || taken) ? [-0.45, -0.15, 0.15, 0.45].map(x => <mesh key={x} position={[x, 0, 0]}>
-            <boxGeometry args={[0.08, 1.05, 0.1]} /><meshStandardMaterial color={taken ? "#596052" : "#567f79"} />
-          </mesh>) : [-0.25, 0.25].map(x => <mesh key={x} position={[x, 0, 0.02]}>
-            <octahedronGeometry args={[0.21, 0]} /><meshStandardMaterial color="#9ddbc8" emissive="#3d9f8e" emissiveIntensity={0.7} />
+          <mesh position={[0, 0, 0.07]} scale={[1.15, 1.2, 1]} geometry={geo("plane", 1, 1)}><primitive object={water} attach="material" /></mesh>
+          {(!drained || taken) ? [-0.45, -0.15, 0.15, 0.45].map(x => <mesh key={x} position={[x, 0, 0]} scale={[0.08, 1.05, 0.1]} geometry={geo("box", 1, 1, 1)}>
+            <meshStandardMaterial color={taken ? "#596052" : "#567f79"} />
+          </mesh>) : [-0.25, 0.25].map(x => <mesh key={x} position={[x, 0, 0.02]} geometry={geo("octahedron", 0.21, 0)}>
+            <meshStandardMaterial color="#9ddbc8" emissive="#3d9f8e" emissiveIntensity={0.7} />
           </mesh>)}
         </group>}
         <pointLight position={[0, 2.1, 0.3]} color={drained ? "#d9bc75" : "#6eafa7"} intensity={2} distance={5} />

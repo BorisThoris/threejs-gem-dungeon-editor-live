@@ -1,3 +1,4 @@
+import { geo } from "../props/shared";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, InstancedMesh, MeshStandardMaterial, Object3D, PointLight } from "three";
@@ -65,8 +66,8 @@ function Colony({ room, cap, index }: { room: Room; cap: Bellcap; index: number 
       <Blocks blocks={caps.map(b => ({ position: [b.position[0], b.position[1] - 0.1, b.position[2]], size: [0.3, 0.035, 0.28] }))} color="#d6c987" />
     </group>
     <pointLight ref={light} position={[0, 0.65, 0]} color="#c3d083" distance={3} intensity={0.12} />
-    <instancedMesh ref={cloud} args={[undefined, undefined, 12]} visible={false} frustumCulled={false}>
-      <boxGeometry args={[1, 1, 1]} /><meshStandardMaterial ref={cloudMaterial} color="#c4c98b" transparent depthWrite={false} />
+    <instancedMesh ref={cloud} args={[geo("box", 1, 1, 1), undefined, 12]} visible={false} frustumCulled={false}>
+      <meshStandardMaterial ref={cloudMaterial} color="#c4c98b" transparent depthWrite={false} />
     </instancedMesh>
   </group>;
 }
