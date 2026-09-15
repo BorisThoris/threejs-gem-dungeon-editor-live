@@ -18,6 +18,7 @@ import {
 import { getSurface, type BuiltinSurface } from "../textures/registry";
 import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
 import { croakerGeometry } from "../mobs/croakerGeometry";
+import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
 
 /**
  * One of each shape, and one of each material, for the whole program.
@@ -58,6 +59,8 @@ export type GeometryKind =
   | "skull"
   | "croaker"
   | "croaker-eyes"
+  | "bat-body"
+  | "bat-wing"
   | "skull-sockets";
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
@@ -74,6 +77,8 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   skull: () => skullGeometry(),
   croaker: () => croakerGeometry(),
   "croaker-eyes": () => croakerGeometry(true),
+  "bat-body": () => batBodyGeometry(),
+  "bat-wing": () => batWingGeometry(),
   "skull-sockets": () => skullSocketsGeometry(),
 };
 

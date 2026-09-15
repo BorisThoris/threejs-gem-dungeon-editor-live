@@ -74,3 +74,11 @@ meshes while preserving scene lights, and saves standing-eye-height review
 images in `output/creature-review`. This checks representative visible states;
 intentional hiding, spawning conditions and behavioral transitions have separate
 world, ecology, rat and beetle checks.
+
+Bats hang with folded angular wings and pointed ears, then open their wings
+and wheel below the ceiling when disturbed. The flock uses two instanced mesh
+batches. Its orbit radius is limited by the nearest real wall, leaving room for
+open wings; wingbeats and movement both use the paused run clock. The creature
+render check includes roosting and airborne states and checks paused instance
+transforms. `npm run test:bat-flight` samples full-wing clearance across generated
+roosts and shaped rooms.

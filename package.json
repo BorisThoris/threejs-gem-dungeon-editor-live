@@ -55,7 +55,8 @@
         "icons": "node scripts/generate-app-icons.mjs",
         "icons:check": "node scripts/generate-app-icons.mjs --check",
         "meta:refresh": "node scripts/refresh-project-meta.mjs",
-        "test:creatures": "node scripts/creature-render-check.mjs"
+        "test:creatures": "node scripts/creature-render-check.mjs",
+        "test:bat-flight": "node scripts/bat-flight-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

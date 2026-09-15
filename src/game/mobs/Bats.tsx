@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group } from "three";
+import { DoubleSide, InstancedMesh, Object3D } from "three";
 import { geo, mat } from "../props/shared";
 
 import { canControl, runClock, useRun } from "../state/run";
@@ -14,6 +14,8 @@ import type { Spot } from "./ambient";
 import { bus } from "../events";
 import { roomSegmentClear } from "../dungeon/footprint";
 
+import { batFlightRadius, batPose } from "./batFlight";
+
 const FLOCK = 7;
 const STARTLE_WARNING_S = 1.2;
 
@@ -25,7 +27,10 @@ const STARTLE_WARNING_S = 1.2;
  * GROUND line, so the risk is read before it is taken.
  */
 export function Bats({ room, at }: { room: Room; at: Spot }) {
-  const group = useRef<Group>(null);
+  const bodies = useRef<InstancedMesh>(null), wings = useRef<InstancedMesh>(null);
+  const scratch = useMemo(() => new Object3D(), []);
+  const wing = useMemo(() => new Object3D(), []);
+  const radius = useMemo(() => batFlightRadius(room, at), [room, at]);
   /** The player's own noise deadline as last seen, so a fresh dash is told from a held one. */
   const seen = useRef(-1);
   const arrivedAt = useRef<number | null>(null);
@@ -35,8 +40,7 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   useEffect(() => () => sfx.flockStop(), []);
 
   useFrame((state) => {
-    const g = group.current;
-    if (!g) return;
+    if (!bodies.current || !wings.current) return;
     const run = useRun.getState();
     const now = runClock(run);
     const roused = now < run.batsRousedUntil;
@@ -112,17 +116,23 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
       }
       if (roused) stirringAt.current = null;
     }
-    const t = state.clock.elapsedTime;
-    g.children.forEach((c, i) => {
-      if (roused) {
-        const a = t * 5 + i * 1.1;
-        c.position.set(Math.cos(a) * (1.5 + i * 0.2), Math.sin(t * 7 + i) * 0.4, Math.sin(a) * (1.5 + i * 0.2));
-        c.rotation.z = Math.sin(t * 30 + i) * 0.6;
-      } else {
-        c.position.set(Math.cos(i) * 0.25, -0.1 * (i % 3), Math.sin(i) * 0.25);
-        c.rotation.z = stirringAt.current === null ? 0 : Math.sin(now * 22 + i) * 0.35;
+    // The run clock freezes wingbeats and orbits with the rest of the world.
+    const t = now;
+    for (let i = 0; i < FLOCK; i++) {
+      const pose = batPose(i, t, roused, stirringAt.current !== null, radius);
+      scratch.position.set(pose.x, pose.y, pose.z);
+      scratch.rotation.set(0, pose.yaw, pose.roll);
+      scratch.scale.set(1, 1, 1); scratch.updateMatrix();
+      bodies.current.setMatrixAt(i, scratch.matrix);
+      for (const sign of [-1, 1]) {
+        wing.rotation.set(0, 0, sign * pose.flap);
+        wing.scale.set(sign, 1, 1); wing.updateMatrix();
+        wing.matrix.premultiply(scratch.matrix);
+        wings.current.setMatrixAt(i * 2 + (sign === 1 ? 1 : 0), wing.matrix);
       }
-    });
+    }
+    bodies.current.instanceMatrix.needsUpdate = true;
+    wings.current.instanceMatrix.needsUpdate = true;
     if (import.meta.env.DEV) {
       (window as unknown as { __bats?: { room: string; roused: boolean; stirring: boolean } }).__bats = {
         room: room.id, roused, stirring: stirringAt.current !== null,
@@ -131,10 +141,9 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   });
 
   return (
-    <group name="ambient-bats" ref={group} position={[at.x, WALL_HEIGHT - 0.6, at.z]}>
-      {Array.from({ length: FLOCK }, (_, i) => (
-        <mesh key={i} geometry={geo("cone", 0.12, 0.28, 3)} material={mat({ color: "#14101a", roughness: 1 })} />
-      ))}
+    <group name="ambient-bats" position={[at.x, WALL_HEIGHT - 0.6, at.z]}>
+      <instancedMesh ref={bodies} args={[geo("bat-body"), mat({ color: "#665568", roughness: 1 }), FLOCK]} frustumCulled={false} />
+      <instancedMesh ref={wings} args={[geo("bat-wing"), mat({ color: "#55465b", roughness: 1, side: DoubleSide }), FLOCK * 2]} frustumCulled={false} />
     </group>
   );
 }
