@@ -469,8 +469,20 @@ and hewn renders have no shader errors. The sentry floor beam now clears all
 three paint-depth overlays at 0.06m above the chamber datum. Native fungal,
 flooded and hewn checks verify every beam vertex is above the channel's 0.041m
 surface, with depth testing retained; rendered review confirms a continuous
-warning wedge instead of illuminated paving joints. Raised-gallery projection
-still needs to follow ramps and landings; this remains a flat chamber marking.
+warning wedge instead of illuminated paving joints.
+
+The warning now follows raised galleries too. Its wall-clipped fan is split at
+terrace course boundaries and ramp knees, then projected onto each floor plane.
+One mesh retains depth testing and reuses its vertex buffer between frames;
+paused sweeps skip projection entirely. The pure projection check covers four
+shapes and all four gallery directions, with 459,440 interior surface samples
+and upward triangle winding. Extra rays on either side of wall corners keep
+the fan inside concave room outlines; interior samples also check containment. Its largest fixture uses 170 triangles instead of
+the flat fan's 28; the full performance sweep must be repeated before claiming
+this fits the existing budget. Native runtime checks confirm raised ramp height,
+surface alignment, pause and resume; a close render shows the marking above
+ramp paving. The initial undersized browser fixture placed its sentry outside
+the octagon; the corrected fixture uses a valid 20m chamber.
 
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected

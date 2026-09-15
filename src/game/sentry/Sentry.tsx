@@ -1,19 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
-import { CircleGeometry, type Group, type Mesh, type MeshBasicMaterial } from "three";
+import { BufferGeometry, Float32BufferAttribute, Sphere, Vector3, type Group, type Mesh, type MeshBasicMaterial } from "three";
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
 import * as din from "../din/din";
 import { canControl, runClock, useCurrentRoom, useRun } from "../state/run";
-import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint";
+import { roomSegmentClear } from "../dungeon/footprint";
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { geo, mat } from "../props/shared";
 import {
-  GROUND_Y,
   SENTRY_ALARM,
   SENTRY_COOLDOWN_S,
   SENTRY_HALF_ANGLE,
@@ -23,14 +22,12 @@ import {
   SENTRY_SPIN,
 } from "../world";
 
+import { beamProjector } from "./beamProjection";
+
 const TWO_PI = Math.PI * 2;
 
 /** How plainly the beam is drawn on the floor before it has acquired. */
 const BEAM_OPACITY = 0.45;
-// Clear paving (.025), planted beds (.030) and shallow channels (.041).
-// Keep depth testing: solid scenery should still hide the floor marking.
-const BEAM_FLOOR_Y = GROUND_Y + 0.06;
-
 /** Shortest signed angle from `a` to `b`. */
 function angleBetween(a: number, b: number): number {
   let d = (b - a) % TWO_PI;
@@ -54,12 +51,15 @@ function angleBetween(a: number, b: number): number {
  */
 export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   const room = useCurrentRoom();
-  const edges = useMemo(() => room ? wallEdges(room) : [], [room]);
+  const project = useMemo(() => room ? beamProjector(room) : null, [room]);
+  const lastProject = useRef<typeof project>(null);
+  const coordinates = useRef<number[]>([]);
+  const lastFacing = useRef<number | null>(null);
   const beam = useMemo(() => {
-    const geometry = new CircleGeometry(SENTRY_RANGE, 28,
-      -Math.PI / 2 - SENTRY_HALF_ANGLE, SENTRY_HALF_ANGLE * 2);
-    // Keep the full fan's bounds as clipped rays shorten and lengthen.
-    geometry.computeBoundingSphere();
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(new Float32Array(28 * 9), 3));
+    geometry.boundingSphere = new Sphere(new Vector3(), SENTRY_RANGE + 2);
+    geometry.setDrawRange(0, 0);
     return geometry;
   }, []);
   useEffect(() => () => beam.dispose(), [beam]);
@@ -97,16 +97,20 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     const now = runClock(run);
     const facing = phase + now * SENTRY_SPIN;
     g.rotation.y = facing;
-    // Reuse the fan's vertices; walls trim each ray before the beam is drawn.
-    const vertices = beam.attributes.position;
-    for (let i = 0; i <= 28; i++) {
-      const angle = -Math.PI / 2 - SENTRY_HALF_ANGLE + i / 28 * SENTRY_HALF_ANGLE * 2;
-      const x = Math.cos(angle), z = -Math.sin(angle);
-      const reach = roomRayReach(position[0], position[2], x * Math.cos(facing) + z * Math.sin(facing),
-        -x * Math.sin(facing) + z * Math.cos(facing), SENTRY_RANGE, edges);
-      vertices.setXYZ(i + 1, x * reach, -z * reach, 0);
+    if (project && (lastFacing.current !== facing || lastProject.current !== project)) {
+      project(position, facing, coordinates.current);
+      let vertices = beam.getAttribute("position");
+      if (vertices.array.length < coordinates.current.length) {
+        beam.dispose(); // Release the previous GPU buffer before growing capacity.
+        vertices = new Float32BufferAttribute(new Float32Array(coordinates.current.length * 2), 3);
+        beam.setAttribute("position", vertices);
+      }
+      (vertices.array as Float32Array).set(coordinates.current);
+      vertices.needsUpdate = true;
+      beam.setDrawRange(0, coordinates.current.length / 3);
+      lastFacing.current = facing;
+      lastProject.current = project;
     }
-    vertices.needsUpdate = true;
 
     if (!canControl(run)) {
       sfx.beamStop();
@@ -249,21 +253,10 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           distance={5.5}
           decay={1.6}
         />
-        {/*
-          The lit ground: a wedge on the floor, drawn from the post.
-
-          Laying a circle flat with a -90 degree turn about X sends its
-          angle t to the world direction (cos t, -sin t), so the beam's
-          own +z is at -90 degrees, not +90. Starting it at +90 drew the
-          wedge out of the back of the Sentry while it watched the front,
-          which is the worst kind of bug in a room whose whole job is
-          letting you judge where the light is.
-        */}
-        <mesh name="sentry-beam" ref={wedge} position={[0, BEAM_FLOOR_Y - position[1] - 2.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <primitive object={beam} attach="geometry" />
-          <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
-        </mesh>
       </group>
+      <mesh name="sentry-beam" ref={wedge} geometry={beam}>
+        <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
+      </mesh>
     </group>
   );
 }
