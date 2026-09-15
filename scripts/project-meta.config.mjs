@@ -24,13 +24,13 @@ export default {
 
   curated: {
     "title": "Gem Dungeon",
-    "subtitle": "First-person gem run in a procedural dungeon",
-    "description": "A first-person dungeon run: collect gems, outpace the pursuers, and spend what you carry at the exit. React Three Fiber, Rapier physics and Zustand, with an Electron shell for the Steam demo.",
+    "subtitle": "Three floors down, and every door out has a price",
+    "description": "A first-person gem heist: each floor is a fresh dungeon, the exit charges a toll of three, five, then seven gems, and every gem you pocket wakes the Warden that walks the halls. Shove, sprint, and climb out with what you can carry. React Three Fiber, Rapier and Zustand, with an Electron shell for the Steam demo.",
     "tags": [
+      "Game",
+      "First Person",
       "React Three Fiber",
       "Rapier",
-      "Zustand",
-      "Electron",
       "Steam"
     ],
     "accent": "#a78bfa",
@@ -74,6 +74,7 @@ export default {
   // Graph tags, and the static directory the image is published from.
   social: {
     "htmlFile": "index.html",
+    "pageTitle": "Gem Dungeon",
     "staticDir": "public",
     "imageName": "og-image.jpg",
     "imageUrlPath": "/og-image.jpg"

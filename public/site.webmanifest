@@ -1,7 +1,7 @@
 {
   "name": "Gem Dungeon",
   "short_name": "Gem Dungeon",
-  "description": "A first-person dungeon run: collect gems, outpace the pursuers, and spend what you carry at the exit. React Three Fiber, Rapier physics and Zustand, with an Electron shell for the Steam demo.",
+  "description": "A first-person gem heist: each floor is a fresh dungeon, the exit charges a toll of three, five, then seven gems, and every gem you pocket wakes the Warden that walks the halls. Shove, sprint, and climb out with what you can carry. React Three Fiber, Rapier and Zustand, with an Electron shell for the Steam demo.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
