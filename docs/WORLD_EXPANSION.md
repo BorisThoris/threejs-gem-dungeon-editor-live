@@ -537,6 +537,24 @@ pass shaped-gallery ascent/descent, toad gathering and retreat, persistent dry
 refuges, material-specific sprint signals, and paused behavior. Typecheck, lint
 and build pass. These rendering changes still need a new full performance sweep.
 
+## Named discovery journeys
+
+The maintenance rubbing now names the next place and the number of real doors
+remaining before the catch. Its place-name helper is shared with the arrival
+HUD: former purpose or waterworks role remains visible alongside a nonstandard
+encounter, such as "Sluice house (Library)". A clue and the place reached through
+that door no longer use different names.
+
+Leaving the trail offers the shortest known route back. Recovery traverses only
+visited rooms and real links, excluding the vault and descending stairs. If no
+known connection exists, the rubbing retains its reliquary hint instead of
+revealing an unexplored shortcut. No guidance appears before the rubbing is
+learned; opening the passage completes it, and descent clears it as before.
+Checks cover 293 generated trails and 907 named legs, plus unknown/known
+shortcuts, gates, completion and native HUD updates. The watercourse browser
+test still passes keyboard operation, physical catch travel, rewards and reset
+behavior; typecheck, lint and build pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

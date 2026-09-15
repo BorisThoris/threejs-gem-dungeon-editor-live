@@ -31,10 +31,10 @@ import { useLedger } from "../game/state/ledger";
 import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
 import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
-import { KIND_TITLE } from "../game/rooms/kinds";
+
 import { DISTRICTS } from "../game/rooms/districts";
-import { WATERWAY_NAMES } from "../game/worldbuilding/watercourse";
-import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
+import { roomPlaceName } from "../game/rooms/placeName";
+
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { device, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
@@ -145,7 +145,7 @@ export function Hud() {
     thiefKey,
     floor,
     floors: FLOORS,
-    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${room.kind === "normal" ? room.waterway ? WATERWAY_NAMES[room.waterway.role] : PLACE_IDENTITIES[identityFor(room)].title : KIND_TITLE[room.kind]}` : "",
+    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${roomPlaceName(room)}` : "",
     ground,
     roost,
     croakers,
