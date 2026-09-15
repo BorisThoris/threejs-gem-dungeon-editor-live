@@ -13,12 +13,20 @@ import { resolveSlots } from "./slots";
  * until they are exported and added.
  */
 const TEMPLATES = new Map<string, RoomTemplate>();
+/** Preview lookups share authored resolution but never enter generation draws. */
+const PREVIEWS = new Map<string, RoomTemplate>();
+export const previewTemplateId = (id: string): string => `preview:${id}`;
+export function registerPreview(template: RoomTemplate): void {
+  PREVIEWS.set(previewTemplateId(template.id), template);
+}
+export function removePreview(id: string): void { PREVIEWS.delete(previewTemplateId(id)); }
+export function unregisterTemplate(id: string): void { TEMPLATES.delete(id); }
 
 export function registerTemplate(template: RoomTemplate): void {
   TEMPLATES.set(template.id, template);
 }
 
-export const getTemplate = (id: string): RoomTemplate | undefined => TEMPLATES.get(id);
+export const getTemplate = (id: string): RoomTemplate | undefined => TEMPLATES.get(id) ?? PREVIEWS.get(id);
 
 /** Everything registered, for the check that validates what ships. */
 export const allTemplates = (): RoomTemplate[] => [...TEMPLATES.values()];

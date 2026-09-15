@@ -646,6 +646,18 @@ the test's current-volume commands. The full native audio suite passes, includin
 cue audibility, water drainage, event wiring, music and mute behavior; typecheck,
 lint and build also pass.
 
+The Room Builder can copy a shipped room into an independent, initially disabled
+draft. District, biome and seed controls preview its architecture, terrain and
+resolved supply groups while exports preserve the authored layout. Automatic
+biomes use the district's preference among the room kind's supported biomes;
+an explicit biome remains available for inspection.
+
+Preview templates now live outside the generation registry. Turning a draft off
+or deleting it removes its generation eligibility and restores a shipped room
+when the draft overrides that ID. Native editor checks cover copying, regional
+supplies, unchanged exports, enable/disable, preview cleanup and restoring
+shipped overrides; the circular fungal-room preview was visually reviewed.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

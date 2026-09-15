@@ -2,8 +2,9 @@ import { useSyncExternalStore } from "react";
 
 import { PROP_KINDS, ROOM_KINDS, SHAPES, type RoomTemplate } from "../game/dungeon/types";
 import { ROOM_SIZES } from "../game/world";
-import { registerTemplate } from "../game/rooms/templates";
+import { registerTemplate, unregisterTemplate } from "../game/rooms/templates";
 import { isSlotRule } from "../game/rooms/slots";
+import { SHIPPED } from "../game/rooms/shipped";
 
 /**
  * Room templates under construction.
@@ -80,6 +81,11 @@ function save() {
 }
 
 load();
+function restoreShipped(id: string) {
+  const shipped = SHIPPED.find(t => t.id === id);
+  if (shipped) registerTemplate(shipped);
+  else unregisterTemplate(id);
+}
 for (const draft of Object.values(drafts)) {
   if (draft.enabled) registerTemplate(draft.template);
 }
@@ -92,6 +98,7 @@ export const draftStore = {
     if (!isRoomTemplate(template)) return;
     drafts[template.id] = { template, enabled, updatedAt: Date.now() };
     if (enabled) registerTemplate(template);
+    else restoreShipped(template.id);
     save();
   },
 
@@ -101,11 +108,13 @@ export const draftStore = {
     draft.enabled = enabled;
     draft.updatedAt = Date.now();
     if (enabled) registerTemplate(draft.template);
+    else restoreShipped(id);
     save();
   },
 
   remove(id: string): void {
     delete drafts[id];
+    restoreShipped(id);
     save();
   },
 

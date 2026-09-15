@@ -1,20 +1,19 @@
-import { Suspense, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Physics } from "@react-three/rapier";
 
-import type { Dir, Room as RoomData, RoomTemplate } from "../game/dungeon/types";
+import type { Room as RoomData, RoomTemplate } from "../game/dungeon/types";
 import { Room } from "../game/rooms/Room";
 import { Anisotropy } from "../game/textures/Anisotropy";
-import { registerTemplate } from "../game/rooms/templates";
+import { registerPreview, removePreview } from "../game/rooms/templates";
 // The kinds must be registered for the preview to show their content.
 import "../game/rooms/content";
 import "../game/puzzles/register";
 
 interface PreviewProps {
   template: RoomTemplate;
-  /** Which walls get doorways in the preview. */
-  doors: Dir[];
+  room: RoomData;
 }
 
 /**
@@ -32,22 +31,16 @@ interface PreviewProps {
  * effects, which force-loses the WebGL context; the context never comes
  * back when the tree is shown again, and the preview stays blank.
  */
-export function Preview({ template, doors }: PreviewProps) {
-  const room = useMemo<RoomData>(() => {
+export function Preview({ template, room }: PreviewProps) {
+  useMemo(() => {
     // Registered synchronously: Dressing looks the template up while the
     // Room subtree renders, which happens before any effect would run.
-    registerTemplate(template);
-    return {
-      id: "preview",
-      kind: template.kind,
-      seed: 0,
-      grid: { x: 0, z: 0 },
-      size: template.size,
-      shape: template.shape,
-      links: Object.fromEntries(doors.map((d) => [d, "preview-neighbour"])),
-      template: template.id,
-    };
-  }, [template, doors]);
+    registerPreview(template);
+  }, [template]);
+  useEffect(() => {
+    registerPreview(template);
+    return () => removePreview(template.id);
+  }, [template]);
 
   return (
     <Canvas
@@ -62,7 +55,7 @@ export function Preview({ template, doors }: PreviewProps) {
       <Suspense fallback={null}>
         <Physics paused timeStep={1 / 60}>
           {/* Keyed so a change of size or shape is a fresh mount, as in the game. */}
-          <Room key={`${template.id}:${template.size}:${template.shape}:${doors.join()}`} room={room} seed={1} showCeiling={false} />
+          <Room key={`${template.id}:${template.size}:${template.shape}:${Object.keys(room.links).join()}:${room.district}:${room.biome}:${room.seed}`} room={room} seed={room.seed} showCeiling={false} />
         </Physics>
       </Suspense>
       <OrbitControls target={[0, 1, 0]} maxPolarAngle={Math.PI / 2.05} />
