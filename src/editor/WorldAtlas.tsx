@@ -3,7 +3,8 @@ import { generateDungeon } from "../game/dungeon/generate";
 import { DIRS, DIR_STEP } from "../game/dungeon/types";
 import { doorReach } from "../game/dungeon/footprint";
 import { DISTRICTS } from "../game/rooms/districts";
-import { KIND_TITLE } from "../game/rooms/kinds";
+import { KIND_TITLE, keyFor } from "../game/rooms/kinds";
+import { sentryFor } from "../game/sentry/placement";
 import { placementsFor } from "../game/rooms/placements";
 import { PROP_SPECS } from "../game/props/specs";
 import { watercourseBlocks, waterStation, waterLevel, WATERWAY_NAMES } from "../game/worldbuilding/watercourse";
@@ -14,7 +15,7 @@ import "../game/rooms/shipped";
 import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
 import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
 import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from "../game/worldbuilding/bellcaps";
-import { croakersFor } from "../game/mobs/ambient";
+import { croakersFor, ratsFor } from "../game/mobs/ambient";
 import { croakerHabitats, croakerMigration } from "../game/mobs/croakerHabitat";
 import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
 import { passageLampsFor } from "../game/worldbuilding/passageLighting";
@@ -69,7 +70,11 @@ export function WorldAtlas() {
   }, [dungeon]);
   const blueprint = useMemo(() => minimapFootprint(room, 360), [room]);
   const scale = 360 / (2 * Math.max(...DIRS.map(dir => doorReach(room, dir))));
-  const props = useMemo(() => placementsFor(room, room.seed, { asVault: room.id === dungeon.vaultId }), [room, dungeon.vaultId]);
+  const props = useMemo(() => {
+    const key = dungeon.keyRoomId === room.id ? keyFor(room, dungeon.seed) : null;
+    const sentry = sentryFor(room, dungeon.seed, floor, key ? [key] : [])?.at ?? null;
+    return placementsFor(room, dungeon.seed, { asVault: room.id === dungeon.vaultId, sentry, key });
+  }, [room, dungeon, floor]);
   const station = useMemo(() => room.waterway && room.waterway.role !== "channel" ? waterStation(room) : null, [room]);
   const ink = INK[room.district ?? "tombs"];
   const identity = PLACE_IDENTITIES[identityFor(room)];
@@ -77,8 +82,9 @@ export function WorldAtlas() {
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
   const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
-  const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, room.seed)), [room]);
-  const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, r.seed).length), [dungeon]);
+  const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed)), [room, dungeon.seed]);
+  const ratHomes = useMemo(() => ratsFor(room, dungeon.seed), [room, dungeon.seed]);
+  const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, dungeon.seed).length || ratsFor(r, dungeon.seed).length), [dungeon]);
   const source = dungeon.rooms.find(r => r.waterway?.role === "sluice");
   const outfall = dungeon.rooms.find(r => r.waterway?.role === "outfall");
   return <div>
@@ -203,7 +209,7 @@ export function WorldAtlas() {
               <title>{drained ? "Dry channel direction mark" : "Current direction"}: {i === 0 ? "from" : "toward"} the {dir}</title>
             </line>;
           })}
-          {props.map((p, i) => <circle key={i} cx={p.x * scale} cy={p.z * scale} r={Math.max(2, PROP_SPECS[p.kind].radius * scale)}
+          {props.map((p, i) => <circle key={i} data-testid="atlas-prop" cx={p.x * scale} cy={p.z * scale} r={Math.max(2, PROP_SPECS[p.kind].radius * (p.scale ?? 1) * scale)}
             fill={PROP_SPECS[p.kind].solid ? "#706b57" : "#49583e"} opacity={0.85}><title>{PROP_SPECS[p.kind].title}</title></circle>)}
           {ecology && habitats.map((h, i) => {
             const at = { x: h.wet.x + (h.refuge.x - h.wet.x) * migration, z: h.wet.z + (h.refuge.z - h.wet.z) * migration };
@@ -215,6 +221,14 @@ export function WorldAtlas() {
               </circle>
             </g>;
           })}
+          {ecology && ratHomes.map((home, i) => <g key={`rat-home-${i}`} data-testid="atlas-rat-home">
+            <line x1={home.x * scale} y1={home.z * scale} x2={home.shelter.x * scale} y2={home.shelter.z * scale} stroke="#bcaa86" strokeDasharray="1 2" />
+            <circle cx={home.x * scale} cy={home.z * scale} r={2.5} fill="#bcaa86" />
+            <path data-testid="atlas-rat-shelter" transform={`translate(${home.shelter.x * scale} ${home.shelter.z * scale}) rotate(${-home.shelter.yaw * 180 / Math.PI})`}
+              d="M-4 3V-3H4V3" fill="none" stroke="#dbc6a0" strokeWidth={1.5}>
+              <title>Rat shelter in the wall; dotted approach leads to its home position</title>
+            </path>
+          </g>)}
           {ecology && colonies.map((cap, i) => <g key={`colony-${i}`} data-testid="atlas-colony" data-dormant={dormant}>
             {!dormant && <circle cx={cap.x * scale} cy={cap.z * scale} r={BELLCAP_REACH * scale} fill="none" stroke="#c4c98b" strokeDasharray="3 4" opacity={0.45} />}
             <rect x={cap.x * scale - 4} y={cap.z * scale - 4} width={8} height={8} fill={dormant ? "#776c4e" : "#d0cd83"}>
@@ -250,7 +264,7 @@ export function WorldAtlas() {
         {terrain && <p style={small}>Terrain tiles show the same paving lanes and biome beds as the game, including raised galleries. Water routes and furnishings appear above them.</p>}
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
         <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
-        {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
+        {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
         {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {dormant
           ? "Draining collapses the caps and prevents further spore bursts."
           : `Lower the lantern one band or retreat during the ${BELLCAP_WARNING}-second warning. Bursts carry sound through the room graph; recovery lasts ${BELLCAP_COOLDOWN} seconds.`}</p>}

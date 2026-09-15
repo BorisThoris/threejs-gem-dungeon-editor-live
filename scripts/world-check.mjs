@@ -142,6 +142,14 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(seen.size, members.length, "each district is connected through real doors");
   }
   for (const r of d.rooms) {
+    for (const home of L.ratsFor(r, d.seed)) {
+      assert.ok(L.insideRoom(r, home.x, home.z, 0.6), "rat home has body clearance in the actual footprint");
+      assert.ok(L.roomSegmentClear(r, home.x, home.z, home.shelter.x, home.shelter.z, 0), "rat shelter has a continuous floor approach");
+      assert.ok(Math.abs(L.floorHeightAt(r, home.x, home.z) - L.floorHeightAt(r, home.shelter.x, home.shelter.z)) <= 0.03, "rat shelter sits on the same landing as its home");
+      const nx = Math.sin(home.shelter.yaw), nz = Math.cos(home.shelter.yaw);
+      const wallX = home.shelter.x - nx * (L.WALL_THICKNESS / 2 + 0.04), wallZ = home.shelter.z - nz * (L.WALL_THICKNESS / 2 + 0.04);
+      assert.ok(L.wallEdges(r).some(edge => edge.along === "x" ? Math.abs(wallZ-edge.z)<1e-6 && Math.abs(wallX-edge.x)<=edge.length/2-0.27 : Math.abs(wallX-edge.x)<1e-6 && Math.abs(wallZ-edge.z)<=edge.length/2-0.27), "visible rat shelters anchor to real wall courses");
+    }
     // Aim outward near the chamber boundary, where furniture-only steering
     // used to press a rat into the wall. Verify the entire chosen segment.
     for (let angle = 0.2; angle < Math.PI * 2; angle += Math.PI / 4) {

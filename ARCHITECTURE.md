@@ -68,6 +68,12 @@ through the existing room-graph propagation rules. `wardenHeard` remains a
 reaction cue, not a second sprint at the room centre. The Atlas ground probe
 uses these same material values and `carriesTo` for its optional noise overlay.
 Toad refuges prefer clear, flat deposit beds and sample the shared floor height.
+`mobs/ambient.ts` derives rat homes from real wall courses with level, clear
+approaches. `RatShelters.tsx` draws their recesses in one batch. `ratLosses` in
+run state records spike casualties by room and home index until floor descent
+or a new run; initial creature visibility reads it even during a paused revisit.
+The Atlas uses the live dungeon seed for ambient habitats and applies initial
+key and sentry reservations when previewing scaled furniture.
 
 The atlas projects the same terrain tiles and uses one ground probe for plan
 and gallery section. Its drainage timeline reads `waterLevel` and

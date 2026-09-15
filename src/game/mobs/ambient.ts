@@ -1,6 +1,7 @@
 import type { Dungeon, Room, RoomKind } from "../dungeon/types";
-import { diagonalReach } from "../dungeon/types";
-import { insideRoom } from "../dungeon/footprint";
+import { insideRoom, roomSegmentClear, wallEdges } from "../dungeon/footprint";
+import { DOOR_WIDTH, WALL_THICKNESS } from "../world";
+import { floorHeightAt } from "../worldbuilding/elevation";
 import { PROP_SPECS } from "../props/specs";
 import { createRng } from "../rng";
 import { BIOME, biomeIdFor } from "../rooms/biomes";
@@ -17,6 +18,9 @@ export interface Spot {
   x: number;
   z: number;
 }
+export interface RatHome extends Spot {
+  shelter: { x: number; z: number; yaw: number };
+}
 
 /**
  * Which biome a creature can live in is the biome's business: each row
@@ -31,29 +35,46 @@ const RAT_KINDS: ReadonlySet<RoomKind> = new Set<RoomKind>(["normal", "treasure"
 /** Bats want height: the big rooms of the biomes that keep them. */
 const ROOST_MIN_SIZE = 20;
 
-/** The holes the room's rats live in: corners clear of the furniture, up to three. */
-export function ratsFor(room: Room, seed: number): Spot[] {
+/** Up to three rat homes on real wall courses, with clear level approaches. */
+export function ratsFor(room: Room, seed: number): RatHome[] {
   if (!RAT_KINDS.has(room.kind)) return [];
   if (!livesHere("rat", room, seed)) return [];
   const rng = createRng(`${seed}:${room.id}:rats`);
   const count = rng() < 0.25 ? 0 : 1 + Math.floor(rng() * 3);
   if (!count) return [];
-  const inset = Math.min(room.size / 2, diagonalReach(room) / Math.SQRT2) - 1.4;
-  const corners: Spot[] = [
-    { x: inset, z: inset },
-    { x: -inset, z: inset },
-    { x: inset, z: -inset },
-    { x: -inset, z: -inset },
-  ];
   const solid = placementsFor(room, seed).filter((p) => PROP_SPECS[p.kind].solid);
-  const clear = corners.filter(
-    (c) => insideRoom(room, c.x, c.z, 0.6) && !solid.some((p) => Math.hypot(c.x - p.x, c.z - p.z) < PROP_SPECS[p.kind].radius + 0.6)
-  );
+  const clear: RatHome[] = [];
+  for (const edge of wallEdges(room)) {
+    for (let along = -edge.length / 2 + 0.8; along <= edge.length / 2 - 0.8; along += 3) {
+      const wx = edge.x + (edge.along === "x" ? along : 0), wz = edge.z + (edge.along === "z" ? along : 0);
+      if ((room.links[edge.dir] || room.secret?.dir === edge.dir) && Math.abs(edge.along === "x" ? wx : wz) < DOOR_WIDTH / 2 + 0.8) continue;
+      for (const sign of [-1, 1]) {
+        const nx = edge.along === "z" ? sign : 0, nz = edge.along === "x" ? sign : 0;
+        const x = wx + nx, z = wz + nz;
+        if (!insideRoom(room, x, z, 0.6) || Math.abs(x) < 2.4 && Math.abs(z) < 2.4) continue;
+        const shelter = { x: wx + nx * (WALL_THICKNESS / 2 + 0.04), z: wz + nz * (WALL_THICKNESS / 2 + 0.04), yaw: Math.atan2(nx, nz) };
+        if (!roomSegmentClear(room, x, z, shelter.x, shelter.z, 0) ||
+          Math.abs(floorHeightAt(room, x, z) - floorHeightAt(room, shelter.x, shelter.z)) > 0.03) continue;
+        // The whole approach, not just its endpoint, clears scaled furniture.
+        if (solid.some(p => {
+          const dx = x - shelter.x, dz = z - shelter.z, length2 = dx * dx + dz * dz;
+          const t = Math.max(0, Math.min(1, ((p.x - shelter.x) * dx + (p.z - shelter.z) * dz) / length2));
+          return Math.hypot(p.x - shelter.x - t * dx, p.z - shelter.z - t * dz) < PROP_SPECS[p.kind].radius * (p.scale ?? 1) + 0.6;
+        })) continue;
+        clear.push({ x, z, shelter });
+      }
+    }
+  }
   for (let i = clear.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [clear[i], clear[j]] = [clear[j], clear[i]];
   }
-  return clear.slice(0, count);
+  const homes: RatHome[] = [];
+  for (const home of clear) {
+    if (homes.every(other => Math.hypot(other.x - home.x, other.z - home.z) >= 3)) homes.push(home);
+    if (homes.length === count) break;
+  }
+  return homes;
 }
 
 /** Where the room's bats hang, or null: not every big dark room has them. */

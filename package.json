@@ -26,6 +26,7 @@
         "test:exploration": "node scripts/exploration-browser-check.mjs",
         "test:watercourse": "node scripts/watercourse-browser-check.mjs",
         "test:ecology": "node scripts/ecology-browser-check.mjs",
+        "test:rats": "node scripts/rat-spikes-browser-check.mjs",
         "test:bellcaps": "node scripts/bellcap-browser-check.mjs",
         "test:apses": "node scripts/apse-browser-check.mjs",
         "test:beetles": "node scripts/beetle-browser-check.mjs",

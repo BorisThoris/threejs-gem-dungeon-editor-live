@@ -156,6 +156,9 @@ export interface RunState {
   operateWaterway: () => void;
   openServiceCatch: () => boolean;
   bellcapBursts: Record<string, number>;
+  /** Ambient trap consequences persist until leaving this floor. */
+  ratLosses: Record<string, true>;
+  loseRat: (roomId: string, index: number) => void;
   burstBellcap: (index: number) => boolean;
   phase: Phase;
   paused: boolean;
@@ -817,6 +820,12 @@ export const useRun = create<RunState>()(
     waterOpenedAt: null,
     waterCacheTaken: false,
     bellcapBursts: {},
+    ratLosses: {},
+    loseRat: (roomId, index) => {
+      const s = get(), key = `${roomId}:${index}`;
+      if (!canControl(s) || s.currentRoomId !== roomId || !Number.isInteger(index) || index < 0 || index >= 3 || s.ratLosses[key]) return;
+      set({ ratLosses: { ...s.ratLosses, [key]: true } });
+    },
     floor: 1,
     runSeed: 0,
     roomsSeen: 0,
@@ -980,6 +989,7 @@ export const useRun = create<RunState>()(
         waterOpenedAt: null,
         waterCacheTaken: false,
         bellcapBursts: {},
+        ratLosses: {},
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
@@ -1240,6 +1250,7 @@ export const useRun = create<RunState>()(
           waterOpenedAt: null,
           waterCacheTaken: false,
           bellcapBursts: {},
+          ratLosses: {},
           gemRooms: [],
           cleared: [],
           failed: [],

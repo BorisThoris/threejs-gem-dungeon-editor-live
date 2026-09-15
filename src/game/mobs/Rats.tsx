@@ -14,7 +14,8 @@ import { patchAt, steerInRoom, type Patch } from "../warden/steer";
 import { groundHeading } from "./groundHeading";
 import { RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
 import { floorHeightAt } from "../worldbuilding/elevation";
-import type { Spot } from "./ambient";
+import type { Spot, RatHome } from "./ambient";
+import { RatShelters } from "./RatShelters";
 
 interface Rat {
   x: number;
@@ -31,7 +32,7 @@ interface Rat {
 
 interface RatsProps {
   room: Room;
-  holes: Spot[];
+  holes: RatHome[];
   /** The furniture, from the body table: a rat goes round it. */
   obstacles: readonly Patch[];
   /** What bites a ground body here: a snare it springs, spikes that end it. */
@@ -47,8 +48,8 @@ interface RatsProps {
 export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
   const groups = useRef<(Group | null)[]>([]);
   const rats = useMemo<Rat[]>(
-    () => holes.map((h) => ({ x: h.x, z: h.z, home: h, fleeing: false, homing: false, dead: false, wander: Math.random() * Math.PI * 2, spookedUntil: 0 })),
-    [holes]
+    () => holes.map((h, i) => ({ x: h.x, z: h.z, home: h, fleeing: false, homing: false, dead: !!useRun.getState().ratLosses[`${room.id}:${i}`], wander: Math.random() * Math.PI * 2, spookedUntil: 0 })),
+    [holes, room.id]
   );
   /** What the floor is loud about, filled in place: the frame loop owns no garbage. */
   const heard = useMemo(() => din.emptyArrival(), []);
@@ -71,7 +72,8 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
     rats.forEach((rat, i) => {
       const g = groups.current[i];
       if (!g) return;
-      if (rat.dead) {
+      if (rat.dead || run.ratLosses[`${room.id}:${i}`]) {
+        rat.dead = true;
         g.visible = false;
         return;
       }
@@ -157,7 +159,10 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       const standing = patchAt(hazards, rat.x, rat.z);
       if (standing) {
         if (standing.key) run.springSnare(standing.key, "rat");
-        else rat.dead = true;
+        else {
+          rat.dead = true;
+          run.loseRat(room.id, i);
+        }
       }
     });
     if (import.meta.env.DEV) {
@@ -169,10 +174,12 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
 
   return (
     <>
+      <RatShelters room={room} homes={holes} />
       {holes.map((h, i) => (
         <group
           key={i}
           name={`rat-${i}`}
+          visible={!rats[i].dead}
           ref={(el) => {
             groups.current[i] = el;
           }}

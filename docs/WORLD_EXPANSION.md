@@ -409,6 +409,42 @@ when walking away. Earlier noise still fades naturally. This footstep fix
 postdates the full gameplay run; its collision and terrain-stealth checks are
 targeted native-browser regressions.
 
+Rat homes now derive from real wall courses rather than four invisible corner
+points. Seeded selection keeps up to three homes separated, checks scaled
+furniture along the approach, avoids door openings and requires level ground.
+Small dark recesses with district-tinted lintels mark the homes. All shelters
+share one instanced draw (eight triangles per shelter) and add no colliders.
+Their faces clear the low construction trim; native visual inspection caught
+and corrected partial occlusion by that trim. Pure generation checks cover body
+clearance, continuous approaches, floor height and actual wall anchoring across
+4,539 rooms. Typecheck, lint and build pass.
+The native scatter-and-return check also passes using the live room's sentry
+reservation when constructing its obstacle list. Its earlier overlap report
+counted a pillar removed by that reservation, rather than a rendered obstacle.
+
+Atlas habitat inspection now uses the dungeon seed used by the live room for
+toads and rats. Tan shelter brackets and short approach lines show rat homes,
+and Next habitat includes rooms inhabited only by rats. Furniture preview uses
+the initial key and sentry reservations and includes prop scale in its drawn
+radius. A native browser check compares all habitat positions, rat-home counts
+and furniture coordinates/radii across the eleven rooms of seed 72, depth 2,
+and verifies that hiding habitats removes the animal markers. The view was
+visually inspected; typecheck and lint pass.
+
+Rat losses now persist for the current floor. The spike-contact branch records
+the room and rat index in run state, and both active frames and initial render
+read that record. Returning while paused cannot briefly revive an animal; its
+wall shelter remains. New runs and floor descent clear the records. A native
+browser check invokes the loss action and verifies live hiding, paused revisit,
+an unaffected survivor, retained shelters and both reset boundaries. This checks
+persistence after a recorded loss. A subsequent `test:rats` regression finds
+a generated room with a reachable spike path, moves the player behind a rat,
+and waits for its actual fleeing movement to enter the spikes. It verifies the
+recorded loss occurred inside a hazard after leaving home, then revisits while
+paused and confirms the animal remains absent. That native Chrome check passes.
+The player follows behind during this test: a stationary initial scare proved
+sensitive to the animal's random wander and could miss the narrow spike patch.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and
