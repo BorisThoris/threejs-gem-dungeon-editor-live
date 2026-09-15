@@ -131,6 +131,92 @@ room's beetles, with one small pooled light per colony. The generation sweep
 checks 1,140 beetles and their full foraging/retreat paths against walls and
 furniture. The atlas includes their feeding positions and habitat rules.
 
+Passages now use visible hanging oil lamps with district-specific wooden,
+iron or stepped bronze frames. Spacing follows passage length and shifted
+centres, independently of floor tessellation: the world sweep uses 2,824 lamps
+where the former per-course fill created 3,777 lights. The fixtures clear raised
+landings, retain warm practical lighting and flutter gently on the pause-aware
+run clock. Frames and panes use two instanced batches per room. The shaped
+gallery browser check verifies paused/resumed lighting alongside traversal.
+
+Channel ripples now use metre-based coordinates along the actual current.
+Incoming strips flow toward the room centre and outgoing strips follow the
+bronze arrows, with the same spacing in short and long passages. A shared
+material draws stepped highlights across narrow lanes. Opening the sluice
+smoothly slows the current with the falling water level; its integrated phase
+never jumps backwards and stops completely when dry. Pause and revisits read
+the same run-clock phase. Dry beds and their bronze direction marks remain.
+
+The atlas now overlays the actual passage lamps and directional channel marks.
+Its gallery navigation opens a side elevation of each raised wing, using the
+same ramp lengths, landing heights, changing course widths and fixture locations
+as the game. The floor blueprint remains the authority for the horizontal shape;
+the side view makes elevation legible alongside it. Flowing/dry previews retain
+direction marks, and the lamp overlay can be hidden independently of habitats.
+
+Deeper floors now close useful exploration loops across existing shared walls.
+Depth two seeks one independent loop and depth three seeks two, choosing the
+longest available detour each time. Floors without suitable adjacent chambers
+retain their geography. This happens before stairs, vaults, secrets and districts
+are assigned, so their reachability rules inspect the final connected graph.
+Explicit loopChance settings remain authoritative. In the current 120-seed
+sweep, 115 depth-two floors and all 120 depth-three floors offer alternate routes.
+The changed graphs retain 343 complete waterworks circuits and 293 service
+expeditions; the browser check traverses a full circuit using real door controls.
+
+District boundaries now carry carved lintels naming the district beyond the
+door. Rootwater stalks, iron-work studs and the choir's stepped crest provide
+distinct block silhouettes as well as words. Signs use actual linked rooms,
+remain above doorway clearance and announce the correct destination from both
+sides. Sealed branches add no signs. The world sweep checks placement and
+reciprocity, and a browser traversal checks the two rendered faces in play.
+
+Flowing channels now have their own held water sound beneath the native biome
+ambience. The nearest point on the actual wet strips determines distance and
+stereo direction. Gain falls with the same six-second water level used by the
+shader and habitats; pause, drainage and room unmount stop the voice. Returning
+to a dry channel cannot restart it. A single reused voice supplies the layer,
+and drainage leaves independent damp-biome sounds intact.
+
+Procedural rooms now carry continuous district wall courses: timber growing
+rails, iron service bands and stepped stone bases. Short masonry courses follow
+the actual wall edges and local terrace height, interrupting at doorways, secret
+cracks and water stations. Their faces project only two centimetres beyond the
+existing wall collider. Authored compositions remain intact. Two instanced
+batches draw each room's courses; generation checks verify their attachment and
+portal clearance, and all three traditions have been visually reviewed in play.
+
+The integrated gameplay suite passes with these systems together. Performance
+sampling now stays on the requested floor (inspecting stairs previously caused
+descent), resets the camera and measures four fresh viewing directions. Native
+Windows rendering replaces the unreliable forced software path. Repeated-room
+geometry and retained-memory checks pass, but the existing rendering budgets
+are still exceeded: before optimization, the 78-room sweep peaked at 84 draws,
+11,992 triangles and 150 live geometries. These are open engineering work,
+not a passing performance result. Removing buried faces from wall trims cuts
+the worst room's course geometry from 3,312 to 552 triangles, with the visible
+district treatment retained. Further profiling and optimization remain required.
+
+Building blocks, terrain deposits and wall-course faces now reuse the existing
+shared geometry registry. The same room and camera view measured 32 live
+geometries instead of 42, with unchanged draws and triangles. This reduces
+duplicate shape allocation; it does not establish that the full rendering
+budgets now pass. Room-owned instance transforms and materials remain separate.
+
+The full post-sharing sample confirms a reduction to 9,232 triangles and 130
+live geometries in the worst measured room; 84 draw calls still exceeded the
+existing limit. Floor service marks now batch their six notches and two tips
+into two draws, and bronze flow arrows batch into one instead of four. Rotated
+block instances preserve the original positions, directions and materials.
+The real waterworks/secret-route browser test passes after this change. A new
+full rendering sample is still required before claiming the budgets pass.
+
+District crests now batch their three raised pieces into one draw and share
+the sign backing geometry. The repeated 78-room sample peaks at 78 draws,
+9,232 triangles and 116 live geometries, with 10 textures. Per-room revisit
+and retained-memory checks pass. The existing 72/4,800/88 rendering limits
+still fail; these measurements are improvement evidence, not a green suite.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

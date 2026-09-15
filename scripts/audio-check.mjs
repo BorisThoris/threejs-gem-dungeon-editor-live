@@ -411,6 +411,19 @@ ok(
  * five seconds, or a Harrier whose wings outlived the Harrier, would be a
  * worse bug than either being silent.
  */
+const current = await page.evaluate(async flush => {
+  const a = window.__ambience;
+  a.setCurrent(1, 0.2);
+  await new Promise(r => setTimeout(r, flush));
+  const flowing = await window.__listen(700);
+  a.setCurrent(0, 0);
+  await new Promise(r => setTimeout(r, flush + 400));
+  const dry = await window.__listen(400);
+  return { flowing, dry, level: a.currentLevel() };
+}, FLUSH_MS);
+ok("the live watercourse has an audible current", current.flowing >= AUDIBLE, current.flowing.toFixed(4));
+ok("drainage stops the current voice", current.dry < AUDIBLE && current.level === 0, current.dry.toFixed(4));
+
 const VOICES = [
   ["flock", "flockStop", [0.8, 0.2]],
   ["wingbeat", "wingbeatStop", [0.8, -0.2, 0.5]],

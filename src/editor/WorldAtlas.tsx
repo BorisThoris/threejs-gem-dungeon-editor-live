@@ -17,6 +17,8 @@ import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from ".
 import { croakersFor } from "../game/mobs/ambient";
 import { croakerHabitats } from "../game/mobs/croakerHabitat";
 import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
+import { passageLampsFor } from "../game/worldbuilding/passageLighting";
+import { GallerySection } from "./GallerySection";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
@@ -29,6 +31,7 @@ export function WorldAtlas() {
   const [selected, setSelected] = useState("start");
   const [drained, setDrained] = useState(false);
   const [ecology, setEcology] = useState(true);
+  const [lighting, setLighting] = useState(true);
   const dungeon = useMemo(() => generateDungeon({ seed, floor }), [seed, floor]);
   const room = dungeon.rooms.find(r => r.id === selected) ?? dungeon.rooms[0];
   const byId = useMemo(() => new Map(dungeon.rooms.map(r => [r.id, r])), [dungeon]);
@@ -46,6 +49,8 @@ export function WorldAtlas() {
   const identity = PLACE_IDENTITIES[identityFor(room)];
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
+  const lamps = useMemo(() => passageLampsFor(room), [room]);
+  const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
   const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, room.seed)), [room]);
   const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, r.seed).length), [dungeon]);
   const source = dungeon.rooms.find(r => r.waterway?.role === "sluice");
@@ -66,6 +71,10 @@ export function WorldAtlas() {
         const next = (livingRooms.findIndex(r => r.id === room.id) + 1) % livingRooms.length;
         if (livingRooms[next]) setSelected(livingRooms[next].id);
       }}>Next habitat</button>
+      <button style={{ ...button, width: "auto" }} disabled={!galleryRooms.length} onClick={() => {
+        const next = (galleryRooms.findIndex(r => r.id === room.id) + 1) % galleryRooms.length;
+        if (galleryRooms[next]) setSelected(galleryRooms[next].id);
+      }}>Next gallery</button>
       <span style={small}>{dungeon.rooms.length} rooms · {dungeon.rooms.filter(r => r.waterway).length} on the watercourse</span>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1.4fr) minmax(340px, 1fr)", gap: 20 }}>
@@ -120,13 +129,28 @@ export function WorldAtlas() {
             <option value="flowing">Flowing</option><option value="drained">Drained</option>
           </select></label>
           <label style={small}><input type="checkbox" checked={ecology} onChange={e => setEcology(e.target.checked)} /> Show habitats</label>
+          <label style={small}><input type="checkbox" checked={lighting} onChange={e => setLighting(e.target.checked)} /> Show passage lamps</label>
         </div>
         {dungeon.serviceTrail?.route.includes(room.id) && <p style={small}>{serviceTrailText(dungeon, room.id)}</p>}
         <svg aria-label="Selected room blueprint" viewBox="-200 -200 400 400" style={{ width: "100%", maxHeight: 400, background: "#0b1012", borderRadius: 8 }}>
+          <defs><marker id="atlas-room-flow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
+            <path d="M 0 0 L 5 2.5 L 0 5" fill="none" stroke="#e7c87d" />
+          </marker></defs>
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
           {watercourseBlocks(room).map((b, i) => <rect key={i} x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
             width={b.size[0] * scale} height={b.size[2] * scale} fill={drained ? "#354641" : "#559eac"} />)}
+          {[room.waterway?.upstream, room.waterway?.downstream].map((dir, i) => {
+            if (!dir) return null;
+            const axis = DIR_STEP[dir], distance = doorReach(room, dir), sign = i === 0 ? -1 : 1;
+            const mid = distance * 0.55, reach = Math.min(1, distance * 0.2);
+            return <line key={`current-${i}`} data-testid="atlas-channel-direction" data-direction={dir} data-incoming={i === 0}
+              x1={axis.x * (mid - sign * reach) * scale} y1={axis.z * (mid - sign * reach) * scale}
+              x2={axis.x * (mid + sign * reach) * scale} y2={axis.z * (mid + sign * reach) * scale}
+              stroke="#e7c87d" strokeWidth={1.5} strokeDasharray={drained ? "2 3" : undefined} markerEnd="url(#atlas-room-flow)">
+              <title>{drained ? "Dry channel direction mark" : "Current direction"}: {i === 0 ? "from" : "toward"} the {dir}</title>
+            </line>;
+          })}
           {props.map((p, i) => <circle key={i} cx={p.x * scale} cy={p.z * scale} r={Math.max(2, PROP_SPECS[p.kind].radius * scale)}
             fill={PROP_SPECS[p.kind].solid ? "#706b57" : "#49583e"} opacity={0.85}><title>{PROP_SPECS[p.kind].title}</title></circle>)}
           {ecology && habitats.map((h, i) => {
@@ -150,6 +174,11 @@ export function WorldAtlas() {
             return <circle key={`beetle-${i}`} cx={p.x * scale} cy={p.z * scale} r={2} fill="#f0cc62"><title>Glow beetle feeding around living bellcaps</title></circle>;
           })}
           <path d={blueprint.walls} fill="none" stroke={ink} strokeWidth={2} />
+          {lighting && lamps.map((lamp, i) => <g key={`lamp-${i}`} data-testid="atlas-passage-lamp"
+            transform={`translate(${lamp.position[0] * scale} ${lamp.position[2] * scale})`}>
+            <path d="M 0 -5 L 4 0 L 0 5 L -4 0 Z" fill="#ffd38a" stroke="#59472b" />
+            <title>Hanging passage lamp · {lamp.position[1].toFixed(1)} m above the chamber floor</title>
+          </g>)}
           {station && <>
             <line x1={0} y1={0} x2={station.approach.x * scale} y2={station.approach.z * scale} stroke="#e0bf75" strokeDasharray="3 4" />
             <circle data-testid="atlas-station" cx={station.x * scale} cy={station.z * scale} r={5} fill="#e0bf75" />
@@ -157,6 +186,8 @@ export function WorldAtlas() {
           <circle r={3} fill="#eee0b4" />
         </svg>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>
+        {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
+        <GallerySection room={room} />
         {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
         {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {drained
           ? "Draining collapses the caps and prevents further spore bursts."

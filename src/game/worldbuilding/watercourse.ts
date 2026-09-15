@@ -1,4 +1,4 @@
-import { DIRS, type Dir, type Room } from "../dungeon/types";
+import { DIRS, DIR_STEP, type Dir, type Room } from "../dungeon/types";
 import { doorReach, insideRoom, roomSegmentClear, wallEdges } from "../dungeon/footprint";
 import { placementsFor } from "../rooms/placements";
 import { PROP_SPECS } from "../props/specs";
@@ -120,4 +120,26 @@ export function waterUnderfoot(room: Room, x: number, z: number, openedAt: numbe
 
 export function waterLevel(openedAt: number | null, now: number) {
   return openedAt === null ? 1 : Math.max(0, Math.min(1, 1 - (now - openedAt) / WATER_DRAIN_SECONDS));
+}
+
+/** Integrate the falling water level rather than multiplying time by speed:
+ * opening the sluice never jumps the ripple phase backwards. Revisited rooms
+ * derive the same phase, including after the flow has stopped. */
+export function waterTravel(openedAt: number | null, now: number) {
+  if (openedAt === null || now <= openedAt) return now;
+  const elapsed = Math.min(WATER_DRAIN_SECONDS, now - openedAt);
+  return openedAt + elapsed - elapsed * elapsed / (2 * WATER_DRAIN_SECONDS);
+}
+
+/** Metre coordinates along the current and across its bank. Incoming strips
+ * run from negative distance to zero; outgoing strips run from zero outward.
+ * Thus turns share their phase at the junction and ripples always follow the
+ * route, independent of channel length, compass direction or plane UVs. */
+export function waterFlowUV(room: Room, segment: number, x: number, z: number): [number, number] {
+  const route = [room.waterway?.upstream, room.waterway?.downstream].filter((d): d is Dir => !!d);
+  const dir = route[segment];
+  if (!dir) return [0, 0];
+  const sign = room.waterway?.upstream && segment === 0 ? -1 : 1;
+  const flow = DIR_STEP[dir];
+  return [(x * flow.x + z * flow.z) * sign, (z * flow.x - x * flow.z) * sign];
 }

@@ -516,6 +516,15 @@ interface Air {
 
 let air: Air | null = null;
 
+const buildCurrent: HeldBuilder = (ctx, into) => {
+  const stream = heldNoise(ctx, into, "bandpass", 1400, 0.7, null);
+  const ripple = ctx.createOscillator(), depth = ctx.createGain();
+  ripple.frequency.value = 0.8; depth.gain.value = 180;
+  ripple.connect(depth).connect(stream.filter.frequency);
+  ripple.start();
+  return { filter: stream.filter, lfo: null, pitch: null, sources: [stream.source, ripple] };
+};
+
 /** A held voice for the airs that are continuous. Null for the ones that are not. */
 const AIR_VOICES: Partial<Record<AirId, { build: HeldBuilder; level: number }>> = {
   wind: {
@@ -641,6 +650,13 @@ let bed: {
  * Fades in over a couple of seconds and out over one.
  */
 export const ambience = {
+  /** Running water is infrastructure, independent of a room's native air. */
+  setCurrent(level: number, pan = 0) {
+    const amount = Math.max(0, Math.min(1, level));
+    heldSet("water-current", buildCurrent, amount, pan, { level: amount * 0.28, filterHz: 650 + amount * 1000 });
+  },
+  stopCurrent() { heldStop("water-current"); },
+  currentLevel: () => held.get("water-current")?.gain.gain.value ?? 0,
   /**
    * How roused the floor is, 0 to 1. The bed tightens with it: the drone
    * comes up and the air moves faster, so a floor being emptied of gems is
@@ -754,6 +770,7 @@ export const ambience = {
   },
   stop() {
     stopAir();
+    heldStop("water-current");
     if (!bed || !context) return;
     const { gain, stop } = bed;
     bed = null;

@@ -43,6 +43,32 @@ try {
     await page.waitForTimeout(150);
   };
   await visit(fixture.cache);
+  const waterState = () => page.evaluate(() => {
+    let material;
+    window.__scene.traverse(o => { if (o.name === "directed-channel-surface") material = o.material; });
+    return { travel: material.userData.travel.value, opacity: material.opacity, visible: material.visible };
+  });
+  const initialFlow = await waterState();
+  const currentSound = () => page.evaluate(async () => (await import("/src/game/systems/audio.ts")).ambience.currentLevel());
+  assert.ok(await currentSound() > 0, "a live channel starts its current voice in play");
+  await page.waitForTimeout(400);
+  assert.ok((await waterState()).travel > initialFlow.travel, "the compiled channel material receives an advancing current");
+  assert.ok(await page.evaluate(() => {
+    const room = window.__run.getState().dungeon.rooms.find(r => r.id === window.__run.getState().currentRoomId);
+    const dir = room.waterway.upstream;
+    const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
+    let valid = true, count = 0;
+    window.__scene.traverse(o => {
+      if (o.name !== "directed-channel-surface") return;
+      const p = o.geometry.attributes.position, uv = o.geometry.attributes.uv;
+      for (let i = 0; i < p.count; i++) {
+        const x = o.position.x + p.getX(i), z = o.position.z - p.getY(i);
+        valid &&= Math.abs(uv.getX(i) + x * axis[0] + z * axis[1]) < 0.00001;
+        count++;
+      }
+    });
+    return valid && count === 4;
+  }), "rendered incoming water uses physical coordinates flowing toward the reliquary");
   assert.equal(await page.locator('[data-testid="service-rubbing"]').count(), 0, "the route is not explained before the rubbing is found");
   assert.equal(await page.locator('[data-water-role="sluice"]').count(), 0, "unvisited valve is not revealed on the map");
   const visitCatch = async () => {
@@ -85,6 +111,9 @@ try {
     const { runClock } = await import("/src/game/state/run.ts");
     window.__run.getState().pause(); const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
   });
+  await page.waitForTimeout(100);
+  const pausedFlow = await waterState();
+  assert.equal(await currentSound(), 0, "pause silences the current voice");
   await page.waitForTimeout(1100);
   const still = await page.evaluate(async () => {
     const { waterLevel } = await import("/src/game/worldbuilding/watercourse.ts");
@@ -92,8 +121,14 @@ try {
     const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
   });
   assert.equal(still, pausedLevel, "drainage freezes while paused");
+  assert.deepEqual(await waterState(), pausedFlow, "rendered current and opacity freeze while paused");
   await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => window.__watercourse?.drained);
+  const dryFlow = await waterState();
+  assert.equal(await currentSound(), 0, "drainage silences the current voice");
+  assert.equal(dryFlow.visible, false, "drainage removes the water surface");
+  await page.waitForTimeout(400);
+  assert.deepEqual(await waterState(), dryFlow, "the dry current remains stopped");
   await visit(fixture.cache);
   await page.waitForFunction(() => window.__watercourse?.drained);
   await page.screenshot({ path: "output/world-review/reliquary-drained.png" });

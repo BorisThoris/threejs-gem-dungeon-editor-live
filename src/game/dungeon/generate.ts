@@ -2,6 +2,7 @@ import { shapeFits } from "./layout";
 import { assignDistricts } from "../rooms/districts";
 import { assignWatercourse } from "../worldbuilding/watercourse";
 import { serviceTrailFor } from "../worldbuilding/serviceTrail";
+import { stitchExplorationLoops } from "./explorationLoops";
 import { createRng, pick, shuffle } from "../rng";
 import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
@@ -250,6 +251,10 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
       if (other && rng() < loopChance) link(room, other, dir);
     }
   }
+
+  // Deeper floors should offer ways around, not depend solely on lucky loop
+  // rolls. Preserve explicit loopChance requests (including tree fixtures).
+  if (options.loopChance === undefined && floor > 1) stitchExplorationLoops(rooms, floor - 1);
 
   // The end room hangs off the room farthest from the start, in a free cell
   // next to it; if every neighbour cell is taken, the farthest room itself

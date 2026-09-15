@@ -17,6 +17,7 @@
  * for the day something doubles.
  */
 import { chromium } from "playwright-core";
+import { mkdirSync, writeFileSync } from "node:fs";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM =
@@ -99,9 +100,7 @@ const browser = await chromium.launch({
   executablePath: CHROMIUM,
   args: [
     "--no-sandbox",
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
+    ...(process.platform === "win32" ? [] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]),
     "--disable-background-timer-throttling",
     // So the check can ask for a collection and measure what survives one,
     // rather than measuring whether one happened to run.
@@ -144,20 +143,35 @@ for (const seed of SEEDS) {
     for (const [id, kind] of ids) {
       const p = await page.evaluate(async (id) => {
         const run = window.__run;
-        run.setState({ transitioning: true, currentRoomId: id });
-        run.getState().roomReady(id);
+        const expectedFloor = run.getState().floor, expectedDungeon = run.getState().dungeon;
+        run.setState({ transitioning: false, currentRoomId: id });
+        window.__bus.emit("teleport", { position: [0, 1.5, 0] });
         // Long enough for the room to mount and for a frame to be drawn
         // with everything in it.
         await new Promise((r) => setTimeout(r, 1100));
-        return { ...window.__perf };
+        const peak = { ...window.__perf };
+        for (const yaw of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
+          window.__bus.emit("lookSet", { yaw, pitch: 0 });
+          const firstFrame = window.__perf.frames, deadline = performance.now() + 5000;
+          while (window.__perf.frames < firstFrame + 4 && performance.now() < deadline)
+            await new Promise(r => setTimeout(r, 20));
+          if (window.__perf.frames < firstFrame + 4) throw Error("Room camera did not render four fresh frames");
+          for (const metric of ["calls", "triangles", "geometries", "textures"])
+            peak[metric] = Math.max(peak[metric], window.__perf[metric]);
+        }
+        if (run.getState().floor !== expectedFloor || run.getState().dungeon !== expectedDungeon || run.getState().currentRoomId !== id)
+          throw Error("Performance sampling changed the inspected floor or room");
+        return peak;
       }, id);
-      rooms.push({ seed, floor, kind, ...p });
+      rooms.push({ seed, floor, kind, id, ...p });
     }
   }
 }
 
 const worst = (key) => rooms.reduce((a, b) => (b[key] > a[key] ? b : a));
-const report = (r, key) => `${r.kind} on floor ${r.floor} of seed ${r.seed}: ${r[key]}`;
+mkdirSync("output/world-review", { recursive: true });
+writeFileSync("output/world-review/performance-rooms.json", JSON.stringify(rooms, null, 2));
+const report = (r, key) => `${r.kind} ${r.id} on floor ${r.floor} of seed ${r.seed}: ${r[key]}`;
 
 const byCalls = worst("calls");
 ok(`no room costs more than ${BUDGET.calls} draw calls`, byCalls.calls <= BUDGET.calls, report(byCalls, "calls"));
@@ -229,8 +243,8 @@ const drift = await page.evaluate(async () => {
     return false;
   };
   const settleIn = async (id) => {
-    run.setState({ transitioning: true, currentRoomId: id });
-    run.getState().roomReady(id);
+    run.setState({ transitioning: false, currentRoomId: id });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
     let last = -1;
     let same = 0;
     for (let i = 0; i < 24; i++) {

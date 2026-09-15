@@ -1,9 +1,9 @@
-import { useRef, type ComponentType } from "react";
+import { useLayoutEffect, useRef, type ComponentType } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
 
 import type { PropPlacement } from "../dungeon/types";
-import type { PointLight } from "three";
+import { Color, Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
@@ -104,16 +104,23 @@ function Barrel(p: PropProps) {
  * turns towards the room.
  */
 function Bookshelf(p: PropProps) {
+  const books = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    if (!books.current) return;
+    const matrix = new Matrix4(), color = new Color();
+    let index = 0;
+    for (const y of [0.45, 1.05, 1.65]) for (const [i, x] of [-0.5, -0.2, 0.1, 0.4].entries()) {
+      books.current.setMatrixAt(index, matrix.makeTranslation(x, y + 0.18, 0.16));
+      books.current.setColorAt(index++, color.set(["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i]));
+    }
+    books.current.instanceMatrix.needsUpdate = true;
+    if (books.current.instanceColor) books.current.instanceColor.needsUpdate = true;
+    books.current.computeBoundingSphere();
+  }, []);
   return (
     <group {...frame(p)}>
       <mesh position={[0, 1.1, 0]} castShadow geometry={geo("box", 1.6, 2.2, 0.45)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
-      {[0.45, 1.05, 1.65].map((y) => (
-        <group key={y}>
-          {[-0.5, -0.2, 0.1, 0.4].map((x, i) => (
-            <mesh key={i} position={[x, y + 0.18, 0.16]} castShadow geometry={geo("box", 0.22, 0.34, 0.28)} material={mat({ color: ["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i] })} />
-          ))}
-        </group>
-      ))}
+      <instancedMesh name="shelf-books" ref={books} castShadow args={[geo("box", 0.22, 0.34, 0.28), mat({ color: "#ffffff" }), 12]} />
     </group>
   );
 }

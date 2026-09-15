@@ -33,6 +33,19 @@ try {
       throw Error(`No ${dir} apse`);
     }, dir);
     await page.waitForTimeout(900);
+    const lampState = () => page.evaluate(() => {
+      const group = window.__scene.getObjectByName("passage-lamps");
+      return group.children.filter(o => o.isPointLight).map(o => ({ position: o.position.toArray(), intensity: o.intensity }));
+    });
+    const lamps = await lampState();
+    assert.ok(lamps.length > 0 && lamps.length <= 12, "gallery lights have a fixed passage budget");
+    await page.evaluate(() => window.__run.getState().pause());
+    const pausedLamps = await lampState();
+    await page.waitForTimeout(500);
+    assert.deepEqual(await lampState(), pausedLamps, "lamp flutter freezes with the paused world");
+    await page.evaluate(() => window.__run.getState().resume());
+    await page.waitForTimeout(500);
+    assert.notDeepEqual(await lampState(), pausedLamps, "lamp flutter resumes");
     await page.screenshot({ path: `output/world-review/apse-${dir}.png` });
     await page.keyboard.down("KeyW");
     await page.waitForFunction(({ axis, reach }) => window.__playerDebug.x * axis.x + window.__playerDebug.z * axis.z > reach - 1,

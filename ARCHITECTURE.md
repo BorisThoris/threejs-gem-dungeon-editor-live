@@ -56,6 +56,22 @@ the same wedge vertices to rendering and physics; moving creatures, rewards,
 dropped devices and effects sample its height. Full-width ramps connect the
 landings to the chamber while travel doorways retain their shared floor datum.
 
+`dungeon/explorationLoops.ts` closes useful shared-wall detours before stairs,
+vaults and secrets are assigned. `worldbuilding/districtThresholds.ts` reads
+real open links to label both sides of district boundaries. No map-only link
+or decorative doorway can imply a route the game cannot traverse.
+
+`worldbuilding/passageLighting.ts` spaces lamps by passage length, independent
+of floor tessellation. `wallCoursePattern.ts` fits shallow building courses to
+the wall union, leaving portals and mechanisms clear. The atlas reads the same
+lamp positions and terrace profiles for its plan and side elevation.
+
+The watercourse's `waterFlowUV` and `waterTravel` own directional ripple spacing
+and integrated drainage phase. Its held sound samples the same wet strips and
+water level while biome air remains independent. `mobs/beetleHabitat.ts` keeps
+feeding and retreat paths inside validated bellcap space; room-object memory
+preserves recent disturbances on revisits without surviving a new floor.
+
 Every bug the previous tree had in its last month was the same bug: two
 modules with different opinions about one fact. Five different ideas of
 where the floor was. Doors placed from one room size and spawns from another.

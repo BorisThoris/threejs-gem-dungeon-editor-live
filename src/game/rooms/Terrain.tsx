@@ -7,6 +7,7 @@ import { useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { Blocks } from "./CorridorDetails";
 import { terrainFor, TERRAIN_COLORS } from "./terrainPattern";
+import { geo } from "../props/shared";
 
 /** Broad, block-cut beds with a deliberately stepped water glint. Two draws. */
 export function Terrain({ room }: { room: Room }) {
@@ -30,8 +31,7 @@ export function Terrain({ room }: { room: Room }) {
   });
   return <group>
     <Blocks blocks={data.paving} color={stone} map={pavingSurface} />
-    {data.deposits.length > 0 && <instancedMesh ref={mesh} args={[undefined, undefined, data.deposits.length]}>
-      <boxGeometry args={[1, 1, 1]} />
+    {data.deposits.length > 0 && <instancedMesh name="terrain-deposits" ref={mesh} args={[geo("box", 1, 1, 1), undefined, data.deposits.length]}>
       <meshStandardMaterial ref={material} color={deposit} map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
         emissive={wet ? "#233d42" : "#000000"} emissiveIntensity={0.15}
         customProgramCacheKey={() => wet ? "block-water-v1" : "terrain-v1"}

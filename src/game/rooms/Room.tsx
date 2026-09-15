@@ -47,6 +47,9 @@ import { BellcapColony } from "../worldbuilding/BellcapColony";
 import { GlowBeetles } from "../mobs/GlowBeetles";
 import { Architecture } from "../worldbuilding/Architecture";
 import { Terraces } from "../worldbuilding/Terraces";
+import { PassageLamps } from "../worldbuilding/PassageLamps";
+import { DistrictLintels } from "../worldbuilding/DistrictLintels";
+import { WallCourses } from "../worldbuilding/WallCourses";
 import type { CorridorBlock } from "./corridorPattern";
 import { Terrain } from "./Terrain";
 
@@ -314,8 +317,6 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
             <CuboidCollider args={[r.width / 2, FLOOR_THICKNESS / 2, r.depth / 2]}
               position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} />
           </RigidBody>
-          {(Math.abs(r.x) > half || Math.abs(r.z) > half) && <pointLight position={[r.x, GROUND_Y + WALL_HEIGHT - 0.5, r.z]}
-            color={tint.glow} intensity={light.fillIntensity * 0.6} distance={16} decay={1.5} />}
         </group>
       ))}
 
@@ -326,9 +327,12 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       </mesh>
 
       <Walls room={room} color={tint.wall} />
+      <WallCourses room={room} />
       <Architecture room={room} />
       <Terrain room={room} />
       <Terraces room={room} />
+      <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
+      <DistrictLintels room={room} />
       {room.waterway && <Watercourse room={room} />}
       <ServiceMarks room={room} />
       <BellcapColony room={room} />

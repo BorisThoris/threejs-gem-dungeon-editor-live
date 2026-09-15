@@ -23,6 +23,7 @@
         "test:smoke": "node scripts/smoke-test.mjs",
         "test:layout": "node scripts/layout-check.mjs",
         "test:world": "node scripts/world-check.mjs",
+        "test:exploration": "node scripts/exploration-browser-check.mjs",
         "test:watercourse": "node scripts/watercourse-browser-check.mjs",
         "test:ecology": "node scripts/ecology-browser-check.mjs",
         "test:bellcaps": "node scripts/bellcap-browser-check.mjs",

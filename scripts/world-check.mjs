@@ -9,11 +9,25 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/")
 const temp = mkdtempSync(join(tmpdir(), "world-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
+  "worldbuilding/passageLighting",
+  "worldbuilding/districtThresholds",
+  "worldbuilding/wallCoursePattern",
   "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+for (const dir of L.DIRS) for (const incoming of [false, true]) {
+  const room = { waterway: incoming ? { upstream: dir } : { downstream: dir } };
+  const step = L.DIR_STEP[dir], sign = incoming ? -1 : 1;
+  assert.equal(L.waterFlowUV(room, 0, step.x * 5, step.z * 5)[0], sign * 5, "ripples run inward on arrivals and outward on departures");
+  assert.equal(Math.abs(L.waterFlowUV(room, 0, 0, 0)[0]), 0, "flow joins at the central junction");
+}
+assert.equal(L.waterTravel(null, 12), 12);
+assert.equal(L.waterTravel(10, 10), 10, "opening the valve preserves flow phase");
+assert.equal(L.waterTravel(10, 13), 12.25, "current slows continuously with the water level");
+assert.equal(L.waterTravel(10, 16), 13);
+assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current or revisit phase drift");
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
 const biomes = new Set();
 const identities = new Set();
@@ -25,8 +39,18 @@ let colonies = 0;
 let beetles = 0;
 const apseDirs = new Set();
 let apses = 0;
+let passageLights = 0, formerPassageLights = 0;
+const loopFloors = [0, 0, 0];
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
+  const openRooms = d.rooms.filter(r => r.kind !== "secret");
+  const cycles = openRooms.reduce((sum, r) => sum + Object.keys(r.links).length, 0) / 2 - openRooms.length + 1;
+  if (cycles > 0) loopFloors[floor - 1]++;
+  if (floor > 1 && cycles < floor - 1) {
+    const canClose = openRooms.some(a => a.kind !== "end" && openRooms.some(b => b.kind !== "end" && a.id !== b.id &&
+      Math.abs(a.grid.x - b.grid.x) + Math.abs(a.grid.z - b.grid.z) === 1 && !Object.values(a.links).includes(b.id)));
+    assert.equal(canClose, false, "deeper floors use available shared walls to close exploration loops");
+  }
   assert.deepEqual(d, L.generateDungeon({ seed, floor }), "geography reproduces from seed and depth");
   const byId = new Map(d.rooms.map(r => [r.id, r]));
   if (d.serviceTrail) {
@@ -99,6 +123,40 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   }
   for (const r of d.rooms) {
     rooms++;
+    const courses = L.wallCoursesFor(r);
+    for (const b of [...courses.rails, ...courses.caps]) {
+      for (const dir of L.DIRS) {
+        if (!r.links[dir] && r.secret?.dir !== dir) continue;
+        const axis = L.DIR_STEP[dir], across = axis.x ? b.position[2] : b.position[0];
+        const width = axis.x ? b.size[2] : b.size[0];
+        const along = b.position[0] * axis.x + b.position[2] * axis.z;
+        assert.ok(along < L.doorReach(r, dir) - 0.5 || Math.abs(across) - width / 2 > L.DOOR_WIDTH / 2,
+          "wall courses leave real doorways and secret cracks clear");
+      }
+      const footprint = L.wallEdges(r);
+      assert.ok(footprint.some(edge => Math.abs((edge.along === "x" ? b.position[2] - edge.z : b.position[0] - edge.x)) <= L.WALL_THICKNESS / 2 &&
+        Math.abs((edge.along === "x" ? b.position[0] - edge.x : b.position[2] - edge.z)) <= edge.length / 2), "construction courses stay attached to actual walls");
+    }
+    const thresholds = L.districtThresholds(r, d.rooms);
+    for (const t of thresholds) {
+      const next = byId.get(t.destination);
+      assert.equal(r.links[t.dir], next.id, "district names describe actual door destinations");
+      assert.notEqual(t.district, r.district, "district signs are reserved for boundaries");
+      assert.equal(t.district, next.district);
+      assert.ok(t.position[1] - 0.23 > L.DOOR_HEIGHT, "lintels never lower doorway clearance");
+      assert.ok(L.insideRoom(r, t.position[0], t.position[2]), "carvings face the actual shaped doorway");
+      assert.ok(L.districtThresholds(next, d.rooms).some(reverse => reverse.destination === r.id && reverse.district === r.district), "both faces of a district boundary give correct directions");
+    }
+    const lamps = L.passageLampsFor(r);
+    passageLights += lamps.length;
+    formerPassageLights += L.floorRects(r).filter(rect => Math.abs(rect.x) > r.size / 2 || Math.abs(rect.z) > r.size / 2).length;
+    assert.deepEqual(lamps, L.passageLampsFor({ ...r, wingProfiles: {} }), "floor tessellation cannot multiply passage lights");
+    for (const lamp of lamps) {
+      const [x, y, z] = lamp.position;
+      assert.ok(L.insideRoom(r, x, z, 0.24), "the complete lamp stays inside the shaped passage");
+      assert.ok(y - 0.27 - L.floorHeightAt(r, x, z) > 2.5, "fixtures clear players on raised landings");
+      assert.ok(y + 0.78 <= L.GROUND_Y + L.WALL_HEIGHT, "suspension stays below the ceiling");
+    }
     for (const home of L.beetlesFor(r)) {
       beetles++;
       assert.ok(L.BIOME[r.biome].life.includes("beetle") && L.bellcapsFor(r).some(c => c.x === home.x && c.z === home.z));
@@ -201,6 +259,9 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
 }
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
+assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
+console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
+console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
 assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
 console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);

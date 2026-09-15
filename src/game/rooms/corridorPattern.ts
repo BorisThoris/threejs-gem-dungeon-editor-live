@@ -3,7 +3,7 @@ import { DIRS, DIR_STEP, halfSize, type Room } from "../dungeon/types";
 import { createRng } from "../rng";
 import { GROUND_Y, WALL_HEIGHT, WALL_THICKNESS } from "../world";
 
-export interface CorridorBlock { position: [number, number, number]; size: [number, number, number] }
+export interface CorridorBlock { position: [number, number, number]; size: [number, number, number]; rotationY?: number }
 
 /** Stable architecture outside the travel lane; never another pickup or trap. */
 export function corridorDetails(room: Room, seed: number): { ribs: CorridorBlock[]; marks: CorridorBlock[] } {
