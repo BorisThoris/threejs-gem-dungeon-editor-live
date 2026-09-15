@@ -5,6 +5,7 @@ import { Group } from "three";
 import { SNARE_RADIUS } from "../items/catalog";
 import { runClock, useRun, wardNow, type PlacedDevice } from "../state/run";
 import { GROUND_Y } from "../world";
+import { floorRiseAt } from "../worldbuilding/elevation";
 
 /**
  * The things the player has put down in this room.
@@ -15,13 +16,14 @@ import { GROUND_Y } from "../world";
  * a player can see that the room's one answer has already been spent.
  */
 export function PlacedDevices({ roomId }: { roomId: string }) {
+  const room = useRun(s => s.dungeon?.rooms.find(r => r.id === roomId));
   const placed = useRun((s) => s.placed);
   const here = useMemo(() => placed.filter((d) => d.roomId === roomId), [placed, roomId]);
   if (!here.length) return null;
   return (
     <>
       {here.map((device) => (
-        <Device key={device.key} device={device} />
+        <group key={device.key} position={[0, room ? floorRiseAt(room, device.x, device.z) : 0, 0]}><Device device={device} /></group>
       ))}
     </>
   );

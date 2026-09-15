@@ -52,6 +52,8 @@ export function Captions() {
      */
     const side = (pan: number) => (pan < -0.2 ? " (left)" : pan > 0.2 ? " (right)" : "");
     const offs = [
+      bus.on("sluiceOpened", () => say("Iron teeth turn. Water rushes down the channel.")),
+      bus.on("waterCacheTaken", () => say("The dry seal lifts; gems chime inside.")),
       bus.on("wardenWoke", () => say("Something wakes, far off")),
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),
       bus.on("wardenEntered", () => say("It is in the room")),

@@ -150,6 +150,7 @@ export interface GridPos {
 }
 
 export interface Room {
+  waterway?: import("../worldbuilding/watercourse").Waterway;
   /** Connected geographical region; generated once with the room graph. */
   district?: import("../rooms/districts").DistrictId;
   biome?: import("../rooms/biomes").BiomeId;

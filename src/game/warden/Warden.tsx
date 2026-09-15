@@ -27,6 +27,7 @@ import {
 import { wardenAt } from "./position";
 import { patchAt, steerInRoom, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
+import { floorHeightAt } from "../worldbuilding/elevation";
 
 interface WardenProps {
   room: Room;
@@ -154,7 +155,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const behaviour = behaviourFor(alarm);
 
     // It drifts rather than walks: a slow bob, and eyes that always face you.
-    g.position.y = GROUND_Y + 0.06 + Math.sin(t * 1.6) * 0.05;
+    g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.06 + Math.sin(t * 1.6) * 0.05;
 
     const cam = state.camera.position;
     const dx = cam.x - g.position.x;
@@ -304,7 +305,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     if (wardenStaggered(useRun.getState())) {
       // A shudder in place, so a player who bought this window can see they
       // bought it rather than guessing from a Warden that merely looks slow.
-      g.position.y = GROUND_Y + 0.02 + Math.sin(t * 22) * 0.035;
+      g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.sin(t * 22) * 0.035;
       return;
     }
 

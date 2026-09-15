@@ -9,17 +9,61 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/")
 const temp = mkdtempSync(join(tmpdir(), "world-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
-  "dungeon/generate", "dungeon/types", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "world",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
-let rooms = 0, tiles = 0, matching = 0, links = 0;
+let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
 const biomes = new Set();
+const identities = new Set();
+let migratingToads = 0;
+const terraceDirs = new Set();
+let terraceCount = 0;
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
   assert.deepEqual(d, L.generateDungeon({ seed, floor }), "geography reproduces from seed and depth");
   const byId = new Map(d.rooms.map(r => [r.id, r]));
+  const source = d.rooms.find(r => r.waterway?.role === "sluice");
+  const destination = d.rooms.find(r => r.waterway?.role === "outfall");
+  if (source) {
+    circuits++;
+    assert.ok(destination, "every sluice has a downstream reward");
+    const free = L.reachableWithout(d.rooms, d.startId, d.vaultId ?? "missing");
+    assert.ok(free.has(source.id) && free.has(destination.id), "watercourse endpoints are outside the vault lock");
+    const seen = new Set();
+    let next = source;
+    while (next) {
+      assert.ok(!seen.has(next.id), "water flows without cycles");
+      seen.add(next.id); channelRooms++;
+      assert.notEqual(next.kind, "end", "following the water must not force a floor descent");
+      assert.equal(L.waterUnderfoot(next, 0, 0, null, 50), true, "live channel has wet footsteps");
+      assert.equal(L.waterUnderfoot(next, 2, 2, null, 50), false, "the paving beside a channel remains dry");
+      assert.equal(L.waterUnderfoot(next, 0, 0, 10, 50), false, "drained channel has dry footsteps");
+      for (const b of L.watercourseBlocks(next)) {
+        // Inset the doorway endpoint: the channel intentionally meets the threshold.
+        for (const dx of [-b.size[0] / 2 + 0.01, b.size[0] / 2 - 0.01]) for (const dz of [-b.size[2] / 2 + 0.01, b.size[2] / 2 - 0.01])
+          assert.ok(L.insideRoom(next, b.position[0] + dx, b.position[2] + dz), "channel stays inside actual footprint");
+      }
+      if (!next.waterway.downstream) { assert.equal(next.id, destination.id); break; }
+      const successor = byId.get(next.links[next.waterway.downstream]);
+      assert.equal(successor.links[successor.waterway.upstream], next.id, "flow agrees on both sides of each doorway");
+      next = successor;
+    }
+    assert.equal(seen.size, d.rooms.filter(r => r.waterway).length, "one complete connected circuit");
+    for (const end of [source, destination]) {
+      const station = L.waterStation(end);
+      assert.deepEqual(L.waterStation(JSON.parse(JSON.stringify(end))), station, "saved/copied rooms retain the generated mechanism anchor");
+      assert.ok(station && L.insideRoom(end, station.approach.x, station.approach.z, 0.6), "station has a safe standing area");
+      assert.ok(L.roomSegmentClear(end, 0, 0, station.approach.x, station.approach.z, 0.5), "station can be approached from the central path");
+      for (const dir of L.DIRS) if (end.links[dir] || end.secret?.dir === dir) {
+        const step = L.DIR_STEP[dir], along = step.x ? station.z : station.x;
+        const reach = station.x * step.x + station.z * step.z;
+        assert.ok(reach < L.doorReach(end, dir) - 1 || Math.abs(along) >= L.DOOR_WIDTH / 2 + 0.8,
+          "mechanisms never occupy doorway openings or secret cracks");
+      }
+    }
+  }
   for (const district of Object.keys(L.DISTRICTS)) {
     const members = d.rooms.filter(r => r.district === district && r.kind !== "secret");
     assert.ok(members.length, "all three districts exist");
@@ -32,6 +76,47 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   }
   for (const r of d.rooms) {
     rooms++;
+    for (const t of L.terracesFor(r)) {
+      terraceCount++;
+      terraceDirs.add(t.dir);
+      assert.ok(!r.links[t.dir] && r.secret?.dir !== t.dir, "raised galleries preserve travel and secret thresholds");
+      for (let along = t.start; along <= t.end; along += 0.25) {
+        for (const across of [-t.width / 2 + 0.3, 0, t.width / 2 - 0.3]) {
+          const [x, , z] = L.terracePoint(t, along, across, 0);
+          assert.ok(L.insideRoom(r, x, z), "the whole ramp stays inside the true gallery footprint");
+          const rise = L.floorRiseAt(r, x, z);
+          assert.ok(Math.abs(rise - t.height * Math.min(1, (along - t.start) / 4)) < 1e-6);
+        }
+      }
+      const mesh = L.terraceMesh(t);
+      for (const base of [0, 36]) {
+        const vertices = Array.from(mesh.indices.slice(base, base + 3), i => Array.from(mesh.positions.slice(i * 3, i * 3 + 3)));
+        const [a, b, c] = vertices;
+        assert.ok((b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]) > 0,
+          "rendered and physical ramp/landing top faces point upward in every direction");
+        for (const [x, y, z] of vertices) assert.ok(Math.abs(y - L.floorHeightAt(r, x, z)) < 1e-5);
+      }
+    }
+    identities.add(L.identityFor(r));
+    const architecture = L.architectureFor(r);
+    assert.ok(architecture.structure.length > 0, "every room shape supports its district architecture");
+    for (const b of [...architecture.structure, ...architecture.detail, ...architecture.marks]) {
+      assert.ok(b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT, "structural details preserve full doorway-height movement clearance");
+      for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
+        assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "structural spans follow the true floor below them");
+    }
+    for (const habitat of L.croakerHabitats(r, L.croakersFor(r, r.seed))) {
+      if (habitat.followsChannel) migratingToads++;
+      assert.ok(L.insideRoom(r, habitat.wet.x, habitat.wet.z, 0.25) && L.insideRoom(r, habitat.refuge.x, habitat.refuge.z, 0.25));
+      assert.ok(L.roomSegmentClear(r, habitat.wet.x, habitat.wet.z, habitat.refuge.x, habitat.refuge.z, 0.25), "toad migration never crosses a room wall");
+      if (habitat.followsChannel) for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid)) {
+        const dx = habitat.refuge.x - habitat.wet.x, dz = habitat.refuge.z - habitat.wet.z;
+        const len2 = dx * dx + dz * dz;
+        const along = len2 ? Math.max(0, Math.min(1, ((prop.x - habitat.wet.x) * dx + (prop.z - habitat.wet.z) * dz) / len2)) : 0;
+        assert.ok(Math.hypot(prop.x - habitat.wet.x - along * dx, prop.z - habitat.wet.z - along * dz)
+          >= L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.29, "the entire migration route clears solid furnishings");
+      }
+    }
     assert.ok(L.BIOMES_FOR[r.kind].includes(r.biome), "room purpose constrains its materials");
     assert.equal(L.biomeIdFor(r.kind, r.id, r.seed, r), r.biome, "runtime reads generated geography");
     biomes.add(r.biome);
@@ -52,5 +137,15 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   if (shut) assert.ok(shut.has(d.endId), "district assignment preserves the unlocked exit route");
 }
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
+assert.equal(terraceDirs.size, 4, "raised terrain is checked in every cardinal direction");
+console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
+assert.equal(identities.size, Object.keys(L.PLACE_IDENTITIES).length, "all building identities occur in the generated world");
+assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);
+console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
 assert.ok(matching / links > 0.65, "most doorways continue the same district");
+assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
+assert.equal(L.waterLevel(null, 100), 1);
+assert.equal(L.waterLevel(10, 13), 0.5);
+assert.equal(L.waterLevel(10, 16), 0);
+console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);

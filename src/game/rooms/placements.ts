@@ -22,6 +22,7 @@ import { CATALOG } from "../props/catalog";
 import { gemFor, keyFor, reservedAnchors } from "./kinds";
 import { biomeFor } from "./biomes";
 import { arrangementFor, type Spots } from "./layouts";
+import { purposeFurnishing } from "../worldbuilding/furnishing";
 import { authoredProps } from "./templates";
 
 
@@ -166,7 +167,8 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     const rng = createRng(`${seed}:${room.id}:dressing`);
     const spots: Spots = { near, far, corners, centre, rng };
     const torches = spots.corners.map<PropPlacement>((c) => ({ kind: "torch", x: c[0], z: c[2], rotation: 0 }));
-    const layout = room.template ? authored : arrangementFor(dressAs, rng)(spots);
+    const layout = room.template ? authored : dressAs === "normal" && room.district
+      ? purposeFurnishing(room, spots) : arrangementFor(dressAs, rng)(spots);
     return [...torches, ...layout].filter(allowed);
   };
 

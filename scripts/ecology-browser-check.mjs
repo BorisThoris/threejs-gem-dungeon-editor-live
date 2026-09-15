@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import { chromium } from "playwright-core";
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox"] });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5202"}/`);
+  await page.locator('[data-testid="menu-start"]').click();
+  await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
+  const fixture = await page.evaluate(async () => {
+    const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+    const { croakersFor } = await import("/src/game/mobs/ambient.ts");
+    const { croakerHabitats } = await import("/src/game/mobs/croakerHabitat.ts");
+    for (let seed = 1; seed < 100; seed++) {
+      const dungeon = generateDungeon({ seed, floor: 2 });
+      for (const room of dungeon.rooms.filter(r => r.waterway)) {
+        const habitats = croakerHabitats(room, croakersFor(room, seed));
+        if (habitats.length >= 2 && habitats.every(h => h.followsChannel)) return { dungeon, room, habitats };
+      }
+    }
+    throw Error("No migrating colony found");
+  });
+  await page.evaluate(({ dungeon, room }) => {
+    window.__run.setState({ dungeon, currentRoomId: room.id, floor: 2, waterOpenedAt: null, waterCacheTaken: false,
+      transitioning: false, floorRooms: 0, wardenRoomId: null, harrierAwake: false, harrierSlain: true, reaperAwake: false, thiefPhase: "away" });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+  }, fixture);
+  await page.waitForFunction(id => window.__croakers?.room === id && window.__croakers.singing > 0, fixture.room.id);
+  const before = await page.evaluate(() => ({ ...window.__croakers }));
+  assert.ok(Math.hypot(before.x - fixture.habitats[0].wet.x, before.z - fixture.habitats[0].wet.z) < 0.01, "colony begins at the live channel");
+  await page.evaluate(() => window.__run.setState({ waterOpenedAt: window.__derived.clock() }));
+  await page.waitForFunction(() => window.__croakers.migrating > 0);
+  const frozen = await page.evaluate(() => { window.__run.getState().pause(); return { x: window.__croakers.x, z: window.__croakers.z }; });
+  await page.waitForTimeout(1000);
+  assert.deepEqual(await page.evaluate(() => ({ x: window.__croakers.x, z: window.__croakers.z })), frozen, "migration freezes while paused");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction(() => window.__croakers.sheltered === window.__croakers.total);
+  const after = await page.evaluate(() => ({ ...window.__croakers }));
+  assert.equal(after.singing, 0, "dry channel loses its chorus");
+  assert.ok(Math.hypot(after.x - fixture.habitats[0].refuge.x, after.z - fixture.habitats[0].refuge.z) < 0.01, "toads reach their real wall refuge");
+  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));
+  await page.waitForTimeout(200);
+  assert.equal(await page.evaluate(() => window.__croakers.under), 0, "sheltered toads cannot dive into a dry channel");
+  await page.evaluate(() => window.__run.setState({ currentRoomId: window.__run.getState().dungeon.startId }));
+  await page.waitForTimeout(300);
+  await page.evaluate(id => window.__run.setState({ currentRoomId: id }), fixture.room.id);
+  await page.waitForFunction(id => window.__croakers?.room === id && window.__croakers.sheltered === window.__croakers.total, fixture.room.id);
+  assert.ok(Math.hypot((await page.evaluate(() => window.__croakers.x)) - fixture.habitats[0].refuge.x, (await page.evaluate(() => window.__croakers.z)) - fixture.habitats[0].refuge.z) < 0.01, "revisiting preserves habitat relocation");
+  assert.deepEqual(errors, []);
+  console.log("PASS ecology: channel gathering, migration, paused movement, dry chorus, no dry diving and persistent refuges");
+} finally { await browser.close(); }

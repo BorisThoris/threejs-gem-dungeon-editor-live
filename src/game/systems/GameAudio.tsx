@@ -21,6 +21,7 @@ function towards(roomId: string): number {
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
+  const flowing = useRun(s => s.waterOpenedAt === null && !!s.dungeon?.rooms.find(r => r.id === s.currentRoomId)?.waterway);
   const biome = useRun(s => {
     const room = s.dungeon?.rooms.find(r => r.id === s.currentRoomId);
     return room ? biomeIdFor(room.kind, room.id, room.seed, room) : "hewn";
@@ -42,8 +43,8 @@ export function Audio() {
   }, [playing, rouse, biome]);
 
   useEffect(() => {
-    if (playing) ambience.setAir(BIOME[biome].air);
-  }, [playing, biome]);
+    if (playing) ambience.setAir(flowing ? "drip" : BIOME[biome].air);
+  }, [playing, biome, flowing]);
 
   /**
    * The score, which follows the run rather than the room.
@@ -81,6 +82,8 @@ export function Audio() {
       bus.on("shrineKept", () => sfx.shrineKept()),
       bus.on("bombBurst", () => sfx.boom()),
       bus.on("secretRevealed", () => sfx.unlock2()),
+      bus.on("sluiceOpened", () => sfx.sluice()),
+      bus.on("waterCacheTaken", () => sfx.gem()),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("fragmentRead", () => sfx.named()),

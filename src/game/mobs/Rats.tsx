@@ -11,6 +11,7 @@ import { sideOf } from "../systems/bearing";
 import { wardenAt } from "../warden/position";
 import { patchAt, steerAround, type Patch } from "../warden/steer";
 import { GROUND_Y, RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
+import { floorHeightAt } from "../worldbuilding/elevation";
 import type { Spot } from "./ambient";
 
 interface Rat {
@@ -147,7 +148,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       }
       const step = Math.min(speed * delta, 0.5);
       [rat.x, rat.z] = roomStep(room, rat.x, rat.z, dx * step, dz * step, 0.5);
-      g.position.set(rat.x, GROUND_Y + 0.02 + Math.abs(Math.sin(t * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
+      g.position.set(rat.x, floorHeightAt(room, rat.x, rat.z) + 0.02 + Math.abs(Math.sin(t * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
       if (dx !== 0 || dz !== 0) g.rotation.y = Math.atan2(dx, dz);
       // What it ran into: a snare is sprung for nothing, the spikes are the end of it.
       const standing = patchAt(hazards, rat.x, rat.z);

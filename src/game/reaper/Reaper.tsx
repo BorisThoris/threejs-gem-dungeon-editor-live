@@ -9,6 +9,7 @@ import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { GROUND_Y, REAPER_MAX_STEP, REAPER_SPEED, REAPER_TOUCH_RADIUS } from "../world";
 import { reaperAt } from "./position";
+import { floorHeightAt } from "../worldbuilding/elevation";
 
 /**
  * The Reaper, in the room the player is standing in - which is the only
@@ -54,8 +55,8 @@ export function Reaper({ room }: { room: Room }) {
     }
     const t = runClock(run);
     const stalled = reaperStalled(run);
-    g.position.y = stalled ? GROUND_Y + 0.1 + Math.sin(t * 18) * 0.03
-      : GROUND_Y + 0.3 + Math.sin(t * 1.1) * 0.12;
+    g.position.y = floorHeightAt(room, g.position.x, g.position.z) + (stalled ? 0.1 + Math.sin(t * 18) * 0.03
+      : 0.3 + Math.sin(t * 1.1) * 0.12);
 
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;

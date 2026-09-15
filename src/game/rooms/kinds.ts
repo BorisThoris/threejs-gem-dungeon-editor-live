@@ -6,6 +6,7 @@ import { DIRS, DIR_STEP } from "../dungeon/types";
 import { createRng } from "../rng";
 import { reservedAnchorsFor } from "./anchors";
 import { authoredProps } from "./templates";
+import { floorRiseAt } from "../worldbuilding/elevation";
 import type { Room, RoomKind } from "../dungeon/types";
 
 export interface RoomKindProps {
@@ -91,8 +92,9 @@ export function gemFor(room: Room, seed: number): Vec3 | null {
   const across = (rng() < 0.5 ? -1 : 1) * corridorWidth(room, gallery) * 0.18;
   const along = doorReach(room, gallery) - 2;
   const shift = corridorOffset(room, gallery);
-  return [axis.x * along + axis.z * across + (axis.x ? 0 : shift), gem[1],
-    axis.z * along + axis.x * across + (axis.x ? shift : 0)];
+  const x = axis.x * along + axis.z * across + (axis.x ? 0 : shift);
+  const z = axis.z * along + axis.x * across + (axis.x ? shift : 0);
+  return [x, gem[1] + floorRiseAt(room, x, z), z];
 }
 
 /**

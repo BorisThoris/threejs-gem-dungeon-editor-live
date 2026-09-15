@@ -11,6 +11,7 @@ import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
 import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
+import { floorHeightAt } from "../worldbuilding/elevation";
 import { patchAt, steerInRoom, type Patch } from "../warden/steer";
 import {
   CUTPURSE_SPEED,
@@ -111,7 +112,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const distance = Math.hypot(dx, dz) || 1;
     g.rotation.y = Math.atan2(dx, dz);
     // It runs rather than drifts: a fast, low scurry with the body dipping.
-    g.position.y = GROUND_Y + 0.02 + Math.abs(Math.sin(t * 14)) * 0.06;
+    g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.abs(Math.sin(t * 14)) * 0.06;
 
     if (import.meta.env.DEV) {
       const w = window as unknown as { __thief?: Record<string, number | string> };

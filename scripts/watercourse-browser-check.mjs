@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
+import { chromium } from "playwright-core";
+
+mkdirSync("output/world-review", { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox"] });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const errors = [];
+  page.on("pageerror", e => errors.push(String(e)));
+  page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
+  await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5201"}/`);
+  await page.locator('[data-testid="menu-start"]').click();
+  await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
+  const fixture = await page.evaluate(async () => {
+    const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+    for (let seed = 1; seed < 100; seed++) {
+      const dungeon = generateDungeon({ seed, floor: 1 });
+      const sluice = dungeon.rooms.find(r => r.waterway?.role === "sluice");
+      const cache = dungeon.rooms.find(r => r.waterway?.role === "outfall");
+      if (sluice && cache) return { dungeon, sluice: sluice.id, cache: cache.id };
+    }
+    throw Error("No circuit generated");
+  });
+  await page.evaluate(({ dungeon }) => window.__run.setState({ dungeon, floor: 1, waterOpenedAt: null,
+    waterCacheTaken: false, wardenRoomId: null, wardenAwake: false, harrierAwake: false, reaperAwake: false,
+    thiefPhase: "away", invulnerableUntil: 1e9, visited: [] }), fixture);
+  const visit = async id => {
+    await page.evaluate(async id => {
+      const { waterStation } = await import("/src/game/worldbuilding/watercourse.ts");
+      const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
+      const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === id), station = waterStation(room);
+      window.__run.setState({ currentRoomId: id, visited: [...new Set([...s.visited, id])], transitioning: false });
+      window.__bus.emit("teleport", { position: [station.approach.x, PLAYER_SPAWN_Y, station.approach.z] });
+      window.__bus.emit("lookSet", { yaw: station.yaw, pitch: 0.12 });
+    }, id);
+    await page.waitForFunction(id => window.__watercourse?.roomId === id, id);
+    await page.waitForTimeout(800);
+    await page.evaluate(() => {
+      window.__bus.emit("lookSet", { yaw: window.__watercourse.station.yaw, pitch: 0.12 });
+    });
+    await page.waitForTimeout(150);
+  };
+  await visit(fixture.cache);
+  const initialGems = await page.evaluate(() => window.__run.getState().gems);
+  await page.keyboard.press("KeyE");
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), initialGems, "submerged cache cannot be looted");
+  assert.equal(await page.locator('[data-water-role="sluice"]').count(), 0, "unvisited valve is not revealed on the map");
+  await visit(fixture.sluice);
+  await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
+  await page.waitForTimeout(120);
+  await page.evaluate(() => window.__run.getState().operateWaterway());
+  assert.equal(await page.evaluate(() => window.__run.getState().waterOpenedAt), null, "valve cannot be operated remotely");
+  await visit(fixture.sluice);
+  await page.screenshot({ path: "output/world-review/sluice-before.png" });
+  await page.evaluate(() => { window.__run.getState().pause(); window.__run.getState().operateWaterway(); });
+  assert.equal(await page.evaluate(() => window.__run.getState().waterOpenedAt), null, "paused controls are guarded");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__run.getState().waterOpenedAt !== null);
+  assert.ok(await page.evaluate(async () => {
+    const din = await import("/src/game/din/din.ts");
+    return din.snapshot(window.__run.getState().currentRoomId).some(s => s.source === "sluiceOpened" && s.tags.includes("loud") && s.tags.includes("metal"));
+  }), "operating the mechanism creates a real noise signal");
+  await page.waitForTimeout(700);
+  const pausedLevel = await page.evaluate(async () => {
+    const { waterLevel } = await import("/src/game/worldbuilding/watercourse.ts");
+    const { runClock } = await import("/src/game/state/run.ts");
+    window.__run.getState().pause(); const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
+  });
+  await page.waitForTimeout(1100);
+  const still = await page.evaluate(async () => {
+    const { waterLevel } = await import("/src/game/worldbuilding/watercourse.ts");
+    const { runClock } = await import("/src/game/state/run.ts");
+    const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
+  });
+  assert.equal(still, pausedLevel, "drainage freezes while paused");
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.waitForFunction(() => window.__watercourse?.drained);
+  await visit(fixture.cache);
+  await page.waitForFunction(() => window.__watercourse?.drained);
+  await page.screenshot({ path: "output/world-review/reliquary-drained.png" });
+  const before = await page.evaluate(() => window.__run.getState().gems);
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__run.getState().waterCacheTaken);
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "dry cache pays two gems");
+  await page.keyboard.press("KeyE");
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "cache pays only once");
+  await visit(fixture.sluice);
+  assert.equal(await page.evaluate(() => window.__watercourse.drained), true, "drainage persists on revisit");
+  await page.evaluate(() => {
+    const s = window.__run.getState();
+    window.__run.setState({ currentRoomId: s.dungeon.endId, transitioning: true });
+    window.__run.getState().roomReady(s.dungeon.endId);
+  });
+  await page.waitForFunction(() => window.__run.getState().floor === 2);
+  assert.deepEqual(await page.evaluate(() => [window.__run.getState().waterOpenedAt, window.__run.getState().waterCacheTaken]), [null, false], "descent resets circuit state");
+  await page.evaluate(() => window.__run.setState({ waterOpenedAt: 3, waterCacheTaken: true }));
+  await page.evaluate(() => window.__run.getState().startRun(72));
+  assert.deepEqual(await page.evaluate(() => [window.__run.getState().waterOpenedAt, window.__run.getState().waterCacheTaken]), [null, false], "new run resets circuit state");
+  assert.deepEqual(errors, [], "no browser or shader errors");
+  console.log("PASS watercourse: keyboard operation, proximity guard, noise signal, sealed/dry cache, pause, revisits, one-time reward, map privacy, descent and new-run reset");
+} finally { await browser.close(); }

@@ -17,18 +17,17 @@ try {
   for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "bone", "circle", "hexagon", "triangle", "diamond"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
-      const { look } = await import("/src/game/input/look.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
         const dungeon = generateDungeon({ seed, floor: 2 });
-        const room = dungeon.rooms.find(r => r.biome === wanted || r.shape === wanted);
+        const room = dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
         window.__run.setState({ dungeon, floor: 2, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
           thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9 });
-        bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, 0] });
-        look.yaw = -0.65; look.pitch = -0.16;
+        bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, wanted === "gallery" ? -room.size / 2 + 3 : 0] });
+        bus.emit("lookSet", { yaw: wanted === "gallery" ? 0 : -0.65, pitch: -0.16 });
         return { roomId: room.id, shape: room.shape, biome: room.biome, district: room.district, size: room.size, seed };
       }
       return null;

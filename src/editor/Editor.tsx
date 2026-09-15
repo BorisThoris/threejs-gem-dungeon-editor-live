@@ -6,11 +6,13 @@ import { Inspector } from "./Inspector";
 import { Mosaic } from "./Mosaic";
 import { Painter } from "./Painter";
 import { RoomBuilder } from "./RoomBuilder";
+import { WorldAtlas } from "./WorldAtlas";
 import { shell, tab, topbar } from "./styles";
 
-type Tab = "rooms" | "props" | "surfaces" | "mosaic";
+type Tab = "rooms" | "props" | "surfaces" | "mosaic" | "world";
 
 const TABS: { id: Tab; title: string }[] = [
+  { id: "world", title: "WORLD" },
   { id: "rooms", title: "ROOMS" },
   { id: "props", title: "PROPS" },
   { id: "surfaces", title: "SURFACES" },
@@ -47,6 +49,7 @@ export default function Editor() {
           <p>Build connected districts. Water and roots collect in beds; worked stone follows courses. Keep door lanes clear, reserve puzzle anchors, and give hidden rooms a readable wall clue.</p>
         </details>
         {current === "rooms" && <RoomBuilder />}
+        {current === "world" && <WorldAtlas />}
         {current === "props" && <Inspector />}
         {current === "surfaces" && <Painter />}
         {current === "mosaic" && <Mosaic />}

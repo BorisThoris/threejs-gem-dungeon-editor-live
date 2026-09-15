@@ -8,6 +8,7 @@ import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { WISP_LEAD, WISP_SPEED } from "../world";
 import { wispAt, wispTargetFor } from "./lamplighter";
+import { floorRiseAt } from "../worldbuilding/elevation";
 
 /**
  * The lamplighter wisp, in the room the player is in, while their light
@@ -63,7 +64,7 @@ export function Wisp({ room }: { room: Room }) {
         p.z += (dz / left) * step;
       }
     }
-    g.position.set(p.x, 1.6 + Math.sin(t * 2.3) * 0.15, p.z);
+    g.position.set(p.x, floorRiseAt(room, p.x, p.z) + 1.6 + Math.sin(t * 2.3) * 0.15, p.z);
     // Its hum, from where it waits: the way it lights is the way it sounds.
     sfx.wispHum(1 - Math.hypot(cam.x - p.x, cam.z - p.z) / (WISP_LEAD * 2.5), sideOf(p.x - cam.x, p.z - cam.z));
     wispAt.x = p.x;

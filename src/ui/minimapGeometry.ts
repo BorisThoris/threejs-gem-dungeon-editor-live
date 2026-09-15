@@ -1,5 +1,6 @@
 import { doorReach, floorRects, wallEdges } from "../game/dungeon/footprint";
 import { DIRS, type Room } from "../game/dungeon/types";
+import { terracesFor, terracePoint } from "../game/worldbuilding/elevation";
 
 /** Fit the real floor inside a graph cell, keeping the chamber at its centre. */
 export function minimapFootprint(room: Room, cell: number) {
@@ -18,5 +19,12 @@ export function minimapFootprint(room: Room, cell: number) {
     return `M ${point(e.x - dx, e.z - dz)} L ${point(e.x + dx, e.z + dz)}`;
   }).join(" ");
   const doors = Object.fromEntries(DIRS.map((dir) => [dir, doorReach(room, dir) * scale]));
-  return { floor, walls, doors };
+  const terraces = terracesFor(room).map(t => {
+    const corners = [[t.rampEnd, -t.width / 2], [t.end, -t.width / 2], [t.end, t.width / 2], [t.rampEnd, t.width / 2]];
+    return corners.map(([along, across], i) => {
+      const [x, , z] = terracePoint(t, along, across, 0);
+      return `${i ? "L" : "M"} ${point(x, z)}`;
+    }).join(" ") + " Z";
+  }).join(" ");
+  return { floor, walls, doors, terraces };
 }

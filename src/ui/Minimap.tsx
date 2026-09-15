@@ -167,6 +167,7 @@ export function Minimap() {
       isRoost: r.id === roostSeen,
       isKept: r.id === keeperKeeps,
       marked: marks.includes(r.id),
+      waterLandmark: seen.has(r.id) && r.waterway && r.waterway.role !== "channel" ? r.waterway.role : null,
       /**
        * The map no longer knows where the Warden is or which rooms still
        * hold a gem. Both were SUBSTITUTES for knowing rather than
@@ -248,6 +249,8 @@ export function Minimap() {
                   <g data-testid="map-room-footprint" data-room-id={c.id}>
                     <path d={c.footprint.floor}
                       fill={c.state === "here" ? colors.accent : "#3a3f4b"} />
+                    {c.footprint.terraces && <path data-testid="map-terrace" d={c.footprint.terraces}
+                      fill={c.state === "here" ? "#8a6339" : "#927754"} stroke="#d0b477" strokeWidth={0.6} />}
                     <path d={c.footprint.walls} fill="none"
                       stroke={c.isExit || c.isVault ? colors.gold : colors.line}
                       strokeWidth={c.isExit || c.isVault ? 2.5 : 1}
@@ -270,6 +273,10 @@ export function Minimap() {
                     marked because they are carrying the rod that writes
                     such things down. Never a room they have not been in:
                     the offer saves the bomb, not the noticing. */}
+                {c.waterLandmark && <text data-testid="map-water-landmark" data-water-role={c.waterLandmark}
+                  x={cell * 0.25} y={-cell * 0.2} textAnchor="middle" fontSize={8} fill={c.state === "here" ? onAccent : "#a6c9bf"}>
+                  {c.waterLandmark === "sluice" ? "⚙" : "◇"}
+                </text>}
                 {c.felt && (
                   <circle
                     data-testid="map-felt"

@@ -41,6 +41,9 @@ import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
 import { Blocks, CorridorDetails } from "./CorridorDetails";
+import { Watercourse } from "../worldbuilding/Waterworks";
+import { Architecture } from "../worldbuilding/Architecture";
+import { Terraces } from "../worldbuilding/Terraces";
 import type { CorridorBlock } from "./corridorPattern";
 import { Terrain } from "./Terrain";
 
@@ -320,7 +323,10 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       </mesh>
 
       <Walls room={room} color={tint.wall} />
+      <Architecture room={room} />
       <Terrain room={room} />
+      <Terraces room={room} />
+      {room.waterway && <Watercourse room={room} />}
       <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do

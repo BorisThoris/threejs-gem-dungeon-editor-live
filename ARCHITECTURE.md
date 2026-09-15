@@ -13,14 +13,38 @@ assignment. `dungeon/footprint.ts` defines the actual block-cut room outline,
 including round and polygonal chambers, door collars and shifted galleries;
 walls, collisions, navigation and the minimap all use it.
 
+`worldbuilding/watercourse.ts` owns the optional watercourse: its directed door
+route, shallow channel geometry, safe wall anchors and drainage curve. The run
+store owns opening time and the one-time reliquary reward. The renderer, wet
+footstep sounds and world atlas read those facts. Mechanisms use the existing
+interaction system; turning a sluice advertises a loud metal signal through
+Din, so listeners react without learning a new special-case object name.
+The editor's World tab inspects the full generated graph and room blueprints;
+the player's minimap remembers only visited waterworks landmarks.
+
+The ongoing expansion is tracked in [The inhabited dungeon](docs/WORLD_EXPANSION.md).
+
+`worldbuilding/identity.ts` names the nine building identities and their three
+traditions. `structuralPattern.ts` fits their overhead bays to the same floor
+union used by collision; `furnishing.ts` places their work areas on the normal
+room's validated anchor rings. Authored layouts keep control of their props.
+`mobs/croakerHabitat.ts` derives clear channel-to-refuge routes for native toads.
+Their movement reads the existing drain time rather than keeping a second
+environment clock, so pauses and revisits cannot restart the migration.
+
+`worldbuilding/elevation.ts` owns raised gallery surfaces. `Terraces.tsx` feeds
+the same wedge vertices to rendering and physics; moving creatures, rewards,
+dropped devices and effects sample its height. Full-width ramps connect the
+landings to the chamber while travel doorways retain their shared floor datum.
+
 Every bug the previous tree had in its last month was the same bug: two
 modules with different opinions about one fact. Five different ideas of
 where the floor was. Doors placed from one room size and spawns from another.
 Two stores that both claimed the player's stats. So:
 
 - Geometry lives in `src/game/world.ts`. The ground plane, the capsule, the
-  spawn height, the door width, the interact radius. Nothing else defines a
-  height.
+  spawn height, the door width, the interact radius. Room-specific floor rises
+  live in `worldbuilding/elevation.ts` and are sampled rather than copied.
 - Everything that changes with depth is one table in the same file,
   `floorRules(floor)`: how big a floor is generated, how long it leaves you
   alone before the Warden wakes, how roused it already is when you arrive,

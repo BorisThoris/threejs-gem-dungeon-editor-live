@@ -1,5 +1,6 @@
 import { shapeFits } from "./layout";
 import { assignDistricts } from "../rooms/districts";
+import { assignWatercourse } from "../worldbuilding/watercourse";
 import { createRng, pick, shuffle } from "../rng";
 import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
@@ -397,6 +398,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   }
 
   assignDistricts(rooms, "start", endId, floor);
+  assignWatercourse(rooms, "start", vault?.id ?? null);
   return {
     seed,
     rooms,

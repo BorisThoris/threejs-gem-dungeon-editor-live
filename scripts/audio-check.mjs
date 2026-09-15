@@ -175,9 +175,8 @@ const browser = await chromium.launch({
   executablePath: CHROMIUM,
   args: [
     "--no-sandbox",
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
+    ...(process.platform !== "win32" || process.env.SOFTWARE_GL === "1"
+      ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : []),
     // Headless has no speakers and a suspended context makes no samples.
     "--autoplay-policy=no-user-gesture-required",
     "--disable-background-timer-throttling",
@@ -266,6 +265,7 @@ const CUES = [
   ["keeperClank", 900, []],
   ["keeperSwing", 500, [0.4]],
   ["splash", 500, [0.3]],
+  ["sluice", 2000, []],
 ];
 
 /**

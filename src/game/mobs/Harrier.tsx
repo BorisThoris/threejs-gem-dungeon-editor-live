@@ -14,7 +14,8 @@ import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { barKey } from "../warden/bars";
 import { patchAt, steerInRoom } from "../warden/steer";
-import { FLIGHT_HEIGHT, GROUND_Y, HARRIER_MAX_STEP, HARRIER_SPEED, HARRIER_TOUCH_RADIUS } from "../world";
+import { FLIGHT_HEIGHT, HARRIER_MAX_STEP, HARRIER_SPEED, HARRIER_TOUCH_RADIUS } from "../world";
+import { floorRiseAt, floorHeightAt } from "../worldbuilding/elevation";
 import { BODIES, bitesFor, obstaclesFor } from "./body";
 import { harrierAt, harrierEntryFor, harrierRoostFor } from "./harrierRoost";
 
@@ -138,7 +139,7 @@ export function Harrier({ room }: { room: Room }) {
     }
     if (arrivedAt.current === null) arrivedAt.current = now;
     if (now - arrivedAt.current < HARRIER_ENTRY_GRACE_S) {
-      g.position.set(p.x, FLIGHT_HEIGHT, p.z);
+      g.position.set(p.x, FLIGHT_HEIGHT + floorRiseAt(room, p.x, p.z), p.z);
       tell.current = 0;
       report();
       return;
@@ -146,7 +147,7 @@ export function Harrier({ room }: { room: Room }) {
 
     if (down) {
       // On the floor, twitching. The floor decides what happens to it here.
-      g.position.set(p.x, GROUND_Y + 0.22 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
+      g.position.set(p.x, floorHeightAt(room, p.x, p.z) + 0.22 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
       g.rotation.z = Math.PI / 2 + Math.sin(t * 9) * 0.1;
       if (patchAt(bites, p.x, p.z)) run.slayHarrier();
       report();
@@ -173,7 +174,7 @@ export function Harrier({ room }: { room: Room }) {
     }
     if (windingAt.current !== null && tell.current < 1) {
       // Hover and spread the wings before committing. Walking back cancels the dive.
-      g.position.set(p.x, FLIGHT_HEIGHT + Math.sin(t * 12) * 0.1, p.z);
+      g.position.set(p.x, FLIGHT_HEIGHT + floorRiseAt(room, p.x, p.z) + Math.sin(t * 12) * 0.1, p.z);
       g.rotation.x = -tell.current * 0.65;
       g.children[1].rotation.z = 0.35 + tell.current * 0.6;
       g.children[2].rotation.z = -0.35 - tell.current * 0.6;
@@ -190,7 +191,7 @@ export function Harrier({ room }: { room: Room }) {
     const dive = Math.max(0, Math.min(1, 1 - distance / 4));
     g.rotation.x = -dive * 0.45;
     const y = FLIGHT_HEIGHT - (FLIGHT_HEIGHT - 1.4) * dive + Math.sin(t * 6) * 0.12;
-    g.position.set(p.x, y, p.z);
+    g.position.set(p.x, y + floorRiseAt(room, p.x, p.z), p.z);
     const wings = g.children;
     for (let i = 1; i < wings.length && i <= 2; i++) wings[i].rotation.z = (i === 1 ? 1 : -1) * Math.sin(t * 14) * 0.7;
     report();

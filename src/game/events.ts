@@ -21,6 +21,8 @@ export interface PuzzleRequest {
 }
 
 export interface BusEvents {
+  sluiceOpened: { roomId: string; x: number; z: number };
+  waterCacheTaken: { roomId: string };
   runStarted: undefined;
   runWon: undefined;
   /** The floor's Warden has woken, in this room. */

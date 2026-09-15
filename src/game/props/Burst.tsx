@@ -4,6 +4,7 @@ import { Object3D, type Group, type InstancedMesh, type Mesh, type MeshBasicMate
 
 import { bus } from "../events";
 import { useRun } from "../state/run";
+import { floorHeightAt } from "../worldbuilding/elevation";
 import { BOMB_RADIUS, BURST_EMBERS, BURST_EMBER_S, BURST_LIGHT, BURST_LIGHT_S, GROUND_Y, MAX_FRAME_S } from "../world";
 
 /**
@@ -79,7 +80,9 @@ export function Burst() {
       return;
     }
     g.visible = true;
-    g.position.set(s.x, GROUND_Y, s.z);
+    const run = useRun.getState();
+    const room = run.dungeon?.rooms.find(r => r.id === run.currentRoomId);
+    g.position.set(s.x, room ? floorHeightAt(room, s.x, s.z) : GROUND_Y, s.z);
     const l = light.current;
     const glow = Math.max(0, 1 - t / BURST_LIGHT_S) * BURST_LIGHT;
     if (l) l.intensity = glow;

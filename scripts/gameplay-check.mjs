@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/")
 const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
-  "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world",
+  "dungeon/generate", "dungeon/layout", "dungeon/footprint", "dungeon/types", "world", "worldbuilding/elevation",
   "player/combat", "traps/placement", "rooms/kinds", "rooms/placements", "rooms/templates", "props/specs", "warden/steer", "dungeon/arrival", "mobs/body", "mobs/ambient", "rooms/corridorPattern", "sentry/placement", "keeper/posts",
 ].map((f) => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
@@ -459,6 +459,11 @@ try {
   await page.waitForFunction((reach) => window.__playerDebug.z < -reach + 1, galleryFixture.reach, { timeout: 20000 });
   await page.waitForTimeout(1500);
   await page.keyboard.up("KeyW");
+  const landingY = await page.evaluate(() => window.__playerDebug.y);
+  const galleryRoom = galleryFixture.dungeon.rooms.find(r => r.id === galleryFixture.roomId);
+  const terrace = L.terracesFor(galleryRoom).find(t => t.dir === "north");
+  assert.ok(terrace && Math.abs(landingY - L.PLAYER_REST_Y - terrace.height) < 0.15,
+    `physical ramp reaches its raised landing: ${landingY}`);
   assert.ok(await page.evaluate(({ reach, roomId }) => window.__playerDebug.z > -reach
     && window.__run.getState().currentRoomId === roomId, galleryFixture),
     "gallery end wall stops the player without room travel");
@@ -480,6 +485,13 @@ try {
   assert.equal(await page.evaluate((roomId) => window.__run.getState().collectGem(roomId), galleryFixture.roomId), false,
     "a gallery gem remains the room's single reward and cannot be collected twice");
   console.log("PASS physical gallery gem pickup and single room reward");
+  await page.keyboard.down("KeyS");
+  await page.waitForFunction(half => window.__playerDebug.z > -half + 1, galleryFixture.half, { timeout: 20000 });
+  await page.keyboard.up("KeyS");
+  await page.waitForTimeout(500);
+  assert.ok(Math.abs(await page.evaluate(() => window.__playerDebug.y) - L.PLAYER_REST_Y) < 0.15,
+    "walking down the ramp returns to the chamber floor");
+  console.log("PASS real ramp ascent, elevated reward and descent to the chamber floor");
   let sightFixture;
   for (let seed = 1; seed <= 300 && !sightFixture; seed++) {
     const dungeon = L.generateDungeon({ seed, floor: 3 });
@@ -681,18 +693,22 @@ try {
   const bombHost = bombDungeon.rooms.find((r) => Object.values(r.links).includes(bombDungeon.endId));
   await page.evaluate(({ dungeon, roomId }) => window.__run.setState({ dungeon, currentRoomId: roomId,
     floor: 3, transitioning: true, enteredBy: null, satchel: ["bomb"],
-    wardenRoomId: null, harrierAwake: false, reaperAwake: false, thiefPhase: "away", alarm: 0 }),
+    wardenRoomId: null, harrierAwake: false, harrierSlain: true, reaperAwake: false, thiefPhase: "away", alarm: 0 }),
   { dungeon: bombDungeon, roomId: bombHost.id });
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
   await page.waitForTimeout(150);
   await page.keyboard.press("Digit1");
   await page.waitForFunction(() => window.__derived.bombs().length === 1);
-  const pausedFuse = await page.evaluate((half) => {
-    window.__bus.emit("teleport", { position: [half - 1, 1.5, half - 1] });
+  // Stay on the actual polygon floor: a square corner can be outside this
+  // room and falling out of it would teleport the player back onto the bomb.
+  const escapeInset = (L.inscribedRadius(bombHost) - 1) / Math.SQRT2;
+  assert.ok(L.insideRoom(bombHost, escapeInset, escapeInset, 0.5), "blast escape fixture is inside the real room");
+  const pausedFuse = await page.evaluate((inset) => {
+    window.__bus.emit("teleport", { position: [inset, 1.5, inset] });
     window.__run.getState().pause();
     return window.__derived.bombs()[0].fuseAt - window.__derived.clock();
-  }, bombHost.size / 2);
+  }, escapeInset);
   await page.waitForTimeout(3200);
   const heldFuse = await page.evaluate(() => window.__derived.bombs()[0].fuseAt - window.__derived.clock());
   assert.ok(Math.abs(heldFuse - pausedFuse) < 0.02, "pause preserves the remaining bomb fuse");

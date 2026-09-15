@@ -3,6 +3,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
 import { generateDungeon } from "../dungeon/generate";
+import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
+import { roomSegmentClear } from "../dungeon/footprint";
 import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
@@ -146,6 +148,9 @@ export interface Guess {
 }
 
 export interface RunState {
+  waterOpenedAt: number | null;
+  waterCacheTaken: boolean;
+  operateWaterway: () => void;
   phase: Phase;
   paused: boolean;
   dungeon: Dungeon | null;
@@ -803,6 +808,8 @@ export const useRun = create<RunState>()(
     phase: "menu",
     paused: false,
     dungeon: null,
+    waterOpenedAt: null,
+    waterCacheTaken: false,
     floor: 1,
     runSeed: 0,
     roomsSeen: 0,
@@ -895,6 +902,24 @@ export const useRun = create<RunState>()(
     startedAt: 0,
     endedAt: 0,
 
+    operateWaterway: () => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !room?.waterway || room.waterway.role === "channel") return;
+      const station = waterStation(room);
+      if (!station || Math.hypot(playerAt.x - station.approach.x, playerAt.z - station.approach.z) > 2 ||
+        !roomSegmentClear(room, playerAt.x, playerAt.z, station.approach.x, station.approach.z, 0.2)) return;
+      if (room.waterway.role === "sluice") {
+        if (s.waterOpenedAt !== null) return;
+        set({ waterOpenedAt: runClock(s) });
+        bus.emit("sluiceOpened", { roomId: room.id, x: station.x, z: station.z });
+        bus.emit("notice", "The sluice groans open. Follow the bronze channel arrows to the drained reliquary.");
+      } else if (!s.waterCacheTaken && waterLevel(s.waterOpenedAt, runClock(s)) === 0) {
+        set({ waterCacheTaken: true, gems: s.gems + WATER_CACHE_GEMS, gemsTotal: s.gemsTotal + WATER_CACHE_GEMS });
+        bus.emit("waterCacheTaken", { roomId: room.id });
+        bus.emit("notice", `The drained reliquary yields ${WATER_CACHE_GEMS} gems.`);
+      }
+    },
+
     startRun: (seed, delverId) => {
       const floor = 1;
       const rules = floorRules(floor);
@@ -921,6 +946,8 @@ export const useRun = create<RunState>()(
         dungeon,
         floor,
         runSeed: dungeon.seed,
+        waterOpenedAt: null,
+        waterCacheTaken: false,
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
@@ -1178,6 +1205,8 @@ export const useRun = create<RunState>()(
           currentRoomId: dungeon.startId,
           visited: [dungeon.startId],
           roomsSeen: s.roomsSeen + 1,
+          waterOpenedAt: null,
+          waterCacheTaken: false,
           gemRooms: [],
           cleared: [],
           failed: [],

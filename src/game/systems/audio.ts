@@ -765,6 +765,14 @@ export const ambience = {
 };
 
 export const sfx = {
+  /** A heavy wheel ratchets, then water pulls through a stone throat. */
+  sluice() {
+    tone(92, 0.6, "sawtooth", 0.14, 48);
+    [0, 140, 310, 510].forEach(ms => later(ms, () => {
+      noiseBurst(0.09, 0.12, 740); tone(180, 0.11, "square", 0.07, 105);
+    }));
+    later(620, () => noiseBurst(1.3, 0.22, 430));
+  },
   /** Picking up a gem: a bright two-note chime. */
   gem() {
     tone(880, 0.12, "triangle", 0.5);
@@ -830,11 +838,16 @@ export const sfx = {
    * purpose, which is right for a sound that happens every stride, but
    * present.
    */
-  step(strong: boolean, running = false) {
+  step(strong: boolean, running = false, water = false) {
     const wobble = 0.85 + Math.random() * 0.4;
     // A run is heard by the Warden, so it had better be heard by the player
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
+    if (water) {
+      noiseBurst(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
+      tone(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
+      return;
+    }
     noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
     tone(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
   },

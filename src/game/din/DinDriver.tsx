@@ -72,6 +72,7 @@ export function DinDriver() {
         strike(kind === "grate" ? "grateDrop" : kind === "pit" ? "pitOpened" : "dartsFired", null)
       ),
       bus.on("propBroken", ({ roomId }) => strike("propBroken", roomId)),
+      bus.on("sluiceOpened", ({ roomId, x, z }) => strike("sluiceOpened", roomId, x, z)),
       bus.on("snareSprung", () => strike("snareSprung", null)),
       bus.on("batsRoused", () => strike("batsRoused", null)),
       bus.on("croakersDove", ({ roomId }) => strike("splash", roomId)),
