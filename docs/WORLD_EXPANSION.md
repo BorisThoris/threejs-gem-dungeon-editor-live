@@ -699,6 +699,24 @@ also pass. The remaining performance failure is the triangle peak: 6,634 against
 hidden ancestors and respects geometry draw ranges when identifying contributors,
 so inactive particles and unused beam-buffer capacity cannot misdirect the work.
 
+Sentry warning projection now splits at changes in floor slope, rather than
+extending every gallery masonry-course edge across the whole chamber. The
+visibility polygon still follows every actual wall corner. This removes redundant
+subdivision of flat floors and landings while retaining ramp entrances and knees.
+
+Projection checks now include 72 generated watched galleries, all shifted and
+20 with rounded ends, with 266,444 interior samples checked against walls and
+physical floor height. Across 144 native render comparisons, beam triangles drop
+from 11,364 to 3,585; the mean pixel difference is below 0.00005, with sparse
+pixel differences. Native raised-gallery, pause and resume checks,
+typecheck, lint and build pass.
+
+The subsequent live sweep remains over the triangle budget at 6,708, with 72
+calls, 88 geometries and 10 textures; all other performance checks pass. This
+does not establish a reduction in the full room peak. The sweep samples moving
+actors rather than matching their poses across versions, so the controlled beam
+comparison is the evidence for this change's reduction, not the live peak.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

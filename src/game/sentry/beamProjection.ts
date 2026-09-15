@@ -16,10 +16,11 @@ export function beamProjector(room: Room) {
   };
   for (const t of terraces) {
     const step = DIR_STEP[t.dir], axis = step.x ? 0 : 1, sign = step.x || step.z;
-    for (const c of t.courses) {
-      add(axis, c.start * sign); add(axis, c.end * sign);
-      add(1 - axis, t.offset - c.width / 2); add(1 - axis, t.offset + c.width / 2);
-    }
+    // The visibility polygon already follows the gallery's side walls and
+    // stepped end. Masonry courses do not change its floor plane: only the
+    // ramp entrance and knee do. Extending every course edge across the room
+    // subdivided even the flat chamber into hundreds of redundant triangles.
+    add(axis, t.start * sign);
     add(axis, t.rampEnd * sign);
   }
   const clip = (polygon: Point[], axis: number, cut: number, sign: number): Point[] => {
