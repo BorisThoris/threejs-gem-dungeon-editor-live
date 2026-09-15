@@ -8,10 +8,12 @@ import { bus } from "../events";
 import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { CROAKER_HUSH_RADIUS, CROAKER_UNDER_S, GROUND_Y } from "../world";
+import { CROAKER_HUSH_RADIUS, CROAKER_UNDER_S } from "../world";
 import type { Spot } from "./ambient";
-import { croakerHabitats } from "./croakerHabitat";
-import { waterLevel, WATER_DRAIN_SECONDS } from "../worldbuilding/watercourse";
+import { croakerHabitats, croakerMigration } from "./croakerHabitat";
+import { waterLevel } from "../worldbuilding/watercourse";
+import { floorHeightAt } from "../worldbuilding/elevation";
+import { geo, mat } from "../props/shared";
 
 interface Croaker {
   x: number;
@@ -44,7 +46,14 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
   const groups = useRef<(Group | null)[]>([]);
   const habitats = useMemo(() => croakerHabitats(room, spots), [room, spots]);
   const toads = useMemo<Croaker[]>(
-    () => habitats.map((h, i) => ({ x: h.wet.x, z: h.wet.z, underUntil: 0, phase: i * 1.7 })),
+    () => {
+      const run = useRun.getState(), migration = croakerMigration(run.waterOpenedAt, runClock(run));
+      return habitats.map((h, i) => ({
+        x: h.wet.x + (h.refuge.x - h.wet.x) * migration,
+        z: h.wet.z + (h.refuge.z - h.wet.z) * migration,
+        underUntil: 0, phase: i * 1.7,
+      }));
+    },
     [habitats]
   );
   const heard = useMemo(() => din.emptyArrival(), []);
@@ -69,7 +78,7 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
     const drained = !!room.waterway && waterLevel(run.waterOpenedAt, now) < 0.2;
     // Migration follows the drain's persistent time, so a revisit shows the
     // same animal locations and pausing cannot advance the retreat.
-    const migration = drained && run.waterOpenedAt !== null ? Math.min(1, Math.max(0, (now - run.waterOpenedAt - WATER_DRAIN_SECONDS * 0.8) / 5)) : 0;
+    const migration = croakerMigration(run.waterOpenedAt, now);
     toads.forEach((c, i) => {
       const habitat = habitats[i];
       c.x = habitat.wet.x + (habitat.refuge.x - habitat.wet.x) * migration;
@@ -102,7 +111,7 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
         const breath = hushed ? 0 : Math.max(0, Math.sin(t * 2.6 + c.phase));
         g.scale.set(1 + breath * 0.25, 1 + breath * 0.45, 1 + breath * 0.25);
         const hopping = habitats[i].followsChannel && migration > 0 && migration < 1;
-        g.position.set(c.x, GROUND_Y + 0.06 + (hopping ? Math.abs(Math.sin(now * 8 + c.phase)) * 0.13 : 0), c.z);
+        g.position.set(c.x, floorHeightAt(room, c.x, c.z) + 0.06 + (hopping ? Math.abs(Math.sin(now * 8 + c.phase)) * 0.13 : 0), c.z);
       }
       if (!under && !hushed && (!habitats[i].followsChannel || !drained)) {
         singing++;
@@ -138,28 +147,20 @@ export function Croakers({ room, spots }: { room: Room; spots: Spot[] }) {
 
   return (
     <>
-      {spots.map((s, i) => (
+      {toads.map((s, i) => (
         <group
           key={i}
+          name={`croaker-${i}`}
           ref={(el) => {
             groups.current[i] = el;
           }}
-          position={[s.x, GROUND_Y + 0.06, s.z]}
+          position={[s.x, floorHeightAt(room, s.x, s.z) + 0.06, s.z]}
         >
           {/* A squat dark-green body and a paler throat, low to the water. */}
-          <mesh>
-            <sphereGeometry args={[0.13, 8, 6]} />
-            <meshStandardMaterial color="#3e5a3a" roughness={1} />
-          </mesh>
-          <mesh position={[0, -0.03, 0.09]}>
-            <sphereGeometry args={[0.08, 8, 6]} />
-            <meshStandardMaterial color="#b9c19a" roughness={1} />
-          </mesh>
+          <mesh geometry={geo("sphere", 0.13, 8, 6)} material={mat({ color: "#3e5a3a", roughness: 1 })} />
+          <mesh position={[0, -0.03, 0.09]} geometry={geo("sphere", 0.08, 8, 6)} material={mat({ color: "#b9c19a", roughness: 1 })} />
           {[-0.06, 0.06].map((x) => (
-            <mesh key={x} position={[x, 0.09, 0.07]}>
-              <sphereGeometry args={[0.025, 6, 6]} />
-              <meshBasicMaterial color="#e6d27a" />
-            </mesh>
+            <mesh key={x} position={[x, 0.09, 0.07]} geometry={geo("sphere", 0.025, 6, 6)} material={mat({ color: "#e6d27a", basic: true })} />
           ))}
         </group>
       ))}

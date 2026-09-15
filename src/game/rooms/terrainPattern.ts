@@ -1,13 +1,17 @@
-import { floorReach, type Room } from "../dungeon/types";
+import { DIRS, DIR_STEP, floorReach, type Room } from "../dungeon/types";
+import { corridorOffset, wingWidthAt } from "../dungeon/footprint";
+import { floorHeightAt, terracesFor } from "../worldbuilding/elevation";
 import { GROUND_Y } from "../world";
 import { biomeIdFor } from "./biomes";
 import type { CorridorBlock } from "./corridorPattern";
+
+export interface TerrainTile extends CorridorBlock { slope?: [number, number] }
 
 /** A continuous field of worn paving and deposits, not independent prop rolls.
  * All relief is paint-depth: no hidden collider or extra navigation obstacle. */
 export function terrainFor(room: Room) {
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
-  const paving: CorridorBlock[] = [], deposits: CorridorBlock[] = [];
+  const paving: TerrainTile[] = [], deposits: TerrainTile[] = [];
   const step = 1.5;
   const half = room.size / 2;
   for (let x = -half + step; x < half - 0.5; x += step) {
@@ -24,6 +28,38 @@ export function terrainFor(room: Room) {
         size: [deposit ? 1.46 : 1.32, 0.012, deposit ? 1.46 : 1.32] };
       if (deposit) deposits.push(block);
       else if (lane || !organic && Math.floor((z + half) / step) % 3 === 0) paving.push(block);
+    }
+  }
+  // Passages use the same world-space deposit field, with a clear central
+  // paving lane. Split tiles at the ramp's knee so no face floats above it.
+  for (const dir of DIRS) {
+    const length = room.wings?.[dir] ?? 0;
+    const axis = DIR_STEP[dir], shift = corridorOffset(room, dir);
+    const terrace = terracesFor(room).find(t => t.dir === dir);
+    const point = (along: number, across: number) => axis.x
+      ? [axis.x * along, shift + across] : [shift + across, axis.z * along];
+    for (let along = half + step; along < half + length - 0.75; along += step) {
+      const available = Math.min(wingWidthAt(room, dir, along - 0.73), wingWidthAt(room, dir, along + 0.73));
+      for (let across = 0; across + 0.73 < available / 2 - 0.15; across += step) for (const side of across === 0 ? [1] : [-1, 1]) {
+        const [x, z] = point(along, across * side);
+        const organic = biome === "mossy" || biome === "flooded" || biome === "fungal";
+        const field = Math.sin(x * 0.23 + room.seed % 13) + Math.cos(z * 0.31 + room.grid.z);
+        const onRamp = terrace && along - 0.73 < terrace.rampEnd;
+        const deposit = across > 1.7 && (organic ? field > -0.25 : across > available * 0.3) && !(biome === "flooded" && onRamp);
+        if (!deposit && across > 1.7 && organic) continue;
+        const size = deposit ? 1.46 : 1.32, low = along - size / 2, high = along + size / 2;
+        const cuts = [low, ...(terrace && terrace.rampEnd > low && terrace.rampEnd < high ? [terrace.rampEnd] : []), high];
+        for (let i = 1; i < cuts.length; i++) {
+          const [px, pz] = point((cuts[i - 1] + cuts[i]) / 2, across * side);
+          const w = axis.x ? cuts[i] - cuts[i - 1] : size, d = axis.x ? size : cuts[i] - cuts[i - 1];
+          const slope: [number, number] = [
+            (floorHeightAt(room, px + w / 2, pz) - floorHeightAt(room, px - w / 2, pz)) / w,
+            (floorHeightAt(room, px, pz + d / 2) - floorHeightAt(room, px, pz - d / 2)) / d,
+          ];
+          const tile: TerrainTile = { position: [px, floorHeightAt(room, px, pz) + (deposit ? 0.024 : 0.019), pz], size: [w, 0.012, d], slope };
+          (deposit ? deposits : paving).push(tile);
+        }
+      }
     }
   }
   return { paving, deposits, biome };

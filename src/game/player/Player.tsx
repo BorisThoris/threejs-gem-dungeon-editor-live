@@ -15,7 +15,7 @@ import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
 import { readTouch } from "../input/touch";
 import { canControl, speedNow, runClock, useRun } from "../state/run";
-import { waterUnderfoot } from "../worldbuilding/watercourse";
+import { footingAt } from "../rooms/underfoot";
 import { playerAt } from "./where";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
@@ -248,7 +248,7 @@ export function Player() {
       gait.nextStep = gait.distance + STRIDE;
       gait.strong = !gait.strong;
       const room = run.dungeon?.rooms.find(r => r.id === run.currentRoomId);
-      sfx.step(gait.strong, running, !!room && waterUnderfoot(room, playerAt.x, playerAt.z, run.waterOpenedAt, runClock(run)));
+      sfx.step(gait.strong, running, room ? footingAt(room, playerAt.x, playerAt.z, run.waterOpenedAt, runClock(run)) : "stone");
     }
   });
 

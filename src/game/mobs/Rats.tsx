@@ -1,6 +1,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
+import { geo, mat } from "../props/shared";
 
 import { type Room } from "../dungeon/types";
 import { roomStep } from "../dungeon/footprint";
@@ -9,8 +10,8 @@ import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { wardenAt } from "../warden/position";
-import { patchAt, steerAround, type Patch } from "../warden/steer";
-import { GROUND_Y, RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
+import { patchAt, steerAround, steerInRoom, type Patch } from "../warden/steer";
+import { RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
 import { floorHeightAt } from "../worldbuilding/elevation";
 import type { Spot } from "./ambient";
 
@@ -55,7 +56,6 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
     const run = useRun.getState();
     if (!canControl(run)) return;
     const cam = state.camera.position;
-    const t = state.clock.elapsedTime;
     const now = runClock(run);
     /**
      * Their row: [blast] at 0.10 and [loud] at 0.45. Read once a frame for
@@ -119,7 +119,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       if (threatened && startled && !sourceHere && td >= RAT_FLEE_RADIUS) {
         // Bolting for the hole from a noise it cannot place, and staying
         // in it: a rat at its hole with nothing near it has nowhere to run.
-        const h = hd > 0.3 ? steerAround(rat.x, rat.z, rat.home.x, rat.home.z, obstacles, 0) : { dx: 0, dz: 0 };
+        const h = hd > 0.3 ? steerInRoom(room, rat.x, rat.z, rat.home.x, rat.home.z, obstacles, 0, 0.5) : { dx: 0, dz: 0 };
         dx = h.dx;
         dz = h.dz;
         speed = RAT_SPEED;
@@ -137,18 +137,20 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
         // way back - across whatever was set down there while it was out.
         if (hd > 0.3 && (hd > 1.5 || rat.homing)) {
           rat.homing = hd > 0.3;
-          dx = hx / hd;
-          dz = hz / hd;
+          const heading = steerInRoom(room, rat.x, rat.z, rat.home.x, rat.home.z, obstacles, 0, 0.5);
+          dx = heading.dx;
+          dz = heading.dz;
         } else {
           rat.homing = false;
-          dx = Math.cos(rat.wander);
-          dz = Math.sin(rat.wander);
+          const heading = steerAround(rat.x, rat.z, rat.x + Math.cos(rat.wander), rat.z + Math.sin(rat.wander), obstacles, 0);
+          dx = heading.dx;
+          dz = heading.dz;
         }
         speed = RAT_SPEED * 0.25;
       }
       const step = Math.min(speed * delta, 0.5);
       [rat.x, rat.z] = roomStep(room, rat.x, rat.z, dx * step, dz * step, 0.5);
-      g.position.set(rat.x, floorHeightAt(room, rat.x, rat.z) + 0.02 + Math.abs(Math.sin(t * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
+      g.position.set(rat.x, floorHeightAt(room, rat.x, rat.z) + 0.02 + Math.abs(Math.sin(now * 14 + i)) * (threatened ? 0.04 : 0.01), rat.z);
       if (dx !== 0 || dz !== 0) g.rotation.y = Math.atan2(dx, dz);
       // What it ran into: a snare is sprung for nothing, the spikes are the end of it.
       const standing = patchAt(hazards, rat.x, rat.z);
@@ -158,8 +160,8 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       }
     });
     if (import.meta.env.DEV) {
-      (window as unknown as { __rats?: { x: number; z: number; room: string; dead: boolean; startled: boolean }[] }).__rats = rats.map(
-        (r) => ({ x: r.x, z: r.z, room: room.id, dead: r.dead, startled: now < r.spookedUntil })
+      (window as unknown as { __rats?: { x: number; z: number; room: string; dead: boolean; startled: boolean; homing: boolean; fleeing: boolean }[] }).__rats = rats.map(
+        (r) => ({ x: r.x, z: r.z, room: room.id, dead: r.dead, startled: now < r.spookedUntil, homing: r.homing, fleeing: r.fleeing })
       );
     }
   });
@@ -169,19 +171,14 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
       {holes.map((h, i) => (
         <group
           key={i}
+          name={`rat-${i}`}
           ref={(el) => {
             groups.current[i] = el;
           }}
-          position={[h.x, GROUND_Y, h.z]}
+          position={[h.x, floorHeightAt(room, h.x, h.z), h.z]}
         >
-          <mesh position={[0, 0.08, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.07, 0.22, 3, 6]} />
-            <meshStandardMaterial color="#3a3128" roughness={1} />
-          </mesh>
-          <mesh position={[0, 0.06, -0.28]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.008, 0.02, 0.3, 4]} />
-            <meshStandardMaterial color="#5a4a3a" roughness={1} />
-          </mesh>
+          <mesh position={[0, 0.08, 0]} rotation={[Math.PI / 2, 0, 0]} geometry={geo("capsule", 0.07, 0.22, 3, 6)} material={mat({ color: "#3a3128", roughness: 1 })} />
+          <mesh position={[0, 0.06, -0.28]} rotation={[Math.PI / 2, 0, 0]} geometry={geo("cylinder", 0.008, 0.02, 0.3, 4)} material={mat({ color: "#5a4a3a", roughness: 1 })} />
         </group>
       ))}
     </>

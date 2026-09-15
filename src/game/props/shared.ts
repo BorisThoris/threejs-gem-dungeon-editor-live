@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  CapsuleGeometry,
   CircleGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -43,6 +44,7 @@ const materials = new Map<string, Material>();
 
 export type GeometryKind =
   | "box"
+  | "capsule"
   | "circle"
   | "cone"
   | "cylinder"
@@ -54,6 +56,7 @@ export type GeometryKind =
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   box: (a) => new BoxGeometry(...(a as [number, number, number])),
+  capsule: (a) => new CapsuleGeometry(...(a as [number, number, number, number])),
   circle: (a) => new CircleGeometry(...(a as [number, number])),
   cone: (a) => new ConeGeometry(...(a as [number, number, number])),
   cylinder: (a) => new CylinderGeometry(...(a as [number, number, number, number])),

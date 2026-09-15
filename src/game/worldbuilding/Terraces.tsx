@@ -1,12 +1,10 @@
 import { useEffect, useMemo } from "react";
-import { BufferAttribute, BufferGeometry } from "three";
+import { BufferAttribute, BufferGeometry, type Texture } from "three";
 import { RigidBody, TrimeshCollider } from "@react-three/rapier";
 import type { Room } from "../dungeon/types";
-import { useSurface } from "../textures/registry";
 import { terracesFor, terraceMesh, type Terrace } from "./elevation";
-import { PLACE_IDENTITIES, identityFor } from "./identity";
 
-function RaisedLanding({ terrace, color }: { terrace: Terrace; color: string }) {
+function RaisedLanding({ terrace, color, map }: { terrace: Terrace; color: string; map: Texture }) {
   const data = useMemo(() => terraceMesh(terrace), [terrace]);
   const geometry = useMemo(() => {
     const g = new BufferGeometry();
@@ -14,22 +12,20 @@ function RaisedLanding({ terrace, color }: { terrace: Terrace; color: string }) 
     g.setIndex(new BufferAttribute(data.indices, 1));
     const uv = new Float32Array(data.positions.length / 3 * 2);
     for (let i = 0; i < data.positions.length / 3; i++) {
-      uv[i * 2] = data.positions[i * 3] / 3; uv[i * 2 + 1] = data.positions[i * 3 + 2] / 3;
+      uv[i * 2] = data.positions[i * 3] / 4; uv[i * 2 + 1] = -data.positions[i * 3 + 2] / 4;
     }
     g.setAttribute("uv", new BufferAttribute(uv, 2));
     g.computeVertexNormals();
     return g;
   }, [data]);
   useEffect(() => () => geometry.dispose(), [geometry]);
-  const surface = useSurface("stone", 1);
   return <>
-    <mesh geometry={geometry} receiveShadow><meshStandardMaterial color={color} map={surface} roughness={0.95} flatShading /></mesh>
+    <mesh name={`raised-floor-${terrace.dir}`} geometry={geometry} receiveShadow><meshStandardMaterial color={color} map={map} roughness={0.95} flatShading /></mesh>
     <RigidBody type="fixed" colliders={false}><TrimeshCollider args={[data.positions, data.indices]} /></RigidBody>
   </>;
 }
 
-export function Terraces({ room }: { room: Room }) {
+export function Terraces({ room, color, map }: { room: Room; color: string; map: Texture }) {
   const terraces = useMemo(() => terracesFor(room), [room]);
-  const color = PLACE_IDENTITIES[identityFor(room)].structure;
-  return <group>{terraces.map(t => <RaisedLanding key={t.dir} terrace={t} color={color} />)}</group>;
+  return <group>{terraces.map(t => <RaisedLanding key={t.dir} terrace={t} color={color} map={map} />)}</group>;
 }

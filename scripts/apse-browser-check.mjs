@@ -33,6 +33,37 @@ try {
       throw Error(`No ${dir} apse`);
     }, dir);
     await page.waitForTimeout(900);
+    assert.ok(await page.evaluate(dir => {
+      const floor = window.__scene.getObjectByName("continuous-floor");
+      const ramp = window.__scene.getObjectByName(`raised-floor-${dir}`);
+      if (!floor || !ramp || floor.material.map !== ramp.material.map || !floor.material.color.equals(ramp.material.color)) return false;
+      for (const mesh of [floor, ramp]) {
+        const { position, uv } = mesh.geometry.attributes;
+        for (let i = 0; i < position.count; i++)
+          if (Math.abs(uv.getX(i) - position.getX(i) / 4) > 1e-6 || Math.abs(uv.getY(i) + position.getZ(i) / 4) > 1e-6) return false;
+      }
+      return true;
+    }, dir), "chamber and raised gallery share their material and continuous world-space texture coordinates");
+    assert.ok(await page.evaluate(async () => {
+      const { floorHeightAt } = await import("/src/game/worldbuilding/elevation.ts");
+      const state = window.__run.getState(), room = state.dungeon.rooms.find(r => r.id === state.currentRoomId);
+      let raised = 0;
+      for (const name of ["terrain-paving", "terrain-deposits"]) {
+        const mesh = window.__scene.getObjectByName(name); if (!mesh) continue;
+        const a = mesh.instanceMatrix.array;
+        for (let i = 0; i < mesh.count; i++) {
+          const k = i * 16;
+          if (a[k + 13] > 0.2) raised++;
+          for (const u of [-0.5, 0.5]) for (const v of [-0.5, 0.5]) {
+            const x = a[k] * u + a[k + 4] * v + a[k + 12], z = a[k + 2] * u + a[k + 6] * v + a[k + 14];
+            const y = a[k + 1] * u + a[k + 5] * v + a[k + 13];
+            const gap = y - floorHeightAt(room, x, z);
+            if (gap < 0.015 || gap > 0.04) return false;
+          }
+        }
+      }
+      return raised > 0;
+    }), "rendered gallery tiles follow the physical ramp at every corner");
     const lampState = () => page.evaluate(() => {
       const group = window.__scene.getObjectByName("passage-lamps");
       return group.children.filter(o => o.isPointLight).map(o => ({ position: o.position.toArray(), intensity: o.intensity }));

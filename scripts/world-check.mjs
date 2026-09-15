@@ -12,11 +12,17 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
+  "rooms/floorSurfacePattern",
+  "rooms/underfoot",
   "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+assert.equal(L.croakerMigration(null, 100), 0, "unopened channels keep toads at their feeding positions");
+assert.equal(L.croakerMigration(10, 14), 0, "migration waits for the channel to fall");
+assert.ok(Math.abs(L.croakerMigration(10, 17.3) - 0.5) < 1e-8, "mid-retreat position derives from saved drain time");
+assert.equal(L.croakerMigration(10, 30), 1, "completed retreat remains at the refuge");
 for (const dir of L.DIRS) for (const incoming of [false, true]) {
   const room = { waterway: incoming ? { upstream: dir } : { downstream: dir } };
   const step = L.DIR_STEP[dir], sign = incoming ? -1 : 1;
@@ -122,6 +128,17 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(seen.size, members.length, "each district is connected through real doors");
   }
   for (const r of d.rooms) {
+    const physicalFloor = L.floorRects(r), surface = L.floorSurfaceRects(r);
+    const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.width / 2, b.x + b.width / 2) - Math.max(a.x - a.width / 2, b.x - b.width / 2)) *
+      Math.max(0, Math.min(a.z + a.depth / 2, b.z + b.depth / 2) - Math.max(a.z - a.depth / 2, b.z - b.depth / 2));
+    for (let i = 0; i < surface.length; i++) {
+      for (let j = i + 1; j < surface.length; j++) assert.ok(overlapArea(surface[i], surface[j]) < 1e-8, "floor surface never draws an overlapping collar twice");
+      const s = surface[i];
+      for (const dx of [-0.49999, 0, 0.49999]) for (const dz of [-0.49999, 0, 0.49999])
+        assert.ok(physicalFloor.some(p => Math.abs(s.x + dx * s.width - p.x) <= p.width / 2 + 1e-8 && Math.abs(s.z + dz * s.depth - p.z) <= p.depth / 2 + 1e-8), "visible floor stays within physical floor");
+    }
+    for (const p of physicalFloor) assert.ok(Math.abs(surface.reduce((sum, s) => sum + overlapArea(p, s), 0) - p.width * p.depth) < 1e-6,
+      "every physical floor rectangle is completely covered by the visible surface");
     rooms++;
     const courses = L.wallCoursesFor(r);
     for (const b of [...courses.rails, ...courses.caps]) {
@@ -227,6 +244,8 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "structural spans follow the true floor below them");
     }
     for (const habitat of L.croakerHabitats(r, L.croakersFor(r, r.seed))) {
+      if (habitat.refugeBed) assert.ok(L.terrainFor(r).deposits.some(tile =>
+        Math.abs(tile.position[0] - habitat.refuge.x) < 1e-6 && Math.abs(tile.position[2] - habitat.refuge.z) < 1e-6), "toad bed refuges occupy visible terrain deposits");
       if (habitat.followsChannel) migratingToads++;
       assert.ok(L.insideRoom(r, habitat.wet.x, habitat.wet.z, 0.25) && L.insideRoom(r, habitat.refuge.x, habitat.refuge.z, 0.25));
       assert.ok(L.roomSegmentClear(r, habitat.wet.x, habitat.wet.z, habitat.refuge.x, habitat.refuge.z, 0.25), "toad migration never crosses a room wall");
@@ -244,12 +263,19 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     if (r.secret) assert.equal(byId.get(r.secret.to).district, r.district, "secrets inherit host history");
     for (const id of Object.values(r.links)) { links++; if (byId.get(id).district === r.district) matching++; }
     const terrain = L.terrainFor(r);
+    for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
+    for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
+      r.biome === "flooded" ? "water" : ["mossy", "fungal"].includes(r.biome) ? "soft" : "stone", "independent terrain beds retain their material after channel drainage");
+    if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
-      assert.ok(b.position[1] + b.size[1] / 2 < L.GROUND_Y + 0.04, "terrain cannot become a movement obstacle");
+      const lift = b.position[1] + b.size[1] / 2 - L.floorHeightAt(r, b.position[0], b.position[2]);
+      assert.ok(lift > 0 && lift < 0.04, "terrain remains paint-depth above the real floor");
       for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2]) {
         const x = b.position[0] + dx, z = b.position[2] + dz;
-        assert.ok(Math.hypot(x, z) <= L.floorReach(r, Math.atan2(z, x)) + 0.001, "whole tiles stay on shaped floors");
+        assert.ok(L.floorRects(r).some(rect => Math.abs(x - rect.x) <= rect.width / 2 + 0.001 && Math.abs(z - rect.z) <= rect.depth / 2 + 0.001), "whole tiles stay on shaped floors and galleries");
+        const y = b.position[1] + b.size[1] / 2 + dx * (b.slope?.[0] ?? 0) + dz * (b.slope?.[1] ?? 0);
+        assert.ok(Math.abs(y - L.floorHeightAt(r, x, z) - lift) < 1e-6, "tile corners follow the ramp without floating or clipping");
       }
     }
   }

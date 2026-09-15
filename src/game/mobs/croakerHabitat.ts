@@ -2,10 +2,16 @@ import type { Room } from "../dungeon/types";
 import { insideRoom, roomSegmentClear } from "../dungeon/footprint";
 import { placementsFor } from "../rooms/placements";
 import { PROP_SPECS } from "../props/specs";
-import { watercourseBlocks } from "../worldbuilding/watercourse";
+import { watercourseBlocks, WATER_DRAIN_SECONDS } from "../worldbuilding/watercourse";
 import type { Spot } from "./ambient";
+import { terrainFor } from "../rooms/terrainPattern";
 
-export interface CroakerHabitat { wet: Spot; refuge: Spot; followsChannel: boolean }
+export interface CroakerHabitat { wet: Spot; refuge: Spot; followsChannel: boolean; refugeBed: boolean }
+
+/** Persistent drain time determines location even before the first active frame. */
+export function croakerMigration(openedAt: number | null, now: number): number {
+  return openedAt === null ? 0 : Math.min(1, Math.max(0, (now - openedAt - WATER_DRAIN_SECONDS * 0.8) / 5));
+}
 
 /** Native toads congregate at a live channel, with a clear route back to their
  * existing damp wall refuge when it drains. A blocked route keeps the original
@@ -14,7 +20,18 @@ export function croakerHabitats(room: Room, spots: Spot[]): CroakerHabitat[] {
   const channels = watercourseBlocks(room);
   const obstacles = placementsFor(room, room.seed).filter(p => PROP_SPECS[p.kind].solid);
   const used: Spot[] = [];
-  return spots.map(refuge => {
+  const sheltered: Spot[] = [];
+  const terrain = terrainFor(room);
+  const beds = ["flooded", "mossy", "fungal"].includes(terrain.biome) ? terrain.deposits
+    .filter(tile => !tile.slope?.some(slope => Math.abs(slope) > 1e-6))
+    .map(tile => ({ x: tile.position[0], z: tile.position[2] })) : [];
+  return spots.map(original => {
+    const safeBeds = beds.filter(bed => insideRoom(room, bed.x, bed.z, 0.3) &&
+      !sheltered.some(other => Math.hypot(bed.x - other.x, bed.z - other.z) < 1.5) &&
+      !obstacles.some(p => Math.hypot(bed.x - p.x, bed.z - p.z) < PROP_SPECS[p.kind].radius * (p.scale ?? 1) + 0.3));
+    safeBeds.sort((a, b) => Math.hypot(a.x - original.x, a.z - original.z) - Math.hypot(b.x - original.x, b.z - original.z));
+    const refuge = safeBeds[0] ?? original;
+    sheltered.push(refuge);
     const candidates: Spot[] = [];
     for (const channel of channels) {
       const horizontal = channel.size[0] > channel.size[2];
@@ -35,6 +52,6 @@ export function croakerHabitats(room: Room, spots: Spot[]): CroakerHabitat[] {
     candidates.sort((a, b) => Math.hypot(a.x - refuge.x, a.z - refuge.z) - Math.hypot(b.x - refuge.x, b.z - refuge.z));
     const wet = candidates[0] ?? refuge;
     used.push(wet);
-    return { wet, refuge, followsChannel: candidates.length > 0 };
+    return { wet, refuge, followsChannel: candidates.length > 0, refugeBed: safeBeds.length > 0 };
   });
 }

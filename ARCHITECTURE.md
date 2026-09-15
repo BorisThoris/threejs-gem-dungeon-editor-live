@@ -56,6 +56,19 @@ the same wedge vertices to rendering and physics; moving creatures, rewards,
 dropped devices and effects sample its height. Full-width ramps connect the
 landings to the chamber while travel doorways retain their shared floor datum.
 
+`rooms/floorSurfacePattern.ts` partitions the physical floor union into
+non-overlapping strips for `FloorSurface.tsx`. World-space UVs continue across
+chambers, door collars and terraces. `terrainPattern.ts` supplies paving and
+deposit tiles, including slope-aligned gallery pieces split at ramp knees.
+`rooms/underfoot.ts` samples those visible surfaces and live channels for
+footstep timbre; room-level Din propagation keeps its existing owner.
+Toad refuges prefer clear, flat deposit beds and sample the shared floor height.
+
+The atlas projects the same terrain tiles and uses one ground probe for plan
+and gallery section. Its drainage timeline reads `waterLevel` and
+`croakerMigration`, so the authoring preview does not maintain a second set of
+water or retreat timings.
+
 `dungeon/explorationLoops.ts` closes useful shared-wall detours before stairs,
 vaults and secrets are assigned. `worldbuilding/districtThresholds.ts` reads
 real open links to label both sides of district boundaries. No map-only link

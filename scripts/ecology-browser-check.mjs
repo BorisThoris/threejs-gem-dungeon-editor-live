@@ -38,13 +38,28 @@ try {
   await page.waitForFunction(() => window.__croakers.sheltered === window.__croakers.total);
   const after = await page.evaluate(() => ({ ...window.__croakers }));
   assert.equal(after.singing, 0, "dry channel loses its chorus");
-  assert.ok(Math.hypot(after.x - fixture.habitats[0].refuge.x, after.z - fixture.habitats[0].refuge.z) < 0.01, "toads reach their real wall refuge");
+  assert.ok(Math.hypot(after.x - fixture.habitats[0].refuge.x, after.z - fixture.habitats[0].refuge.z) < 0.01, "toads reach their real damp refuge");
+  assert.ok(await page.evaluate(async habitats => {
+    const { floorHeightAt } = await import("/src/game/worldbuilding/elevation.ts");
+    const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
+    return habitats.every((h, i) => {
+      const body = window.__scene.getObjectByName(`croaker-${i}`);
+      return body && Math.abs(body.position.y - floorHeightAt(room, h.refuge.x, h.refuge.z) - 0.06) < 0.01;
+    });
+  }, fixture.habitats), "sheltered toads stand on the actual refuge floor");
   await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => window.__croakers.under), 0, "sheltered toads cannot dive into a dry channel");
-  await page.evaluate(() => window.__run.setState({ currentRoomId: window.__run.getState().dungeon.startId }));
+  await page.evaluate(() => { window.__run.getState().pause(); window.__run.setState({ currentRoomId: window.__run.getState().dungeon.startId }); });
   await page.waitForTimeout(300);
   await page.evaluate(id => window.__run.setState({ currentRoomId: id }), fixture.room.id);
+  await page.waitForFunction(() => !!window.__scene.getObjectByName("croaker-0"));
+  const pausedBody = await page.evaluate(() => window.__scene.getObjectByName("croaker-0").position.toArray());
+  assert.ok(Math.hypot(pausedBody[0] - fixture.habitats[0].refuge.x, pausedBody[2] - fixture.habitats[0].refuge.z) < 0.01,
+    "paused remount starts at the persistent refuge without waiting for an active frame");
+  await page.waitForTimeout(400);
+  assert.deepEqual(await page.evaluate(() => window.__scene.getObjectByName("croaker-0").position.toArray()), pausedBody, "paused refuge stays still");
+  await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(id => window.__croakers?.room === id && window.__croakers.sheltered === window.__croakers.total, fixture.room.id);
   assert.ok(Math.hypot((await page.evaluate(() => window.__croakers.x)) - fixture.habitats[0].refuge.x, (await page.evaluate(() => window.__croakers.z)) - fixture.habitats[0].refuge.z) < 0.01, "revisiting preserves habitat relocation");
   assert.deepEqual(errors, []);

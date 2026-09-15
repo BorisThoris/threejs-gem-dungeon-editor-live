@@ -47,8 +47,8 @@ shape hidden until explored or mapped.
 Generation enlarges unusual chambers when the furnishings and corner braziers
 need room, with sizes up to 40 metres available in the builder. Authored layouts
 retain explicit dimensions and are validated against their revised anchors.
-Walls, floors and ceilings are instanced, so a stepped outline does not cost
-a draw call per block. Region growth remains based on real door connectivity,
+Walls and ceilings are instanced; the floor uses one continuous surface mesh,
+so a stepped outline does not cost a draw call per block. Region growth remains based on real door connectivity,
 while the minimap fits each footprint inside its graph cell.
 
 Pursuers use cached routes when groups of props or hazards block the direct

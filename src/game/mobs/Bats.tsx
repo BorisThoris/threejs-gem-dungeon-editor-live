@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
+import { geo, mat } from "../props/shared";
 
 import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
@@ -130,12 +131,9 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   });
 
   return (
-    <group ref={group} position={[at.x, WALL_HEIGHT - 0.6, at.z]}>
+    <group name="ambient-bats" ref={group} position={[at.x, WALL_HEIGHT - 0.6, at.z]}>
       {Array.from({ length: FLOCK }, (_, i) => (
-        <mesh key={i}>
-          <coneGeometry args={[0.12, 0.28, 3]} />
-          <meshStandardMaterial color="#14101a" roughness={1} />
-        </mesh>
+        <mesh key={i} geometry={geo("cone", 0.12, 0.28, 3)} material={mat({ color: "#14101a", roughness: 1 })} />
       ))}
     </group>
   );

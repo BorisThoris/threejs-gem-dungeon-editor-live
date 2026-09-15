@@ -217,6 +217,122 @@ the sign backing geometry. The repeated 78-room sample peaks at 78 draws,
 and retained-memory checks pass. The existing 72/4,800/88 rendering limits
 still fail; these measurements are improvement evidence, not a green suite.
 
+Bookshelf batching brings the next complete 78-room sample to 76 draw calls;
+triangles and live geometry still peak at 9,232 and 116. Revisit and memory
+checks pass, while the three rendering limits remain exceeded.
+
+Paint-depth terrain now draws only its upward-facing surface, preserving the
+original top elevation, tile footprint, texture orientation and stepped water
+shader. Each tile uses two triangles instead of twelve; the narrow decorative
+side faces are omitted. Native browser reviews cover fungal, flooded and hewn
+materials, with build, typecheck and lint passing. This is an 83% reduction in
+terrain tile geometry, not a claim that the full room budget now passes; the
+complete sample above predates this terrain change. The subsequent complete
+sample measures 76 calls, 8,112 triangles and 116 geometries, with revisit and
+retained-memory checks passing. The same three rendering limits still fail.
+
+The base floor now renders a disjoint union of the physical floor rectangles.
+Overlapping door collars no longer submit coplanar slab faces, and the separate
+polygon overlay has been removed. Chamber, collar and passage surfaces share
+world-space texture coordinates at one repeat per four metres. Raised terraces
+retain their existing shared mesh and collision. Coverage checks prove complete
+physical-floor coverage without overlapping surface strips across all 4,539
+generated rooms. Native browser checks pass ramp ascent/descent and tapered
+wall collision in all four apse directions; three biome renders, build,
+typecheck and lint pass. The full performance sample above predates this base
+floor change.
+
+Raised galleries now inherit the chamber floor's biome material and use the
+same world-space texture direction and four-metre repeat. This removes the
+separate stone treatment and reversed texture alignment at ramp mouths.
+The apse browser check verifies shared texture identity, matching color and
+vertex-level texture coordinates in all four directions, alongside real
+ascent, descent and tapered wall collision. Build, typecheck and lint pass.
+
+The atlas gallery section now supports inspecting a position along the ramp
+and landing. Its marker reports the actual floor height, changing floor width,
+ceiling clearance and room coordinates through the shared terrain functions.
+The slider supports keyboard input. Browser review checks mouth and landing
+values, keyboard stepping, direction changes and new seed/depth selections;
+build, typecheck and lint pass.
+
+The plan probe and gallery section share one inspected position. Selecting a
+gallery in the plan chooses its section, and moving the section slider updates
+the plan and material readout. A chamber selection hides the gallery marker.
+Browser checks verify matching coordinates in both directions and center reset.
+
+Paving and deposit fields now extend into passages and raised galleries.
+The passage center stays paved; side beds use the chamber's continuous field.
+Tiles follow the actual slope and split at ramp-to-landing transitions, while
+curved end widths limit the available bed. Flooded deposits stay off slopes.
+The existing two terrain batches render both chamber and gallery pieces.
+World checks cover 464,219 pieces across 4,539 rooms, checking every corner
+against the floor footprint and height. Native apse tests also inspect actual
+instance transforms before walking up and down all four orientations. Build,
+typecheck, lint and the browser checks pass. The broader rendering budgets
+still need a new full sample after the floor and gallery additions.
+
+That full 78-room sample now peaks at 75 calls, 8,160 triangles and 110 live
+geometries, with 10 textures. Revisit, sprint and retained-memory checks pass;
+the three rendering budgets still fail. These figures include the continuous
+base floor and the extended gallery terrain.
+
+The atlas now projects the actual generated paving and deposit tiles into the
+room blueprint. Its terrain toggle is independent of habitats and lamps, and
+water, furnishings and interaction markers remain above the terrain layer.
+Browser review compares tile counts for every room across three depths, checks
+the toggle and captures a gallery blueprint. Build, typecheck and lint pass.
+
+Footsteps now sample the visible terrain under the player. Stone paving,
+soft growth, timber, iron and water have distinct procedural cues; live channel
+water covers the underlying sound and independent wet beds remain wet after
+drainage. The room's existing noise propagation rules remain in force. Terrain
+classification checks pass across 4,539 rooms, the full audio suite measures
+all new cues above its audibility threshold, and a real walking check confirms
+the transition from soft ground to paving. Build, typecheck and lint pass.
+
+Toad refuges now prefer the visible, flat damp and mossy terrain beds, with
+furniture clearance and spacing between refuges. Channel gathering still
+requires an unobstructed route to that refuge; blocked routes leave the toad
+in its independent habitat. Bodies sample the shared floor height during
+movement and at rest. The world check verifies deposit-backed refuges and
+748 clear migration routes. Browser checks pass drainage, pause, dry chorus,
+revisit persistence and rendered body height; build, typecheck and lint pass.
+Initial toad positions now use that same persistent drain clock, so entering
+a drained room while paused shows sheltered animals immediately. Browser
+checks remount the room while paused, inspect the bodies before resuming and
+verify that they remain still. The world check also covers migration timing.
+
+The atlas drainage timeline can scrub the ten seconds after opening the sluice.
+Water level, probe footing, bellcap dormancy and toad retreat use the same
+timing functions as the game. The endpoint presets remain available. Browser
+checks verify half-full water, the exact retreat midpoint, both endpoint
+positions and dormancy; build, typecheck and lint pass.
+
+The accumulated floor, terrain, habitat and sound changes pass the full
+gameplay suite on a fresh Vite server, including combat, physical galleries,
+minimap privacy, pursuit, paused encounters and Keeper escape. The older server
+failed a Harrier retreat assertion; the fresh run passed without combat changes.
+Toads, rats and bats now share their identical body geometries and materials
+through the existing prop registry. A two-lap browser check observes 98 mesh
+visits using six geometries and six materials, with no shared-resource disposal.
+Build, typecheck and lint pass after that resource change. No new full rendering
+budget measurement is claimed for it.
+
+Calm and noise-triggered rat returns now use room-aware obstacle routing;
+wandering also checks furniture instead of choosing an unchecked heading.
+Their body bob uses the paused run clock and initial placement samples floor
+height. A native browser sequence scatters a rat, observes its homeward path
+clear of furniture, and verifies arrival at its hole. Build, typecheck and
+lint pass for the movement change.
+
+The atlas ground probe reports floor height and footstep material at a selected
+plan position. It supports pointer selection, arrow-key movement and a center
+reset, stays within the floor union, and resets when the selected room changes.
+Its material reading responds to the flowing/drained preview. Browser checks
+cover physical landing height, drainage, keyboard controls and seed reset;
+build, typecheck and lint pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

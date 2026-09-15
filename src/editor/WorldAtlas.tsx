@@ -6,7 +6,7 @@ import { DISTRICTS } from "../game/rooms/districts";
 import { KIND_TITLE } from "../game/rooms/kinds";
 import { placementsFor } from "../game/rooms/placements";
 import { PROP_SPECS } from "../game/props/specs";
-import { watercourseBlocks, waterStation, WATERWAY_NAMES } from "../game/worldbuilding/watercourse";
+import { watercourseBlocks, waterStation, waterLevel, WATERWAY_NAMES } from "../game/worldbuilding/watercourse";
 import { minimapFootprint } from "../ui/minimapGeometry";
 import { colors } from "../ui/overlay";
 import { button, field, label, panel, small } from "./styles";
@@ -15,10 +15,16 @@ import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
 import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
 import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from "../game/worldbuilding/bellcaps";
 import { croakersFor } from "../game/mobs/ambient";
-import { croakerHabitats } from "../game/mobs/croakerHabitat";
+import { croakerHabitats, croakerMigration } from "../game/mobs/croakerHabitat";
 import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
 import { passageLampsFor } from "../game/worldbuilding/passageLighting";
 import { GallerySection } from "./GallerySection";
+import { TerrainBlueprint } from "./TerrainBlueprint";
+import { footingAt } from "../game/rooms/underfoot";
+import { floorHeightAt } from "../game/worldbuilding/elevation";
+import { floorRects } from "../game/dungeon/footprint";
+import { GROUND_Y } from "../game/world";
+import type { Room } from "../game/dungeon/types";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
@@ -29,11 +35,25 @@ export function WorldAtlas() {
   const [seed, setSeed] = useState(72);
   const [floor, setFloor] = useState(2);
   const [selected, setSelected] = useState("start");
-  const [drained, setDrained] = useState(false);
+  const [waterPreview, setWaterPreview] = useState<"flowing" | "drained" | "timeline">("flowing");
+  const [drainSeconds, setDrainSeconds] = useState(6);
+  const previewOpened = waterPreview === "flowing" ? null : 0;
+  const previewClock = waterPreview === "drained" ? 10 : waterPreview === "timeline" ? drainSeconds : 0;
+  const level = waterLevel(previewOpened, previewClock), drained = level === 0, dormant = level <= 0.1;
+  const migration = croakerMigration(previewOpened, previewClock);
   const [ecology, setEcology] = useState(true);
   const [lighting, setLighting] = useState(true);
+  const [terrain, setTerrain] = useState(true);
+  const [probe, setProbe] = useState<{ room: Room; x: number; z: number } | null>(null);
   const dungeon = useMemo(() => generateDungeon({ seed, floor }), [seed, floor]);
   const room = dungeon.rooms.find(r => r.id === selected) ?? dungeon.rooms[0];
+  const probeX = probe?.room === room ? probe.x : 0, probeZ = probe?.room === room ? probe.z : 0;
+  const probeGround = footingAt(room, probeX, probeZ, previewOpened, previewClock);
+  const probeHeight = floorHeightAt(room, probeX, probeZ) - GROUND_Y;
+  const moveProbe = (x: number, z: number) => {
+    if (floorRects(room).some(r => Math.abs(x - r.x) <= r.width / 2 && Math.abs(z - r.z) <= r.depth / 2))
+      setProbe({ room, x, z });
+  };
   const byId = useMemo(() => new Map(dungeon.rooms.map(r => [r.id, r])), [dungeon]);
   const extent = useMemo(() => {
     const xs = dungeon.rooms.map(r => r.grid.x), zs = dungeon.rooms.map(r => r.grid.z);
@@ -124,22 +144,42 @@ export function WorldAtlas() {
         {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
-          <label style={small}>Water preview <select aria-label="Water preview" value={drained ? "drained" : "flowing"}
-            style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setDrained(e.target.value === "drained")}>
-            <option value="flowing">Flowing</option><option value="drained">Drained</option>
+          <label style={small}>Water preview <select aria-label="Water preview" value={waterPreview}
+            style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setWaterPreview(e.target.value as typeof waterPreview)}>
+            <option value="flowing">Flowing</option><option value="drained">Drained</option><option value="timeline">Drain timeline</option>
           </select></label>
           <label style={small}><input type="checkbox" checked={ecology} onChange={e => setEcology(e.target.checked)} /> Show habitats</label>
           <label style={small}><input type="checkbox" checked={lighting} onChange={e => setLighting(e.target.checked)} /> Show passage lamps</label>
+          <label style={small}><input type="checkbox" checked={terrain} onChange={e => setTerrain(e.target.checked)} /> Show terrain</label>
         </div>
+        {waterPreview === "timeline" && <label style={{ ...small, display: "block" }}>Time since opening the sluice
+          <input aria-label="Drain time" type="range" min={0} max={10} step={0.1} value={drainSeconds}
+            onChange={e => setDrainSeconds(Number(e.target.value))} style={{ width: "100%", accentColor: "#77b8bf" }} />
+          <output aria-live="polite" data-testid="atlas-drain-time">{drainSeconds.toFixed(1)} s · water {Math.round(level * 100)}% · toad retreat {Math.round(migration * 100)}%</output>
+        </label>}
         {dungeon.serviceTrail?.route.includes(room.id) && <p style={small}>{serviceTrailText(dungeon, room.id)}</p>}
-        <svg aria-label="Selected room blueprint" viewBox="-200 -200 400 400" style={{ width: "100%", maxHeight: 400, background: "#0b1012", borderRadius: 8 }}>
+        <svg aria-label="Selected room blueprint" aria-describedby="atlas-ground-probe" tabIndex={0} viewBox="-200 -200 400 400"
+          onClick={e => {
+            const transform = e.currentTarget.getScreenCTM(); if (!transform) return;
+            const point = new DOMPoint(e.clientX, e.clientY).matrixTransform(transform.inverse());
+            moveProbe(point.x / scale, point.y / scale);
+            e.currentTarget.focus();
+          }}
+          onKeyDown={e => {
+            const step = e.shiftKey ? 2 : 0.5;
+            const offset: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] };
+            if (offset[e.key]) { e.preventDefault(); moveProbe(probeX + offset[e.key][0], probeZ + offset[e.key][1]); }
+            if (e.key === "Home") { e.preventDefault(); moveProbe(0, 0); }
+          }}
+          style={{ width: "100%", maxHeight: 400, background: "#0b1012", borderRadius: 8, cursor: "crosshair" }}>
           <defs><marker id="atlas-room-flow" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto">
             <path d="M 0 0 L 5 2.5 L 0 5" fill="none" stroke="#e7c87d" />
           </marker></defs>
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
+          {terrain && <TerrainBlueprint room={room} scale={scale} />}
           {watercourseBlocks(room).map((b, i) => <rect key={i} x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
-            width={b.size[0] * scale} height={b.size[2] * scale} fill={drained ? "#354641" : "#559eac"} />)}
+            width={b.size[0] * scale} height={b.size[2] * scale} fill={drained ? "#354641" : "#559eac"} opacity={drained ? 1 : 0.35 + level * 0.65} />)}
           {[room.waterway?.upstream, room.waterway?.downstream].map((dir, i) => {
             if (!dir) return null;
             const axis = DIR_STEP[dir], distance = doorReach(room, dir), sign = i === 0 ? -1 : 1;
@@ -154,22 +194,22 @@ export function WorldAtlas() {
           {props.map((p, i) => <circle key={i} cx={p.x * scale} cy={p.z * scale} r={Math.max(2, PROP_SPECS[p.kind].radius * scale)}
             fill={PROP_SPECS[p.kind].solid ? "#706b57" : "#49583e"} opacity={0.85}><title>{PROP_SPECS[p.kind].title}</title></circle>)}
           {ecology && habitats.map((h, i) => {
-            const at = drained ? h.refuge : h.wet;
+            const at = { x: h.wet.x + (h.refuge.x - h.wet.x) * migration, z: h.wet.z + (h.refuge.z - h.wet.z) * migration };
             return <g key={`habitat-${i}`}>
               {h.followsChannel && <line x1={h.wet.x * scale} y1={h.wet.z * scale} x2={h.refuge.x * scale} y2={h.refuge.z * scale}
                 stroke="#83b3ac" strokeDasharray="2 4" opacity={0.7} />}
               <circle data-testid="atlas-toad" cx={at.x * scale} cy={at.z * scale} r={4} fill="#91c2a9">
-                <title>{h.followsChannel ? drained ? "Toad in its damp refuge; chorus hushed" : "Toad at the live channel; dotted route leads to its refuge" : "Toad in an independent damp habitat"}</title>
+                <title>{h.followsChannel ? migration === 1 ? "Toad in its damp refuge; chorus hushed" : migration > 0 ? "Toad retreating to its damp refuge; chorus hushed" : "Toad at the live channel; dotted route leads to its refuge" : "Toad in an independent damp habitat"}{h.refugeBed ? "; refuge lies in a visible damp or mossy bed" : ""}</title>
               </circle>
             </g>;
           })}
-          {ecology && colonies.map((cap, i) => <g key={`colony-${i}`} data-testid="atlas-colony" data-dormant={drained}>
-            {!drained && <circle cx={cap.x * scale} cy={cap.z * scale} r={BELLCAP_REACH * scale} fill="none" stroke="#c4c98b" strokeDasharray="3 4" opacity={0.45} />}
-            <rect x={cap.x * scale - 4} y={cap.z * scale - 4} width={8} height={8} fill={drained ? "#776c4e" : "#d0cd83"}>
-              <title>{drained ? "Dormant bellcaps" : `Bellcaps: raised light within ${BELLCAP_REACH} m causes a ${BELLCAP_WARNING}-second swelling warning`}</title>
+          {ecology && colonies.map((cap, i) => <g key={`colony-${i}`} data-testid="atlas-colony" data-dormant={dormant}>
+            {!dormant && <circle cx={cap.x * scale} cy={cap.z * scale} r={BELLCAP_REACH * scale} fill="none" stroke="#c4c98b" strokeDasharray="3 4" opacity={0.45} />}
+            <rect x={cap.x * scale - 4} y={cap.z * scale - 4} width={8} height={8} fill={dormant ? "#776c4e" : "#d0cd83"}>
+              <title>{dormant ? "Dormant bellcaps" : `Bellcaps: raised light within ${BELLCAP_REACH} m causes a ${BELLCAP_WARNING}-second swelling warning`}</title>
             </rect>
           </g>)}
-          {ecology && !drained && beetles.map((home, i) => {
+          {ecology && !dormant && beetles.map((home, i) => {
             const p = beetlePose(home, 0, 0);
             return <circle key={`beetle-${i}`} cx={p.x * scale} cy={p.z * scale} r={2} fill="#f0cc62"><title>Glow beetle feeding around living bellcaps</title></circle>;
           })}
@@ -184,12 +224,21 @@ export function WorldAtlas() {
             <circle data-testid="atlas-station" cx={station.x * scale} cy={station.z * scale} r={5} fill="#e0bf75" />
           </>}
           <circle r={3} fill="#eee0b4" />
+          <g data-testid="atlas-ground-marker" transform={`translate(${probeX * scale} ${probeZ * scale})`} pointerEvents="none">
+            <circle r={7} fill="none" stroke="#b1e5de" strokeWidth={1.5} />
+            <path d="M-11 0H-4 M4 0H11 M0-11V-4 M0 4V11" stroke="#b1e5de" strokeWidth={1.5} />
+          </g>
         </svg>
+        <output id="atlas-ground-probe" aria-live="polite" style={{ ...small, display: "block" }}>
+          Ground probe ({probeX.toFixed(1)}, {probeZ.toFixed(1)}) · floor +{probeHeight.toFixed(2)} m · {probeGround === "soft" ? "soft growth" : probeGround} footsteps.
+        </output>
+        <p style={small}>Select a floor position to inspect it. Arrow keys move the probe 0.5 m; Shift moves 2 m; Home returns to the room center.</p>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>
+        {terrain && <p style={small}>Terrain tiles show the same paving lanes and biome beds as the game, including raised galleries. Water routes and furnishings appear above them.</p>}
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
-        <GallerySection room={room} />
+        <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
         {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · pale squares: bellcaps · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
-        {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {drained
+        {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {dormant
           ? "Draining collapses the caps and prevents further spore bursts."
           : `Lower the lantern one band or retreat during the ${BELLCAP_WARNING}-second warning. Bursts carry sound through the room graph; recovery lasts ${BELLCAP_COOLDOWN} seconds.`}</p>}
         {beetles.length > 0 && <p style={small}>{beetles.length} glow beetles feed here. Their low lights reveal the bellcaps in darkness; nearby light and noise send them into cover. Dry beds keep them sheltered.</p>}

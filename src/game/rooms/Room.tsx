@@ -1,10 +1,10 @@
 import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
-import { CircleGeometry, PlaneGeometry } from "three";
+import { FloorSurface } from "./FloorSurface";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { floorRects } from "../dungeon/footprint";
-import { DIRS, halfSize, inscribedRadius, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
+import { DIRS, inscribedRadius, type Room as RoomData } from "../dungeon/types";
 import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -242,11 +242,7 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
 }
 
 export function Room({ room, seed, showCeiling = true }: RoomProps) {
-  const half = halfSize(room);
   const floors = useMemo(() => floorRects(room), [room]);
-  const slabs = useMemo(() => floors.map<CorridorBlock>(r => ({
-    position: [r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z], size: [r.width, FLOOR_THICKNESS, r.depth],
-  })), [floors]);
   const ceilings = useMemo(() => floors.map<CorridorBlock>(r => ({
     position: [r.x, GROUND_Y + WALL_HEIGHT + 0.1, r.z], size: [r.width + 0.5, 0.2, r.depth + 0.5],
   })), [floors]);
@@ -256,18 +252,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
   const tint = biomeFor(room.kind, room.id, seed, room);
   const Content = KIND_CONTENT[room.kind];
   // One tile every four units, whatever the room's size.
-  const floorSurface = useSurface(tint.surface, room.size / 4);
-
-  // The floor's outline: a flat polygon with as many sides as the shape has,
-  // built once per room and released with it.
-  const outline = useMemo(
-    () =>
-      room.shape === "square"
-        ? new PlaneGeometry(room.size, room.size)
-        : new CircleGeometry(half, SHAPE_SIDES[room.shape]),
-    [room.shape, room.size, half]
-  );
-  useEffect(() => () => outline.dispose(), [outline]);
+  const floorSurface = useSurface(tint.surface);
 
   // Tell the run the colliders exist: control is handed back only now.
   useEffect(() => {
@@ -308,8 +293,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
 
   return (
     <group>
-      {/* Solid floor slab, top face exactly at GROUND_Y. */}
-      <Blocks blocks={slabs} color={tint.floor} map={floorSurface} />
+      <FloorSurface room={room} color={tint.floor} map={floorSurface} />
       {showCeiling && <Blocks blocks={ceilings} color="#1a191d" />}
       {floors.map((r, i) => (
         <group key={`floor-${i}`}>
@@ -320,17 +304,11 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
         </group>
       ))}
 
-      {/* The shaped, tinted floor the player actually sees. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y + 0.01, 0]} receiveShadow>
-        <primitive object={outline} attach="geometry" />
-        <meshStandardMaterial color={tint.floor} map={floorSurface} roughness={0.95} />
-      </mesh>
-
       <Walls room={room} color={tint.wall} />
       <WallCourses room={room} />
       <Architecture room={room} />
       <Terrain room={room} />
-      <Terraces room={room} />
+      <Terraces room={room} color={tint.floor} map={floorSurface} />
       <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
       <DistrictLintels room={room} />
       {room.waterway && <Watercourse room={room} />}

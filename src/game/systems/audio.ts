@@ -866,14 +866,29 @@ export const sfx = {
    * purpose, which is right for a sound that happens every stride, but
    * present.
    */
-  step(strong: boolean, running = false, water = false) {
+  step(strong: boolean, running = false, surface: import("../rooms/underfoot").Footing = "stone") {
     const wobble = 0.85 + Math.random() * 0.4;
     // A run is heard by the Warden, so it had better be heard by the player
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
-    if (water) {
+    if (surface === "water") {
       noiseBurst(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
       tone(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
+      return;
+    }
+    if (surface === "soft") {
+      noiseBurst(0.11, (strong ? 0.3 : 0.22) * loud, 240 * wobble);
+      tone(60 * wobble, 0.07, "sine", (strong ? 0.2 : 0.14) * loud, 42);
+      return;
+    }
+    if (surface === "wood") {
+      noiseBurst(0.07, (strong ? 0.26 : 0.19) * loud, 560 * wobble);
+      tone(155 * wobble, 0.09, "triangle", (strong ? 0.19 : 0.13) * loud, 90);
+      return;
+    }
+    if (surface === "metal") {
+      noiseBurst(0.06, (strong ? 0.22 : 0.16) * loud, 1600 * wobble);
+      tone(420 * wobble, 0.14, "triangle", (strong ? 0.16 : 0.11) * loud, 260);
       return;
     }
     noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
