@@ -37,7 +37,7 @@ export function beamProjector(room: Room) {
   };
   return (origin: readonly number[], facing: number, output: number[]) => {
     output.length = 0;
-    let previous: Point | undefined;
+    const boundary: Point[] = [];
     const angles = Array.from({ length: 29 }, (_, i) => -SENTRY_HALF_ANGLE + i / 28 * SENTRY_HALF_ANGLE * 2);
     // Both sides of a corner are needed: visibility can change abruptly there.
     for (const edge of edges) for (const side of [-1, 1]) {
@@ -53,30 +53,40 @@ export function beamProjector(room: Room) {
       const dx = Math.sin(angle), dz = Math.cos(angle);
       const reach = roomRayReach(origin[0], origin[2], dx, dz, SENTRY_RANGE, edges);
       const point: Point = [origin[0] + dx * reach, origin[2] + dz * reach];
-      if (previous) {
-        let polygons: Point[][] = [[[origin[0], origin[2]], previous, point]];
-        for (const [axis, cut] of cuts) polygons = polygons.flatMap(p => {
-          if (!p.some(v => v[axis] < cut - 1e-8) || !p.some(v => v[axis] > cut + 1e-8)) return [p];
-          return [clip(p, axis, cut, 1), clip(p, axis, cut, -1)].filter(v => v.length >= 3);
-        });
-        for (const p of polygons) {
-          const cx = p.reduce((sum, v) => sum + v[0], 0) / p.length;
-          const cz = p.reduce((sum, v) => sum + v[1], 0) / p.length;
-          const y = floorHeightAt(room, cx, cz);
-          let sx = 0, sz = 0;
-          for (const t of terraces) {
-            const axis = DIR_STEP[t.dir], along = cx * axis.x + cz * axis.z;
-            const across = (axis.x ? cz : cx) - t.offset;
-            if (along >= t.rampEnd || !t.courses.some(c => along >= c.start && along <= c.end && Math.abs(across) <= c.width / 2)) continue;
-            sx = axis.x * t.height / (t.rampEnd - t.start);
-            sz = axis.z * t.height / (t.rampEnd - t.start);
-            break;
-          }
-          for (let j = 1; j < p.length - 1; j++) for (const v of [p[0], p[j], p[j + 1]])
-            output.push(v[0] - origin[0], y + sx * (v[0] - cx) + sz * (v[1] - cz) + BEAM_LIFT - origin[1], v[1] - origin[2]);
-        }
+      // Collinear hits describe one wall edge; extra fan spokes add no shape.
+      boundary.push(point);
+      while (boundary.length >= 3) {
+        const a = boundary[boundary.length - 3], b = boundary[boundary.length - 2], c = boundary[boundary.length - 1];
+        const dx = c[0] - a[0], dz = c[1] - a[1], length = Math.hypot(dx, dz);
+        if (length < 1e-10 || Math.abs(dx * (b[1] - a[1]) - dz * (b[0] - a[0])) > length * 1e-9) break;
+        const along = (b[0] - a[0]) * dx + (b[1] - a[1]) * dz;
+        if (along < 0 || along > length * length) break;
+        boundary.splice(boundary.length - 2, 1);
       }
-      previous = point;
+    }
+    for (let i = 1; i < boundary.length; i++) {
+      const previous = boundary[i - 1], point = boundary[i];
+      let polygons: Point[][] = [[[origin[0], origin[2]], previous, point]];
+      for (const [axis, cut] of cuts) polygons = polygons.flatMap(p => {
+        if (!p.some(v => v[axis] < cut - 1e-8) || !p.some(v => v[axis] > cut + 1e-8)) return [p];
+        return [clip(p, axis, cut, 1), clip(p, axis, cut, -1)].filter(v => v.length >= 3);
+      });
+      for (const p of polygons) {
+        const cx = p.reduce((sum, v) => sum + v[0], 0) / p.length;
+        const cz = p.reduce((sum, v) => sum + v[1], 0) / p.length;
+        const y = floorHeightAt(room, cx, cz);
+        let sx = 0, sz = 0;
+        for (const t of terraces) {
+          const axis = DIR_STEP[t.dir], along = cx * axis.x + cz * axis.z;
+          const across = (axis.x ? cz : cx) - t.offset;
+          if (along >= t.rampEnd || !t.courses.some(c => along >= c.start && along <= c.end && Math.abs(across) <= c.width / 2)) continue;
+          sx = axis.x * t.height / (t.rampEnd - t.start);
+          sz = axis.z * t.height / (t.rampEnd - t.start);
+          break;
+        }
+        for (let j = 1; j < p.length - 1; j++) for (const v of [p[0], p[j], p[j + 1]])
+          output.push(v[0] - origin[0], y + sx * (v[0] - cx) + sz * (v[1] - cz) + BEAM_LIFT - origin[1], v[1] - origin[2]);
+      }
     }
   };
 }

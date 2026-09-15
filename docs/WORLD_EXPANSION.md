@@ -499,6 +499,20 @@ their silhouettes and UVs. Service catches batch their three copper notches
 into one draw. These changes follow the performance sweep above; their full
 budget impact still needs measurement.
 
+The shared-geometry sweep completed at 73 calls, 8,166 triangles, 106 geometries
+and 10 textures. All 78 rooms were sampled; revisits, sprint memory and held
+audio passed, but the same three rendering budgets failed. These animated
+snapshots do not establish a lower overall peak from geometry sharing.
+
+Beam projection now removes redundant collinear wall hits before splitting
+at changes of floor plane. A straight wall needs one fan triangle instead of
+28. Native render comparisons across 144 generated-room views were
+pixel-identical, with 15,330 triangles reduced to 9,368 across those views.
+The surface/winding/containment check now samples 129,080 points and reaches
+140 triangles in its synthetic fixtures. The generated-room CPU probe peaks
+at 522 triangles, down from 711 before simplification. These beam-specific
+results are not a claim that the full-world budgets pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

@@ -7,6 +7,9 @@ import {join} from 'node:path';
 const bundle=join(mkdtempSync(join(tmpdir(),'sentry-projection-')), 'bundle.mjs');
 await build({stdin:{contents:`export * from './src/game/sentry/beamProjection'; export * from './src/game/worldbuilding/elevation'; export * from './src/game/dungeon/generate'; export * from './src/game/dungeon/types'; export * from './src/game/dungeon/footprint';`,resolveDir:process.cwd()},define:{'import.meta.env.DEV':'false','import.meta.env':'{}'},bundle:true,platform:'node',format:'esm',outfile:bundle});
 const L=await import(pathToFileURL(bundle));
+const flat = {...L.generateDungeon({seed:72,floor:2}).rooms[0],size:20,shape:'square',links:{},secret:undefined,wings:{}};
+const flatVertices=[];L.beamProjector(flat)([0,0,0],0,flatVertices);
+assert.equal(flatVertices.length,9,'one straight wall needs one fan triangle');
 let checked=0,maxTriangles=0,raised=0;
 for(const dir of L.DIRS)for(const shape of ['square','circle','octagon','triangle']) {
 const room={...L.generateDungeon({seed:72,floor:2}).rooms[0],size:12,shape,links:{},secret:undefined,wings:{[dir]:10},wingWidths:{[dir]:6}};
