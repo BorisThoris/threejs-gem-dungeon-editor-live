@@ -597,6 +597,11 @@ checks cover all 4,539 rooms: panels do not overlap, stay inside the old outline
 and completely cover every original slab. Typecheck, lint and build pass. The
 full rendering budget remains unresolved; these are ceiling-specific results.
 
+Secret-wall seams now pulse on the persistent run clock, including their first
+material value after mounting. The clue no longer advances while paused or
+restarts its phase on a paused room revisit. The native browser check verifies
+clock alignment, pause, remount and resume.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

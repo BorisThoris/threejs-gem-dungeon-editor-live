@@ -8,6 +8,7 @@ import { doorReach, wallEdges } from "../dungeon/footprint";
 import { Prop } from "../props/catalog";
 import { useSurface } from "../textures/registry";
 import { Blocks } from "./CorridorDetails";
+import { runClock, useRun } from "../state/run";
 import {
   DOOR_HEIGHT,
   DOOR_WIDTH,
@@ -131,14 +132,14 @@ export function Walls({ room, color }: WallsProps) {
  */
 function Crack({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
   const material = useRef<MeshStandardMaterial>(null);
-  useFrame((state) => {
+  useFrame(() => {
     const m = material.current;
-    if (m) m.emissiveIntensity = 0.35 + Math.sin(state.clock.elapsedTime * 2.6) * 0.2;
+    if (m) m.emissiveIntensity = 0.35 + Math.sin(runClock(useRun.getState()) * 2.6) * 0.2;
   });
   return (
-    <mesh position={position}>
+    <mesh name="secret-wall-crack" position={position}>
       <boxGeometry args={size} />
-      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35} roughness={1} />
+      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35 + Math.sin(runClock(useRun.getState()) * 2.6) * 0.2} roughness={1} />
     </mesh>
   );
 }
