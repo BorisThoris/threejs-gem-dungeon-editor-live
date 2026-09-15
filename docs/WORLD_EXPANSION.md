@@ -687,6 +687,18 @@ seed 4242, floor 3, trap room_6; the geometry peak is room_7 on that floor.
 These are current sweep measurements, not a claim that all performance work is
 complete. Full per-room results are retained in the local review artifacts.
 
+Potion bulbs, statue heads and urn bodies now share their identical sphere
+topology at unit radius, with their original radius applied as mesh scale.
+Six native views across all three materials compare pixel-for-pixel with the
+previous geometry. Typecheck, lint and build pass.
+
+The resulting full 78-room sweep meets the draw-call (72), geometry (88) and
+texture (10) budgets. Revisit stability, sprint memory and held-audio checks
+also pass. The remaining performance failure is the triangle peak: 6,634 against
+4,800 in seed 4242, floor 3, trap room_6. A separate inspection now excludes
+hidden ancestors and respects geometry draw ranges when identifying contributors,
+so inactive particles and unused beam-buffer capacity cannot misdirect the work.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

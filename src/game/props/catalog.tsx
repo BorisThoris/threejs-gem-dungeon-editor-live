@@ -197,7 +197,7 @@ function Pillar(p: PropProps) {
 function Potion(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]} geometry={geo("sphere", 0.14, 12, 10)} material={mat({ color: "#63d2ff", emissive: "#2c8fb8", emissiveIntensity: 0.6, transparent: true, opacity: 0.85 })} />
+      <mesh position={[0, 0.16, 0]} scale={0.14} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: "#63d2ff", emissive: "#2c8fb8", emissiveIntensity: 0.6, transparent: true, opacity: 0.85 })} />
       <mesh position={[0, 0.34, 0]} geometry={geo("cylinder", 0.04, 0.05, 0.14, 8)} material={mat({ color: "#c8b58a" })} />
     </group>
   );
@@ -289,7 +289,7 @@ function Statue(p: PropProps) {
     <group {...frame(p)}>
       <mesh position={[0, 0.16, 0]} castShadow scale={[0.9, 0.32, 0.9]} geometry={geo("box", 1, 1, 1)} material={mat({ color: STONE_PLINTH, roughness: 0.95, surface: "stone" })} />
       <mesh position={[0, 1.05, 0]} castShadow geometry={geo("cylinder", 0.22, 0.34, 1.5, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
-      <mesh position={[0, 1.95, 0]} castShadow geometry={geo("sphere", 0.21, 12, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
+      <mesh position={[0, 1.95, 0]} castShadow scale={0.21} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
       {/* Arms folded across it, which is what makes it read as a figure. */}
       <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]} scale={[0.52, 0.14, 0.16]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#7e7c85", roughness: 0.9 })} />
     </group>
@@ -300,7 +300,7 @@ function Statue(p: PropProps) {
 function Urn(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.6, 0]} castShadow geometry={geo("sphere", 0.36, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
+      <mesh position={[0, 0.6, 0]} castShadow scale={0.36} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
       <mesh position={[0, 1.02, 0]} geometry={geo("cylinder", 0.16, 0.12, 0.26, 10)} material={mat({ color: "#7a4e3a", roughness: 0.7 })} />
       <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.2, 0.24, 0.24, 10)} material={mat({ color: "#7a4e3a", roughness: 0.75 })} />
     </group>
