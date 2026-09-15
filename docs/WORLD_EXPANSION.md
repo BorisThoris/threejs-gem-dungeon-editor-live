@@ -658,6 +658,18 @@ when the draft overrides that ID. Native editor checks cover copying, regional
 supplies, unchanged exports, enable/disable, preview cleanup and restoring
 shipped overrides; the circular fungal-room preview was visually reviewed.
 
+Skulls now use a flat-faceted cranium, lower jaw, individual teeth and dark
+socket shapes instead of three smooth spheres. The shared prop uses 93 triangles
+and two meshes instead of 376 triangles and three meshes. Native generated-room
+checks confirm shared geometry across instances, finite normals, a grounded base
+and the existing 0.2-metre footprint; the prop was reviewed both close up and at
+gameplay scale. Typecheck, lint and build pass.
+
+The performance sweep immediately before this prop change still exceeds the
+full budgets: 73 calls, 6,918 triangles and 106 geometries across 78 rooms.
+Textures (10), repeated room visits, sprinting memory and held-audio checks pass.
+The skull reduction is a local improvement, not proof that the full budget fits.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

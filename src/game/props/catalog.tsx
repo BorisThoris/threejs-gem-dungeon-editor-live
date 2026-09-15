@@ -205,11 +205,9 @@ function Potion(p: PropProps) {
 
 function Skull(p: PropProps) {
   return (
-    <group {...frame(p)}>
-      <mesh position={[0, 0.2, 0]} castShadow geometry={geo("sphere", 0.2, 12, 10)} material={mat({ color: BONE, roughness: 0.9 })} />
-      {[-0.07, 0.07].map((x) => (
-        <mesh key={x} position={[x, 0.22, 0.17]} geometry={geo("sphere", 0.045, 8, 6)} material={mat({ color: "#1a1417" })} />
-      ))}
+    <group {...frame(p)} name="handmade-skull">
+      <mesh castShadow geometry={geo("skull")} material={mat({ color: BONE, roughness: 0.9 })} />
+      <mesh geometry={geo("skull-sockets")} material={mat({ color: "#1a1417", roughness: 1 })} />
     </group>
   );
 }
