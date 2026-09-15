@@ -1,4 +1,6 @@
 import { TERRAIN_GRAMMAR } from "../game/rooms/terrainGrammar";
+import { channelSediment } from "../game/worldbuilding/channelSediment";
+import { roomPlaceName } from "../game/rooms/placeName";
 import { biomeIdFor } from "../game/rooms/biomes";
 import { useMemo, useState } from "react";
 import { generateDungeon } from "../game/dungeon/generate";
@@ -9,7 +11,7 @@ import { KIND_TITLE, keyFor } from "../game/rooms/kinds";
 import { sentryFor } from "../game/sentry/placement";
 import { placementsFor } from "../game/rooms/placements";
 import { PROP_SPECS } from "../game/props/specs";
-import { watercourseBlocks, waterStation, waterLevel, WATERWAY_NAMES } from "../game/worldbuilding/watercourse";
+import { watercourseBlocks, waterStation, waterLevel } from "../game/worldbuilding/watercourse";
 import { minimapFootprint } from "../ui/minimapGeometry";
 import { colors } from "../ui/overlay";
 import { button, field, label, panel, small } from "./styles";
@@ -158,7 +160,7 @@ export function WorldAtlas() {
       </section>
       <section style={panel}>
         <div style={{ ...label, color: ink }}>{room.district ? DISTRICTS[room.district].name : "UNASSIGNED"}</div>
-        <h2 style={{ fontSize: 17, color: colors.ink }}>{room.waterway ? WATERWAY_NAMES[room.waterway.role] : KIND_TITLE[room.kind]}</h2>
+        <h2 style={{ fontSize: 17, color: colors.ink }}>{roomPlaceName(room)}</h2>
         <p style={small}>{room.shape} · {room.size} m chamber · {room.biome} · {KIND_TITLE[room.kind]}</p>
         {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
@@ -198,8 +200,16 @@ export function WorldAtlas() {
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
           {terrain && <TerrainBlueprint room={room} scale={scale} />}
-          {watercourseBlocks(room).map((b, i) => <rect key={i} x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
-            width={b.size[0] * scale} height={b.size[2] * scale} fill={drained ? "#354641" : "#559eac"} opacity={drained ? 1 : 0.35 + level * 0.65} />)}
+          {watercourseBlocks(room).map((b, i) => <g key={i}>
+            <rect data-testid="atlas-channel-bed" x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
+              width={b.size[0] * scale} height={b.size[2] * scale} fill={channelSediment(room).color}>
+              <title>{channelSediment(room).name} · remains after drainage</title>
+            </rect>
+            <rect data-testid="atlas-channel-water" x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
+              width={b.size[0] * scale} height={b.size[2] * scale} fill="#507a78" opacity={level * 0.9}>
+              <title>{drained ? "Channel drained" : "Flowing water over the sediment bed"}</title>
+            </rect>
+          </g>)}
           {[room.waterway?.upstream, room.waterway?.downstream].map((dir, i) => {
             if (!dir) return null;
             const axis = DIR_STEP[dir], distance = doorReach(room, dir), sign = i === 0 ? -1 : 1;

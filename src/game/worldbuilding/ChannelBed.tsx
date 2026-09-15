@@ -4,13 +4,14 @@ import type { Room } from "../dungeon/types";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { geo } from "../props/shared";
 import { useSurface } from "../textures/registry";
+import { channelSediment } from "./channelSediment";
 
 /** The old watercourse leaves a readable bed when drained. Paint-depth silt
  * needs only its top face; the bronze surround already describes its edge. */
 export function ChannelBed({ room, blocks }: { room: Room; blocks: readonly CorridorBlock[] }) {
   const mesh = useRef<InstancedMesh>(null);
-  const garden = room.district === "gardens";
-  const map = useSurface(garden ? "moss" : "stone", 0.5);
+  const sediment = channelSediment(room);
+  const map = useSurface(sediment.surface, 0.5);
   useLayoutEffect(() => {
     if (!mesh.current) return;
     const matrix = new Matrix4(), size = new Vector3();
@@ -24,7 +25,7 @@ export function ChannelBed({ room, blocks }: { room: Room; blocks: readonly Corr
   }, [blocks]);
   if (!blocks.length) return null;
   return <instancedMesh name="channel-sediment" ref={mesh} args={[geo("plane", 1, 1), undefined, blocks.length]}>
-    <meshStandardMaterial color={garden ? "#756744" : room.district === "works" ? "#735447" : "#89816b"}
+    <meshStandardMaterial color={sediment.color}
       map={map} roughness={1} customProgramCacheKey={() => "channel-sediment-v1"}
       onBeforeCompile={shader => {
         shader.vertexShader = shader.vertexShader.replace("#include <project_vertex>",

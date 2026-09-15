@@ -575,6 +575,14 @@ original height. Keyboard drainage, current sound, pause, revisits, cache
 rewards, the secret catch and resets still pass. Garden, works and tomb renders
 have no shader errors; typecheck, lint and build pass.
 
+The World atlas reads the same sediment palette and names as the physical
+channel. Its preview layers fading water over a persistent bed instead of
+substituting a generic dark rectangle when drained. A three-second timeline
+sample shows half the water layer; dry direction marks remain legible. The
+selected-room heading also uses the shared place name from clues and arrival
+readouts. Native checks cover all four watercourse rooms of the default atlas
+floor in flowing, half-drained and drained states; typecheck, lint and build pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and
