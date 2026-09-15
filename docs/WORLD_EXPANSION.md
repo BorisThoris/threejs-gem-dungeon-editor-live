@@ -465,9 +465,12 @@ Footprint checks use the full expanded tile corners, including tapered gallery
 widths and ramp cuts. Deposits sample world-space texture grain, so neighboring
 tiles do not restart the moss pattern. Generation checks verify continuous
 footing at adjoining wet/soft tile edges after drainage; native fungal, flooded
-and hewn renders have no shader errors. The review exposed a separate existing
-layering issue: the sentry floor beam can sit beneath terrain overlays, which
-remains to be corrected.
+and hewn renders have no shader errors. The sentry floor beam now clears all
+three paint-depth overlays at 0.06m above the chamber datum. Native fungal,
+flooded and hewn checks verify every beam vertex is above the channel's 0.041m
+surface, with depth testing retained; rendered review confirms a continuous
+warning wedge instead of illuminated paving joints. Raised-gallery projection
+still needs to follow ramps and landings; this remains a flat chamber marking.
 
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected

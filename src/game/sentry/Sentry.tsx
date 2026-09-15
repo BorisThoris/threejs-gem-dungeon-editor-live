@@ -27,6 +27,9 @@ const TWO_PI = Math.PI * 2;
 
 /** How plainly the beam is drawn on the floor before it has acquired. */
 const BEAM_OPACITY = 0.45;
+// Clear paving (.025), planted beds (.030) and shallow channels (.041).
+// Keep depth testing: solid scenery should still hide the floor marking.
+const BEAM_FLOOR_Y = GROUND_Y + 0.06;
 
 /** Shortest signed angle from `a` to `b`. */
 function angleBetween(a: number, b: number): number {
@@ -256,7 +259,7 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           which is the worst kind of bug in a room whose whole job is
           letting you judge where the light is.
         */}
-        <mesh ref={wedge} position={[0, -2.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh name="sentry-beam" ref={wedge} position={[0, BEAM_FLOOR_Y - position[1] - 2.3, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <primitive object={beam} attach="geometry" />
           <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
         </mesh>
