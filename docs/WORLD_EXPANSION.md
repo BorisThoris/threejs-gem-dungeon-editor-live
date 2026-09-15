@@ -670,6 +670,15 @@ full budgets: 73 calls, 6,918 triangles and 106 geometries across 78 rooms.
 Textures (10), repeated room visits, sprinting memory and held-audio checks pass.
 The skull reduction is a local improvement, not proof that the full budget fits.
 
+The prop catalogue now shares one unit-cube geometry across 15 formerly sized
+box meshes and the instanced bookshelf books. Mesh scales retain the furniture's
+dimensions; book dimensions live in their instance transforms. Existing parent
+rotations, scales, materials and collider specifications remain in effect.
+Native render comparisons cover eight prop views and 23 meshes, including the
+books: maximum pixel difference is one colour level, with mean difference below
+0.000001. Typecheck, lint and build pass. The effect on the full room sweep has
+not yet been measured.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and
