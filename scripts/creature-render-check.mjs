@@ -26,6 +26,7 @@ try{
  });
  const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
+  if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{
    const {d,r}=f; (await import('/src/game/din/din.ts')).reset();
    window.__run.setState({dungeon:d,currentRoomId:r.id,floor:3,phase:'playing',paused:false,inputLocks:0,transitioning:false,waterOpenedAt:null,glim:kind==='beetles'?0:90,oil:100,litUntil:kind==='wisp'?1e9:0,wardenRoomId:kind==='warden'?r.id:null,wardenAwake:kind==='warden',harrierAwake:kind.startsWith('harrier'),harrierSlain:!kind.startsWith('harrier'),harrierDownedUntil:kind==='harrierDown'?1e9:0,reaperAwake:kind==='reaper',thiefPhase:kind==='cutpurse'?'stalking':'away',invulnerableUntil:1e9,alarm:0});
@@ -39,8 +40,13 @@ try{
    const T=await import('/node_modules/three/build/three.module.js');
    const scene=window.__scene,obj=scene.getObjectByName(name);
    scene.updateMatrixWorld(true);
+   obj.traverse(o=>{if(o.isInstancedMesh)o.computeBoundingBox();});
    const box=new T.Box3().setFromObject(obj),center=box.getCenter(new T.Vector3());
    if(kind==='beetles'){const p=window.__beetles.poses[0];center.set(p.x,p.y,p.z);}
+   if(kind==='bat'){
+    const timber=new T.Box3().setFromObject(scene.getObjectByName('bat-roost-timber'));
+    if(Math.abs(box.max.y-timber.min.y)>.01)throw Error('roosting bats must hang directly beneath their timber perch');
+   }
    const renderer=new T.WebGLRenderer({preserveDrawingBuffer:true});renderer.setSize(640,480);renderer.setPixelRatio(1);
    const camera=new T.PerspectiveCamera(60,640/480,.05,100);
    const distance=['warden','keeper','reaper','bat','batFlight','harrier'].includes(kind)?4:2.3;
@@ -80,5 +86,5 @@ try{
   if(kind==='harrierDown')assert.ok(result.bounds[1]>=result.base,'folded downed Harrier stays above floor');
   if(kind==='frog')assert.ok(result.bounds[1]>=result.base+.04,'frog feet stay above terrain');
  }
- assert.deepEqual(errors,[]);console.log('PASS all 11 creature types contribute visible pixels in native room lighting');
+ assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 11 creature types contribute visible pixels in native room lighting');
 }finally{await browser.close();}

@@ -89,3 +89,9 @@ When stunned it rests above the floor with wings folded behind it, rather than
 rolling the full span through the ground. Its animation uses the run clock.
 The creature rendering check covers both airborne and grounded poses and
 asserts that the grounded model's bounds remain above the room floor.
+
+Bat colonies now hang in a row from a timber perch fastened to the ceiling.
+Their flight band stays below the central roof details, and low corbels reduce
+the available orbit just as walls do. The generated flight check tests open-wing
+clearance against the actual structure, detail and marking blocks, in addition
+to the room outline. The perch stays in the room when the colony takes flight.

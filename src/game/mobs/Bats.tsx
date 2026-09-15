@@ -141,9 +141,16 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
   });
 
   return (
+    <>
+    {/* A ceiling-fastened roost: the colony hangs from timber, not empty air. */}
+    <group name="bat-roost-timber" position={[at.x, WALL_HEIGHT - .48, at.z]}>
+      <mesh scale={[1.95, .09, .42]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#544537", roughness: 1, surface: "wood" })} />
+      {[-.8, .8].map(x => <mesh key={x} position={[x, .24, 0]} scale={[.09, .48, .09]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#413a35", roughness: 1 })} />)}
+    </group>
     <group name="ambient-bats" position={[at.x, WALL_HEIGHT - 0.6, at.z]}>
       <instancedMesh ref={bodies} args={[geo("bat-body"), mat({ color: "#665568", roughness: 1 }), FLOCK]} frustumCulled={false} />
       <instancedMesh ref={wings} args={[geo("bat-wing"), mat({ color: "#55465b", roughness: 1, side: DoubleSide }), FLOCK * 2]} frustumCulled={false} />
     </group>
+    </>
   );
 }
