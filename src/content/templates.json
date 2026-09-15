@@ -1721,5 +1721,97 @@
     "n": 2
    }
   ]
+ },
+ {
+  "id": "hall-round-workroom",
+  "kind": "normal",
+  "shape": "circle",
+  "size": 28,
+  "props": [
+   {
+    "kind": "table",
+    "x": -6,
+    "z": -6,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": -6,
+    "z": -4.4,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": -6,
+    "z": -7.6,
+    "rotation": 3.141592653589793
+   },
+   {
+    "kind": "barrel",
+    "x": -8.1,
+    "z": -6,
+    "rotation": 0
+   },
+   {
+    "kind": "crate",
+    "x": -9.3,
+    "z": -6,
+    "rotation": 0
+   },
+   {
+    "kind": "table",
+    "x": 6,
+    "z": 6,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": 6,
+    "z": 4.4,
+    "rotation": 3.141592653589793
+   },
+   {
+    "kind": "chair",
+    "x": 6,
+    "z": 7.6,
+    "rotation": 0
+   },
+   {
+    "kind": "bookshelf",
+    "x": 8.1,
+    "z": 6,
+    "rotation": 1.5707963267948966
+   },
+   {
+    "kind": "crate",
+    "x": 9.6,
+    "z": 6,
+    "rotation": 0
+   },
+   {
+    "kind": "urn",
+    "x": -6,
+    "z": 7,
+    "rotation": 0
+   },
+   {
+    "kind": "urn",
+    "x": -7.1,
+    "z": 7,
+    "rotation": 0
+   },
+   {
+    "kind": "bookshelf",
+    "x": 6,
+    "z": -7,
+    "rotation": 0
+   },
+   {
+    "kind": "crate",
+    "x": 6,
+    "z": -9,
+    "rotation": 0
+   }
+  ]
  }
 ]

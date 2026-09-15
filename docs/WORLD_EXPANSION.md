@@ -602,6 +602,19 @@ material value after mounting. The clue no longer advances while paused or
 restarts its phase on a paused room revisit. The native browser check verifies
 clock alignment, pause, remount and resume.
 
+The authored normal-room library now includes a 28-metre circular workroom.
+Two opposed table-and-chair groups have nearby supplies, with separate storage
+groups in the other quadrants. Its 14 furnishings leave the central crossing,
+door approaches, braziers, gem and key anchors clear. The existing polygonal
+footprint remains the source for walls, collision and map geometry.
+
+Placement validation covers all eight orientations and 60 anchor seeds. A
+native generated fixture (seed 30, room_8, floor 2) keeps all 14 furnishings;
+both table groups were visually reviewed. The generation sweep covers 4,539
+rooms and 491,864 terrain cells. Slotted-template variety checks now collect
+at least 60 generated examples per template before measuring variation,
+with a bounded seed search and explicit failure for insufficient samples.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

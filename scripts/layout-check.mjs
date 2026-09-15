@@ -706,17 +706,25 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   // and the run's three start rooms, which share an id and a grid square,
   // are three rooms rather than one drawn three times.
   const drawn = new Map();
+  const samples = new Map();
+  const ruled = new Set(slotted.map((t) => t.id));
   let authored = 0;
-  for (let seed = 1; seed <= 120; seed++) {
+  // A growing template library divides the same authored-room probability
+  // among more candidates. Collect a fixed sample per slotted template so
+  // adding a room cannot make an unrelated room's variety go unmeasured.
+  // Stop on sample count, not unique arrangements: broken variation must fail.
+  for (let seed = 1; seed <= 1200; seed++) {
     for (const dungeon of runFloors(seed)) {
       for (const room of dungeon.rooms) {
         if (!room.template) continue;
         authored++;
+        samples.set(room.template, (samples.get(room.template) ?? 0) + 1);
         const props = L.authoredProps(room);
         const key = props.map((p) => `${p.kind}@${p.x.toFixed(2)},${p.z.toFixed(2)}`).join("|");
         drawn.set(room.template, (drawn.get(room.template) ?? new Set()).add(key));
       }
     }
+    if (seed >= 120 && [...ruled].every((id) => (samples.get(id) ?? 0) >= 60)) break;
   }
   check("the generator places authored rooms often enough to measure", authored > 100, `${authored} placed`);
 
@@ -750,13 +758,14 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
       Math.abs(share - L.AUTHORED_CHANCE) < 0.06,
       `${(share * 100).toFixed(0)}% of ${couldBe} eligible rooms against a declared ${(L.AUTHORED_CHANCE * 100).toFixed(0)}%`);
   }
-  const ruled = new Set(slotted.map((t) => t.id));
-  for (const [id, set] of drawn) {
+  for (const id of ruled) {
     // Eight orientations is what an unslotted room gets. Every slotted one
     // has to beat that by its own rules, which is the multiplication seen
     // in the rooms rather than in the maths - and a template without rules
     // is held to nothing here, because it promised nothing.
-    if (!ruled.has(id)) continue;
+    const set = drawn.get(id) ?? new Set();
+    check(`the ${id} variety sample is large enough`, (samples.get(id) ?? 0) >= 60,
+      `${samples.get(id) ?? 0} generated rooms`);
     check(`the ${id} the player walks into is many different rooms`, set.size >= 16,
       `${set.size} distinct arrangements`);
   }
