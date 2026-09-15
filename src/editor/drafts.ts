@@ -3,6 +3,7 @@ import { useSyncExternalStore } from "react";
 import { PROP_KINDS, ROOM_KINDS, SHAPES, type RoomTemplate } from "../game/dungeon/types";
 import { ROOM_SIZES } from "../game/world";
 import { registerTemplate } from "../game/rooms/templates";
+import { isSlotRule } from "../game/rooms/slots";
 
 /**
  * Room templates under construction.
@@ -37,6 +38,7 @@ export function isRoomTemplate(value: unknown): value is RoomTemplate {
   if (!has(ROOM_KINDS, t.kind) || !has(SHAPES, t.shape)) return false;
   if (typeof t.size !== "number" || !(ROOM_SIZES as readonly number[]).includes(t.size)) return false;
   if (!Array.isArray(t.props)) return false;
+  if (t.slots !== undefined && (!Array.isArray(t.slots) || !t.slots.every(isSlotRule))) return false;
   return t.props.every((p) => {
     if (!p || typeof p !== "object") return false;
     const q = p as Record<string, unknown>;

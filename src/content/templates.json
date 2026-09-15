@@ -1756,7 +1756,8 @@
     "kind": "crate",
     "x": -9.3,
     "z": -6,
-    "rotation": 0
+    "rotation": 0,
+    "slot": "supplies"
    },
    {
     "kind": "table",
@@ -1786,7 +1787,8 @@
     "kind": "crate",
     "x": 9.6,
     "z": 6,
-    "rotation": 0
+    "rotation": 0,
+    "slot": "supplies"
    },
    {
     "kind": "urn",
@@ -1810,7 +1812,32 @@
     "kind": "crate",
     "x": 6,
     "z": -9,
-    "rotation": 0
+    "rotation": 0,
+    "slot": "supplies"
+   }
+  ],
+  "slots": [
+   {
+    "slot": "supplies",
+    "op": "subst",
+    "into": [
+     "crate",
+     "barrel",
+     "urn"
+    ],
+    "byDistrict": {
+     "gardens": [
+      "urn",
+      "barrel"
+     ],
+     "works": [
+      "crate",
+      "barrel"
+     ],
+     "tombs": [
+      "urn"
+     ]
+    }
    }
   ]
  }

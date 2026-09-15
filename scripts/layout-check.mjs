@@ -5525,6 +5525,22 @@ check("the shipped room templates reach the floors the game generates", authored
     { slot: "prize", op: "nsubst", into: ["chest", "rubble"], n: 1 },
   ];
   const counts = { vessel: 3, prize: 1 };
+  const localRule = { slot: "vessel", op: "subst", into: ["crate"],
+    byDistrict: { gardens: ["urn"], works: ["barrel"], tombs: ["skull"] } };
+  for (const [district, expected] of [["gardens", "urn"], ["works", "barrel"], ["tombs", "skull"], [undefined, "crate"]]) {
+    const local = L.resolveSlots(props, [localRule], "district-fixture", district);
+    check(`authored supplies follow ${district ?? "the default"} tradition`,
+      local.slice(0, 3).every((p, i) => p.kind === expected && p.x === props[i].x && p.z === props[i].z)
+      && local[3].kind === "chest", expected);
+  }
+  check("district alternatives are all checked for footprint clearance",
+    L.kindOptions(props, [localRule])[0].sort().join(",") === "barrel,crate,skull,urn");
+  check("a district cannot turn dressing into an unchecked reward",
+    !L.keepsItsWorth(props, { ...localRule, byDistrict: { tombs: ["chest"] } }));
+  check("district slot imports accept valid rules and reject malformed choices",
+    L.isSlotRule(localRule) && !L.isSlotRule({ ...localRule, byDistrict: { gardens: [] } })
+    && !L.isSlotRule({ ...localRule, byDistrict: { nowhere: ["urn"] } })
+    && !L.isSlotRule({ ...localRule, byDistrict: { tombs: ["unknown-prop"] } }));
   check("a template with two slots is many rooms rather than one", L.variantsOf(rules, counts) >= 3, `${L.variantsOf(rules, counts)} variants`);
 
   /**

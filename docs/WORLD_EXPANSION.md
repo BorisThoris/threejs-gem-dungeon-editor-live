@@ -615,6 +615,19 @@ rooms and 491,864 terrain cells. Slotted-template variety checks now collect
 at least 60 generated examples per template before measuring variation,
 with a bounded seed search and explicit failure for insufficient samples.
 
+Authored supply slots can now declare `byDistrict` choices for `gardens`,
+`works` and `tombs`; the ordinary `into` list remains the fallback for rooms
+without a district. Substitution keeps the authored positions and makes one
+consistent choice for the entire slot group. The circular workroom uses urns
+or barrels in gardens, crates or barrels in the works, and urns in tombs.
+This changes dressing without changing its reward count.
+
+All regional choices participate in footprint and reward validation. Imported
+slot rules reject empty lists, unknown props and unknown districts. Native
+generated fixtures in all three districts retain all 14 furnishings and produce
+stable results on repeated reads; the shipped templates also pass the editor's
+import guard. Layout checks, typecheck, lint and build pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

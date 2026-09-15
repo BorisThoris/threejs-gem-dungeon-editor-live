@@ -72,7 +72,8 @@ export function authoredProps(room: Room): PropPlacement[] {
   const props = resolveSlots(
     template.props,
     template.slots ?? [],
-    `slots:${room.seed}:${room.id}:${room.grid.x},${room.grid.z}`
+    `slots:${room.seed}:${room.id}:${room.grid.x},${room.grid.z}`,
+    room.district
   );
   return orientProps(props, orientationOf(room));
 }
