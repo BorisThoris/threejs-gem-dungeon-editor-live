@@ -4,6 +4,7 @@ import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
 import { sideOfNeighbour } from "./bearing";
 import { useRun } from "../state/run";
+import { biomeFor } from "../rooms/biomes";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, music, sfx } from "./audio";
 
@@ -31,6 +32,18 @@ export function Audio() {
   useEffect(() => {
     if (playing) ambience.setTension(rouse);
   }, [playing, rouse]);
+  /**
+   * The room's air, from its biome: a drip in the cistern, embers in the
+   * foundry. Set on entering, and once when the run starts, from the same
+   * owner that tints the walls.
+   */
+  const roomId = useRun((s) => s.currentRoomId);
+  const dungeon = useRun((s) => s.dungeon);
+  useEffect(() => {
+    if (!playing || !dungeon || !roomId) return;
+    const room = dungeon.rooms.find((r) => r.id === roomId);
+    ambience.setAir(room ? biomeFor(room.kind, room.id, dungeon.seed).air : null);
+  }, [playing, dungeon, roomId]);
 
   /**
    * The score, which follows the run rather than the room.

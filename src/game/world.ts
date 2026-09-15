@@ -786,6 +786,16 @@ export const MOTH_SPEED = 3;
 export const MOTH_HOLD_S = 6;
 export const BATS_ROUSED_S = 5;
 export const BATS_NOISE_FACTOR = 2;
+/**
+ * The cistern's toads. They hush when the player is within
+ * CROAKER_HUSH_RADIUS - close enough to be a thing rather than a sound -
+ * and they go under for CROAKER_UNDER_S at anything their row calls loud.
+ * Longer than a burst takes to fade, so the silence outlasts what caused
+ * it: the tell is the quiet, and a quiet that ended with the noise would
+ * be no tell at all.
+ */
+export const CROAKER_HUSH_RADIUS = 2.5;
+export const CROAKER_UNDER_S = 9;
 
 /**
  * The floor's own traps, which are the Spelunky half of the brief: a

@@ -136,6 +136,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "wisp", event: "wispCame", line: "A wisp gathers at your light and drifts ahead. It leads to the crack - and everything that hunts by light sees it." }),
   lesson({ id: "moth", event: "mothLanded", line: "A moth settles on the lantern. It will carry the light where you are not, and the Warden follows light." }),
   lesson({ id: "bats", event: "batsRoused", line: "The floor heard those bats. Move clear when they stir to stop a burst; a blast startles them immediately." }),
+  lesson({ id: "croaker", event: "croakersDove", line: "The toads went under. Anything loud does that, and the splash tells the Warden which room - a silent cistern was not silent a moment ago.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
   lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
@@ -158,6 +159,7 @@ export const LESSONS: readonly Lesson[] = [
 
 /** The events the ten loops added, each of which must have a lesson. */
 export const LOOP_EVENTS: readonly (keyof BusEvents)[] = [
+  "croakersDove",
   "trapSprung",
   "draftFelt",
   "wallSound",

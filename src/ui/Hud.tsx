@@ -23,7 +23,7 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
-import { roostFor } from "../game/mobs/ambient";
+import { croakersFor, roostFor } from "../game/mobs/ambient";
 import { sentryFor } from "../game/sentry/placement";
 import { useLedger } from "../game/state/ledger";
 import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
@@ -85,6 +85,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
+  const croakers = room ? croakersFor(room, dungeonSeed).length > 0 : false;
   const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
@@ -142,6 +143,7 @@ export function Hud() {
     roomTitle: room ? KIND_TITLE[room.kind] : "",
     ground,
     roost,
+    croakers,
     drafty,
     heatSays: heat.says,
     heatBand: heat.band,

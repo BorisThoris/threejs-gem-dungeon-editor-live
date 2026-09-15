@@ -61,6 +61,8 @@ writeFileSync(
    export * from "${root}src/game/ladder/awareness";
    export * from "${root}src/game/ladder/caps";
    export * from "${root}src/game/mobs/ambient";
+   export * from "${root}src/game/mobs/contract";
+   export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/props/breakable";
@@ -4578,6 +4580,7 @@ check("the shipped room templates reach the floors the game generates", authored
     check("the moth is drawn by light, whoever carries it", /din\.answering\(\w+, "moth", room\.id\)/.test(src("src/game/mobs/Moth.tsx")) && !/lanternRaised/.test(src("src/game/mobs/Moth.tsx")));
     check("the Sentry's patience is halved by the light its row names, not by a flag about the player", /din\.reaches\("sentry", "bright"/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
     check("the roost answers to its own row", /SUSCEPTIBILITY\.bat/.test(src("src/game/mobs/Bats.tsx")));
+    check("the toads answer to theirs, and go under", /din\.answering\(\w+, "croaker", room\.id\)/.test(src("src/game/mobs/Croakers.tsx")));
     check(
       "a susceptibility block is read in the Din and nowhere else",
       !["src/game/state/run.ts", "src/game/mobs/Rats.tsx", "src/game/mobs/Moth.tsx", "src/game/sentry/Sentry.tsx"].some((f) => /answersTo\(/.test(src(f)))
@@ -4604,6 +4607,112 @@ check("the shipped room templates reach the floors the game generates", authored
   /** Walking is below every threshold in the game. That is what walking is for. */
   const thresholds = receivers.flatMap((id) => Object.entries(sus[id].answers)).filter(([t]) => t === "loud").map(([, v]) => v);
   check("walking is quieter than anything on the floor listens for", thresholds.every((v) => L.EMISSIONS.walk.magnitude < v), `walk ${L.EMISSIONS.walk.magnitude} vs min ${Math.min(...thresholds)}`);
+
+  /**
+   * The prototype: what every creature must have, held to every field.
+   *
+   * `mobs/contract.ts` is one row per creature, and each field names a
+   * thing some other table or file must agree with. This is what keeps a
+   * creature from being as finished as the run that added it: a creature
+   * with a body and no voice, a voice nothing plays, an event nothing
+   * emits, a lesson nobody wrote, or a probe the checks cannot read fails
+   * here by name. The rows are the floor's ten creatures; the checks are
+   * what "ten" means.
+   */
+  {
+    const C = L.CREATURES;
+    const ids = L.CREATURE_IDS;
+    const src = (f) => { try { return readFileSync(join(root, f), "utf8"); } catch { return null; } };
+    const audio = src("src/game/systems/audio.ts");
+    const sfxStart = audio.indexOf("export const sfx");
+    const sfxEnd = audio.indexOf("\nexport const", sfxStart + 1);
+    const sfxBody = audio.slice(sfxStart, sfxEnd > 0 ? sfxEnd : audio.length);
+    const cueExists = (name) => new RegExp(`^ {2}${name}\\(`, "m").test(sfxBody);
+    const tree = execFileSync("grep", ["-rho", "sfx\\.[a-zA-Z0-9_]*\\|bus\\.emit(\"[a-zA-Z]*\"", `${root}src`], { encoding: "utf8" });
+    const played = (name) => new RegExp(`sfx\\.${name}$`, "m").test(tree);
+    const emitted = (name) => tree.includes(`bus.emit("${name}"`);
+    const events = src("src/game/events.ts");
+    const declared = (name) => new RegExp(`^ {2}${name}:`, "m").test(events);
+    const lessons = new Set(L.LESSONS.map((l) => l.id));
+    const bodies = L.BODIES;
+    const sus = L.SUSCEPTIBILITY;
+    const caps = L.CAPS;
+
+    check("every creature in the body table has a row in the contract, and no row names a creature the floor lacks",
+      Object.keys(bodies).every((id) => C[id]) && ids.every((id) => bodies[id]),
+      `${ids.length} creatures`);
+    const wrongBody = ids.filter((id) => C[id].body !== bodies[id]);
+    check("every row's body is the body the floor reads", wrongBody.length === 0, wrongBody.join(", ") || "all agree");
+    const noRow = ids.filter((id) => !sus[id]);
+    check("every creature answers to something, or says in its row that it does not", noRow.length === 0, noRow.join(", ") || "all declared");
+    const noCap = ids.filter((id) => !caps[id]);
+    check("every creature is on the awareness ladder, capped", noCap.length === 0, noCap.join(", ") || "all capped");
+    const named = ids.filter((id) => !C[id].name || !C[id].lives || C[id].lives.length < 20);
+    check("every creature has a name and a sentence about where it lives", named.length === 0, named.join(", "));
+    const silent = ids.filter((id) => !C[id].voice.held && C[id].voice.moments.length === 0);
+    check("every creature has a voice", silent.length === 0, silent.join(", "));
+    const unheldVoice = ids.flatMap((id) => [C[id].voice.held, ...C[id].voice.moments].filter(Boolean).filter((cue) => !cueExists(cue)).map((cue) => `${id}:${cue}`));
+    check("every cue a creature names exists in the sound design", unheldVoice.length === 0, unheldVoice.join(", ") || "all exist");
+    const unplayed = ids.flatMap((id) => [C[id].voice.held, ...C[id].voice.moments].filter(Boolean).filter((cue) => !played(cue)).map((cue) => `${id}:${cue}`));
+    check("and every one of them is played by something", unplayed.length === 0, unplayed.join(", ") || "all played");
+    const heldStops = ids.filter((id) => C[id].voice.held && C[id].voice.held !== "skitter" && !cueExists(`${C[id].voice.held}Stop`));
+    check("every held voice can be stopped", heldStops.length === 0, heldStops.join(", ") || "all stoppable");
+    const badEvents = ids.flatMap((id) => C[id].events.filter((e) => !declared(e) || !emitted(e)).map((e) => `${id}:${e}`));
+    check("every event a creature announces is declared on the bus and emitted by something", badEvents.length === 0, badEvents.join(", ") || "all declared and emitted");
+    const noEvents = ids.filter((id) => C[id].events.length === 0);
+    check("every creature announces at least one thing it does", noEvents.length === 0, noEvents.join(", "));
+    const noLesson = ids.filter((id) => !lessons.has(C[id].lesson));
+    check("every creature is introduced by a lesson the teacher has", noLesson.length === 0, noLesson.join(", ") || "all taught");
+    const noFile = ids.filter((id) => !src(`src/game/${C[id].component}`));
+    check("every creature is drawn by the file its row names", noFile.length === 0, noFile.join(", ") || "all present");
+    const noProbe = ids.filter((id) => { const f = src(`src/game/${C[id].component}`); return f && !f.includes(C[id].probe); });
+    check("and that file publishes the probe the checks read", noProbe.length === 0, noProbe.join(", ") || "all probed");
+    const unpanned = ids.filter((id) => { const f = src(`src/game/${C[id].component}`); return f && !f.includes("sideOf("); });
+    check("every creature's sound has a side to it", unpanned.length === 0, unpanned.join(", ") || "all panned");
+    const threats = ids.filter((id) => C[id].role === "threat");
+    check("a threat costs something and can be answered", threats.every((id) => C[id].harm !== "none" && C[id].answers.length > 0), threats.join(", "));
+    const lifeTakers = ids.filter((id) => C[id].harm === "life");
+    const noTell = lifeTakers.filter((id) => C[id].tell && !/tell/.test(src(`src/game/${C[id].component}`) ?? ""));
+    check("every creature that can take a life and claims a tell wears it", noTell.length === 0, noTell.join(", ") || lifeTakers.join(", "));
+    const untold = lifeTakers.filter((id) => !C[id].tell && id !== "reaper");
+    check("and the only life-taker without one is the Reaper, which is the point of the Reaper", untold.length === 0, untold.join(", "));
+    const ambient = ids.filter((id) => C[id].role === "ambient");
+    check("every ambient creature is harmless or costs you only the floor's attention", ambient.every((id) => ["none", "alarm", "light"].includes(C[id].harm)), ambient.join(", "));
+    const answersNothing = ids.filter((id) => C[id].answers.length === 0);
+    check("nothing on the floor is unanswerable", answersNothing.length === 0, answersNothing.join(", "));
+  }
+
+  /**
+   * And what every environment must have: the biome contract, held the
+   * same way. A biome is a look, a floor that carries, litter of its own,
+   * a name for its ground, the life that lives in it and the sound it
+   * makes when nothing is happening. The ninth biome was added against
+   * this; the first eight were completed to it.
+   */
+  {
+    const B = L.BIOME;
+    const ids = L.BIOMES;
+    const airs = new Set(L.AIRS);
+    const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
+    check("every biome has a name, a floor, a wall, a glow and a surface the registry paints",
+      ids.every((id) => B[id].name && /^#[0-9a-f]{6}$/i.test(B[id].floor) && /^#[0-9a-f]{6}$/i.test(B[id].wall) && /^#[0-9a-f]{6}$/i.test(B[id].glow) && L.BUILTIN_SURFACES.includes(B[id].surface)),
+      ids.join(", "));
+    check("every biome says what it sounds like, in a word the sound design has",
+      ids.every((id) => airs.has(B[id].air)), ids.map((id) => `${id}:${B[id].air}`).join(" "));
+    const airBuilt = [...airs].filter((a) => a === "still" || new RegExp(`^ {2}${a}: \\{`, "m").test(audio));
+    check("and every air is built, or is the one that is silence on purpose", airBuilt.length === airs.size, [...airs].filter((a) => !airBuilt.includes(a)).join(", ") || `${airs.size} airs`);
+    check("at least one biome is still, so silence is a choice rather than a gap", ids.some((id) => B[id].air === "still"));
+    check("the airs are not all the same air", new Set(ids.map((id) => B[id].air)).size >= 5, `${new Set(ids.map((id) => B[id].air)).size} distinct`);
+    const homeless = ids.filter((id) => !Object.keys(L.BIOMES_FOR).some((k) => L.BIOMES_FOR[k].includes(id)));
+    check("every biome is one some kind of room is built in", homeless.length === 0, homeless.join(", "));
+    const badLife = ids.flatMap((id) => B[id].life.filter((m) => !L.CREATURES[m] || L.CREATURES[m].role !== "ambient").map((m) => `${id}:${m}`));
+    check("what a biome says lives in it is an ambient creature of the floor", badLife.length === 0, badLife.join(", ") || "all ambient");
+    const placed = ["rat", "bat", "croaker"];
+    const nowhere = placed.filter((m) => !ids.some((id) => B[id].life.includes(m)));
+    check("every placed ambient creature lives in at least one biome", nowhere.length === 0, nowhere.join(", "));
+    check("and the fungal biome, added against the contract, has life and an air and a floor that carries less than stone",
+      B.fungal && B.fungal.life.length >= 1 && B.fungal.air !== "still" && B.fungal.carry < B.hewn.carry, JSON.stringify(B.fungal));
+  }
 
   /** Propagation: the transplanted half, and the numbers that are ours. */
   const line = (n) => Array.from({ length: n }, (_, i) => ({

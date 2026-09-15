@@ -34,7 +34,7 @@ import type { Patch } from "../warden/steer";
  */
 export type Body = "ground" | "flying" | "ghost";
 
-export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper";
+export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper" | "croaker";
 
 export const BODIES: Record<MobId, Body> = {
   warden: "ground",
@@ -48,6 +48,8 @@ export const BODIES: Record<MobId, Body> = {
   // It never takes a step, so nothing ever bites it; it is in the table
   // because everything on the floor with a body is.
   keeper: "ground",
+  // Sits at the water's edge and goes under; never walks anywhere either.
+  croaker: "ground",
 };
 
 /**

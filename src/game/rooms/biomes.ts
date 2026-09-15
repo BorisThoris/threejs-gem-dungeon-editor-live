@@ -1,5 +1,6 @@
 import type { PropKind } from "../dungeon/types";
 import type { RoomKind } from "../dungeon/types";
+import type { MobId } from "../mobs/body";
 import { createRng } from "../rng";
 import type { BuiltinSurface } from "../textures/registry";
 
@@ -31,8 +32,22 @@ export const BIOMES = [
   "timber",
   "bone",
   "crystal",
+  "fungal",
 ] as const;
 export type BiomeId = (typeof BIOMES)[number];
+
+/**
+ * What a room sounds like when nothing is happening in it.
+ *
+ * One held sound per biome, under the floor's bed and under every cue: a
+ * drip in the cistern, embers in the foundry, boards settling in the
+ * timbered rooms. A biome that looks different and sounds the same is
+ * still half a place, and the one thing a first-person camera cannot
+ * show is the room behind you. `still` is a real value - hewn stone is
+ * silent on purpose - so a biome cannot be added without saying.
+ */
+export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore"] as const;
+export type AirId = (typeof AIRS)[number];
 
 export interface Biome {
   /** What to call it, on the tour's screenshots and in the room's own line. */
@@ -83,6 +98,15 @@ export interface Biome {
    * be learned by being caught.
    */
   ground: string;
+  /**
+   * The ambient creatures that can live here. The placement rules in
+   * `mobs/ambient.ts` read this rather than keeping a list of biomes per
+   * creature, so a new biome says what lives in it in the row that says
+   * what it is made of - and a creature that lives nowhere is caught.
+   */
+  life: readonly MobId[];
+  /** What it sounds like when nothing is happening. See `AIRS`. */
+  air: AirId;
 }
 
 /**
@@ -111,14 +135,22 @@ export const BIOME: Record<BiomeId, Biome> = {
    * torchlight is warm. The cold biomes - flooded water, crystal - stay
    * cold, and they read as deliberate now rather than as more of the same.
    */
-  hewn: { name: "Hewn stone", floor: "#b3aa9c", wall: "#6b665e", surface: "stone", glow: "#a8917a", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone" },
-  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss" },
-  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick" },
-  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water" },
-  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating" },
-  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"], carry: 1.25, ground: "loose boards" },
-  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"], carry: 1.5, ground: "old bone" },
-  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"], carry: 1, ground: "swept stone" },
+  hewn: { name: "Hewn stone", floor: "#b3aa9c", wall: "#6b665e", surface: "stone", glow: "#a8917a", light: 1, litter: ["rubble", "pillar"], carry: 1, ground: "bare stone", life: [], air: "still" },
+  mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss", life: [], air: "wind" },
+  catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick", life: ["rat", "bat"], air: "hollow" },
+  flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water", life: ["rat", "croaker"], air: "drip" },
+  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating", life: [], air: "ember" },
+  timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"], carry: 1.25, ground: "loose boards", life: ["rat"], air: "creak" },
+  bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"], carry: 1.5, ground: "old bone", life: ["rat", "bat"], air: "wind" },
+  crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"], carry: 1, ground: "swept stone", life: ["bat"], air: "hum" },
+  /**
+   * The ninth, and the first added against the contract above rather
+   * than before it: a green-lit cave of spore mats and webs, soft
+   * underfoot like moss and nearly as quiet, damp enough for the toads.
+   * Its light is the one cold-green thing on the floor, so it reads as a
+   * place rather than a tint.
+   */
+  fungal: { name: "Fungal", floor: "#9aa886", wall: "#55604f", surface: "moss", glow: "#7fc9a0", light: 0.9, litter: ["web", "rubble"], carry: 0.6, ground: "spore mat", life: ["rat", "croaker"], air: "spore" },
 };
 
 /**
@@ -133,7 +165,7 @@ export const BIOME: Record<BiomeId, Biome> = {
 export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
-  normal: ["hewn", "mossy", "catacomb", "flooded", "bone"],
+  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal"],
   // Flooded as well as dry, because the room that most tempts a player to
   // grab and run is the one where running is loudest: a drowned strongroom
   // makes the haul a decision rather than a pickup. Without it the three
@@ -141,11 +173,11 @@ export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   treasure: ["catacomb", "foundry", "hewn", "flooded"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
-  trap: ["hewn", "flooded", "foundry"],
+  trap: ["hewn", "flooded", "foundry", "fungal"],
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
   challenge: ["catacomb", "hewn", "flooded"],
-  shrine: ["catacomb", "bone", "crystal"],
+  shrine: ["catacomb", "bone", "crystal", "fungal"],
   // Walled up for a reason: dry, and older than the rest of the floor.
   secret: ["catacomb", "bone", "hewn"],
 };

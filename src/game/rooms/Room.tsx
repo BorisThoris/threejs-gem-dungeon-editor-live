@@ -21,8 +21,9 @@ import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
-import { mothRoom, ratsFor, roostFor } from "../mobs/ambient";
+import { croakersFor, mothRoom, ratsFor, roostFor } from "../mobs/ambient";
 import { Bats } from "../mobs/Bats";
+import { Croakers } from "../mobs/Croakers";
 import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
@@ -129,6 +130,7 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
   const broken = useRun((s) => s.broken);
   const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
   const roost = useMemo(() => roostFor(room, seed), [room, seed]);
+  const pools = useMemo(() => croakersFor(room, seed), [room, seed]);
   const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
   const sprung = useRun((s) => s.sprung);
   const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
@@ -138,6 +140,7 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
     <>
       {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
       {roost && <Bats room={room} at={roost} />}
+      {pools.length > 0 && <Croakers room={room} spots={pools} />}
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
     </>
   );

@@ -41,7 +41,7 @@ const ok = (label, cond, detail = "") => { if (!cond) failures++; console.log(`$
 
 const out = await page.evaluate(async () => {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const run = window.__run, A = window.__ambient, D = window.__derived;
+  const run = window.__run, A = window.__ambient, D = window.__derived, W = window.__world;
   const res = {};
   const enter = async (roomId) => { run.setState({ transitioning: true, currentRoomId: roomId, oil: 999 }); run.getState().roomReady(roomId); await wait(1400); };
   const tp = async (x, z) => { window.__bus.emit("teleport", { position: [x, 1.5, z] }); await wait(300); };
@@ -117,6 +117,50 @@ const out = await page.evaluate(async () => {
   const out = { lit: window.__sentry?.lit_by_light, wisp: run.getState().wispOut };
   res.sentry = { dark, lit, dimmed, out };
 
+  // --- Toads: they sing in a wet room, hush underfoot, and go under at a noise. ---
+  // A plain room for preference: a trap room's plate, crossed by the
+  // teleport, is loud enough to put them under, which is right and is
+  // not what this is measuring.
+  const ponds = d.rooms.filter((r) => A.croakersFor(r, d.seed).length > 0);
+  const pond = ponds.find((r) => r.kind === "normal" && !A.roostFor(r, d.seed)) ?? ponds.find((r) => r.kind === "normal") ?? ponds[0] ?? null;
+  if (pond) {
+    // The floor's heat buys a roost going up at about forty seconds of
+    // dwell, and the toads answer the roost - which is the chain the rows
+    // describe and is not what this is measuring. Mark the heat's
+    // purchases delivered so the probe reads the toads and not the floor.
+    run.setState({ heatBought: ["cutpurse", "bats", "ceiling", "harrier"] });
+    await enter(pond.id);
+    await lowerTo(0);
+    const spots = A.croakersFor(pond, d.seed);
+    // Stand across the room from all of them.
+    const cx = -Math.sign(spots[0].x || 1) * (pond.size / 2 - 1.5);
+    const cz = -Math.sign(spots[0].z || 1) * (pond.size / 2 - 1.5);
+    // A teleport across a flooded room is a dash on standing water, which
+    // is loud enough to put them under - correctly. So after each move,
+    // wait for them to come back up before reading.
+    const resurface = () => wait(W.CROAKER_UNDER_S * 1000 + 800);
+    // What the floor was loud about while they were watched, for the report.
+    const noises = [];
+    const offs = ["wardenHeard", "trapSprung", "propBroken", "barBroken", "batsRoused", "snareSprung", "doorBarred", "keyDropped", "bombBurst", "croakersDove", "roomEntered"]
+      .map((e) => window.__bus.on(e, (p) => noises.push(`${e}@${D.clock().toFixed(1)}${p && p.kind ? ":" + p.kind : ""}`)));
+    await tp(cx, cz);
+    await resurface();
+    const singing = { ...window.__croakers, noises: noises.slice(), kind: pond.kind };
+    await tp(spots[0].x - Math.sign(spots[0].x || 1) * 0.8, spots[0].z - Math.sign(spots[0].z || 1) * 0.8);
+    await resurface();
+    const hushed = { ...window.__croakers };
+    await tp(cx, cz);
+    await resurface();
+    const dove = [];
+    const offDove = window.__bus.on("croakersDove", ({ roomId }) => dove.push(roomId));
+    window.__bus.emit("propBroken", { roomId: pond.id, kind: "barrel", key: "probe:pond" });
+    await wait(400);
+    const under = { ...window.__croakers, dove: dove.slice(), noises: noises.slice() };
+    offDove();
+    offs.forEach((off) => off());
+    res.toads = { room: pond.id, spots: spots.length, singing, hushed, under };
+  }
+
   // --- Harrier: a bomb in the room next door puts it down. ---
   const events = [];
   const off = window.__bus.on("harrierDowned", () => events.push("downed"));
@@ -155,6 +199,11 @@ else {
   ok("a quarter flame is under its row, but the wisp beside you is not: that is the wisp's price", out.sentry.dimmed.lit === true && out.sentry.dimmed.wisp === true, JSON.stringify(out.sentry.dimmed));
   ok("and the lantern down, the wisp gone, its patience is whole again", out.sentry.out.lit === false && out.sentry.out.wisp === false, JSON.stringify(out.sentry.out));
   ok("a bomb next door downs the Harrier through its row", out.harrier.placed && out.harrier.downed, JSON.stringify(out.harrier));
+  if (out.toads) {
+    ok("the toads sing in a wet room with nobody near them", out.toads.singing.singing === out.toads.spots && out.toads.singing.under === 0, JSON.stringify(out.toads.singing));
+    ok("and hush, without diving, for a player standing over one", out.toads.hushed.singing < out.toads.spots && out.toads.hushed.under === 0, JSON.stringify(out.toads.hushed));
+    ok("and go under, all of them, at a barrel bursting - and say so", out.toads.under.under === out.toads.spots && out.toads.under.singing === 0 && out.toads.under.dove.includes(out.toads.room), JSON.stringify(out.toads.under));
+  } else ok("a floor with toads on it was found", false, "none in the seeds tried");
 }
 ok("no page errors", errors.length === 0, errors.join(" | "));
 await browser.close();

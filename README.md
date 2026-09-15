@@ -130,7 +130,16 @@ two rooms away - and spring the snares you set; a moth goes to the
 brightest thing in its room, which is your raised lantern until you turn
 it down to a glimmer, and the wisp when the wisp is brighter; bats burst
 from a roost when you dash; a Sentry acquires you twice as fast in any
-light over half, yours or the wisp's. Every creature declares a body - ground, flying or ghost - and the
+light over half, yours or the wisp's; and the toads at the water's edge
+of the flooded and fungal rooms sing until something is loud, then they
+are under and the room is silent - so a cistern that is already quiet
+when you walk in was not quiet a moment ago, and the splash they made
+going under told the Warden which room. Every creature is one row of a
+contract - name, body, what it answers to, its voice, its events, its
+lesson, its file - and every biome is one row of another, with the life
+that lives in it and the sound it makes when nothing is happening: a
+drip in the cistern, embers in the foundry, boards settling in the
+timbered rooms, spores ticking in the fungal caves. Every creature declares a body - ground, flying or ghost - and the
 floor reads it: spikes and snares bite anything with feet, solid props
 are walked round by anything with a body, and a ghost passes through all
 of it. That table is the whole reason the rest of this works. The

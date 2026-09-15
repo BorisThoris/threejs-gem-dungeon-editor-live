@@ -264,11 +264,20 @@ const CUES = [
   ["harrierDie", 400, []],
   ["keeperClank", 900, []],
   ["keeperSwing", 500, [0.4]],
+  ["splash", 500, [0.3]],
 ];
 
-/** The room with nothing played into it: the bed, and whatever else runs. */
+/**
+ * The room with nothing played into it: the bed, and nothing else.
+ *
+ * The room the run starts in has an air of its own now - moss is wind -
+ * and it was running while this was measured, so every bar in the suite
+ * moved with whichever biome the start room happened to be. The air is
+ * stilled for the measurement and checked on its own below.
+ */
 const floorLevel = await page.evaluate(async (flush) => {
-  await new Promise((r) => setTimeout(r, flush));
+  window.__ambience.setAir("still");
+  await new Promise((r) => setTimeout(r, 1200 + flush));
   return window.__listen(600);
 }, FLUSH_MS);
 ok("there is a room tone to measure a cue against", floorLevel > 0, floorLevel.toFixed(4));
@@ -405,6 +414,7 @@ const VOICES = [
   ["wispHum", "wispHumStop", [1, 0]],
   ["beam", "beamStop", [0.9, 0.3]],
   ["reap", "reapStop", [0.8, 0]],
+  ["chorus", "chorusStop", [0.9, 0.2]],
 ];
 for (const [start, stop, args] of VOICES) {
   const voice = await page.evaluate(
@@ -423,6 +433,35 @@ for (const [start, stop, args] of VOICES) {
   );
   ok(`the held voice \`${start}\` plays while it is on`, voice.during >= AUDIBLE, voice.during.toFixed(4));
   ok(`and \`${stop}\` returns the room to the room`, voice.after < AUDIBLE, `${voice.after.toFixed(4)} after`);
+}
+
+/**
+ * The room's air, by biome. Each one that is not `still` has to be heard
+ * over the bed and stop when the air changes; `still` has to be silence -
+ * the room tone and nothing else - so a biome that is quiet on purpose
+ * is quiet in fact.
+ */
+{
+  const airs = await page.evaluate(async (flush) => {
+    const ambience = window.__ambience;
+    const out = {};
+    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore"]) {
+      // From the moment it is set: the timed airs drop their first sound
+      // at once and a creak's next may be seven seconds off, and the held
+      // ones come up over a second and a half. One window covers both.
+      const listening = window.__listen(3200);
+      ambience.setAir(id);
+      out[id] = { level: await listening, running: ambience.airId() };
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    ambience.setAir("still");
+    await new Promise((r) => setTimeout(r, 1200 + flush));
+    out.still = { level: await window.__listen(600), running: ambience.airId() };
+    return out;
+  }, FLUSH_MS);
+  const quietAirs = Object.entries(airs).filter(([id, a]) => id !== "still" && a.level < AUDIBLE).map(([id, a]) => `${id} ${a.level.toFixed(4)}`);
+  ok("every biome's air is heard over the room", quietAirs.length === 0, quietAirs.join(", ") || Object.entries(airs).filter(([id]) => id !== "still").map(([id, a]) => `${id} ${a.level.toFixed(3)}`).join(", "));
+  ok("and a still room is the room tone and nothing else", airs.still.level < AUDIBLE && airs.still.running === null, `${airs.still.level.toFixed(4)} against ${AUDIBLE.toFixed(4)}`);
 }
 
 // --- The setting that turns it off -----------------------------------------

@@ -60,6 +60,13 @@ export const EMISSIONS = {
   sprint: { tags: ["loud"], magnitude: 0.35, underfoot: true },
   /** Something small, in a hurry, in the dark with you. */
   cutpurse: { tags: ["loud"], magnitude: 0.2 },
+  /**
+   * The cistern's toads going under, all at once. The only thing on the
+   * floor that declares [wet], and exactly as loud as the Warden listens
+   * for: a noise in a flooded room is answered by a second noise that
+   * reaches the Warden in that room and nowhere else.
+   */
+  splash: { tags: ["loud", "wet"], magnitude: 0.3 },
   /** Below every threshold in the game, and that is the point of walking. */
   walk: { tags: ["loud"], magnitude: 0.05, underfoot: true },
   /** A vault giving up: hinges, a bar, and a lot of held breath. */

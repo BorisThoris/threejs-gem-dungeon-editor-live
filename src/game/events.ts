@@ -195,6 +195,8 @@ export interface BusEvents {
   mothLeft: undefined;
   /** A roost burst: the noise of it carries. */
   batsRoused: undefined;
+  /** The cistern's toads went under at a noise, and the room is silent. */
+  croakersDove: { roomId: string };
   /** The lamplighter wisp gathered at the raised lantern. */
   wispCame: undefined;
   /** And went out with the light. */

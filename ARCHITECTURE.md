@@ -73,6 +73,33 @@ Two stores that both claimed the player's stats. So:
   rats notice. The Reaper is the one exception and it is written where
   the rule is: deaf to `[blast]` as a signal, held by the pressure wave in
   the room it stands in, which the store applies directly.
+- **What a creature IS, all of it, is one row of `src/game/mobs/contract.ts`.**
+  Ten creatures were built one at a time over thirty runs and each was
+  complete in a different way: the Warden had a held voice and no body
+  for eight runs, the Harrier had a body and a row and four borrowed
+  sounds, the rats had a row nothing read. Nothing said what "a creature"
+  was. The contract does: a name and where it lives, a role (threat,
+  ambient, helper) and what it costs you, the verbs that answer it, its
+  body, its voice (a held sound and its moments), the events it announces,
+  the lesson that introduces it, the file that draws it and the probe that
+  file publishes, and whether it wears a tell before it takes a life. The
+  layout suite holds every row to every field against the tables and
+  files the fields name - `BODIES`, `SUSCEPTIBILITY`, `CAPS`, `sfx`,
+  `events.ts`, `LESSONS`, the component - so a creature can no longer be
+  as finished as the run that added it. Add a creature by adding a row;
+  the suite says what is missing. The toads (`croaker`) were the first
+  added against it.
+- **What an environment IS is one row of `BIOME` in `rooms/biomes.ts`,
+  and it has grown two fields.** A biome was a look, a floor that carries,
+  litter and a name for its ground. It now also says what lives in it
+  (`life`, which `mobs/ambient.ts` reads instead of keeping a list of
+  biomes per creature) and what it sounds like when nothing is happening
+  (`air`, one of eight, `still` being a real value so silence is a choice
+  rather than a gap). `ambience.setAir` in `audio.ts` runs the room's air
+  under the bed and under every cue, set from the room's biome on entry,
+  and `yarn test:audio` measures each air against a stilled room. The
+  fungal biome was the first added against the contract; the eight before
+  it were completed to it.
 - **How far a thing is heard is `din/carry.ts` and nothing else.** The room
   graph is `Room.links`, which the generator already writes; a doorway costs
   x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's

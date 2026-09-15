@@ -108,6 +108,19 @@ export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
     tell: "It comes to a raised lantern, and it is easier to see than you are.",
   },
 
+  /**
+   * The cistern's toads. They sing until something is loud, and then they
+   * are under the water and the room is silent - which is the tell: a
+   * cistern you walk into that is already quiet had something loud in it
+   * a moment ago. The splash they make going under is a noise of its own,
+   * and the Warden hears it at exactly its threshold, in that room only.
+   */
+  croaker: {
+    answers: { loud: 0.3, blast: 0.1 },
+    deaf: ["bright"],
+    tell: "They sing until something is loud. A silent cistern was not silent a moment ago.",
+  },
+
   /** A roost goes up at a noise, and the roost is louder than what roused it. */
   bat: {
     answers: { loud: 0.4, blast: 0.15 },

@@ -75,6 +75,8 @@ export interface HudFacts {
   roomTitle: string;
   ground: { name: string; says: string; tone: HudLine["tone"] } | null;
   roost: boolean;
+  /** Toads at the water's edge, singing - or not, which is the tell. */
+  croakers?: boolean;
   drafty: boolean;
   /**
    * What the floor's heat is CALLED, and the band it is in. Never the
@@ -317,6 +319,7 @@ export function hudLines(f: HudFacts): HudLine[] {
       body:
         `${f.ground.name}${DOT}${f.ground.says}` +
         (f.roost ? `${DOT}bats roost here` : "") +
+        (f.croakers ? `${DOT}toads sing here` : "") +
         (f.drafty ? `${DOT}a draft` : ""),
       rank: 4,
       tone: f.ground.tone,

@@ -48,6 +48,8 @@ export const CAPS: Record<ReceiverId, AlertCap> = {
   moth: { max: 1, min: 0, floorAfterPeak: false },
   /** A roost goes up and comes back down; it is weather, not a threat. */
   bat: { max: 2, min: 0, floorAfterPeak: false },
+  /** It goes under and comes back up. It is the room's clock, not a threat. */
+  croaker: { max: 2, min: 0, floorAfterPeak: false },
   /** It follows a lantern and it is not aware of you at all. */
   wisp: { max: 1, min: 0, floorAfterPeak: false },
   /** It dives. It does not forget quickly, but it does forget. */
