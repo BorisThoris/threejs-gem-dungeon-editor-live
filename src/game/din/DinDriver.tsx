@@ -51,12 +51,13 @@ export function DinDriver() {
       id: Parameters<typeof din.strike>[0],
       roomId: string | null | undefined,
       x = 0,
-      z = 0
+      z = 0,
+      surface?: import("../rooms/underfoot").Footing
     ) => {
       const { s, bars } = floor();
       const room = at(s.dungeon, roomId ?? s.currentRoomId);
       if (!s.dungeon || !room) return;
-      din.strike(id, s.dungeon.rooms, room, x, z, bars);
+      din.strike(id, s.dungeon.rooms, room, x, z, bars, surface);
     };
 
     const off = [
@@ -83,10 +84,10 @@ export function DinDriver() {
       bus.on("thiefCame", ({ roomId }) => strike("cutpurse", roomId)),
 
       /**
-       * A sprint. The store already owns whether one was loud enough to
-       * matter in this room's biome; the Din owns how far that carries.
+       * Throttled sprint samples carry their actual position and surface.
+       * A Warden alert is a reaction, not another sound at the room centre.
        */
-      bus.on("wardenHeard", () => strike("sprint", null)),
+      bus.on("sprinted", ({ roomId, x, z, surface }) => strike("sprint", roomId, x, z, surface)),
 
       /**
        * Theft is silent, and the call is here rather than absent because

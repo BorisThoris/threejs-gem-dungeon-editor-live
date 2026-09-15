@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
+import { footingCarry, type Footing } from "../rooms/underfoot";
 import { generateDungeon } from "../dungeon/generate";
 import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
 import { serviceCatch } from "../worldbuilding/serviceTrail";
@@ -646,7 +647,7 @@ export interface RunState {
    */
   giveAway: (amount: number) => void;
   /** The player made a noise loud enough to be placed. Sprinting does this. */
-  makeNoise: () => void;
+  makeNoise: (surface?: Footing, x?: number, z?: number) => void;
   /** Raise or lower the lantern. Raising with no oil left does nothing. */
   toggleLantern: () => void;
   /**
@@ -2046,9 +2047,9 @@ export const useRun = create<RunState>()(
       get().raiseAlarm(amount);
     },
 
-    makeNoise: () => {
+    makeNoise: (surface, x = 0, z = 0) => {
       const s = get();
-      const until = runClock(s) + noiseHoldFor(s);
+      const until = runClock(s) + noiseHoldFor(s, surface);
       // Called from the frame loop while a sprint is held, so it must be
       // cheap and must not write on every frame: every write re-runs every
       // selector in the store. The deadline is seconds long, so refreshing
@@ -2057,6 +2058,7 @@ export const useRun = create<RunState>()(
       if (until - s.noisyUntil < 0.5) return;
       const heard = wardenHears(s);
       set({ noisyUntil: until });
+      if (s.currentRoomId) bus.emit("sprinted", { roomId: s.currentRoomId, x, z, surface });
       if (!heard) bus.emit("wardenHeard");
     },
 
@@ -2886,9 +2888,9 @@ const roomNow = (s: RunState): Room | undefined =>
  * carry", which is why the ground and the legs are multiplied together
  * here and nowhere else.
  */
-export const noiseHoldFor = (s: RunState): number => {
+export const noiseHoldFor = (s: RunState, surface?: Footing): number => {
   const room = roomNow(s);
-  const ground = !room || !s.dungeon ? 1 : biomeFor(room.kind, room.id, s.dungeon.seed, room).carry;
+  const ground = !room || !s.dungeon ? 1 : surface ? footingCarry(room, surface) : biomeFor(room.kind, room.id, s.dungeon.seed, room).carry;
   const legs = running(s, s.effects.mire) ? MIRE_LOUDNESS : 1;
   return NOISE_HOLD_S * ground * legs;
 };

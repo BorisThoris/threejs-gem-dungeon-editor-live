@@ -333,6 +333,82 @@ Its material reading responds to the flowing/drained preview. Browser checks
 cover physical landing height, drainage, keyboard controls and seed reset;
 build, typecheck and lint pass.
 
+Rat fleeing and wandering now test the actual room outline as well as furniture
+before choosing a heading. Their local steering can turn along angled walls;
+when every candidate is blocked, an ambient rat waits instead of using the
+pursuing enemy's straight-through fallback. Newly placed furniture still allows
+an animal already inside its footprint to escape outward. Generation checks
+exercise 34,167 legal boundary turns across 4,539 rooms, plus a closed furniture
+ring and an outward escape. The native browser scatter-and-return check passes
+(59 homeward observations), as do typecheck and lint. Rendering budgets remain
+an open issue; this movement pass does not establish broader completion.
+
+Flooded terrain glints now use the persistent run clock, matching the timing
+model of the channel current. Paused remounts preserve the exact ripple phase
+instead of resetting the pool animation to zero. The three-step handmade glint
+is unchanged. `scripts/terrain-browser-check.mjs` checks the live material's
+shader uniform, advancement, pause, room remount and resumed animation in Chrome.
+
+The subsequent full performance sweep samples 78 rooms: worst values are
+75 draw calls, 7,880 triangles, 106 geometries and 10 textures. Draw calls,
+triangles and geometries still exceed the unchanged budgets. Room revisits do
+not accumulate geometries; sprinting and held-audio memory checks pass.
+
+Barrel hoops previously stood vertically through the barrel. They now wrap
+horizontally around its tapered sides, with fourteen facets aligned to the
+wood body and a square cross-section. Both hoops share one geometry. A native
+Chrome asset render confirms the corrected silhouette and a reduction from
+536 to 280 triangles per barrel. This change follows the full sweep above;
+those room totals do not include the barrel reduction.
+
+Sentries use a faceted metal housing and a simpler luminous lens, keeping the
+blue/red acquisition cue and the independently animated floor wedge. Their
+static post, housing and lens share cached geometry and immutable materials;
+the clipped beam remains owned by each sentry. Native Chrome rendering counts
+176 triangles including the beam, down from 416. Visual inspection and live
+acquisition/release verify the blue lens turns red and returns to blue. Typecheck
+and lint pass. The full room performance totals above predate this change too.
+
+Sprint stealth now samples the same ground as audible footsteps. Moss and
+fungal beds, paving, boards, metal and live water crossings use existing tuned
+material carry values. Independent wet beds remain noisy after channel drainage.
+Bone rooms retain their authored carry value. Walking remains below creature
+hearing thresholds and non-footstep emissions ignore the surface override.
+The Warden's noise deadline uses the sampled carry; throttled sprint events
+carry player coordinates and surface into the Din instead of treating a Warden
+reaction as a fresh sound at the centre of the room. Earlier louder deadlines
+are not shortened by stepping onto quieter ground.
+
+`scripts/terrain-stealth-browser-check.mjs` verifies all five material magnitudes
+and Warden deadlines through the live event driver, then holds sprint with real
+keyboard input and checks the emitted material against its world position.
+It passes on a fresh Vite server; the older HMR session returned a separate
+dynamically imported Din instance and could not observe the live signals.
+World checks pass across 4,539 rooms, including material ordering, quiet walking
+and unchanged bomb magnitude.
+
+The Atlas ground probe displays relative sprint noise and the base noise-memory
+duration. Its optional sprint overlay calls the same room-graph propagation
+function as the live Din: dashed rings and relative strengths show a fresh
+signal from the selected surface. Moving the probe or previewing drainage
+changes the source. Closed secret walls stay outside propagation. The legend
+states that doors are unbarred, item effects are omitted, and creature thresholds
+differ. Native browser comparison verifies every shown room and strength against
+the propagation function in flowing and drained states, plus overlay toggling;
+the rendered view was inspected. The full layout suite also passed following
+the terrain-stealth changes.
+
+The full gameplay suite passes after terrain stealth and the faceted sentry
+change, including combat, controls, ramp traversal, watcher cover, pursuit and
+pause behavior. A subsequent physical wall test exposed synthetic footfalls:
+the player stayed in exactly one place but generated seven more steps and three
+fresh sprint signals. Gait now uses measured horizontal motion, capped by the
+requested movement, and teleports reset the movement sample. The browser test
+now verifies silence against a wall, a quiet short teleport and resumed steps
+when walking away. Earlier noise still fades naturally. This footstep fix
+postdates the full gameplay run; its collision and terrain-stealth checks are
+targeted native-browser regressions.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

@@ -60,8 +60,13 @@ landings to the chamber while travel doorways retain their shared floor datum.
 non-overlapping strips for `FloorSurface.tsx`. World-space UVs continue across
 chambers, door collars and terraces. `terrainPattern.ts` supplies paving and
 deposit tiles, including slope-aligned gallery pieces split at ramp knees.
-`rooms/underfoot.ts` samples those visible surfaces and live channels for
-footstep timbre; room-level Din propagation keeps its existing owner.
+`rooms/underfoot.ts` samples visible surfaces and live channels for footstep
+timbre and sprint carry. Player movement supplies the same material and world
+position to audio and `makeNoise`; the store preserves earlier louder deadlines
+and emits throttled `sprinted` signals. `DinDriver` translates those samples
+through the existing room-graph propagation rules. `wardenHeard` remains a
+reaction cue, not a second sprint at the room centre. The Atlas ground probe
+uses these same material values and `carriesTo` for its optional noise overlay.
 Toad refuges prefer clear, flat deposit beds and sample the shared floor height.
 
 The atlas projects the same terrain tiles and uses one ground probe for plan

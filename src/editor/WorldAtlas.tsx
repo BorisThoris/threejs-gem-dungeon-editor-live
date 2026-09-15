@@ -20,10 +20,12 @@ import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
 import { passageLampsFor } from "../game/worldbuilding/passageLighting";
 import { GallerySection } from "./GallerySection";
 import { TerrainBlueprint } from "./TerrainBlueprint";
-import { footingAt } from "../game/rooms/underfoot";
+import { footingAt, footingCarry } from "../game/rooms/underfoot";
+import { carriesTo } from "../game/din/carry";
+import { EMISSIONS, loudnessIn } from "../game/din/emissions";
 import { floorHeightAt } from "../game/worldbuilding/elevation";
 import { floorRects } from "../game/dungeon/footprint";
-import { GROUND_Y } from "../game/world";
+import { GROUND_Y, NOISE_HOLD_S } from "../game/world";
 import type { Room } from "../game/dungeon/types";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
@@ -44,11 +46,15 @@ export function WorldAtlas() {
   const [ecology, setEcology] = useState(true);
   const [lighting, setLighting] = useState(true);
   const [terrain, setTerrain] = useState(true);
+  const [noise, setNoise] = useState(false);
   const [probe, setProbe] = useState<{ room: Room; x: number; z: number } | null>(null);
   const dungeon = useMemo(() => generateDungeon({ seed, floor }), [seed, floor]);
   const room = dungeon.rooms.find(r => r.id === selected) ?? dungeon.rooms[0];
   const probeX = probe?.room === room ? probe.x : 0, probeZ = probe?.room === room ? probe.z : 0;
   const probeGround = footingAt(room, probeX, probeZ, previewOpened, previewClock);
+  const probeCarry = footingCarry(room, probeGround);
+  const noiseReach = useMemo(() => noise ? carriesTo(dungeon.rooms, room.id, loudnessIn("sprint", room, probeGround)) : new Map<string, number>(),
+    [noise, dungeon, room, probeGround]);
   const probeHeight = floorHeightAt(room, probeX, probeZ) - GROUND_Y;
   const moveProbe = (x: number, z: number) => {
     if (floorRects(room).some(r => Math.abs(x - r.x) <= r.width / 2 && Math.abs(z - r.z) <= r.depth / 2))
@@ -125,6 +131,10 @@ export function WorldAtlas() {
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(r.id); } }} style={{ cursor: "pointer" }}>
               <path d={shape.floor} fill={r.id === room.id ? "#34443c" : "#19231f"} />
               <path d={shape.walls} fill="none" stroke={r.id === room.id ? "#f3d087" : color} strokeWidth={r.id === room.id ? 3 : 1.5} />
+              {noiseReach.has(r.id) && <g pointerEvents="none" data-testid="atlas-noise-room" data-room-id={r.id} data-strength={noiseReach.get(r.id)}>
+                <circle r={40} fill="none" stroke="#e6aa80" strokeDasharray="3 4" opacity={0.3 + Math.min(0.7, noiseReach.get(r.id)!)} />
+                <text textAnchor="middle" y={-43} fill="#e6aa80" fontSize={8}>{(noiseReach.get(r.id)! / EMISSIONS.sprint.magnitude).toFixed(2)}×</text>
+              </g>}
               <text textAnchor="middle" y={3} fill={color} fontSize={9}>{r.waterway?.role === "sluice" ? "SLUICE" : r.waterway?.role === "outfall" ? "RELIQUARY" : KIND_TITLE[r.kind].toUpperCase()}</text>
               <text textAnchor="middle" y={43} fill="#868e86" fontSize={8}>{r.biome}</text>
               {r.id === dungeon.vaultId && <text x={25} y={-25} fill="#edc771" fontSize={10}>KEY</text>}
@@ -133,6 +143,7 @@ export function WorldAtlas() {
             </g>;
           })}
         </svg>
+        {noise && <p style={small}>Dashed rings show a fresh sprint signal from the ground probe. Values compare with a sprint on bare stone; each doorway reduces it. This preview assumes unbarred doors and no item effects. Creatures have different hearing thresholds.</p>}
         <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 12 }}>
           {Object.entries(DISTRICTS).map(([id, d]) => <span key={id} style={{ ...small, color: INK[id as keyof typeof INK] }}>{d.name}</span>)}
         </div>
@@ -151,6 +162,7 @@ export function WorldAtlas() {
           <label style={small}><input type="checkbox" checked={ecology} onChange={e => setEcology(e.target.checked)} /> Show habitats</label>
           <label style={small}><input type="checkbox" checked={lighting} onChange={e => setLighting(e.target.checked)} /> Show passage lamps</label>
           <label style={small}><input type="checkbox" checked={terrain} onChange={e => setTerrain(e.target.checked)} /> Show terrain</label>
+          <label style={small}><input type="checkbox" checked={noise} onChange={e => setNoise(e.target.checked)} /> Show sprint noise</label>
         </div>
         {waterPreview === "timeline" && <label style={{ ...small, display: "block" }}>Time since opening the sluice
           <input aria-label="Drain time" type="range" min={0} max={10} step={0.1} value={drainSeconds}
@@ -231,6 +243,7 @@ export function WorldAtlas() {
         </svg>
         <output id="atlas-ground-probe" aria-live="polite" style={{ ...small, display: "block" }}>
           Ground probe ({probeX.toFixed(1)}, {probeZ.toFixed(1)}) · floor +{probeHeight.toFixed(2)} m · {probeGround === "soft" ? "soft growth" : probeGround} footsteps.
+          {" "}<span data-testid="atlas-ground-noise">Sprint noise {probeCarry.toFixed(2)}× stone · base noise memory {(NOISE_HOLD_S * probeCarry).toFixed(1)} s.</span>
         </output>
         <p style={small}>Select a floor position to inspect it. Arrow keys move the probe 0.5 m; Shift moves 2 m; Home returns to the room center.</p>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>

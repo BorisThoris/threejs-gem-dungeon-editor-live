@@ -1,6 +1,7 @@
 import { BIOME, biomeIdFor, type Biome } from "../rooms/biomes";
 import type { Room } from "../dungeon/types";
 import type { Surface, Tag } from "./tags";
+import { footingCarry, type Footing } from "../rooms/underfoot";
 
 /**
  * What the things on this floor declare themselves to be.
@@ -143,8 +144,8 @@ export const surfaceOf = (room: Room): Surface =>
  * moss as it is on tile, and pretending otherwise would make the one
  * reliable tool in the game situational for no reason a player could read.
  */
-export function loudnessIn(id: EmissionId, room: Room): number {
+export function loudnessIn(id: EmissionId, room: Room, surface?: Footing): number {
   const emission: Emission = EMISSIONS[id];
   if (!emission.underfoot) return emission.magnitude;
-  return emission.magnitude * BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].carry;
+  return emission.magnitude * (surface ? footingCarry(room, surface) : BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].carry);
 }

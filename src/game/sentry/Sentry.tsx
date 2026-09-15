@@ -11,6 +11,7 @@ import { roomRayReach, roomSegmentClear, wallEdges } from "../dungeon/footprint"
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
+import { geo, mat } from "../props/shared";
 import {
   GROUND_Y,
   SENTRY_ALARM,
@@ -224,23 +225,17 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   });
 
   return (
-    <group position={position}>
+    <group name="sentry-post" position={position}>
       <RigidBody type="fixed" colliders={false}>
-        <mesh position={[0, 1.1, 0]} castShadow>
-          <cylinderGeometry args={[0.14, 0.22, 2.2, 8]} />
-          <meshStandardMaterial color="#3c4048" metalness={0.5} roughness={0.6} />
-        </mesh>
+        <mesh position={[0, 1.1, 0]} castShadow geometry={geo("cylinder", 0.14, 0.22, 2.2, 8)}
+          material={mat({ color: "#3c4048", metalness: 0.5, roughness: 0.6 })} />
         <CylinderCollider args={[SENTRY_POST_HEIGHT / 2, SENTRY_POST_RADIUS]} position={[0, SENTRY_POST_HEIGHT / 2, 0]} />
       </RigidBody>
       <group ref={head} position={[0, 2.3, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.24, 12, 10]} />
-          <meshStandardMaterial color="#2a2d34" roughness={0.5} metalness={0.4} />
-        </mesh>
-        <mesh position={[0, 0, 0.19]}>
-          <sphereGeometry args={[0.13, 10, 8]} />
-          <meshBasicMaterial color={seen ? "#ff6a4a" : "#8ad4ff"} />
-        </mesh>
+        <mesh name="sentry-housing" geometry={geo("dodecahedron", 0.24)}
+          material={mat({ color: "#2a2d34", roughness: 0.5, metalness: 0.4 })} />
+        <mesh name="sentry-lens" position={[0, 0, 0.19]} geometry={geo("sphere", 0.13, 8, 6)}
+          material={mat({ color: seen ? "#ff6a4a" : "#8ad4ff", basic: true })} />
         {/* A pool at the head, not a floodlight down the room: at full
             range it washed out the wedge on the floor, which is the thing
             the player actually has to read. */}

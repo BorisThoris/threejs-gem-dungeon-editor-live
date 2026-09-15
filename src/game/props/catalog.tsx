@@ -84,11 +84,16 @@ const BONE = "#d9d2c0";
 
 function Barrel(p: PropProps) {
   return (
-    <group {...frame(p)}>
+    <group {...frame(p)} name="handmade-barrel">
       <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
-      {[0.25, 0.85].map((y) => (
-        <mesh key={y} position={[0, y, 0]} geometry={geo("torus", 0.43, 0.03, 6, 20)} material={mat({ color: IRON, metalness: 0.7, roughness: 0.4 })} />
-      ))}
+      {[0.25, 0.85].map((y) => {
+        // Match the tapered stave radius and facet direction. Both forged
+        // bands share one square-section ring; local z becomes world height.
+        const radius = 0.38 + 0.04 * y / 1.1 + 0.007;
+        return <mesh key={y} name="barrel-hoop" position={[0, y, 0]} rotation={[Math.PI / 2, 0, Math.PI / 2]} scale={[radius, radius, 0.8]}
+          geometry={geo("torus", 1, 0.05, 4, 14)}
+          material={mat({ color: IRON, metalness: 0.7, roughness: 0.55 })} />
+      })}
     </group>
   );
 }

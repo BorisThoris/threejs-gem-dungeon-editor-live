@@ -1,9 +1,19 @@
 import type { Room } from "../dungeon/types";
 import { waterUnderfoot } from "../worldbuilding/watercourse";
-import { biomeIdFor } from "./biomes";
+import { BIOME, biomeIdFor } from "./biomes";
 import { terrainFor, type TerrainTile } from "./terrainPattern";
 
 export type Footing = "stone" | "water" | "soft" | "wood" | "metal";
+/** Retain authored biome acoustics on their native ground, while paving and
+ * water crossings use the material actually visible beneath the player. */
+export function footingCarry(room: Room, footing: Footing): number {
+  const biome = biomeIdFor(room.kind, room.id, room.seed, room);
+  if (footing === "water") return BIOME.flooded.carry;
+  if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : BIOME.mossy.carry;
+  if (footing === "wood") return BIOME.timber.carry;
+  if (footing === "metal") return BIOME.foundry.carry;
+  return biome === "bone" ? BIOME.bone.carry : BIOME.hewn.carry;
+}
 const terrainCache = new WeakMap<Room, ReturnType<typeof terrainFor>>();
 const covers = (tile: TerrainTile, x: number, z: number) =>
   Math.abs(x - tile.position[0]) <= tile.size[0] / 2 && Math.abs(z - tile.position[2]) <= tile.size[2] / 2;

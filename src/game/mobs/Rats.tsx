@@ -10,7 +10,8 @@ import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { wardenAt } from "../warden/position";
-import { patchAt, steerAround, steerInRoom, type Patch } from "../warden/steer";
+import { patchAt, steerInRoom, type Patch } from "../warden/steer";
+import { groundHeading } from "./groundHeading";
 import { RAT_FLEE_RADIUS, RAT_SPEED, RAT_SPOOK_S } from "../world";
 import { floorHeightAt } from "../worldbuilding/elevation";
 import type { Spot } from "./ambient";
@@ -127,7 +128,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
         const ax = rat.x - tx;
         const az = rat.z - tz;
         const len = Math.hypot(ax, az) || 1;
-        const h = steerAround(rat.x, rat.z, rat.x + (ax / len) * 3, rat.z + (az / len) * 3, obstacles, 0);
+        const h = groundHeading(room, rat.x, rat.z, rat.x + (ax / len) * 3, rat.z + (az / len) * 3, obstacles);
         dx = h.dx;
         dz = h.dz;
         speed = RAT_SPEED;
@@ -142,7 +143,7 @@ export function Rats({ room, holes, obstacles, hazards }: RatsProps) {
           dz = heading.dz;
         } else {
           rat.homing = false;
-          const heading = steerAround(rat.x, rat.z, rat.x + Math.cos(rat.wander), rat.z + Math.sin(rat.wander), obstacles, 0);
+          const heading = groundHeading(room, rat.x, rat.z, rat.x + Math.cos(rat.wander), rat.z + Math.sin(rat.wander), obstacles);
           dx = heading.dx;
           dz = heading.dz;
         }

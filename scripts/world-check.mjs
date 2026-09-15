@@ -14,11 +14,25 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/wallCoursePattern",
   "rooms/floorSurfacePattern",
   "rooms/underfoot",
+  "mobs/groundHeading",
+  "din/emissions",
   "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+const pen = { ...L.generateDungeon({ seed: 72, floor: 1 }).rooms[0], shape: "square", size: 20, wings: [], links: {} };
+const softRoom = { ...pen, biome: "mossy" };
+assert.ok(L.loudnessIn("sprint", softRoom, "soft") < L.loudnessIn("sprint", softRoom, "stone"), "paving carries more sprint noise than its moss bed");
+assert.ok(L.loudnessIn("sprint", softRoom, "water") > L.loudnessIn("sprint", softRoom, "stone"), "crossing water carries more sprint noise than dry paving");
+assert.equal(L.loudnessIn("bombBurst", softRoom, "soft"), L.loudnessIn("bombBurst", softRoom, "water"), "non-footstep emissions ignore footing");
+for (const surface of ["stone", "water", "soft", "wood", "metal"]) assert.ok(L.loudnessIn("walk", softRoom, surface) < 0.1, "walking stays below creature hearing thresholds");
+assert.deepEqual(L.groundHeading(pen, 0, 0, 0, 0, []), { dx: 0, dz: 0 }, "stationary targets do not create a heading");
+const cage = Array.from({ length: 16 }, (_, i) => ({ x: Math.cos(i * Math.PI / 8), z: Math.sin(i * Math.PI / 8), r: 0.35 }));
+assert.deepEqual(L.groundHeading(pen, 0, 0, 3, 0, cage), { dx: 0, dz: 0 }, "a cornered ambient animal does not take the enemy fallback through furniture");
+assert.ok(L.groundHeading(pen, 0.1, 0, 3, 0, [{ x: 0, z: 0, r: 0.5 }]).dx > 0,
+  "an obstacle newly placed over an animal permits outward escape");
+let wallTurns = 0;
 assert.equal(L.croakerMigration(null, 100), 0, "unopened channels keep toads at their feeding positions");
 assert.equal(L.croakerMigration(10, 14), 0, "migration waits for the channel to fall");
 assert.ok(Math.abs(L.croakerMigration(10, 17.3) - 0.5) < 1e-8, "mid-retreat position derives from saved drain time");
@@ -128,6 +142,19 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(seen.size, members.length, "each district is connected through real doors");
   }
   for (const r of d.rooms) {
+    // Aim outward near the chamber boundary, where furniture-only steering
+    // used to press a rat into the wall. Verify the entire chosen segment.
+    for (let angle = 0.2; angle < Math.PI * 2; angle += Math.PI / 4) {
+      const reach = L.floorReach(r, angle) - 0.8;
+      const x = Math.cos(angle) * reach, z = Math.sin(angle) * reach;
+      if (!L.insideRoom(r, x, z, 0.5)) continue;
+      const targetX = x + Math.cos(angle) * 3, targetZ = z + Math.sin(angle) * 3;
+      if (L.roomSegmentClear(r, x, z, targetX, targetZ, 0.5)) continue;
+      const heading = L.groundHeading(r, x, z, targetX, targetZ, []);
+      assert.ok(L.roomSegmentClear(r, x, z, x + heading.dx * 1.4, z + heading.dz * 1.4, 0.5),
+        "wandering and fleeing choose a legal full segment in the actual footprint");
+      if (Math.hypot(heading.dx, heading.dz) > 0.9) wallTurns++;
+    }
     const physicalFloor = L.floorRects(r), surface = L.floorSurfaceRects(r);
     const overlapArea = (a, b) => Math.max(0, Math.min(a.x + a.width / 2, b.x + b.width / 2) - Math.max(a.x - a.width / 2, b.x - b.width / 2)) *
       Math.max(0, Math.min(a.z + a.depth / 2, b.z + b.depth / 2) - Math.max(a.z - a.depth / 2, b.z - b.depth / 2));
@@ -302,7 +329,9 @@ console.log(`Discovery: ${serviceTrails} reliquary-to-secret expeditions through
 console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
 assert.equal(identities.size, Object.keys(L.PLACE_IDENTITIES).length, "all building identities occur in the generated world");
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);
-console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
+  console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
+  assert.ok(wallTurns > 1000, "animals actively turn along walls across generated room shapes");
+  console.log(`Ambient movement: ${wallTurns} legal turns away from chamber boundaries.`);
 assert.ok(matching / links > 0.65, "most doorways continue the same district");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
 assert.equal(L.waterLevel(null, 100), 1);

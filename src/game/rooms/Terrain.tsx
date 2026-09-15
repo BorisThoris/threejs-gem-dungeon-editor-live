@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Matrix4, Vector3, type InstancedMesh } from "three";
 import { useLayoutEffect } from "react";
 import type { Room } from "../dungeon/types";
-import { useRun } from "../state/run";
+import { runClock, useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { terrainFor, TERRAIN_COLORS, type TerrainTile } from "./terrainPattern";
 import { geo } from "../props/shared";
@@ -32,18 +32,19 @@ function Tiles({ blocks, name, children }: { blocks: TerrainTile[]; name: string
 /** Broad, block-cut beds with a deliberately stepped water glint. Two draws. */
 export function Terrain({ room }: { room: Room }) {
   const data = useMemo(() => terrainFor(room), [room]);
-  const time = useRef({ value: 0 });
+  const time = useRef({ value: runClock(useRun.getState()) });
   const wet = data.biome === "flooded";
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
   const pavingSurface = useSurface("stone", 0.5);
   const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss" : "stone", 0.5);
-  useFrame((_, dt) => {
-    if (!useRun.getState().paused) time.current.value += Math.min(dt, 0.1);
+  useFrame(() => {
+    time.current.value = runClock(useRun.getState());
   });
   return <group>
     <Tiles blocks={data.paving} name="terrain-paving"><meshStandardMaterial color={stone} map={pavingSurface} roughness={0.9} /></Tiles>
     <Tiles blocks={data.deposits} name="terrain-deposits">
       <meshStandardMaterial color={deposit} map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
+        userData={{ terrainTime: time.current }}
         emissive={wet ? "#233d42" : "#000000"} emissiveIntensity={0.15}
         customProgramCacheKey={() => wet ? "block-water-v1" : "terrain-v1"}
         onBeforeCompile={shader => {

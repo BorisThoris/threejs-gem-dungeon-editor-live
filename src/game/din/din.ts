@@ -109,10 +109,11 @@ export function strike(
   room: Room,
   x = 0,
   z = 0,
-  bars: ReadonlySet<string> = new Set()
+  bars: ReadonlySet<string> = new Set(),
+  surface?: import("../rooms/underfoot").Footing
 ): void {
   const emission = EMISSIONS[id];
-  const magnitude = loudnessIn(id, room);
+  const magnitude = loudnessIn(id, room, surface);
   // Theft is silent, and a silent thing does not take a slot.
   if (magnitude < AUDIBLE || emission.tags.length === 0) return;
   if (live.length >= MAX_LIVE) live.shift();

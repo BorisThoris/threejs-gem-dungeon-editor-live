@@ -21,6 +21,7 @@ export interface PuzzleRequest {
 }
 
 export interface BusEvents {
+  sprinted: { roomId: string; x: number; z: number; surface?: import("./rooms/underfoot").Footing };
   sluiceOpened: { roomId: string; x: number; z: number };
   bellcapWarning: { roomId: string; x: number; z: number };
   bellcapBurst: { roomId: string; x: number; z: number };
