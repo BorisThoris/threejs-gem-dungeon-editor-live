@@ -628,6 +628,24 @@ generated fixtures in all three districts retain all 14 furnishings and produce
 stable results on repeated reads; the shipped templates also pass the editor's
 import guard. Layout checks, typecheck, lint and build pass.
 
+Footsteps now feed a quiet three-tap early-reflection effect. Its delay derives
+from the union area of the physical floor, including polygon cuts and galleries;
+moss and fungi absorb more of the return than stone, with timber between them.
+Threat cues retain their directional dry signal. The effect uses eight shared
+audio nodes, with no feedback loop or per-room buffers, and is disabled on pause
+and outside a run.
+
+Native offline audio checks measure the rendered impulse: a 20-metre square
+returns at about 58 ms, a 36-metre square at 105 ms, and a same-size circular
+room sooner than the square. Moss yields about 3% of the stone fixture's returned
+energy. Tails end before half a second, disabling the return produces silence,
+and 10,000 profile changes create no further nodes. Live checks cover room entry,
+pause and resume. The isolated audio suite now unmounts generated room sound
+drivers before probing voices, because a live watercourse otherwise overwrites
+the test's current-volume commands. The full native audio suite passes, including
+cue audibility, water drainage, event wiring, music and mute behavior; typecheck,
+lint and build also pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

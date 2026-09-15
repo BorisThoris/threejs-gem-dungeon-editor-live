@@ -7,8 +7,12 @@
  * gesture, because browsers refuse to start audio before one.
  */
 
+import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
+
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
+let reflections: ReturnType<typeof createRoomReflections> | null = null;
+let roomAcoustics: RoomAcoustics | null = null;
 let muted = false;
 /**
  * How loud, 0 to 1, on top of the mute.
@@ -34,6 +38,8 @@ function ensureContext(): AudioContext | null {
     master = context.createGain();
     master.gain.value = masterGain();
     master.connect(context.destination);
+    reflections = createRoomReflections(context, master);
+    reflections.configure(roomAcoustics);
   }
   if (context.state === "suspended") void context.resume();
   return context;
@@ -56,7 +62,8 @@ function envelope(
   attack: number,
   decay: number,
   peak: number,
-  pan = 0
+  pan = 0,
+  reflect = false
 ) {
   const gain = ctx.createGain();
   const now = ctx.currentTime;
@@ -64,6 +71,7 @@ function envelope(
   gain.gain.exponentialRampToValueAtTime(peak, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
   node.connect(gain);
+  if (reflect && reflections) gain.connect(reflections.input);
   if (pan === 0 || !ctx.createStereoPanner) {
     gain.connect(master!);
     return;
@@ -82,7 +90,8 @@ function tone(
   type: OscillatorType = "sine",
   peak = 0.6,
   sweepTo?: number,
-  pan = 0
+  pan = 0,
+  reflect = false
 ) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
@@ -108,7 +117,7 @@ function tone(
       ctx.currentTime + duration
     );
   }
-  envelope(ctx, osc, 0.008, duration, peak, pan);
+  envelope(ctx, osc, 0.008, duration, peak, pan, reflect);
   osc.start();
   osc.stop(ctx.currentTime + duration + 0.05);
 }
@@ -133,7 +142,7 @@ function noiseBuffer(ctx: AudioContext): AudioBuffer {
   return noise;
 }
 
-function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
+function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0, reflect = false) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
   const source = ctx.createBufferSource();
@@ -144,7 +153,7 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
   filter.type = "lowpass";
   filter.frequency.value = filterHz;
   source.connect(filter);
-  envelope(ctx, filter, 0.005, duration, peak, pan);
+  envelope(ctx, filter, 0.005, duration, peak, pan, reflect);
   source.start(ctx.currentTime, offset, duration + 0.1);
   source.stop(ctx.currentTime + duration + 0.1);
 }
@@ -650,6 +659,11 @@ let bed: {
  * Fades in over a couple of seconds and out over one.
  */
 export const ambience = {
+  setRoomAcoustics(profile: RoomAcoustics | null) {
+    roomAcoustics = profile;
+    reflections?.configure(profile);
+  },
+  roomAcoustics: () => roomAcoustics,
   /** Running water is infrastructure, independent of a room's native air. */
   setCurrent(level: number, pan = 0) {
     const amount = Math.max(0, Math.min(1, level));
@@ -867,32 +881,35 @@ export const sfx = {
    * present.
    */
   step(strong: boolean, running = false, surface: import("../rooms/underfoot").Footing = "stone") {
+    const scuff = (duration: number, peak: number, filter: number) => noiseBurst(duration, peak, filter, 0, true);
+    const body = (frequency: number, duration: number, type: OscillatorType, peak: number, sweep: number) =>
+      tone(frequency, duration, type, peak, sweep, 0, true);
     const wobble = 0.85 + Math.random() * 0.4;
     // A run is heard by the Warden, so it had better be heard by the player
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
     if (surface === "water") {
-      noiseBurst(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
-      tone(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
+      scuff(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
+      body(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
       return;
     }
     if (surface === "soft") {
-      noiseBurst(0.11, (strong ? 0.3 : 0.22) * loud, 240 * wobble);
-      tone(60 * wobble, 0.07, "sine", (strong ? 0.2 : 0.14) * loud, 42);
+      scuff(0.11, (strong ? 0.3 : 0.22) * loud, 240 * wobble);
+      body(60 * wobble, 0.07, "sine", (strong ? 0.2 : 0.14) * loud, 42);
       return;
     }
     if (surface === "wood") {
-      noiseBurst(0.07, (strong ? 0.26 : 0.19) * loud, 560 * wobble);
-      tone(155 * wobble, 0.09, "triangle", (strong ? 0.19 : 0.13) * loud, 90);
+      scuff(0.07, (strong ? 0.26 : 0.19) * loud, 560 * wobble);
+      body(155 * wobble, 0.09, "triangle", (strong ? 0.19 : 0.13) * loud, 90);
       return;
     }
     if (surface === "metal") {
-      noiseBurst(0.06, (strong ? 0.22 : 0.16) * loud, 1600 * wobble);
-      tone(420 * wobble, 0.14, "triangle", (strong ? 0.16 : 0.11) * loud, 260);
+      scuff(0.06, (strong ? 0.22 : 0.16) * loud, 1600 * wobble);
+      body(420 * wobble, 0.14, "triangle", (strong ? 0.16 : 0.11) * loud, 260);
       return;
     }
-    noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
-    tone(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
+    scuff((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
+    body(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
   },
   /** Something dropped into the satchel. */
   take() {

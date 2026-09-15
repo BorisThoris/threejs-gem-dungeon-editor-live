@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
@@ -9,6 +9,7 @@ import { BIOME } from "../rooms/biomes";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, music, sfx } from "./audio";
 import { biomeIdFor } from "../rooms/biomes";
+import { acousticsFor } from "./roomAcoustics";
 
 /** The side a neighbouring room lies on, from the run's own map. */
 function towards(roomId: string): number {
@@ -56,6 +57,12 @@ export function Audio() {
    */
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
+  const room = useRun(s => s.dungeon?.rooms.find(r => r.id === s.currentRoomId));
+  const acoustics = useMemo(() => room ? acousticsFor(room) : null, [room]);
+  useEffect(() => {
+    ambience.setRoomAcoustics(playing && !paused ? acoustics : null);
+    return () => ambience.setRoomAcoustics(null);
+  }, [playing, paused, acoustics]);
   useEffect(() => {
     music.start(phase === "playing" ? "delve" : "title");
   }, [phase]);

@@ -284,6 +284,13 @@ const CUES = [
  * stilled for the measurement and checked on its own below.
  */
 const floorLevel = await page.evaluate(async (flush) => {
+  // A generated start room may now contain a live watercourse or wildlife.
+  // Their frame drivers overwrite direct voice probes (including stopCurrent).
+  // Isolate the instrument here; the real strike below starts a fresh run.
+  window.__run.setState({ paused: true, currentRoomId: null });
+  await new Promise((r) => setTimeout(r, 200));
+  window.__music.stop();
+  window.__ambience.stopCurrent();
   window.__ambience.setAir("still");
   await new Promise((r) => setTimeout(r, 1200 + flush));
   return window.__listen(600);
