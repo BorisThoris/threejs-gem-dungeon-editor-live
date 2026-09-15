@@ -127,6 +127,18 @@ try {
   const dryFlow = await waterState();
   assert.equal(await currentSound(), 0, "drainage silences the current voice");
   assert.equal(dryFlow.visible, false, "drainage removes the water surface");
+  const sediment = await page.evaluate(async () => {
+    const { Matrix4 } = await import("/node_modules/.vite/deps/three.js");
+    const bed = window.__scene.getObjectByName("channel-sediment");
+    const water = window.__scene.getObjectByName("directed-channel-surface");
+    const matrix = new Matrix4(), heights = [];
+    for (let i = 0; i < bed.count; i++) { bed.getMatrixAt(i, matrix); heights.push(matrix.elements[13]); }
+    return { visible: bed.visible && bed.material.visible, separate: bed.material !== water.material,
+      trianglesPerSegment: bed.geometry.index.count / 3, heights, textured: !!bed.material.map };
+  });
+  assert.ok(sediment.visible && sediment.separate && sediment.textured, "textured sediment remains after the separate water cover disappears");
+  assert.equal(sediment.trianglesPerSegment, 2, "a bed submits only its visible top face");
+  assert.ok(sediment.heights.length > 0 && sediment.heights.every(y => Math.abs(y - 0.041) < 1e-6), "sediment retains the original channel base height");
   await page.waitForTimeout(400);
   assert.deepEqual(await waterState(), dryFlow, "the dry current remains stopped");
   await visit(fixture.cache);

@@ -555,6 +555,26 @@ shortcuts, gates, completion and native HUD updates. The watercourse browser
 test still passes keyboard operation, physical catch travel, rewards and reset
 behavior; typecheck, lint and build pass.
 
+The purposeful-terrain/named-trail performance checkpoint measures 73 calls,
+7,591 triangles, 112 geometries and 10 textures across 78 rooms. The same three
+rendering budgets remain exceeded. Settled revisits, sprint memory and held
+audio checks pass. This checkpoint predates the sediment refinement below.
+
+## What drainage leaves behind
+
+The channel's existing dark base is now a textured sediment bed: muted garden
+silt, rusty works deposits, or pale tomb sediment. Shared world-space grain
+continues across its segments. The base retains its original 0.041m surface
+height and bronze surround; each segment submits one top face instead of a
+box. It adds no collision or navigation obstacle.
+
+The moving water and the reliquary's water cover remain separate from this dry
+surface. The expanded native watercourse check verifies that water disappears
+while textured sediment stays visible, with two triangles per segment and the
+original height. Keyboard drainage, current sound, pause, revisits, cache
+rewards, the secret catch and resets still pass. Garden, works and tomb renders
+have no shader errors; typecheck, lint and build pass.
+
 Pure generation checks must cover hundreds of floors and actual room shapes.
 Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and

@@ -1,4 +1,5 @@
 import { geo } from "../props/shared";
+import { ChannelBed } from "./ChannelBed";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CanvasTexture, NearestFilter, PlaneGeometry, type Group, MeshStandardMaterial } from "three";
@@ -103,7 +104,7 @@ export function Watercourse({ room }: { room: Room }) {
   return <group>
     <Blocks blocks={blocks.map(b => ({ ...b, position: [b.position[0], GROUND_Y + 0.032, b.position[2]],
       size: [b.size[0] === 0.8 ? 1.02 : b.size[0], 0.008, b.size[2] === 0.8 ? 1.02 : b.size[2]] }))} color="#806a47" />
-    <Blocks blocks={blocks} color="#253b3a" />
+    <ChannelBed room={room} blocks={blocks} />
     <group>
       {blocks.map((b, i) => {
         return <mesh key={i} name="directed-channel-surface" position={[b.position[0], GROUND_Y + 0.044, b.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
