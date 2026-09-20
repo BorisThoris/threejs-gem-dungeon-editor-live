@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-17T10:25:02.196Z",
+  "generatedAt": "2026-09-20T12:46:23.649Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -102,53 +102,53 @@
   },
   "media": {
     "source": "repo-local",
-    "directory": "C:/Users/Gaming PC/Desktop/Repos/threejs-gem-dungeon-editor-live/project-media",
+    "directory": "/home/runner/work/threejs-gem-dungeon-editor-live/threejs-gem-dungeon-editor-live/project-media",
     "primary": "project-media/card.jpg",
     "images": [
       {
         "profile": "card",
         "file": "card.jpg",
         "path": "project-media/card.jpg",
-        "bytes": 49230,
+        "bytes": 49778,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-17T10:23:45.485Z"
+        "capturedAt": "2026-09-20T12:45:10.044Z"
       },
       {
         "profile": "desktop",
         "file": "desktop.jpg",
         "path": "project-media/desktop.jpg",
-        "bytes": 48206,
+        "bytes": 48891,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-17T10:24:03.729Z"
+        "capturedAt": "2026-09-20T12:45:28.491Z"
       },
       {
         "profile": "full",
         "file": "full.jpg",
         "path": "project-media/full.jpg",
-        "bytes": 43306,
+        "bytes": 43710,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-17T10:24:40.149Z"
+        "capturedAt": "2026-09-20T12:46:05.172Z"
       },
       {
         "profile": "mobile",
         "file": "mobile.jpg",
         "path": "project-media/mobile.jpg",
-        "bytes": 27346,
+        "bytes": 27286,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-17T10:24:21.936Z"
+        "capturedAt": "2026-09-20T12:45:46.795Z"
       },
       {
         "profile": "og",
         "file": "og.jpg",
         "path": "project-media/og.jpg",
-        "bytes": 39480,
+        "bytes": 41765,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-17T10:24:58.355Z"
+        "capturedAt": "2026-09-20T12:46:23.484Z"
       }
     ]
   },
@@ -201,9 +201,9 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 343,
+    "sourceFiles": 342,
     "testFiles": 1,
-    "sourceLines": 63110,
+    "sourceLines": 63080,
     "largestDirectories": [
       {
         "directory": "src",
@@ -211,7 +211,7 @@
       },
       {
         "directory": "output",
-        "files": 56
+        "files": 55
       },
       {
         "directory": "scripts",
@@ -242,11 +242,11 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "9691dc3",
-    "lastCommitDate": "2026-09-15T23:51:55+03:00",
-    "lastCommitSubject": "Merge remote-tracking branch 'origin/main'",
-    "commitCount": 388,
-    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
+    "head": "3ca2510",
+    "lastCommitDate": "2026-09-20T12:35:40Z",
+    "lastCommitSubject": "Write down what the repo owes an agent, and in what order",
+    "commitCount": 391,
+    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
     "file": "README.md",
