@@ -292,7 +292,9 @@ and a count of how runs ended - a record, not a progression system.
 **[ARCHITECTURE.md](ARCHITECTURE.md)** explains how the code is laid out and
 the rule it follows. **[STEAM_DEMO_PLAN.md](STEAM_DEMO_PLAN.md)** is the
 history: what was wrong, what was done about it, and what still stands
-between here and a Steam demo.
+between here and a Steam demo. **[AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** is
+for the agent that writes most of this: what the repo gives one, what it
+still owes one, and in what order.
 
 ## Controls
 
