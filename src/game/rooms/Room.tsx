@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
-import { CircleGeometry, PlaneGeometry } from "three";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
@@ -34,6 +33,7 @@ import { Grate } from "../traps/Grate";
 import { Pit } from "../traps/Pit";
 import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
+import { floorGeometry } from "./floor";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
@@ -225,13 +225,8 @@ export function Room({ room, seed }: RoomProps) {
 
   // The floor's outline: a flat polygon with as many sides as the shape has,
   // built once per room and released with it.
-  const outline = useMemo(
-    () =>
-      room.shape === "square"
-        ? new PlaneGeometry(room.size, room.size)
-        : new CircleGeometry(half, SHAPE_SIDES[room.shape]),
-    [room.shape, room.size, half]
-  );
+  // One owner: the room draws this and the layout check measures it.
+  const outline = useMemo(() => floorGeometry(room), [room]);
   useEffect(() => () => outline.dispose(), [outline]);
 
   // Tell the run the colliders exist: control is handed back only now.

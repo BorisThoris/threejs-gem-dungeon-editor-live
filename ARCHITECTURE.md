@@ -337,6 +337,25 @@ Two stores that both claimed the player's stats. So:
   room is routed through `routWarden` (the same owner a second spike wound
   uses, so a bomb and the spikes can never come to differ), the thief
   drops what it holds, and a cracked wall in reach gives.
+- **A floor is drawn from triangles a texture sampler can read.** Round
+  rooms drew their floor as a `CircleGeometry`: a fan, one vertex in the
+  middle and one triangle per side, each running the room's whole radius.
+  The texture coordinates were right - three maps a circle planar, the same
+  as a plane - but a triangle eight metres long and a sliver wide has an
+  enormous texture derivative along it and almost none across, and the
+  sampler answers that with the coarsest mip it has. Every wedge came back
+  one flat colour. A round room had no stone in it at all, just a dozen
+  coloured bands, and nearly half the rooms the generator makes are round.
+  `rooms/floor.ts` is the one owner now: a polar grid pushed out onto the
+  room's own outline by `floorReach`, so the polygon is exactly the polygon
+  it was, made of pieces no longer than `FLOOR_EDGE`. The layout check
+  measures the longest edge rather than trusting the comment. Note what the
+  investigation cost and what it taught: two confident explanations (the UV
+  mapping, then anisotropy) were both wrong and both were killed by
+  measurement - the UVs read back as exactly `position/size + 0.5`, and
+  anisotropy was already 16. What settled it was painting a checker into
+  the floor's own texture at runtime and seeing flat bands where a checker
+  should be.
 - **A relic that promises something must have a reader.** The Cutter's Cant
   said "you may take the third offer the shop was not going to show you"
   and the shop sliced its list to two unconditionally - nothing in the tree

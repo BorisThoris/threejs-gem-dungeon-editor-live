@@ -37,6 +37,7 @@ writeFileSync(
    export * from "${root}src/game/rooms/anchors";
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
+   export * from "${root}src/game/rooms/floor";
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/heat/coefficient";
@@ -5588,6 +5589,50 @@ check("the shipped room templates reach the floors the game generates", authored
     "the README says what naming costs and what it does not tell you",
     /none of them settle/i.test(readme) && /not told which/i.test(readme),
     "the batch rule is written down where a player can find it"
+  );
+}
+
+// --- A floor the sampler can actually read -----------------------------------
+//
+// Half the rooms the generator makes are round, and every one of them drew
+// its floor as a fan: one vertex in the middle, one triangle per side,
+// each running the whole radius. Texture coordinates were right; the shape
+// was not. A triangle eight metres long and a sliver wide has a huge
+// texture derivative along it and almost none across, the sampler answers
+// with the coarsest mip it has, and every wedge comes back one flat
+// colour. On screen a round room had no stone in it - a dozen coloured
+// bands - and it had been that way in every build.
+//
+// The eye found it; this keeps it found. A floor triangle that grows long
+// again is a floor that will smear, and that is a number, not a screen.
+{
+  const sizes = [12, 16, 20, 24];
+  const measured = [];
+  for (const shape of L.SHAPES) {
+    for (const size of sizes) {
+      const room = { id: "r", kind: "normal", grid: { x: 0, z: 0 }, size, shape, links: {}, seed: 1 };
+      measured.push({ shape, size, edge: L.longestFloorEdge(room), segments: shape === "square" ? 0 : L.floorSegments(room) });
+    }
+  }
+  /**
+   * A quarter of the room, which is the line the fan was on the wrong side
+   * of: its wedges ran the whole radius, half the room, and smeared.
+   */
+  const thin = measured.filter((m) => m.edge > m.size / 4);
+  check(
+    "no floor is built from triangles long enough to smear its own texture",
+    thin.length === 0,
+    thin.length
+      ? `LONG AND THIN: ${thin.map((m) => `${m.shape}@${m.size}: ${m.edge}m`).join(", ")}`
+      : `${measured.length} floors, longest edge ${Math.max(...measured.map((m) => m.edge))}m`
+  );
+  check(
+    "and every shape keeps its own outline, corners landing on vertices",
+    L.SHAPES.filter((sh) => sh !== "square").every((sh) => {
+      const room = { id: "r", kind: "normal", grid: { x: 0, z: 0 }, size: 16, shape: sh, links: {}, seed: 1 };
+      return L.floorSegments(room) % L.SHAPE_SIDES[sh] === 0;
+    }),
+    measured.filter((m) => m.segments).map((m) => `${m.shape}@${m.size}:${m.segments}`).join(", ")
   );
 }
 
