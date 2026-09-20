@@ -1,11 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 import { bus } from "../events";
 import { ITEMS, type ItemId } from "../items/catalog";
-import { sideOfNeighbour } from "./bearing";
+import { sideOf, sideOfNeighbour } from "./bearing";
+import { playerAt } from "../player/where";
 import { useRun } from "../state/run";
+import { BIOME } from "../rooms/biomes";
 import { behaviourFor } from "../warden/tuning";
 import { ambience, music, sfx } from "./audio";
+import { biomeIdFor } from "../rooms/biomes";
+import { acousticsFor } from "./roomAcoustics";
 
 /** The side a neighbouring room lies on, from the run's own map. */
 function towards(roomId: string): number {
@@ -19,6 +23,10 @@ function towards(roomId: string): number {
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
+  const biome = useRun(s => {
+    const room = s.dungeon?.rooms.find(r => r.id === s.currentRoomId);
+    return room ? biomeIdFor(room.kind, room.id, room.seed, room) : "hewn";
+  });
   // The bed runs while a run is on and fades out when it ends or is quit.
   // The Reaper is the floor fully awake, whatever the alarm says: the
   // score closes up and the heartbeat comes in for as long as it is here.
@@ -29,8 +37,15 @@ export function Audio() {
     return () => ambience.stop();
   }, [playing]);
   useEffect(() => {
-    if (playing) ambience.setTension(rouse);
-  }, [playing, rouse]);
+    // Shape the existing held voice, with no new nodes on a room change.
+    const air = biome === "flooded" ? 1.35 : biome === "mossy" ? 0.65 : biome === "foundry" ? 1.15 : 1;
+    const resonance = biome === "crystal" ? 27.5 : biome === "bone" ? -9 : 0;
+    if (playing) ambience.setTension(rouse, air, resonance);
+  }, [playing, rouse, biome]);
+
+  useEffect(() => {
+    if (playing) ambience.setAir(BIOME[biome].air);
+  }, [playing, biome]);
 
   /**
    * The score, which follows the run rather than the room.
@@ -42,6 +57,12 @@ export function Audio() {
    */
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
+  const room = useRun(s => s.dungeon?.rooms.find(r => r.id === s.currentRoomId));
+  const acoustics = useMemo(() => room ? acousticsFor(room) : null, [room]);
+  useEffect(() => {
+    ambience.setRoomAcoustics(playing && !paused ? acoustics : null);
+    return () => ambience.setRoomAcoustics(null);
+  }, [playing, paused, acoustics]);
   useEffect(() => {
     music.start(phase === "playing" ? "delve" : "title");
   }, [phase]);
@@ -68,6 +89,10 @@ export function Audio() {
       bus.on("shrineKept", () => sfx.shrineKept()),
       bus.on("bombBurst", () => sfx.boom()),
       bus.on("secretRevealed", () => sfx.unlock2()),
+      bus.on("sluiceOpened", () => sfx.sluice()),
+      bus.on("waterCacheTaken", () => sfx.gem()),
+      bus.on("bellcapWarning", ({ x, z }) => sfx.bellcapWarning(sideOf(x - playerAt.x, z - playerAt.z))),
+      bus.on("bellcapBurst", ({ x, z }) => sfx.bellcapBurst(sideOf(x - playerAt.x, z - playerAt.z))),
       bus.on("itemTaken", () => sfx.take()),
       bus.on("itemNamed", () => sfx.named()),
       bus.on("fragmentRead", () => sfx.named()),
@@ -116,18 +141,25 @@ export function Audio() {
       }),
       bus.on("mothLanded", () => sfx.named()),
       bus.on("mothLeft", () => sfx.take()),
-      bus.on("batsRoused", () => sfx.thiefFled()),
+      // Dead centre: the store rouses a roost the heat can put up in a
+      // room the player is not in. The flock that follows is held from
+      // the roost itself, with a side, while the player is in its room.
+      bus.on("batsRoused", () => sfx.batsBurst()),
       bus.on("draftFelt", () => sfx.draft()),
       bus.on("propBroken", () => sfx.clatter()),
       bus.on("wallSound", ({ flavour }) => sfx.throughWall(flavour)),
       bus.on("mapMarked", () => sfx.setDown()),
       bus.on("wispCame", () => sfx.named()),
       bus.on("wispLeft", () => sfx.lanternOut()),
-      bus.on("harrierWoke", () => sfx.thiefFled()),
-      bus.on("harrierStruck", () => sfx.wardenStrike()),
-      bus.on("harrierDowned", () => sfx.grind()),
-      bus.on("harrierSlain", () => sfx.clatter()),
-      bus.on("keeperBars", () => sfx.wardenHere()),
+      // Its own voice at each of its moments; the wings between them are
+      // held from the Harrier itself. These four were borrowed from the
+      // thief, the Warden, the arena and a barrel, so a player who had
+      // learned those sounds was told the wrong thing four times.
+      bus.on("harrierWoke", () => sfx.harrierCry()),
+      bus.on("harrierStruck", () => sfx.harrierSwoop()),
+      bus.on("harrierDowned", () => sfx.harrierFall()),
+      bus.on("harrierSlain", () => sfx.harrierDie()),
+      bus.on("keeperBars", () => sfx.keeperClank()),
       bus.on("keeperStruck", () => sfx.wardenStrike()),
       bus.on("keeperKnelt", () => sfx.grind()),
       bus.on("keeperRose", () => sfx.barDoor()),

@@ -29,7 +29,7 @@ import { chromium } from "playwright-core";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
-const SEEDS = [11, 404, 2718];
+const SEEDS = process.env.RUN_SEEDS ? process.env.RUN_SEEDS.split(",").map(Number) : [11, 404, 2718];
 
 let failures = 0;
 const ok = (label, cond, detail = "") => {
@@ -132,8 +132,8 @@ const playFloor = (page, budget) =>
       const dir = Object.keys(room.links).find((d) => room.links[d] === nextId);
       if (!dir) return false;
       const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
-      const half = room.size / 2;
-      window.__bus.emit("teleport", { position: [step[0] * half * 0.8, 1.5, step[1] * half * 0.8] });
+      const door = window.__derived.door(room.id, dir);
+      window.__bus.emit("teleport", { position: [door[0] - step[0] * 1.7, 1.5, door[2] - step[1] * 1.7] });
       await wait(500);
       const was = state().currentRoomId;
       window.__wantE = true;
@@ -270,6 +270,7 @@ for (const seed of SEEDS) {
   results.push({ seed, phase, floors, seconds: (Date.now() - startedAt) / 1000 });
   const line = floors.map((f, i) => `floor ${i + 1}: ${f.rooms} rooms, ${f.gems} gems`).join("; ");
   ok(`seed ${seed} can be played from the first room to the last`, phase === "won", `${phase} - ${line}`);
+  if (phase !== "won") console.log(JSON.stringify(floors));
 }
 
 const won = results.filter((r) => r.phase === "won");

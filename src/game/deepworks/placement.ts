@@ -1,4 +1,5 @@
 import { createRng } from "../rng";
+import { roomRayReach, wallEdges } from "../dungeon/footprint";
 import { DIR_STEP, halfSize, type Dungeon, type Room, type RoomKind } from "../dungeon/types";
 import { ENDING_OF, FRAGMENTS, endingFor, type Ending, type Fragment } from "./fragments";
 
@@ -127,8 +128,9 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
    * a gate is a fragment that can lock a floor.
    */
   const walls = (["north", "east", "south", "west"] as const).filter(
-    (d) => !room.links[d] && room.secret?.dir !== d
+    (d) => !room.links[d] && !room.wings?.[d] && room.secret?.dir !== d
   );
+  if (!walls.length) return out;
   for (let i = 0; i < Math.min(many, MOST_PER_ROOM); i++) {
     // One fragment twice in a room reads as a misprint.
     let fragment: Fragment | undefined;
@@ -144,11 +146,12 @@ export function cutIn(room: Room, dungeon: Dungeon, floor: number): CutFragment[
     const dir = walls.length ? walls[Math.floor(rng() * walls.length)] : "north";
     const step = DIR_STEP[dir];
     const along = (rng() - 0.5) * half * 0.7;
+    const reach = roomRayReach(step.z * along, step.x * along, step.x, step.z, half, wallEdges(room));
     out.push({
       fragment,
       surface,
-      x: step.x * half * 0.9 + step.z * along,
-      z: step.z * half * 0.9 + step.x * along,
+      x: step.x * (reach - half * 0.1) + step.z * along,
+      z: step.z * (reach - half * 0.1) + step.x * along,
     });
   }
   return out;

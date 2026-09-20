@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {chromium} from 'playwright-core';
+const browser=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+try {const page=await browser.newPage({viewport:{width:1600,height:1200}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));await page.goto('http://127.0.0.1:5215/?editor');await page.getByRole('button',{name:'WORLD',exact:true}).click();
+const fixture=await page.evaluate(async()=>{const {generateDungeon}=await import('/src/game/dungeon/generate.ts');const {terracesFor,terracePoint}=await import('/src/game/worldbuilding/elevation.ts');const {DIRS}=await import('/src/game/dungeon/types.ts');const {doorReach}=await import('/src/game/dungeon/footprint.ts');const dungeon=generateDungeon({seed:72,floor:2});const wet=dungeon.rooms.find(r=>r.waterway&&r.biome!=='flooded');const room=dungeon.rooms.find(r=>terracesFor(r).length);const terrace=terracesFor(room)[0];const [x,,z]=terracePoint(terrace,terrace.end-.5,0,0);return {wet:wet.id,gallery:room.id,x,z,height:terrace.height,scale:360/(2*Math.max(...DIRS.map(dir=>doorReach(room,dir))))};});
+const select=async id=>page.locator(`[data-room-id="${id}"] > path`).first().click();const readout=page.locator('#atlas-ground-probe');const blueprint=page.getByLabel('Selected room blueprint');
+await select(fixture.wet);assert.match(await readout.innerText(),/water footsteps/);await page.getByLabel('Water preview').selectOption('drained');assert.doesNotMatch(await readout.innerText(),/water footsteps/);
+await blueprint.focus();await page.keyboard.press('ArrowRight');assert.match(await readout.innerText(),/\(0.5, 0.0\)/);await page.keyboard.press('Home');assert.match(await readout.innerText(),/\(0.0, 0.0\)/);
+await select(fixture.gallery);const point=await blueprint.evaluate((svg,f)=>{const p=new DOMPoint(f.x*f.scale,f.z*f.scale).matrixTransform(svg.getScreenCTM());return {x:p.x,y:p.y};},fixture);await page.mouse.click(point.x,point.y);assert.ok((await readout.innerText()).includes(`floor +${fixture.height.toFixed(2)} m`));const section=page.getByTestId('gallery-inspection-readout');
+const coordinates=(text)=>text.match(/\(([-\d.]+), ([-\d.]+)\)/).slice(1);
+assert.deepEqual(coordinates(await section.innerText()),coordinates(await readout.innerText()));
+const before=await page.getByTestId('atlas-ground-marker').getAttribute('transform');
+await page.getByRole('slider',{name:'Distance into gallery'}).fill('2');
+assert.notEqual(await page.getByTestId('atlas-ground-marker').getAttribute('transform'),before);
+assert.deepEqual(coordinates(await section.innerText()),coordinates(await readout.innerText()));
+await blueprint.focus();await page.keyboard.press('Home');assert.equal(await page.getByTestId('gallery-inspection-marker').count(),0);
+await page.screenshot({path:'output/world-review/atlas-shared-probe.png'});
+await page.getByRole('button',{name:'Next seed',exact:true}).click();assert.match(await readout.innerText(),/\(0.0, 0.0\)/);assert.deepEqual(errors,[]);console.log('PASS ground probe: drainage, keyboard movement, physical landing height, click mapping and seed reset');
+}finally{await browser.close();}
+

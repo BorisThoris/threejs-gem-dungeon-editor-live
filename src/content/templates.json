@@ -749,7 +749,7 @@
  {
   "id": "vault-tomb",
   "kind": "treasure",
-  "size": 22,
+  "size": 24,
   "shape": "hexagon",
   "props": [
    {
@@ -926,7 +926,7 @@
  {
   "id": "shrine-offerings",
   "kind": "shrine",
-  "size": 16,
+  "size": 20,
   "shape": "octagon",
   "props": [
    {
@@ -1015,7 +1015,7 @@
  {
   "id": "arena-cover",
   "kind": "arena",
-  "size": 26,
+  "size": 28,
   "shape": "circle",
   "props": [
    {
@@ -1460,7 +1460,7 @@
  {
   "id": "end-stair",
   "kind": "end",
-  "size": 24,
+  "size": 26,
   "shape": "octagon",
   "props": [
    {
@@ -1548,7 +1548,7 @@
  {
   "id": "memory-antechamber",
   "kind": "memory",
-  "size": 20,
+  "size": 22,
   "shape": "hexagon",
   "props": [
    {
@@ -1600,14 +1600,14 @@
    {
     "rotation": 0,
     "kind": "skull",
-    "x": -4.3,
-    "z": -5.3
+    "x": -3.2,
+    "z": -6.2
    },
    {
     "rotation": 0,
     "kind": "skull",
-    "x": 4.3,
-    "z": 5.3
+    "x": 3.2,
+    "z": 6.2
    },
    {
     "rotation": 0,
@@ -1719,6 +1719,125 @@
      "urn"
     ],
     "n": 2
+   }
+  ]
+ },
+ {
+  "id": "hall-round-workroom",
+  "kind": "normal",
+  "shape": "circle",
+  "size": 28,
+  "props": [
+   {
+    "kind": "table",
+    "x": -6,
+    "z": -6,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": -6,
+    "z": -4.4,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": -6,
+    "z": -7.6,
+    "rotation": 3.141592653589793
+   },
+   {
+    "kind": "barrel",
+    "x": -8.1,
+    "z": -6,
+    "rotation": 0
+   },
+   {
+    "kind": "crate",
+    "x": -9.3,
+    "z": -6,
+    "rotation": 0,
+    "slot": "supplies"
+   },
+   {
+    "kind": "table",
+    "x": 6,
+    "z": 6,
+    "rotation": 0
+   },
+   {
+    "kind": "chair",
+    "x": 6,
+    "z": 4.4,
+    "rotation": 3.141592653589793
+   },
+   {
+    "kind": "chair",
+    "x": 6,
+    "z": 7.6,
+    "rotation": 0
+   },
+   {
+    "kind": "bookshelf",
+    "x": 8.1,
+    "z": 6,
+    "rotation": 1.5707963267948966
+   },
+   {
+    "kind": "crate",
+    "x": 9.6,
+    "z": 6,
+    "rotation": 0,
+    "slot": "supplies"
+   },
+   {
+    "kind": "urn",
+    "x": -6,
+    "z": 7,
+    "rotation": 0
+   },
+   {
+    "kind": "urn",
+    "x": -7.1,
+    "z": 7,
+    "rotation": 0
+   },
+   {
+    "kind": "bookshelf",
+    "x": 6,
+    "z": -7,
+    "rotation": 0
+   },
+   {
+    "kind": "crate",
+    "x": 6,
+    "z": -9,
+    "rotation": 0,
+    "slot": "supplies"
+   }
+  ],
+  "slots": [
+   {
+    "slot": "supplies",
+    "op": "subst",
+    "into": [
+     "crate",
+     "barrel",
+     "urn"
+    ],
+    "byDistrict": {
+     "gardens": [
+      "urn",
+      "barrel"
+     ],
+     "works": [
+      "crate",
+      "barrel"
+     ],
+     "tombs": [
+      "urn"
+     ]
+    }
    }
   ]
  }

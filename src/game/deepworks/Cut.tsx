@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { roomRayReach, wallEdges } from "../dungeon/footprint";
 
 import { bus } from "../events";
 import { GROUND_Y } from "../world";
@@ -69,10 +70,12 @@ export function Names({ room }: { room: Room }) {
   const runs = useRecords((s) => s.runs);
   const escapes = useRecords((s) => s.escapes);
   const half = room.size / 2;
+  const namesX = half * 0.65;
+  const namesZ = -roomRayReach(namesX, 0, 0, -1, half, wallEdges(room)) + 0.8;
   const many = namesOn(runs);
   return (
     <InteractTrigger
-      position={[0, GROUND_Y, -half * 0.9]}
+      position={[namesX, GROUND_Y, namesZ]}
       label="Read the names"
       onInteract={() => {
         bus.emit(

@@ -52,6 +52,11 @@ export function Captions() {
      */
     const side = (pan: number) => (pan < -0.2 ? " (left)" : pan > 0.2 ? " (right)" : "");
     const offs = [
+      bus.on("sluiceOpened", () => say("Iron teeth turn. Water rushes down the channel.")),
+      bus.on("bellcapWarning", () => say("The bellcaps swell toward your light. Lower the lantern or step away.")),
+      bus.on("bellcapBurst", () => say("The bellcaps pop. Spores hiss across the channel.")),
+      bus.on("beetlesScattered", () => say("Tiny wings fold beneath the bellcaps. Their glow fades.")),
+      bus.on("waterCacheTaken", () => say("The dry seal lifts; gems chime inside.")),
       bus.on("wardenWoke", () => say("Something wakes, far off")),
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),
       bus.on("wardenEntered", () => say("It is in the room")),
@@ -82,6 +87,7 @@ export function Captions() {
       ),
       bus.on("mothLeft", () => say("The moth carries the light away")),
       bus.on("batsRoused", () => say("Bats burst from the roost")),
+      bus.on("croakersDove", () => say("The toads go under. The cistern is silent")),
       bus.on("draftFelt", () => say("A draft of cold air, from the wall")),
       bus.on("propBroken", ({ kind }) => say(`The ${kind} bursts`)),
       // A sound through a wall the delver has opened before is a sound

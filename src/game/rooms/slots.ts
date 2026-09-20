@@ -1,4 +1,6 @@
 import type { PropKind, PropPlacement } from "../dungeon/types";
+import type { DistrictId } from "./districts";
+import { PROP_SPECS } from "../props/specs";
 import { createRng, shuffle, type Rng } from "../rng";
 
 /**
@@ -49,6 +51,8 @@ export interface SlotRule {
   op: "subst" | "shuffle" | "nsubst";
   /** What it may become. `subst` and `nsubst` draw from here. */
   into: readonly PropKind[];
+  /** Local supply traditions; absent districts use `into`. Positions stay authored. */
+  byDistrict?: Partial<Record<DistrictId, readonly PropKind[]>>;
   /** `nsubst` only: how many get the first entry; the rest get the second. */
   n?: number;
 }
@@ -56,6 +60,29 @@ export interface SlotRule {
 /** A prop in an authored layout, which may be a placeholder. */
 export interface SlottedPlacement extends PropPlacement {
   slot?: string;
+}
+
+/** All choices are validated, including ones outside the editor's preview district. */
+const choicesOf = (rule: SlotRule): PropKind[] =>
+  [...new Set([...rule.into, ...Object.values(rule.byDistrict ?? {}).flat()])];
+
+/** Imported rules must not produce an unknown prop or an empty choice. */
+export function isSlotRule(value: unknown): value is SlotRule {
+  if (!value || typeof value !== "object") return false;
+  const rule = value as Record<string, unknown>;
+  const choices = (v: unknown) => Array.isArray(v) && v.length > 0 &&
+    v.every(kind => typeof kind === "string" && Object.hasOwn(PROP_SPECS, kind));
+  if (typeof rule.slot !== "string" || !rule.slot || !["subst", "shuffle", "nsubst"].includes(String(rule.op))) return false;
+  if (rule.op === "shuffle") {
+    if (!Array.isArray(rule.into) || !rule.into.every(kind => typeof kind === "string" && Object.hasOwn(PROP_SPECS, kind))) return false;
+  } else if (!choices(rule.into)) return false;
+  if (rule.n !== undefined && (!Number.isInteger(rule.n) || Number(rule.n) < 0)) return false;
+  if (rule.byDistrict !== undefined) {
+    if (!rule.byDistrict || typeof rule.byDistrict !== "object" || Array.isArray(rule.byDistrict) || rule.op === "shuffle") return false;
+    if (!Object.entries(rule.byDistrict).every(([district, into]) =>
+      ["gardens", "works", "tombs"].includes(district) && choices(into))) return false;
+  }
+  return true;
 }
 
 /**
@@ -70,7 +97,7 @@ export function variantsOf(rules: readonly SlotRule[], counts: Readonly<Record<s
   for (const rule of rules) {
     const here = counts[rule.slot] ?? 0;
     if (here === 0) continue;
-    if (rule.op === "subst") total *= Math.max(1, rule.into.length);
+    if (rule.op === "subst") total *= Math.max(1, choicesOf(rule).length);
     else if (rule.op === "nsubst") total *= Math.max(1, here);
     else {
       // A permutation of `here` positions, capped so a big shuffle does
@@ -95,7 +122,8 @@ export function variantsOf(rules: readonly SlotRule[], counts: Readonly<Record<s
 export function resolveSlots(
   props: readonly SlottedPlacement[],
   rules: readonly SlotRule[],
-  seed: number | string
+  seed: number | string,
+  district?: DistrictId
 ): PropPlacement[] {
   const rng: Rng = createRng(seed);
   const out: SlottedPlacement[] = props.map((p) => ({ ...p }));
@@ -103,16 +131,18 @@ export function resolveSlots(
   for (const rule of rules) {
     const indices = out.map((p, i) => (p.slot === rule.slot ? i : -1)).filter((i) => i >= 0);
     if (indices.length === 0) continue;
+    const local = district ? rule.byDistrict?.[district] : undefined;
+    const into = local?.length ? local : rule.into;
 
     if (rule.op === "subst") {
       // One draw for the whole room, so it reads as a decision rather than
       // as scatter.
-      const kind = rule.into[Math.floor(rng() * rule.into.length)];
+      const kind = into[Math.floor(rng() * into.length)];
       for (const i of indices) out[i].kind = kind;
     } else if (rule.op === "nsubst") {
       const n = Math.max(0, Math.min(indices.length, rule.n ?? 1));
       const order = shuffle(rng, indices);
-      const [chosen, rest] = [rule.into[0], rule.into[1] ?? rule.into[0]];
+      const [chosen, rest] = [into[0], into[1] ?? into[0]];
       order.forEach((i, at) => {
         out[i].kind = at < n ? chosen : rest;
       });
@@ -189,8 +219,8 @@ export function kindOptions(
       rule.op === "shuffle"
         ? indices.map((i) => props[i].kind)
         : rule.op === "nsubst"
-          ? [rule.into[0], rule.into[1] ?? rule.into[0]]
-          : rule.into;
+          ? [rule.into, ...Object.values(rule.byDistrict ?? {})].flatMap(into => into.slice(0, 2))
+          : choicesOf(rule);
     const unique = [...new Set(options)];
     for (const i of indices) out[i] = unique;
   }
@@ -229,6 +259,6 @@ export const keepsItsWorth = (
 ): boolean => {
   const authored = props.filter((p) => p.slot === rule.slot).map((p) => p.kind);
   if (authored.length === 0) return true;
-  const seen = [...authored, ...(rule.op === "shuffle" ? [] : rule.into)];
+  const seen = [...authored, ...(rule.op === "shuffle" ? [] : choicesOf(rule))];
   return seen.every(paysOut) || !seen.some(paysOut);
 };

@@ -1,8 +1,11 @@
+import { CeilingSurface } from "./CeilingSurface";
 import { useEffect, useMemo } from "react";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
+import { FloorSurface } from "./FloorSurface";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
-import { DIRS, halfSize, SHAPE_SIDES, type Room as RoomData } from "../dungeon/types";
+import { floorRects } from "../dungeon/footprint";
+import { DIRS, inscribedRadius, type Room as RoomData } from "../dungeon/types";
 import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -19,8 +22,9 @@ import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
 import { FLOOR_THICKNESS, GROUND_Y, WALL_HEIGHT, floorRules } from "../world";
-import { mothRoom, ratsFor, roostFor } from "../mobs/ambient";
+import { croakersFor, mothRoom, ratsFor, roostFor } from "../mobs/ambient";
 import { Bats } from "../mobs/Bats";
+import { Croakers } from "../mobs/Croakers";
 import { BODIES, bitesFor, obstaclesFor } from "../mobs/body";
 import { Moth } from "../mobs/Moth";
 import { Rats } from "../mobs/Rats";
@@ -33,15 +37,27 @@ import { Grate } from "../traps/Grate";
 import { Pit } from "../traps/Pit";
 import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
-import { floorGeometry } from "./floor";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
+import { CorridorDetails } from "./CorridorDetails";
+import { Watercourse } from "../worldbuilding/Waterworks";
+import { ServiceMarks } from "../worldbuilding/ServiceMarks";
+import { BellcapColony } from "../worldbuilding/BellcapColony";
+import { GlowBeetles } from "../mobs/GlowBeetles";
+import { Architecture } from "../worldbuilding/Architecture";
+import { Terraces } from "../worldbuilding/Terraces";
+import { PassageLamps } from "../worldbuilding/PassageLamps";
+import { DistrictLintels } from "../worldbuilding/DistrictLintels";
+import { WallCourses } from "../worldbuilding/WallCourses";
+import { Terrain } from "./Terrain";
 
 interface RoomProps {
   room: RoomData;
   seed: number;
+  /** The authoring camera needs a cutaway view into the room. */
+  showCeiling?: boolean;
 }
 
 /**
@@ -62,7 +78,15 @@ interface RoomProps {
  * stepped through a doorway - every four to nine seconds, for a subtree of
  * a hundred elements. Here the subscription costs one component.
  */
+function useWatcherPost(room: RoomData, seed: number) {
+  const floor = useRun((s) => s.floor);
+  const hasKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
+  return useMemo(() => sentryFor(room, seed, floor, hasKey ? [keyFor(room, seed)] : [])?.at ?? null,
+    [room, seed, floor, hasKey]);
+}
+
 function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[]; seed: number }) {
+  const watcher = useWatcherPost(room, seed);
   const here = useRun((s) => s.wardenRoomId === room.id);
   // Snares the player has set in this room wound it as the floor's own
   // spikes do, and are deliberately not in the list it steers round: a
@@ -75,7 +99,7 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
   // spikes it steers round once wary are still `hazards`; what bites it
   // and what it always walks round are the body's own answers.
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken), [room, seed, placed, broken]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
   return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
 
@@ -85,13 +109,14 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
  * room around it should not re-render when it does.
  */
 function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
+  const watcher = useWatcherPost(room, seed);
   const visiting = useRun((s) => s.thiefPhase !== "away");
   const here = useRun((s) => s.currentRoomId === room.id);
   const placed = useRun((s) => s.placed);
   const sprung = useRun((s) => s.sprung);
   const broken = useRun((s) => s.broken);
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken), [room, seed, placed, broken]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
   return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
 }
 
@@ -111,21 +136,24 @@ function RoomReaper({ room }: { room: RoomData }) {
  * reads the body table for what it walks round and what bites it.
  */
 function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
+  const watcher = useWatcherPost(room, seed);
   const here = useRun((s) => s.currentRoomId === room.id);
   const isMothRoom = useRun((s) => (s.dungeon ? mothRoom(s.dungeon) === room.id : false));
   const placed = useRun((s) => s.placed);
   const broken = useRun((s) => s.broken);
   const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
   const roost = useMemo(() => roostFor(room, seed), [room, seed]);
-  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken), [room, seed, placed, broken]);
+  const pools = useMemo(() => croakersFor(room, seed), [room, seed]);
+  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
   const sprung = useRun((s) => s.sprung);
   const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken), [room, seed, placed, broken]);
+  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
   if (!here) return null;
   return (
     <>
       {holes.length > 0 && <Rats room={room} holes={holes} obstacles={ratWalls} hazards={ratBites} />}
       {roost && <Bats room={room} at={roost} />}
+      {pools.length > 0 && <Croakers room={room} spots={pools} seed={seed} />}
       {isMothRoom && <Moth room={room} obstacles={mothWalls} />}
     </>
   );
@@ -213,21 +241,15 @@ function RoomNest({ roomId, half }: { roomId: string; half: number }) {
   return isNest ? <Hoard roomId={roomId} half={half} /> : null;
 }
 
-export function Room({ room, seed }: RoomProps) {
-  const half = halfSize(room);
+export function Room({ room, seed, showCeiling = true }: RoomProps) {
+  const floors = useMemo(() => floorRects(room), [room]);
   // What the room is made of, as distinct from what it is for. Rolled from
   // the room's own seed, so it is the same place every time you walk back
   // into it.
-  const tint = biomeFor(room.kind, room.id, seed);
+  const tint = biomeFor(room.kind, room.id, seed, room);
   const Content = KIND_CONTENT[room.kind];
   // One tile every four units, whatever the room's size.
-  const floorSurface = useSurface(tint.surface, room.size / 4);
-
-  // The floor's outline: a flat polygon with as many sides as the shape has,
-  // built once per room and released with it.
-  // One owner: the room draws this and the layout check measures it.
-  const outline = useMemo(() => floorGeometry(room), [room]);
-  useEffect(() => () => outline.dispose(), [outline]);
+  const floorSurface = useSurface(tint.surface);
 
   // Tell the run the colliders exist: control is handed back only now.
   useEffect(() => {
@@ -268,31 +290,29 @@ export function Room({ room, seed }: RoomProps) {
 
   return (
     <group>
-      {/* Solid floor slab, top face exactly at GROUND_Y. */}
-      <RigidBody type="fixed" colliders={false}>
-        <mesh position={[0, GROUND_Y - FLOOR_THICKNESS / 2, 0]} receiveShadow>
-          <boxGeometry args={[room.size, FLOOR_THICKNESS, room.size]} />
-          <meshStandardMaterial color="#2c2b30" roughness={1} />
-        </mesh>
-        <CuboidCollider
-          args={[half, FLOOR_THICKNESS / 2, half]}
-          position={[0, GROUND_Y - FLOOR_THICKNESS / 2, 0]}
-        />
-      </RigidBody>
-
-      {/* The shaped, tinted floor the player actually sees. */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y + 0.01, 0]} receiveShadow>
-        <primitive object={outline} attach="geometry" />
-        <meshStandardMaterial color={tint.floor} map={floorSurface} roughness={0.95} />
-      </mesh>
+      <FloorSurface room={room} color={tint.floor} map={floorSurface} />
+      {showCeiling && <CeilingSurface room={room} />}
+      {floors.map((r, i) => (
+        <group key={`floor-${i}`}>
+          <RigidBody type="fixed" colliders={false}>
+            <CuboidCollider args={[r.width / 2, FLOOR_THICKNESS / 2, r.depth / 2]}
+              position={[r.x, GROUND_Y - FLOOR_THICKNESS / 2, r.z]} />
+          </RigidBody>
+        </group>
+      ))}
 
       <Walls room={room} color={tint.wall} />
-
-      {/* Ceiling, so there is never sky in a dungeon. */}
-      <mesh position={[0, GROUND_Y + WALL_HEIGHT, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[room.size + 1, room.size + 1]} />
-        <meshStandardMaterial color="#1a191d" roughness={1} />
-      </mesh>
+      <WallCourses room={room} />
+      <Architecture room={room} />
+      <Terrain room={room} />
+      <Terraces room={room} color={tint.floor} map={floorSurface} />
+      <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
+      <DistrictLintels room={room} />
+      {room.waterway && <Watercourse room={room} />}
+      <ServiceMarks room={room} />
+      <BellcapColony room={room} />
+      <GlowBeetles room={room} />
+      <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
       {/* A dim overhead fill so no corner is ever fully black; the torches do
           the rest, and do more of it the deeper the floor is. */}
@@ -331,7 +351,7 @@ export function Room({ room, seed }: RoomProps) {
       <RoomHarrier room={room} />
       <RoomKeeper room={room} />
       <PlacedDevices roomId={room.id} />
-      <RoomNest roomId={room.id} half={half} />
+      <RoomNest roomId={room.id} half={inscribedRadius(room)} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

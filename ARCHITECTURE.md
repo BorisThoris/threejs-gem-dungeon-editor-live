@@ -6,14 +6,104 @@ built on.
 
 ## The rule: one owner per fact
 
+The art-direction contract is [World Style](docs/WORLD_STYLE.md), also visible
+in Credits and the editor. `rooms/districts.ts` grows connected regions on the
+door graph and assigns each room's biome. Every biome consumer reads that
+assignment. `dungeon/footprint.ts` defines the actual block-cut room outline,
+including round and polygonal chambers, door collars and shifted galleries;
+walls, collisions, navigation and the minimap all use it.
+
+`wingCourses` supplies the longitudinal floor courses for both rectangular and
+half-round side galleries. A room with a shaped wing uses the union outline
+for wall and movement checks even when its central chamber is square. Terraces
+and roof ribs read those same course widths rather than spanning the gallery's
+bounding rectangle.
+
+`worldbuilding/watercourse.ts` owns the optional watercourse: its directed door
+route, shallow channel geometry, safe wall anchors and drainage curve. The run
+store owns opening time and the one-time reliquary reward. The renderer, wet
+footstep sounds and world atlas read those facts. Mechanisms use the existing
+interaction system; turning a sluice advertises a loud metal signal through
+Din, so listeners react without learning a new special-case object name.
+The editor's World tab inspects the full generated graph and room blueprints;
+the player's minimap remembers only visited waterworks landmarks.
+
+The ongoing expansion is tracked in [The inhabited dungeon](docs/WORLD_EXPANSION.md).
+
+`worldbuilding/serviceTrail.ts` selects the optional real-door route from the
+reliquary to an existing secret wall. Its stored route drives copper masonry
+marks, rubbing guidance and the authoring atlas. Reading the reliquary enables
+the guarded catch interaction; opening it delegates to `revealSecret`, keeping
+the actual passage, collision and map changes under their existing owner.
+
+`worldbuilding/bellcaps.ts` places light-sensitive colonies on clear channel
+banks and owns exposure, warning and recovery constants. `BellcapColony.tsx`
+animates their warning and spore puff; `bellcapBursts` keeps floor-local recovery
+times. Discharges go through the event bus, positional audio and Din, so the
+existing creatures hear the actual environmental event. Drainage is sampled
+from the watercourse's shared curve.
+
+`worldbuilding/identity.ts` names the nine building identities and their three
+traditions. `structuralPattern.ts` fits their overhead bays to the same floor
+union used by collision; `furnishing.ts` places their work areas on the normal
+room's validated anchor rings. Authored layouts keep control of their props.
+`mobs/croakerHabitat.ts` derives clear channel-to-refuge routes for native toads.
+Their movement reads the existing drain time rather than keeping a second
+environment clock, so pauses and revisits cannot restart the migration.
+
+`worldbuilding/elevation.ts` owns raised gallery surfaces. `Terraces.tsx` feeds
+the same wedge vertices to rendering and physics; moving creatures, rewards,
+dropped devices and effects sample its height. Full-width ramps connect the
+landings to the chamber while travel doorways retain their shared floor datum.
+
+`rooms/floorSurfacePattern.ts` partitions the physical floor union into
+non-overlapping strips for `FloorSurface.tsx`. World-space UVs continue across
+chambers, door collars and terraces. `terrainPattern.ts` supplies paving and
+deposit tiles, including slope-aligned gallery pieces split at ramp knees.
+`rooms/underfoot.ts` samples visible surfaces and live channels for footstep
+timbre and sprint carry. Player movement supplies the same material and world
+position to audio and `makeNoise`; the store preserves earlier louder deadlines
+and emits throttled `sprinted` signals. `DinDriver` translates those samples
+through the existing room-graph propagation rules. `wardenHeard` remains a
+reaction cue, not a second sprint at the room centre. The Atlas ground probe
+uses these same material values and `carriesTo` for its optional noise overlay.
+Toad refuges prefer clear, flat deposit beds and sample the shared floor height.
+`mobs/ambient.ts` derives rat homes from real wall courses with level, clear
+approaches. `RatShelters.tsx` draws their recesses in one batch. `ratLosses` in
+run state records spike casualties by room and home index until floor descent
+or a new run; initial creature visibility reads it even during a paused revisit.
+The Atlas uses the live dungeon seed for ambient habitats and applies initial
+key and sentry reservations when previewing scaled furniture.
+
+The atlas projects the same terrain tiles and uses one ground probe for plan
+and gallery section. Its drainage timeline reads `waterLevel` and
+`croakerMigration`, so the authoring preview does not maintain a second set of
+water or retreat timings.
+
+`dungeon/explorationLoops.ts` closes useful shared-wall detours before stairs,
+vaults and secrets are assigned. `worldbuilding/districtThresholds.ts` reads
+real open links to label both sides of district boundaries. No map-only link
+or decorative doorway can imply a route the game cannot traverse.
+
+`worldbuilding/passageLighting.ts` spaces lamps by passage length, independent
+of floor tessellation. `wallCoursePattern.ts` fits shallow building courses to
+the wall union, leaving portals and mechanisms clear. The atlas reads the same
+lamp positions and terrace profiles for its plan and side elevation.
+
+The watercourse's `waterFlowUV` and `waterTravel` own directional ripple spacing
+and integrated drainage phase. Its held sound samples the same wet strips and
+water level while biome air remains independent. `mobs/beetleHabitat.ts` keeps
+feeding and retreat paths inside validated bellcap space; room-object memory
+preserves recent disturbances on revisits without surviving a new floor.
+
 Every bug the previous tree had in its last month was the same bug: two
 modules with different opinions about one fact. Five different ideas of
 where the floor was. Doors placed from one room size and spawns from another.
 Two stores that both claimed the player's stats. So:
 
 - Geometry lives in `src/game/world.ts`. The ground plane, the capsule, the
-  spawn height, the door width, the interact radius. Nothing else defines a
-  height.
+  spawn height, the door width, the interact radius. Room-specific floor rises
+  live in `worldbuilding/elevation.ts` and are sampled rather than copied.
 - Everything that changes with depth is one table in the same file,
   `floorRules(floor)`: how big a floor is generated, how long it leaves you
   alone before the Warden wakes, how roused it already is when you arrive,
@@ -22,12 +112,24 @@ Two stores that both claimed the player's stats. So:
   placement, the scene's lights and the arrival hint all read that row
   rather than each keeping a number of their own, which is what made the
   floors differ only in price before.
-- Every sound is a one-shot except the Warden crossing your room, which is
-  built once and then written to every frame - three AudioParam values, no
-  new nodes. A cue rebuilt per frame would allocate an oscillator, a gain
-  and a panner sixty times a second, which is the shape of every stutter
-  this project has had; `yarn test:perf` drives it twenty thousand times and
-  checks that one sound came out rather than twenty thousand.
+- Every sound is a one-shot except a creature moving in your room, which
+  is a held voice: built once and then written to every frame - a level, a
+  side and at most a filter, a beat rate or a pitch, no new nodes. The
+  Warden's stalk was the first and the registry in `audio.ts` is what made
+  the rest cheap: the roost while it is up, the Harrier's wings (the beat
+  quickens as it dives, which is the tell from behind), the moth at the
+  lantern, the wisp's hum, the Sentry's beam acquiring you and the
+  Reaper. Each creature writes its voice from its own frame loop, because
+  that is where its position is, and stops it on unmount. A cue rebuilt
+  per frame would allocate an oscillator, a gain and a panner sixty times
+  a second, which is the shape of every stutter this project has had;
+  `yarn test:perf` drives the stalk twenty thousand times and checks that
+  one sound came out rather than twenty thousand, and `yarn test:audio`
+  starts and stops every held voice and checks the room goes back to the
+  room. The one-shots at a creature's moments - waking, striking, falling,
+  wheeling away - are its own rather than borrowed from another creature,
+  so a player who has learned what the Cutpurse sounds like is not told
+  the Cutpurse is here when the Harrier wakes.
 - **What a thing on the floor IS lives in `src/game/din/`, and what a
   creature ANSWERS TO lives beside it in `susceptibility.ts`.** This is the
   same rule pushed one level further and it is the one worth understanding.
@@ -45,6 +147,49 @@ Two stores that both claimed the player's stats. So:
   name** - `hears [loud]`, not `hears bombBurst, barrelBurst, grateDrop` -
   so a new noisy thing is heard by everything that listens for `[loud]` the
   day it lands, with no other file touched.
+  A third property was written down and not true for a dozen runs: **the
+  rows are read by the things they describe.** The Harrier's row said
+  `blast 0.20` while the store downed it by "same room as the bomb"; the
+  rats' row said `loud 0.45` while they ran from feet and nothing else;
+  the Sentry's row said `bright 0.50` while it read a boolean about the
+  player's lantern. Each is wired now - the store asks `din.reaches` for
+  the Warden, the Harrier and the Keeper, the rats and the moth ask
+  `din.answering`, the Sentry asks `din.reaches` - and the layout suite
+  greps for each call, because a runtime check passes for as long as the
+  hard-coded rule and the table happen to agree. The consequences are
+  checked too: a bomb next door puts up a roost, downs the Harrier and
+  routs the Warden, does not kneel the Keeper (its row is half, so the
+  blast has to be in the room the door is in), and two doors on only the
+  rats notice. The Reaper is the one exception and it is written where
+  the rule is: deaf to `[blast]` as a signal, held by the pressure wave in
+  the room it stands in, which the store applies directly.
+- **What a creature IS, all of it, is one row of `src/game/mobs/contract.ts`.**
+  Ten creatures were built one at a time over thirty runs and each was
+  complete in a different way: the Warden had a held voice and no body
+  for eight runs, the Harrier had a body and a row and four borrowed
+  sounds, the rats had a row nothing read. Nothing said what "a creature"
+  was. The contract does: a name and where it lives, a role (threat,
+  ambient, helper) and what it costs you, the verbs that answer it, its
+  body, its voice (a held sound and its moments), the events it announces,
+  the lesson that introduces it, the file that draws it and the probe that
+  file publishes, and whether it wears a tell before it takes a life. The
+  layout suite holds every row to every field against the tables and
+  files the fields name - `BODIES`, `SUSCEPTIBILITY`, `CAPS`, `sfx`,
+  `events.ts`, `LESSONS`, the component - so a creature can no longer be
+  as finished as the run that added it. Add a creature by adding a row;
+  the suite says what is missing. The toads (`croaker`) were the first
+  added against it.
+- **What an environment IS is one row of `BIOME` in `rooms/biomes.ts`,
+  and it has grown two fields.** A biome was a look, a floor that carries,
+  litter and a name for its ground. It now also says what lives in it
+  (`life`, which `mobs/ambient.ts` reads instead of keeping a list of
+  biomes per creature) and what it sounds like when nothing is happening
+  (`air`, one of eight, `still` being a real value so silence is a choice
+  rather than a gap). `ambience.setAir` in `audio.ts` runs the room's air
+  under the bed and under every cue, set from the room's biome on entry,
+  and `yarn test:audio` measures each air against a stilled room. The
+  fungal biome was the first added against the contract; the eight before
+  it were completed to it.
 - **How far a thing is heard is `din/carry.ts` and nothing else.** The room
   graph is `Room.links`, which the generator already writes; a doorway costs
   x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's
@@ -142,8 +287,9 @@ Two stores that both claimed the player's stats. So:
   satchel - so nothing is tracked FOR the pledge and it never becomes a
   second economy running beside the first.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
-  nowhere else. Two things need it - the Warden through a wall and a Sentry
-  from its post - and they have to agree, because a cue panned the wrong way
+  nowhere else. Everything that makes a sound from somewhere needs it - the
+  Warden through a wall, a Sentry from its post, every creature's held
+  voice - and they have to agree, because a cue panned the wrong way
   sends the player towards the thing it is warning them about. It is pure so
   the layout check can walk it from all 360 headings; the same sign was
   already got backwards once on the minimap, where it survived because it
@@ -337,25 +483,6 @@ Two stores that both claimed the player's stats. So:
   room is routed through `routWarden` (the same owner a second spike wound
   uses, so a bomb and the spikes can never come to differ), the thief
   drops what it holds, and a cracked wall in reach gives.
-- **A floor is drawn from triangles a texture sampler can read.** Round
-  rooms drew their floor as a `CircleGeometry`: a fan, one vertex in the
-  middle and one triangle per side, each running the room's whole radius.
-  The texture coordinates were right - three maps a circle planar, the same
-  as a plane - but a triangle eight metres long and a sliver wide has an
-  enormous texture derivative along it and almost none across, and the
-  sampler answers that with the coarsest mip it has. Every wedge came back
-  one flat colour. A round room had no stone in it at all, just a dozen
-  coloured bands, and nearly half the rooms the generator makes are round.
-  `rooms/floor.ts` is the one owner now: a polar grid pushed out onto the
-  room's own outline by `floorReach`, so the polygon is exactly the polygon
-  it was, made of pieces no longer than `FLOOR_EDGE`. The layout check
-  measures the longest edge rather than trusting the comment. Note what the
-  investigation cost and what it taught: two confident explanations (the UV
-  mapping, then anisotropy) were both wrong and both were killed by
-  measurement - the UVs read back as exactly `position/size + 0.5`, and
-  anisotropy was already 16. What settled it was painting a checker into
-  the floor's own texture at runtime and seeing flat bands where a checker
-  should be.
 - **A relic that promises something must have a reader.** The Cutter's Cant
   said "you may take the third offer the shop was not going to show you"
   and the shop sliced its list to two unconditionally - nothing in the tree

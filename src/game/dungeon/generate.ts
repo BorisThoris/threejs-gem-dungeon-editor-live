@@ -1,5 +1,10 @@
 import { shapeFits } from "./layout";
+import { assignDistricts } from "../rooms/districts";
+import { assignWatercourse } from "../worldbuilding/watercourse";
+import { serviceTrailFor } from "../worldbuilding/serviceTrail";
+import { stitchExplorationLoops } from "./explorationLoops";
 import { createRng, pick, shuffle } from "../rng";
+import { CORRIDOR_WIDTH } from "./footprint";
 import { foreshadowOn } from "../deepworks/placement";
 import { foreshadowingTemplate, templatesForKind } from "../rooms/templates";
 import {
@@ -23,6 +28,8 @@ import {
 
 export interface GenerateOptions {
   seed?: number;
+  /** Descent depth controls chamber scale and corridor complexity. */
+  floor?: number;
   /**
    * Rooms including start and end. How big a floor is belongs to the floor,
    * so callers pass `floorRules(floor)`; the default is the first floor's,
@@ -153,9 +160,10 @@ const key = (x: number, z: number) => `${x},${z}`;
 export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   const seed = options.seed ?? (Math.random() * 0xffffffff) >>> 0;
   const rng = createRng(seed);
-  const minRooms = options.minRooms ?? floorRules(1).minRooms;
-  const maxRooms = options.maxRooms ?? floorRules(1).maxRooms;
-  const loopChance = options.loopChance ?? 0.3;
+  const floor = Math.max(1, Math.min(3, Math.round(options.floor ?? 1)));
+  const minRooms = options.minRooms ?? floorRules(floor).minRooms;
+  const maxRooms = options.maxRooms ?? floorRules(floor).maxRooms;
+  const loopChance = options.loopChance ?? (0.24 + (floor - 1) * 0.06);
 
   const target =
     minRooms + Math.floor(rng() * Math.max(1, maxRooms - minRooms + 1));
@@ -182,20 +190,21 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     // moment four more shipped, five normal rooms in six were one of five
     // hand-made rooms. The measurement authoring is supposed to serve went
     // backwards the more content there was.
-    const authored = templatesForKind(kind);
+    const authored = templatesForKind(kind).filter(t => shapeFits(t.shape, t.size));
     const template = authored.length && rng() < AUTHORED_CHANCE ? pick(rng, authored) : undefined;
-    const size = template?.size ?? pick(rng, sizesFor(kind));
-    // Only shapes with the floor to hold their props at this size.
-    const wanted = (SHAPES_FOR[kind] ?? ["square", "square", "circle"]).filter((s) =>
-      shapeFits(s, size)
-    );
+    const grows = ["normal", "treasure", "trap"].includes(kind);
+    let size = template?.size ?? (pick(rng, sizesFor(kind)) + (grows ? (floor - 1) * 2 : 0));
+    const shape = template?.shape ?? pick(rng, SHAPES_FOR[kind] ?? ["square", "square", "circle"]);
+    // Grow a pointed chamber to fit its contents instead of drawing props through
+    // its walls or silently replacing every small unusual room with a square.
+    if (!template) size = ROOM_SIZES.find(s => s >= size && shapeFits(shape, s)) ?? size;
     const room: Room = {
       id: rooms.length === 0 ? "start" : `room_${rooms.length}`,
       kind,
       seed,
       grid: { x, z },
       size,
-      shape: template?.shape ?? (wanted.length ? pick(rng, wanted) : "square"),
+      shape,
       links: {},
       ...(template ? { template: template.id } : {}),
     };
@@ -242,6 +251,10 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
       if (other && rng() < loopChance) link(room, other, dir);
     }
   }
+
+  // Deeper floors should offer ways around, not depend solely on lucky loop
+  // rolls. Preserve explicit loopChance requests (including tree fixtures).
+  if (options.loopChance === undefined && floor > 1) stitchExplorationLoops(rooms, floor - 1);
 
   // The end room hangs off the room farthest from the start, in a free cell
   // next to it; if every neighbour cell is taken, the farthest room itself
@@ -363,7 +376,41 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     break;
   }
 
+  // Separate stream: adding architecture does not reshuffle keys or room roles.
+  const architecture = createRng(`${seed}:architecture`);
+  const candidates = shuffle(architecture, rooms.filter((r) =>
+    !r.template && ["normal", "treasure", "trap"].includes(r.kind)));
+  const count = Math.min(candidates.length, floor === 1 ? 1 : floor === 2 ? 3 : 5);
+  for (const room of candidates.slice(0, count)) {
+    const doors = DIRS.filter((dir) => room.links[dir]);
+    const selected = shuffle(architecture, doors).slice(0, floor === 1 ? 1 : floor === 2 ? 2 : 4);
+    room.wings = {};
+    for (const dir of selected) room.wings[dir] = 3 + floor * 2 + Math.floor(architecture() * floor) * 2;
+    // A side gallery creates another place to turn out of sight even in
+    // a room with just one exit. Keep secret walls in the chamber and use
+    // a separate draw so galleries do not change the travel passages.
+    if (floor > 1) {
+      const galleryRng = createRng(`${seed}:${room.id}:side-gallery`);
+      const closed = DIRS.filter((dir) => !room.links[dir] && room.secret?.dir !== dir);
+      const gallery = closed.length ? pick(galleryRng, closed) : undefined;
+      if (gallery) {
+        room.wings[gallery] = 3 + floor * 2;
+        room.wingWidths = { [gallery]: Math.min(room.size - 4, CORRIDOR_WIDTH + (floor - 1) * 2) };
+        const width = room.wingWidths[gallery]!;
+        const shift = Math.max(0, Math.min(width / 2 - 1, room.size / 2 - width / 2 - 2));
+        room.wingOffsets = { [gallery]: (galleryRng() < 0.5 ? -1 : 1) * shift };
+      }
+    }
+  }
+
+  assignDistricts(rooms, "start", endId, floor);
+  for (const room of rooms) for (const dir of DIRS) {
+    if (!room.wings?.[dir] || room.links[dir] || room.secret?.dir === dir || room.district === "works") continue;
+    if (createRng(`${seed}:${room.id}:${dir}:apse`)() < 0.7) room.wingProfiles = { ...room.wingProfiles, [dir]: "apse" };
+  }
+  assignWatercourse(rooms, "start", vault?.id ?? null);
   return {
+    serviceTrail: serviceTrailFor(rooms, vault?.id ?? null),
     seed,
     rooms,
     startId: "start",

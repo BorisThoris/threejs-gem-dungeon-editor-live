@@ -1,4 +1,5 @@
-import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
+import { HAZARD_RADIUS, trapHazards, type Vec3 } from "../dungeon/layout";
+import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "../sentry/placement";
 import type { Room } from "../dungeon/types";
 import { SNARE_RADIUS } from "../items/catalog";
 import { PROP_SPECS, type PropSpec } from "../props/specs";
@@ -8,6 +9,9 @@ import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
 import { trapsFor } from "../traps/placement";
 import { FLIGHT_HEIGHT, PIT_RADIUS } from "../world";
+import { PLINTH_HEIGHT, PLINTH_RADIUS } from "../arena/sweep";
+import { CHALLENGE_ALTAR_HALF, CHALLENGE_ALTAR_HEIGHT, MEMORY_PEDESTAL_HEIGHT, MEMORY_PEDESTAL_RADIUS,
+  challengeAnchors, memoryAnchors } from "../puzzles/anchors";
 import type { Patch } from "../warden/steer";
 
 /**
@@ -30,7 +34,7 @@ import type { Patch } from "../warden/steer";
  */
 export type Body = "ground" | "flying" | "ghost";
 
-export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper";
+export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper" | "croaker" | "beetle";
 
 export const BODIES: Record<MobId, Body> = {
   warden: "ground",
@@ -44,6 +48,9 @@ export const BODIES: Record<MobId, Body> = {
   // It never takes a step, so nothing ever bites it; it is in the table
   // because everything on the floor with a body is.
   keeper: "ground",
+  // Sits at the water's edge and goes under; never walks anywhere either.
+  croaker: "ground",
+  beetle: "flying",
 };
 
 /**
@@ -58,7 +65,7 @@ const colliderTop = (spec: PropSpec): number =>
   spec.collider ? spec.collider.y + (spec.collider.shape === "cylinder" ? spec.collider.args[0] : spec.collider.args[1]) : 0;
 
 /** Whether a flying body passes over this prop rather than round it. */
-export const clearedInFlight = (spec: PropSpec): boolean => colliderTop(spec) < FLIGHT_HEIGHT;
+export const clearedInFlight = (spec: PropSpec, scale = 1): boolean => colliderTop(spec) * scale < FLIGHT_HEIGHT;
 
 /** What this body has to walk round: the room's solid furniture - the tall pieces of it, for a flier - or nothing. */
 export function obstaclesFor(
@@ -66,15 +73,28 @@ export function obstaclesFor(
   room: Room,
   seed: number,
   placed: readonly PlacedDevice[],
-  broken: readonly string[] = []
+  broken: readonly string[] = [],
+  watcher: Vec3 | null = null
 ): Patch[] {
   void placed;
   if (body === "ghost") return [];
+  const fixtures: { x: number; z: number; r: number; height: number }[] = [];
+  if (watcher) fixtures.push({ x: watcher[0], z: watcher[2], r: SENTRY_POST_RADIUS, height: SENTRY_POST_HEIGHT });
+  if (room.kind === "arena") fixtures.push({ x: 0, z: 0, r: PLINTH_RADIUS, height: PLINTH_HEIGHT });
+  if (room.kind === "memory") {
+    for (const [x, , z] of memoryAnchors(room).slice(0, 4)) fixtures.push({ x, z, r: MEMORY_PEDESTAL_RADIUS, height: MEMORY_PEDESTAL_HEIGHT });
+  }
+  if (room.kind === "challenge") {
+    const [x, , z] = challengeAnchors(room)[0];
+    fixtures.push({ x, z, r: Math.SQRT2 * CHALLENGE_ALTAR_HALF, height: CHALLENGE_ALTAR_HEIGHT });
+  }
+  const content = fixtures.filter((p) => body === "ground" || p.height >= FLIGHT_HEIGHT)
+    .map((p) => ({ x: p.x, z: p.z, r: p.r + BODY_HALF_WIDTH, berth: 0 }));
   // A barrel that has burst is not in anyone's way any more.
-  return placementsFor(room, seed)
+  return [...content, ...placementsFor(room, seed, { sentry: watcher })
     .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
-    .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind]))
-    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius + BODY_HALF_WIDTH, berth: 0 }));
+    .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind], p.scale ?? 1))
+    .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius * (p.scale ?? 1) + BODY_HALF_WIDTH, berth: 0 }))];
 }
 
 /** What bites this body here: the floor's spikes and any live snare, or nothing. */

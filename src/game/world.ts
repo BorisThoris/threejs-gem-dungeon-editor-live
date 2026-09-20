@@ -143,7 +143,7 @@ export const ROOM_SIZE_HUGE = 30;
  * twenty-eight. Both were declared in the shape table and neither had ever
  * been built, because nothing was ever big enough.
  */
-export const ROOM_SIZES = [14, 16, 18, 20, 22, 24, 26, 28, 30] as const;
+export const ROOM_SIZES = [14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40] as const;
 
 // --- Run rules --------------------------------------------------------------
 
@@ -651,7 +651,7 @@ const DESCENT: readonly FloorRules[] = [
     wardenGrace: 2,
     startingAlarm: 1,
     sentryChance: 0.45,
-    blurb: "Deeper. The halls are wider, watchers stand in them, and something with wings roosts down here.",
+    blurb: "Deeper. Wider halls, watchers, and a Harrier roost. The next floor's stairs are kept: pack a shop bomb before descending.",
     light: { ambient: 0.5, sky: "#7f96bd", fill: "#cfe0dc", fillIntensity: 14, fogFar: 41 },
   },
   {
@@ -780,10 +780,22 @@ export const REAPER_STRIKE_GRACE_S = 1.5;
  */
 export const RAT_FLEE_RADIUS = 3.5;
 export const RAT_SPEED = 4;
+/** How long a rat keeps running after the noise that spooked it: one bolt, not a nervous breakdown. */
+export const RAT_SPOOK_S = 1.6;
 export const MOTH_SPEED = 3;
 export const MOTH_HOLD_S = 6;
 export const BATS_ROUSED_S = 5;
 export const BATS_NOISE_FACTOR = 2;
+/**
+ * The cistern's toads. They hush when the player is within
+ * CROAKER_HUSH_RADIUS - close enough to be a thing rather than a sound -
+ * and they go under for CROAKER_UNDER_S at anything their row calls loud.
+ * Longer than a burst takes to fade, so the silence outlasts what caused
+ * it: the tell is the quiet, and a quiet that ended with the noise would
+ * be no tell at all.
+ */
+export const CROAKER_HUSH_RADIUS = 2.5;
+export const CROAKER_UNDER_S = 9;
 
 /**
  * The floor's own traps, which are the Spelunky half of the brief: a

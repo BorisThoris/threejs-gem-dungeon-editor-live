@@ -60,6 +60,7 @@ export interface GamepadState {
    * one press.
    */
   barPressed: boolean;
+  shovePressed: boolean;
   /**
    * One step of the d-pad or the left stick, for menus. Rising edge, and
    * repeating while held so a list can be scrolled without letting go.
@@ -120,6 +121,7 @@ const state: GamepadState = {
   lanternPressed: false,
   markPressed: false,
   barPressed: false,
+  shovePressed: false,
   menuX: 0,
   menuY: 0,
 };
@@ -133,6 +135,7 @@ function clear(): void {
     state.backPressed =
     state.lanternPressed =
     state.barPressed =
+    state.shovePressed =
     state.markPressed =
       false;
   state.slotPressed.fill(false);
@@ -189,6 +192,7 @@ function poll(now: number): void {
   state.backPressed = risingEdge(pad, BUTTON_BACK);
   state.lanternPressed = risingEdge(pad, BUTTON_LANTERN);
   state.barPressed = risingEdge(pad, DPAD.down);
+  state.shovePressed = risingEdge(pad, 7);
   state.markPressed = risingEdge(pad, DPAD.up);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);

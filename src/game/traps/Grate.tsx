@@ -9,7 +9,7 @@ import { DOOR_HEIGHT, GROUND_Y } from "../world";
 import type { Trap } from "./placement";
 
 /** How long after coming in under it the grate drops, on the run's clock: behind you, not on you. */
-const DROP_AFTER_S = 0.4;
+const DROP_AFTER_S = 2;
 
 /**
  * A portcullis over one doorway. It drops behind a player who comes in
@@ -32,13 +32,13 @@ export function Grate({ room, trap }: { room: Room; trap: Trap }) {
   const cameUnderIt = useRun((s) => s.currentRoomId === room.id && s.enteredBy === dir);
   const down = useRun((s) => (to ? barredNow(s) === barKey(room.id, to) : false));
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const run = useRun.getState();
     if (!cameUnderIt || !to || down) return;
     if (!canControl(run)) return;
     const now = runClock(run);
     if (arrivedAt.current === null) arrivedAt.current = now;
-    if (now - arrivedAt.current >= DROP_AFTER_S) run.dropGrate(to);
+    if (now - arrivedAt.current >= DROP_AFTER_S && Math.hypot(camera.position.x - dx, camera.position.z - dz) >= 5) run.dropGrate(to);
   });
 
   return (

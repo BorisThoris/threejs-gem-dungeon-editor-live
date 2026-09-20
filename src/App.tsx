@@ -17,7 +17,7 @@ import { Scene } from "./game/Scene";
 import { canControl, useRun } from "./game/state/run";
 import { useRecords } from "./game/state/records";
 import { useSettings } from "./game/state/settings";
-import { Audio } from "./game/systems/Audio";
+import { Audio } from "./game/systems/GameAudio";
 import { Hint } from "./ui/Hint";
 import { Hud } from "./ui/Hud";
 import { MainMenu } from "./ui/MainMenu";

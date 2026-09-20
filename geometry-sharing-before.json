@@ -1,0 +1,203 @@
+{
+  "perf": {
+    "calls": 32,
+    "triangles": 3364,
+    "geometries": 42,
+    "textures": 5,
+    "programs": 27,
+    "frames": 149
+  },
+  "room": {
+    "id": "room_6",
+    "kind": "trap",
+    "seed": 4025210547,
+    "grid": {
+      "x": -2,
+      "z": 0
+    },
+    "size": 20,
+    "shape": "square",
+    "links": {
+      "east": "room_4",
+      "north": "room_7",
+      "west": "room_8"
+    },
+    "wings": {
+      "east": 13,
+      "north": 13,
+      "west": 9,
+      "south": 9
+    },
+    "wingWidths": {
+      "south": 11
+    },
+    "wingOffsets": {
+      "south": -2.5
+    },
+    "district": "gardens",
+    "biome": "fungal",
+    "wingProfiles": {
+      "south": "apse"
+    },
+    "waterway": {
+      "role": "channel",
+      "upstream": "east",
+      "downstream": "west"
+    }
+  },
+  "rows": [
+    {
+      "type": "BoxGeometry",
+      "count": 96,
+      "triangles": 1152,
+      "color": "586b62"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 70,
+      "triangles": 840,
+      "color": "55604f"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 68,
+      "triangles": 816,
+      "color": "46654f"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 48,
+      "triangles": 576,
+      "color": "94beb0"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 44,
+      "triangles": 528,
+      "color": "7c8d68"
+    },
+    {
+      "name": "passage-lamps",
+      "type": "BoxGeometry",
+      "count": 42,
+      "triangles": 504,
+      "color": "746047"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 40,
+      "triangles": 480,
+      "color": "ffb060"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 38,
+      "triangles": 456,
+      "color": "55604f"
+    },
+    {
+      "name": "wall-courses",
+      "type": "PlaneGeometry",
+      "count": 184,
+      "triangles": 368,
+      "color": "736449"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 30,
+      "triangles": 360,
+      "color": "7fc9a0"
+    },
+    {
+      "type": "CylinderGeometry",
+      "count": 12,
+      "triangles": 288,
+      "color": "3a3d44"
+    },
+    {
+      "type": "TorusGeometry",
+      "count": 1,
+      "triangles": 240,
+      "color": "8d939c"
+    },
+    {
+      "type": "TorusGeometry",
+      "count": 1,
+      "triangles": 240,
+      "color": "8d939c"
+    },
+    {
+      "type": "SphereGeometry",
+      "count": 1,
+      "triangles": 216,
+      "color": "2a2d34"
+    },
+    {
+      "type": "SphereGeometry",
+      "count": 1,
+      "triangles": 216,
+      "color": "d9d2c0"
+    },
+    {
+      "type": "SphereGeometry",
+      "count": 1,
+      "triangles": 216,
+      "color": "d9d2c0"
+    },
+    {
+      "name": "wall-courses",
+      "type": "PlaneGeometry",
+      "count": 92,
+      "triangles": 184,
+      "color": "98835d"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 14,
+      "triangles": 168,
+      "color": "7fe3ff"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 13,
+      "triangles": 156,
+      "color": "9aa886"
+    },
+    {
+      "type": "BoxGeometry",
+      "count": 13,
+      "triangles": 156,
+      "color": "1a191d"
+    },
+    {
+      "type": "SphereGeometry",
+      "count": 1,
+      "triangles": 140,
+      "color": "8ad4ff"
+    },
+    {
+      "type": "BufferGeometry",
+      "count": 1,
+      "triangles": 108,
+      "color": "665b46"
+    },
+    {
+      "type": "CylinderGeometry",
+      "count": 4,
+      "triangles": 96,
+      "color": "3a3d44"
+    },
+    {
+      "type": "CapsuleGeometry",
+      "count": 1,
+      "triangles": 84,
+      "color": "3a3128"
+    },
+    {
+      "type": "CapsuleGeometry",
+      "count": 1,
+      "triangles": 84,
+      "color": "3a3128"
+    }
+  ]
+}

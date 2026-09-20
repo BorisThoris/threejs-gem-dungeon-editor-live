@@ -1,6 +1,7 @@
 import { BIOME, biomeIdFor, type Biome } from "../rooms/biomes";
 import type { Room } from "../dungeon/types";
 import type { Surface, Tag } from "./tags";
+import { footingCarry, type Footing } from "../rooms/underfoot";
 
 /**
  * What the things on this floor declare themselves to be.
@@ -34,6 +35,8 @@ export interface Emission {
 }
 
 export const EMISSIONS = {
+  sluiceOpened: { tags: ["loud", "metal"], magnitude: 0.65 },
+  bellcapBurst: { tags: ["loud"], magnitude: 0.5 },
   /** The floor's loudest event, and the only one that declares [blast]. */
   bombBurst: { tags: ["blast", "loud", "bright", "hot"], magnitude: 1.0 },
   /** A ton of iron arriving in a doorway. */
@@ -60,6 +63,13 @@ export const EMISSIONS = {
   sprint: { tags: ["loud"], magnitude: 0.35, underfoot: true },
   /** Something small, in a hurry, in the dark with you. */
   cutpurse: { tags: ["loud"], magnitude: 0.2 },
+  /**
+   * The cistern's toads going under, all at once. The only thing on the
+   * floor that declares [wet], and exactly as loud as the Warden listens
+   * for: a noise in a flooded room is answered by a second noise that
+   * reaches the Warden in that room and nowhere else.
+   */
+  splash: { tags: ["loud", "wet"], magnitude: 0.3 },
   /** Below every threshold in the game, and that is the point of walking. */
   walk: { tags: ["loud"], magnitude: 0.05, underfoot: true },
   /** A vault giving up: hinges, a bar, and a lot of held breath. */
@@ -125,7 +135,7 @@ export const SURFACE_OF: Record<Biome["surface"], Surface> = {
 
 /** What this room's floor is, in the Din's vocabulary. */
 export const surfaceOf = (room: Room): Surface =>
-  SURFACE_OF[BIOME[biomeIdFor(room.kind, room.id, room.seed)].surface];
+  SURFACE_OF[BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].surface];
 
 /**
  * How loud this emission is in this room.
@@ -134,8 +144,8 @@ export const surfaceOf = (room: Room): Surface =>
  * moss as it is on tile, and pretending otherwise would make the one
  * reliable tool in the game situational for no reason a player could read.
  */
-export function loudnessIn(id: EmissionId, room: Room): number {
+export function loudnessIn(id: EmissionId, room: Room, surface?: Footing): number {
   const emission: Emission = EMISSIONS[id];
   if (!emission.underfoot) return emission.magnitude;
-  return emission.magnitude * BIOME[biomeIdFor(room.kind, room.id, room.seed)].carry;
+  return emission.magnitude * (surface ? footingCarry(room, surface) : BIOME[biomeIdFor(room.kind, room.id, room.seed, room)].carry);
 }

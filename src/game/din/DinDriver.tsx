@@ -51,12 +51,13 @@ export function DinDriver() {
       id: Parameters<typeof din.strike>[0],
       roomId: string | null | undefined,
       x = 0,
-      z = 0
+      z = 0,
+      surface?: import("../rooms/underfoot").Footing
     ) => {
       const { s, bars } = floor();
       const room = at(s.dungeon, roomId ?? s.currentRoomId);
       if (!s.dungeon || !room) return;
-      din.strike(id, s.dungeon.rooms, room, x, z, bars);
+      din.strike(id, s.dungeon.rooms, room, x, z, bars, surface);
     };
 
     const off = [
@@ -67,23 +68,26 @@ export function DinDriver() {
 
       /** The loudest thing in the game, and the only source of [blast]. */
       bus.on("bombBurst", ({ roomId, x, z }) => strike("bombBurst", roomId, x, z)),
+      bus.on("bellcapBurst", ({ roomId, x, z }) => strike("bellcapBurst", roomId, x, z)),
 
       bus.on("trapSprung", ({ kind }) =>
         strike(kind === "grate" ? "grateDrop" : kind === "pit" ? "pitOpened" : "dartsFired", null)
       ),
       bus.on("propBroken", ({ roomId }) => strike("propBroken", roomId)),
+      bus.on("sluiceOpened", ({ roomId, x, z }) => strike("sluiceOpened", roomId, x, z)),
       bus.on("snareSprung", () => strike("snareSprung", null)),
       bus.on("batsRoused", () => strike("batsRoused", null)),
+      bus.on("croakersDove", ({ roomId }) => strike("splash", roomId)),
       bus.on("barBroken", () => strike("barBroken", null)),
       bus.on("doorBarred", ({ roomId }) => strike("doorBarred", roomId)),
       bus.on("vaultOpened", ({ roomId }) => strike("vaultOpened", roomId)),
       bus.on("thiefCame", ({ roomId }) => strike("cutpurse", roomId)),
 
       /**
-       * A sprint. The store already owns whether one was loud enough to
-       * matter in this room's biome; the Din owns how far that carries.
+       * Throttled sprint samples carry their actual position and surface.
+       * A Warden alert is a reaction, not another sound at the room centre.
        */
-      bus.on("wardenHeard", () => strike("sprint", null)),
+      bus.on("sprinted", ({ roomId, x, z, surface }) => strike("sprint", roomId, x, z, surface)),
 
       /**
        * Theft is silent, and the call is here rather than absent because

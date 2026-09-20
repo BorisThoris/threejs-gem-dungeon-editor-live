@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef } from "react";
+import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group, PointLight, Vector3 } from "three";
 
+import { encounterArrival } from "../dungeon/arrival";
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
-import { canControl, runClock, useRun, wardenStaggered } from "../state/run";
+import { canControl, runClock, useRun, wardenSenses, wardenStaggered } from "../state/run";
 import * as ladder from "../ladder/state";
 import { CONES } from "../ladder/caps";
 import { closeEnough } from "../ladder/awareness";
@@ -23,8 +25,9 @@ import {
   WARDEN_TURN_RATE,
 } from "../world";
 import { wardenAt } from "./position";
-import { patchAt, steerAround, type Patch } from "./steer";
+import { patchAt, steerInRoom, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
+import { floorHeightAt } from "../worldbuilding/elevation";
 
 interface WardenProps {
   room: Room;
@@ -55,14 +58,10 @@ const bandFor = (distance: number): number => {
 /**
  * The Warden, in the room the player is standing in.
  *
- * It has no rigid body and no collider: it walks through barrels and
- * pillars, and the only thing in the dungeon that stops it is a wall it
- * never crosses because it moves room to room, not through geometry. That
- * is deliberate. A threat you can pin behind a crate is a puzzle; one that
- * simply keeps coming is a reason to leave, which is the decision this
- * whole floor is built around.
+ * It steers around solid furniture and follows the room's corridor
+ * outline. Arrival leaves the player and every landing room to react.
  *
- * It cannot be fought. Its speed is under the player's walk at every alarm
+ * Shoves buy an escape window; traps and bombs wound it. Its speed is under the player's walk at every alarm
  * level, so it never wins a straight race - it wins by being between you
  * and the door, and by arriving while you are deciding whether to be greedy.
  */
@@ -91,13 +90,9 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   // It comes in through the doorway it walked in from, so its arrival has
   // a direction the player can learn to read.
   const entry = useMemo<[number, number, number]>(() => {
-    const half = halfSize(room);
     const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
-    if (dir) {
-      const [x, , z] = doorPosition(room, dir);
-      return [x * 0.86, GROUND_Y, z * 0.86];
-    }
-    return [half * 0.7, GROUND_Y, -half * 0.7];
+    const p = encounterArrival(room, dir ?? null, playerAt, [...obstacles, ...hazards]);
+    return [p.x, GROUND_Y, p.z];
     // `cameFrom` is read once, at the moment it enters: it must not move the
     // Warden again while it is in the room.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,6 +123,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
    * every frame and nothing renders differently for it.
    */
   const facing = useRef(0);
+  const remembered = useRef({ x: 0, z: 0 });
 
   useEffect(() => {
     bus.emit("wardenProximity", { level: 0 });
@@ -143,20 +139,29 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
+    const run = useRun.getState();
+    const controlled = canControl(run);
+    if (!controlled) { sfx.stalkStop(); return; }
     if (arrivedIn.current !== room.id) {
+      const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
+      const p = encounterArrival(room, dir ?? null, state.camera.position, [...obstacles, ...hazards]);
+      g.position.x = p.x;
+      g.position.z = p.z;
+      remembered.current = { x: 0, z: 0 };
       arrivedIn.current = room.id;
       arrivedAt.current = runClock(useRun.getState());
     }
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
     const behaviour = behaviourFor(alarm);
 
     // It drifts rather than walks: a slow bob, and eyes that always face you.
-    g.position.y = GROUND_Y + 0.06 + Math.sin(t * 1.6) * 0.05;
+    g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.06 + Math.sin(t * 1.6) * 0.05;
 
     const cam = state.camera.position;
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
+    if (controlled && wardenSenses(useRun.getState())) remembered.current = { x: cam.x, z: cam.z };
 
     /**
      * Which way it is looking - and, for the first time, not always at you.
@@ -178,7 +183,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const rung = ladder.rungOf("warden");
     let aim: number;
     if (rung >= 3) {
-      aim = Math.atan2(dx, dz);
+      aim = Math.atan2(remembered.current.x - g.position.x, remembered.current.z - g.position.z);
     } else if (rung === 2) {
       // Towards the doorway it last had them through, so searching looks
       // like searching somewhere rather than like standing and spinning.
@@ -215,7 +220,9 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
      * that flickers.
      */
     const cone = coneFor(CONES.warden ?? [], Math.sin(facing.current), Math.cos(facing.current), dx, dz);
-    if (cone) {
+    const canSee = !!cone && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z);
+    if (canSee && cone) {
+      if (controlled) remembered.current = { x: cam.x, z: cam.z };
       const v = visibilityFor("warden", room.id, playerAt.speed, exposureAt(cam.x, cam.z, obstacles));
       const seen = seenAt(cone, v);
       ladder.report("warden", rungFor(seen), closeEnough(distance), seen >= 0.7, room.id);
@@ -250,6 +257,10 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       // between a rule working and a rule stuck on.
       probe.sinceArrival = runClock(useRun.getState()) - arrivedAt.current;
       probe.tell = tell.current;
+      probe.targetX = remembered.current.x;
+      probe.targetZ = remembered.current.z;
+      probe.canSee = canSee ? 1 : 0;
+      probe.facing = facing.current;
     }
 
     const level = bandFor(distance);
@@ -294,11 +305,11 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     if (wardenStaggered(useRun.getState())) {
       // A shudder in place, so a player who bought this window can see they
       // bought it rather than guessing from a Warden that merely looks slow.
-      g.position.y = GROUND_Y + 0.02 + Math.sin(t * 22) * 0.035;
+      g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.sin(t * 22) * 0.035;
       return;
     }
 
-    if (distance <= WARDEN_TOUCH_RADIUS) {
+    if (distance <= WARDEN_TOUCH_RADIUS && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) {
       /**
        * Not on the frame it walked in on.
        *
@@ -313,26 +324,24 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       return;
     }
 
-    // Straight at the player, clamped inside the room so it never drifts
+    // Follow the last perceived destination, clamped inside the room so it never drifts
     // out through a wall it did not walk through - and never further in one
     // frame than WARDEN_MAX_STEP, whatever the frame cost. See world.ts:
     // an unbounded delta let a single slow frame put it on top of you from
     // across the room.
+    const target = remembered.current;
+    const targetDistance = Math.hypot(target.x - g.position.x, target.z - g.position.z);
     const step = Math.min(
       behaviour.speed * delta,
       WARDEN_MAX_STEP,
-      Math.max(0, distance - WARDEN_TOUCH_RADIUS * 0.5)
+      Math.max(0, targetDistance - (canSee ? WARDEN_TOUCH_RADIUS * 0.5 : 0.1))
     );
     // Round the furniture from the first step - it has a body, and a table
     // is a table - and round the spikes only once they have taught it.
     const round = wary ? [...avoid, ...obstacles] : obstacles;
-    const heading = round.length
-      ? steerAround(g.position.x, g.position.z, cam.x, cam.z, round, WARDEN_HAZARD_BERTH)
-      : { dx: dx / distance, dz: dz / distance };
+    const heading = steerInRoom(room, g.position.x, g.position.z, target.x, target.z, round, WARDEN_HAZARD_BERTH);
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
-    const limit = halfSize(room) - 0.6;
-    g.position.x = Math.max(-limit, Math.min(limit, g.position.x + scratch.to.x));
-    g.position.z = Math.max(-limit, Math.min(limit, g.position.z + scratch.to.z));
+    [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z);
 
     // What it just walked into. Tested after the step, against the position
     // it actually ended the frame at, so a patch it was steered round is
@@ -355,7 +364,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   const eyeColour = rouse > 0.6 ? "#ff5c3a" : rouse > 0.3 ? "#ffb03a" : "#9fd8ff";
 
   return (
-    <group ref={group} position={entry}>
+    <group name="creature-warden" ref={group} position={entry}>
       {/* A hooded column that never quite touches the floor. The outer shell
           is a shade off black so the silhouette has an edge against a dark
           wall; without it the whole figure vanishes into the room. */}

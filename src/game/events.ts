@@ -21,6 +21,12 @@ export interface PuzzleRequest {
 }
 
 export interface BusEvents {
+  sprinted: { roomId: string; x: number; z: number; surface?: import("./rooms/underfoot").Footing };
+  sluiceOpened: { roomId: string; x: number; z: number };
+  bellcapWarning: { roomId: string; x: number; z: number };
+  bellcapBurst: { roomId: string; x: number; z: number };
+  beetlesScattered: { roomId: string };
+  waterCacheTaken: { roomId: string };
   runStarted: undefined;
   runWon: undefined;
   /** The floor's Warden has woken, in this room. */
@@ -195,6 +201,8 @@ export interface BusEvents {
   mothLeft: undefined;
   /** A roost burst: the noise of it carries. */
   batsRoused: undefined;
+  /** The cistern's toads went under at a noise, and the room is silent. */
+  croakersDove: { roomId: string };
   /** The lamplighter wisp gathered at the raised lantern. */
   wispCame: undefined;
   /** And went out with the light. */

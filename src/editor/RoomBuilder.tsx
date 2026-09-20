@@ -1,6 +1,8 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 
-import { inDoorLane, LANE_HALF_WIDTH } from "../game/dungeon/layout";
+import { inDoorLane, LANE_HALF_WIDTH, shapeFits } from "../game/dungeon/layout";
+import { insideRoom } from "../game/dungeon/footprint";
+import { minimapFootprint } from "../ui/minimapGeometry";
 import {
   DIRS,
   PROP_KINDS,
@@ -15,7 +17,12 @@ import {
 } from "../game/dungeon/types";
 import { CATALOG } from "../game/props/catalog";
 import { KIND_TITLE } from "../game/rooms/kinds";
-import { templateProblems } from "../game/rooms/validate";
+import { roomForTemplate, templateProblems } from "../game/rooms/validate";
+import { SHIPPED } from "../game/rooms/shipped";
+import { DISTRICTS, type DistrictId } from "../game/rooms/districts";
+import { BIOMES, BIOME, BIOMES_FOR, type BiomeId } from "../game/rooms/biomes";
+import { resolveSlots } from "../game/rooms/slots";
+import { previewTemplateId } from "../game/rooms/templates";
 import { ROOM_SIZE_DEFAULT, ROOM_SIZES } from "../game/world";
 import { colors } from "../ui/overlay";
 import { download, draftStore, isRoomTemplate, newDraftId, useDrafts } from "./drafts";
@@ -45,16 +52,36 @@ export function RoomBuilder() {
   const [tool, setTool] = useState<PropKind>("barrel");
   const [selected, setSelected] = useState<number | null>(null);
   const [doors, setDoors] = useState<Dir[]>(["north", "south"]);
+  const [district, setDistrict] = useState<DistrictId | "">("");
+  const [biome, setBiome] = useState<BiomeId | "">("");
+  const [previewSeed, setPreviewSeed] = useState(1);
 
   const draft = drafts.find((d) => d.template.id === activeId) ?? drafts[0];
   const template = draft?.template;
   // The game's own rules, not a copy of them: the layout check holds what
   // ships to exactly this list.
   const problems = useMemo(() => (template ? templateProblems(template) : []), [template]);
+  const previewRoom = useMemo(() => template ? { ...roomForTemplate(template), id: "preview", seed: previewSeed,
+    template: previewTemplateId(template.id),
+    district: district || undefined,
+    biome: biome || (district ? DISTRICTS[district].biomes.find(b => BIOMES_FOR[template.kind].includes(b)) : undefined),
+    links: Object.fromEntries(doors.map(dir => [dir, "preview-neighbour"])) } : null, [template, doors, district, biome, previewSeed]);
+  const footprint = useMemo(() => previewRoom ? minimapFootprint(previewRoom, previewRoom.size * CELL_PX) : null, [previewRoom]);
+  const supplies = useMemo(() => {
+    if (!template) return [];
+    const resolved = resolveSlots(template.props, template.slots ?? [], `slots:${previewSeed}:preview:0,0`, district || undefined);
+    return [...new Set(template.props.flatMap(p => p.slot ? [p.slot] : []))].map(slot => {
+      const counts = new Map<PropKind, number>();
+      resolved.forEach((p, i) => { if (template.props[i].slot === slot) counts.set(p.kind, (counts.get(p.kind) ?? 0) + 1); });
+      return `${slot}: ${[...counts].map(([kind, n]) => `${n} × ${CATALOG[kind].title}`).join(", ")}`;
+    });
+  }, [template, previewSeed, district]);
 
   const update = (patch: Partial<RoomTemplate>) => {
     if (!template) return;
-    draftStore.put({ ...template, ...patch });
+    const next = { ...template, ...patch };
+    if (!shapeFits(next.shape, next.size)) next.size = ROOM_SIZES.find(size => size >= next.size && shapeFits(next.shape, size)) ?? next.size;
+    draftStore.put(next);
   };
 
   const create = (kind: RoomKind) => {
@@ -90,6 +117,7 @@ export function RoomBuilder() {
       setSelected(hit);
       return;
     }
+    if (previewRoom && !insideRoom(previewRoom, x, z, 0.2)) return;
     update({ props: [...template.props, { kind: tool, x, z, rotation: 0 }] });
     setSelected(template.props.length);
   };
@@ -125,6 +153,16 @@ export function RoomBuilder() {
               {KIND_TITLE[k]}
             </option>
           ))}
+        </select>
+        <label style={label} htmlFor="copy-shipped-room">COPY A SHIPPED ROOM</label>
+        <select id="copy-shipped-room" style={field} value="" onChange={e => {
+          const source = SHIPPED.find(t => t.id === e.target.value);
+          if (!source) return;
+          const copy = { ...structuredClone(source), id: newDraftId(source.kind) };
+          draftStore.put(copy, false); setActiveId(copy.id); setSelected(null);
+        }}>
+          <option value="">Choose a starting layout…</option>
+          {SHIPPED.map(t => <option key={t.id} value={t.id}>{t.id} · {t.shape}</option>)}
         </select>
         <label style={{ ...secondaryButton, display: "block", textAlign: "center", cursor: "pointer" }}>
           Import JSON
@@ -196,6 +234,7 @@ export function RoomBuilder() {
             </div>
 
             <div style={{ ...label, marginTop: 12 }}>PLACE</div>
+            <p style={small}>Shape defines the walls, walkable floor and map. The room grows when a shape needs more space. Dark cells are outside its footprint.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 10 }}>
               {PROP_KINDS.map((k) => (
                 <button
@@ -251,12 +290,14 @@ export function RoomBuilder() {
                   y={cz * CELL_PX}
                   width={CELL_PX}
                   height={CELL_PX}
-                  fill="transparent"
+                  fill={previewRoom && !insideRoom(previewRoom, cx - template.size / 2 + 0.5, cz - template.size / 2 + 0.5) ? "#07080c" : "transparent"}
                   stroke="rgba(255,255,255,0.06)"
                   onClick={() => placeAt(cx, cz)}
                   style={{ cursor: "crosshair" }}
                 />
               ))}
+              {footprint && <path d={footprint.walls} transform={`translate(${gridPx / 2} ${gridPx / 2})`}
+                fill="none" stroke={colors.accent} strokeWidth={2} pointerEvents="none" />}
               {template.props.map((p, i) => {
                 const info = CATALOG[p.kind];
                 const bad = info.solid && inDoorLane(p.x, p.z);
@@ -379,8 +420,31 @@ export function RoomBuilder() {
       </div>
 
       {/* Live preview */}
-      <div style={{ ...panel, padding: 6, minHeight: 420 }}>
-        {template && <Preview template={template} doors={doors} />}
+      <div style={{ ...panel, padding: 6, minHeight: 420, display: "flex", flexDirection: "column", gap: 8 }}>
+        {template && previewRoom && <>
+          <div style={{ padding: 8 }}>
+            <div style={label}>WORLD PREVIEW</div>
+            <label style={small}>Preview district
+              <select aria-label="Preview district" style={field} value={district} onChange={e => setDistrict(e.target.value as DistrictId | "")}>
+                <option value="">Default furnishings</option>
+                {Object.entries(DISTRICTS).map(([id, d]) => <option key={id} value={id}>{d.name}</option>)}
+              </select>
+            </label>
+            <label style={small}>Preview biome
+              <select aria-label="Preview biome" style={field} value={biome} onChange={e => setBiome(e.target.value as BiomeId | "")}>
+                <option value="">Automatic</option>
+                {BIOMES.map(id => <option key={id} value={id}>{BIOME[id].name}</option>)}
+              </select>
+            </label>
+            <label style={small}>Preview seed
+              <input aria-label="Preview seed" type="number" min={0} max={4294967295} step={1} style={field} value={previewSeed}
+                onChange={e => { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0 && n <= 4294967295) setPreviewSeed(n); }} />
+            </label>
+            <div style={small}>Preview settings do not change the exported layout. The grid shows authored positions; the preview shows a resolved room.</div>
+            <div data-testid="preview-supplies" style={{ ...small, color: colors.accent }}>{supplies.map(s => <div key={s}>{s}</div>)}</div>
+          </div>
+          <div style={{ flex: 1, minHeight: 260 }}><Preview template={template} room={previewRoom} /></div>
+        </>}
       </div>
     </div>
   );

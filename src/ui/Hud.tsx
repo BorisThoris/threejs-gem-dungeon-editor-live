@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
+import { ServiceRubbing } from "./ServiceRubbing";
+import { BellcapWarning } from "./BellcapWarning";
 import {
   barredNow,
   harrierAway,
@@ -23,20 +25,24 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
-import { roostFor } from "../game/mobs/ambient";
+import { croakersFor, roostFor } from "../game/mobs/ambient";
 import { sentryFor } from "../game/sentry/placement";
 import { useLedger } from "../game/state/ledger";
 import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
 import { draft } from "../game/rooms/draftState";
 import { biomeFor } from "../game/rooms/biomes";
-import { KIND_TITLE } from "../game/rooms/kinds";
+
+import { DISTRICTS } from "../game/rooms/districts";
+import { roomPlaceName } from "../game/rooms/placeName";
+
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
-import { device } from "../game/input/device";
+import { device, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 import { hudLines, type HudLine } from "./hudLines";
+import { keysLabel } from "../game/input/bindings";
 
 /**
  * What the player needs to decide with: how deep they are, what the door
@@ -53,10 +59,16 @@ export function Hud() {
   const toll = useRun(tollNow);
   const spare = useRun(spareGems);
   const floor = useRun((s) => s.floor);
+  const hasBomb = useRun((s) => s.satchel.includes("bomb"));
   const alarm = useRun((s) => s.alarm);
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
   const keys = useRun((s) => s.keys);
+  const stairsKnown = useRun((s) => !!s.dungeon && s.dungeon.rooms.some((r) => s.visited.includes(r.id)
+    && Object.values(r.links).includes(s.dungeon!.endId)));
+  const cutpurse = useRun((s) => s.thiefPhase === "away" ? null : s.thiefPhase);
+  const thiefHolding = useRun((s) => s.thiefHolding);
+  const thiefKey = useRun((s) => s.thiefKey);
   const nestGems = useRun((s) => s.nestGems);
   // Nothing said in colour alone. The alarm was a word whose *colour*
   // carried half its meaning and the gem count's danger likewise, which is
@@ -69,7 +81,7 @@ export function Hud() {
   // the same `carry` it reads.
   const ground = (() => {
     if (!room) return null;
-    const b = biomeFor(room.kind, room.id, dungeonSeed);
+    const b = biomeFor(room.kind, room.id, dungeonSeed, room);
     if (b.carry > 1.1) return { name: b.ground, says: "carries", tone: "danger" as const };
     if (b.carry < 0.9) return { name: b.ground, says: "swallows sound", tone: "gold" as const };
     return { name: b.ground, says: "dead", tone: "dim" as const };
@@ -78,6 +90,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
+  const croakers = room ? croakersFor(room, dungeonSeed).length > 0 : false;
   const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
@@ -125,11 +138,17 @@ export function Hud() {
     toll,
     spare,
     owed,
+    stairsKnown,
+    hasBomb,
+    cutpurse,
+    thiefHolding,
+    thiefKey,
     floor,
     floors: FLOORS,
-    roomTitle: room ? KIND_TITLE[room.kind] : "",
+    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${roomPlaceName(room)}` : "",
     ground,
     roost,
+    croakers,
     drafty,
     heatSays: heat.says,
     heatBand: heat.band,
@@ -168,6 +187,9 @@ export function Hud() {
         position: "fixed",
         top: compact ? 12 : 20,
         left: compact ? 12 : 20,
+        maxWidth: "min(460px, 40vw)",
+        boxSizing: "border-box",
+        overflowWrap: "anywhere",
         padding: compact ? "8px 10px" : "14px 16px",
         background: colors.panel,
         border: `1px solid ${colors.line}`,
@@ -180,6 +202,9 @@ export function Hud() {
         zIndex: 900,
       }}
     >
+      <ShoveReadout />
+      <BellcapWarning />
+      <ServiceRubbing />
       {lines.map((line, i) => {
         /**
          * The rank the line already carries, spent on the screen.
@@ -246,6 +271,20 @@ export function Hud() {
       })}
     </div>
   );
+}
+
+function ShoveReadout() {
+  const read = () => Math.max(0, Math.ceil((useRun.getState().shoveReadyAt - runClock(useRun.getState())) * 10) / 10);
+  const [remaining, setRemaining] = useState(read);
+  const binding = useSettings((s) => s.bindings.shove);
+  const touch = useTouchControls();
+  useEffect(() => {
+    const timer = window.setInterval(() => setRemaining(read()), 100);
+    return () => window.clearInterval(timer);
+  }, []);
+  return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: remaining ? colors.dim : colors.accent }}>
+    SHOVE · {remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : `${keysLabel(binding)} / RT`} · face a close threat`}
+  </div>;
 }
 
 /** The palette, by the name a line asks for. One place turns one into the other. */

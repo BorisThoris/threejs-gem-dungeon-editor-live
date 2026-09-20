@@ -29,6 +29,7 @@ import { ARENA_ARMS, ARENA_INNER_RADIUS, ARENA_RING_GAP, ARENA_SPIN, PLAYER_CAPS
 
 /** The plinth's collider, which is the one thing standing in the middle. */
 export const PLINTH_RADIUS = 0.5;
+export const PLINTH_HEIGHT = 1.1;
 
 /**
  * The closest to the middle a player can get: up against the plinth. Any

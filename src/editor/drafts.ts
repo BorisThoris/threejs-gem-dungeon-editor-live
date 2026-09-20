@@ -2,7 +2,9 @@ import { useSyncExternalStore } from "react";
 
 import { PROP_KINDS, ROOM_KINDS, SHAPES, type RoomTemplate } from "../game/dungeon/types";
 import { ROOM_SIZES } from "../game/world";
-import { registerTemplate } from "../game/rooms/templates";
+import { registerTemplate, unregisterTemplate } from "../game/rooms/templates";
+import { isSlotRule } from "../game/rooms/slots";
+import { SHIPPED } from "../game/rooms/shipped";
 
 /**
  * Room templates under construction.
@@ -37,6 +39,7 @@ export function isRoomTemplate(value: unknown): value is RoomTemplate {
   if (!has(ROOM_KINDS, t.kind) || !has(SHAPES, t.shape)) return false;
   if (typeof t.size !== "number" || !(ROOM_SIZES as readonly number[]).includes(t.size)) return false;
   if (!Array.isArray(t.props)) return false;
+  if (t.slots !== undefined && (!Array.isArray(t.slots) || !t.slots.every(isSlotRule))) return false;
   return t.props.every((p) => {
     if (!p || typeof p !== "object") return false;
     const q = p as Record<string, unknown>;
@@ -78,6 +81,11 @@ function save() {
 }
 
 load();
+function restoreShipped(id: string) {
+  const shipped = SHIPPED.find(t => t.id === id);
+  if (shipped) registerTemplate(shipped);
+  else unregisterTemplate(id);
+}
 for (const draft of Object.values(drafts)) {
   if (draft.enabled) registerTemplate(draft.template);
 }
@@ -90,6 +98,7 @@ export const draftStore = {
     if (!isRoomTemplate(template)) return;
     drafts[template.id] = { template, enabled, updatedAt: Date.now() };
     if (enabled) registerTemplate(template);
+    else restoreShipped(template.id);
     save();
   },
 
@@ -99,11 +108,13 @@ export const draftStore = {
     draft.enabled = enabled;
     draft.updatedAt = Date.now();
     if (enabled) registerTemplate(draft.template);
+    else restoreShipped(id);
     save();
   },
 
   remove(id: string): void {
     delete drafts[id];
+    restoreShipped(id);
     save();
   },
 

@@ -26,9 +26,10 @@
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const PORT = process.env.PORT || process.argv[2] || "5199";
 const CHROMIUM =
   process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
@@ -174,9 +175,8 @@ const browser = await chromium.launch({
   executablePath: CHROMIUM,
   args: [
     "--no-sandbox",
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
+    ...(process.platform !== "win32" || process.env.SOFTWARE_GL === "1"
+      ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : []),
     // Headless has no speakers and a suspended context makes no samples.
     "--autoplay-policy=no-user-gesture-required",
     "--disable-background-timer-throttling",
@@ -239,6 +239,10 @@ const CUES = [
   ["wrong", 400, []],
   ["step", 250, [true, false]],
   ["step", 250, [true, true]],
+  ["step", 250, [true, false, "water"]],
+  ["step", 250, [true, false, "soft"]],
+  ["step", 250, [true, false, "wood"]],
+  ["step", 250, [true, false, "metal"]],
   ["take", 300, []],
   ["drink", 400, []],
   ["bitter", 400, []],
@@ -251,11 +255,44 @@ const CUES = [
   ["relic", 600, []],
   ["wardenNear", 500, [-0.5]],
   ["wardenHere", 600, [0.5]],
+  // The creatures' own voices. Every one of these was either silent or
+  // borrowed from another creature before it had a cue of its own.
+  ["scurry", 200, [0.6, 0.3]],
+  ["batsStir", 400, [0.3]],
+  ["batsBurst", 500, [0]],
+  ["harrierCry", 500, []],
+  ["harrierWind", 500, [-0.3]],
+  ["harrierSwoop", 600, []],
+  ["harrierAway", 900, [0.5]],
+  ["harrierFall", 800, [0.2]],
+  ["harrierDie", 400, []],
+  ["keeperClank", 900, []],
+  ["keeperSwing", 500, [0.4]],
+  ["splash", 500, [0.3]],
+  ["sluice", 2000, []],
+  ["bellcapWarning", 600, [0.3]],
+  ["bellcapBurst", 650, [-0.3]],
+  ["beetleScatter", 350, [0.3]],
 ];
 
-/** The room with nothing played into it: the bed, and whatever else runs. */
+/**
+ * The room with nothing played into it: the bed, and nothing else.
+ *
+ * The room the run starts in has an air of its own now - moss is wind -
+ * and it was running while this was measured, so every bar in the suite
+ * moved with whichever biome the start room happened to be. The air is
+ * stilled for the measurement and checked on its own below.
+ */
 const floorLevel = await page.evaluate(async (flush) => {
-  await new Promise((r) => setTimeout(r, flush));
+  // A generated start room may now contain a live watercourse or wildlife.
+  // Their frame drivers overwrite direct voice probes (including stopCurrent).
+  // Isolate the instrument here; the real strike below starts a fresh run.
+  window.__run.setState({ paused: true, currentRoomId: null });
+  await new Promise((r) => setTimeout(r, 200));
+  window.__music.stop();
+  window.__ambience.stopCurrent();
+  window.__ambience.setAir("still");
+  await new Promise((r) => setTimeout(r, 1200 + flush));
   return window.__listen(600);
 }, FLUSH_MS);
 ok("there is a room tone to measure a cue against", floorLevel > 0, floorLevel.toFixed(4));
@@ -376,6 +413,84 @@ ok(
   held.after < AUDIBLE && !held.stillOn,
   `${held.after.toFixed(4)} after, room tone ${floorLevel.toFixed(4)}`
 );
+
+/**
+ * The other creatures that are heard for as long as they are there. Same
+ * contract as the stalk - write it every frame, nought stops it - and the
+ * same two questions: does it sound while it is on, and is the room back
+ * to the room when it is off. A bats' roost that stayed audible after the
+ * five seconds, or a Harrier whose wings outlived the Harrier, would be a
+ * worse bug than either being silent.
+ */
+const current = await page.evaluate(async flush => {
+  const a = window.__ambience;
+  a.setCurrent(1, 0.2);
+  await new Promise(r => setTimeout(r, flush));
+  const flowing = await window.__listen(700);
+  a.setCurrent(0, 0);
+  await new Promise(r => setTimeout(r, flush + 400));
+  const dry = await window.__listen(400);
+  return { flowing, dry, level: a.currentLevel() };
+}, FLUSH_MS);
+ok("the live watercourse has an audible current", current.flowing >= AUDIBLE, current.flowing.toFixed(4));
+ok("drainage stops the current voice", current.dry < AUDIBLE && current.level === 0, current.dry.toFixed(4));
+
+const VOICES = [
+  ["flock", "flockStop", [0.8, 0.2]],
+  ["wingbeat", "wingbeatStop", [0.8, -0.2, 0.5]],
+  ["flutter", "flutterStop", [1, 0]],
+  ["wispHum", "wispHumStop", [1, 0]],
+  ["beam", "beamStop", [0.9, 0.3]],
+  ["reap", "reapStop", [0.8, 0]],
+  ["chorus", "chorusStop", [0.9, 0.2]],
+];
+for (const [start, stop, args] of VOICES) {
+  const voice = await page.evaluate(
+    async ([startName, stopName, withArgs, flush]) => {
+      const sfx = window.__sfx;
+      await new Promise((r) => setTimeout(r, flush));
+      const heard = window.__listen(500);
+      sfx[startName](...withArgs);
+      const during = await heard;
+      sfx[stopName]();
+      await new Promise((r) => setTimeout(r, 400 + flush));
+      const after = await window.__listen(400);
+      return { during, after };
+    },
+    [start, stop, args, FLUSH_MS]
+  );
+  ok(`the held voice \`${start}\` plays while it is on`, voice.during >= AUDIBLE, voice.during.toFixed(4));
+  ok(`and \`${stop}\` returns the room to the room`, voice.after < AUDIBLE, `${voice.after.toFixed(4)} after`);
+}
+
+/**
+ * The room's air, by biome. Each one that is not `still` has to be heard
+ * over the bed and stop when the air changes; `still` has to be silence -
+ * the room tone and nothing else - so a biome that is quiet on purpose
+ * is quiet in fact.
+ */
+{
+  const airs = await page.evaluate(async (flush) => {
+    const ambience = window.__ambience;
+    const out = {};
+    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore"]) {
+      // From the moment it is set: the timed airs drop their first sound
+      // at once and a creak's next may be seven seconds off, and the held
+      // ones come up over a second and a half. One window covers both.
+      const listening = window.__listen(3200);
+      ambience.setAir(id);
+      out[id] = { level: await listening, running: ambience.airId() };
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    ambience.setAir("still");
+    await new Promise((r) => setTimeout(r, 1200 + flush));
+    out.still = { level: await window.__listen(600), running: ambience.airId() };
+    return out;
+  }, FLUSH_MS);
+  const quietAirs = Object.entries(airs).filter(([id, a]) => id !== "still" && a.level < AUDIBLE).map(([id, a]) => `${id} ${a.level.toFixed(4)}`);
+  ok("every biome's air is heard over the room", quietAirs.length === 0, quietAirs.join(", ") || Object.entries(airs).filter(([id]) => id !== "still").map(([id, a]) => `${id} ${a.level.toFixed(3)}`).join(", "));
+  ok("and a still room is the room tone and nothing else", airs.still.level < AUDIBLE && airs.still.running === null, `${airs.still.level.toFixed(4)} against ${AUDIBLE.toFixed(4)}`);
+}
 
 // --- The setting that turns it off -----------------------------------------
 

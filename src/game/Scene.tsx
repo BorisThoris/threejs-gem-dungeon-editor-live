@@ -5,6 +5,7 @@ import { Physics } from "@react-three/rapier";
 import { readGamepad } from "./input/gamepad";
 import { Lantern } from "./player/Lantern";
 import { Player } from "./player/Player";
+import { ShoveHand } from "./player/ShoveHand";
 // Registers what each room kind puts inside its shell.
 import "./rooms/content";
 import "./puzzles/register";
@@ -142,6 +143,7 @@ export function Scene() {
         <Physics timeStep={1 / 60} gravity={[0, -9.81, 0]} paused={paused} interpolate={false}>
           <GroundPlane />
           <Player />
+          <ShoveHand />
           <CurrentRoom />
         </Physics>
       </Suspense>

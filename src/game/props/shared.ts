@@ -1,5 +1,6 @@
 import {
   BoxGeometry,
+  CapsuleGeometry,
   CircleGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -15,6 +16,10 @@ import {
 } from "three";
 
 import { getSurface, type BuiltinSurface } from "../textures/registry";
+import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
+import { croakerGeometry } from "../mobs/croakerGeometry";
+import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
+import { harrierBodyGeometry, harrierWingGeometry } from "../mobs/harrierGeometry";
 
 /**
  * One of each shape, and one of each material, for the whole program.
@@ -43,6 +48,7 @@ const materials = new Map<string, Material>();
 
 export type GeometryKind =
   | "box"
+  | "capsule"
   | "circle"
   | "cone"
   | "cylinder"
@@ -50,10 +56,20 @@ export type GeometryKind =
   | "octahedron"
   | "plane"
   | "sphere"
-  | "torus";
+  | "torus"
+  | "skull"
+  | "croaker"
+  | "croaker-eyes"
+  | "bat-body"
+  | "bat-wing"
+  | "harrier-body"
+  | "harrier-wing"
+  | "harrier-wing-left"
+  | "skull-sockets";
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   box: (a) => new BoxGeometry(...(a as [number, number, number])),
+  capsule: (a) => new CapsuleGeometry(...(a as [number, number, number, number])),
   circle: (a) => new CircleGeometry(...(a as [number, number])),
   cone: (a) => new ConeGeometry(...(a as [number, number, number])),
   cylinder: (a) => new CylinderGeometry(...(a as [number, number, number, number])),
@@ -62,6 +78,15 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   plane: (a) => new PlaneGeometry(...(a as [number, number])),
   sphere: (a) => new SphereGeometry(...(a as [number, number, number])),
   torus: (a) => new TorusGeometry(...(a as [number, number, number, number])),
+  skull: () => skullGeometry(),
+  croaker: () => croakerGeometry(),
+  "croaker-eyes": () => croakerGeometry(true),
+  "bat-body": () => batBodyGeometry(),
+  "bat-wing": () => batWingGeometry(),
+  "harrier-body": () => harrierBodyGeometry(),
+  "harrier-wing": () => harrierWingGeometry(),
+  "harrier-wing-left": () => harrierWingGeometry(true),
+  "skull-sockets": () => skullSocketsGeometry(),
 };
 
 /** The one geometry of this shape and these dimensions. */

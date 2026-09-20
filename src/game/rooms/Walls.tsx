@@ -3,9 +3,12 @@ import { useFrame } from "@react-three/fiber";
 import type { MeshStandardMaterial } from "three";
 import { CuboidCollider, RigidBody } from "@react-three/rapier";
 
-import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
+import { type Room } from "../dungeon/types";
+import { doorReach, wallEdges } from "../dungeon/footprint";
 import { Prop } from "../props/catalog";
 import { useSurface } from "../textures/registry";
+import { Blocks } from "./CorridorDetails";
+import { runClock, useRun } from "../state/run";
 import {
   DOOR_HEIGHT,
   DOOR_WIDTH,
@@ -34,7 +37,6 @@ interface Slab {
  * player could walk out through the opening onto the ground plane.
  */
 export function Walls({ room, color }: WallsProps) {
-  const half = halfSize(room);
   const surface = useSurface("stone", room.size / 4, WALL_HEIGHT / 4);
   const slabs: Slab[] = [];
   const gaps: Slab[] = [];
@@ -43,9 +45,12 @@ export function Walls({ room, color }: WallsProps) {
   // either side of the gap: a doorway that looks blown rather than built.
   const rubble: [number, number, number][] = [];
 
-  for (const dir of DIRS) {
-    const along: "x" | "z" = dir === "north" || dir === "south" ? "x" : "z";
-    const offset = dir === "north" || dir === "west" ? -half : half;
+  for (const edge of wallEdges(room)) {
+    const { dir, along } = edge;
+    const offset = along === "x" ? edge.z : edge.x;
+    const centre = along === "x" ? edge.x : edge.z;
+    const half = edge.length / 2;
+    const portal = centre === 0 && Math.abs(offset) === doorReach(room, dir);
     const midY = GROUND_Y + WALL_HEIGHT / 2;
 
     const place = (centreAlong: number, length: number, y: number, height: number) => {
@@ -58,7 +63,7 @@ export function Walls({ room, color }: WallsProps) {
       });
     };
 
-    if (room.links[dir as Dir]) {
+    if (portal && room.links[dir]) {
       const side = half - DOOR_WIDTH / 2;
       place(-(DOOR_WIDTH / 2 + side / 2), side, midY, WALL_HEIGHT);
       place(DOOR_WIDTH / 2 + side / 2, side, midY, WALL_HEIGHT);
@@ -76,11 +81,11 @@ export function Walls({ room, color }: WallsProps) {
         }
       }
     } else {
-      place(0, room.size + WALL_THICKNESS, midY, WALL_HEIGHT);
+      place(centre, edge.length + WALL_THICKNESS, midY, WALL_HEIGHT);
       // The crack: a darker seam down the middle of the wall that hides a
       // room, on the inside face. It is a hint and not a door, so it has no
       // collider of its own - the wall behind it does the stopping.
-      if (room.secret && room.secret.dir === dir) {
+      if (portal && room.secret && room.secret.dir === dir) {
         const inward = dir === "north" || dir === "west" ? WALL_THICKNESS / 2 + 0.01 : -(WALL_THICKNESS / 2 + 0.01);
         cracks.push({
           position: along === "x" ? [0, GROUND_Y + WALL_HEIGHT * 0.42, offset + inward] : [offset + inward, GROUND_Y + WALL_HEIGHT * 0.42, 0],
@@ -96,12 +101,9 @@ export function Walls({ room, color }: WallsProps) {
         <Prop key={`rubble-${i}`} kind="rubble" position={at} rotation={i * 2.1} scale={0.9} />
       ))}
       <RigidBody type="fixed" colliders={false}>
+        <Blocks blocks={slabs} color={color} map={surface} />
         {slabs.map((slab, i) => (
           <group key={i}>
-            <mesh position={slab.position} castShadow receiveShadow>
-              <boxGeometry args={slab.size} />
-              <meshStandardMaterial color={color} map={surface} roughness={0.9} />
-            </mesh>
             <CuboidCollider
               args={[slab.size[0] / 2, slab.size[1] / 2, slab.size[2] / 2]}
               position={slab.position}
@@ -130,14 +132,14 @@ export function Walls({ room, color }: WallsProps) {
  */
 function Crack({ position, size }: { position: [number, number, number]; size: [number, number, number] }) {
   const material = useRef<MeshStandardMaterial>(null);
-  useFrame((state) => {
+  useFrame(() => {
     const m = material.current;
-    if (m) m.emissiveIntensity = 0.35 + Math.sin(state.clock.elapsedTime * 2.6) * 0.2;
+    if (m) m.emissiveIntensity = 0.35 + Math.sin(runClock(useRun.getState()) * 2.6) * 0.2;
   });
   return (
-    <mesh position={position}>
+    <mesh name="secret-wall-crack" position={position}>
       <boxGeometry args={size} />
-      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35} roughness={1} />
+      <meshStandardMaterial ref={material} color="#0b0a0c" emissive="#3a2f4a" emissiveIntensity={0.35 + Math.sin(runClock(useRun.getState()) * 2.6) * 0.2} roughness={1} />
     </mesh>
   );
 }

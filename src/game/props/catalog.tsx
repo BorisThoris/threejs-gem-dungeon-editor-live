@@ -1,9 +1,9 @@
-import { useRef, type ComponentType } from "react";
+import { useLayoutEffect, useRef, type ComponentType } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CuboidCollider, CylinderCollider, RigidBody } from "@react-three/rapier";
 
 import type { PropPlacement } from "../dungeon/types";
-import type { PointLight } from "three";
+import { Color, Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
@@ -84,11 +84,16 @@ const BONE = "#d9d2c0";
 
 function Barrel(p: PropProps) {
   return (
-    <group {...frame(p)}>
+    <group {...frame(p)} name="handmade-barrel">
       <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
-      {[0.25, 0.85].map((y) => (
-        <mesh key={y} position={[0, y, 0]} geometry={geo("torus", 0.43, 0.03, 6, 20)} material={mat({ color: IRON, metalness: 0.7, roughness: 0.4 })} />
-      ))}
+      {[0.25, 0.85].map((y) => {
+        // Match the tapered stave radius and facet direction. Both forged
+        // bands share one square-section ring; local z becomes world height.
+        const radius = 0.38 + 0.04 * y / 1.1 + 0.007;
+        return <mesh key={y} name="barrel-hoop" position={[0, y, 0]} rotation={[Math.PI / 2, 0, Math.PI / 2]} scale={[radius, radius, 0.8]}
+          geometry={geo("torus", 1, 0.05, 4, 14)}
+          material={mat({ color: IRON, metalness: 0.7, roughness: 0.55 })} />
+      })}
     </group>
   );
 }
@@ -104,16 +109,23 @@ function Barrel(p: PropProps) {
  * turns towards the room.
  */
 function Bookshelf(p: PropProps) {
+  const books = useRef<InstancedMesh>(null);
+  useLayoutEffect(() => {
+    if (!books.current) return;
+    const matrix = new Matrix4(), color = new Color();
+    let index = 0;
+    for (const y of [0.45, 1.05, 1.65]) for (const [i, x] of [-0.5, -0.2, 0.1, 0.4].entries()) {
+        books.current.setMatrixAt(index, matrix.makeScale(0.22, 0.34, 0.28).setPosition(x, y + 0.18, 0.16));
+      books.current.setColorAt(index++, color.set(["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i]));
+    }
+    books.current.instanceMatrix.needsUpdate = true;
+    if (books.current.instanceColor) books.current.instanceColor.needsUpdate = true;
+    books.current.computeBoundingSphere();
+  }, []);
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.1, 0]} castShadow geometry={geo("box", 1.6, 2.2, 0.45)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
-      {[0.45, 1.05, 1.65].map((y) => (
-        <group key={y}>
-          {[-0.5, -0.2, 0.1, 0.4].map((x, i) => (
-            <mesh key={i} position={[x, y + 0.18, 0.16]} castShadow geometry={geo("box", 0.22, 0.34, 0.28)} material={mat({ color: ["#8a3b3b", "#3b5f8a", "#6f8a3b", "#8a6f3b"][i] })} />
-          ))}
-        </group>
-      ))}
+      <mesh position={[0, 1.1, 0]} castShadow scale={[1.6, 2.2, 0.45]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
+      <instancedMesh name="shelf-books" ref={books} castShadow args={[geo("box", 1, 1, 1), mat({ color: "#ffffff" }), 12]} />
     </group>
   );
 }
@@ -135,10 +147,10 @@ function Candle(p: PropProps) {
 function Chair(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.45, 0]} castShadow geometry={geo("box", 0.5, 0.06, 0.5)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
-      <mesh position={[0, 0.8, -0.22]} castShadow geometry={geo("box", 0.5, 0.7, 0.06)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
+      <mesh position={[0, 0.45, 0]} castShadow scale={[0.5, 0.06, 0.5]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
+      <mesh position={[0, 0.8, -0.22]} castShadow scale={[0.5, 0.7, 0.06]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
       {[[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.22, z]} geometry={geo("box", 0.05, 0.44, 0.05)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
+        <mesh key={i} position={[x, 0.22, z]} scale={[0.05, 0.44, 0.05]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
       ))}
     </group>
   );
@@ -151,14 +163,14 @@ function Chest(p: PropProps) {
   const open = p.open === true;
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.3, 0]} castShadow geometry={geo("box", 0.9, 0.6, 0.55)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
+      <mesh position={[0, 0.3, 0]} castShadow scale={[0.9, 0.6, 0.55]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
       {/* The inside, only worth drawing once there is a way to see it. */}
       {open && (
         <mesh position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={geo("plane", 0.82, 0.47)} material={mat({ color: "#1c1410", roughness: 1 })} />
       )}
       <group position={[0, 0.66, -0.285]} rotation={[open ? -1.15 : 0, 0, 0]} userData={{ lid: true }}>
-        <mesh position={[0, 0, 0.285]} castShadow geometry={geo("box", 0.92, 0.14, 0.57)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
-        <mesh position={[0, -0.21, 0.575]} geometry={geo("box", 0.12, 0.16, 0.04)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
+        <mesh position={[0, 0, 0.285]} castShadow scale={[0.92, 0.14, 0.57]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
+        <mesh position={[0, -0.21, 0.575]} scale={[0.12, 0.16, 0.04]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#c8a34a", metalness: 0.8, roughness: 0.3 })} />
       </group>
     </group>
   );
@@ -185,7 +197,7 @@ function Pillar(p: PropProps) {
 function Potion(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]} geometry={geo("sphere", 0.14, 12, 10)} material={mat({ color: "#63d2ff", emissive: "#2c8fb8", emissiveIntensity: 0.6, transparent: true, opacity: 0.85 })} />
+      <mesh position={[0, 0.16, 0]} scale={0.14} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: "#63d2ff", emissive: "#2c8fb8", emissiveIntensity: 0.6, transparent: true, opacity: 0.85 })} />
       <mesh position={[0, 0.34, 0]} geometry={geo("cylinder", 0.04, 0.05, 0.14, 8)} material={mat({ color: "#c8b58a" })} />
     </group>
   );
@@ -193,11 +205,9 @@ function Potion(p: PropProps) {
 
 function Skull(p: PropProps) {
   return (
-    <group {...frame(p)}>
-      <mesh position={[0, 0.2, 0]} castShadow geometry={geo("sphere", 0.2, 12, 10)} material={mat({ color: BONE, roughness: 0.9 })} />
-      {[-0.07, 0.07].map((x) => (
-        <mesh key={x} position={[x, 0.22, 0.17]} geometry={geo("sphere", 0.045, 8, 6)} material={mat({ color: "#1a1417" })} />
-      ))}
+    <group {...frame(p)} name="handmade-skull">
+      <mesh castShadow geometry={geo("skull")} material={mat({ color: BONE, roughness: 0.9 })} />
+      <mesh geometry={geo("skull-sockets")} material={mat({ color: "#1a1417", roughness: 1 })} />
     </group>
   );
 }
@@ -205,9 +215,9 @@ function Skull(p: PropProps) {
 function Table(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.78, 0]} castShadow geometry={geo("box", 1.8, 0.08, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
+      <mesh position={[0, 0.78, 0]} castShadow scale={[1.8, 0.08, 1]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
       {[[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.37, z]} geometry={geo("box", 0.08, 0.74, 0.08)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
+        <mesh key={i} position={[x, 0.37, z]} scale={[0.08, 0.74, 0.08]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
       ))}
     </group>
   );
@@ -236,7 +246,7 @@ function Torch(p: PropProps) {
 function Wall(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 1.5, 0]} castShadow receiveShadow geometry={geo("box", 3, 3, 0.4)} material={mat({ color: STONE_SLAB, roughness: 0.95, surface: "stone" })} />
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow scale={[3, 3, 0.4]} geometry={geo("box", 1, 1, 1)} material={mat({ color: STONE_SLAB, roughness: 0.95, surface: "stone" })} />
     </group>
   );
 }
@@ -257,10 +267,10 @@ function Web(p: PropProps) {
 function Crate(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.4, 0]} castShadow geometry={geo("box", 0.84, 0.8, 0.84)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
+      <mesh position={[0, 0.4, 0]} castShadow scale={[0.84, 0.8, 0.84]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
       {/* Slats, so it is not a plain cube at close range. */}
       {[0.12, 0.68].map((y) => (
-        <mesh key={y} position={[0, y, 0]} geometry={geo("box", 0.88, 0.1, 0.88)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
+        <mesh key={y} position={[0, y, 0]} scale={[0.88, 0.1, 0.88]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
       ))}
     </group>
   );
@@ -277,11 +287,11 @@ function Crate(p: PropProps) {
 function Statue(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.16, 0]} castShadow geometry={geo("box", 0.9, 0.32, 0.9)} material={mat({ color: STONE_PLINTH, roughness: 0.95, surface: "stone" })} />
+      <mesh position={[0, 0.16, 0]} castShadow scale={[0.9, 0.32, 0.9]} geometry={geo("box", 1, 1, 1)} material={mat({ color: STONE_PLINTH, roughness: 0.95, surface: "stone" })} />
       <mesh position={[0, 1.05, 0]} castShadow geometry={geo("cylinder", 0.22, 0.34, 1.5, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
-      <mesh position={[0, 1.95, 0]} castShadow geometry={geo("sphere", 0.21, 12, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
+      <mesh position={[0, 1.95, 0]} castShadow scale={0.21} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: STONE_LIT, roughness: 0.9, surface: "stone" })} />
       {/* Arms folded across it, which is what makes it read as a figure. */}
-      <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]} geometry={geo("box", 0.52, 0.14, 0.16)} material={mat({ color: "#7e7c85", roughness: 0.9 })} />
+      <mesh position={[0, 1.42, 0.16]} rotation={[0.2, 0, 0]} scale={[0.52, 0.14, 0.16]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#7e7c85", roughness: 0.9 })} />
     </group>
   );
 }
@@ -290,7 +300,7 @@ function Statue(p: PropProps) {
 function Urn(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.6, 0]} castShadow geometry={geo("sphere", 0.36, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
+      <mesh position={[0, 0.6, 0]} castShadow scale={0.36} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
       <mesh position={[0, 1.02, 0]} geometry={geo("cylinder", 0.16, 0.12, 0.26, 10)} material={mat({ color: "#7a4e3a", roughness: 0.7 })} />
       <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.2, 0.24, 0.24, 10)} material={mat({ color: "#7a4e3a", roughness: 0.75 })} />
     </group>
@@ -333,7 +343,7 @@ function Rubble(p: PropProps) {
 function Banner(p: PropProps) {
   return (
     <group {...frame(p)} position={[p.position[0], p.position[1] + 2.05, p.position[2]]}>
-      <mesh castShadow geometry={geo("box", 0.9, 1.7, 0.04)} material={mat({ color: "#7a2f3c", roughness: 0.85 })} />
+      <mesh castShadow scale={[0.9, 1.7, 0.04]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#7a2f3c", roughness: 0.85 })} />
       {/* The rail it hangs from: the rotation belongs on the mesh, not on
           the geometry, which silently does nothing there. */}
       <mesh position={[0, 0.9, 0]} rotation={[0, 0, Math.PI / 2]} geometry={geo("cylinder", 0.04, 0.04, 1.05, 6)} material={mat({ color: IRON, metalness: 0.6, roughness: 0.5 })} />

@@ -3,11 +3,16 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
+import { encounterArrival } from "../dungeon/arrival";
+import { playerAt } from "../player/where";
+import { roomSegmentClear, roomStep } from "../dungeon/footprint";
+import { cutpurseAt } from "./position";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { patchAt, steerAround, type Patch } from "../warden/steer";
+import { floorHeightAt } from "../worldbuilding/elevation";
+import { patchAt, steerInRoom, type Patch } from "../warden/steer";
 import {
   CUTPURSE_SPEED,
   CUTPURSE_TOUCH_RADIUS,
@@ -45,6 +50,7 @@ interface CutpurseProps {
  */
 export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) {
   const group = useRef<Group>(null);
+  const arrivedAt = useRef<number | null>(null);
   const phase = useRun((s) => s.thiefPhase);
   const holding = useRun((s) => s.thiefHolding);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
@@ -70,6 +76,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     return () => {
       // It left, or the room did. Nothing here outlives the visit.
       inHazard.current = false;
+      cutpurseAt.roomId = null;
     };
   }, []);
 
@@ -77,7 +84,16 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const g = group.current;
     if (!g) return;
     const run = useRun.getState();
+    Object.assign(cutpurseAt, { x: g.position.x, z: g.position.z, roomId: room.id });
     if (!canControl(run)) return;
+    if (arrivedAt.current === null) {
+      const start = encounterArrival(room, door.dir, state.camera.position, [...obstacles, ...hazards], 0.4);
+      g.position.x = start.x;
+      g.position.z = start.z;
+      Object.assign(cutpurseAt, { x: start.x, z: start.z });
+      arrivedAt.current = runClock(run);
+    }
+    if (runClock(run) - arrivedAt.current < 1.5) return;
     // The same cap everything that moves on a delta uses. A hitch must not
     // teleport it out of the room with your gem any more than it may
     // teleport the Warden onto you.
@@ -96,7 +112,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const distance = Math.hypot(dx, dz) || 1;
     g.rotation.y = Math.atan2(dx, dz);
     // It runs rather than drifts: a fast, low scurry with the body dipping.
-    g.position.y = GROUND_Y + 0.02 + Math.abs(Math.sin(t * 14)) * 0.06;
+    g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.abs(Math.sin(t * 14)) * 0.06;
 
     if (import.meta.env.DEV) {
       const w = window as unknown as { __thief?: Record<string, number | string> };
@@ -116,12 +132,11 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const step = Math.min(CUTPURSE_SPEED * delta, distance);
     // It has a body: it goes round the furniture rather than through it.
     // The spikes it runs into like anything else on the floor.
-    const heading = obstacles.length
-      ? steerAround(g.position.x, g.position.z, target.x, target.z, obstacles, 0.2)
-      : { dx: dx / distance, dz: dz / distance };
+    const heading = steerInRoom(room, g.position.x, g.position.z, target.x, target.z, obstacles, 0.2, 0.4);
     scratch.to.set(heading.dx, 0, heading.dz).multiplyScalar(step);
-    g.position.x += scratch.to.x;
-    g.position.z += scratch.to.z;
+    [g.position.x, g.position.z] = roomStep(room, g.position.x, g.position.z, scratch.to.x, scratch.to.z, 0.4);
+    cutpurseAt.x = g.position.x;
+    cutpurseAt.z = g.position.z;
 
     // The floor does not care what walks into it. Latched on entry, like
     // every other thing in this game that stands on spikes.
@@ -135,14 +150,15 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     }
 
     if (run.thiefPhase === "stalking") {
-      if (distance <= CUTPURSE_TOUCH_RADIUS) useRun.getState().thiefSteals();
+      if (Math.hypot(cam.x - g.position.x, cam.z - g.position.z) <= CUTPURSE_TOUCH_RADIUS
+        && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) useRun.getState().thiefSteals();
       return;
     }
 
     // Fleeing. The player catching it is the same test in reverse: they
     // have to be on it, not near it, and the reach is the one it stole from.
     const toPlayer = Math.hypot(cam.x - g.position.x, cam.z - g.position.z);
-    if (toPlayer <= CUTPURSE_TOUCH_RADIUS) {
+    if (toPlayer <= CUTPURSE_TOUCH_RADIUS && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) {
       useRun.getState().thiefCaught();
       return;
     }
@@ -152,11 +168,17 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   // It enters at its doorway and, if the room is already mid-visit when
   // this mounts, near it: the position is a ref, not state, so nothing
   // here re-renders while it runs.
-  const start: [number, number, number] = [door.at[0], GROUND_Y, door.at[1]];
+  const start = useMemo<[number, number, number]>(() => {
+    const p = encounterArrival(room, door.dir, playerAt, [...obstacles, ...hazards], 0.4);
+    return [p.x, GROUND_Y, p.z];
+    // The arrival frame checks the current camera position again. Subsequent
+    // inventory changes must not reset the creature's position.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room, door.dir]);
   const eye = phase === "fleeing" ? "#ffd23a" : "#7fe0a0";
 
   return (
-    <group ref={group} position={start}>
+    <group name="creature-cutpurse" ref={group} position={start}>
       {/* A low body, hunched, about knee height on the player. */}
       <mesh position={[0, 0.3, 0]} castShadow>
         <capsuleGeometry args={[0.18, 0.34, 4, 8]} />

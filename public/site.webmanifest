@@ -1,0 +1,28 @@
+{
+  "name": "Gem Dungeon",
+  "short_name": "Gem Dungeon",
+  "description": "A first-person gem heist: each floor is a fresh dungeon, the exit charges a toll of three, five, then seven gems, and every gem you pocket wakes the Warden that walks the halls. Shove, sprint, and climb out with what you can carry. React Three Fiber, Rapier and Zustand, with an Electron shell for the Steam demo.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050608",
+  "theme_color": "#050608",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

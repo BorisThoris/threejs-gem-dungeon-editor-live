@@ -1,4 +1,5 @@
 import { createRng } from "../rng";
+import { doorReach } from "./footprint";
 import {
   CLOSE_REACH,
   DOOR_WIDTH,
@@ -45,7 +46,7 @@ export type Vec3 = [number, number, number];
 
 /** Centre of the doorway in a wall. */
 export function doorPosition(room: Room, dir: Dir): Vec3 {
-  const half = halfSize(room);
+  const half = doorReach(room, dir);
   const step = DIR_STEP[dir];
   return [step.x * half, GROUND_Y, step.z * half];
 }
@@ -61,7 +62,7 @@ export interface Spawn {
  * just inside the wall they came through, facing onward.
  */
 export function spawnAfterTravel(room: Room, heading: Dir): Spawn {
-  const half = halfSize(room);
+  const half = doorReach(room, OPPOSITE[heading]);
   const depth = entranceDepth(half);
   const from = DIR_STEP[OPPOSITE[heading]];
   return {
@@ -223,7 +224,7 @@ const INNER = LANE_HALF_WIDTH + WIDEST + MARGIN;
 /** Ring gap: two of the widest furnishings, side by side across a quadrant. */
 const RING_GAP = (2 * WIDEST) / Math.SQRT2;
 /** Corner gap: the widest furnishing beside a brazier. */
-const CORNER_GAP = (WIDEST + BRAZIER) / Math.SQRT2;
+const CORNER_GAP = (WIDEST + BRAZIER + 0.02) / Math.SQRT2;
 /** How far the braziers stand from the walls. */
 const CORNER_INSET = BRAZIER + MARGIN;
 
@@ -241,7 +242,7 @@ export function quadrantDistance(room: Room, which: Anchor): number {
   // As far out as the room allows, but never further than leaves the widest
   // furnishing clear of the wall and of the braziers in the corners.
   const roof = Math.min(half - WIDEST - MARGIN, half - CORNER_INSET - CORNER_GAP);
-  const far = Math.max(INNER + RING_GAP, Math.min(roof, reach(room, WIDEST + MARGIN)));
+  const far = Math.max(INNER + RING_GAP, Math.min(roof, reach(room, WIDEST + 2 * BRAZIER + 2 * MARGIN + 0.04)));
   if (which === "far") return far;
   // Near follows far in a room too tight for both, so the two rings never
   // collapse onto each other however small or oddly shaped the room is.
@@ -363,8 +364,11 @@ export function cornerSpots(room: Room): Vec3[] {
 export function shapeFits(shape: Shape, size: number): boolean {
   if (shape === "square") return true;
   const room = { id: "fit", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
-  const radius = quadrantDistance(room, "far") * Math.SQRT2;
-  return radius <= diagonalReach(room) + 0.6;
+  // A painted outline could tolerate overhanging props; a physical wall cannot.
+  // Check every quadrant because a triangle has unequal diagonal reaches.
+  return [...quadrantSpots(room, "far").map(p => ({ p, radius: WIDEST + MARGIN })),
+    ...cornerSpots(room).map(p => ({ p, radius: BRAZIER + MARGIN }))]
+    .every(({ p, radius }) => Math.hypot(p[0], p[2]) + radius <= floorReach(room, Math.atan2(p[2], p[0])) + 1e-8);
 }
 
 const GEM_HEIGHT = 0.9;
@@ -449,7 +453,7 @@ const WALL_CORRIDOR = 0.5;
  */
 export function crackSpot(room: Room): Vec3 | null {
   if (!room.secret || room.links[room.secret.dir]) return null;
-  const half = halfSize(room);
+  const half = doorReach(room, room.secret.dir);
   const step = DIR_STEP[room.secret.dir];
   return [step.x * (half - CLOSE_REACH * 0.7), 0, step.z * (half - CLOSE_REACH * 0.7)];
 }

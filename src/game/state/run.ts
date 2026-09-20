@@ -2,7 +2,12 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
+import { footingCarry, type Footing } from "../rooms/underfoot";
 import { generateDungeon } from "../dungeon/generate";
+import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
+import { serviceCatch } from "../worldbuilding/serviceTrail";
+import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
+import { roomSegmentClear } from "../dungeon/footprint";
 import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
@@ -35,13 +40,18 @@ import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
+import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../player/combat";
+import { wardenAt } from "../warden/position";
+import { harrierAt } from "../mobs/harrierRoost";
+import { cutpurseAt } from "../thief/position";
+import { reaperAt } from "../reaper/position";
 import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { chestKey, placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
 import { sentryFor } from "../sentry/placement";
 import { nestRoom } from "../thief/nest";
 import { biomeFor } from "../rooms/biomes";
-import { keeperPostsFor } from "../keeper/posts";
+import { keeperPostPosition, keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
 import { REAPER_AT, affordable, bandFor, bandName, heatFrom, type PurchaseId } from "../heat/coefficient";
 import {
@@ -57,6 +67,7 @@ import {
 import { AFFLICTIONS, BATCH, afflictionFor } from "../items/afflictions";
 import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
+import { reaches as dinReaches } from "../din/din";
 import { barKey } from "../warden/bars";
 import { pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
 import { banishTo, wakingRoom } from "../warden/roam";
@@ -140,6 +151,15 @@ export interface Guess {
 }
 
 export interface RunState {
+  waterOpenedAt: number | null;
+  waterCacheTaken: boolean;
+  operateWaterway: () => void;
+  openServiceCatch: () => boolean;
+  bellcapBursts: Record<string, number>;
+  /** Ambient trap consequences persist until leaving this floor. */
+  ratLosses: Record<string, true>;
+  loseRat: (roomId: string, index: number) => void;
+  burstBellcap: (index: number) => boolean;
   phase: Phase;
   paused: boolean;
   dungeon: Dungeon | null;
@@ -437,6 +457,8 @@ export interface RunState {
   harrierSlain: boolean;
   /** Run-clock second it gets back off the floor after a blast. */
   harrierDownedUntil: number;
+  shoveReadyAt: number;
+  shove: (forwardX: number, forwardZ: number) => boolean;
   /** Run-clock second it comes back after a strike. */
   harrierRetreatUntil: number;
   /** Run-clock second the Keeper gets back up after a blast. */
@@ -628,7 +650,7 @@ export interface RunState {
    */
   giveAway: (amount: number) => void;
   /** The player made a noise loud enough to be placed. Sprinting does this. */
-  makeNoise: () => void;
+  makeNoise: (surface?: Footing, x?: number, z?: number) => void;
   /** Raise or lower the lantern. Raising with no oil left does nothing. */
   toggleLantern: () => void;
   /**
@@ -795,6 +817,15 @@ export const useRun = create<RunState>()(
     phase: "menu",
     paused: false,
     dungeon: null,
+    waterOpenedAt: null,
+    waterCacheTaken: false,
+    bellcapBursts: {},
+    ratLosses: {},
+    loseRat: (roomId, index) => {
+      const s = get(), key = `${roomId}:${index}`;
+      if (!canControl(s) || s.currentRoomId !== roomId || !Number.isInteger(index) || index < 0 || index >= 3 || s.ratLosses[key]) return;
+      set({ ratLosses: { ...s.ratLosses, [key]: true } });
+    },
     floor: 1,
     runSeed: 0,
     roomsSeen: 0,
@@ -866,6 +897,7 @@ export const useRun = create<RunState>()(
     keeperLastStrikeAt: 0,
     harrierSlain: false,
     harrierDownedUntil: 0,
+    shoveReadyAt: 0,
     harrierRetreatUntil: 0,
     reaperStalledUntil: 0,
     reaperLastStrikeAt: 0,
@@ -886,6 +918,48 @@ export const useRun = create<RunState>()(
     startedAt: 0,
     endedAt: 0,
 
+    operateWaterway: () => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !room?.waterway || room.waterway.role === "channel") return;
+      const station = waterStation(room);
+      if (!station || Math.hypot(playerAt.x - station.approach.x, playerAt.z - station.approach.z) > 2 ||
+        !roomSegmentClear(room, playerAt.x, playerAt.z, station.approach.x, station.approach.z, 0.2)) return;
+      if (room.waterway.role === "sluice") {
+        if (s.waterOpenedAt !== null) return;
+        set({ waterOpenedAt: runClock(s) });
+        bus.emit("sluiceOpened", { roomId: room.id, x: station.x, z: station.z });
+        bus.emit("notice", "The sluice groans open. Follow the bronze channel arrows to the drained reliquary.");
+      } else if (!s.waterCacheTaken && waterLevel(s.waterOpenedAt, runClock(s)) === 0) {
+        set({ waterCacheTaken: true, gems: s.gems + WATER_CACHE_GEMS, gemsTotal: s.gemsTotal + WATER_CACHE_GEMS });
+        bus.emit("waterCacheTaken", { roomId: room.id });
+        bus.emit("notice", s.dungeon?.serviceTrail
+          ? `Found ${WATER_CACHE_GEMS} gems and a maintenance rubbing. Follow the three-notch copper trail; press its final wall catch.`
+          : `The drained reliquary yields ${WATER_CACHE_GEMS} gems.`);
+      }
+    },
+
+    burstBellcap: (index) => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !room) return false;
+      const cap = bellcapsFor(room)[index], now = runClock(s), key = `${room.id}:${index}`;
+      if (!cap || now - (s.bellcapBursts[key] ?? -Infinity) < BELLCAP_COOLDOWN ||
+        !bellcapExposed(room, cap, playerAt.x, playerAt.z, s.glim, waterLevel(s.waterOpenedAt, now))) return false;
+      set({ bellcapBursts: { ...s.bellcapBursts, [key]: now } });
+      bus.emit("bellcapBurst", { roomId: room.id, x: cap.x, z: cap.z });
+      return true;
+    },
+
+    openServiceCatch: () => {
+      const s = get(), room = currentRoom(s);
+      if (!canControl(s) || !s.waterCacheTaken || !room?.secret || s.dungeon?.serviceTrail?.hostId !== room.id || room.links[room.secret.dir]) return false;
+      const at = serviceCatch(room);
+      if (!at || Math.hypot(playerAt.x - at[0], playerAt.z - at[2]) > 1.5 ||
+        !roomSegmentClear(room, playerAt.x, playerAt.z, at[0], at[2], 0.2)) return false;
+      get().revealSecret(room.id);
+      bus.emit("notice", "The three-notch catch turns. The old service passage opens.");
+      return true;
+    },
+
     startRun: (seed, delverId) => {
       const floor = 1;
       const rules = floorRules(floor);
@@ -896,6 +970,7 @@ export const useRun = create<RunState>()(
       const delver = delverOr(delverId ?? useRecords.getState().lastDelver);
       const dungeon = generateDungeon({
         seed,
+        floor,
         minRooms: rules.minRooms,
         maxRooms: rules.maxRooms,
         // No `lastFloor` here: a run begins on floor one, which is never
@@ -911,6 +986,10 @@ export const useRun = create<RunState>()(
         dungeon,
         floor,
         runSeed: dungeon.seed,
+        waterOpenedAt: null,
+        waterCacheTaken: false,
+        bellcapBursts: {},
+        ratLosses: {},
         roomsSeen: 1,
         currentRoomId: dungeon.startId,
         visited: [dungeon.startId],
@@ -990,6 +1069,7 @@ export const useRun = create<RunState>()(
         keeperLastStrikeAt: 0,
         harrierSlain: false,
         harrierDownedUntil: 0,
+        shoveReadyAt: 0,
         harrierRetreatUntil: 0,
         reaperStalledUntil: 0,
         reaperLastStrikeAt: 0,
@@ -1153,6 +1233,7 @@ export const useRun = create<RunState>()(
         const rules = floorRules(floor);
         const dungeon = generateDungeon({
           seed: (s.dungeon.seed * 7919 + floor) >>> 0,
+          floor,
           minRooms: rules.minRooms,
           maxRooms: rules.maxRooms,
           lastFloor: floor === FLOORS,
@@ -1166,6 +1247,10 @@ export const useRun = create<RunState>()(
           currentRoomId: dungeon.startId,
           visited: [dungeon.startId],
           roomsSeen: s.roomsSeen + 1,
+          waterOpenedAt: null,
+          waterCacheTaken: false,
+          bellcapBursts: {},
+          ratLosses: {},
           gemRooms: [],
           cleared: [],
           failed: [],
@@ -1973,9 +2058,9 @@ export const useRun = create<RunState>()(
       get().raiseAlarm(amount);
     },
 
-    makeNoise: () => {
+    makeNoise: (surface, x = 0, z = 0) => {
       const s = get();
-      const until = runClock(s) + noiseHoldFor(s);
+      const until = runClock(s) + noiseHoldFor(s, surface);
       // Called from the frame loop while a sprint is held, so it must be
       // cheap and must not write on every frame: every write re-runs every
       // selector in the store. The deadline is seconds long, so refreshing
@@ -1984,6 +2069,7 @@ export const useRun = create<RunState>()(
       if (until - s.noisyUntil < 0.5) return;
       const heard = wardenHears(s);
       set({ noisyUntil: until });
+      if (s.currentRoomId) bus.emit("sprinted", { roomId: s.currentRoomId, x, z, surface });
       if (!heard) bus.emit("wardenHeard");
     },
 
@@ -2317,6 +2403,50 @@ export const useRun = create<RunState>()(
       bus.emit("harrierWoke");
     },
 
+    shove: (forwardX, forwardZ) => {
+      const s = get();
+      const now = runClock(s);
+      if (!canControl(s) || !s.currentRoomId || !s.dungeon || now < s.shoveReadyAt) return false;
+      if (!Number.isFinite(forwardX) || !Number.isFinite(forwardZ) || Math.hypot(forwardX, forwardZ) < 0.01) return false;
+      const room = roomById(s.dungeon, s.currentRoomId);
+      if (!room) return false;
+      const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
+      const watcher = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : [])?.at ?? null;
+      const standing = placementsFor(room, s.dungeon.seed, { asVault: s.dungeon.vaultId === room.id, key, sentry: watcher })
+        .filter((p) => !s.broken.includes(breakKey(room, p)));
+      let blocked = false;
+      const reaches = (target: { x: number; z: number; roomId: string | null }) => {
+        if (target.roomId !== room.id || !inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ)) return false;
+        if (clearShove(room, playerAt, target, standing, watcher)) return true;
+        blocked = true;
+        return false;
+      };
+      set({ shoveReadyAt: now + SHOVE_COOLDOWN_S });
+      let hit = false;
+      if (s.thiefPhase !== "away" && reaches(cutpurseAt)) {
+        get().thiefCaught();
+        hit = true;
+      }
+      if (s.harrierAwake && !s.harrierSlain && !harrierAt.away && reaches(harrierAt)) {
+        // A defence buys space; bombs still own downing it onto traps.
+        set({ harrierRetreatUntil: Math.max(s.harrierRetreatUntil, now + 4) });
+        hit = true;
+      }
+      if (s.wardenRoomId === room.id && reaches(wardenAt)) {
+        set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
+        hit = true;
+      }
+      const reaper = !hit && s.reaperAwake && reaches(reaperAt);
+      const keeper = !hit && !reaper && keeperHolds(s) && keeperPostsFor(s.dungeon, s.floor)
+        .some((p) => p.roomId === room.id && reaches({ ...keeperPostPosition(room, p.dir), roomId: room.id }));
+      bus.emit("notice", hit ? "Shove! Move while it recoils." : reaper
+        ? "Shoves pass through the Reaper. Sprint to the stairs; a blast buys time." : keeper
+          ? "Shoves cannot move the Keeper. Gather the toll, then use a bomb and escape while it kneels." : blocked
+        ? "Shove blocked by solid cover. Step around it."
+        : "Shove missed. Face the threat and let it come closer.");
+      return true;
+    },
+
     harrierStrike: () => {
       const s = get();
       if (!s.harrierAwake || s.harrierSlain) return;
@@ -2367,7 +2497,6 @@ export const useRun = create<RunState>()(
       if (s.reaperAwake || s.phase !== "playing") return;
       set({ reaperAwake: true });
       bus.emit("reaperWoke");
-      bus.emit("notice", "The floor has had enough of you. The exit, now.");
     },
 
     reaperStrike: () => {
@@ -2488,19 +2617,31 @@ export const useRun = create<RunState>()(
       }
       // The player, if they did not walk - and nothing stood between.
       if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage();
-      // The Warden, if it is in the room - whether or not the player is.
-      // A bomb left behind in a room the Warden later walks into is a
-      // trap, and a trap that only works while you stand in it is a dud.
-      if (get().wardenRoomId === roomId) get().routWarden();
-      // The Reaper, which is always in the room the player is in: a blast
-      // there is the one thing on the floor that holds it.
+      /**
+       * Who the blast reaches is the receiver's business, not the bomb's.
+       *
+       * `bombBurst` went over the bus a moment ago and the Din turned it
+       * into a [blast] 1.00 in this room, 0.35 next door and nothing two
+       * doors on, so each creature's own row decides: the Warden fears a
+       * blast at 0.25 and is routed by one in the room next to it, the
+       * Harrier is put down at 0.20 - and the Keeper, at half, kneels for
+       * a blast in its own room and for nothing less. Before this the
+       * store decided all three by "same room", and the table was a
+       * document nothing read.
+       */
+      const w = get().wardenRoomId;
+      if (w && dinReaches("warden", "blast", w)) get().routWarden();
+      // The Reaper, which is always in the room the player is in. Its row
+      // is deaf to [blast] and this is the exception the row itself names:
+      // not a signal it answers to, but the pressure wave in the room it
+      // stands in, which holds it.
       if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
-      // The Harrier, if it is in the room rather than wheeling away from
+      // The Harrier, in the player's room rather than wheeling away from
       // it: knocked out of the air, and a ground body until it is up.
-      if (get().harrierAwake && get().currentRoomId === roomId && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
-      // The Keeper, if this is a room it stands in: it kneels. The one
-      // thing on the floor that opens the last stairs.
-      if (keeperPostsFor(s.dungeon, s.floor).some((p) => p.roomId === roomId)) get().stallKeeper();
+      if (get().harrierAwake && dinReaches("harrier", "blast", get().currentRoomId) && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
+      // The Keeper, at whichever of its posts the blast reaches: it kneels.
+      // The one thing on the floor that opens the last stairs.
+      if (keeperPostsFor(s.dungeon, s.floor).some((p) => dinReaches("keeper", "blast", p.roomId))) get().stallKeeper();
       // The moth, if it was on the lantern: scattered, and the light it
       // carried goes with it. The roost hears the blast from its own room.
       if (get().mothOn && get().currentRoomId === roomId) get().mothLeaves();
@@ -2758,9 +2899,9 @@ const roomNow = (s: RunState): Room | undefined =>
  * carry", which is why the ground and the legs are multiplied together
  * here and nowhere else.
  */
-export const noiseHoldFor = (s: RunState): number => {
+export const noiseHoldFor = (s: RunState, surface?: Footing): number => {
   const room = roomNow(s);
-  const ground = !room || !s.dungeon ? 1 : biomeFor(room.kind, room.id, s.dungeon.seed).carry;
+  const ground = !room || !s.dungeon ? 1 : surface ? footingCarry(room, surface) : biomeFor(room.kind, room.id, s.dungeon.seed, room).carry;
   const legs = running(s, s.effects.mire) ? MIRE_LOUDNESS : 1;
   return NOISE_HOLD_S * ground * legs;
 };
@@ -3098,6 +3239,11 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
     // A probe that reads a deadline needs the clock it was set against;
     // `performance.now()` is not it once the pause menu has been opened.
     clock: () => runClock(useRun.getState()),
+    door: (roomId: string, dir: Dir) => {
+      const d = useRun.getState().dungeon;
+      const r = d ? roomById(d, roomId) : undefined;
+      return r ? doorPosition(r, dir) : null;
+    },
     bars: () => barsNow(useRun.getState()),
     lantern: () => {
       const s = useRun.getState();

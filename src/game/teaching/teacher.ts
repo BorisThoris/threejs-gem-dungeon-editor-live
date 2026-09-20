@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { bus, type BusEvents } from "../events";
 import { touchControlsActive } from "../input/device";
 import { useRun } from "../state/run";
-import { floorRules } from "../world";
+import { BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
+import { useSettings } from "../state/settings";
+import { keysLabel } from "../input/bindings";
 
 /**
  * What the game says the first time something matters.
@@ -44,6 +46,8 @@ export interface Lesson<K extends keyof BusEvents = keyof BusEvents> {
 }
 
 const lesson = <K extends keyof BusEvents>(l: Lesson<K>): Lesson => l as unknown as Lesson;
+const shoveControl = (touch: boolean) => touch ? "SHOVE" : `${keysLabel(useSettings.getState().bindings.shove)} or RT`;
+const sprintControl = (touch: boolean) => touch ? "RUN" : `${keysLabel(useSettings.getState().bindings.sprint)} or L3`;
 
 export const LESSONS: readonly Lesson[] = [
   // The Warden, and what it hears and sees.
@@ -51,10 +55,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({
     id: "here",
     event: "wardenEntered",
-    line: (_, touch) =>
-      touch
-        ? "It is in this room. You cannot fight it. Press RUN and go."
-        : "It is in this room. You cannot fight it. Hold Shift and go.",
+    line: (_, touch) => `The Warden is here. ${shoveControl(touch)} briefly staggers it; traps and blasts wound it. Move clear while it recoils.`,
   }),
   lesson({ id: "seen", event: "sentrySaw", line: "The watcher called out. Stay out of the light - it tells the Warden where you are." }),
   // Only worth saying once there is something to hear it: told before the
@@ -63,10 +64,10 @@ export const LESSONS: readonly Lesson[] = [
   // Not a one-off: feedback for an action the player just took, and it
   // says what the scroll bought them.
   lesson({ id: "thrown", event: "wardenLured", every: true, line: "Something clatters a long way off. It has gone to look, and it is not listening for you." }),
-  lesson({ id: "bit", event: "wardenWounded", line: "The spikes do not care which of you stands on them. Put another patch between you." }),
+  lesson({ id: "bit", event: "wardenWounded", line: "Traps and blasts wound the Warden. The spikes bite you too - put another patch between you." }),
   // The rout says the lesson has been learned by the other side, which is
   // a rule change and so worth saying every time.
-  lesson({ id: "routed", event: "wardenRouted", every: true, line: "It will not cross those again. Whatever else this floor gives you, that trick is spent." }),
+  lesson({ id: "routed", event: "wardenRouted", every: true, line: "The Warden now tries to avoid spikes. Snares and blasts still work, and shoves still buy space." }),
   // Every time, and worded so it never reads as something the player did.
   // The whole value of a scheduled breath is that the player recognises it
   // as a breath and spends it; a line that sounded like a reward would
@@ -88,10 +89,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({
     id: "thief",
     event: "thiefCame",
-    line: (_, touch) =>
-      touch
-        ? "Something small is in here with you, and it wants what you are carrying. RUN, now."
-        : "Something small is in here with you, and it wants what you are carrying. Shift, now.",
+    line: (_, touch) => `A Cutpurse wants your pockets. Face it and use ${shoveControl(touch)} when close. Catching or shoving it recovers anything it steals.`,
   }),
   lesson({ id: "robbed", event: "thiefFled", line: "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere." }),
   // Every time: running out is a thing to be told about whenever it
@@ -106,7 +104,7 @@ export const LESSONS: readonly Lesson[] = [
     line: (_, touch) =>
       touch
         ? "Your lantern is up, and it is the brightest thing on this floor. LAMP puts it down."
-        : "Your lantern is up, and it is the brightest thing on this floor. F puts it down.",
+        : `Your lantern is up, and it is the brightest thing on this floor. ${keysLabel(useSettings.getState().bindings.lantern)} puts it down.`,
     sample: { raised: true },
   }),
   lesson({ id: "barred", event: "doorBarred", line: "That doorway is shut to it. It will walk round - and everything down here heard you shut it." }),
@@ -115,11 +113,11 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "smashed", event: "barBroken", every: true, when: ({ byWarden }) => byWarden, line: "It came through the bar. There was no way round, and now it knows exactly where you are.", sample: { byWarden: true } }),
   // Once, to teach the one rule a player cannot see: a device outlives
   // the visit it was set during.
-  lesson({ id: "set", event: "devicePlaced", line: "It stays where you left it, and it is still there when you come back through." }),
+  lesson({ id: "set", event: "devicePlaced", when: ({ id }) => id !== "bomb", line: "It stays where you left it, and it is still there when you come back through.", sample: { id: "snare", cruel: false } }),
 
   // The ten loops. Each names the rule the player has just met and what
   // it is for, in the order they are likely to meet them.
-  lesson({ id: "darts", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "player", line: "A plate, and darts across the lane. Anything with feet springs it - and the Warden has feet.", sample: { key: "k", kind: "darts", by: "player" } }),
+  lesson({ id: "darts", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "player", line: "Step clear while the plate lights. The volley hits whoever stays on it, including the Warden.", sample: { key: "k", kind: "darts", by: "player" } }),
   lesson({ id: "darts-warden", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "warden", line: "The Warden sprang the plate. The floor's traps are yours to use, and they do not care who walks in.", sample: { key: "k", kind: "darts", by: "warden" } }),
   lesson({ id: "pit", event: "trapSprung", when: ({ kind }) => kind === "pit", line: "The floor gave way. It is a spike patch now, for anything that walks - you, the rats, the Warden.", sample: { key: "k", kind: "pit", by: "player" } }),
   lesson({ id: "grate", event: "trapSprung", when: ({ kind }) => kind === "grate", line: "A grate dropped behind you. That doorway is barred - to it, and to you, until it lifts.", sample: { key: "k", kind: "grate", by: "player" } }),
@@ -137,11 +135,15 @@ export const LESSONS: readonly Lesson[] = [
   }),
   lesson({ id: "wisp", event: "wispCame", line: "A wisp gathers at your light and drifts ahead. It leads to the crack - and everything that hunts by light sees it." }),
   lesson({ id: "moth", event: "mothLanded", line: "A moth settles on the lantern. It will carry the light where you are not, and the Warden follows light." }),
-  lesson({ id: "bats", event: "batsRoused", line: "Bats. A dash under a roost wakes them, and the whole floor heard that." }),
+  lesson({ id: "bats", event: "batsRoused", line: "The floor heard those bats. Move clear when they stir to stop a burst; a blast startles them immediately." }),
+  lesson({ id: "croaker", event: "croakersDove", line: "The toads went under. Anything loud does that, and the splash tells the Warden which room - a silent cistern was not silent a moment ago.", sample: { roomId: "r" } }),
+  lesson({ id: "beetle", event: "beetlesScattered", line: "Glow beetles feed around bellcaps. Their low lights show the living banks; noise or a raised lantern sends them into cover. Lower the light and let them settle.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
-  lesson({ id: "harrier", event: "harrierWoke", line: "Something with wings is hunting you. Spikes cannot touch it and furniture does not slow it - a blast knocks it down." }),
-  lesson({ id: "keeper", event: "keeperBars", line: "The Keeper holds the last stairs. It cannot be walked past. A blast in its room makes it kneel - for nine seconds." }),
+  lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
+  lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper; save ${BOMB_PRICE} extra gems for a shop bomb. With the toll ready, set a bomb from your satchel, dodge the blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
+  lesson({ id: "reaper", event: "reaperWoke", every: true,
+    line: (_, touch) => `The Reaper is here. Sprint with ${sprintControl(touch)} to the stairs. Shoves cannot stop it. A bomb holds it for ${REAPER_STALL_S} seconds; keep moving while its fuse burns.` }),
 
   // Every floor, on arriving: what this one is like.
   /**
@@ -158,6 +160,7 @@ export const LESSONS: readonly Lesson[] = [
 
 /** The events the ten loops added, each of which must have a lesson. */
 export const LOOP_EVENTS: readonly (keyof BusEvents)[] = [
+  "croakersDove",
   "trapSprung",
   "draftFelt",
   "wallSound",

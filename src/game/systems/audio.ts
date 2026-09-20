@@ -7,8 +7,12 @@
  * gesture, because browsers refuse to start audio before one.
  */
 
+import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
+
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
+let reflections: ReturnType<typeof createRoomReflections> | null = null;
+let roomAcoustics: RoomAcoustics | null = null;
 let muted = false;
 /**
  * How loud, 0 to 1, on top of the mute.
@@ -34,6 +38,8 @@ function ensureContext(): AudioContext | null {
     master = context.createGain();
     master.gain.value = masterGain();
     master.connect(context.destination);
+    reflections = createRoomReflections(context, master);
+    reflections.configure(roomAcoustics);
   }
   if (context.state === "suspended") void context.resume();
   return context;
@@ -56,7 +62,8 @@ function envelope(
   attack: number,
   decay: number,
   peak: number,
-  pan = 0
+  pan = 0,
+  reflect = false
 ) {
   const gain = ctx.createGain();
   const now = ctx.currentTime;
@@ -64,6 +71,7 @@ function envelope(
   gain.gain.exponentialRampToValueAtTime(peak, now + attack);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay);
   node.connect(gain);
+  if (reflect && reflections) gain.connect(reflections.input);
   if (pan === 0 || !ctx.createStereoPanner) {
     gain.connect(master!);
     return;
@@ -82,7 +90,8 @@ function tone(
   type: OscillatorType = "sine",
   peak = 0.6,
   sweepTo?: number,
-  pan = 0
+  pan = 0,
+  reflect = false
 ) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
@@ -108,7 +117,7 @@ function tone(
       ctx.currentTime + duration
     );
   }
-  envelope(ctx, osc, 0.008, duration, peak, pan);
+  envelope(ctx, osc, 0.008, duration, peak, pan, reflect);
   osc.start();
   osc.stop(ctx.currentTime + duration + 0.05);
 }
@@ -133,7 +142,7 @@ function noiseBuffer(ctx: AudioContext): AudioBuffer {
   return noise;
 }
 
-function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
+function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0, reflect = false) {
   const ctx = ensureContext();
   if (!ctx || muted || !master) return;
   const source = ctx.createBufferSource();
@@ -144,7 +153,7 @@ function noiseBurst(duration: number, peak = 0.4, filterHz = 1800, pan = 0) {
   filter.type = "lowpass";
   filter.frequency.value = filterHz;
   source.connect(filter);
-  envelope(ctx, filter, 0.005, duration, peak, pan);
+  envelope(ctx, filter, 0.005, duration, peak, pan, reflect);
   source.start(ctx.currentTime, offset, duration + 0.1);
   source.stop(ctx.currentTime + duration + 0.1);
 }
@@ -153,11 +162,141 @@ const later = (ms: number, fn: () => void) => window.setTimeout(fn, ms);
 
 /** When the last chitter played, for the throttle in `sfx.skitter`. */
 let lastSkitter = 0;
+/** And the last patter of feet, for `sfx.scurry`: its own clock, see there. */
+let lastScurry = 0;
+
+/**
+ * A creature's held sound: built once, written in place every frame,
+ * stopped when the creature goes.
+ *
+ * The Warden's stalk was the only one of these, and the only creature
+ * with a continuous voice. The others - a roost wheeling round the ceiling
+ * for five seconds, the Harrier flying at you, the moth at your lantern,
+ * the wisp ahead of you - all moved in silence, which is a problem in a
+ * first-person game whose threats come from behind: the bats could be up
+ * and the Harrier could be halfway across the room with nothing to say
+ * so. The registry is what makes a second held voice cheap to add: each
+ * is a builder that wires a few nodes into a level and a panner, and the
+ * two per-frame writes the whole game makes to it go through `heldSet`.
+ *
+ * The three things a frame can write besides level and side: the filter
+ * (how open it is), the tremolo's rate (how fast the wings beat) and a
+ * pitch (how far the Sentry has got). A voice leaves null what it has
+ * none of.
+ */
+interface Held {
+  gain: GainNode;
+  panner: StereoPannerNode;
+  filter: BiquadFilterNode | null;
+  lfo: OscillatorNode | null;
+  pitch: OscillatorNode | null;
+  sources: AudioScheduledSourceNode[];
+}
+
+type HeldParts = Omit<Held, "gain" | "panner">;
+type HeldBuilder = (ctx: AudioContext, into: GainNode) => HeldParts;
+
+/** What a frame writes to a held voice. Only the level is required. */
+interface HeldWrite {
+  level: number;
+  filterHz?: number;
+  lfoHz?: number;
+  pitchHz?: number;
+}
+
+const held = new Map<string, Held>();
+
+/** Loop the shared noise through a filter and a tremolo, into the level. */
+function heldNoise(
+  ctx: AudioContext,
+  into: AudioNode,
+  filterType: BiquadFilterType,
+  filterHz: number,
+  filterQ: number,
+  tremoloHz: number | null
+): { filter: BiquadFilterNode; source: AudioBufferSourceNode; lfo: OscillatorNode | null } {
+  const source = ctx.createBufferSource();
+  source.buffer = noiseBuffer(ctx);
+  source.loop = true;
+  const filter = ctx.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.value = filterHz;
+  filter.Q.value = filterQ;
+  let lfo: OscillatorNode | null = null;
+  if (tremoloHz !== null) {
+    // The beat: a gain the LFO swings, sitting between the filter and the
+    // level. The swing stops just short of the gain's own value, because
+    // a beat deeper than that goes negative, which inverts phase and
+    // audibly fills in the gap the beat is meant to leave.
+    const beat = ctx.createGain();
+    beat.gain.value = 0.5;
+    lfo = ctx.createOscillator();
+    lfo.frequency.value = tremoloHz;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.45;
+    lfo.connect(depth).connect(beat.gain);
+    source.connect(filter).connect(beat).connect(into);
+    lfo.start();
+  } else {
+    source.connect(filter).connect(into);
+  }
+  source.start();
+  return { filter, source, lfo };
+}
+
+function heldStart(ctx: AudioContext, build: HeldBuilder): Held {
+  const gain = ctx.createGain();
+  gain.gain.value = 0;
+  const panner = ctx.createStereoPanner();
+  const parts = build(ctx, gain);
+  gain.connect(panner);
+  panner.connect(master!);
+  return { gain, panner, ...parts };
+}
+
+/**
+ * Write a held voice's level and side, starting it if it is not running.
+ * Silent at nought, which is also how a creature that has gone stops it
+ * without knowing whether it was ever heard.
+ */
+function heldSet(name: string, build: HeldBuilder, closeness: number, pan: number, write: HeldWrite) {
+  const ctx = ensureContext();
+  if (!ctx || !master) return;
+  if (closeness <= 0) {
+    heldStop(name);
+    return;
+  }
+  let voice = held.get(name);
+  if (!voice) {
+    voice = heldStart(ctx, build);
+    held.set(name, voice);
+  }
+  voice.gain.gain.value = write.level;
+  voice.panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
+  if (write.filterHz !== undefined && voice.filter) voice.filter.frequency.value = write.filterHz;
+  if (write.lfoHz !== undefined && voice.lfo) voice.lfo.frequency.value = write.lfoHz;
+  if (write.pitchHz !== undefined && voice.pitch) voice.pitch.frequency.value = write.pitchHz;
+}
+
+function heldStop(name: string) {
+  const voice = held.get(name);
+  if (!voice) return;
+  held.delete(name);
+  voice.gain.gain.value = 0;
+  for (const source of voice.sources) {
+    try {
+      source.stop();
+    } catch {
+      // Already stopped: nothing to undo.
+    }
+  }
+  voice.panner.disconnect();
+}
 
 /**
  * The Warden crossing the room you are standing in.
  *
- * Every other cue is a one-shot, which was fine while the Warden was a
+ * Every other cue was a one-shot, which was fine while the Warden was a
  * thing that arrived: one knock through a wall, one note when it came in,
  * and then it closed the distance in silence behind a vignette that said
  * "close" without saying where. That is the one moment a player most needs
@@ -171,19 +310,7 @@ let lastSkitter = 0;
  * AudioParam writes cost nothing and the performance check watches for the
  * difference.
  */
-let stalking: {
-  gain: GainNode;
-  panner: StereoPannerNode;
-  filter: BiquadFilterNode;
-  sub: OscillatorNode;
-  noise: AudioBufferSourceNode;
-  lfo: OscillatorNode;
-} | null = null;
-
-function startStalk(ctx: AudioContext): typeof stalking {
-  const gain = ctx.createGain();
-  gain.gain.value = 0;
-  const panner = ctx.createStereoPanner();
+const buildStalk: HeldBuilder = (ctx, into) => {
   const filter = ctx.createBiquadFilter();
   filter.type = "lowpass";
   filter.frequency.value = 300;
@@ -206,15 +333,318 @@ function startStalk(ctx: AudioContext): typeof stalking {
   lfo.frequency.value = 0.85;
   const lfoDepth = ctx.createGain();
   lfoDepth.gain.value = 0.4;
-  lfo.connect(lfoDepth).connect(gain.gain);
+  lfo.connect(lfoDepth).connect(into.gain);
 
-  filter.connect(gain).connect(panner);
-  panner.connect(master!);
+  filter.connect(into);
   sub.start();
   noiseSource.start();
   lfo.start();
-  return { gain, panner, filter, sub, noise: noiseSource, lfo };
+  return { filter, lfo: null, pitch: null, sources: [sub, noiseSource, lfo] };
+};
+
+/**
+ * The Reaper: the same shape as the Warden's stalk and nothing like the
+ * same sound. Pale where the Warden is dark, so a cold, high, beating
+ * pair of tones and a thin hiss rather than a sub and a breath - the two
+ * can be in a room together and a player who cannot see either should
+ * still be able to count them.
+ */
+const buildReap: HeldBuilder = (ctx, into) => {
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 1800;
+  filter.Q.value = 1.2;
+  const a = ctx.createOscillator();
+  a.type = "sine";
+  a.frequency.value = 220;
+  const b = ctx.createOscillator();
+  b.type = "sine";
+  // Three hertz off: the beat between them is the pulse.
+  b.frequency.value = 223;
+  const pair = ctx.createGain();
+  pair.gain.value = 0.35;
+  a.connect(pair);
+  b.connect(pair);
+  pair.connect(into);
+  const hiss = ctx.createBufferSource();
+  hiss.buffer = noiseBuffer(ctx);
+  hiss.loop = true;
+  const hissGain = ctx.createGain();
+  hissGain.gain.value = 0.25;
+  hiss.connect(filter).connect(hissGain).connect(into);
+  a.start();
+  b.start();
+  hiss.start();
+  return { filter, lfo: null, pitch: null, sources: [a, b, hiss] };
+};
+
+/**
+ * The roost, up: a lot of small leathery wings, fast, and squeaks over
+ * them. The beat is a tremolo on band-passed noise at about eleven a
+ * second, which is what a flock of small things sounds like from below;
+ * the squeak is a high sine warbled by a second oscillator.
+ */
+const buildFlock: HeldBuilder = (ctx, into) => {
+  const wings = heldNoise(ctx, into, "bandpass", 2400, 0.8, 11);
+  const squeak = ctx.createOscillator();
+  squeak.type = "sine";
+  squeak.frequency.value = 3300;
+  const warble = ctx.createOscillator();
+  warble.frequency.value = 6.5;
+  const warbleDepth = ctx.createGain();
+  warbleDepth.gain.value = 420;
+  warble.connect(warbleDepth).connect(squeak.frequency);
+  const squeakGain = ctx.createGain();
+  squeakGain.gain.value = 0.05;
+  squeak.connect(squeakGain).connect(into);
+  squeak.start();
+  warble.start();
+  return { filter: wings.filter, lfo: wings.lfo, pitch: null, sources: [wings.source, wings.lfo!, squeak, warble] };
+};
+
+/**
+ * The Harrier in the air: one big pair of wings, slow and heavy, and a
+ * low rush of air under them. The beat quickens as it dives - the same
+ * number its nose tips by - so the sound of it coming is the tell, and a
+ * player facing the wrong way still gets it.
+ */
+const buildWingbeat: HeldBuilder = (ctx, into) => {
+  const wings = heldNoise(ctx, into, "lowpass", 900, 0.7, 4.5);
+  const rush = ctx.createOscillator();
+  rush.type = "sawtooth";
+  rush.frequency.value = 90;
+  const rushFilter = ctx.createBiquadFilter();
+  rushFilter.type = "lowpass";
+  rushFilter.frequency.value = 260;
+  const rushGain = ctx.createGain();
+  rushGain.gain.value = 0.16;
+  rush.connect(rushFilter).connect(rushGain).connect(into);
+  rush.start();
+  return { filter: wings.filter, lfo: wings.lfo, pitch: null, sources: [wings.source, wings.lfo!, rush] };
+};
+
+/** The moth at your lantern: the smallest wings on the floor, very fast, very quiet. */
+const buildFlutter: HeldBuilder = (ctx, into) => {
+  const wings = heldNoise(ctx, into, "bandpass", 3600, 0.9, 24);
+  return { filter: wings.filter, lfo: wings.lfo, pitch: null, sources: [wings.source, wings.lfo!] };
+};
+
+/**
+ * The wisp: a soft chord with a shimmer on it. A helper, so it is the one
+ * creature voice with nothing frightening in it - and it is also the
+ * reason the Warden knows where you are, so it is not silent either.
+ */
+const buildWispHum: HeldBuilder = (ctx, into) => {
+  const root = ctx.createOscillator();
+  root.type = "triangle";
+  root.frequency.value = 528;
+  const fifth = ctx.createOscillator();
+  fifth.type = "sine";
+  fifth.frequency.value = 792;
+  const shimmer = ctx.createOscillator();
+  shimmer.frequency.value = 5.5;
+  const shimmerDepth = ctx.createGain();
+  shimmerDepth.gain.value = 7;
+  shimmer.connect(shimmerDepth).connect(root.frequency);
+  shimmer.connect(shimmerDepth).connect(fifth.frequency);
+  const chord = ctx.createGain();
+  chord.gain.value = 0.5;
+  root.connect(chord);
+  fifth.connect(chord);
+  chord.connect(into);
+  root.start();
+  fifth.start();
+  shimmer.start();
+  return { filter: null, lfo: null, pitch: null, sources: [root, fifth, shimmer] };
+};
+
+/**
+ * The Sentry's beam on you: a thin whine that climbs as it acquires.
+ * Silent until the light touches you, so it never says where the post is
+ * before the wedge on the floor does - it says how long you have left.
+ */
+const buildBeam: HeldBuilder = (ctx, into) => {
+  const whine = ctx.createOscillator();
+  whine.type = "sine";
+  whine.frequency.value = 1200;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "highpass";
+  filter.frequency.value = 900;
+  whine.connect(filter).connect(into);
+  whine.start();
+  return { filter, lfo: null, pitch: whine, sources: [whine] };
+};
+
+/**
+ * The cistern's toads: a low pulsing croak, three of them out of step, on
+ * a slow tremolo each. A chorus rather than a call, because the tell is
+ * the chorus stopping.
+ */
+const buildChorus: HeldBuilder = (ctx, into) => {
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = 520;
+  const sources: AudioScheduledSourceNode[] = [];
+  [92, 104, 118].forEach((hz, i) => {
+    const croak = ctx.createOscillator();
+    croak.type = "sawtooth";
+    croak.frequency.value = hz;
+    const voice = ctx.createGain();
+    voice.gain.value = 0.22;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 1.1 + i * 0.37;
+    const depth = ctx.createGain();
+    depth.gain.value = 0.2;
+    lfo.connect(depth).connect(voice.gain);
+    croak.connect(voice).connect(filter);
+    croak.start();
+    lfo.start();
+    sources.push(croak, lfo);
+  });
+  filter.connect(into);
+  return { filter, lfo: null, pitch: null, sources };
+};
+
+/**
+ * What a room sounds like when nothing is happening in it.
+ *
+ * One per biome, from `rooms/biomes.ts`, and the biome names it: a room
+ * cannot be given a look without being given a sound. Under the bed and
+ * under every cue, so a cue is never fighting the room it is in. Two
+ * shapes: a held voice, or a timer that drops a small sound now and then
+ * - a drip, an ember - because a drip on an oscillator is a tremolo, and a
+ * tremolo is not a drip.
+ */
+type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore";
+
+interface Air {
+  id: AirId;
+  voice: Held | null;
+  timer: number | null;
 }
+
+let air: Air | null = null;
+
+const buildCurrent: HeldBuilder = (ctx, into) => {
+  const stream = heldNoise(ctx, into, "bandpass", 1400, 0.7, null);
+  const ripple = ctx.createOscillator(), depth = ctx.createGain();
+  ripple.frequency.value = 0.8; depth.gain.value = 180;
+  ripple.connect(depth).connect(stream.filter.frequency);
+  ripple.start();
+  return { filter: stream.filter, lfo: null, pitch: null, sources: [stream.source, ripple] };
+};
+
+/** A held voice for the airs that are continuous. Null for the ones that are not. */
+const AIR_VOICES: Partial<Record<AirId, { build: HeldBuilder; level: number }>> = {
+  wind: {
+    level: 0.34,
+    build: (ctx, into) => {
+      const wings = heldNoise(ctx, into, "lowpass", 420, 0.6, null);
+      // The filter wanders slowly: air moving somewhere.
+      const wander = ctx.createOscillator();
+      wander.frequency.value = 0.13;
+      const depth = ctx.createGain();
+      depth.gain.value = 220;
+      wander.connect(depth).connect(wings.filter.frequency);
+      wander.start();
+      return { filter: wings.filter, lfo: null, pitch: null, sources: [wings.source, wander] };
+    },
+  },
+  hollow: {
+    level: 0.36,
+    build: (ctx, into) => {
+      // A resonance rather than a breath: the catacomb's own note.
+      const wings = heldNoise(ctx, into, "bandpass", 640, 6, null);
+      const wander = ctx.createOscillator();
+      wander.frequency.value = 0.09;
+      const depth = ctx.createGain();
+      depth.gain.value = 60;
+      wander.connect(depth).connect(wings.filter.frequency);
+      wander.start();
+      return { filter: wings.filter, lfo: null, pitch: null, sources: [wings.source, wander] };
+    },
+  },
+  hum: {
+    level: 0.2,
+    build: (ctx, into) => {
+      const a = ctx.createOscillator();
+      a.type = "sine";
+      a.frequency.value = 330;
+      const b = ctx.createOscillator();
+      b.type = "sine";
+      b.frequency.value = 331.5;
+      const pair = ctx.createGain();
+      pair.gain.value = 0.5;
+      a.connect(pair);
+      b.connect(pair);
+      pair.connect(into);
+      a.start();
+      b.start();
+      return { filter: null, lfo: null, pitch: null, sources: [a, b] };
+    },
+  },
+  ember: {
+    level: 0.12,
+    build: (ctx, into) => {
+      // The warmth under the crackle, which the timer supplies.
+      const glow = ctx.createOscillator();
+      glow.type = "sine";
+      glow.frequency.value = 66;
+      const glowGain = ctx.createGain();
+      glowGain.gain.value = 0.6;
+      glow.connect(glowGain).connect(into);
+      glow.start();
+      return { filter: null, lfo: null, pitch: null, sources: [glow] };
+    },
+  },
+};
+
+/** The intermittent airs: what to drop, and how long between drops. */
+const AIR_DROPS: Partial<Record<AirId, { play: () => void; gapMs: [number, number] }>> = {
+  drip: {
+    gapMs: [700, 2400],
+    play: () => tone(1500 + Math.random() * 900, 0.09, "sine", 0.22, 900, Math.random() * 1.2 - 0.6),
+  },
+  ember: {
+    gapMs: [90, 420],
+    play: () => noiseBurst(0.025, 0.22, 5200 + Math.random() * 2000, Math.random() * 0.8 - 0.4),
+  },
+  creak: {
+    gapMs: [2600, 6800],
+    play: () => tone(120 + Math.random() * 60, 0.32, "sawtooth", 0.24, 84, Math.random() * 1.2 - 0.6),
+  },
+  spore: {
+    gapMs: [180, 620],
+    play: () => tone(4200 + Math.random() * 2600, 0.05, "sine", 0.22, 3000, Math.random() * 1.4 - 0.7),
+  },
+};
+
+function stopAir(): void {
+  if (!air) return;
+  const going = air;
+  air = null;
+  if (going.timer !== null) window.clearTimeout(going.timer);
+  if (going.voice && context) {
+    // Out over a second rather than cut: a room changing sound on a door
+    // is a place; a room that goes silent on a frame is a bug.
+    const g = going.voice.gain.gain;
+    g.cancelScheduledValues(context.currentTime);
+    g.setValueAtTime(Math.max(g.value, 0.0001), context.currentTime);
+    g.exponentialRampToValueAtTime(0.0001, context.currentTime + 1);
+    const voice = going.voice;
+    later(1100, () => {
+      for (const s of voice.sources) {
+        try {
+          s.stop();
+        } catch {
+          // Already stopped.
+        }
+      }
+      voice.panner.disconnect();
+    });
+  }
+}
+
 
 let bed: {
   gain: GainNode;
@@ -229,12 +659,24 @@ let bed: {
  * Fades in over a couple of seconds and out over one.
  */
 export const ambience = {
+  setRoomAcoustics(profile: RoomAcoustics | null) {
+    roomAcoustics = profile;
+    reflections?.configure(profile);
+  },
+  roomAcoustics: () => roomAcoustics,
+  /** Running water is infrastructure, independent of a room's native air. */
+  setCurrent(level: number, pan = 0) {
+    const amount = Math.max(0, Math.min(1, level));
+    heldSet("water-current", buildCurrent, amount, pan, { level: amount * 0.28, filterHz: 650 + amount * 1000 });
+  },
+  stopCurrent() { heldStop("water-current"); },
+  currentLevel: () => held.get("water-current")?.gain.gain.value ?? 0,
   /**
    * How roused the floor is, 0 to 1. The bed tightens with it: the drone
    * comes up and the air moves faster, so a floor being emptied of gems is
    * audibly a worse place to be standing.
    */
-  setTension(rouse: number) {
+  setTension(rouse: number, air = 1, resonance = 0) {
     if (!bed || !context) return;
     const at = context.currentTime + 0.6;
     // These numbers are the ones that were here, and they are right:
@@ -245,9 +687,43 @@ export const ambience = {
     // that had never been started - the replacement tuning measured
     // slightly worse once the check was fixed.
     bed.gain.gain.linearRampToValueAtTime(0.11 + rouse * 0.1, at);
-    bed.filter.frequency.linearRampToValueAtTime(320 + rouse * 420, at);
-    bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6, at);
+    bed.filter.frequency.linearRampToValueAtTime((320 + rouse * 420) * air, at);
+    bed.fifth.frequency.linearRampToValueAtTime(82.4 + rouse * 6 + resonance, at);
   },
+  /**
+   * The room's own air, by biome. The same id again is a no-op, so a
+   * player crossing between two flooded rooms hears one cistern.
+   */
+  setAir(id: AirId | null) {
+    if (air?.id === id) return;
+    stopAir();
+    if (id === null || id === "still") return;
+    const ctx = ensureContext();
+    if (!ctx || !master) return;
+    const next: Air = { id, voice: null, timer: null };
+    const held = AIR_VOICES[id];
+    if (held) {
+      next.voice = heldStart(ctx, held.build);
+      next.voice.gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      next.voice.gain.gain.exponentialRampToValueAtTime(held.level, ctx.currentTime + 1.5);
+    }
+    const drops = AIR_DROPS[id];
+    if (drops) {
+      const drop = () => {
+        if (air !== next || muted) {
+          if (air === next) next.timer = later(drops.gapMs[0], drop);
+          return;
+        }
+        drops.play();
+        next.timer = later(drops.gapMs[0] + Math.random() * (drops.gapMs[1] - drops.gapMs[0]), drop);
+      };
+      // The first one at once, so a room has its sound on the frame it is entered.
+      next.timer = later(0, drop);
+    }
+    air = next;
+  },
+  /** Which air is running, for the checks. */
+  airId: (): AirId | null => air?.id ?? null,
   start() {
     const ctx = ensureContext();
     if (!ctx || !master || bed) return;
@@ -307,6 +783,8 @@ export const ambience = {
     };
   },
   stop() {
+    stopAir();
+    heldStop("water-current");
     if (!bed || !context) return;
     const { gain, stop } = bed;
     bed = null;
@@ -318,6 +796,25 @@ export const ambience = {
 };
 
 export const sfx = {
+  beetleScatter(pan = 0) {
+    noiseBurst(0.14, 0.14, 2100, pan);
+    tone(690, 0.12, "triangle", 0.14, 420, pan);
+  },
+  bellcapWarning(pan = 0) {
+    tone(310, 0.45, "triangle", 0.09, 470, pan);
+  },
+  bellcapBurst(pan = 0) {
+    noiseBurst(0.5, 0.22, 1100, pan);
+    tone(170, 0.17, "triangle", 0.14, 75, pan);
+  },
+  /** A heavy wheel ratchets, then water pulls through a stone throat. */
+  sluice() {
+    tone(92, 0.6, "sawtooth", 0.14, 48);
+    [0, 140, 310, 510].forEach(ms => later(ms, () => {
+      noiseBurst(0.09, 0.12, 740); tone(180, 0.11, "square", 0.07, 105);
+    }));
+    later(620, () => noiseBurst(1.3, 0.22, 430));
+  },
   /** Picking up a gem: a bright two-note chime. */
   gem() {
     tone(880, 0.12, "triangle", 0.5);
@@ -383,13 +880,36 @@ export const sfx = {
    * purpose, which is right for a sound that happens every stride, but
    * present.
    */
-  step(strong: boolean, running = false) {
+  step(strong: boolean, running = false, surface: import("../rooms/underfoot").Footing = "stone") {
+    const scuff = (duration: number, peak: number, filter: number) => noiseBurst(duration, peak, filter, 0, true);
+    const body = (frequency: number, duration: number, type: OscillatorType, peak: number, sweep: number) =>
+      tone(frequency, duration, type, peak, sweep, 0, true);
     const wobble = 0.85 + Math.random() * 0.4;
     // A run is heard by the Warden, so it had better be heard by the player
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
-    noiseBurst((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
-    tone(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
+    if (surface === "water") {
+      scuff(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
+      body(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
+      return;
+    }
+    if (surface === "soft") {
+      scuff(0.11, (strong ? 0.3 : 0.22) * loud, 240 * wobble);
+      body(60 * wobble, 0.07, "sine", (strong ? 0.2 : 0.14) * loud, 42);
+      return;
+    }
+    if (surface === "wood") {
+      scuff(0.07, (strong ? 0.26 : 0.19) * loud, 560 * wobble);
+      body(155 * wobble, 0.09, "triangle", (strong ? 0.19 : 0.13) * loud, 90);
+      return;
+    }
+    if (surface === "metal") {
+      scuff(0.06, (strong ? 0.22 : 0.16) * loud, 1600 * wobble);
+      body(420 * wobble, 0.14, "triangle", (strong ? 0.16 : 0.11) * loud, 260);
+      return;
+    }
+    scuff((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);
+    body(70 * wobble, 0.06, "sine", (strong ? 0.24 : 0.16) * loud, 48 * wobble);
   },
   /** Something dropped into the satchel. */
   take() {
@@ -568,6 +1088,102 @@ export const sfx = {
     later(170, () => tone(820, 0.22, "triangle", 0.2, 1180, pan));
   },
   /**
+   * A rat on the move, while it is: a patter of small feet, throttled the
+   * way `skitter` is but on its own clock, so a rat and the Cutpurse in
+   * one room do not take turns. Quieter than the chitter it starts with,
+   * because it is scenery running and the chitter is the tell.
+   */
+  scurry(closeness: number, pan = 0) {
+    if (closeness <= 0) return;
+    const now = performance.now();
+    if (now - lastScurry < 90) return;
+    lastScurry = now;
+    const level = 0.22 + Math.min(1, closeness) * 0.3;
+    noiseBurst(0.07, level, 5200, pan);
+  },
+  /** The roost, disturbed but not yet up: a dry rustle overhead, on its side. */
+  batsStir(pan = 0) {
+    noiseBurst(0.22, 0.34, 2800, pan);
+    later(90, () => tone(2600, 0.05, "sine", 0.08, 3400, pan));
+    later(160, () => noiseBurst(0.16, 0.2, 2400, pan));
+  },
+  /**
+   * The roost going up: a burst of wings and squeaks all at once. Louder
+   * than the flock that follows it, because the moment is the news and
+   * the five seconds after are the cost.
+   */
+  batsBurst(pan = 0) {
+    const flap = (at: number, hz: number) => later(at, () => noiseBurst(0.07, 0.28, hz, pan));
+    flap(0, 2600);
+    flap(60, 2200);
+    flap(130, 2800);
+    flap(210, 2400);
+    later(40, () => tone(3400, 0.08, "sine", 0.12, 2200, pan));
+    later(150, () => tone(3800, 0.1, "sine", 0.1, 2600, pan));
+  },
+  /** The toads going under, all at once: water, on the side they went in. */
+  splash(pan = 0) {
+    noiseBurst(0.18, 0.3, 1800, pan);
+    later(40, () => tone(420, 0.12, "sine", 0.14, 180, pan));
+    later(110, () => noiseBurst(0.22, 0.18, 2600, pan));
+    later(160, () => tone(300, 0.16, "sine", 0.1, 140, pan));
+  },
+  /** The Harrier waking, somewhere on the floor: a shriek from far off. */
+  harrierCry() {
+    tone(1900, 0.32, "sawtooth", 0.14, 760);
+    later(40, () => noiseBurst(0.3, 0.08, 1600));
+  },
+  /** It draws back to dive: a rising screech and the wings spread. This is the tell. */
+  harrierWind(pan = 0) {
+    tone(520, 0.36, "sawtooth", 0.2, 1500, pan);
+    later(60, () => noiseBurst(0.3, 0.14, 1400, pan));
+  },
+  /** The dive landing: a rush of air and the hit. Plays over `hurt`, as the Warden's does. */
+  harrierSwoop() {
+    noiseBurst(0.4, 0.42, 1300);
+    later(90, () => tone(240, 0.18, "square", 0.3, 90));
+    later(120, () => tone(1300, 0.12, "sawtooth", 0.2, 500));
+  },
+  /** It wheels away: a few heavy beats going off, on its side. */
+  harrierAway(pan = 0) {
+    const beat = (at: number, level: number) => later(at, () => noiseBurst(0.1, level, 1400, pan));
+    beat(0, 0.6);
+    beat(180, 0.46);
+    beat(380, 0.32);
+    beat(600, 0.2);
+  },
+  /** Downed by a blast: it hits the floor and thrashes. */
+  harrierFall(pan = 0) {
+    tone(180, 0.16, "square", 0.24, 60, pan);
+    later(30, () => noiseBurst(0.18, 0.28, 700, pan));
+    const thrash = (at: number) => later(at, () => noiseBurst(0.06, 0.14, 1600, pan));
+    thrash(260);
+    thrash(340);
+    thrash(450);
+    thrash(520);
+  },
+  /** The spikes finding it: a squawk, cut off. */
+  harrierDie() {
+    tone(1500, 0.14, "sawtooth", 0.26, 900);
+    later(90, () => noiseBurst(0.12, 0.26, 2400));
+    later(140, () => tone(700, 0.08, "square", 0.18, 200));
+  },
+  /** The Keeper, barring the way: iron on stone, and the weight of it. */
+  keeperClank() {
+    tone(420, 0.08, "square", 0.22, 300);
+    later(20, () => noiseBurst(0.14, 0.24, 2400));
+    later(120, () => tone(64, 0.8, "sine", 0.3, 44));
+  },
+  /**
+   * The halberd coming down: a creak of iron as the player steps into
+   * reach. It has begun before the step that costs a life, and this says
+   * so from behind as well as in front.
+   */
+  keeperSwing(pan = 0) {
+    tone(320, 0.28, "sawtooth", 0.18, 140, pan);
+    later(40, () => noiseBurst(0.22, 0.16, 1100, pan));
+  },
+  /**
    * A deed: a small rising figure, quiet enough to be heard over a chase.
    *
    * Deliberately not a fanfare. The moment a player earns "It Bleeds" they
@@ -679,33 +1295,85 @@ export const sfx = {
    * Called every frame while it is in the room; silent at zero.
    */
   stalk(closeness: number, pan: number) {
-    const ctx = ensureContext();
-    if (!ctx || !master) return;
-    if (closeness <= 0) {
-      sfx.stalkStop();
-      return;
-    }
-    if (!stalking) stalking = startStalk(ctx);
-    if (!stalking) return;
-    const level = Math.min(1, closeness);
+    const level = Math.min(1, Math.max(0, closeness));
     // The LFO swings around this, so the ceiling leaves room for it.
-    stalking.gain.gain.value = 0.06 + level * 0.5;
-    stalking.filter.frequency.value = 220 + level * 520;
-    stalking.panner.pan.value = Math.max(-0.85, Math.min(0.85, pan));
+    heldSet("stalk", buildStalk, closeness, pan, { level: 0.06 + level * 0.5, filterHz: 220 + level * 520 });
   },
   stalkStop() {
-    if (!stalking) return;
-    const s = stalking;
-    stalking = null;
-    s.gain.gain.value = 0;
-    try {
-      s.sub.stop();
-      s.noise.stop();
-      s.lfo.stop();
-    } catch {
-      // Already stopped: nothing to undo.
-    }
-    s.panner.disconnect();
+    heldStop("stalk");
+  },
+  /** The Reaper, in the room. Same contract as `stalk`. */
+  reap(closeness: number, pan: number) {
+    const level = Math.min(1, Math.max(0, closeness));
+    heldSet("reap", buildReap, closeness, pan, { level: 0.05 + level * 0.3, filterHz: 1200 + level * 2200 });
+  },
+  reapStop() {
+    heldStop("reap");
+  },
+  /**
+   * The roost in the air, while it is. Loud enough anywhere in the room
+   * to be missed by nobody, and louder under it: five seconds of this is
+   * the cost of a dash beneath a roost, and until now the cost was
+   * silent.
+   */
+  flock(closeness: number, pan: number) {
+    const level = Math.min(1, Math.max(0, closeness));
+    heldSet("flock", buildFlock, closeness, pan, { level: 0.08 + level * 0.22, filterHz: 2000 + level * 1200, lfoHz: 9 + level * 4 });
+  },
+  flockStop() {
+    heldStop("flock");
+  },
+  /** The toads, while they sing: louder the more of them are up and the nearer they are. */
+  chorus(closeness: number, pan: number) {
+    const level = Math.min(1, Math.max(0, closeness));
+    heldSet("chorus", buildChorus, closeness, pan, { level: 0.05 + level * 0.16, filterHz: 380 + level * 320 });
+  },
+  chorusStop() {
+    heldStop("chorus");
+  },
+  /**
+   * The Harrier flying, from how near it is and how far into its dive.
+   * The dive quickens the beat and opens the filter, so the same sound
+   * says "in the room" and "on you now".
+   */
+  wingbeat(closeness: number, pan: number, dive = 0) {
+    const level = Math.min(1, Math.max(0, closeness));
+    const d = Math.min(1, Math.max(0, dive));
+    heldSet("wingbeat", buildWingbeat, closeness, pan, {
+      level: 0.08 + level * 0.3,
+      filterHz: 700 + level * 900 + d * 1200,
+      lfoHz: 4 + d * 5,
+    });
+  },
+  wingbeatStop() {
+    heldStop("wingbeat");
+  },
+  /** The moth at the lantern: barely there, which is the size of it. */
+  flutter(closeness: number, pan: number) {
+    const level = Math.min(1, Math.max(0, closeness));
+    heldSet("flutter", buildFlutter, closeness, pan, { level: 0.1 + level * 0.2 });
+  },
+  flutterStop() {
+    heldStop("flutter");
+  },
+  /** The wisp, ahead of you: a hum that is louder the nearer it waits. */
+  wispHum(closeness: number, pan: number) {
+    const level = Math.min(1, Math.max(0, closeness));
+    heldSet("wisp", buildWispHum, closeness, pan, { level: 0.03 + level * 0.1 });
+  },
+  wispHumStop() {
+    heldStop("wisp");
+  },
+  /**
+   * The Sentry's light on you, from nought to its patience. The whine
+   * climbs an octave over the span, so the call is heard coming.
+   */
+  beam(acquire: number, pan: number) {
+    const level = Math.min(1, Math.max(0, acquire));
+    heldSet("beam", buildBeam, acquire, pan, { level: 0.03 + level * 0.12, pitchHz: 1200 + level * 1200 });
+  },
+  beamStop() {
+    heldStop("beam");
   },
   setMuted(next: boolean) {
     muted = next;
@@ -718,7 +1386,7 @@ export const sfx = {
   },
   volume: () => volume,
   /** Whether the held Warden sound is running. For the smoke test. */
-  isStalking: () => stalking !== null,
+  isStalking: () => held.has("stalk"),
 };
 
 /**

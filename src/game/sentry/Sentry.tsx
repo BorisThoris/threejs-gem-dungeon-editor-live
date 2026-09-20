@@ -1,14 +1,18 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { CylinderCollider, RigidBody } from "@react-three/rapier";
-import type { Group, Mesh, MeshBasicMaterial } from "three";
+import { BufferGeometry, Float32BufferAttribute, Sphere, Vector3, type Group, type Mesh, type MeshBasicMaterial } from "three";
 
 import { type Vec3 } from "../dungeon/layout";
 import { bus } from "../events";
-import { canControl, lanternLit, runClock, useRun } from "../state/run";
+import * as din from "../din/din";
+import { canControl, runClock, useCurrentRoom, useRun } from "../state/run";
+import { roomSegmentClear } from "../dungeon/footprint";
+import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "./placement";
+import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
+import { geo, mat } from "../props/shared";
 import {
-  GROUND_Y,
   SENTRY_ALARM,
   SENTRY_COOLDOWN_S,
   SENTRY_HALF_ANGLE,
@@ -18,11 +22,12 @@ import {
   SENTRY_SPIN,
 } from "../world";
 
+import { beamProjector } from "./beamProjection";
+
 const TWO_PI = Math.PI * 2;
 
 /** How plainly the beam is drawn on the floor before it has acquired. */
 const BEAM_OPACITY = 0.45;
-
 /** Shortest signed angle from `a` to `b`. */
 function angleBetween(a: number, b: number): number {
   let d = (b - a) % TWO_PI;
@@ -45,12 +50,28 @@ function angleBetween(a: number, b: number): number {
  * room is entirely about judging it.
  */
 export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
+  const room = useCurrentRoom();
+  const project = useMemo(() => room ? beamProjector(room) : null, [room]);
+  const lastProject = useRef<typeof project>(null);
+  const coordinates = useRef<number[]>([]);
+  const lastFacing = useRef<number | null>(null);
+  const beam = useMemo(() => {
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(new Float32Array(28 * 9), 3));
+    geometry.boundingSphere = new Sphere(new Vector3(), SENTRY_RANGE + 2);
+    geometry.setDrawRange(0, 0);
+    return geometry;
+  }, []);
+  useEffect(() => () => beam.dispose(), [beam]);
   const head = useRef<Group>(null);
   const wedge = useRef<Mesh>(null);
   /** When the light first touched the player, or null while it has not. */
   const litSince = useRef<number | null>(null);
   const lastCall = useRef(-Infinity);
   const [seen, setSeen] = useState(false);
+
+  // Off with the post: a beam that is not drawn does not whine.
+  useEffect(() => () => sfx.beamStop(), []);
 
   useFrame((state) => {
     const g = head.current;
@@ -76,8 +97,25 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     const now = runClock(run);
     const facing = phase + now * SENTRY_SPIN;
     g.rotation.y = facing;
+    if (project && (lastFacing.current !== facing || lastProject.current !== project)) {
+      project(position, facing, coordinates.current);
+      let vertices = beam.getAttribute("position");
+      if (vertices.array.length < coordinates.current.length) {
+        beam.dispose(); // Release the previous GPU buffer before growing capacity.
+        vertices = new Float32BufferAttribute(new Float32Array(coordinates.current.length * 2), 3);
+        beam.setAttribute("position", vertices);
+      }
+      (vertices.array as Float32Array).set(coordinates.current);
+      vertices.needsUpdate = true;
+      beam.setDrawRange(0, coordinates.current.length / 3);
+      lastFacing.current = facing;
+      lastProject.current = project;
+    }
 
-    if (!canControl(run)) return;
+    if (!canControl(run)) {
+      sfx.beamStop();
+      return;
+    }
 
     const cam = state.camera.position;
     const dx = cam.x - position[0];
@@ -87,7 +125,8 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
     // world (sin, cos) - the same convention the Warden faces by.
     const toPlayer = Math.atan2(dx, dz);
     const inside =
-      distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE;
+      distance < SENTRY_RANGE && Math.abs(angleBetween(facing, toPlayer)) < SENTRY_HALF_ANGLE
+      && !!room && roomSegmentClear(room, position[0], position[2], cam.x, cam.z);
 
     /**
      * How long the light has held you: a span, not a sum.
@@ -146,7 +185,25 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
      * a room with a post in it. That is the same bargain the sprint makes,
      * asked by the other threat.
      */
-    const patience = lanternLit(run) ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    /**
+     * "Holding a raised lantern" was a boolean about the
+     * player. Its row is [bright] at 0.50, and that is what it reads now:
+     * a flame turned down below half is under its threshold and gets the
+     * full patience back, which is the one thing the five bands were for,
+     * and the wisp - brighter than a half-raised lantern - halves it for
+     * a player who has put their own light out, which is the wisp's
+     * price. It is still deaf: the loudest night on the floor goes past.
+     */
+    const lit = din.reaches("sentry", "bright", room?.id);
+    const patience = lit ? SENTRY_PATIENCE * LANTERN_SEEN_FACTOR : SENTRY_PATIENCE;
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __sentry?: Record<string, number | boolean> };
+      if (w.__sentry) w.__sentry.lit_by_light = lit;
+    }
+    // The light on you, out loud: a whine that climbs as it acquires, on
+    // the post's side. A beam arriving from behind was a brightening of
+    // the floor and nothing else.
+    sfx.beam(inside ? Math.max(0.05, held / patience) : 0, sideOf(position[0] - cam.x, position[2] - cam.z));
     if (held >= patience && now - lastCall.current > SENTRY_COOLDOWN_S) {
       lastCall.current = now;
       litSince.current = now;
@@ -175,23 +232,17 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
   });
 
   return (
-    <group position={position}>
+    <group name="sentry-post" position={position}>
       <RigidBody type="fixed" colliders={false}>
-        <mesh position={[0, 1.1, 0]} castShadow>
-          <cylinderGeometry args={[0.14, 0.22, 2.2, 8]} />
-          <meshStandardMaterial color="#3c4048" metalness={0.5} roughness={0.6} />
-        </mesh>
-        <CylinderCollider args={[1.1, 0.22]} position={[0, 1.1, 0]} />
+        <mesh position={[0, 1.1, 0]} castShadow geometry={geo("cylinder", 0.14, 0.22, 2.2, 8)}
+          material={mat({ color: "#3c4048", metalness: 0.5, roughness: 0.6 })} />
+        <CylinderCollider args={[SENTRY_POST_HEIGHT / 2, SENTRY_POST_RADIUS]} position={[0, SENTRY_POST_HEIGHT / 2, 0]} />
       </RigidBody>
       <group ref={head} position={[0, 2.3, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.24, 12, 10]} />
-          <meshStandardMaterial color="#2a2d34" roughness={0.5} metalness={0.4} />
-        </mesh>
-        <mesh position={[0, 0, 0.19]}>
-          <sphereGeometry args={[0.13, 10, 8]} />
-          <meshBasicMaterial color={seen ? "#ff6a4a" : "#8ad4ff"} />
-        </mesh>
+        <mesh name="sentry-housing" geometry={geo("dodecahedron", 0.24)}
+          material={mat({ color: "#2a2d34", roughness: 0.5, metalness: 0.4 })} />
+        <mesh name="sentry-lens" position={[0, 0, 0.19]} geometry={geo("sphere", 0.13, 8, 6)}
+          material={mat({ color: seen ? "#ff6a4a" : "#8ad4ff", basic: true })} />
         {/* A pool at the head, not a floodlight down the room: at full
             range it washed out the wedge on the floor, which is the thing
             the player actually has to read. */}
@@ -202,23 +253,10 @@ export function Sentry({ position, phase }: { position: Vec3; phase: number }) {
           distance={5.5}
           decay={1.6}
         />
-        {/*
-          The lit ground: a wedge on the floor, drawn from the post.
-
-          Laying a circle flat with a -90 degree turn about X sends its
-          angle t to the world direction (cos t, -sin t), so the beam's
-          own +z is at -90 degrees, not +90. Starting it at +90 drew the
-          wedge out of the back of the Sentry while it watched the front,
-          which is the worst kind of bug in a room whose whole job is
-          letting you judge where the light is.
-        */}
-        <mesh ref={wedge} position={[0, -2.28, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry
-            args={[SENTRY_RANGE, 28, -Math.PI / 2 - SENTRY_HALF_ANGLE, SENTRY_HALF_ANGLE * 2]}
-          />
-          <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
-        </mesh>
       </group>
+      <mesh name="sentry-beam" ref={wedge} geometry={beam}>
+        <meshBasicMaterial color={seen ? "#ffb08a" : "#bfe8ff"} transparent opacity={BEAM_OPACITY} depthWrite={false} />
+      </mesh>
     </group>
   );
 }

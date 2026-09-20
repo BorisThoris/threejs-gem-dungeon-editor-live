@@ -15,10 +15,60 @@ short of being hunted the moment you step off the stair, and dark enough that
 the braziers are the only reason a corner has anything in it.
 
 The catch is that every gem you take wakes the thing that walks the floor.
-The Warden cannot be fought and cannot be blocked - it drifts through
-barrels and pillars - but it is slower than you are, so the question is
+The Warden can be briefly staggered with a shove and respects solid
+furniture, but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
+
+Space (or RT on a controller, SHOVE on touch) pushes back a threat within
+three metres in front of you. It drives off the Harrier, scatters the
+Cutpurse and recovers anything it stole, or staggers the Warden for a short
+escape window. Each shove needs 2.4 seconds to recover. Solid cover,
+including watcher posts, blocks the hand; a blocked shove prompts you to
+step around it. Shoves do not wound the Warden; traps and bombs remain
+the stronger tools. A shove aimed at the Keeper or Reaper explains that
+enemy's counterplay instead of telling you to come closer. Ordinary rats flee
+and do not attack. The Harrier gives you time to orient after entering and
+hovers before committing to a dive.
+Ceiling bats stir and flutter for 1.2 seconds before bursting in response
+to nearby noise. Moving clear of the roost cancels that burst; blasts
+startle them immediately. Their noise draws attention but does not hurt you.
+
+Chambers grow as you descend. Later floors have longer corridor wings and
+more branching, concave room outlines, with matching walls and collisions.
+Closed side galleries widen and shift sideways on deeper floors, creating
+asymmetric room outlines. In generated chambers and
+treasure rooms, the room's gem waits inside that gallery, rewarding a detour
+without adding extra income. Trap gems keep their chamber positions.
+The minimap records visited corridor rooms with their real concave outlines,
+including closed galleries. Unexplored rooms remain simple markers.
+Floor two advises packing a shop bomb before descending, and the HUD
+confirms when it is packed. Bombs carry between floors, so preparing early
+avoids a final-floor shopping detour while the Reaper is closing in.
+Gather the full final toll before lighting that bomb: the Keeper's kneeling
+window is for escaping, and does not leave time to hunt for missing gems.
+Corridor wings carry seeded ceiling ribs and wall markings, giving long
+passages stable landmarks without obstructing their travel lanes.
+Watcher beams stop at room walls, and corridor corners block visual
+detection by watchers and the Warden. Sound can still carry around them.
+Ground creatures and fliers steer around the watcher's solid post. Their
+look-ahead checks the whole path so small props cannot be skipped over.
+When you leave its view quietly, the Warden pursues your last known spot
+instead of tracking your movement through walls. Noise or the moth's
+light signal gives it a fresh destination.
+The Reaper follows through corridor wings and closed galleries as well as
+the main chamber; a dead end buys time rather than permanent shelter.
+Its movement, facing and ghostly bob freeze while the run is paused.
+The Keeper's facing, idle bob and halberd warning freeze with pause too.
+Entrance lanes stay clear of damaging traps; dart plates sit off those
+lanes, light before firing, and hurt only across their visible footprint.
+Grates wait until you have moved clear of the landing before dropping.
+Pursuers enter off the doorway lane, using the full corridor outline.
+Placement seeks five metres between arrivals and both the player and every
+landing, with furniture and live hazards checked before placement. Crowded
+authored rooms use the greatest available clearance and retain arrival grace.
+Returning Harriers choose a fresh clear approach, so waiting at their old
+position does not make them reappear on top of you.
 
 The dungeon is not on its side, though. The spikes in a trap room do not
 care which of you stands on them, so a trap room is somewhere you can
@@ -75,9 +125,21 @@ know which way to go, which is the point of a threat you are only ever
 allowed to run from.
 
 The floor is alive, and it plays by one set of rules. Rats scatter from
-your footsteps and spring the snares you set; a moth settles on a raised
-lantern and carries the light away; bats burst from a roost when you
-dash. Every creature declares a body - ground, flying or ghost - and the
+your footsteps - and from a barrel bursting, a grate dropping, a blast
+two rooms away - and spring the snares you set; a moth goes to the
+brightest thing in its room, which is your raised lantern until you turn
+it down to a glimmer, and the wisp when the wisp is brighter; bats burst
+from a roost when you dash; a Sentry acquires you twice as fast in any
+light over half, yours or the wisp's; and the toads at the water's edge
+of the flooded and fungal rooms sing until something is loud, then they
+are under and the room is silent - so a cistern that is already quiet
+when you walk in was not quiet a moment ago, and the splash they made
+going under told the Warden which room. Every creature is one row of a
+contract - name, body, what it answers to, its voice, its events, its
+lesson, its file - and every biome is one row of another, with the life
+that lives in it and the sound it makes when nothing is happening: a
+drip in the cistern, embers in the foundry, boards settling in the
+timbered rooms, spores ticking in the fungal caves. Every creature declares a body - ground, flying or ghost - and the
 floor reads it: spikes and snares bite anything with feet, solid props
 are walked round by anything with a body, and a ghost passes through all
 of it. That table is the whole reason the rest of this works. The
@@ -131,7 +193,9 @@ which cannot be walked from and can be dashed from, and which a blast
 knocks out of the air - and a flier on the ground is just another thing
 the floor can bite. On the last floor the stairs are kept. The Keeper
 stands in that doorway, cannot be walked past, and kneels for nine
-seconds when a bomb goes off in its room. Bring one.
+seconds when a bomb goes off in its room. Keep two gems beyond the toll
+for the shop's bomb. Move clear of its blast and keep moving while the
+fuse burns, then take the stairs while the Keeper kneels.
 
 From the second floor down there is also something small in the dark that
 wants what you are carrying. The Cutpurse cannot hurt you. It waits until
@@ -228,7 +292,9 @@ and a count of how runs ended - a record, not a progression system.
 **[ARCHITECTURE.md](ARCHITECTURE.md)** explains how the code is laid out and
 the rule it follows. **[STEAM_DEMO_PLAN.md](STEAM_DEMO_PLAN.md)** is the
 history: what was wrong, what was done about it, and what still stands
-between here and a Steam demo.
+between here and a Steam demo. **[AI_DEVELOPMENT.md](AI_DEVELOPMENT.md)** is
+for the agent that writes most of this: what the repo gives one, what it
+still owes one, and in what order.
 
 ## Controls
 
@@ -410,11 +476,36 @@ arrangement standing each prop on an anchor of its own, every shipped
 template legal in all eight ways round a room can be furnished, and every
 item findable with a look nothing else has.
 
+`yarn test:walk` checks the collect–pay–descend loop using physical walking,
+door interaction, shoves, a shop bomb purchase and the Keeper escape. It
+never teleports or restores lives. The
+walker knows the full generated map and avoids known furniture and hazards;
+this is traversal and counterplay evidence, not a human balance playtest.
+Set `PORT` to the running dev server (default 5200), `CHROMIUM_PATH` to your
+Chromium executable, `WALK_SEED` to choose a run (default 11), and
+`WALK_FLOORS=1` to check only the first descent. `WALK_SHOVE=off` compares
+the route without combat counterplay. Notices and damage events are logged
+to help explain failures.
+On Windows, `WALK_RENDERER=hardware` uses D3D11 instead of software rendering;
+the probe reports the actual WebGL renderer so the timing evidence is clear.
+
 `yarn test:audio` listens: it taps whatever the game connects to the
 speakers and measures samples, so a cue that runs without making a sound
 fails. Every cue heard over the room, the ones you are meant to notice well
 clear of it, muting silent, and the ambient bed opening up as the floor is
 roused.
+
+`yarn test:rows` asks whether the creatures read their rows. The
+susceptibility table says what each thing on the floor answers to, and
+for a dozen runs most of it was a document: the store put the Harrier
+down by "same room as the bomb" while its row said [blast] 0.20, the rats
+ran from feet while their row said [loud] 0.45. In the running game: a
+barrel bursting across the room scatters the rats, the moth goes to the
+brightest thing in its room and leaves your lantern for the wisp when the
+flame is low, the Sentry's patience follows the light in the room rather
+than the lantern's switch - and the wisp beside you keeps it halved until
+the lantern is down and the wisp gone, which is the wisp's price - and a
+bomb in the room next door puts the Harrier on the floor.
 
 `yarn test:touch` plays it with two thumbs, on an emulated phone, the same
 phone held upright, a tablet, and a desktop that is never touched: the

@@ -150,6 +150,10 @@ export interface GridPos {
 }
 
 export interface Room {
+  waterway?: import("../worldbuilding/watercourse").Waterway;
+  /** Connected geographical region; generated once with the room graph. */
+  district?: import("../rooms/districts").DistrictId;
+  biome?: import("../rooms/biomes").BiomeId;
   id: string;
   kind: RoomKind;
   /**
@@ -165,12 +169,20 @@ export interface Room {
    */
   seed: number;
   grid: GridPos;
-  /** Side length of the square the room is built on. */
+  /** Side length of the furnished chamber; corridor wings extend beyond it. */
   size: number;
-  /** Outline drawn on the floor inside that square. */
+  /** Chamber footprint, block-cut into shared floor, wall, collision and map geometry. */
   shape: Shape;
   /** Neighbouring room in each direction that has a doorway. */
   links: Partial<Record<Dir, string>>;
+  /** Walkable corridor wings beyond the furnished chamber, in metres. */
+  wings?: Partial<Record<Dir, number>>;
+  /** Optional wider wings, used for the deeper floors' closed side galleries. */
+  wingWidths?: Partial<Record<Dir, number>>;
+  /** Lateral shifts for closed galleries; linked travel wings stay centred. */
+  wingOffsets?: Partial<Record<Dir, number>>;
+  /** Closed galleries may end in a block-cut half-round apse. */
+  wingProfiles?: Partial<Record<Dir, "apse">>;
   /**
    * A wall with a crack in it, and the room behind it.
    *
@@ -185,6 +197,7 @@ export interface Room {
 }
 
 export interface Dungeon {
+  serviceTrail?: import("../worldbuilding/serviceTrail").ServiceTrail;
   /**
    * The room whose doors are locked, and the room its key lies in.
    *

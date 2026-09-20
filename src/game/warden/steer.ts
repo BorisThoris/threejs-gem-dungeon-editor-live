@@ -8,12 +8,15 @@
  * prop. After it has been routed it steers instead - the same walk, with
  * whatever hurt it taken out of the direction it is allowed to take.
  *
- * Deliberately not pathfinding. It probes a short way ahead along the
- * straight line and, if that lands in something, fans out either side
- * until it finds a heading that does not. A player can still corner it
- * against a patch and it will pick the least bad way past; what it will
- * not do is march into the same spikes for the third time.
+ * Corridor mouths provide the route through the room outline. Between
+ * those waypoints it probes ahead and fans out either side to pass local
+ * obstacles. A player can still corner it against a patch; when every
+ * heading is blocked it takes the least bad way past instead of freezing.
  */
+
+import { roomSegmentClear, roomWaypoint } from "../dungeon/footprint";
+import type { Room } from "../dungeon/types";
+import { obstacleWaypoint } from "./route";
 
 export interface Patch {
   x: number;
@@ -80,19 +83,30 @@ export function steerAround(
   tx: number,
   tz: number,
   patches: readonly Patch[],
-  berth: number
+  berth: number,
+  canStep?: (x: number, z: number) => boolean
 ): { dx: number; dz: number } {
   const toX = tx - x;
   const toZ = tz - z;
   const length = Math.hypot(toX, toZ) || 1;
   const straight = { dx: toX / length, dz: toZ / length };
-  if (!patches.length) return straight;
+  if (!patches.length && !canStep) return straight;
 
   // How far to probe: never past the player, so it does not swerve round a
   // patch it was going to stop short of anyway.
   const probe = Math.min(LOOKAHEAD, length);
-  const clear = (dx: number, dz: number) =>
-    !inPatch(patches, x + dx * probe, z + dz * probe, berth);
+  const clear = (dx: number, dz: number) => {
+    const sx = dx * probe, sz = dz * probe;
+    return patches.every((p) => {
+      const px = p.x - x, pz = p.z - z, reach = p.r + (p.berth ?? berth);
+      const from = px * px + pz * pz;
+      // A newly discovered obstacle must allow an actor already inside it
+      // to move out, rather than make every escape heading unavailable.
+      if (from < reach * reach) return px * sx + pz * sz < 0;
+      const t = Math.max(0, Math.min(1, (px * sx + pz * sz) / (probe * probe || 1)));
+      return (px - sx * t) ** 2 + (pz - sz * t) ** 2 > reach * reach;
+    }) && (!canStep || canStep(x + sx, z + sz));
+  };
   if (clear(straight.dx, straight.dz)) return straight;
 
   const base = Math.atan2(straight.dz, straight.dx);
@@ -105,4 +119,17 @@ export function steerAround(
     }
   }
   return straight;
+}
+
+/** Follow the room outline while retaining local furniture and hazard avoidance. */
+export function steerInRoom(room: Room, x: number, z: number, tx: number, tz: number,
+  patches: readonly Patch[], berth: number, margin = 0.6): { dx: number; dz: number } {
+  const route = patches.length ? obstacleWaypoint(room, x, z, tx, tz, patches, berth, margin) : null;
+  if (route) {
+    const distance = Math.hypot(route.x - x, route.z - z) || 1;
+    return { dx: (route.x - x) / distance, dz: (route.z - z) / distance };
+  }
+  const target = roomWaypoint(room, x, z, tx, tz, margin);
+  return steerAround(x, z, target.x, target.z, patches, berth,
+    (px, pz) => roomSegmentClear(room, x, z, px, pz, margin));
 }

@@ -14,7 +14,9 @@ import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { useMouseLook } from "../input/mouseLook";
 import { readTouch } from "../input/touch";
-import { canControl, speedNow, useRun } from "../state/run";
+import { canControl, speedNow, runClock, useRun } from "../state/run";
+import { footingAt } from "../rooms/underfoot";
+import { playerAt } from "./where";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
 import {
@@ -132,6 +134,7 @@ export function Player() {
       rb.setTranslation({ x: position[0], y: position[1], z: position[2] }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      setPlayerAt(position[0], position[2]);
       camera.position.set(position[0], position[1] + EYE_OFFSET, position[2]);
     });
   }, [camera]);
@@ -184,6 +187,11 @@ export function Player() {
     const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
+    if (keyboard.consumeAction("shove") || pad.shovePressed) {
+      const facing = new Vector3();
+      camera.getWorldDirection(facing);
+      run.shove(facing.x, facing.z);
+    }
     const stick = readTouch();
     const forward = keyboard.actionDown("forward");
     const back = keyboard.actionDown("back");
@@ -228,19 +236,23 @@ export function Player() {
     // Footsteps and bob are driven by ground covered, not by the clock, so
     // they stay in step with the legs at any speed and stop dead when the
     // player does.
-    const moved = Math.hypot(dir.x, dir.z) * delta;
+    // Input supplies an upper bound, but collision decides the distance.
+    // Pressing against a wall is not walking; external shoves are not strides.
+    const moved = Math.min(Math.hypot(dir.x, dir.z), playerAt.speed) * delta;
     const running = dash && moved > 0.001;
     // Running is the only thing in the game that gives the player's room
     // away without costing them anything permanent. The store throttles the
     // write; this just says it is happening.
-    if (running) run.makeNoise();
+    const room = run.dungeon?.rooms.find(r => r.id === run.currentRoomId);
+    const surface = room ? footingAt(room, playerAt.x, playerAt.z, run.waterOpenedAt, runClock(run)) : "stone";
+    if (running) run.makeNoise(surface, playerAt.x, playerAt.z);
     const gait = bob.current;
     gait.distance += moved;
     gait.strength += ((moved > 0.001 ? 1 : 0) - gait.strength) * Math.min(1, delta * 9);
     if (gait.distance >= gait.nextStep) {
       gait.nextStep = gait.distance + STRIDE;
       gait.strong = !gait.strong;
-      sfx.step(gait.strong, running);
+      sfx.step(gait.strong, running, surface);
     }
   });
 

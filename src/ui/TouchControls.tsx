@@ -309,6 +309,8 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
       onPress={() => keyboard.pressAction("bar")}
     />
   );
+  const shove = <TouchButton key="shove" testId="touch-shove" label="SHOVE" size={size.button}
+    onPress={() => keyboard.pressAction("shove")} />;
 
   const inset = `calc(${size.margin}px + env(safe-area-inset-${side}, 0px))`;
   const gap = Math.round(size.margin * 0.7);
@@ -321,7 +323,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
         [side]: inset,
         display: "grid",
         gridTemplateColumns:
-          side === "right" ? `${size.button}px ${size.big}px` : `${size.big}px ${size.button}px`,
+          side === "right" ? `${size.button}px ${size.button}px ${size.big}px` : `${size.big}px ${size.button}px ${size.button}px`,
         gridTemplateRows: `${size.button}px ${size.big}px`,
         gap,
         alignItems: "end",
@@ -332,7 +334,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
         touchAction: "none",
       }}
     >
-      {side === "right" ? [bar, lantern, run, use] : [lantern, bar, use, run]}
+      {side === "right" ? [bar, lantern, shove, <span key="gap" />, run, use] : [shove, lantern, bar, use, run, <span key="gap" />]}
     </div>
   );
 }

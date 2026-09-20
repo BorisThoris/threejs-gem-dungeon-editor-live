@@ -11,9 +11,9 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/");
 const dir = mkdtempSync(join(tmpdir(), "layout-check-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(
@@ -24,6 +24,7 @@ writeFileSync(
   // validating dungeons the game never builds.
   `import "${root}src/game/rooms/shipped";
    export * from "${root}src/game/dungeon/layout";
+   export * from "${root}src/game/dungeon/footprint";
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
@@ -37,7 +38,6 @@ writeFileSync(
    export * from "${root}src/game/rooms/anchors";
    export * from "${root}src/game/rooms/templates";
    export * from "${root}src/game/rooms/kinds";
-   export * from "${root}src/game/rooms/floor";
    export * from "${root}src/game/rooms/biomes";
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/heat/coefficient";
@@ -61,6 +61,8 @@ writeFileSync(
    export * from "${root}src/game/ladder/awareness";
    export * from "${root}src/game/ladder/caps";
    export * from "${root}src/game/mobs/ambient";
+   export * from "${root}src/game/mobs/contract";
+   export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/props/breakable";
@@ -704,17 +706,25 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   // and the run's three start rooms, which share an id and a grid square,
   // are three rooms rather than one drawn three times.
   const drawn = new Map();
+  const samples = new Map();
+  const ruled = new Set(slotted.map((t) => t.id));
   let authored = 0;
-  for (let seed = 1; seed <= 120; seed++) {
+  // A growing template library divides the same authored-room probability
+  // among more candidates. Collect a fixed sample per slotted template so
+  // adding a room cannot make an unrelated room's variety go unmeasured.
+  // Stop on sample count, not unique arrangements: broken variation must fail.
+  for (let seed = 1; seed <= 1200; seed++) {
     for (const dungeon of runFloors(seed)) {
       for (const room of dungeon.rooms) {
         if (!room.template) continue;
         authored++;
+        samples.set(room.template, (samples.get(room.template) ?? 0) + 1);
         const props = L.authoredProps(room);
         const key = props.map((p) => `${p.kind}@${p.x.toFixed(2)},${p.z.toFixed(2)}`).join("|");
         drawn.set(room.template, (drawn.get(room.template) ?? new Set()).add(key));
       }
     }
+    if (seed >= 120 && [...ruled].every((id) => (samples.get(id) ?? 0) >= 60)) break;
   }
   check("the generator places authored rooms often enough to measure", authored > 100, `${authored} placed`);
 
@@ -748,13 +758,14 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
       Math.abs(share - L.AUTHORED_CHANCE) < 0.06,
       `${(share * 100).toFixed(0)}% of ${couldBe} eligible rooms against a declared ${(L.AUTHORED_CHANCE * 100).toFixed(0)}%`);
   }
-  const ruled = new Set(slotted.map((t) => t.id));
-  for (const [id, set] of drawn) {
+  for (const id of ruled) {
     // Eight orientations is what an unslotted room gets. Every slotted one
     // has to beat that by its own rules, which is the multiplication seen
     // in the rooms rather than in the maths - and a template without rules
     // is held to nothing here, because it promised nothing.
-    if (!ruled.has(id)) continue;
+    const set = drawn.get(id) ?? new Set();
+    check(`the ${id} variety sample is large enough`, (samples.get(id) ?? 0) >= 60,
+      `${samples.get(id) ?? 0} generated rooms`);
     check(`the ${id} the player walks into is many different rooms`, set.size >= 16,
       `${set.size} distinct arrangements`);
   }
@@ -1592,8 +1603,10 @@ check("the shipped room templates reach the floors the game generates", authored
   // The definition in world.ts and the one owner in run.ts are the only
   // places the number itself is allowed to appear. Comments are prose.
   const offenders = src.filter((line) => {
-    const [file, , ...rest] = line.split(":");
-    const text = rest.join(":").trim();
+    const match = line.replaceAll("\\", "/").match(/^(.*?):\d+:(.*)$/);
+    if (!match) return false;
+    const [, file, source] = match;
+    const text = source.trim();
     if (text.startsWith("*") || text.startsWith("//")) return false;
     if (file.endsWith("src/game/world.ts")) return false;
     if (text.includes("alarmFloorOn") || text.includes("alarmFloorFor")) return false;
@@ -1880,7 +1893,6 @@ check("the shipped room templates reach the floors the game generates", authored
       for (const r of dd.rooms) {
         const target = L.gemFor(r, dd.seed);
         if (!target) continue;
-        const half = r.size / 2;
         const obs = L.obstaclesFor("ground", r, dd.seed, []);
         // The obstacle list already carries the body's width - `obstaclesFor`
         // is the one owner of it, and each patch names its own berth - so
@@ -1888,12 +1900,12 @@ check("the shipped room templates reach the floors the game generates", authored
         // Warden does. A fill at any other width tests a creature that does
         // not exist.
         const WALL = 0.6;
-        const blocked = (x, z) => Math.abs(x) > half - WALL || Math.abs(z) > half - WALL || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
+        const blocked = (x, z) => !L.insideRoom(r, x, z, WALL) || obs.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + (o.berth ?? 0));
         for (const dir of Object.keys(r.links)) {
           walked++;
           // Where travel puts a body that came in this way - a position,
           // not a triple.
-          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, dir)?.position : null;
+          const start = L.spawnAfterTravel ? L.spawnAfterTravel(r, L.OPPOSITE[dir])?.position : null;
           if (!start) { walked--; continue; }
           // Coarse flood fill on a half-metre grid.
           const step = 0.5, seen = new Set(), queue = [[start[0], start[2]]];
@@ -2822,7 +2834,7 @@ check("the shipped room templates reach the floors the game generates", authored
     return doors;
   };
   const routeToGem = (room, seed, doors = Object.keys(room.links)) => {
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     if (!gem) return null;
     const spikes = room.kind === "trap" ? L.trapHazards(room, gem) : [];
@@ -2830,8 +2842,7 @@ check("the shipped room templates reach the floors the game generates", authored
     // The hazard tests the camera's own point, so a patch blocks a disc of
     // exactly its radius - the body's width is what the walls take.
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((p) => Math.hypot(x - p.x, z - p.z) < L.PROP_SPECS[p.kind].radius + BODY);
 
@@ -2902,13 +2913,12 @@ check("the shipped room templates reach the floors the game generates", authored
   const crossable = (room, seed) => {
     const dirs = ["north", "south", "east", "west"].filter((x) => room.links[x]);
     if (dirs.length < 2) return null;
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
     const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
     const n = Math.ceil((half * 2) / CELL);
@@ -2954,13 +2964,12 @@ check("the shipped room templates reach the floors the game generates", authored
    * counter reach further and are only easier.
    */
   const reachable = (room, seed, target) => {
-    const half = room.size / 2;
+    const half = Math.max(...L.DIRS.map((dir) => L.doorReach(room, dir)));
     const gem = L.gemFor(room, seed);
     const spikes = room.kind === "trap" && gem ? L.trapHazards(room, gem) : [];
     const props = L.placementsFor(room, seed).filter((q) => L.PROP_SPECS[q.kind].solid);
     const blocked = (x, z) =>
-      Math.abs(x) > half - BODY ||
-      Math.abs(z) > half - BODY ||
+      !L.insideRoom(room, x, z, BODY) ||
       spikes.some(([sx, , sz]) => Math.hypot(x - sx, z - sz) < L.HAZARD_RADIUS) ||
       props.some((q) => Math.hypot(x - q.x, z - q.z) < L.PROP_SPECS[q.kind].radius + BODY);
     const n = Math.ceil((half * 2) / CELL);
@@ -3786,20 +3795,20 @@ check("the shipped room templates reach the floors the game generates", authored
         const dt = 1 / 60;
         let arrived = false;
         let hit = false;
-        for (let step = 0; step < 1200 && !arrived; step++) {
+        const travelBudget = Math.max(1200, Math.ceil(r.size * 3 / L.WARDEN_SPEED_ROUSED / dt));
+        for (let step = 0; step < travelBudget && !arrived; step++) {
           const gap = Math.hypot(trick[0] - wx, trick[1] - wz);
           if (gap <= L.WARDEN_TOUCH_RADIUS) {
             arrived = true;
             break;
           }
-          const h = L.steerAround(wx, wz, trick[0], trick[1], patches, L.WARDEN_HAZARD_BERTH);
+          const h = L.steerInRoom(r, wx, wz, trick[0], trick[1], patches, L.WARDEN_HAZARD_BERTH);
           const len = Math.min(
             L.WARDEN_SPEED_ROUSED * dt,
             L.WARDEN_MAX_STEP,
             Math.max(0, gap - L.WARDEN_TOUCH_RADIUS * 0.5)
           );
-          wx = Math.max(-limit, Math.min(limit, wx + h.dx * len));
-          wz = Math.max(-limit, Math.min(limit, wz + h.dz * len));
+          [wx, wz] = L.roomStep(r, wx, wz, h.dx * len, h.dz * len);
           if (L.inPatch(patches, wx, wz)) hit = true;
         }
         if (hit) bitten++;
@@ -3971,7 +3980,7 @@ check("the shipped room templates reach the floors the game generates", authored
       const d = L.generateDungeon({ seed: seed * 31 + floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       for (const r of d.rooms) {
         rooms++;
-        const b = L.biomeIdFor(r.kind, r.id, d.seed);
+        const b = L.biomeIdFor(r.kind, r.id, d.seed, r);
         seen.set(b, (seen.get(b) ?? 0) + 1);
         if (!perKind.has(r.kind)) perKind.set(r.kind, new Set());
         perKind.get(r.kind).add(b);
@@ -4021,7 +4030,7 @@ check("the shipped room templates reach the floors the game generates", authored
       const d = L.generateDungeon({ seed: seed * 31 + 2, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
       for (const r of d.rooms) {
         if (r.template) continue;
-        const want = L.BIOME[L.biomeIdFor(r.kind, r.id, d.seed)].litter;
+        const want = L.BIOME[L.biomeIdFor(r.kind, r.id, d.seed, r)].litter;
         if (!want.length) continue;
         looked++;
         const placed = L.placementsFor(r, d.seed, {});
@@ -4533,6 +4542,61 @@ check("the shipped room templates reach the floors the game generates", authored
   check("the Harrier cannot be sent away with a noise", (sus.harrier.deaf ?? []).includes("loud") && sus.harrier.answers.blast !== undefined);
 
   /**
+   * Who a bomb reaches is decided by each row against what the room graph
+   * delivers, and these are the consequences of the numbers as they
+   * stand. A bomb is 1.00 where it goes off, 0.35 next door and 0.12 two
+   * doors on. The review found the store deciding all of this by "same
+   * room" while the rows said otherwise; now the rows decide, so a
+   * threshold nudged by a hand's width changes the game, and this is what
+   * would go red.
+   */
+  {
+    const here = L.EMISSIONS.bombBurst.magnitude;
+    const nextDoor = here * L.DOORWAY;
+    const twoDoors = nextDoor * L.DOORWAY;
+    const hears = (id, m) => L.answersTo(sus[id], "blast", m);
+    check(
+      "a bomb next door puts up a roost, downs the Harrier and routs the Warden",
+      hears("bat", nextDoor) && hears("harrier", nextDoor) && hears("warden", nextDoor),
+      `arrives at ${nextDoor.toFixed(3)}`
+    );
+    check(
+      "but does not kneel the Keeper: the door is the fight, so the blast must be in the room the door is in",
+      !hears("keeper", nextDoor) && hears("keeper", here),
+      `keeper answers at ${sus.keeper.answers.blast}, next door is ${nextDoor.toFixed(3)}`
+    );
+    check(
+      "and two doors away only the rats notice",
+      hears("rat", twoDoors) && ["bat", "harrier", "warden", "keeper"].every((id) => !hears(id, twoDoors)),
+      `arrives at ${twoDoors.toFixed(3)}`
+    );
+    check("the Reaper is deaf to a blast as a signal: what holds it is the room it stands in", !hears("reaper", here));
+
+    /**
+     * The rows are read by the things they describe. A source check,
+     * because a runtime one passes for as long as the hard-coded rule and
+     * the table happen to agree - which is exactly how the table went
+     * unread for a dozen runs.
+     */
+    const src = (f) => readFileSync(join(root, f), "utf8");
+    const store = src("src/game/state/run.ts");
+    check(
+      "the store asks the Warden's, the Harrier's and the Keeper's rows whether a blast reached them",
+      /dinReaches\("warden", "blast"/.test(store) && /dinReaches\("harrier", "blast"/.test(store) && /dinReaches\("keeper", "blast"/.test(store)
+    );
+    check("and holds the Reaper by the room it stands in, saying so", /reaperAwake && get\(\)\.currentRoomId === roomId\) get\(\)\.stallReaper/.test(store));
+    check("the rats scatter from what their row says, not from feet alone", /din\.answering\(\w+, "rat", room\.id\)/.test(src("src/game/mobs/Rats.tsx")));
+    check("the moth is drawn by light, whoever carries it", /din\.answering\(\w+, "moth", room\.id\)/.test(src("src/game/mobs/Moth.tsx")) && !/lanternRaised/.test(src("src/game/mobs/Moth.tsx")));
+    check("the Sentry's patience is halved by the light its row names, not by a flag about the player", /din\.reaches\("sentry", "bright"/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
+    check("the roost answers to its own row", /SUSCEPTIBILITY\.bat/.test(src("src/game/mobs/Bats.tsx")));
+    check("the toads answer to theirs, and go under", /din\.answering\(\w+, "croaker", room\.id\)/.test(src("src/game/mobs/Croakers.tsx")));
+    check(
+      "a susceptibility block is read in the Din and nowhere else",
+      !["src/game/state/run.ts", "src/game/mobs/Rats.tsx", "src/game/mobs/Moth.tsx", "src/game/sentry/Sentry.tsx"].some((f) => /answersTo\(/.test(src(f)))
+    );
+  }
+
+  /**
    * The design statement at the bottom of the emissions table. Stealing
    * and smashing must not feel alike, and a player who learns the floor
    * does not hear a gem leave its socket has learned the game's actual
@@ -4552,6 +4616,112 @@ check("the shipped room templates reach the floors the game generates", authored
   /** Walking is below every threshold in the game. That is what walking is for. */
   const thresholds = receivers.flatMap((id) => Object.entries(sus[id].answers)).filter(([t]) => t === "loud").map(([, v]) => v);
   check("walking is quieter than anything on the floor listens for", thresholds.every((v) => L.EMISSIONS.walk.magnitude < v), `walk ${L.EMISSIONS.walk.magnitude} vs min ${Math.min(...thresholds)}`);
+
+  /**
+   * The prototype: what every creature must have, held to every field.
+   *
+   * `mobs/contract.ts` is one row per creature, and each field names a
+   * thing some other table or file must agree with. This is what keeps a
+   * creature from being as finished as the run that added it: a creature
+   * with a body and no voice, a voice nothing plays, an event nothing
+   * emits, a lesson nobody wrote, or a probe the checks cannot read fails
+   * here by name. The rows are the floor's ten creatures; the checks are
+   * what "ten" means.
+   */
+  {
+    const C = L.CREATURES;
+    const ids = L.CREATURE_IDS;
+    const src = (f) => { try { return readFileSync(join(root, f), "utf8"); } catch { return null; } };
+    const audio = src("src/game/systems/audio.ts");
+    const sfxStart = audio.indexOf("export const sfx");
+    const sfxEnd = audio.indexOf("\nexport const", sfxStart + 1);
+    const sfxBody = audio.slice(sfxStart, sfxEnd > 0 ? sfxEnd : audio.length);
+    const cueExists = (name) => new RegExp(`^ {2}${name}\\(`, "m").test(sfxBody);
+    const tree = execFileSync("grep", ["-rho", "sfx\\.[a-zA-Z0-9_]*\\|bus\\.emit(\"[a-zA-Z]*\"", `${root}src`], { encoding: "utf8" });
+    const played = (name) => new RegExp(`sfx\\.${name}$`, "m").test(tree);
+    const emitted = (name) => tree.includes(`bus.emit("${name}"`);
+    const events = src("src/game/events.ts");
+    const declared = (name) => new RegExp(`^ {2}${name}:`, "m").test(events);
+    const lessons = new Set(L.LESSONS.map((l) => l.id));
+    const bodies = L.BODIES;
+    const sus = L.SUSCEPTIBILITY;
+    const caps = L.CAPS;
+
+    check("every creature in the body table has a row in the contract, and no row names a creature the floor lacks",
+      Object.keys(bodies).every((id) => C[id]) && ids.every((id) => bodies[id]),
+      `${ids.length} creatures`);
+    const wrongBody = ids.filter((id) => C[id].body !== bodies[id]);
+    check("every row's body is the body the floor reads", wrongBody.length === 0, wrongBody.join(", ") || "all agree");
+    const noRow = ids.filter((id) => !sus[id]);
+    check("every creature answers to something, or says in its row that it does not", noRow.length === 0, noRow.join(", ") || "all declared");
+    const noCap = ids.filter((id) => !caps[id]);
+    check("every creature is on the awareness ladder, capped", noCap.length === 0, noCap.join(", ") || "all capped");
+    const named = ids.filter((id) => !C[id].name || !C[id].lives || C[id].lives.length < 20);
+    check("every creature has a name and a sentence about where it lives", named.length === 0, named.join(", "));
+    const silent = ids.filter((id) => !C[id].voice.held && C[id].voice.moments.length === 0);
+    check("every creature has a voice", silent.length === 0, silent.join(", "));
+    const unheldVoice = ids.flatMap((id) => [C[id].voice.held, ...C[id].voice.moments].filter(Boolean).filter((cue) => !cueExists(cue)).map((cue) => `${id}:${cue}`));
+    check("every cue a creature names exists in the sound design", unheldVoice.length === 0, unheldVoice.join(", ") || "all exist");
+    const unplayed = ids.flatMap((id) => [C[id].voice.held, ...C[id].voice.moments].filter(Boolean).filter((cue) => !played(cue)).map((cue) => `${id}:${cue}`));
+    check("and every one of them is played by something", unplayed.length === 0, unplayed.join(", ") || "all played");
+    const heldStops = ids.filter((id) => C[id].voice.held && C[id].voice.held !== "skitter" && !cueExists(`${C[id].voice.held}Stop`));
+    check("every held voice can be stopped", heldStops.length === 0, heldStops.join(", ") || "all stoppable");
+    const badEvents = ids.flatMap((id) => C[id].events.filter((e) => !declared(e) || !emitted(e)).map((e) => `${id}:${e}`));
+    check("every event a creature announces is declared on the bus and emitted by something", badEvents.length === 0, badEvents.join(", ") || "all declared and emitted");
+    const noEvents = ids.filter((id) => C[id].events.length === 0);
+    check("every creature announces at least one thing it does", noEvents.length === 0, noEvents.join(", "));
+    const noLesson = ids.filter((id) => !lessons.has(C[id].lesson));
+    check("every creature is introduced by a lesson the teacher has", noLesson.length === 0, noLesson.join(", ") || "all taught");
+    const noFile = ids.filter((id) => !src(`src/game/${C[id].component}`));
+    check("every creature is drawn by the file its row names", noFile.length === 0, noFile.join(", ") || "all present");
+    const noProbe = ids.filter((id) => { const f = src(`src/game/${C[id].component}`); return f && !f.includes(C[id].probe); });
+    check("and that file publishes the probe the checks read", noProbe.length === 0, noProbe.join(", ") || "all probed");
+    const unpanned = ids.filter((id) => { const f = src(`src/game/${C[id].component}`); return f && !f.includes("sideOf("); });
+    check("every creature's sound has a side to it", unpanned.length === 0, unpanned.join(", ") || "all panned");
+    const threats = ids.filter((id) => C[id].role === "threat");
+    check("a threat costs something and can be answered", threats.every((id) => C[id].harm !== "none" && C[id].answers.length > 0), threats.join(", "));
+    const lifeTakers = ids.filter((id) => C[id].harm === "life");
+    const noTell = lifeTakers.filter((id) => C[id].tell && !/tell/.test(src(`src/game/${C[id].component}`) ?? ""));
+    check("every creature that can take a life and claims a tell wears it", noTell.length === 0, noTell.join(", ") || lifeTakers.join(", "));
+    const untold = lifeTakers.filter((id) => !C[id].tell && id !== "reaper");
+    check("and the only life-taker without one is the Reaper, which is the point of the Reaper", untold.length === 0, untold.join(", "));
+    const ambient = ids.filter((id) => C[id].role === "ambient");
+    check("every ambient creature is harmless or costs you only the floor's attention", ambient.every((id) => ["none", "alarm", "light"].includes(C[id].harm)), ambient.join(", "));
+    const answersNothing = ids.filter((id) => C[id].answers.length === 0);
+    check("nothing on the floor is unanswerable", answersNothing.length === 0, answersNothing.join(", "));
+  }
+
+  /**
+   * And what every environment must have: the biome contract, held the
+   * same way. A biome is a look, a floor that carries, litter of its own,
+   * a name for its ground, the life that lives in it and the sound it
+   * makes when nothing is happening. The ninth biome was added against
+   * this; the first eight were completed to it.
+   */
+  {
+    const B = L.BIOME;
+    const ids = L.BIOMES;
+    const airs = new Set(L.AIRS);
+    const audio = readFileSync(join(root, "src/game/systems/audio.ts"), "utf8");
+    check("every biome has a name, a floor, a wall, a glow and a surface the registry paints",
+      ids.every((id) => B[id].name && /^#[0-9a-f]{6}$/i.test(B[id].floor) && /^#[0-9a-f]{6}$/i.test(B[id].wall) && /^#[0-9a-f]{6}$/i.test(B[id].glow) && L.BUILTIN_SURFACES.includes(B[id].surface)),
+      ids.join(", "));
+    check("every biome says what it sounds like, in a word the sound design has",
+      ids.every((id) => airs.has(B[id].air)), ids.map((id) => `${id}:${B[id].air}`).join(" "));
+    const airBuilt = [...airs].filter((a) => a === "still" || new RegExp(`^ {2}${a}: \\{`, "m").test(audio));
+    check("and every air is built, or is the one that is silence on purpose", airBuilt.length === airs.size, [...airs].filter((a) => !airBuilt.includes(a)).join(", ") || `${airs.size} airs`);
+    check("at least one biome is still, so silence is a choice rather than a gap", ids.some((id) => B[id].air === "still"));
+    check("the airs are not all the same air", new Set(ids.map((id) => B[id].air)).size >= 5, `${new Set(ids.map((id) => B[id].air)).size} distinct`);
+    const homeless = ids.filter((id) => !Object.keys(L.BIOMES_FOR).some((k) => L.BIOMES_FOR[k].includes(id)));
+    check("every biome is one some kind of room is built in", homeless.length === 0, homeless.join(", "));
+    const badLife = ids.flatMap((id) => B[id].life.filter((m) => !L.CREATURES[m] || L.CREATURES[m].role !== "ambient").map((m) => `${id}:${m}`));
+    check("what a biome says lives in it is an ambient creature of the floor", badLife.length === 0, badLife.join(", ") || "all ambient");
+    const placed = ["rat", "bat", "croaker"];
+    const nowhere = placed.filter((m) => !ids.some((id) => B[id].life.includes(m)));
+    check("every placed ambient creature lives in at least one biome", nowhere.length === 0, nowhere.join(", "));
+    check("and the fungal biome, added against the contract, has life and an air and a floor that carries less than stone",
+      B.fungal && B.fungal.life.length >= 1 && B.fungal.air !== "still" && B.fungal.carry < B.hewn.carry, JSON.stringify(B.fungal));
+  }
 
   /** Propagation: the transplanted half, and the numbers that are ours. */
   const line = (n) => Array.from({ length: n }, (_, i) => ({
@@ -5355,6 +5525,22 @@ check("the shipped room templates reach the floors the game generates", authored
     { slot: "prize", op: "nsubst", into: ["chest", "rubble"], n: 1 },
   ];
   const counts = { vessel: 3, prize: 1 };
+  const localRule = { slot: "vessel", op: "subst", into: ["crate"],
+    byDistrict: { gardens: ["urn"], works: ["barrel"], tombs: ["skull"] } };
+  for (const [district, expected] of [["gardens", "urn"], ["works", "barrel"], ["tombs", "skull"], [undefined, "crate"]]) {
+    const local = L.resolveSlots(props, [localRule], "district-fixture", district);
+    check(`authored supplies follow ${district ?? "the default"} tradition`,
+      local.slice(0, 3).every((p, i) => p.kind === expected && p.x === props[i].x && p.z === props[i].z)
+      && local[3].kind === "chest", expected);
+  }
+  check("district alternatives are all checked for footprint clearance",
+    L.kindOptions(props, [localRule])[0].sort().join(",") === "barrel,crate,skull,urn");
+  check("a district cannot turn dressing into an unchecked reward",
+    !L.keepsItsWorth(props, { ...localRule, byDistrict: { tombs: ["chest"] } }));
+  check("district slot imports accept valid rules and reject malformed choices",
+    L.isSlotRule(localRule) && !L.isSlotRule({ ...localRule, byDistrict: { gardens: [] } })
+    && !L.isSlotRule({ ...localRule, byDistrict: { nowhere: ["urn"] } })
+    && !L.isSlotRule({ ...localRule, byDistrict: { tombs: ["unknown-prop"] } }));
   check("a template with two slots is many rooms rather than one", L.variantsOf(rules, counts) >= 3, `${L.variantsOf(rules, counts)} variants`);
 
   /**
@@ -5592,50 +5778,6 @@ check("the shipped room templates reach the floors the game generates", authored
   );
 }
 
-// --- A floor the sampler can actually read -----------------------------------
-//
-// Half the rooms the generator makes are round, and every one of them drew
-// its floor as a fan: one vertex in the middle, one triangle per side,
-// each running the whole radius. Texture coordinates were right; the shape
-// was not. A triangle eight metres long and a sliver wide has a huge
-// texture derivative along it and almost none across, the sampler answers
-// with the coarsest mip it has, and every wedge comes back one flat
-// colour. On screen a round room had no stone in it - a dozen coloured
-// bands - and it had been that way in every build.
-//
-// The eye found it; this keeps it found. A floor triangle that grows long
-// again is a floor that will smear, and that is a number, not a screen.
-{
-  const sizes = [12, 16, 20, 24];
-  const measured = [];
-  for (const shape of L.SHAPES) {
-    for (const size of sizes) {
-      const room = { id: "r", kind: "normal", grid: { x: 0, z: 0 }, size, shape, links: {}, seed: 1 };
-      measured.push({ shape, size, edge: L.longestFloorEdge(room), segments: shape === "square" ? 0 : L.floorSegments(room) });
-    }
-  }
-  /**
-   * A quarter of the room, which is the line the fan was on the wrong side
-   * of: its wedges ran the whole radius, half the room, and smeared.
-   */
-  const thin = measured.filter((m) => m.edge > m.size / 4);
-  check(
-    "no floor is built from triangles long enough to smear its own texture",
-    thin.length === 0,
-    thin.length
-      ? `LONG AND THIN: ${thin.map((m) => `${m.shape}@${m.size}: ${m.edge}m`).join(", ")}`
-      : `${measured.length} floors, longest edge ${Math.max(...measured.map((m) => m.edge))}m`
-  );
-  check(
-    "and every shape keeps its own outline, corners landing on vertices",
-    L.SHAPES.filter((sh) => sh !== "square").every((sh) => {
-      const room = { id: "r", kind: "normal", grid: { x: 0, z: 0 }, size: 16, shape: sh, links: {}, seed: 1 };
-      return L.floorSegments(room) % L.SHAPE_SIDES[sh] === 0;
-    }),
-    measured.filter((m) => m.segments).map((m) => `${m.shape}@${m.size}:${m.segments}`).join(", ")
-  );
-}
-
 // --- No relic is a purchase that changes nothing -----------------------------
 //
 // The Cutter's Cant promised "the third offer the shop was not going to
@@ -5752,7 +5894,7 @@ check("the shipped room templates reach the floors the game generates", authored
   // (`run.travel()`) or by selector (`useRun((s) => s.startRun)`), because
   // both are a way in.
   const sweep = (paths) =>
-    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8" })
+    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })
       .split("\n")
       .map((l) => l.slice(1));
   const outside = sweep([join(root, "src")]);

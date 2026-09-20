@@ -22,14 +22,41 @@
         "generate-icon": "node scripts/generate-icon.mjs",
         "test:smoke": "node scripts/smoke-test.mjs",
         "test:layout": "node scripts/layout-check.mjs",
+        "test:world": "node scripts/world-check.mjs",
+        "test:exploration": "node scripts/exploration-browser-check.mjs",
+        "test:watercourse": "node scripts/watercourse-browser-check.mjs",
+        "test:ecology": "node scripts/ecology-browser-check.mjs",
+        "test:rats": "node scripts/rat-spikes-browser-check.mjs",
+        "test:sentry-projection": "node scripts/sentry-projection-check.mjs",
+        "test:service-trail": "node scripts/service-trail-check.mjs",
+        "test:secret-clue": "node scripts/secret-clue-browser-check.mjs",
+        "test:bellcaps": "node scripts/bellcap-browser-check.mjs",
+        "test:apses": "node scripts/apse-browser-check.mjs",
+        "test:beetles": "node scripts/beetle-browser-check.mjs",
         "test:perf": "node scripts/perf-check.mjs",
         "test:prod": "yarn build && node scripts/prod-check.mjs",
         "test:desktop": "node scripts/desktop-check.mjs",
         "test:pad": "node scripts/pad-check.mjs",
         "test:touch": "node scripts/touch-check.mjs",
         "test:audio": "node scripts/audio-check.mjs",
+        "test:room-acoustics": "node scripts/room-acoustics-check.mjs",
+        "test:builder-world": "node scripts/builder-world-check.mjs",
+        "test:rows": "node scripts/rows-check.mjs",
         "test:run": "node scripts/run-through.mjs",
-        "tour": "node scripts/tour.mjs"
+        "test:walk": "node scripts/walk-run.mjs",
+        "test:gameplay": "node scripts/gameplay-check.mjs",
+        "test:overlay": "node scripts/overlay-check.mjs",
+        "tour": "node scripts/tour.mjs",
+        "meta": "node scripts/generate-project-meta.mjs",
+        "meta:check": "node scripts/generate-project-meta.mjs --check",
+        "shots": "node scripts/capture-project-shots.mjs",
+        "social": "node scripts/generate-social-preview.mjs",
+        "social:check": "node scripts/generate-social-preview.mjs --check",
+        "icons": "node scripts/generate-app-icons.mjs",
+        "icons:check": "node scripts/generate-app-icons.mjs --check",
+        "meta:refresh": "node scripts/refresh-project-meta.mjs",
+        "test:creatures": "node scripts/creature-render-check.mjs",
+        "test:bat-flight": "node scripts/bat-flight-check.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
@@ -74,7 +101,10 @@
             "!node_modules/**/*"
         ],
         "win": {
-            "target": ["nsis", "zip"],
+            "target": [
+                "nsis",
+                "zip"
+            ],
             "icon": "build/icon.png"
         },
         "nsis": {
@@ -84,7 +114,10 @@
             "createStartMenuShortcut": true
         },
         "mac": {
-            "target": ["dmg", "zip"],
+            "target": [
+                "dmg",
+                "zip"
+            ],
             "icon": "build/icon.png",
             "category": "public.app-category.games"
         },

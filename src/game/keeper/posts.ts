@@ -1,5 +1,12 @@
 import { DIRS, type Dir, type Dungeon } from "../dungeon/types";
 import { KEEPER_FLOOR } from "../world";
+import { doorPosition } from "../dungeon/layout";
+import type { Room } from "../dungeon/types";
+
+export function keeperPostPosition(room: Room, dir: Dir): { x: number; z: number } {
+  const [x, , z] = doorPosition(room, dir);
+  return { x: x * 0.72, z: z * 0.72 };
+}
 
 /** A doorway into the exit room, seen from the room the player stands in. */
 export interface KeeperPost {

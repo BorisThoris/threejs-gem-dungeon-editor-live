@@ -5,7 +5,7 @@ import type { Mesh, MeshStandardMaterial } from "three";
 
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { memoryAnchors } from "./anchors";
+import { MEMORY_PEDESTAL_HEIGHT, MEMORY_PEDESTAL_RADIUS, memoryAnchors } from "./anchors";
 import { createRng } from "../rng";
 import { Dressing } from "../rooms/Dressing";
 import type { RoomKindProps } from "../rooms/kinds";
@@ -204,7 +204,7 @@ export function MemoryRoom({ room }: RoomKindProps) {
           every step, and these never move. */}
       <RigidBody type="fixed" colliders={false}>
         {pedestals.map((p, i) => (
-          <CylinderCollider key={i} args={[0.5, 0.4]} position={[p[0], 0.5, p[2]]} />
+          <CylinderCollider key={i} args={[MEMORY_PEDESTAL_HEIGHT / 2, MEMORY_PEDESTAL_RADIUS]} position={[p[0], MEMORY_PEDESTAL_HEIGHT / 2, p[2]]} />
         ))}
       </RigidBody>
       {pedestals.map((p, i) => (
