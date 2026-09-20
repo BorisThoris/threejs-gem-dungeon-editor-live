@@ -112,7 +112,7 @@
         "bytes": 49778,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-20T12:45:10.044Z"
+        "capturedAt": "2026-09-20T15:31:24.200Z"
       },
       {
         "profile": "desktop",
@@ -121,7 +121,7 @@
         "bytes": 48891,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-20T12:45:28.491Z"
+        "capturedAt": "2026-09-20T15:31:42.596Z"
       },
       {
         "profile": "full",
@@ -130,7 +130,7 @@
         "bytes": 43710,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-20T12:46:05.172Z"
+        "capturedAt": "2026-09-20T15:32:19.245Z"
       },
       {
         "profile": "mobile",
@@ -139,7 +139,7 @@
         "bytes": 27286,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-20T12:45:46.795Z"
+        "capturedAt": "2026-09-20T15:32:00.917Z"
       },
       {
         "profile": "og",
@@ -148,7 +148,7 @@
         "bytes": 41765,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-20T12:46:23.484Z"
+        "capturedAt": "2026-09-20T15:32:37.537Z"
       }
     ]
   },
@@ -242,10 +242,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "3ca2510",
-    "lastCommitDate": "2026-09-20T12:35:40Z",
-    "lastCommitSubject": "Write down what the repo owes an agent, and in what order",
-    "commitCount": 391,
+    "head": "44ea961",
+    "lastCommitDate": "2026-09-20T15:08:05Z",
+    "lastCommitSubject": "Merge main, and drop the floor fix it had already made",
+    "commitCount": 394,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
