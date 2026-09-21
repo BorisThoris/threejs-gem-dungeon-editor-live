@@ -1,6 +1,6 @@
 {
   "slug": "threejs-gem-dungeon-editor",
-  "capturedAt": "2026-09-20T15:32:37.567Z",
+  "capturedAt": "2026-09-21T20:24:40.398Z",
   "source": "deployment",
   "url": "https://threejs-gem-dungeon-editor-git.pages.dev/",
   "recipe": {
@@ -23,7 +23,7 @@
       "file": "card.jpg",
       "width": 1600,
       "height": 900,
-      "bytes": 49778,
+      "bytes": 49803,
       "status": "captured"
     },
     {
@@ -31,7 +31,7 @@
       "file": "desktop.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 48891,
+      "bytes": 48876,
       "status": "captured"
     },
     {
@@ -39,7 +39,7 @@
       "file": "mobile.jpg",
       "width": 430,
       "height": 932,
-      "bytes": 27286,
+      "bytes": 27290,
       "status": "captured"
     },
     {
@@ -47,7 +47,7 @@
       "file": "full.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 43710,
+      "bytes": 43703,
       "status": "captured"
     },
     {
@@ -55,7 +55,7 @@
       "file": "og.jpg",
       "width": 1200,
       "height": 630,
-      "bytes": 41765,
+      "bytes": 41782,
       "status": "captured"
     }
   ]
