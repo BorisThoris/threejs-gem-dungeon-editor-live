@@ -753,3 +753,24 @@ calls, 6,731 triangles, 93 live geometries and 10 textures, within the written
 616 sprint frames retain 0.00 MB after collection, and 20,000 held-audio updates
 retain one voice. The heaviest room remains the floor-three trap in seed 4242;
 neither a cross chamber nor the foundry effect becomes the new worst case.
+
+Ash settling halls extend the old works into the buried choir. Their flue
+baffles, warm low light and one-sided windrows describe where kiln exhaust was
+slowed before it reached the tombs. Deep ash is quieter than bare stone, absorbs
+early footstep returns, supports rats, and carries a sparse falling-grit room
+tone. Deposits keep the central service crossing open and continue as edge
+windrows through galleries; they use dirt grain and the same physical footprint
+clipping as every other terrain bed.
+
+Ash mites make those deposits a habitat. Up to six block-cut bodies comb real
+windrow cells in one instanced draw call, outside the clear central crossing and
+away from solid furnishings. A sprint or blast sends the whole colony beneath
+the ash for five seconds, with one panned scurry and one first-time lesson. The
+generation sweep finds 4,082 valid homes across 4,539 rooms, and the native
+render check verifies both visible pixels and the shared burrow response.
+
+The full 78-room performance sweep with ash halls and active mite colonies
+peaks at 76 draw calls, 6,578 triangles, 87 live geometries and 10 textures,
+within the 96 / 8,800 / 112 / 16 budgets. Ten repeated room laps show no
+geometry growth, 1,493 sprint frames retain no heap after collection, and
+20,000 held-audio updates still retain one voice.

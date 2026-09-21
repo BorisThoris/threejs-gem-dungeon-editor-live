@@ -32,3 +32,4 @@ scripts/authoring/authored.json
 
 # Local world-building browser review captures.
 output/world-review/
+output/playwright/

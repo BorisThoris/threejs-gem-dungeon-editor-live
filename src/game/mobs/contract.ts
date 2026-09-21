@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  mite: {
+    name: "ash mites", role: "ambient", body: "ground",
+    lives: "They comb the soft windrows beneath old flues and vanish into the ash when a loud signal reaches the room.",
+    harm: "none", answers: ["walk quietly", "watch a colony vanish when something loud is near"],
+    voice: { held: null, moments: ["scurry"] }, events: ["mitesBurrowed"],
+    lesson: "mite", component: "mobs/AshMites.tsx", probe: "__mites", tell: false,
+  },
   beetle: {
     name: "glow beetles", role: "ambient", body: "flying",
     lives: "They feed in low flights around bellcaps on damp channel banks, sheltering beneath the caps when the bed dries, bright light approaches or a noise arrives.",

@@ -53,6 +53,7 @@ import { DistrictLintels } from "../worldbuilding/DistrictLintels";
 import { DistrictWays } from "../worldbuilding/DistrictWaymarks";
 import { WallCourses } from "../worldbuilding/WallCourses";
 import { FoundryEmbers } from "../worldbuilding/FoundryEmbers";
+import { AshMites } from "../mobs/AshMites";
 import { Terrain } from "./Terrain";
 
 interface RoomProps {
@@ -314,6 +315,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       {room.waterway && <Watercourse room={room} />}
       <ServiceMarks room={room} />
       <FoundryEmbers room={room} />
+      <AshMites room={room} />
       <BellcapColony room={room} />
       <GlowBeetles room={room} />
       <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />

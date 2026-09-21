@@ -38,7 +38,7 @@ export function Audio() {
   }, [playing]);
   useEffect(() => {
     // Shape the existing held voice, with no new nodes on a room change.
-    const air = biome === "flooded" ? 1.35 : biome === "mossy" ? 0.65 : biome === "foundry" ? 1.15 : 1;
+    const air = biome === "flooded" ? 1.35 : biome === "mossy" ? 0.65 : biome === "ash" ? 0.72 : biome === "foundry" ? 1.15 : 1;
     const resonance = biome === "crystal" ? 27.5 : biome === "bone" ? -9 : 0;
     if (playing) ambience.setTension(rouse, air, resonance);
   }, [playing, rouse, biome]);

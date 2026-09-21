@@ -13,18 +13,19 @@ try{
   const {generateDungeon}=await import('/src/game/dungeon/generate.ts');
   const {croakersFor,ratsFor,roostFor,mothRoom}=await import('/src/game/mobs/ambient.ts');
   const {beetlesFor}=await import('/src/game/mobs/beetleHabitat.ts');
+  const {mitesFor}=await import('/src/game/mobs/miteHabitat.ts');
   const {keeperPostsFor}=await import('/src/game/keeper/posts.ts');
   const found={};
   for(let seed=1;seed<80;seed++){
    const d=generateDungeon({seed,floor:3});
    for(const r of d.rooms){
-    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
+    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
     for(const [k,v]of Object.entries(conditions))if(v&&!found[k])found[k]={d,r};
    }
-   if(Object.keys(found).length===7)return found;
+   if(Object.keys(found).length===8)return found;
   }throw Error('missing habitat');
  });
- const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
+ const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{
@@ -85,6 +86,19 @@ try{
   }
   if(kind==='harrierDown')assert.ok(result.bounds[1]>=result.base,'folded downed Harrier stays above floor');
   if(kind==='frog')assert.ok(result.bounds[1]>=result.base+.04,'frog feet stay above terrain');
+  if(kind==='mites'){
+   const before=await page.evaluate(()=>{
+    window.__miteBurrows=0;window.__bus.on('mitesBurrowed',()=>window.__miteBurrows++);
+    const s=window.__run.getState(),visible=window.__mites.visible;
+    s.resume();window.__bus.emit('sprinted',{roomId:s.currentRoomId,x:0,z:0,surface:'stone'});
+    return visible;
+   });
+   await page.waitForFunction(before=>window.__mites?.visible<before*.75,before);
+   const reaction=await page.evaluate(()=>({visible:window.__mites.visible,burrows:window.__miteBurrows}));
+   assert.ok(reaction.visible<before*.75,'a loud footfall sends the visible colony under the ash');
+   assert.equal(reaction.burrows,1,'the colony announces one shared burrow response');
+   await page.evaluate(()=>window.__run.getState().pause());
+  }
  }
- assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 11 creature types contribute visible pixels in native room lighting');
+ assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 12 creature types contribute visible pixels in native room lighting');
 }finally{await browser.close();}

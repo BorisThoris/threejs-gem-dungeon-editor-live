@@ -33,6 +33,7 @@ export const BIOMES = [
   "bone",
   "crystal",
   "fungal",
+  "ash",
 ] as const;
 export type BiomeId = (typeof BIOMES)[number];
 
@@ -46,7 +47,7 @@ export type BiomeId = (typeof BIOMES)[number];
  * show is the room behind you. `still` is a real value - hewn stone is
  * silent on purpose - so a biome cannot be added without saying.
  */
-export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore"] as const;
+export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift"] as const;
 export type AirId = (typeof AIRS)[number];
 
 export interface Biome {
@@ -151,6 +152,9 @@ export const BIOME: Record<BiomeId, Biome> = {
    * place rather than a tint.
    */
   fungal: { name: "Fungal", floor: "#9aa886", wall: "#55604f", surface: "moss", glow: "#7fc9a0", light: 0.9, litter: ["web", "rubble"], carry: 0.6, ground: "spore mat", life: ["rat", "croaker", "beetle"], air: "spore" },
+  /** Dry settling rooms downstream of the kilns: soft underfoot, but alive
+   * with rats and a faint fall of grit from the old flues. */
+  ash: { name: "Ash drifts", floor: "#918b82", wall: "#554f4b", surface: "dirt", glow: "#a2765d", light: 0.82, litter: ["rubble", "urn"], carry: 0.7, ground: "deep ash", life: ["rat", "mite"], air: "sift" },
 };
 
 /**
@@ -165,21 +169,21 @@ export const BIOME: Record<BiomeId, Biome> = {
 export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
-  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal"],
+  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash"],
   // Flooded as well as dry, because the room that most tempts a player to
   // grab and run is the one where running is loudest: a drowned strongroom
   // makes the haul a decision rather than a pickup. Without it the three
   // treasure biomes were 1, 1.25 and 1, which is one room in three coats.
-  treasure: ["catacomb", "foundry", "hewn", "flooded"],
+  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
-  trap: ["hewn", "flooded", "foundry", "fungal"],
+  trap: ["hewn", "flooded", "foundry", "fungal", "ash"],
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
-  challenge: ["catacomb", "hewn", "flooded"],
-  shrine: ["catacomb", "bone", "crystal", "fungal"],
+  challenge: ["catacomb", "hewn", "flooded", "ash"],
+  shrine: ["catacomb", "bone", "crystal", "fungal", "ash"],
   // Walled up for a reason: dry, and older than the rest of the floor.
-  secret: ["catacomb", "bone", "hewn"],
+  secret: ["catacomb", "bone", "hewn", "ash"],
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */

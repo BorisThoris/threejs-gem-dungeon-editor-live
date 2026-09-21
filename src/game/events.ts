@@ -26,6 +26,7 @@ export interface BusEvents {
   bellcapWarning: { roomId: string; x: number; z: number };
   bellcapBurst: { roomId: string; x: number; z: number };
   beetlesScattered: { roomId: string };
+  mitesBurrowed: { roomId: string };
   waterCacheTaken: { roomId: string };
   runStarted: undefined;
   runWon: undefined;

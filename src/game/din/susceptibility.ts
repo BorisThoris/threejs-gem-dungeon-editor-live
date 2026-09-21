@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  mite: {
+    answers: { loud: 0.3, blast: 0.1 },
+    deaf: ["bright"],
+    tell: "A loud room drives the colony under its ash before you enter it.",
+  },
   beetle: {
     answers: { loud: 0.3, blast: 0.1, bright: 0.35 },
     tell: "They feed around living bellcaps. Light or noise sends them into cover, and their glow goes with them.",

@@ -4,9 +4,9 @@ import { createRng } from "../rng";
 
 /** Districts spread through actual doorways, never through grid-neighbour walls. */
 export const DISTRICTS = {
-  gardens: { name: "Rootwater galleries", biomes: ["mossy", "flooded", "fungal", "hewn", "timber", "catacomb", "crystal", "bone", "foundry"] },
-  works: { name: "The old works", biomes: ["foundry", "hewn", "timber", "catacomb", "crystal", "bone", "flooded", "mossy"] },
-  tombs: { name: "The buried choir", biomes: ["bone", "catacomb", "crystal", "hewn", "timber", "foundry", "flooded", "mossy"] },
+  gardens: { name: "Rootwater galleries", biomes: ["mossy", "flooded", "fungal", "hewn", "timber", "catacomb", "crystal", "bone", "ash", "foundry"] },
+  works: { name: "The old works", biomes: ["foundry", "ash", "hewn", "timber", "catacomb", "crystal", "bone", "flooded", "mossy"] },
+  tombs: { name: "The buried choir", biomes: ["bone", "catacomb", "ash", "crystal", "hewn", "timber", "foundry", "flooded", "mossy"] },
 } as const;
 export type DistrictId = keyof typeof DISTRICTS;
 
@@ -41,7 +41,10 @@ export function assignDistricts(rooms: Room[], startId: string, endId: string, f
   for (const room of rooms) if (room.secret) byId.get(room.secret.to)!.district = room.district;
   for (const room of rooms) {
     const palette = DISTRICTS[room.district ?? "tombs"].biomes;
-    const primary = room.district === "gardens" ? 4 : 3;
+    // Gardens and tombs each have four primary strata. Tombs need both the
+    // new ash settling layer and the older crystal chapels to stay reachable;
+    // the works keep three tighter industrial layers.
+    const primary = room.district === "works" ? 3 : 4;
     const offset = Math.floor(createRng(`${room.seed}:${room.district}:strata`)() * primary);
     const ordered = [...palette.slice(offset, primary), ...palette.slice(0, offset), ...palette.slice(primary)];
     room.biome = ordered.find(b => BIOMES_FOR[room.kind].includes(b)) as BiomeId;

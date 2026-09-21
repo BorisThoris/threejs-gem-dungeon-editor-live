@@ -473,7 +473,7 @@ for (const [start, stop, args] of VOICES) {
   const airs = await page.evaluate(async (flush) => {
     const ambience = window.__ambience;
     const out = {};
-    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore"]) {
+    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift"]) {
       // From the moment it is set: the timed airs drop their first sound
       // at once and a creak's next may be seven seconds off, and the held
       // ones come up over a second and a half. One window covers both.
@@ -579,12 +579,12 @@ ok(
   // version of this looked in two and reported the footstep and the
   // Warden's stalk as cues nobody plays, because they are played from the
   // player and from the Warden.
-  const everywhere = execFileSync("grep", ["-rho", "sfx\\.[a-zA-Z0-9_]*", `${root}src`], {
+  const everywhere = execFileSync("rg", ["-o", "--no-filename", "sfx\\.[a-zA-Z0-9_]+", `${root}src`], {
     encoding: "utf8",
   });
-  const grep = (name) => new RegExp(`sfx\\.${name}$`, "m").test(everywhere);
+  const used = (name) => new RegExp(`sfx\\.${name}$`, "m").test(everywhere);
   const unused = cues.filter(
-    (name) => !["setMuted", "isMuted", "isStalking", "setTension", "start", "stop"].includes(name) && !grep(name)
+    (name) => !["setMuted", "isMuted", "isStalking", "setTension", "start", "stop"].includes(name) && !used(name)
   );
   /**
  * The Warden landing a hit, from the action rather than from the cue.

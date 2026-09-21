@@ -515,7 +515,7 @@ const buildChorus: HeldBuilder = (ctx, into) => {
  * - a drip, an ember - because a drip on an oscillator is a tremolo, and a
  * tremolo is not a drip.
  */
-type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore";
+type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift";
 
 interface Air {
   id: AirId;
@@ -616,6 +616,10 @@ const AIR_DROPS: Partial<Record<AirId, { play: () => void; gapMs: [number, numbe
   spore: {
     gapMs: [180, 620],
     play: () => tone(4200 + Math.random() * 2600, 0.05, "sine", 0.22, 3000, Math.random() * 1.4 - 0.7),
+  },
+  sift: {
+    gapMs: [350, 1200],
+    play: () => noiseBurst(0.045, 0.26, 2400 + Math.random() * 1800, Math.random() * 1.4 - 0.7),
   },
 };
 

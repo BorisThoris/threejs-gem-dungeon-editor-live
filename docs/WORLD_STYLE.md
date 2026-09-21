@@ -23,8 +23,10 @@ Existing cracks, drafts, sounds behind walls and rewards remain their clues.
 
 District data lives on rooms and drives the HUD, corridor rhythms and biome
 selection. Biomes drive terrain colors, lighting, footstep surfaces, sound carry,
-ambient rat/bat/croaker habitat and the air's timbre. Moths favor the rootwater
-district, which also contains the fungal biome.
+ambient creature habitat and the air's timbre. Moths favor the rootwater
+district, which also contains the fungal biome. Ash mites belong to settled
+kiln windrows in the old works and nearby choir rooms; loud steps send the
+whole colony under, making disturbed ash a recent trace rather than decoration.
 Each district also draws its old circulation system across the actual room
 graph: paired root lines in Rootwater, iron sleepers in the Old Works, and
 processional stones in the Buried Choir. The marks stop at real thresholds,
@@ -72,12 +74,13 @@ Their wall habitat candidates follow the actual room footprint. Refuges and
 migration paths use the same furniture seed as the rendered room and clear the
 whole body. Noise still makes them dive, and draining still sends them to cover.
 
-`npm run test:creatures` checks all eleven creature types in generated rooms
+`npm run test:creatures` checks all twelve creature types in generated rooms
 using native Chrome rendering. It compares frames with and without creature
 meshes while preserving scene lights, and saves standing-eye-height review
 images in `output/creature-review`. This checks representative visible states;
 intentional hiding, spawning conditions and behavioral transitions have separate
-world, ecology, rat and beetle checks.
+world and ecology checks. The ash-mite render fixture also makes a loud footfall
+and verifies that the visible colony burrows as one.
 
 Bats hang with folded angular wings and pointed ears, then open their wings
 and wheel below the ceiling when disturbed. The flock uses two instanced mesh

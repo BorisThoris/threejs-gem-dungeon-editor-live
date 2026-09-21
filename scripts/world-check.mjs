@@ -19,7 +19,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat", "mobs/miteHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -67,6 +67,7 @@ let terraceCount = 0;
 let serviceTrails = 0;
 let colonies = 0;
 let beetles = 0;
+let mites = 0;
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
@@ -240,6 +241,21 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
           assert.ok(Math.hypot(pose.x - prop.x, pose.z - prop.z) > L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.18);
       }
     }
+    for (const home of L.mitesFor(r)) {
+      mites++;
+      assert.equal(r.biome, "ash", "ash mites only colonize visible ash beds");
+      assert.ok(L.insideRoom(r, home.x, home.z, 0.35), "ash mite homes fit the shaped floor");
+      assert.ok(L.terrainFor(r).deposits.some(tile =>
+        Math.abs(tile.position[0] - home.x) < 1e-6 && Math.abs(tile.position[2] - home.z) < 1e-6),
+      "ash mite homes occupy actual rendered windrow cells");
+      for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid))
+        assert.ok(Math.hypot(home.x - prop.x, home.z - prop.z) >= L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.5,
+          "ash mite homes clear solid furnishings");
+      for (const hidden of [0, 0.5, 1]) for (let time = 0; time < 10; time += 0.5) {
+        const pose = L.mitePose(home, time, hidden);
+        assert.ok(L.insideRoom(r, pose.x, pose.z, 0.2), "ash mites remain inside their windrow while combing and burrowing");
+      }
+    }
     for (const dir of L.DIRS.filter(dir => r.wingProfiles?.[dir] === "apse")) {
       apses++; apseDirs.add(dir);
       assert.ok(!r.links[dir] && r.secret?.dir !== dir && r.district !== "works");
@@ -333,7 +349,7 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
-    if (["flooded", "mossy", "fungal"].includes(terrain.biome)) {
+    if (["flooded", "mossy", "fungal", "ash"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
         const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
@@ -344,7 +360,7 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     }
     for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
-      r.biome === "flooded" ? "water" : ["mossy", "fungal"].includes(r.biome) ? "soft" : "stone", "independent terrain beds retain their material after channel drainage");
+      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : "stone", "independent terrain beds retain their material after channel drainage");
     if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
@@ -364,10 +380,12 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
 }
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
+assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
 assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
 console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
 console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
+console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
 assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
 console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);
 assert.ok(colonies > 100, `bellcap colonies occupy the channel ecosystem: ${colonies}`);
@@ -379,7 +397,8 @@ assert.equal(terraceDirs.size, 4, "raised terrain is checked in every cardinal d
 assert.ok(serviceTrails > 150, `linked maintenance discoveries occur throughout the world: ${serviceTrails}`);
 console.log(`Discovery: ${serviceTrails} reliquary-to-secret expeditions through real doors.`);
 console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
-assert.equal(identities.size, Object.keys(L.PLACE_IDENTITIES).length, "all building identities occur in the generated world");
+assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id)), [],
+  "all building identities occur in the generated world");
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);
   console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
   assert.ok(wallTurns > 1000, "animals actively turn along walls across generated room shapes");

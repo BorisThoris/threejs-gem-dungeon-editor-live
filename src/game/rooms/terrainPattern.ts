@@ -69,4 +69,5 @@ export const TERRAIN_COLORS = {
   flooded: ["#8a9693", "#365a61"], catacomb: ["#a69777", "#655643"],
   foundry: ["#817875", "#754831"], timber: ["#9b7d56", "#584735"],
   bone: ["#a6a18c", "#777667"], crystal: ["#8b849e", "#5e526f"],
+  ash: ["#837d74", "#4e4944"],
 } as const;

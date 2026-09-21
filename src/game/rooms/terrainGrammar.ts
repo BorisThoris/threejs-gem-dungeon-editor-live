@@ -11,6 +11,7 @@ export const TERRAIN_GRAMMAR: Record<BiomeId, { name: string; description: strin
   catacomb: { name: "Processional margins", description: "Dark perimeter bands frame a paved crossing and the inner processional court." },
   bone: { name: "Ossuary margins", description: "Broad pale deposits gather around the chamber perimeter, leaving its crossing open." },
   crystal: { name: "Resonance ring", description: "A broken mineral ring surrounds the central crossing; four paved spokes divide it." },
+  ash: { name: "Flue windrows", description: "Settled ash gathers in leeward ribs beneath the old flues, leaving the service crossing scored clear." },
 };
 export type TerrainCell = "paving" | "deposit" | "bare";
 const organic = (biome: BiomeId) => ["mossy", "fungal", "flooded"].includes(biome);
@@ -41,6 +42,12 @@ export function chamberTerrainCell(room: Room, biome: BiomeId, x: number, z: num
     case "catacomb": case "bone": deposit = border < (biome === "bone" ? 4 : 2.8); break;
     case "crystal": deposit = Math.abs(Math.hypot(x, z) - half * 0.67) < 1.1; break;
     case "hewn": deposit = ax >= az && border < 3; break;
+    case "ash": {
+      const lee = room.seed % 2 === 0 ? x : z;
+      const along = room.seed % 2 === 0 ? z : x;
+      deposit = lee > half * 0.28 && (border < 3.8 || Math.floor((along + half) / 3) % 2 === 0);
+      break;
+    }
   }
   if (deposit) return "deposit";
   // Tending paths are visible paving, not an unexplained absence of planting.
@@ -53,6 +60,7 @@ export function galleryTerrainCell(biome: BiomeId, along: number, across: number
   if (Math.abs(across) <= 1.7) return "paving";
   if (biome === "flooded" && ramp) return "bare";
   if (biome === "mossy" || biome === "timber") return Math.floor(along / 1.5) % 3 === 0 ? "paving" : "deposit";
+  if (biome === "ash") return Math.abs(across) > width * 0.26 ? "deposit" : "paving";
   if (organic(biome)) return "deposit";
   return Math.abs(across) > width * 0.3 ? "deposit" : "paving";
 }

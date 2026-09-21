@@ -9,7 +9,7 @@ export type Footing = "stone" | "water" | "soft" | "wood" | "metal";
 export function footingCarry(room: Room, footing: Footing): number {
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
   if (footing === "water") return BIOME.flooded.carry;
-  if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : BIOME.mossy.carry;
+  if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : biome === "ash" ? BIOME.ash.carry : BIOME.mossy.carry;
   if (footing === "wood") return BIOME.timber.carry;
   if (footing === "metal") return BIOME.foundry.carry;
   return biome === "bone" ? BIOME.bone.carry : BIOME.hewn.carry;
@@ -28,11 +28,11 @@ export function footingAt(room: Room, x: number, z: number, openedAt: number | n
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
   if (terrain.deposits.some(tile => covers(tile, x, z))) {
     if (biome === "flooded") return "water";
-    if (biome === "mossy" || biome === "fungal") return "soft";
+    if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
     return "stone";
   }
   if (biome === "timber") return "wood";
   if (biome === "foundry") return "metal";
-  if (biome === "mossy" || biome === "fungal") return "soft";
+  if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
   return "stone";
 }

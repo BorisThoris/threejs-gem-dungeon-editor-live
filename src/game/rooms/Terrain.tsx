@@ -38,7 +38,7 @@ export function Terrain({ room }: { room: Room }) {
   const wet = data.biome === "flooded";
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
   const pavingSurface = useSurface("stone", 0.5);
-  const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss" : "stone", 0.5);
+  const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss" : data.biome === "ash" ? "dirt" : "stone", 0.5);
   useFrame(() => {
     time.current.value = runClock(useRun.getState());
   });
