@@ -432,17 +432,18 @@ const h = () => performance.memory.usedJSHeapSize;
 let a = h(); setTimeout(() => console.log((h() - a) / 1024, "KB/s"), 1000);
 ```
 
-`yarn test:perf` does that measuring on every room of every floor and holds
-the result to a budget. What a room costs today, measured over a hundred of
-them across three floors and several seeds:
+`yarn test:perf` measures every room in a fixed 78-room corpus across all three
+floors and holds the result to a budget. It also writes a ranked local report
+with the hottest rooms, accepted baseline and remaining headroom. What a room
+costs today:
 
 | | Worst room | Budget |
 | --- | --- | --- |
-| Draw calls | 54 | 72 |
-| Triangles | 2,214 | 3,400 |
-| Live geometries | 52 | 72 |
-| Live textures | 6 | 12 |
-| Held after a collection, sprinting 10 s | below zero | 8 MB |
+| Draw calls | 82 | 96 |
+| Triangles | 6,945 | 8,800 |
+| Live geometries | 93 | 112 |
+| Live textures | 10 | 16 |
+| Held after a collection, sprinting 10 s | 0 MB | 8 MB |
 
 The budgets are the measured worst case with about a third on top. They are
 not aspirations; they are a tripwire for the day a cycle adds a mesh per
@@ -455,6 +456,9 @@ not to be a measurement: whether a collection lands inside a ten second
 window is luck, and the same unchanged build read -94, -42, +0.04 and +23
 KB a frame across four runs. What a collector keeps up with is not a
 problem; what outlives one is.
+
+The maintained policy, baseline and issue ledger are in
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md).
 
 ## Testing
 

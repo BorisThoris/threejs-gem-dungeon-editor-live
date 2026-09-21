@@ -21,24 +21,22 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  process.env.CHROMIUM_PATH ||
+  (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 /**
- * Measured max over 156 rooms: 55 calls, 3624 triangles, 72 geometries, 7
- * textures.
+ * The current shaped-room baseline is 82 calls, 6,945 triangles, 93
+ * geometries and 10 textures. The larger number is accounted for: structural
+ * bays, habitat terrain and district paths now describe one connected place
+ * instead of a bare square with scattered props. The limits retain meaningful
+ * growth above that measured world, while the generated report keeps
+ * the baseline visible so small regressions are still reviewable.
  *
- * The triangles moved when the authored rooms landed - a hand-made room
- * carries eleven props where a generated arrangement carried a handful, and
- * the worst room went from 2356 to 3624. That is the feature working rather
- * than something leaking: an authored layout REPLACES the arrangement
- * instead of standing on top of it, and the draw calls only went 50 to 55
- * for it, which is about 250 triangles a prop - the ordinary price of the
- * shapes already in the catalogue.
- *
- * It is written down here because this tripwire did not fire when it should
- * have: the authored-rooms commit shipped without anyone running it, and
- * three commits went out over a budget that was already breached. A budget
- * nobody runs is a budget that does not exist.
+ * The earlier 55-call, 3,624-triangle baseline belonged to rooms before their
+ * shaped structural bays, terrain habitats and connected district language.
+ * Raising a limit without recording why concealed that history once, so both
+ * the accepted baseline and the failure ceiling are explicit now. A budget
+ * nobody runs, or one nobody can explain, does not exist.
  *
  * `geometries` measures something different since the props started sharing
  * their shapes. It used to be a per-room cost - a room built a fresh
@@ -57,10 +55,10 @@ const CHROMIUM =
  * guard compares a room with itself for that reason.
  */
 const BUDGET = {
-  calls: 72,
-  triangles: 4800,
-  geometries: 88,
-  textures: 12,
+  calls: 96,
+  triangles: 8800,
+  geometries: 112,
+  textures: 16,
   /**
    * Megabytes of heap still held after a collection, over ten seconds of
    * sprinting.
@@ -75,6 +73,7 @@ const BUDGET = {
    */
   retainedMB: 8,
 };
+const BASELINE = { calls: 82, triangles: 6945, geometries: 93, textures: 10 };
 const SEEDS = [4242, 77];
 
 let failures = 0;
@@ -97,7 +96,7 @@ const ok = (label, cond, detail = "") => {
 };
 
 const browser = await chromium.launch({
-  executablePath: CHROMIUM,
+  ...(CHROMIUM ? { executablePath: CHROMIUM } : {}),
   args: [
     "--no-sandbox",
     ...(process.platform === "win32" ? [] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"]),
@@ -182,6 +181,18 @@ ok(`no room holds more than ${BUDGET.geometries} live geometries`, byGeo.geometr
 const byTex = worst("textures");
 ok(`no room holds more than ${BUDGET.textures} live textures`, byTex.textures <= BUDGET.textures, report(byTex, "textures"));
 ok("every room was measured", rooms.length > 40, `${rooms.length} rooms`);
+
+const budgetRows = [
+  ["draw calls", "calls", BUDGET.calls, byCalls],
+  ["triangles", "triangles", BUDGET.triangles, byTris],
+  ["live geometries", "geometries", BUDGET.geometries, byGeo],
+  ["live textures", "textures", BUDGET.textures, byTex],
+].map(([label, key, budget, room]) => ({
+  label, key, budget, baseline: BASELINE[key], actual: room[key], utilization: room[key] / budget,
+  status: room[key] > budget ? "breached" : room[key] > BASELINE[key] ? "regressed"
+    : room[key] / budget >= 0.85 ? "watch" : "healthy",
+  offender: { seed: room.seed, floor: room.floor, id: room.id, kind: room.kind },
+}));
 
 /**
  * Walking from room to room must not leak, asked room by room.
@@ -370,6 +381,33 @@ ok(
   before.heap === 0 || retained <= BUDGET.retainedMB,
   `${retained.toFixed(2)} MB retained over ${frames} frames`
 );
+
+const roomPressure = rooms.map((room) => ({
+  ...room,
+  pressure: Math.max(room.calls / BUDGET.calls, room.triangles / BUDGET.triangles,
+    room.geometries / BUDGET.geometries, room.textures / BUDGET.textures),
+})).sort((a, b) => b.pressure - a.pressure).slice(0, 12);
+const performanceSummary = {
+  generatedAt: new Date().toISOString(),
+  sampledRooms: rooms.length,
+  budgets: BUDGET,
+  baseline: BASELINE,
+  metrics: budgetRows,
+  sprint: { frames, seconds, retainedMB: retained },
+  hottestRooms: roomPressure,
+};
+writeFileSync("output/world-review/performance-summary.json", JSON.stringify(performanceSummary, null, 2));
+writeFileSync("output/world-review/performance-report.md", [
+  "# Performance room audit", "",
+  `Measured ${rooms.length} generated rooms across seeds ${SEEDS.join(", ")}.`, "",
+  "| Status | Metric | Worst | Baseline | Budget | Headroom | Room |", "|---|---|---:|---:|---:|---:|---|",
+  ...budgetRows.map(row => `| ${row.status} | ${row.label} | ${row.actual} | ${row.baseline} | ${row.budget} | ${row.budget - row.actual} | ${row.offender.kind} ${row.offender.id}, floor ${row.offender.floor}, seed ${row.offender.seed} |`),
+  "", "## Rooms to inspect first", "",
+  "| Pressure | Room | Calls | Triangles | Geometries | Textures |", "|---:|---|---:|---:|---:|---:|",
+  ...roomPressure.map(room => `| ${(room.pressure * 100).toFixed(0)}% | ${room.kind} ${room.id}, floor ${room.floor}, seed ${room.seed} | ${room.calls} | ${room.triangles} | ${room.geometries} | ${room.textures} |`),
+  "", `Sprint retained ${retained.toFixed(2)} MB over ${frames} frames in ${seconds.toFixed(1)} seconds.`, "",
+  "> Frame rate is intentionally not a pass/fail metric: this audit often runs through a software rasterizer. The structural counts and retained heap are portable tripwires.", "",
+].join("\n"));
 
 // The Warden in the room is the only sound that is held rather than fired
 // once, and it is written to every frame while it closes. Rebuilt each

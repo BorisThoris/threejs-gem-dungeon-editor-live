@@ -25,6 +25,10 @@ District data lives on rooms and drives the HUD, corridor rhythms and biome
 selection. Biomes drive terrain colors, lighting, footstep surfaces, sound carry,
 ambient rat/bat/croaker habitat and the air's timbre. Moths favor the rootwater
 district, which also contains the fungal biome.
+Each district also draws its old circulation system across the actual room
+graph: paired root lines in Rootwater, iron sleepers in the Old Works, and
+processional stones in the Buried Choir. The marks stop at real thresholds,
+stay inside shaped floors, have no collision, and cost at most two draw calls.
 The audio changes the existing held ambience voice rather than allocating more
 voices at each doorway.
 
@@ -107,5 +111,10 @@ and last-water chapels. Each district supports the same three reward rules
 
 Hidden-room decoration is low and non-blocking. It follows the shaped floor,
 reserves one legal focal anchor for the reward, and leaves a clear approach.
+Repeated story marks are instanced by material, so a richer history remains two
+draw calls instead of becoming one draw call per object. World building should
+make a room more coherent without making its rendering cost harder to explain.
 The layout suite checks all nine histories, their district materials, the
 actual footprint of every mark and the clearance around every focal reward.
+
+Performance budgets and the issue ledger live in `docs/PERFORMANCE.md`.

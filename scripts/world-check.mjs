@@ -12,6 +12,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
+  "worldbuilding/districtWays",
   "rooms/floorSurfacePattern",
   "rooms/underfoot",
   "rooms/blockFaces",
@@ -57,6 +58,7 @@ assert.equal(L.waterTravel(10, 13), 12.25, "current slows continuously with the 
 assert.equal(L.waterTravel(10, 16), 13);
 assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current or revisit phase drift");
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
+let districtWaymarks = 0;
 const biomes = new Set();
 const identities = new Set();
 let migratingToads = 0;
@@ -316,6 +318,11 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     if (r.secret) assert.equal(byId.get(r.secret.to).district, r.district, "secrets inherit host history");
     for (const id of Object.values(r.links)) { links++; if (byId.get(id).district === r.district) matching++; }
     const terrain = L.terrainFor(r);
+    const ways = L.districtWaysFor(r);
+    districtWaymarks += ways.length;
+    assert.ok(ways.length <= 96, "district paths have a fixed per-room detail ceiling");
+    for (const mark of ways) assert.ok(L.insideRoom(r, mark.position[0], mark.position[2], Math.hypot(...mark.size) / 2 + 0.04),
+      "district paths stay inside shaped floors and side galleries");
     const beds = L.mergeTerrainBeds(terrain.deposits);
     terrainBedCells += terrain.deposits.length; terrainBedFaces += beds.length;
     const area = tiles => tiles.reduce((sum, t) => sum + t.size[0] * t.size[2], 0);
@@ -386,3 +393,4 @@ console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} con
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
+console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);
