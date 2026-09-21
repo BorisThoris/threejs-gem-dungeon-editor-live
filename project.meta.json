@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-21T20:24:40.544Z",
+  "generatedAt": "2026-09-21T21:57:05.234Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -113,7 +113,7 @@
         "bytes": 49803,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-21T20:23:26.501Z"
+        "capturedAt": "2026-09-21T21:55:51.467Z"
       },
       {
         "profile": "desktop",
@@ -122,7 +122,7 @@
         "bytes": 48876,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T20:23:44.948Z"
+        "capturedAt": "2026-09-21T21:56:09.879Z"
       },
       {
         "profile": "full",
@@ -131,7 +131,7 @@
         "bytes": 43703,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T20:24:21.862Z"
+        "capturedAt": "2026-09-21T21:56:46.661Z"
       },
       {
         "profile": "mobile",
@@ -140,7 +140,7 @@
         "bytes": 27290,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-21T20:24:03.452Z"
+        "capturedAt": "2026-09-21T21:56:28.268Z"
       },
       {
         "profile": "og",
@@ -149,7 +149,7 @@
         "bytes": 41782,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-21T20:24:40.372Z"
+        "capturedAt": "2026-09-21T21:57:05.055Z"
       }
     ]
   },
@@ -202,13 +202,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 345,
+    "sourceFiles": 347,
     "testFiles": 1,
-    "sourceLines": 63331,
+    "sourceLines": 63498,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 236
+        "files": 238
       },
       {
         "directory": "output",
@@ -243,10 +243,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "f7c54f9",
-    "lastCommitDate": "2026-09-21T23:20:28+03:00",
-    "lastCommitSubject": "Build district-specific hidden room histories",
-    "commitCount": 396,
+    "head": "2f22c5a",
+    "lastCommitDate": "2026-09-22T00:52:57+03:00",
+    "lastCommitSubject": "Connect districts with performance-budgeted floor paths",
+    "commitCount": 398,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
