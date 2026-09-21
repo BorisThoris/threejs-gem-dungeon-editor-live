@@ -145,7 +145,7 @@ export function Hud() {
     thiefKey,
     floor,
     floors: FLOORS,
-    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${roomPlaceName(room)}` : "",
+    roomTitle: room ? `${room.district ? DISTRICTS[room.district].name + " · " : ""}${roomPlaceName(room, dungeonSeed)}` : "",
     ground,
     roost,
     croakers,

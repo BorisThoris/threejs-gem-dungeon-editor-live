@@ -27,7 +27,7 @@ import { chromium } from "playwright-core";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  process.env.CHROMIUM_PATH || (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 const REST_Y = 1.1;
 
 let failures = 0;
@@ -8152,7 +8152,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       ["trapSprung", { key: "k2", kind: "pit", by: "player" }],
       ["trapSprung", { key: "k3", kind: "grate", by: "player" }],
       ["draftFelt", { roomId: "r" }],
-      ["wallSound", { roomId: "r", flavour: "hoard" }],
+      ["wallSound", { roomId: "r", flavour: "hoard", title: "Paymaster's Lockroom" }],
       ["wispCame"],
       ["mothLanded"],
       ["batsRoused"],

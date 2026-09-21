@@ -95,3 +95,17 @@ Their flight band stays below the central roof details, and low corbels reduce
 the available orbit just as walls do. The generated flight check tests open-wing
 clearance against the actual structure, detail and marking blocks, in addition
 to the room outline. The perch stays in the room when the colony takes flight.
+
+## Hidden-room histories
+
+The sound through a cracked wall, the room name, its furniture, its floor
+marks and its reward are one story. Rootwater hides seed stores, graft-keeper
+cells and buried springs. The old works hides pay rooms, master-tool cabinets
+and shift fonts. The buried choir hides funeral treasuries, cantor reliquaries
+and last-water chapels. Each district supports the same three reward rules
+(hoard, free relic or shrine), but expresses them through its own former use.
+
+Hidden-room decoration is low and non-blocking. It follows the shaped floor,
+reserves one legal focal anchor for the reward, and leaves a clear approach.
+The layout suite checks all nine histories, their district materials, the
+actual footprint of every mark and the clearance around every focal reward.

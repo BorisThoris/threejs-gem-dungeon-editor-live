@@ -65,6 +65,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
+   export * from "${root}src/game/worldbuilding/secretHistoryPattern";
    export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/mobs/harrierRoost";
@@ -483,8 +484,14 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
     }
   }
 
-  const without = [...KINDS_WITH_ROOMS].filter((k) => L.templatesForKind(k).length === 0);
-  check("every kind of room a run hands out has one somebody made", without.length === 0, without.join(", ") || "all twelve");
+  // Secrets are composed from their district history rather than from the
+  // authored catalogue: selecting a generic template here would sever the
+  // wall sound, name, floor marks, furniture and reward from one another.
+  const authoredKinds = [...KINDS_WITH_ROOMS].filter((k) => k !== "secret");
+  const without = authoredKinds.filter((k) => L.templatesForKind(k).length === 0);
+  check("every catalogue-authored room kind has one somebody made", without.length === 0, without.join(", ") || "all eleven");
+  check("secret rooms keep their generated district history", L.templatesForKind("secret").length === 0,
+    `${L.templatesForKind("secret").length} generic secret templates`);
 
   const share = authored / rooms;
   check("and a run is about a third hand-made rather than a twelfth",
@@ -492,7 +499,7 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   // Per kind, because a share that is right on average and zero for eight
   // kinds is the bug this replaced, and the average would not have caught
   // it.
-  const starved = [...perKind].filter(([, v]) => v.made / v.n < 0.15).map(([k, v]) => `${k} ${((v.made / v.n) * 100).toFixed(0)}%`);
+  const starved = [...perKind].filter(([k, v]) => k !== "secret" && v.made / v.n < 0.15).map(([k, v]) => `${k} ${((v.made / v.n) * 100).toFixed(0)}%`);
   check("and no kind is left out of it", starved.length === 0, starved.join(", ") || "none under 15%");
 
   /**
@@ -1562,7 +1569,7 @@ check("the shipped room templates reach the floors the game generates", authored
   const events = readFileSync(join(root, "src/game/events.ts"), "utf8");
   const body = events.slice(events.indexOf("interface BusEvents"));
   const declared = [...body.slice(0, body.indexOf("\n}")).matchAll(/^  (\w+):/gm)].map((m) => m[1]);
-  const tree = execFileSync("grep", ["-rhoE", "bus\\.(on|emit)\\(\"\\w+\"", join(root, "src")], { encoding: "utf8" });
+  const tree = execFileSync("rg", ["-o", "--no-filename", "bus\\.(on|emit)\\(\"\\w+\"", join(root, "src")], { encoding: "utf8" });
   /**
    * The teacher listens from a table rather than a literal, so a grep for
    * `bus.on("name")` cannot see it. Its rows are listeners: read them off
@@ -1594,8 +1601,8 @@ check("the shipped room templates reach the floors the game generates", authored
 // the fault is the expression, wherever it is spelled out.
 {
   const src = execFileSync(
-    "grep",
-    ["-rn", "-E", "startingAlarm", join(root, "src")],
+    "rg",
+    ["-n", "startingAlarm", join(root, "src")],
     { encoding: "utf8" }
   )
     .trim()
@@ -2163,22 +2170,35 @@ check("the shipped room templates reach the floors the game generates", authored
   check("a draft reaches past arm's length and not to the middle of a small room", L.DRAFT_REACH > L.CLOSE_REACH && L.DRAFT_REACH < L.ROOM_SIZE_SMALL / 2, `${L.DRAFT_REACH} against reach ${L.CLOSE_REACH}, half a small room ${L.ROOM_SIZE_SMALL / 2}`);
   if (L.secretFlavour) {
     const counts = { hoard: 0, reliquary: 0, shrine: 0 };
-    let floors = 0, thinHoards = 0, hoards = 0;
+    let floors = 0, thinHoards = 0, hoards = 0, badMarks = 0, blockedFocus = 0;
+    const stories = new Set(), materials = new Set();
     for (let seed = 1; seed <= 200; seed++) {
       const d = L.generateDungeon({ seed, minRooms: 8, maxRooms: 16 });
       const f = L.secretFlavour(d);
       if (!f) continue;
       floors++;
       counts[f]++;
+      const room = d.rooms.find((r) => r.id === d.secretId);
+      const story = L.secretStory(d);
+      if (!room || !story) { badMarks++; continue; }
+      stories.add(story.title);
+      materials.add(story.material);
+      const marks = L.secretHistoryMarks(room, d.seed);
+      if (!marks.length || marks.some(mark => !L.insideRoom(room, mark.position[0], mark.position[2], Math.hypot(mark.size[0], mark.size[2]) / 2 + .1))) badMarks++;
+      const focus = L.shrineAnchor(room);
+      const furnishing = L.placementsFor(room, d.seed, { asVault: f === "hoard" });
+      if (furnishing.some(p => L.PROP_SPECS[p.kind].solid && Math.hypot(p.x - focus[0], p.z - focus[2]) < L.PROP_SPECS[p.kind].radius + .9)) blockedFocus++;
       if (f === "hoard") {
         hoards++;
-        const room = d.rooms.find((r) => r.id === d.secretId);
         const chests = L.placementsFor(room, d.seed, { asVault: true }).filter((p) => p.kind === "chest").length;
         if (chests < 1) thinHoards++;
       }
     }
     check("the wall hides each of the three about as often", floors > 0 && Object.values(counts).every((n) => n / floors >= 0.2), `${JSON.stringify(counts)} of ${floors}`);
     check("and a hoard has a chest in it nearly every time", hoards > 0 && thinHoards / hoards < 0.1, `${thinHoards} of ${hoards} hoards with no chest`);
+    check("hidden rooms tell all nine district reward stories", stories.size === 9 && materials.size === 3, `${stories.size} stories, ${[...materials].join(", ")}`);
+    check("hidden-room history marks fit their shaped floors", badMarks === 0, `${badMarks} bad patterns`);
+    check("hidden-room furniture leaves the focal reward approachable", blockedFocus === 0, `${blockedFocus} blocked focal points`);
   } else {
     check("the wall knows what it hides", false, "no secretFlavour");
   }
@@ -3008,7 +3028,18 @@ check("the shipped room templates reach the floors the game generates", authored
     for (const room of d.rooms) {
       for (const a of L.reservedAnchorsFor(room.kind, room)) {
         anchorsWalked++;
-        if (!reachable(room, d.seed, a)) {
+        // Hidden rooms deliberately have no graph link before discovery.
+        // Check the walk the player actually gets after opening the crack,
+        // using its host wall as the room's one entrance.
+        const walked = room.kind === "secret"
+          ? (() => {
+              const host = d.rooms.find((r) => r.secret?.to === room.id);
+              if (!host?.secret) return room;
+              const entry = L.OPPOSITE[host.secret.dir];
+              return { ...room, links: { ...room.links, [entry]: host.id } };
+            })()
+          : room;
+        if (!reachable(walked, d.seed, a)) {
           if (outOfReach.length < 3) {
             outOfReach.push(`${room.kind} ${room.id}@${d.seed} ${room.size} ${room.shape}`);
           }
@@ -4637,7 +4668,7 @@ check("the shipped room templates reach the floors the game generates", authored
     const sfxEnd = audio.indexOf("\nexport const", sfxStart + 1);
     const sfxBody = audio.slice(sfxStart, sfxEnd > 0 ? sfxEnd : audio.length);
     const cueExists = (name) => new RegExp(`^ {2}${name}\\(`, "m").test(sfxBody);
-    const tree = execFileSync("grep", ["-rho", "sfx\\.[a-zA-Z0-9_]*\\|bus\\.emit(\"[a-zA-Z]*\"", `${root}src`], { encoding: "utf8" });
+    const tree = execFileSync("rg", ["-o", "--no-filename", "sfx\\.[a-zA-Z0-9_]*|bus\\.emit\\(\"[a-zA-Z]*\"", `${root}src`], { encoding: "utf8" });
     const played = (name) => new RegExp(`sfx\\.${name}$`, "m").test(tree);
     const emitted = (name) => tree.includes(`bus.emit("${name}"`);
     const events = src("src/game/events.ts");
@@ -5759,10 +5790,10 @@ check("the shipped room templates reach the floors the game generates", authored
     /\bBATCH\b/.test(menu) ? "PauseMenu spells BATCH out" : "reads batchSize and unknownKinds"
   );
   const owners = ["src/game/items/afflictions.ts", "src/game/state/run.ts"];
-  const spelled = execFileSync("grep", ["-rlE", "\\bBATCH\\b", "--include=*.ts", "--include=*.tsx", join(root, "src")], { encoding: "utf8" })
+  const spelled = execFileSync("rg", ["-l", "\\bBATCH\\b", "-g", "*.ts", "-g", "*.tsx", join(root, "src")], { encoding: "utf8" })
     .split("\n")
     .filter(Boolean)
-    .map((f) => f.slice(root.length));
+    .map((f) => f.replaceAll("\\", "/").slice(root.length));
   check(
     "and only the rule and the store name the number at all",
     spelled.every((f) => owners.includes(f)),
@@ -5801,7 +5832,7 @@ check("the shipped room templates reach the floors the game generates", authored
   const uses = (name) => {
     const where = (path) => {
       try {
-        return execFileSync("grep", ["-rcwE", name, "--include=*.ts", "--include=*.tsx", path], {
+        return execFileSync("rg", ["-c", "-w", name, "-g", "*.ts", "-g", "*.tsx", path], {
           encoding: "utf8",
         })
           .split("\n")
@@ -5894,7 +5925,7 @@ check("the shipped room templates reach the floors the game generates", authored
   // (`run.travel()`) or by selector (`useRun((s) => s.startRun)`), because
   // both are a way in.
   const sweep = (paths) =>
-    execFileSync("grep", ["-rhoE", "\\.[a-zA-Z_]+", "--include=*.ts", "--include=*.tsx", ...paths], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })
+    execFileSync("rg", ["-o", "--no-filename", "\\.[a-zA-Z_]+", "-g", "*.ts", "-g", "*.tsx", ...paths], { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 })
       .split("\n")
       .map((l) => l.slice(1));
   const outside = sweep([join(root, "src")]);

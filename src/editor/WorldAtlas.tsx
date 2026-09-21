@@ -160,7 +160,7 @@ export function WorldAtlas() {
       </section>
       <section style={panel}>
         <div style={{ ...label, color: ink }}>{room.district ? DISTRICTS[room.district].name : "UNASSIGNED"}</div>
-        <h2 style={{ fontSize: 17, color: colors.ink }}>{roomPlaceName(room)}</h2>
+        <h2 style={{ fontSize: 17, color: colors.ink }}>{roomPlaceName(room, dungeon.seed)}</h2>
         <p style={small}>{room.shape} · {room.size} m chamber · {room.biome} · {KIND_TITLE[room.kind]}</p>
         {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>

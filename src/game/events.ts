@@ -226,7 +226,7 @@ export interface BusEvents {
   /** The player marked a room on the map, or unmarked it. */
   mapMarked: { roomId: string; marked: boolean };
   /** A sound through a thin wall, and what it says is behind it. */
-  wallSound: { roomId: string; flavour: "hoard" | "reliquary" | "shrine" };
+  wallSound: { roomId: string; flavour: "hoard" | "reliquary" | "shrine"; title: string };
   /** A barrel, crate or urn burst in a blast. */
   propBroken: { roomId: string; kind: string; key: string };
   /** A draft of air from a cracked wall, felt for the first time this visit. */

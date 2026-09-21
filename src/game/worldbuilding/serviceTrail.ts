@@ -76,7 +76,7 @@ export function serviceTrailText(dungeon: Dungeon, roomId: string, visited: read
   if (!dungeon.serviceTrail || !dungeon.rooms.some(r => r.id === roomId)) return "";
   const guide = serviceTrailGuide(dungeon, roomId, visited);
   const next = dungeon.rooms.find(r => r.id === guide.destinationId);
-  const place = next ? roomPlaceName(next) : "the next hall";
+  const place = next ? roomPlaceName(next, dungeon.seed) : "the next hall";
   switch (guide.status) {
     case "complete": return "Service passage opened · the rubbing is fulfilled.";
     case "catch": return `Maintenance rubbing · press the three-notch catch on the ${guide.dir} wall.`;

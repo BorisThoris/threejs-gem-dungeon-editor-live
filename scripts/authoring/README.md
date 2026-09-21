@@ -22,7 +22,7 @@ has its own copy.
 | --- | --- |
 | `space.mjs` | bundles the game's own pure modules for node, and reports every problem with a template across sixteen grids |
 | `compose.mjs` | takes an intent - a list of props at wanted positions - and nudges each to the nearest position the rules allow, dropping anything that cannot fit anywhere |
-| `author.mjs` | the fourteen compositions written for the kinds that had none, and the sizes and shapes each is built at |
+| `author.mjs` | the thirteen compositions written for the kinds that had none, and the sizes and shapes each is built at |
 | `map.mjs` | an ASCII map of where one prop kind may legally stand in one kind of room |
 | `probe.mjs` | how much legal floor each prop kind has, which is the first thing to know before composing |
 | `pairs.mjs` | the sizes and shapes each kind of room may actually be built at |
@@ -42,8 +42,13 @@ node scripts/authoring/show.mjs hall-camp        # look at what came out
 `author.mjs` writes `authored.json` beside itself; merging that into
 `src/content/templates.json` is deliberately a separate step, because the
 shipped file is content and overwriting it should be a decision. Running
-`author.mjs` against the shipped file reproduces the fourteen rooms it
+`author.mjs` against the shipped file reproduces the thirteen rooms it
 composed, prop for prop.
+
+Secret rooms are deliberately absent from the authored catalogue. Their
+district, wall sound, name, floor marks, furnishing and reward are generated
+from one hidden-room history, so a generic authored hoard cannot replace that
+relationship by chance.
 
 The six templates that shipped before the bench existed - `vault-a`,
 `hall-a` and the four tableaux - were brought up from four-to-six props to

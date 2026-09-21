@@ -119,19 +119,6 @@ const WANTED = [
     slots: [{ slot: "bones", op: "nsubst", into: ["rubble", "web"], n: 2 }],
   },
   {
-    id: "secret-hoard", kind: "secret", size: 14, shape: "square",
-    note: "what the wall was hiding, and why it was worth hiding",
-    props: [
-      p("chest", -5.4, -5.4, 0.5), p("chest", 5.4, -5.4, -0.5),
-      p("crate", -6.6, -3.6), p("urn", 3.6, -6.6),
-      { ...p("crystal", 0, -2.6), slot: "glint" }, { ...p("crystal", -2.2, 3.2), slot: "glint" },
-      { ...p("crystal", 2.2, 3.2), slot: "glint" },
-      { ...p("candle", -4.6, 4.6), slot: "glint" }, { ...p("candle", 4.6, 4.6), slot: "glint" },
-      p("web", -6.4, 5.4), p("skull", 0, 5.0),
-    ],
-    slots: [{ slot: "glint", op: "nsubst", into: ["candle", "crystal"], n: 2 }],
-  },
-  {
     id: "shop-stall", kind: "shop", size: 16, shape: "square",
     note: "the stock is stacked on one side and the counter is on the other",
     props: [

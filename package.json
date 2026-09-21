@@ -30,6 +30,7 @@
         "test:sentry-projection": "node scripts/sentry-projection-check.mjs",
         "test:service-trail": "node scripts/service-trail-check.mjs",
         "test:secret-clue": "node scripts/secret-clue-browser-check.mjs",
+        "test:secret-history": "node scripts/secret-history-browser-check.mjs",
         "test:bellcaps": "node scripts/bellcap-browser-check.mjs",
         "test:apses": "node scripts/apse-browser-check.mjs",
         "test:beetles": "node scripts/beetle-browser-check.mjs",

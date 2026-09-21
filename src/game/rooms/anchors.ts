@@ -158,7 +158,9 @@ export const RESERVED_ANCHORS: Partial<Record<RoomKind, (room: Room) => Vec3[]>>
   memory: memoryAnchors,
   challenge: challengeAnchors,
   shrine: (room) => [shrineAnchor(room)],
-  secret: () => [],
+  // Every hidden-room reward uses the shrine's one legal focal point: the
+  // relic stand, font and story marks all leave the same aisle around it.
+  secret: (room) => [shrineAnchor(room)],
 };
 
 /** The anchors this room's kind has claimed for its own content. */

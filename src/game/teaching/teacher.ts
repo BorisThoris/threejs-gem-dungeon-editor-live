@@ -131,7 +131,7 @@ export const LESSONS: readonly Lesson[] = [
         : flavour === "reliquary"
           ? "A chime through the wall. A reliquary is behind it, if you have a bomb."
           : "A drip through the wall. A shrine is behind it, if you have a bomb.",
-    sample: { roomId: "r", flavour: "hoard" },
+    sample: { roomId: "r", flavour: "hoard", title: "Paymaster's Lockroom" },
   }),
   lesson({ id: "wisp", event: "wispCame", line: "A wisp gathers at your light and drifts ahead. It leads to the crack - and everything that hunts by light sees it." }),
   lesson({ id: "moth", event: "mothLanded", line: "A moth settles on the lantern. It will carry the light where you are not, and the Warden follows light." }),

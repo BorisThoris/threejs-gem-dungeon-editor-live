@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import { quadrantSpots, type Vec3 } from "../dungeon/layout";
-import { secretFlavour } from "../dungeon/secret";
+import { secretStory } from "../dungeon/secret";
 import type { Room } from "../dungeon/types";
 import { offeredAt, priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
@@ -38,6 +38,7 @@ import { Dressing } from "./Dressing";
 import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, type ShopOfferId } from "./anchors";
 import { offered, pledgeCost } from "../heat/pledge";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
+import { SecretHistory } from "../worldbuilding/SecretHistory";
 // Room layouts that ship with the game register themselves.
 import "./shipped";
 
@@ -514,7 +515,8 @@ registerRoomKind("shrine", Shrine);
  * for a floor that had none. Which one is the seed's, from one owner.
  */
 function Secret({ room }: RoomKindProps) {
-  const flavour = useRun((s) => (s.dungeon ? secretFlavour(s.dungeon) : null));
+  const dungeon = useRun((s) => s.dungeon);
+  const story = useMemo(() => (dungeon ? secretStory(dungeon) : null), [dungeon]);
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   const floor = useRun((s) => s.floor);
   // Chosen once, from what the player did not hold when the room was
@@ -524,16 +526,17 @@ function Secret({ room }: RoomKindProps) {
     const rng = createRng(`${seed}:${room.id}:reliquary`);
     return shuffle(rng, RELIC_IDS.filter((id) => !held.includes(id)))[0] ?? null;
   }, [seed, room.id]);
-  if (flavour === "shrine") return <Shrine room={room} />;
-  if (flavour === "reliquary") {
+  if (story?.flavour === "shrine") return <group name="secret-reward-shrine"><SecretHistory room={room} seed={seed} /><Shrine room={room} /></group>;
+  if (story?.flavour === "reliquary") {
     return (
-      <>
+      <group name="secret-reward-reliquary">
+        <SecretHistory room={room} seed={seed} />
         <Dressed room={room} />
-        {relic && <RelicStand id={relic} position={quadrantSpots(room, "far")[0]} floor={floor} price={0} />}
-      </>
+        {relic && <RelicStand id={relic} position={shrineAnchor(room)} floor={floor} price={0} />}
+      </group>
     );
   }
-  return <Dressing room={room} seed={seed} hoard />;
+  return <group name="secret-reward-hoard"><SecretHistory room={room} seed={seed} /><Dressing room={room} seed={seed} hoard /></group>;
 }
 
 registerRoomKind("secret", Secret);

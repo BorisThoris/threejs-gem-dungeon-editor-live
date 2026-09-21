@@ -94,14 +94,10 @@ export function Captions() {
       // they can now place. The description is what they hear; the name is
       // what they have established it means, and the entry is only written
       // once they have opened one and seen for themselves.
-      bus.on("wallSound", ({ flavour }) =>
+      bus.on("wallSound", ({ flavour, title }) =>
         say(
           knows("wallSound")
-            ? flavour === "hoard"
-              ? "A hoard, through the wall"
-              : flavour === "reliquary"
-                ? "A reliquary, through the wall"
-                : "A shrine, through the wall"
+            ? `${title}, through the wall`
             : flavour === "hoard"
               ? "Something clinks, through the wall"
               : flavour === "reliquary"

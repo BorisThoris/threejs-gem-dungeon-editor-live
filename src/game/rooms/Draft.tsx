@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 
-import { secretFlavour } from "../dungeon/secret";
+import { secretStory } from "../dungeon/secret";
 import { DIR_STEP, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
 import { canControl, cracksShowing, runClock, useRun } from "../state/run";
@@ -82,8 +82,8 @@ export function Draft({ room }: { room: Room }) {
       const now = runClock(run);
       if (now - lastSound.current >= WALL_SOUND_EVERY_S) {
         lastSound.current = now;
-        const flavour = secretFlavour(run.dungeon);
-        if (flavour) bus.emit("wallSound", { roomId: room.id, flavour });
+        const story = secretStory(run.dungeon);
+        if (story) bus.emit("wallSound", { roomId: room.id, flavour: story.flavour, title: story.title });
       }
     }
   });
