@@ -13,6 +13,7 @@ import {
   DIR_STEP,
   DIR_YAW,
   OPPOSITE,
+  crossArmWidth,
   halfSize,
   diagonalReach,
   floorReach,
@@ -339,6 +340,16 @@ export function centreSpots(room: Room): Vec3[] {
  * of the room. Only the walls are a hard limit.
  */
 export function cornerSpots(room: Room): Vec3[] {
+  if (room.shape === "cross") {
+    const end = halfSize(room) - CORNER_INSET;
+    const side = crossArmWidth(room.size) / 2 - CORNER_INSET;
+    const points: [number, number][] = [[side, -end], [end, side], [-side, end], [-end, -side]];
+    const o = orientationOf(room);
+    return points.map(([x, z]) => {
+      const [rx, rz] = orient(x, z, o);
+      return [rx, GROUND_Y, rz];
+    });
+  }
   const box = halfSize(room) - CORNER_INSET;
   const onFloor =
     room.shape === "square" ? box : (diagonalReach(room) - CORNER_INSET) / Math.SQRT2;

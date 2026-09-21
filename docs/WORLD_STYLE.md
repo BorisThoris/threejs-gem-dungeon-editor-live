@@ -41,9 +41,9 @@ keep their existing placement rules.
 
 ## Real room shapes
 
-Circular, hexagonal, octagonal, diamond and triangular chambers use block-cut
-floor courses. The union of these courses and corridor wings is the single
-source for walls, colliders, movement clearance, beam clipping and minimap
+Circular, hexagonal, octagonal, diamond, triangular and concave cross chambers
+use block-cut floor courses. The union of these courses and corridor wings is
+the single source for walls, colliders, movement clearance, beam clipping and minimap
 outlines. Cardinal door collars connect pointed chambers to the room graph;
 shifted side galleries make asymmetric footprints. Unvisited rooms keep their
 shape hidden until explored or mapped.

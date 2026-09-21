@@ -66,6 +66,7 @@ writeFileSync(
    export * from "${root}src/game/traps/placement";
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/worldbuilding/secretHistoryPattern";
+   export * from "${root}src/game/worldbuilding/foundryEmberSites";
    export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/mobs/harrierRoost";
@@ -291,7 +292,7 @@ for (const size of L.ROOM_SIZES) {
 // Shaped rooms draw a polygon inside their box, so anchors have to sit on
 // the floor that polygon actually covers - or as close as the door lanes
 // allow, which in the smallest odd shapes is not all the way.
-for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
+for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cross"]) {
   let off = 0;
   let inLane = 0;
   let brazierInWall = 0;
@@ -334,8 +335,9 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
   check(`${shape}: the furniture stays clear of the lanes`, inLane === 0, `${inLane} in a lane`);
   check(`${shape}: the braziers stay inside the walls`, brazierInWall === 0, `${brazierInWall} in a wall`);
   check(`${shape}: nothing can be furnished into a brazier`, brazierInFurniture === 0, `${brazierInFurniture} collided`);
-  // The exact reach has to agree with what it replaced: never less than the
-  // worst direction, never more than the box the room is drawn in.
+  // The exact reach stays between the narrowest direction and the furthest
+  // real corner. Convex rooms are inscribed in a circle; a cross is the union
+  // of two rectangles, whose arm corner is radially beyond its half-size.
   {
     let wrong = 0;
     for (const size of L.ROOM_SIZES) {
@@ -343,11 +345,39 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle"]) {
       for (let a = 0; a < 64; a++) {
         const angle = (a / 64) * Math.PI * 2;
         const reach = L.floorReach(r, angle);
-        if (reach < L.inscribedRadius(r) - 1e-9 || reach > size / 2 + 1e-9) wrong++;
+        const outer = shape === "cross" ? Math.hypot(size / 2, L.crossArmWidth(size) / 2) : size / 2;
+        if (reach < L.inscribedRadius(r) - 1e-9 || reach > outer + 1e-9) wrong++;
       }
     }
-    check(`${shape}: the floor's reach is between its narrowest and its box`, wrong === 0, `${wrong} of 192`);
+    check(`${shape}: the floor's reach stays within its real radial bounds`, wrong === 0, `${wrong} bad samples`);
   }
+}
+
+// A cross is the first concave footprint. These points distinguish the real
+// union of two arms from both the old box and an inscribed circle.
+{
+  const r = room(30, "normal", "cross");
+  const arm = L.crossArmWidth(r.size) / 2;
+  check("a cross chamber has twelve outer wall courses", L.wallEdges(r).length === 12,
+    `${L.wallEdges(r).length} courses`);
+  check("a cross chamber keeps the length of all four arms",
+    L.insideRoom(r, 0, 14, 0.2) && L.insideRoom(r, -14, 0, 0.2), "north/south and east/west");
+  check("a cross chamber removes all four box corners",
+    [[-12, -12], [12, -12], [-12, 12], [12, 12]].every(([x, z]) => !L.insideRoom(r, x, z, 0)),
+    `arm half-width ${arm}`);
+}
+
+// Foundry effects occupy the same kiln aprons as the terrain grammar and
+// inherit the footprint clipping. This catches attractive particles hovering
+// over a missing corner before a screenshot has to.
+{
+  const r = { ...room(30, "normal", "cross"), biome: "foundry", seed: 17 };
+  const vents = L.foundryEmbersFor(r);
+  check("a foundry cross has live kiln vents", vents.length >= 4, `${vents.length} vents`);
+  check("every kiln vent is over real floor", vents.every((p) => L.insideRoom(r, p.x, p.z, 0.25)),
+    `${vents.filter((p) => !L.insideRoom(r, p.x, p.z, 0.25)).length} off-floor`);
+  check("kiln vents stay in the fired side aprons", vents.every((p) => Math.abs(p.x) > r.size / 2 * 0.55),
+    `${vents.length} apron vents`);
 }
 
 // Which side a sound is on. The sign matters more than the magnitude: a

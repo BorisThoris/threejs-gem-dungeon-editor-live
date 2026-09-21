@@ -1,4 +1,4 @@
-import { DIRS, halfSize, SHAPE_SIDES, type Dir, type Room } from "./types";
+import { crossArmWidth, DIRS, halfSize, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -39,6 +39,10 @@ export function wingWidthAt(room: Room, dir: Dir, along: number): number {
  * Door collars reach the grid's cardinal portals even on pointed rooms. */
 function chamberRects(room: Room): FloorRect[] {
   if (room.shape === "square") return [{ x: 0, z: 0, width: room.size, depth: room.size }];
+  if (room.shape === "cross") {
+    const arm = crossArmWidth(room.size);
+    return [{ x: 0, z: 0, width: arm, depth: room.size }, { x: 0, z: 0, width: room.size, depth: arm }];
+  }
   const half = halfSize(room), sides = SHAPE_SIDES[room.shape];
   const vertices = Array.from({ length: sides }, (_, i) => ({
     x: half * Math.cos(i * Math.PI * 2 / sides), z: half * Math.sin(i * Math.PI * 2 / sides),

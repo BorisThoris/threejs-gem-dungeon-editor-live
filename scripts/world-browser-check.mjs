@@ -14,14 +14,16 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "bone", "circle", "hexagon", "triangle", "diamond"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
         const dungeon = generateDungeon({ seed, floor: 2 });
-        const room = dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north : r.biome === wanted || r.shape === wanted);
+        const room = dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
+          : wanted === "crossroads" ? r.template === "hall-crossroads"
+          : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
         window.__run.setState({ dungeon, floor: 2, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
@@ -38,6 +40,11 @@ try {
     await page.waitForFunction(n => window.__perf.frames > n + 8, frames);
     await page.waitForTimeout(1000);
     assert.ok(await page.locator(`[data-testid="map-room-footprint"][data-room-id="${fixture.roomId}"]`).count());
+    if (wanted === "foundry") {
+      const embers = await page.evaluate(() => window.__foundryEmbers);
+      assert.ok(embers?.count > 0, "foundry kiln aprons emit visible embers");
+      assert.equal(embers.drawCalls, 1, "foundry embers stay in one instanced draw call");
+    }
     await page.screenshot({ path: `${output}/${wanted}.png` });
     review.push({ wanted, ...fixture, player: await page.evaluate(() => ({ ...window.__playerDebug })), perf: await page.evaluate(() => ({ ...window.__perf })) });
   }

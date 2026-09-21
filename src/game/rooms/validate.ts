@@ -1,5 +1,6 @@
 import { cornerSpots, inDoorLane, orientationOf, overhangsLane, shapeFits } from "../dungeon/layout";
-import { inscribedRadius, type Room, type RoomTemplate } from "../dungeon/types";
+import { insideRoom } from "../dungeon/footprint";
+import { type Room, type RoomTemplate } from "../dungeon/types";
 import { PROP_SPECS } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
 import { claimedSpots, gemFor, keyFor } from "./kinds";
@@ -75,7 +76,6 @@ export function templateProblems(
   const room = roomForTemplate(t, grid);
   const reserved = reservedAnchorsFor(t.kind, room);
   const corners = cornerSpots(room);
-  const reach = inscribedRadius(room);
   const half = t.size / 2;
 
   // Turned the way this room is, because everything it is measured against
@@ -118,7 +118,7 @@ export function templateProblems(
       // props inside each other.
       if (Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half) {
         say(spec.title, "reaches through a wall");
-      } else if (t.shape !== "square" && Math.hypot(p.x, p.z) + spec.radius > reach) {
+      } else if (t.shape !== "square" && !insideRoom(room, p.x, p.z, spec.radius)) {
         say(spec.title, "reaches off the drawn floor of this shape");
       }
       // The worst case on purpose: `roomForTemplate` doors every wall, and a

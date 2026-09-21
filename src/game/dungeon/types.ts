@@ -32,6 +32,9 @@ export type RoomKind = (typeof ROOM_KINDS)[number];
  */
 export const SHAPE_SIDES: Record<Shape, number> = {
   square: 4,
+  // `cross` is a rectangle union rather than a polygon. Four is only its
+  // cardinal vocabulary; footprint and reach handle its concave outline.
+  cross: 4,
   circle: 48,
   hexagon: 6,
   octagon: 8,
@@ -41,6 +44,7 @@ export const SHAPE_SIDES: Record<Shape, number> = {
 
 export const SHAPES = [
   "square",
+  "cross",
   "circle",
   "hexagon",
   "octagon",
@@ -221,6 +225,10 @@ export const roomById = (dungeon: Dungeon, id: string): Room | undefined =>
 
 export const halfSize = (room: Room): number => room.size / 2;
 
+/** Block-cut width of either arm in a concave cross chamber. */
+export const crossArmWidth = (size: number): number =>
+  Math.min(size, Math.max(8, Math.round(size * 0.46 / 2) * 2));
+
 /**
  * How far the drawn floor reaches in the worst direction.
  *
@@ -232,6 +240,7 @@ export const halfSize = (room: Room): number => room.size / 2;
 export function inscribedRadius(room: Room): number {
   const half = halfSize(room);
   if (room.shape === "square") return half;
+  if (room.shape === "cross") return crossArmWidth(room.size) / Math.SQRT2;
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
 
@@ -260,6 +269,13 @@ export function floorReach(room: Room, angle: number): number {
       Math.abs(half / Math.cos(angle)),
       Math.abs(half / Math.sin(angle))
     );
+  }
+  if (room.shape === "cross") {
+    const arm = crossArmWidth(room.size) / 2;
+    const x = Math.abs(Math.cos(angle)), z = Math.abs(Math.sin(angle));
+    const vertical = Math.min(x < 1e-9 ? Infinity : arm / x, z < 1e-9 ? Infinity : half / z);
+    const horizontal = Math.min(x < 1e-9 ? Infinity : half / x, z < 1e-9 ? Infinity : arm / z);
+    return Math.max(vertical, horizontal);
   }
   const step = (2 * Math.PI) / SHAPE_SIDES[room.shape];
   const off = ((angle % step) + step) % step;

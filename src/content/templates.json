@@ -1750,5 +1750,35 @@
     }
    }
   ]
+ },
+ {
+  "id": "hall-crossroads",
+  "kind": "normal",
+  "size": 30,
+  "shape": "cross",
+  "props": [
+   { "kind": "table", "x": 5, "z": -10, "rotation": 0 },
+   { "kind": "chair", "x": 5, "z": -8, "rotation": 0 },
+   { "kind": "candle", "x": 6, "z": -10, "rotation": 0 },
+   { "kind": "table", "x": -5, "z": 10, "rotation": 0 },
+   { "kind": "chair", "x": -5, "z": 8, "rotation": 0 },
+   { "kind": "candle", "x": -6, "z": 10, "rotation": 0 },
+   { "kind": "bookshelf", "x": 10, "z": 5, "rotation": 1.5707963267948966 },
+   { "kind": "crate", "x": 10, "z": -5, "rotation": 0, "slot": "supplies" },
+   { "kind": "bookshelf", "x": -10, "z": -5, "rotation": 1.5707963267948966 },
+   { "kind": "urn", "x": -10, "z": 5, "rotation": 0, "slot": "supplies" }
+  ],
+  "slots": [
+   {
+    "slot": "supplies",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn"]
+    }
+   }
+  ]
  }
 ]

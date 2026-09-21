@@ -722,3 +722,34 @@ Runtime checks must operate mechanisms through player controls, revisit affected
 rooms, inspect map clues and rewards, and cross floor/run resets. Visual and
 audio review must show a readable handmade world. Passing old tests alone does
 not establish that the expansion above is complete.
+
+Cross chambers are now a first-class concave room shape. Their floor is the
+union of two broad rectangular arms, producing twelve real wall courses and
+four sheltered inward corners. The same footprint drives floor slabs, walls,
+collision, terrain clipping, creature placement, furnishings, line checks and
+the minimap. Generation uses the shape for ordinary halls, libraries, trials
+and treasure rooms; the authored crossroads stages paired work desks in the
+north and south arms and district-specific stores in the east and west arms.
+
+The room validator now asks the physical footprint whether each prop and its
+radius fit. This replaces its former circular approximation, allowing useful
+space in long arms without admitting objects into clipped corners. A 7,566-room
+generation sample gives cross chambers 8.7% of generated rooms. Native review
+of a flooded cross fixture measured 38 calls, 3,170 triangles, 27 geometries
+and five textures, with the concave walls, clipped terrain and minimap footprint
+all matching.
+
+Foundry kiln aprons now breathe visible embers from deterministic vent lines.
+The lines follow the same side aprons as the terrain grammar and are clipped by
+the real room footprint, so polygonal and cross rooms shorten the effect around
+their missing floor. Up to sixteen block motes rise and turn in one instanced
+draw call, using the room's existing ember ambience rather than adding another
+held audio voice. A native foundry fixture checks that the effect is present and
+keeps its declared one-call cost.
+
+The full 78-room performance sweep after both additions peaks at 76 draw
+calls, 6,731 triangles, 93 live geometries and 10 textures, within the written
+96 / 8,800 / 112 / 16 budgets. Ten repeated room laps show no geometry growth,
+616 sprint frames retain 0.00 MB after collection, and 20,000 held-audio updates
+retain one voice. The heaviest room remains the floor-three trap in seed 4242;
+neither a cross chamber nor the foundry effect becomes the new worst case.

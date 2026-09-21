@@ -180,12 +180,28 @@ const WANTED = [
     ],
     slots: [{ slot: "weight", op: "nsubst", into: ["barrel", "urn"], n: 2 }],
   },
+  {
+    id: "hall-crossroads", kind: "normal", size: 30, shape: "cross", absolute: true,
+    note: "a four-arm wayhouse: paired desks, stores in the side arms, and an empty crossing",
+    props: [
+      p("table", 5, -10), p("chair", 5, -8), p("candle", 6, -10),
+      p("table", -5, 10), p("chair", -5, 8), p("candle", -6, 10),
+      p("bookshelf", 10, 5, Math.PI / 2), { ...p("crate", 10, -5), slot: "supplies" },
+      p("bookshelf", -10, -5, Math.PI / 2), { ...p("urn", -10, 5), slot: "supplies" },
+    ],
+    slots: [{ slot: "supplies", op: "subst", into: ["crate", "barrel", "urn"], byDistrict: {
+      gardens: ["urn", "barrel"], works: ["crate", "barrel"], tombs: ["urn"],
+    } }],
+  },
 ];
 
 const out = [];
 for (const w of WANTED) {
   const base = { id: w.id, kind: w.kind, size: w.size, shape: w.shape, props: [], slots: w.slots ?? [] };
-  const scaled = w.props.map(at(w.size / 2));
+  // Most plans use the original 16m authoring grid and scale with the room.
+  // Irregular footprints are easier to read in their final metres because
+  // their usable width does not grow at the same rate as their outer bounds.
+  const scaled = w.absolute ? w.props : w.props.map(at(w.size / 2));
   /**
    * Eleven props, and the cap is the draw-call budget rather than taste: a
    * dressed room gets four braziers plus five to eight from its
