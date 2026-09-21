@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-21T23:11:34.059Z",
+  "generatedAt": "2026-09-21T23:40:52.090Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -113,7 +113,7 @@
         "bytes": 49803,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-21T23:10:20.651Z"
+        "capturedAt": "2026-09-21T23:39:38.588Z"
       },
       {
         "profile": "desktop",
@@ -122,7 +122,7 @@
         "bytes": 48876,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T23:10:38.981Z"
+        "capturedAt": "2026-09-21T23:39:56.904Z"
       },
       {
         "profile": "full",
@@ -131,7 +131,7 @@
         "bytes": 43703,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T23:11:15.579Z"
+        "capturedAt": "2026-09-21T23:40:33.634Z"
       },
       {
         "profile": "mobile",
@@ -140,7 +140,7 @@
         "bytes": 27290,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-21T23:10:57.285Z"
+        "capturedAt": "2026-09-21T23:40:15.225Z"
       },
       {
         "profile": "og",
@@ -149,7 +149,7 @@
         "bytes": 41782,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-21T23:11:33.890Z"
+        "capturedAt": "2026-09-21T23:40:51.928Z"
       }
     ]
   },
@@ -202,13 +202,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 349,
+    "sourceFiles": 351,
     "testFiles": 1,
-    "sourceLines": 63669,
+    "sourceLines": 63864,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 240
+        "files": 242
       },
       {
         "directory": "output",
@@ -243,10 +243,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "b98df31",
-    "lastCommitDate": "2026-09-22T02:01:21+03:00",
-    "lastCommitSubject": "Add concave crossroads and foundry embers",
-    "commitCount": 400,
+    "head": "0b9e82e",
+    "lastCommitDate": "2026-09-22T02:36:30+03:00",
+    "lastCommitSubject": "Add ash halls and reactive mite colonies",
+    "commitCount": 402,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
