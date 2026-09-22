@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 mkdirSync("output/world-review", { recursive: true });
@@ -42,7 +42,25 @@ try {
     });
     await page.waitForTimeout(150);
   };
+  const reviewBasin = async role => {
+    if (!process.env.BASIN_REVIEW) return;
+    const image = await page.evaluate(async () => {
+      const T = await import("/node_modules/three/build/three.module.js");
+      const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
+      const dir = room.waterway.upstream ?? room.waterway.downstream;
+      const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
+      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(800, 600); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const camera = new T.PerspectiveCamera(72, 4 / 3, 0.1, 100);
+      camera.position.set(axis[0] * 4.5, 2.8, axis[1] * 4.5);
+      camera.lookAt(0, 0.1, 0); camera.updateMatrixWorld();
+      window.__scene.updateMatrixWorld(true); renderer.render(window.__scene, camera);
+      const image = renderer.domElement.toDataURL(); renderer.dispose(); return image;
+    });
+    writeFileSync(`output/world-review/${role}-basin-wet.png`, Buffer.from(image.split(",")[1], "base64"));
+  };
   await visit(fixture.cache);
+  await reviewBasin("reliquary");
   const waterState = () => page.evaluate(() => {
     let material;
     window.__scene.traverse(o => { if (o.name === "directed-channel-surface") material = o.material; });
@@ -67,7 +85,7 @@ try {
         count++;
       }
     });
-    return valid && count === 4;
+    return valid && count === 8;
   }), "rendered incoming water uses physical coordinates flowing toward the reliquary");
   const joined = await page.evaluate(async () => {
     const s = window.__run.getState(), room = s.dungeon.rooms.find(r =>
@@ -108,6 +126,7 @@ try {
   await page.keyboard.press("KeyE");
   assert.equal(await page.evaluate(() => window.__run.getState().gems), initialGems, "submerged cache cannot be looted");
   await visit(fixture.sluice);
+  await reviewBasin("sluice");
   await page.evaluate(() => window.__bus.emit("teleport", { position: [0, 1.5, 0] }));
   await page.waitForTimeout(120);
   await page.evaluate(() => window.__run.getState().operateWaterway());

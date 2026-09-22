@@ -119,8 +119,12 @@ export function Watercourse({ room }: { room: Room }) {
   if (!room.waterway) return null;
   const role = room.waterway.role;
   return <group>
-    <Blocks blocks={blocks.map(b => ({ ...b, position: [b.position[0], GROUND_Y + 0.032, b.position[2]],
-      size: [b.size[0] === 0.8 ? 1.02 : b.size[0], 0.008, b.size[2] === 0.8 ? 1.02 : b.size[2]] }))} color="#806a47" />
+    <Blocks blocks={blocks.map((b, i) => {
+      const basin = role !== "channel" && i === blocks.length - 1;
+      return { ...b, position: [b.position[0], GROUND_Y + 0.032, b.position[2]],
+        size: [basin ? b.size[0] + 0.22 : b.size[0] === 0.8 ? 1.02 : b.size[0], 0.008,
+          basin ? b.size[2] + 0.22 : b.size[2] === 0.8 ? 1.02 : b.size[2]] };
+    })} color="#806a47" />
     <ChannelBed room={room} blocks={blocks} />
     <mesh name="directed-channel-surface">
       <primitive object={surface} attach="geometry" />

@@ -104,15 +104,21 @@ export function assignWatercourse(rooms: Room[], startId: string, vaultId: strin
 /** Narrow, shallow channels follow the unshifted real door lanes. Their top
  * is paint-depth, so water changes information and discovery, not collision. */
 const channelGeometry = new WeakMap<Room, CorridorBlock[]>();
+export const TERMINAL_BASIN_HALF = 1.2;
 export function watercourseBlocks(room: Room): CorridorBlock[] {
   if (!room.waterway) return [];
   if (channelGeometry.has(room)) return channelGeometry.get(room)!;
+  const terminal = room.waterway.role !== "channel";
   const blocks = [room.waterway.upstream, room.waterway.downstream].filter((d): d is Dir => !!d).map<CorridorBlock>(dir => {
-    const length = doorReach(room, dir), horizontal = dir === "east" || dir === "west";
+    const reach = doorReach(room, dir), inset = terminal ? TERMINAL_BASIN_HALF : 0;
+    const length = reach - inset, horizontal = dir === "east" || dir === "west";
     const sign = dir === "north" || dir === "west" ? -1 : 1;
-    return { position: [horizontal ? sign * length / 2 : 0, GROUND_Y + 0.037, horizontal ? 0 : sign * length / 2],
+    return { position: [horizontal ? sign * (inset + length / 2) : 0, GROUND_Y + 0.037,
+      horizontal ? 0 : sign * (inset + length / 2)],
       size: [horizontal ? length : 0.8, 0.008, horizontal ? 0.8 : length] };
   });
+  if (terminal) blocks.push({ position: [0, GROUND_Y + 0.037, 0],
+    size: [TERMINAL_BASIN_HALF * 2, 0.008, TERMINAL_BASIN_HALF * 2] });
   channelGeometry.set(room, blocks);
   return blocks;
 }
@@ -142,9 +148,9 @@ export function waterTravel(openedAt: number | null, now: number) {
  * route, independent of channel length, compass direction or plane UVs. */
 export function waterFlowUV(room: Room, segment: number, x: number, z: number): [number, number] {
   const route = [room.waterway?.upstream, room.waterway?.downstream].filter((d): d is Dir => !!d);
-  const dir = route[segment];
+  const dir = route[segment] ?? (room.waterway?.role !== "channel" ? route[0] : undefined);
   if (!dir) return [0, 0];
-  const sign = room.waterway?.upstream && segment === 0 ? -1 : 1;
+  const sign = room.waterway?.upstream && (segment === 0 || room.waterway?.role === "outfall") ? -1 : 1;
   const flow = DIR_STEP[dir];
   return [(x * flow.x + z * flow.z) * sign, (z * flow.x - x * flow.z) * sign];
 }

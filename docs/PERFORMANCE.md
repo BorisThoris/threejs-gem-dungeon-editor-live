@@ -26,13 +26,13 @@ broad slowdown.
 
 The recorded pre-strata baseline across the fixed 78-room corpus is 78 draw
 calls, 7,208 visible triangles, 87 live geometries and 10 live textures. The
-latest run peaks at 79 calls, 7,304 triangles, 93 geometries and 10 textures.
+latest run peaks at 79 calls, 7,304 triangles, 87 geometries and 10 textures.
 The previous sweeps reached 79 calls and 7,352 triangles, or 85 calls and
 7,400 triangles, as the active Warden shifted through sampled rooms; all are
 within budget. Geological and district border marks share one batch, and the
 new channel banks use terrain's existing deposit instance draw with per-cell
 color. Threshold approach sounds add no scene geometry or held audio voice.
-Ten repeated room laps showed no geometry growth, and the 614-frame sprint
+Ten repeated room laps showed no geometry growth, and the 574-frame sprint
 sample retained no heap after
 collection. The conservative 85-call observation leaves 11 calls of
 hard-budget headroom. New ecology should keep using fixed
@@ -62,6 +62,7 @@ comparable across that environment.
 | Silt-bank frogs | Stable | Rootwater moss gains frogs only on real watercourse banks, and migrating frogs use rendered bank cells with clear refuge routes. Scaling the shared body changes no mesh count. The latest fixed sweep peaks at 79 calls, 7,248 triangles, 93 live geometries and 10 textures; ten revisits add none, a 613-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. The geometry peak varies with sampled live scene state, so keep watching its 112 budget. |
 | Channel frames | Stable | The real directed watercourse receives one overhead district frame per eligible room, clipped to irregular floors and rendered in the three existing architecture batches. The 78-room sweep peaks at 79 calls, 7,304 triangles, 93 geometries and 10 textures; ten revisits add no geometry, the 599-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. |
 | Live channel surface | Stable | Incoming and outgoing reaches now share one water mesh per room, with route-relative flow UVs retained at each vertex and the dry sediment bed separate. The 78-room sweep still peaks at 79 calls, 7,304 triangles, 93 geometries and 10 textures; the improvement applies to two-reach rooms while the corpus peak remains unchanged. Ten revisits add no geometry; a 614-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. |
+| Terminal basins | Stable | The sluice and outfall each widen into one shallow, cut-stone basin joined exactly to the narrow reach. Water, sediment, banks, footsteps, ecology and Atlas use the same footprint, with no extra surface submission. The 78-room sweep peaks at 79 calls, 7,304 triangles, 87 geometries and 10 textures; ten revisits add no geometry, a 574-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. |
 | Salt-pan biome | Stable | The eleventh terrain and crown variant reuses the two terrain and three architecture batches. Twelve paused-clock flakes share one extra instance draw; a furnished circular fixture uses 51 calls and the corpus peak remains 78. |
 | Salt-pan ecology | Stable | Up to four brine crabs share two instance batches. The 360-floor audit finds 513 legal homes and 35 real cracked-wall retreats; the corpus peak remains 78 calls and 7,256 triangles. |
 | Paired gallery transepts | Stable | Raised wings, ramps and terminal stations reuse the terrain surface and three architecture batches. District answers reuse one lamp and the three bounded reflection taps, with no looping voice or added node. The 360-floor audit finds 853 stations, 87 paired rooms and 21 secret-host transepts; the corpus peak remains 78 calls. |

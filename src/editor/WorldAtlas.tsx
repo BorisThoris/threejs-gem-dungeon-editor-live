@@ -445,7 +445,9 @@ export function WorldAtlas() {
         {copperbacks.length > 0 && <p style={small}>{copperbacks.length} copperbacks read the condenser pressure gradient with paired shells{copperbacks.some(home => home.towardSecret) ? "; every shell points toward the cracked-wall leak" : ""}.</p>}
         {wicklings.length > 0 && <p style={small}>{wicklings.length} wicklings graze the cooled wax runs. Noise snuffs their embers for five seconds{wicklings.some(home => home.towardSecret) ? "; every raised tip leans toward the cracked-wall draft" : ""}.</p>}
         {room.waterway && <p style={{ ...small, color: "#d0b477" }}>Water {room.waterway.upstream ? `arrives from the ${room.waterway.upstream}` : "begins at the sluice"}
-          {room.waterway.downstream ? ` and leaves to the ${room.waterway.downstream}.` : "; the reliquary lies at its outfall."} Paired silt banks stay visible after drainage.</p>}
+          {room.waterway.downstream ? ` and leaves to the ${room.waterway.downstream}.` : "; the reliquary lies at its outfall."} {room.waterway.role === "channel"
+            ? "Paired silt banks stay visible after drainage."
+            : "A shallow central basin meets the narrow reach; its cut-stone sediment and paired banks stay visible after drainage."}</p>}
         {channelFrame && <p style={small}><strong>{channelFrame.site.name}</strong> · {channelFrame.site.description} It hangs above the {channelFrame.site.dir} channel strip without narrowing the passage.</p>}
         {source && outfall ? <p style={small}>The sluice at {source.id} drains the channel to {outfall.id}. Both endpoints are reachable without the vault key; the circuit never enters the exit stairs.</p>
           : <p style={small}>This floor has no complete watercourse: the available rooms cannot support both safe endpoints.</p>}

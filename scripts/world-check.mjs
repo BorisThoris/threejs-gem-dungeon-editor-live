@@ -224,6 +224,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     }
     assert.equal(seen.size, d.rooms.filter(r => r.waterway).length, "one complete connected circuit");
     for (const end of [source, destination]) {
+      const channel = L.watercourseBlocks(end), basin = channel.at(-1), reach = channel[0];
+      assert.equal(channel.length, 2, "each watercourse terminus has one reach and one cut-stone basin");
+      assert.deepEqual(basin.position, [0, L.GROUND_Y + 0.037, 0], "terminal basin sits on the actual wet route");
+      assert.deepEqual(basin.size, [2.4, 0.008, 2.4], "terminal basin is broad enough to read as a work site");
+      assert.deepEqual(L.waterFlowUV(end, 1, 0.25, 0.5), L.waterFlowUV(end, 0, 0.25, 0.5),
+        "basin glints continue the narrow reach's flow direction");
+      for (const x of [-1.31, 1.31]) for (const z of [-1.31, 1.31])
+        assert.ok(L.insideRoom(end, x, z), "the basin's cut-stone surround fits the shaped floor");
+      const axis = L.DIR_STEP[end.waterway.downstream ?? end.waterway.upstream];
+      const inner = Math.abs(reach.position[0] * axis.x + reach.position[2] * axis.z)
+        - (axis.x ? reach.size[0] : reach.size[2]) / 2;
+      assert.ok(Math.abs(inner - 1.2) < 1e-9, "the narrow reach meets the basin without a gap or overlap");
       const station = L.waterStation(end);
       assert.deepEqual(L.waterStation(JSON.parse(JSON.stringify(end))), station, "saved/copied rooms retain the generated mechanism anchor");
       assert.ok(station && L.insideRoom(end, station.approach.x, station.approach.z, 0.6), "station has a safe standing area");

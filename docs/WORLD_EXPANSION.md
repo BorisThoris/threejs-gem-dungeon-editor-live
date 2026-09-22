@@ -1338,3 +1338,16 @@ The fixed 78-room sweep still peaks at 79 draw calls, 7,304 triangles,
 reaches while the fixed corpus peak remains unchanged. Ten revisits add no
 geometry, a 614-frame sprint retains 0.00 MB,
 and 20,000 held-audio updates retain one voice with zero bytes per update.
+
+The sluice and reliquary now terminate in a shallow square basin rather than
+an unshaped end of the wet strip. Its narrow reach meets the basin edge with
+no gap or overlapping water; a cut-stone surround, textured sediment, wet
+footsteps, silt banks and channel fauna all follow that same geometry. The
+Atlas draws the wider footprint. Across 360 generated floors, 339 circuits
+have both basins fitted inside their true shaped rooms. Native standing-height
+review shows the widening at both ends of the route, and the browser route
+check still passes operation, drainage, pause, revisits and the dry cache.
+The 78-room sweep peaks at 79 draw calls, 7,304 triangles, 87 geometries
+and 10 textures; ten revisits add no geometry, a 574-frame sprint retains
+0.00 MB after collection, and 20,000 held-audio updates retain one voice
+with zero bytes per update.

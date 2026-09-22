@@ -110,6 +110,10 @@ world-space material marks rather than scattering unrelated puddle props.
 Wet reaches in one room share a single surface draw. Their vertices still
 carry route-relative flow coordinates, so a bend keeps the glint moving toward
 the outfall; drainage reveals the separate cut-stone sediment bed below.
+At the sluice and outfall, the narrow strip meets a shallow square basin with
+one block-cut surround. The reach stops at its edge instead of overlapping
+the water sheet. Keep basin, wet footsteps, dry sediment, silt banks, ecology
+and Atlas on the same footprint; check its full surround against shaped rooms.
 
 Where the channel actually passes, its builders left one overhead frame aligned
 with the downstream reach (or the upstream reach at a terminus). Rootwater
