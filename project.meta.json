@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T10:11:26.480Z",
+  "generatedAt": "2026-09-22T10:35:53.463Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -86,7 +86,8 @@
       "icons:check",
       "meta:refresh",
       "test:creatures",
-      "test:bat-flight"
+      "test:bat-flight",
+      "test:authored-rooms"
     ]
   },
   "capture": {
@@ -115,7 +116,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T10:10:13.117Z"
+        "capturedAt": "2026-09-22T10:34:40.035Z"
       },
       {
         "profile": "desktop",
@@ -124,7 +125,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T10:10:31.413Z"
+        "capturedAt": "2026-09-22T10:34:58.348Z"
       },
       {
         "profile": "full",
@@ -133,7 +134,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T10:11:07.995Z"
+        "capturedAt": "2026-09-22T10:35:34.946Z"
       },
       {
         "profile": "mobile",
@@ -142,7 +143,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T10:10:49.700Z"
+        "capturedAt": "2026-09-22T10:35:16.655Z"
       },
       {
         "profile": "og",
@@ -151,7 +152,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T10:11:26.289Z"
+        "capturedAt": "2026-09-22T10:35:53.341Z"
       }
     ]
   },
@@ -204,9 +205,9 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 363,
+    "sourceFiles": 364,
     "testFiles": 1,
-    "sourceLines": 65229,
+    "sourceLines": 65313,
     "largestDirectories": [
       {
         "directory": "src",
@@ -218,7 +219,7 @@
       },
       {
         "directory": "scripts",
-        "files": 50
+        "files": 51
       },
       {
         "directory": ".",
@@ -245,10 +246,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "53c8ad9",
-    "lastCommitDate": "2026-09-22T13:07:23+03:00",
-    "lastCommitSubject": "Add kiln newts to foundry ecology",
-    "commitCount": 414,
+    "head": "c92f22e",
+    "lastCommitDate": "2026-09-22T13:31:28+03:00",
+    "lastCommitSubject": "Add authored irregular rooms",
+    "commitCount": 416,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
