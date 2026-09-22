@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T16:59:43.817Z",
+  "generatedAt": "2026-09-22T17:31:35.524Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -117,7 +117,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T16:58:29.935Z"
+        "capturedAt": "2026-09-22T17:30:22.170Z"
       },
       {
         "profile": "desktop",
@@ -126,7 +126,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T16:58:48.247Z"
+        "capturedAt": "2026-09-22T17:30:40.481Z"
       },
       {
         "profile": "full",
@@ -135,7 +135,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T16:59:24.879Z"
+        "capturedAt": "2026-09-22T17:31:17.064Z"
       },
       {
         "profile": "mobile",
@@ -144,7 +144,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T16:59:06.586Z"
+        "capturedAt": "2026-09-22T17:30:58.786Z"
       },
       {
         "profile": "og",
@@ -153,7 +153,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T16:59:43.640Z"
+        "capturedAt": "2026-09-22T17:31:35.356Z"
       }
     ]
   },
@@ -206,13 +206,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 375,
+    "sourceFiles": 377,
     "testFiles": 1,
-    "sourceLines": 67238,
+    "sourceLines": 67502,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 263
+        "files": 265
       },
       {
         "directory": "output",
@@ -247,10 +247,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "e2bcfca",
-    "lastCommitDate": "2026-09-22T19:55:30+03:00",
-    "lastCommitSubject": "Build connected tallow chantries",
-    "commitCount": 440,
+    "head": "6550658",
+    "lastCommitDate": "2026-09-22T20:27:17+03:00",
+    "lastCommitSubject": "Give tallow chantries a wickling ecology",
+    "commitCount": 442,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
