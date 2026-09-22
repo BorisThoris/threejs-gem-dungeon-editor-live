@@ -12,6 +12,14 @@ or free-floating decoration. Adjacent terrain beds share their marks, the run
 clock freezes every moving effect on pause, and the ten biomes retain separate
 compiled variants without extra geometry, textures, lights or draw calls.
 
+Biome identity continues above eye level. Every material tradition owns one
+purposeful roof motif: quarry wedges, root combs, burial tallies, sluice rails,
+kiln dampers, pit props, ossuary ribs, resonator forks, growing shelves or flue
+baffles. These repeat by structural bay, remain above doorway clearance and are
+clipped to the same irregular floor union as the walls. They join the existing
+three architecture batches; do not turn them into loose ceiling clutter or a
+new mesh, material or light per ornament.
+
 - Chunky silhouettes, visible stone courses, earthy palettes, imperfect surfaces.
 - Warm practical light; cold light belongs to water and mineral deposits.
 - Restrained effects. No photorealistic assets, glossy generic materials, or

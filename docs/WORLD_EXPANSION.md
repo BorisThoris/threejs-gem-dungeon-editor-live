@@ -846,3 +846,26 @@ sweep remains at 78 draw calls, 6,603 triangles, 87 geometries and 10 textures.
 Ten repeated laps add no geometry; 1,500 sprint frames and 20,000 held-audio
 updates retain no heap or extra voice. The new finish costs no scene submission,
 texture, light or geometry.
+
+Biome construction now carries the same vocabulary above the player. Every one
+of the ten materials owns a repeated working remnant: quarry lifting wedges,
+nursery root combs, burial tally tabs, sluice-screen rails, kiln dampers, pit
+props, ossuary ribs, resonator forks, growing shelves or ash-settling baffles.
+The motif repeats through alternating structural bays so it reads as how a room
+was used, rather than as objects scattered against the ceiling. The World atlas
+names the construction and explains its former purpose beside the district
+identity and terrain rule.
+
+All crown blocks are derived from the structural spans cut out of the actual
+floor union. The 360-floor sweep checks their corners against circular,
+polygonal, cross and gallery footprints and keeps their lowest face above full
+doorway clearance. Native Chrome visits all ten biomes, verifies ten distinct
+face signatures and confirms the additions remain in the architecture
+component's existing structure, detail and mark batches. Review renders keep
+the handmade block silhouettes visible from standing eye height.
+
+The integrated 78-room performance sweep remains at 78 calls, 87 geometries
+and 10 textures. The worst view rises from 6,603 to 6,723 triangles, still well
+inside the 8,800 budget; the crown adds no scene submission or resource type.
+Ten repeated room laps show no geometry growth, 618 sprint frames retain no
+heap after collection, and 20,000 held-audio updates retain one voice.

@@ -3,11 +3,12 @@ import { floorRects } from "../dungeon/footprint";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
 import { identityFor, PLACE_IDENTITIES } from "./identity";
+import { biomeCrownFor, type CrownSpan } from "./biomeCrown";
 
 /** Cut the same room union into structural bays. Each span is wholly inside
  * the floor below it; a polygon's clipped corner cannot acquire a square roof. */
-export function structuralSpans(room: Room) {
-  const rects = floorRects(room), spans: { x: number; z: number; width: number }[] = [];
+export function structuralSpans(room: Room): CrownSpan[] {
+  const rects = floorRects(room), spans: CrownSpan[] = [];
   for (let z = -room.size / 2 + 2.5; z <= room.size / 2 - 1.5; z += 4) {
     const intervals = rects.filter(r => z - 0.18 >= r.z - r.depth / 2 && z + 0.18 <= r.z + r.depth / 2)
       .map(r => [r.x - r.width / 2, r.x + r.width / 2]).sort((a, b) => a[0] - b[0]);
@@ -28,7 +29,8 @@ export function architectureFor(room: Room) {
   const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
   const block = (into: CorridorBlock[], x: number, y: number, z: number, w: number, h: number, d: number) =>
     into.push({ position: [x, GROUND_Y + y, z], size: [w, h, d] });
-  for (const span of structuralSpans(room)) {
+  const spans = structuralSpans(room);
+  for (const span of spans) {
     const { x, z, width } = span;
     if (identity.tradition === "ironwork") {
       for (const offset of [-0.1, 0.1]) block(structure, x, WALL_HEIGHT - 0.42, z + offset, width, 0.18, 0.09);
@@ -54,5 +56,9 @@ export function architectureFor(room: Room) {
       block(marks, x, WALL_HEIGHT - 0.48, z, 0.38, 0.3, 0.42);
     }
   }
-  return { identity, structure, detail, marks };
+  const crown = biomeCrownFor(room, spans);
+  structure.push(...crown.structure);
+  detail.push(...crown.detail);
+  marks.push(...crown.marks);
+  return { identity, crown, structure, detail, marks };
 }

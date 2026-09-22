@@ -134,8 +134,8 @@ export function Bats({ room, at }: { room: Room; at: Spot }) {
     bodies.current.instanceMatrix.needsUpdate = true;
     wings.current.instanceMatrix.needsUpdate = true;
     if (import.meta.env.DEV) {
-      (window as unknown as { __bats?: { room: string; roused: boolean; stirring: boolean } }).__bats = {
-        room: room.id, roused, stirring: stirringAt.current !== null,
+      (window as unknown as { __bats?: { room: string; roused: boolean; stirring: boolean; warningStartedAt: number | null } }).__bats = {
+        room: room.id, roused, stirring: stirringAt.current !== null, warningStartedAt: stirringAt.current,
       };
     }
   });

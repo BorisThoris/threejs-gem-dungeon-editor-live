@@ -18,6 +18,7 @@ import { colors } from "../ui/overlay";
 import { button, field, label, panel, small } from "./styles";
 import "../game/rooms/shipped";
 import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
+import { BIOME_CROWNS } from "../game/worldbuilding/biomeCrown";
 import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
 import { secretTrailPattern, secretTrailText } from "../game/worldbuilding/secretTrail";
 import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from "../game/worldbuilding/bellcaps";
@@ -85,7 +86,9 @@ export function WorldAtlas() {
   const station = useMemo(() => room.waterway && room.waterway.role !== "channel" ? waterStation(room) : null, [room]);
   const ink = INK[room.district ?? "tombs"];
   const identity = PLACE_IDENTITIES[identityFor(room)];
-  const terrainStyle = TERRAIN_EFFECTS[biomeIdFor(room.kind, room.id, room.seed, room)];
+  const biome = biomeIdFor(room.kind, room.id, room.seed, room);
+  const terrainStyle = TERRAIN_EFFECTS[biome];
+  const crown = BIOME_CROWNS[biome];
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -179,6 +182,7 @@ export function WorldAtlas() {
         <p style={small}>{room.shape} · {room.size} m chamber · {room.biome} · {KIND_TITLE[room.kind]}</p>
         {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
+        <p style={small}><strong>{crown.name}</strong> · {crown.description} It joins the room's existing batched architecture.</p>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
           <label style={small}>Water preview <select aria-label="Water preview" value={waterPreview}
             style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setWaterPreview(e.target.value as typeof waterPreview)}>

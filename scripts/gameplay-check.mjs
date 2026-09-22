@@ -567,13 +567,15 @@ try {
     window.__run.setState({ noisyUntil: window.__derived.clock() + 20 });
   }, roostFixture.at);
   await page.waitForFunction(() => window.__bats.stirring);
+  const warningStartedAt = await page.evaluate(() => window.__bats.warningStartedAt);
+  assert.ok(Number.isFinite(warningStartedAt), "the live roost publishes the start of its visible warning");
   await page.evaluate(() => window.__run.getState().pause());
   await page.waitForTimeout(1300);
   assert.equal(await page.evaluate(() => window.__run.getState().batsRousedUntil), 0, "warning time freezes while paused");
-  const stir = await page.evaluate(() => { const now = window.__derived.clock(); window.__run.getState().resume(); return now; });
+  await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => window.__bats.roused);
-  const burstDelay = await page.evaluate((started) => window.__run.getState().batsRousedUntil - 5 - started, stir);
-  assert.ok(burstDelay >= 1, `staying under the roost allows the warning before the burst: ${burstDelay}`);
+  const burstDelay = await page.evaluate((started) => window.__run.getState().batsRousedUntil - 5 - started, warningStartedAt);
+  assert.ok(burstDelay >= 1.15, `staying under the roost allows the full warning before the burst: ${burstDelay}`);
   await page.waitForTimeout(5500);
   assert.ok(await page.evaluate(() => !window.__bats.roused && !window.__bats.stirring), "the flock does not startle itself again");
   await page.evaluate(async () => {

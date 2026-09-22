@@ -24,6 +24,7 @@
         "test:layout": "node scripts/layout-check.mjs",
         "test:world": "node scripts/world-check.mjs",
         "test:terrain": "node scripts/terrain-browser-check.mjs",
+        "test:architecture": "node scripts/architecture-browser-check.mjs",
         "test:exploration": "node scripts/exploration-browser-check.mjs",
         "test:watercourse": "node scripts/watercourse-browser-check.mjs",
         "test:ecology": "node scripts/ecology-browser-check.mjs",

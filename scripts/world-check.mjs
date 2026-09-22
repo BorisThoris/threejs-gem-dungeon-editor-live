@@ -12,6 +12,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
   "worldbuilding/landmarks",
   "worldbuilding/secretTrail",
+  "worldbuilding/biomeCrown",
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
@@ -35,6 +36,9 @@ for (const [biome, effect] of Object.entries(L.TERRAIN_EFFECTS)) {
   assert.equal(effect.fragment.includes("terrainTime"), effect.animated, `${biome} declares whether its terrain moves`);
   assert.ok(!effect.fragment.includes("smoothstep"), `${biome} terrain does not grow a smooth procedural finish`);
 }
+assert.deepEqual(Object.keys(L.BIOME_CROWNS).sort(), [...L.BIOMES].sort(), "every biome owns one overhead construction rule");
+assert.equal(new Set(Object.values(L.BIOME_CROWNS).map(crown => crown.name)).size, L.BIOMES.length,
+  "biome crowns have distinct author-facing names");
 const cube = { position: [0, 0, 0], size: [2, 2, 2] };
 assert.equal(L.blockFaces([cube]).length, 6, "isolated blocks retain all six surfaces");
 assert.equal(L.blockFaces([cube, { position: [2, 0, 0], size: [2, 2, 2] }]).length, 10, "touching blocks omit only their two buried joining faces");
@@ -72,6 +76,8 @@ let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 
 let districtWaymarks = 0;
 const biomes = new Set();
 const identities = new Set();
+const crowns = new Set();
+let crownBlocks = 0;
 let migratingToads = 0;
 const terraceDirs = new Set();
 let terraceCount = 0;
@@ -399,6 +405,11 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     identities.add(L.identityFor(r));
     const architecture = L.architectureFor(r);
     assert.ok(architecture.structure.length > 0, "every room shape supports its district architecture");
+    assert.equal(architecture.crown.definition, L.BIOME_CROWNS[r.biome], "room architecture publishes its biome's crown rule");
+    assert.ok(architecture.crown.structure.length + architecture.crown.detail.length + architecture.crown.marks.length > 0,
+      "every generated room receives a visible biome crown");
+    crowns.add(architecture.crown.biome);
+    crownBlocks += architecture.crown.structure.length + architecture.crown.detail.length + architecture.crown.marks.length;
     for (const b of [...architecture.structure, ...architecture.detail, ...architecture.marks]) {
       assert.ok(b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT, "structural details preserve full doorway-height movement clearance");
       for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
@@ -491,6 +502,8 @@ console.log(`Discovery: ${serviceTrails} reliquary-to-secret expeditions through
 console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
 assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id)), [],
   "all building identities occur in the generated world");
+assert.deepEqual(L.BIOMES.filter(biome => !crowns.has(biome)), [], "all biome crown traditions occur in the generated world");
+console.log(`Biome crowns: ${crownBlocks} purposeful overhead blocks across ${crowns.size} material traditions.`);
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);
   console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
   assert.ok(wallTurns > 1000, "animals actively turn along walls across generated room shapes");
