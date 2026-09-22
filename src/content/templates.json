@@ -1780,5 +1780,127 @@
     }
    }
   ]
+ },
+ {
+  "id": "hall-diamond-cutters",
+  "name": "Cutters' Diamond",
+  "story": "Two cutting tables face across the old stone course while ledgers and district supplies occupy the points of the chamber.",
+  "kind": "normal",
+  "size": 30,
+  "shape": "diamond",
+  "props": [
+   { "kind": "table", "x": -6, "z": -6, "rotation": 0.7853981633974483 },
+   { "kind": "chair", "x": -5.1, "z": -7.6, "rotation": 2.356194490192345 },
+   { "kind": "table", "x": 6, "z": 6, "rotation": 0.7853981633974483 },
+   { "kind": "chair", "x": 5.1, "z": 7.6, "rotation": -0.7853981633974483 },
+   { "kind": "crate", "x": -5.1, "z": 7.4, "rotation": 0, "slot": "cut-stone" },
+   { "kind": "barrel", "x": 5.1, "z": -7.4, "rotation": 0, "slot": "cut-stone" },
+   { "kind": "rubble", "x": -4.3, "z": 4.3, "rotation": 0 }
+  ],
+  "slots": [
+   {
+    "slot": "cut-stone",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn", "crate"]
+    }
+   }
+  ]
+ },
+ {
+  "id": "vault-round-counting-house",
+  "name": "Round Counting House",
+  "story": "Three strongboxes follow the curved wall around a clerk's station, with paired columns preserving a clear central count floor.",
+  "kind": "treasure",
+  "size": 28,
+  "shape": "circle",
+  "props": [
+   { "kind": "chest", "x": -6.4, "z": -6.4, "rotation": 0.6 },
+   { "kind": "chest", "x": 6.4, "z": 6.4, "rotation": -2.5 },
+   { "kind": "chest", "x": -6.4, "z": 6.4, "rotation": 2.4 },
+   { "kind": "pillar", "x": 8.8, "z": -5.2, "rotation": 0 },
+   { "kind": "pillar", "x": -8.8, "z": 5.2, "rotation": 0 },
+   { "kind": "table", "x": 5.2, "z": -7.6, "rotation": 1.5707963267948966 },
+   { "kind": "chair", "x": 7, "z": -7.6, "rotation": -1.5707963267948966 },
+   { "kind": "candle", "x": 4.3, "z": -6.9, "rotation": 0 },
+   { "kind": "crate", "x": -5.2, "z": -8.8, "rotation": 0, "slot": "strongroom" },
+   { "kind": "barrel", "x": 8.8, "z": 5.2, "rotation": 0, "slot": "strongroom" },
+   { "kind": "skull", "x": -4.3, "z": -4.3, "rotation": 0 },
+   { "kind": "web", "x": 5.2, "z": 8.8, "rotation": 0 }
+  ],
+  "slots": [
+   { "slot": "strongroom", "op": "shuffle", "into": [] }
+  ]
+ },
+ {
+  "id": "trap-cross-machine-floor",
+  "name": "Cross Machine Floor",
+  "story": "Counterweights and broken partitions alternate between four machine arms, leaving the crossing clear enough to read and evade its trap.",
+  "kind": "trap",
+  "size": 30,
+  "shape": "cross",
+  "props": [
+   { "kind": "pillar", "x": 5, "z": -10, "rotation": 0 },
+   { "kind": "pillar", "x": -5, "z": 10, "rotation": 0 },
+   { "kind": "crate", "x": -5, "z": -10, "rotation": 0, "slot": "counterweight" },
+   { "kind": "barrel", "x": 5, "z": 10, "rotation": 0, "slot": "counterweight" },
+   { "kind": "wall", "x": 10, "z": 5, "rotation": 1.5707963267948966 },
+   { "kind": "wall", "x": -10, "z": -5, "rotation": 1.5707963267948966 },
+   { "kind": "rubble", "x": 10, "z": -5, "rotation": 0 },
+   { "kind": "rubble", "x": -10, "z": 5, "rotation": 0 },
+   { "kind": "skull", "x": 5, "z": -7.6, "rotation": 0 },
+   { "kind": "skull", "x": -5, "z": 7.6, "rotation": 0 },
+   { "kind": "web", "x": -5, "z": -7.6, "rotation": 0 },
+   { "kind": "potion", "x": 5, "z": 7.6, "rotation": 0 }
+  ],
+  "slots": [
+   {
+    "slot": "counterweight",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn", "crate"]
+    }
+   }
+  ]
+ },
+ {
+  "id": "library-hex-scriptorium",
+  "name": "Hex Scriptorium",
+  "story": "Paired stacks and writing desks mirror one another across the hexagonal hall, with district stores kept against the short walls.",
+  "kind": "library",
+  "size": 28,
+  "shape": "hexagon",
+  "props": [
+   { "kind": "bookshelf", "x": -7.2, "z": -6.4, "rotation": 0.5235987755982988 },
+   { "kind": "bookshelf", "x": -5.1, "z": -8, "rotation": 0.5235987755982988 },
+   { "kind": "bookshelf", "x": 7.2, "z": 6.4, "rotation": 0.5235987755982988 },
+   { "kind": "bookshelf", "x": 5.1, "z": 8, "rotation": 0.5235987755982988 },
+   { "kind": "table", "x": 6, "z": -6, "rotation": 2.0943951023931953 },
+   { "kind": "chair", "x": 7.5, "z": -5, "rotation": -1.0471975511965976 },
+   { "kind": "table", "x": -6, "z": 6, "rotation": 2.0943951023931953 },
+   { "kind": "chair", "x": -7.5, "z": 5, "rotation": 2.0943951023931953 },
+   { "kind": "candle", "x": 5.1, "z": -7.2, "rotation": 0 },
+   { "kind": "candle", "x": -5.1, "z": 7.2, "rotation": 0 },
+   { "kind": "crate", "x": -8.4, "z": -4.5, "rotation": 0, "slot": "archive" },
+   { "kind": "urn", "x": 8.4, "z": 4.5, "rotation": 0, "slot": "archive" }
+  ],
+  "slots": [
+   {
+    "slot": "archive",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn", "crate"]
+    }
+   }
+  ]
  }
 ]

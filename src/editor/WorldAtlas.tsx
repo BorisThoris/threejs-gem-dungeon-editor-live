@@ -37,6 +37,7 @@ import { floorHeightAt } from "../game/worldbuilding/elevation";
 import { floorRects } from "../game/dungeon/footprint";
 import { GROUND_Y, NOISE_HOLD_S } from "../game/world";
 import type { Room } from "../game/dungeon/types";
+import { getTemplate } from "../game/rooms/templates";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
@@ -90,6 +91,7 @@ export function WorldAtlas() {
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
   const terrainStyle = TERRAIN_EFFECTS[biome];
   const crown = BIOME_CROWNS[biome];
+  const authored = room.template ? getTemplate(room.template) : undefined;
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -184,6 +186,7 @@ export function WorldAtlas() {
         <p style={small}>{room.shape} · {room.size} m chamber · {room.biome} · {KIND_TITLE[room.kind]}</p>
         {room.wingProfiles && <p style={small}>Round-ended galleries: {DIRS.filter(dir => room.wingProfiles?.[dir] === "apse").join(", ")}</p>}
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
+        {authored?.story && <p data-testid="atlas-authored-story" style={small}><strong>{authored.name}</strong> · {authored.story}</p>}
         <p style={small}><strong>{crown.name}</strong> · {crown.description} It joins the room's existing batched architecture.</p>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
           <label style={small}>Water preview <select aria-label="Water preview" value={waterPreview}

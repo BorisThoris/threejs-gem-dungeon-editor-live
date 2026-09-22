@@ -27,6 +27,13 @@ new mesh, material or light per ornament.
 - Build places with purposes and histories. Creatures need habitats; secrets
   need clues. Furnish arrangements, not disconnected random objects.
 
+Authored rooms keep that rule in their data. A composition may carry a name
+and one sentence explaining its former use; the HUD and World atlas preserve
+the name instead of reducing it to a generic chamber. Furniture repeats around
+the room's work: paired cutting tables, a curved counting floor, four machine
+arms or mirrored writing bays. District substitutions may change the stored
+materials without changing what the arrangement means.
+
 ## Connected geography
 
 The generator grows three regions through actual doorways. Rootwater galleries
@@ -92,6 +99,12 @@ retain explicit dimensions and are validated against their revised anchors.
 Walls and ceilings are instanced; the floor uses one continuous surface mesh,
 so a stepped outline does not cost a draw call per block. Region growth remains based on real door connectivity,
 while the minimap fits each footprint inside its graph cell.
+
+The shipped authored set includes purpose-built diamond, circle, cross and
+hexagon layouts as well as square rooms. Every layout must survive all four
+turns and both mirrors, keep its full prop count, preserve door-to-door paths,
+leave rewards and traps approachable, and stay below the room performance
+watch band in a native browser render.
 
 Pursuers use cached routes when groups of props or hazards block the direct
 approach. Wall clearance and solid furniture stay fixed; a wary creature can

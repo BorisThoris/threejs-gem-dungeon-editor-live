@@ -887,3 +887,22 @@ including frogs and kiln newts. The integrated 78-room performance sweep peaks
 at 78 calls, 6,712 triangles, 87 geometries and 10 textures. Ten repeated room
 laps add no geometry, 1,493 sprint frames retain no heap after collection, and
 20,000 held-audio updates retain one voice.
+
+The authored room library now grows from 21 to 25 compositions with four
+named irregular spaces: Cutters' Diamond, the Round Counting House, the Cross
+Machine Floor and the Hex Scriptorium. Their furnishings repeat around actual
+work instead of filling spare anchors: paired stone-cutting stations, a curved
+strongbox count, counterweights across four trap arms and mirrored writing
+bays. District-aware slots change stored urns, barrels and crates without
+changing each room's purpose. Their authored names reach the HUD and their
+purpose sentences appear in the World atlas.
+
+Validation turns and mirrors every room eight ways, retains every authored
+prop, walks all door pairs, approaches gems, keys, traps and room mechanisms,
+and samples native generation. The four designs produce 16–24 visibly distinct
+arrangements each and raise non-square generated share while preserving the
+generator's one-third authored-room rate. Native review renders cover diamond,
+circle, cross and hexagon fixtures; direct costs are 80, 61, 50 and 69 draw
+calls respectively. The integrated 78-room sweep remains at 78 calls, 6,722
+triangles, 87 geometries and 10 textures. Repeated laps do not grow resources,
+and 1,496 sprint frames retain no heap after collection.

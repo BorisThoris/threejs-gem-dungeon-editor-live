@@ -25,8 +25,8 @@ broad slowdown.
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
-6,712 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 1,493-frame sprint
+6,722 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 1,496-frame sprint
 sample retained no heap after collection. Draw calls remain below the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback and kiln-newt colonies do with two
@@ -47,6 +47,7 @@ comparable across that environment.
 | Terrain shaders | Stable | Ten biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
 | Biome crowns | Stable | Ten roof motifs add 120 worst-case triangles inside the three existing architecture submissions; preserve that batching. |
 | Ambient colonies | Stable | Kiln newts add two instanced submissions for a whole colony, no individual lights or timers, and keep the measured peak at 78 calls. |
+| Authored irregular rooms | Stable | Four new diamond, circle, cross and hexagon compositions peak at 80 calls in direct review; the fixed 78-room corpus remains at 78 calls. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a

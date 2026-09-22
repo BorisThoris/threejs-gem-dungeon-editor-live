@@ -123,6 +123,10 @@ export interface PropPlacement {
  */
 export interface RoomTemplate {
   id: string;
+  /** A composed room can keep the name its layout earned in play and in the atlas. */
+  name?: string;
+  /** Why the furnishings are arranged this way, for authoring review. */
+  story?: string;
   kind: RoomKind;
   size: number;
   shape: Shape;
