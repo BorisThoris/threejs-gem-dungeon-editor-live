@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T21:49:34.761Z",
+  "generatedAt": "2026-09-22T22:12:55.546Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -120,7 +120,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T21:48:21.357Z"
+        "capturedAt": "2026-09-22T22:11:41.882Z"
       },
       {
         "profile": "desktop",
@@ -129,7 +129,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:48:39.703Z"
+        "capturedAt": "2026-09-22T22:12:00.312Z"
       },
       {
         "profile": "full",
@@ -138,7 +138,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:49:16.300Z"
+        "capturedAt": "2026-09-22T22:12:36.993Z"
       },
       {
         "profile": "mobile",
@@ -147,7 +147,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T21:48:57.973Z"
+        "capturedAt": "2026-09-22T22:12:18.633Z"
       },
       {
         "profile": "og",
@@ -156,7 +156,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T21:49:34.596Z"
+        "capturedAt": "2026-09-22T22:12:55.371Z"
       }
     ]
   },
@@ -211,7 +211,7 @@
   "metrics": {
     "sourceFiles": 382,
     "testFiles": 1,
-    "sourceLines": 68448,
+    "sourceLines": 68491,
     "largestDirectories": [
       {
         "directory": "src",
@@ -250,10 +250,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "67084ce",
-    "lastCommitDate": "2026-09-23T00:45:29+03:00",
-    "lastCommitSubject": "Batch directed water reaches into one surface",
-    "commitCount": 460,
+    "head": "5c4d56d",
+    "lastCommitDate": "2026-09-23T01:07:17+03:00",
+    "lastCommitSubject": "Build cut-stone basins at watercourse endpoints",
+    "commitCount": 462,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
