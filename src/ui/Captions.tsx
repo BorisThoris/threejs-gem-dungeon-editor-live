@@ -58,6 +58,9 @@ export function Captions() {
       bus.on("beetlesScattered", () => say("Tiny wings fold beneath the bellcaps. Their glow fades.")),
       bus.on("shardbacksWarning", () => say("Crystal plates lift with a thin rising note.")),
       bus.on("shardbacksChimed", () => say("The resonance ring answers in one bright peal.")),
+      bus.on("wicklingsSnuffed", ({ towardSecret }) => say(towardSecret
+        ? "Tiny embers lean toward the cracked wall, then vanish into wax."
+        : "Tiny embers vanish into the wax.")),
       bus.on("waterCacheTaken", () => say("The dry seal lifts; gems chime inside.")),
       bus.on("wardenWoke", () => say("Something wakes, far off")),
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),

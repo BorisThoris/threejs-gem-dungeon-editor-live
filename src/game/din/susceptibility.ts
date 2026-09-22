@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  wickling: {
+    answers: { loud: 0.3, blast: 0.1 },
+    deaf: ["bright"],
+    tell: "Noise snuffs their ember tips into the wax. A whole colony leaning toward one wall is reading its draft.",
+  },
   copperback: {
     answers: { loud: 0.3, blast: 0.1 },
     deaf: ["bright"],

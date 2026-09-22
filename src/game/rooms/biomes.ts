@@ -168,7 +168,7 @@ export const BIOME: Record<BiomeId, Biome> = {
   /** Votive wax was rendered and sorted in broad side channels before the
    * choir carried it onward. The cooled runs soften footsteps while old wick
    * ends still answer with tiny dry snaps. */
-  tallow: { name: "Tallow chantry", floor: "#b7ad91", wall: "#655b4f", surface: "stone", glow: "#d0a36c", light: 0.94, litter: ["urn", "skull"], carry: 0.82, ground: "cooled wax", life: ["rat", "bat"], air: "wick" },
+  tallow: { name: "Tallow chantry", floor: "#b7ad91", wall: "#655b4f", surface: "stone", glow: "#d0a36c", light: 0.94, litter: ["urn", "skull"], carry: 0.82, ground: "cooled wax", life: ["rat", "bat", "wickling"], air: "wick" },
 };
 
 /**

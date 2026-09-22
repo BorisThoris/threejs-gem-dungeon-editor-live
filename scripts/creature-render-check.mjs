@@ -18,21 +18,22 @@ try{
   const {newtsFor}=await import('/src/game/mobs/newtHabitat.ts');
   const {brineCrabsFor}=await import('/src/game/mobs/brineCrabHabitat.ts');
   const {copperbacksFor}=await import('/src/game/mobs/copperbackHabitat.ts');
+  const {wicklingsFor}=await import('/src/game/mobs/wicklingHabitat.ts');
   const {keeperPostsFor}=await import('/src/game/keeper/posts.ts');
   const found={};
   for(let seed=1;seed<160;seed++){
    const d=generateDungeon({seed,floor:3});
    for(const r of d.rooms){
-    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,shardbacks:shardbacksFor(r).length>0,newts:newtsFor(r).length>0,brinecrabs:brineCrabsFor(r).length>0,copperbacks:copperbacksFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
-    for(const [k,v]of Object.entries(conditions))if(v&&(!found[k]||(['newts','brinecrabs','copperbacks'].includes(k)&&!found[k].r.secret&&r.secret)))found[k]={d,r};
+    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,shardbacks:shardbacksFor(r).length>0,newts:newtsFor(r).length>0,brinecrabs:brineCrabsFor(r).length>0,copperbacks:copperbacksFor(r).length>0,wicklings:wicklingsFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
+    for(const [k,v]of Object.entries(conditions))if(v&&(!found[k]||(['newts','brinecrabs','copperbacks','wicklings'].includes(k)&&!found[k].r.secret&&r.secret)))found[k]={d,r};
    }
-   if(Object.keys(found).length===12&&found.newts.r.secret&&found.brinecrabs.r.secret&&found.copperbacks.r.secret)return found;
+   if(Object.keys(found).length===13&&found.newts.r.secret&&found.brinecrabs.r.secret&&found.copperbacks.r.secret&&found.wicklings.r.secret)return found;
   }throw Error('missing habitat');
  });
  // Habitat reaction checks emit shared Din signals. Run them before the mite
  // and flight fixtures make noise, otherwise an overlapping generated floor
  // can begin a retreat before that habitat's event listener is attached.
- const names={frog:'croaker-0',newts:'creature-newts',brinecrabs:'creature-brine-crabs',copperbacks:'creature-copperbacks',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
+ const names={frog:'croaker-0',newts:'creature-newts',brinecrabs:'creature-brine-crabs',copperbacks:'creature-copperbacks',wicklings:'creature-wicklings',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{
@@ -55,6 +56,7 @@ try{
    if(kind==='newts'){const p=window.__newts.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='brinecrabs'){const p=window.__brineCrabs.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='copperbacks'){const p=window.__copperbacks.poses[0];center.x=p.x;center.z=p.z;}
+   if(kind==='wicklings'){const p=window.__wicklings.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='bat'){
     const timber=new T.Box3().setFromObject(scene.getObjectByName('bat-roost-timber'));
     if(Math.abs(box.max.y-timber.min.y)>.01)throw Error('roosting bats must hang directly beneath their timber perch');
@@ -97,6 +99,7 @@ try{
   }
   if(kind==='harrierDown')assert.ok(result.bounds[1]>=result.base,'folded downed Harrier stays above floor');
   if(kind==='frog')assert.ok(result.bounds[1]>=result.base+.04,'frog feet stay above terrain');
+  if(kind==='wicklings')assert.ok(result.bounds[1]>=result.base,'wickling bodies stay above their wax beds');
   if(kind==='mites'){
    const before=await page.evaluate(()=>{
     window.__miteBurrows=0;window.__bus.on('mitesBurrowed',()=>window.__miteBurrows++);
@@ -151,6 +154,19 @@ try{
    await page.waitForTimeout(300);
    assert.equal(await page.evaluate(()=>window.__copperbacks.fold),before,'paused copperbacks freeze their shell fold');
   }
+  if(kind==='wicklings'){
+   await page.evaluate(()=>{
+    window.__wicklingEvents=[];window.__bus.on('wicklingsSnuffed',event=>window.__wicklingEvents.push(event));
+    const s=window.__run.getState();s.resume();window.__bus.emit('sprinted',{roomId:s.currentRoomId,x:0,z:0,surface:'stone'});
+   });
+   await page.waitForFunction(()=>window.__wicklings?.snuff>.65);
+   const reaction=await page.evaluate(()=>({probe:window.__wicklings,events:window.__wicklingEvents}));
+   assert.equal(reaction.events.length,1,'the chantry colony announces one shared snuff response');
+   assert.ok(reaction.probe.towardSecret&&reaction.events[0].towardSecret,'the secret-host fixture aligns wicklings with its cracked-wall draft');
+   const before=await page.evaluate(()=>{window.__run.getState().pause();return window.__wicklings.snuff;});
+   await page.waitForTimeout(300);
+   assert.equal(await page.evaluate(()=>window.__wicklings.snuff),before,'paused wicklings freeze while hidden in wax');
+  }
   if(kind==='shardbacks'){
    await page.evaluate(()=>{
     window.__shardbackEvents={warning:0,chime:0};
@@ -180,5 +196,5 @@ try{
    await page.evaluate(()=>window.__run.getState().pause());
   }
  }
- assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 16 creature types contribute visible pixels in native room lighting');
+ assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 17 creature types contribute visible pixels in native room lighting');
 }finally{await browser.close();}

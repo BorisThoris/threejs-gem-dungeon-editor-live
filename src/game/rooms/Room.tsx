@@ -63,6 +63,7 @@ import { StrataSeams } from "../worldbuilding/StrataSeams";
 import { SaltFalls } from "../worldbuilding/SaltFalls";
 import { BrineCrabs } from "../mobs/BrineCrabs";
 import { Copperbacks } from "../mobs/Copperbacks";
+import { Wicklings } from "../mobs/Wicklings";
 import { GalleryResponses } from "../worldbuilding/GalleryResponses";
 
 interface RoomProps {
@@ -320,6 +321,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <SaltFalls room={room} />
       <BrineCrabs room={room} />
       <Copperbacks room={room} />
+      <Wicklings room={room} />
       <StrataSeams room={room} />
       <DistrictWays room={room} />
       <DistrictLandmark room={room} />

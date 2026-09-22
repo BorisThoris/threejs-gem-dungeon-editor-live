@@ -638,13 +638,13 @@ const AIR_DROPS: Partial<Record<AirId, { play: () => void; gapMs: [number, numbe
   },
   tick: {
     gapMs: [650, 2100],
-    play: () => tone(2300 + Math.random() * 1400, 0.035, "triangle", 0.13, 1350, Math.random() * 1.5 - 0.75),
+    play: () => tone(2300 + Math.random() * 1400, 0.04, "triangle", 0.17, 1350, Math.random() * 1.5 - 0.75),
   },
   wick: {
     gapMs: [900, 2600],
     play: () => {
-      tone(1180 + Math.random() * 480, 0.045, "triangle", 0.11, 720, Math.random() * 1.2 - 0.6);
-      later(36, () => noiseBurst(0.025, 0.1, 1850 + Math.random() * 700, Math.random() * 1.2 - 0.6));
+      tone(1180 + Math.random() * 480, 0.05, "triangle", 0.16, 720, Math.random() * 1.2 - 0.6);
+      later(36, () => noiseBurst(0.03, 0.14, 1850 + Math.random() * 700, Math.random() * 1.2 - 0.6));
     },
   },
 };
@@ -888,6 +888,12 @@ export const sfx = {
     later(36, () => tone(520, 0.09, "triangle", 0.1, 310, pan));
     later(78, () => noiseBurst(0.035, 0.1, 1900, pan));
   },
+  /** A cluster of dry wick tips pinched out against cooled wax. */
+  wickSnuff(pan = 0) {
+    noiseBurst(0.075, 0.22, 1750, pan);
+    tone(460, 0.11, "triangle", 0.14, 260, pan);
+    later(55, () => noiseBurst(0.05, 0.16, 1150, pan));
+  },
   /** Brittle shell and small claws crossing a dry salt shelf. */
   brineScuttle(pan = 0) {
     noiseBurst(0.07, 0.15, 3600, pan);
@@ -901,7 +907,7 @@ export const sfx = {
     later(145, () => tone(1480, 0.25, "triangle", 0.08, 980, pan));
   },
   bellcapWarning(pan = 0) {
-    tone(310, 0.45, "triangle", 0.09, 470, pan);
+    tone(310, 0.45, "triangle", 0.11, 470, pan);
   },
   bellcapBurst(pan = 0) {
     noiseBurst(0.5, 0.22, 1100, pan);

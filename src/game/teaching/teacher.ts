@@ -148,6 +148,9 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "copperback", event: "copperbacksFolded", line: ({ towardSecret }) => towardSecret
     ? "The copperbacks folded toward that cracked wall. Their paired shells read the strongest pressure leak."
     : "The copperbacks folded along the old pipe gradient. Quiet returns them to the condenser plates.", sample: { roomId: "r", towardSecret: true } }),
+  lesson({ id: "wickling", event: "wicklingsSnuffed", line: ({ towardSecret }) => towardSecret
+    ? "The wicklings leaned toward that cracked wall before they went dark. Their ember tips read the chantry draft."
+    : "The wicklings snuffed into the wax. Quiet lets their ember tips rise again.", sample: { roomId: "r", towardSecret: true } }),
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
@@ -176,6 +179,7 @@ export const LOOP_EVENTS: readonly (keyof BusEvents)[] = [
   "newtsScurried",
   "brineCrabsScuttled",
   "copperbacksFolded",
+  "wicklingsSnuffed",
   "trapSprung",
   "draftFelt",
   "wallSound",

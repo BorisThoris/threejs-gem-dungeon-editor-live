@@ -30,6 +30,7 @@ import type { Cone, Rung } from "./rungs";
  *   vocabulary as the thing that kills you.
  */
 export const CAPS: Record<ReceiverId, AlertCap> = {
+  wickling: { max: 2, min: 0, floorAfterPeak: false },
   copperback: { max: 2, min: 0, floorAfterPeak: false },
   brinecrab: { max: 2, min: 0, floorAfterPeak: false },
   newt: { max: 2, min: 0, floorAfterPeak: false },

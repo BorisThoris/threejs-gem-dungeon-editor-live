@@ -1172,3 +1172,25 @@ submissions. The fixed 78-room performance corpus remains at 78 draw calls,
 growth, a 1,492-frame sprint retains no heap after collection, and 20,000
 held-audio updates retain one voice. The performance report now also records
 the named scene owners behind its draw-call and triangle peaks.
+
+Wicklings make the chantry a living habitat. Up to five small wax grazers
+occupy actual rendered tallow cells while leaving the processional paving and
+solid furnishings clear. Their low block bodies carry a single squared ember
+tip that rises and breathes on the persistent run clock. A loud signal snuffs
+the whole colony into the wax for five seconds with one dry shared cue; pause
+freezes both the grazing motion and the snuff response.
+
+Their resting lean turns the chantry's airflow into secret language. Ordinary
+colonies face the central processional lane. In a host room, every wickling
+instead leans toward the real cracked-wall approach, and the first reaction is
+explained through the teacher, captions and the World Atlas. The Atlas now also
+draws the previously missing brine-crab retreats and copperback pressure
+headings from their authoritative habitat data.
+
+Across 360 generated floors, 240 wicklings occupy legal wax cells and 40
+secret-host colonies align with cracked-wall drafts. The native renderer shows
+all 17 creature types in room lighting, with wicklings contributing 1,519
+changed pixels and remaining entirely above their wax beds. Their two shared
+instance batches add no light or texture; the fixed 78-room sweep remains at
+78 calls, 7,208 triangles, 87 geometries and 10 textures. Repeated laps show no
+geometry growth and a 1,497-frame sprint retains no heap after collection.

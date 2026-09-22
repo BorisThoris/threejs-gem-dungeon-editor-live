@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  wickling: {
+    name: "wicklings", role: "ambient", body: "ground",
+    lives: "They graze cooled wax runs and lean their ember tips into the strongest draft; in a secret host the whole colony faces the cracked wall.",
+    harm: "none", answers: ["walk quietly to read their lean", "make noise and watch the colony snuff into the wax"],
+    voice: { held: null, moments: ["wickSnuff"] }, events: ["wicklingsSnuffed"],
+    lesson: "wickling", component: "mobs/Wicklings.tsx", probe: "__wicklings", tell: false,
+  },
   copperback: {
     name: "copperbacks", role: "ambient", body: "ground",
     lives: "They graze oxidized condenser plates and align their paired shells with pressure leaks; a cracked wall becomes the strongest gradient.",

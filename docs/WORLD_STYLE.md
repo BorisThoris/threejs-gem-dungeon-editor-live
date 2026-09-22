@@ -85,6 +85,13 @@ ticks, and a restrained amber bounce supports existing practical lamps. The
 wax layout, crown, acoustics, air and Votive Chantry history must travel as one
 place rule through circular, concave, topology and gallery footprints.
 
+Wicklings belong to those wax runs. Their dark block bodies and ember tips use
+two shared instance batches and no individual lights. At rest every tip leans
+into the room's draft; in a secret host the entire colony therefore points at
+the actual cracked wall. A loud room snuffs them into the wax and quiet lets
+them rise again. Terrain, airflow, creature behavior, sound, accessibility text
+and secret language must continue to describe that one relationship.
+
 Copperbacks belong to those plates rather than being general dungeon clutter.
 Their paired block-cut shells open with the condenser's slow breath and fold at
 a loud sound. A colony follows the room's pressure gradient; where a real
