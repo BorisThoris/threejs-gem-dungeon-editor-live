@@ -5,8 +5,25 @@ import { floorHeightAt, terracesFor } from "../worldbuilding/elevation";
 import { GROUND_Y } from "../world";
 import { biomeIdFor } from "./biomes";
 import type { CorridorBlock } from "./corridorPattern";
+import { watercourseBlocks } from "../worldbuilding/watercourse";
 
-export interface TerrainTile extends CorridorBlock { slope?: [number, number] }
+export interface TerrainTile extends CorridorBlock { slope?: [number, number]; bank?: boolean }
+
+/** Paint the banks of the actual generated channel, including its turns.
+ * Distance is from the channel's rectangle, so unrelated doors and rooms
+ * cannot acquire a false stream. The central water strip stays uncovered. */
+export function channelBankAt(room: Room, x: number, z: number): boolean {
+  if (!room.waterway) return false;
+  const blocks = watercourseBlocks(room);
+  return blocks.some(block => {
+    const dx = Math.max(0, Math.abs(x - block.position[0]) - block.size[0] / 2);
+    const dz = Math.max(0, Math.abs(z - block.position[2]) - block.size[2] / 2);
+    const distance = Math.hypot(dx, dz);
+    return distance >= 0.65 && distance <= 2.1;
+  }) && blocks.every(block =>
+    Math.abs(x - block.position[0]) > block.size[0] / 2 + 0.25 ||
+    Math.abs(z - block.position[2]) > block.size[2] / 2 + 0.25);
+}
 
 /** A continuous field of worn paving and deposits, not independent prop rolls.
  * All relief is paint-depth: no hidden collider or extra navigation obstacle. */
@@ -22,9 +39,10 @@ export function terrainFor(room: Room) {
         !insideRoom(room, x + dx, z + dz, 0.15)))) continue;
       const cell = chamberTerrainCell(room, biome, x, z);
       if (cell === "bare") continue;
-      const deposit = cell === "deposit";
-      const block: CorridorBlock = { position: [x, GROUND_Y + (deposit ? 0.024 : 0.019), z],
-        size: [deposit ? step : 1.32, 0.012, deposit ? step : 1.32] };
+      const bank = channelBankAt(room, x, z);
+      const deposit = cell === "deposit" || bank;
+      const block: TerrainTile = { position: [x, GROUND_Y + (deposit ? 0.024 : 0.019), z],
+        size: [deposit ? step : 1.32, 0.012, deposit ? step : 1.32], bank };
       if (deposit) deposits.push(block);
       else paving.push(block);
     }
@@ -44,7 +62,8 @@ export function terrainFor(room: Room) {
         const onRamp = !!terrace && along - 0.75 < terrace.rampEnd;
         const cell = galleryTerrainCell(biome, along - half, across, available, onRamp);
         if (cell === "bare") continue;
-        const deposit = cell === "deposit";
+        const bank = channelBankAt(room, x, z);
+        const deposit = cell === "deposit" || bank;
         const size = deposit ? step : 1.32, low = along - size / 2, high = along + size / 2;
         const cuts = [low, ...(terrace && terrace.rampEnd > low && terrace.rampEnd < high ? [terrace.rampEnd] : []), high];
         for (let i = 1; i < cuts.length; i++) {
@@ -54,7 +73,7 @@ export function terrainFor(room: Room) {
             (floorHeightAt(room, px + w / 2, pz) - floorHeightAt(room, px - w / 2, pz)) / w,
             (floorHeightAt(room, px, pz + d / 2) - floorHeightAt(room, px, pz - d / 2)) / d,
           ];
-          const tile: TerrainTile = { position: [px, floorHeightAt(room, px, pz) + (deposit ? 0.024 : 0.019), pz], size: [w, 0.012, d], slope };
+          const tile: TerrainTile = { position: [px, floorHeightAt(room, px, pz) + (deposit ? 0.024 : 0.019), pz], size: [w, 0.012, d], slope, bank };
           (deposit ? deposits : paving).push(tile);
         }
       }

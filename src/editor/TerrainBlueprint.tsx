@@ -2,6 +2,7 @@ import { mergeTerrainBeds } from "../game/rooms/mergeTerrainBeds";
 import { useMemo } from "react";
 import type { Room } from "../game/dungeon/types";
 import { terrainFor, TERRAIN_COLORS, type TerrainTile } from "../game/rooms/terrainPattern";
+import { channelSediment } from "../game/worldbuilding/channelSediment";
 
 /** The same terrain pieces as the game, projected into the authoring plan. */
 export function TerrainBlueprint({ room, scale }: { room: Room; scale: number }) {
@@ -14,12 +15,16 @@ export function TerrainBlueprint({ room, scale }: { room: Room; scale: number })
     return `M${x},${z}h${w}v${d}h${-w}Z`;
   }).join(" ");
   const [paving, deposits] = TERRAIN_COLORS[terrain.biome];
+  const bankCount = terrain.deposits.filter(tile => tile.bank).length;
   return <g aria-label="Terrain pattern" opacity={0.8}>
     <path data-testid="atlas-paving" data-count={terrain.paving.length} d={path(terrain.paving)} fill={paving}>
       <title>Paving follows the chamber and gallery lanes, including ramps.</title>
     </path>
-    <path data-testid="atlas-deposits" data-count={terrain.deposits.length} d={path(beds)} fill={deposits}>
-      <title>Connected beds and deposits follow the biome; standing water stays off slopes.</title>
+    <path data-testid="atlas-deposits" data-count={terrain.deposits.length - bankCount} d={path(beds.filter(tile => !tile.bank))} fill={deposits}>
+      <title>Connected beds and deposits follow the biome.</title>
+    </path>
+    <path data-testid="atlas-channel-banks" data-count={bankCount} d={path(beds.filter(tile => tile.bank))} fill={channelSediment(room).color}>
+      <title>{bankCount} silt bank cells follow real channel edges and remain when drained.</title>
     </path>
   </g>;
 }

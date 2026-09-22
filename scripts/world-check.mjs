@@ -60,6 +60,7 @@ assert.deepEqual(L.groundHeading(pen, 0, 0, 3, 0, cage), { dx: 0, dz: 0 }, "a co
 assert.ok(L.groundHeading(pen, 0.1, 0, 3, 0, [{ x: 0, z: 0, r: 0.5 }]).dx > 0,
   "an obstacle newly placed over an animal permits outward escape");
 let terrainBedCells = 0, terrainBedFaces = 0;
+let channelBankCells = 0, channelBankRooms = 0;
 let wallTurns = 0;
 assert.equal(L.croakerMigration(null, 100), 0, "unopened channels keep toads at their feeding positions");
 assert.equal(L.croakerMigration(10, 14), 0, "migration waits for the channel to fall");
@@ -713,6 +714,20 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         "stratum veins remain paint-depth and non-blocking");
     }
     const terrain = L.terrainFor(r);
+    const banks = terrain.deposits.filter(tile => tile.bank);
+    if (r.waterway) {
+      assert.ok(banks.length > 0, "every connected channel leaves visible silt banks");
+      assert.equal(L.channelBankAt(r, 0, 0), false, "the central water strip stays uncovered");
+      channelBankRooms++;
+      channelBankCells += banks.length;
+      for (const tile of banks) {
+        assert.ok(L.channelBankAt(r, tile.position[0], tile.position[2]), "bank cells follow the generated channel strip");
+        for (const dx of [-tile.size[0] / 2, tile.size[0] / 2])
+          for (const dz of [-tile.size[2] / 2, tile.size[2] / 2])
+          assert.ok(L.insideRoom(r, tile.position[0] + dx, tile.position[2] + dz, 0.15),
+            "channel banks follow the true shaped floor");
+      }
+    } else assert.equal(banks.length, 0, "unrelated rooms gain no false watercourse banks");
     if (terrain.biome === "salt") {
       saltRooms++;
       saltShapes.add(r.shape);
@@ -751,6 +766,7 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     for (const tile of terrain.deposits) {
       const bed = beds.find(b => Math.abs(tile.position[0] - b.position[0]) + tile.size[0] / 2 <= b.size[0] / 2 + 1e-7 && Math.abs(tile.position[2] - b.position[2]) + tile.size[2] / 2 <= b.size[2] / 2 + 1e-7);
       assert.ok(bed, "every original habitat tile remains fully covered by a rendered bed");
+      assert.equal(!!bed.bank, !!tile.bank, "merged beds preserve the channel sediment boundary");
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
@@ -857,6 +873,7 @@ assert.equal(L.waterLevel(null, 100), 1);
 assert.equal(L.waterLevel(10, 13), 0.5);
 assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
+console.log(`Channel banks: ${channelBankCells} terrain cells follow ${channelBankRooms} watercourse rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks - strataFanMarks} block-cut chips and ${strataFanMarks} contact cuts.`);
 console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);

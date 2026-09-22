@@ -1,7 +1,7 @@
 import { mergeTerrainBeds } from "./mergeTerrainBeds";
 import { useMemo, useRef, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Matrix4, Vector3, type InstancedMesh } from "three";
+import { Color, Matrix4, Vector3, type InstancedMesh } from "three";
 import { useLayoutEffect } from "react";
 import type { Room } from "../dungeon/types";
 import { runClock, useRun } from "../state/run";
@@ -9,24 +9,27 @@ import { useSurface } from "../textures/registry";
 import { terrainFor, TERRAIN_COLORS, type TerrainTile } from "./terrainPattern";
 import { geo } from "../props/shared";
 import { TERRAIN_EFFECTS } from "./terrainMaterial";
+import { channelSediment } from "../worldbuilding/channelSediment";
 
 /** Paint-depth terrain has no traversable sides. Keep the original top height
  * and UV direction while submitting only its visible, upward-facing surface. */
-function Tiles({ blocks, name, children }: { blocks: TerrainTile[]; name: string; children: ReactNode }) {
+function Tiles({ blocks, name, children, colorFor }: { blocks: TerrainTile[]; name: string; children: ReactNode; colorFor?: (tile: TerrainTile) => string }) {
   const mesh = useRef<InstancedMesh>(null);
   useLayoutEffect(() => {
     if (!mesh.current) return;
-    const matrix = new Matrix4(), u = new Vector3(), v = new Vector3(), normal = new Vector3();
+    const matrix = new Matrix4(), u = new Vector3(), v = new Vector3(), normal = new Vector3(), color = new Color();
     blocks.forEach((b, i) => {
       const [sx, sz] = b.slope ?? [0, 0];
       u.set(b.size[0], sx * b.size[0], 0); v.set(0, -sz * b.size[2], -b.size[2]);
       normal.crossVectors(u, v).normalize();
       matrix.makeBasis(u, v, normal).setPosition(b.position[0], b.position[1] + b.size[1] / 2, b.position[2]);
       mesh.current!.setMatrixAt(i, matrix);
+      if (colorFor) mesh.current!.setColorAt(i, color.set(colorFor(b)));
     });
     mesh.current.instanceMatrix.needsUpdate = true;
+    if (mesh.current.instanceColor) mesh.current.instanceColor.needsUpdate = true;
     mesh.current.computeBoundingSphere();
-  }, [blocks]);
+  }, [blocks, colorFor]);
   if (!blocks.length) return null;
   return <instancedMesh name={name} ref={mesh} args={[geo("plane", 1, 1), undefined, blocks.length]}>{children}</instancedMesh>;
 }
@@ -39,6 +42,7 @@ export function Terrain({ room }: { room: Room }) {
   const wet = data.biome === "flooded";
   const effect = TERRAIN_EFFECTS[data.biome];
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
+  const bank = channelSediment(room).color;
   const pavingSurface = useSurface("stone", 0.5);
   const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss"
     : data.biome === "ash" ? "dirt" : data.biome === "verdigris" ? "iron" : "stone", 0.5);
@@ -47,8 +51,8 @@ export function Terrain({ room }: { room: Room }) {
   });
   return <group>
     <Tiles blocks={data.paving} name="terrain-paving"><meshStandardMaterial color={stone} map={pavingSurface} roughness={0.9} /></Tiles>
-    <Tiles blocks={beds} name="terrain-deposits">
-      <meshStandardMaterial color={deposit} map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
+    <Tiles blocks={beds} name="terrain-deposits" colorFor={tile => tile.bank ? bank : deposit}>
+      <meshStandardMaterial color="#ffffff" map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
         userData={{ terrainTime: time.current, terrainEffect: effect.name, terrainAnimated: effect.animated }}
         emissive={effect.emissive} emissiveIntensity={effect.emissiveIntensity}
         customProgramCacheKey={() => `terrain-${data.biome}-style-v3`}

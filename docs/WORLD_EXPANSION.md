@@ -1280,3 +1280,20 @@ hear all seven signatures above room tone. The fixed 78-room sweep peaks at
 79 calls, 7,352 triangles, 87 geometries and 10 textures; ten laps show no
 geometry growth, a 612-frame sprint retains 0.00 MB after collection, and
 20,000 held-audio updates retain one voice with zero bytes per update.
+
+The watercourse now shapes the terrain beside it as well as occupying a
+narrow strip. Paired silt banks are selected from the same generated channel
+blocks that carry the water, follow bends into shaped chambers and side
+passages, and keep the central wet crossing clear. They remain after drainage
+as a readable dry route. Each district uses its existing sediment color;
+the bank cells and ordinary biome beds share one instanced terrain draw while
+their colors remain separate through bed merging. The World Atlas projects
+those same cells. The 360-floor world audit finds 34,903 bank cells across all
+1,699 watercourse rooms and none in unrelated rooms. Paused drainage now reads
+one saved run-clock timestamp, so the water level and terrain effects freeze
+exactly until play resumes.
+
+The isolated 78-room performance sweep peaks at 79 calls, 7,248 triangles,
+87 geometries and 10 textures; ten revisited rooms add no geometry, a
+574-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
+updates retain one voice with zero bytes per update.

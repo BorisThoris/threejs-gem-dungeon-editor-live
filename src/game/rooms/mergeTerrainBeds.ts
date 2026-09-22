@@ -3,7 +3,8 @@ import type { TerrainTile } from "./terrainPattern";
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-7;
 const plane = (tile: TerrainTile) => tile.position[1] - (tile.slope?.[0] ?? 0) * tile.position[0] - (tile.slope?.[1] ?? 0) * tile.position[2];
 const samePlane = (a: TerrainTile, b: TerrainTile) => near(plane(a), plane(b)) && near(a.size[1], b.size[1]) &&
-  near(a.slope?.[0] ?? 0, b.slope?.[0] ?? 0) && near(a.slope?.[1] ?? 0, b.slope?.[1] ?? 0);
+  near(a.slope?.[0] ?? 0, b.slope?.[0] ?? 0) && near(a.slope?.[1] ?? 0, b.slope?.[1] ?? 0) &&
+  !!a.bank === !!b.bank;
 
 /** Coalesce only touching rectangles on the same floor plane. Gameplay keeps
  * the original sample cells; rendering submits the identical covered area. */

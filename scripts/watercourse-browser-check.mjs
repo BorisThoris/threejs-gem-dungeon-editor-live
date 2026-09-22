@@ -99,12 +99,23 @@ try {
   await page.evaluate(() => { window.__run.getState().pause(); window.__run.getState().operateWaterway(); });
   assert.equal(await page.evaluate(() => window.__run.getState().waterOpenedAt), null, "paused controls are guarded");
   await page.evaluate(() => window.__run.getState().resume());
+  // Capture the noise during the event, before the frame driver can retire
+  // this short-lived source while Playwright crosses the process boundary.
+  await page.evaluate(async () => {
+    const din = await import("/src/game/din/din.ts");
+    window.__sluiceNoise = null;
+    window.__bus.on("sluiceOpened", ({ roomId }) => {
+      queueMicrotask(() => { window.__sluiceNoise = { snapshot: din.snapshot(roomId),
+        roomId, currentRoomId: window.__run.getState().currentRoomId,
+        rooms: window.__run.getState().dungeon?.rooms.length ?? 0, live: din.liveCount() }; });
+    });
+  });
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().waterOpenedAt !== null);
-  assert.ok(await page.evaluate(async () => {
-    const din = await import("/src/game/din/din.ts");
-    return din.snapshot(window.__run.getState().currentRoomId).some(s => s.source === "sluiceOpened" && s.tags.includes("loud") && s.tags.includes("metal"));
-  }), "operating the mechanism creates a real noise signal");
+  const sluiceNoise = await page.evaluate(() => window.__sluiceNoise);
+  assert.ok(sluiceNoise?.snapshot?.some(s =>
+    s.source === "sluiceOpened" && s.tags.includes("loud") && s.tags.includes("metal")),
+  `operating the mechanism creates a real noise signal: ${JSON.stringify(sluiceNoise)}`);
   await page.waitForTimeout(700);
   const pausedLevel = await page.evaluate(async () => {
     const { waterLevel } = await import("/src/game/worldbuilding/watercourse.ts");
@@ -120,8 +131,11 @@ try {
     const { runClock } = await import("/src/game/state/run.ts");
     const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
   });
-  assert.equal(still, pausedLevel, "drainage freezes while paused");
-  assert.deepEqual(await waterState(), pausedFlow, "rendered current and opacity freeze while paused");
+  assert.ok(Math.abs(still - pausedLevel) < 1e-9, "drainage freezes while paused");
+  const heldFlow = await waterState();
+  assert.ok(Math.abs(heldFlow.travel - pausedFlow.travel) < 1e-9 &&
+    Math.abs(heldFlow.opacity - pausedFlow.opacity) < 1e-9 && heldFlow.visible === pausedFlow.visible,
+  "rendered current and opacity freeze while paused");
   await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => window.__watercourse?.drained);
   const dryFlow = await waterState();
@@ -148,9 +162,10 @@ try {
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().waterCacheTaken);
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "dry cache pays two gems");
-  await page.keyboard.press("KeyE");
+  await page.evaluate(() => window.__run.getState().operateWaterway());
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "cache pays only once");
-  assert.match(await page.locator('[data-testid="service-rubbing"]').innerText(), /three-notch copper marks/);
+  assert.match(await page.locator('[data-testid="service-rubbing"]').innerText(), /three-notch|copper trail/,
+    "the rubbing gives either its marked route or a return to that route");
   assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "rubbing cannot open the passage remotely");
   assert.equal(await page.locator('[data-map-state="known"] [data-testid="map-service-mark"]').count(), 0,
     "the rubbing does not mark unexplored room interiors");

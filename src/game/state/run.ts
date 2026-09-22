@@ -2739,7 +2739,7 @@ export const useRun = create<RunState>()(
  * quietly spend a potion.
  */
 export const runClock = (s: RunState): number =>
-  performance.now() / 1000 - s.pausedFor - (s.paused && s.pausedAt > 0 ? performance.now() / 1000 - s.pausedAt : 0);
+  s.paused && s.pausedAt > 0 ? s.pausedAt - s.pausedFor : performance.now() / 1000 - s.pausedFor;
 
 /**
  * The room a floor starts you in, while it is still a sanctuary.

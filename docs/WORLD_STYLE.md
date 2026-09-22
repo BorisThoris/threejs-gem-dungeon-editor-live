@@ -102,6 +102,12 @@ both. A real change of stratum leaves five shallow, block-cut chips at both
 faces of the doorway. District borders keep their named lintels and do not also
 pretend to be geological seams.
 
+The old watercourse cuts its own visible terrain corridor. A pair of silt
+banks follows only its generated channel strips, including bends and shaped
+rooms, and remains as dry evidence after the sluice drains. Leave the central
+water and walking line clear. Use the biome's existing deposit batch and
+world-space material marks rather than scattering unrelated puddle props.
+
 The buried choir also carries a salt-and-brine stratum: stepped evaporation
 shelves, scored rake lanes and overhead pan rakes belong to one former use.
 Its pale crust has a sharp footfall, cold mineral bounce and sparse drying
