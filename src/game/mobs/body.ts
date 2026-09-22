@@ -34,7 +34,7 @@ import type { Patch } from "../warden/steer";
  */
 export type Body = "ground" | "flying" | "ghost";
 
-export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper" | "croaker" | "beetle" | "mite" | "shardback";
+export type MobId = "warden" | "cutpurse" | "reaper" | "rat" | "moth" | "bat" | "wisp" | "harrier" | "keeper" | "croaker" | "beetle" | "mite" | "shardback" | "newt";
 
 export const BODIES: Record<MobId, Body> = {
   warden: "ground",
@@ -53,6 +53,7 @@ export const BODIES: Record<MobId, Body> = {
   beetle: "flying",
   mite: "ground",
   shardback: "ground",
+  newt: "ground",
 };
 
 /**

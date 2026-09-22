@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  newt: {
+    name: "kiln newts", role: "ambient", body: "ground",
+    lives: "They bask on the fired aprons of foundry rooms and flee along clear floor to a wall seam; where a cracked wall exists, they prefer it.",
+    harm: "none", answers: ["walk quietly to watch them bask", "make noise and watch which seam they choose"],
+    voice: { held: null, moments: ["newtSkitter"] }, events: ["newtsScurried"],
+    lesson: "newt", component: "mobs/KilnNewts.tsx", probe: "__newts", tell: false,
+  },
   shardback: {
     name: "shardbacks", role: "ambient", body: "ground",
     lives: "They graze the resonance rings of crystal chambers, except the authored memory trials where every crystal is part of the puzzle.",

@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  newt: {
+    answers: { loud: 0.3, blast: 0.1 },
+    deaf: ["bright"],
+    tell: "Noise sends them to a wall seam. In an old foundry, the seam they choose may be a clue.",
+  },
   shardback: {
     answers: { bright: 0.35, blast: 0.1 },
     deaf: ["loud"],

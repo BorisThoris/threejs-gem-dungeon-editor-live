@@ -43,6 +43,10 @@ ambient creature habitat and the air's timbre. Moths favor the rootwater
 district, which also contains the fungal biome. Ash mites belong to settled
 kiln windrows in the old works and nearby choir rooms; loud steps send the
 whole colony under, making disturbed ash a recent trace rather than decoration.
+Kiln newts bask only on the foundry's rendered ember aprons. Noise sends them
+along a physically clear route to a wall seam; in a secret host they prefer the
+actual cracked wall, so animal behavior reinforces the same geography instead
+of adding an unrelated hint marker.
 Each district also draws its old circulation system across the actual room
 graph: paired root lines in Rootwater, iron sleepers in the Old Works, and
 processional stones in the Buried Choir. The marks stop at real thresholds,

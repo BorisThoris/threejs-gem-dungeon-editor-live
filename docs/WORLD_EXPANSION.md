@@ -869,3 +869,21 @@ and 10 textures. The worst view rises from 6,603 to 6,723 triangles, still well
 inside the 8,800 budget; the crown adds no scene submission or resource type.
 Ten repeated room laps show no geometry growth, 618 sprint frames retain no
 heap after collection, and 20,000 held-audio updates retain one voice.
+
+Foundry rooms now support kiln-newt colonies on the same deterministic ember
+vents that draw their fired aprons. Their bask and retreat paths are clipped to
+the true shaped floor and swept clear of solid furnishings. When a foundry
+hosts a secret, eligible newts flee to the actual cracked-wall approach after a
+loud signal; ordinary colonies choose a nearby wall seam. This turns resident
+life into a readable geographic clue instead of placing a separate marker.
+
+The block-cut bodies, heads and tails share one instanced draw and their warm
+dorsal plates share a second. A colony owns no lights or per-animal timers. The
+Din, creature contract, awareness cap, directional three-step skitter, teaching
+line and World atlas all describe the same behavior. Generation checks cover
+548 native baskers across square and irregular rooms, including 20 verified
+cracked-wall routes. The native render suite now verifies all 14 creature types,
+including frogs and kiln newts. The integrated 78-room performance sweep peaks
+at 78 calls, 6,712 triangles, 87 geometries and 10 textures. Ten repeated room
+laps add no geometry, 1,493 sprint frames retain no heap after collection, and
+20,000 held-audio updates retain one voice.

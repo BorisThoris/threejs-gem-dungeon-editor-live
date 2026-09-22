@@ -23,7 +23,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "worldbuilding/foundryEmberSites", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat", "mobs/newtHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -86,6 +86,7 @@ let colonies = 0;
 let beetles = 0;
 let mites = 0;
 let shardbacks = 0;
+let newts = 0, secretNewts = 0;
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
@@ -336,6 +337,27 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         assert.ok(L.insideRoom(r, pose.x, pose.z, 0.2), "ash mites remain inside their windrow while combing and burrowing");
       }
     }
+    for (const home of L.newtsFor(r)) {
+      newts++;
+      assert.equal(r.biome, "foundry", "kiln newts only inhabit foundry rooms");
+      assert.ok(L.BIOME[r.biome].life.includes("newt"), "the foundry biome declares its kiln-newt ecology");
+      assert.ok(L.foundryEmbersFor(r).some(vent => Math.abs(vent.x - home.x) < 1e-6 && Math.abs(vent.z - home.z) < 1e-6),
+        "kiln newts bask on actual rendered ember vents");
+      assert.ok(L.insideRoom(r, home.refugeX, home.refugeZ, 0.25), "kiln-newt refuges fit the shaped floor");
+      assert.ok(L.roomSegmentClear(r, home.x, home.z, home.refugeX, home.refugeZ, 0.28),
+        "kiln-newt retreat paths remain inside connected floor");
+      if (home.towardSecret) {
+        secretNewts++;
+        assert.ok(r.secret, "only a secret host can mark a refuge as a cracked-wall clue");
+        const step = L.DIR_STEP[r.secret.dir], along = home.refugeX * step.x + home.refugeZ * step.z;
+        assert.ok(Math.abs(along - (L.doorReach(r, r.secret.dir) - 0.48)) < 1e-6,
+          "a clue refuge reaches the actual secret-wall approach");
+      }
+      for (const retreat of [0, 0.5, 1]) for (let time = 0; time < 10; time += 0.5) {
+        const pose = L.newtPose(home, time, retreat);
+        assert.ok(L.insideRoom(r, pose.x, pose.z, 0.2), "kiln newts stay on connected floor while basking and fleeing");
+      }
+    }
     for (const home of L.shardbacksFor(r)) {
       shardbacks++;
       assert.equal(r.biome, "crystal", "shardbacks only graze crystal chambers");
@@ -482,12 +504,15 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
 assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
+assert.ok(newts > 100, `kiln newts occupy fired foundry aprons: ${newts}`);
+assert.ok(secretNewts > 0, `kiln newts reveal reachable cracked-wall refuges: ${secretNewts}`);
 assert.ok(shardbacks > 50, `shardbacks occupy crystal resonance rings: ${shardbacks}`);
 assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
 console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
 console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
 console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
+console.log(`Kiln newts: ${newts} baskers on ember vents; ${secretNewts} retreat routes point to cracked walls.`);
 console.log(`Shardbacks: ${shardbacks} grazers grounded in clear resonance-ring cells.`);
 assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
 console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);

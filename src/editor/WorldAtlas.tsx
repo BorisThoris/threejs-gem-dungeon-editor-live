@@ -26,6 +26,7 @@ import { croakersFor, ratsFor } from "../game/mobs/ambient";
 import { croakerHabitats, croakerMigration } from "../game/mobs/croakerHabitat";
 import { beetlesFor, beetlePose } from "../game/mobs/beetleHabitat";
 import { shardbacksFor, shardbackPose, SHARDBACK_LIGHT_REACH, SHARDBACK_WARNING_SECONDS } from "../game/mobs/shardbackHabitat";
+import { newtsFor, newtPose } from "../game/mobs/newtHabitat";
 import { passageLampsFor } from "../game/worldbuilding/passageLighting";
 import { GallerySection } from "./GallerySection";
 import { TerrainBlueprint } from "./TerrainBlueprint";
@@ -92,12 +93,13 @@ export function WorldAtlas() {
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
+  const newts = useMemo(() => newtsFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
   const secretMarks = useMemo(() => secretTrailPattern(dungeon, room), [dungeon, room]);
   const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
   const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed), dungeon.seed), [room, dungeon.seed]);
   const ratHomes = useMemo(() => ratsFor(room, dungeon.seed), [room, dungeon.seed]);
-  const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, dungeon.seed).length || ratsFor(r, dungeon.seed).length || shardbacksFor(r).length), [dungeon]);
+  const livingRooms = useMemo(() => dungeon.rooms.filter(r => bellcapsFor(r).length || croakersFor(r, dungeon.seed).length || ratsFor(r, dungeon.seed).length || beetlesFor(r).length || shardbacksFor(r).length || newtsFor(r).length), [dungeon]);
   const source = dungeon.rooms.find(r => r.waterway?.role === "sluice");
   const outfall = dungeon.rooms.find(r => r.waterway?.role === "outfall");
   return <div>
@@ -294,6 +296,17 @@ export function WorldAtlas() {
               </path>
             </g>;
           })}
+          {ecology && newts.map((home, i) => {
+            const p = newtPose(home, 0, 0);
+            return <g key={`newt-${i}`} data-testid="atlas-newt">
+              <line x1={p.x * scale} y1={p.z * scale} x2={home.refugeX * scale} y2={home.refugeZ * scale}
+                stroke={home.towardSecret ? "#ef9a52" : "#b06e45"} strokeDasharray="2 3" opacity={0.8} />
+              <path transform={`translate(${p.x * scale} ${p.z * scale}) rotate(${p.yaw * 180 / Math.PI})`}
+                d="M-4 -2H3L6 0L3 2H-4L-7 0Z" fill="#b95d2f" stroke="#f5aa62" strokeWidth={1}>
+                <title>{home.towardSecret ? "Kiln newt; startled route ends at the cracked wall" : "Kiln newt basking on an ember vent; dotted route leads to a wall refuge"}</title>
+              </path>
+            </g>;
+          })}
           <path d={blueprint.walls} fill="none" stroke={ink} strokeWidth={2} />
           {lighting && lamps.map((lamp, i) => <g key={`lamp-${i}`} data-testid="atlas-passage-lamp"
             transform={`translate(${lamp.position[0] * scale} ${lamp.position[2] * scale})`}>
@@ -319,12 +332,13 @@ export function WorldAtlas() {
         {terrain && <p style={small}><strong>{TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].name}</strong> · {TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].description} Surface: {terrainStyle.name}{terrainStyle.animated ? ", moving on the paused run clock" : ", fixed in world space"}. Raised galleries use the same terrain rules; the drawing matches the game.</p>}
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
         <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
-        {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · violet diamonds: shardbacks · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
+        {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · violet diamonds: shardbacks · orange lizards: kiln newts · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
         {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {dormant
           ? "Draining collapses the caps and prevents further spore bursts."
           : `Lower the lantern one band or retreat during the ${BELLCAP_WARNING}-second warning. Bursts carry sound through the room graph; recovery lasts ${BELLCAP_COOLDOWN} seconds.`}</p>}
         {beetles.length > 0 && <p style={small}>{beetles.length} glow beetles feed here. Their low lights reveal the bellcaps in darkness; nearby light and noise send them into cover. Dry beds keep them sheltered.</p>}
         {shardbacks.length > 0 && <p style={small}>{shardbacks.length} shardbacks graze the visible resonance ring. Raised light within {SHARDBACK_LIGHT_REACH} m lifts their plates for {SHARDBACK_WARNING_SECONDS} seconds; lower it or retreat before their chime tells the room.</p>}
+        {newts.length > 0 && <p style={small}>{newts.length} kiln newts bask on the fired aprons. Noise sends them along the dotted routes to wall refuges{newts.some(home => home.towardSecret) ? "; this colony has chosen the cracked wall" : ""}.</p>}
         {room.waterway && <p style={{ ...small, color: "#d0b477" }}>Water {room.waterway.upstream ? `arrives from the ${room.waterway.upstream}` : "begins at the sluice"}
           {room.waterway.downstream ? ` and leaves to the ${room.waterway.downstream}.` : "; the reliquary lies at its outfall."}</p>}
         {source && outfall ? <p style={small}>The sluice at {source.id} drains the channel to {outfall.id}. Both endpoints are reachable without the vault key; the circuit never enters the exit stairs.</p>

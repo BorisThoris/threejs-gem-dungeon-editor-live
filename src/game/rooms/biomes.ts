@@ -140,7 +140,7 @@ export const BIOME: Record<BiomeId, Biome> = {
   mossy: { name: "Mossy", floor: "#a7b59f", wall: "#6a7167", surface: "moss", glow: "#8fae90", light: 1.05, litter: ["web", "rubble"], carry: 0.5, ground: "deep moss", life: ["beetle"], air: "wind" },
   catacomb: { name: "Catacomb", floor: "#b8ad92", wall: "#6d6758", surface: "brick", glow: "#b09a72", light: 0.95, litter: ["skull", "urn"], carry: 1, ground: "dry brick", life: ["rat", "bat"], air: "hollow" },
   flooded: { name: "Flooded", floor: "#8d9ea4", wall: "#535f66", surface: "dirt", glow: "#6d90a0", light: 0.8, litter: ["rubble", "barrel"], carry: 1.75, ground: "standing water", life: ["rat", "croaker", "beetle"], air: "drip" },
-  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating", life: [], air: "ember" },
+  foundry: { name: "Foundry", floor: "#9a8f8a", wall: "#5c5450", surface: "iron", glow: "#c08050", light: 1.1, litter: ["crate", "barrel"], carry: 1.25, ground: "iron grating", life: ["newt"], air: "ember" },
   timber: { name: "Timbered", floor: "#b3a48d", wall: "#6a6256", surface: "wood", glow: "#bb9a6e", light: 1, litter: ["crate", "chair"], carry: 1.25, ground: "loose boards", life: ["rat"], air: "creak" },
   bone: { name: "Bone", floor: "#bcb6a8", wall: "#6f6b62", surface: "stone", glow: "#b6b09c", light: 1.05, litter: ["skull", "statue"], carry: 1.5, ground: "old bone", life: ["rat", "bat"], air: "wind" },
   crystal: { name: "Crystal", floor: "#a59ebb", wall: "#64606f", surface: "stone", glow: "#9a86c8", light: 1.05, litter: ["urn", "rubble"], carry: 1, ground: "swept stone", life: ["bat", "shardback"], air: "hum" },

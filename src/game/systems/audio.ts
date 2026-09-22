@@ -833,6 +833,15 @@ export const sfx = {
     noiseBurst(0.14, 0.14, 2100, pan);
     tone(690, 0.12, "triangle", 0.14, 420, pan);
   },
+  /** Dry little claws racing over hot iron, in three uneven steps. */
+  newtSkitter(pan = 0) {
+    noiseBurst(0.055, 0.18, 2900, pan);
+    later(42, () => noiseBurst(0.045, 0.15, 2500, pan));
+    later(96, () => {
+      noiseBurst(0.06, 0.14, 2200, pan);
+      tone(310, 0.08, "square", 0.07, 190, pan);
+    });
+  },
   /** Three imperfect glass notes: the whole resonance ring answering at once. */
   shardChime(pan = 0) {
     tone(740, 0.28, "triangle", 0.12, 520, pan);

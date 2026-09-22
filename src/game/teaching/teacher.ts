@@ -139,6 +139,9 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "croaker", event: "croakersDove", line: "The toads went under. Anything loud does that, and the splash tells the Warden which room - a silent cistern was not silent a moment ago.", sample: { roomId: "r" } }),
   lesson({ id: "beetle", event: "beetlesScattered", line: "Glow beetles feed around bellcaps. Their low lights show the living banks; noise or a raised lantern sends them into cover. Lower the light and let them settle.", sample: { roomId: "r" } }),
   lesson({ id: "mite", event: "mitesBurrowed", line: "The ash mites went under. A quiet drift is a warning: something loud may have crossed this room moments ago.", sample: { roomId: "r" } }),
+  lesson({ id: "newt", event: "newtsScurried", line: ({ towardSecret }) => towardSecret
+    ? "The kiln newts fled into that cracked seam. Old heat finds openings before a delver does."
+    : "The kiln newts fled from the fired apron. A loud foundry sends them to the wall.", sample: { roomId: "r", towardSecret: true } }),
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
@@ -164,6 +167,7 @@ export const LESSONS: readonly Lesson[] = [
 export const LOOP_EVENTS: readonly (keyof BusEvents)[] = [
   "croakersDove",
   "mitesBurrowed",
+  "newtsScurried",
   "trapSprung",
   "draftFelt",
   "wallSound",
