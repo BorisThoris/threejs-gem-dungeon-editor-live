@@ -85,15 +85,9 @@ const BONE = "#d9d2c0";
 function Barrel(p: PropProps) {
   return (
     <group {...frame(p)} name="handmade-barrel">
-      <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 14)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
-      {[0.25, 0.85].map((y) => {
-        // Match the tapered stave radius and facet direction. Both forged
-        // bands share one square-section ring; local z becomes world height.
-        const radius = 0.38 + 0.04 * y / 1.1 + 0.007;
-        return <mesh key={y} name="barrel-hoop" position={[0, y, 0]} rotation={[Math.PI / 2, 0, Math.PI / 2]} scale={[radius, radius, 0.8]}
-          geometry={geo("torus", 1, 0.05, 4, 14)}
-          material={mat({ color: IRON, metalness: 0.7, roughness: 0.55 })} />
-      })}
+      <mesh position={[0, 0.55, 0]} castShadow geometry={geo("cylinder", 0.42, 0.38, 1.1, 10)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
+      <mesh name="barrel-hoops" geometry={geo("barrel-hoops")}
+        material={mat({ color: IRON, metalness: 0.7, roughness: 0.55 })} />
     </group>
   );
 }
@@ -147,11 +141,8 @@ function Candle(p: PropProps) {
 function Chair(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.45, 0]} castShadow scale={[0.5, 0.06, 0.5]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
-      <mesh position={[0, 0.8, -0.22]} castShadow scale={[0.5, 0.7, 0.06]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, surface: "wood" })} />
-      {[[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.22, z]} scale={[0.05, 0.44, 0.05]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
-      ))}
+      <mesh name="chair-wood" castShadow geometry={geo("chair-wood")} material={mat({ color: WOOD_LIT, surface: "wood" })} />
+      <mesh name="chair-legs" geometry={geo("chair-legs")} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
     </group>
   );
 }
@@ -216,9 +207,7 @@ function Table(p: PropProps) {
   return (
     <group {...frame(p)}>
       <mesh position={[0, 0.78, 0]} castShadow scale={[1.8, 0.08, 1]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
-      {[[-0.8, -0.4], [0.8, -0.4], [-0.8, 0.4], [0.8, 0.4]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.37, z]} scale={[0.08, 0.74, 0.08]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
-      ))}
+      <mesh name="table-legs" geometry={geo("table-legs")} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
     </group>
   );
 }
@@ -269,9 +258,7 @@ function Crate(p: PropProps) {
     <group {...frame(p)}>
       <mesh position={[0, 0.4, 0]} castShadow scale={[0.84, 0.8, 0.84]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
       {/* Slats, so it is not a plain cube at close range. */}
-      {[0.12, 0.68].map((y) => (
-        <mesh key={y} position={[0, y, 0]} scale={[0.88, 0.1, 0.88]} geometry={geo("box", 1, 1, 1)} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
-      ))}
+      <mesh name="crate-slats" geometry={geo("crate-slats")} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
     </group>
   );
 }

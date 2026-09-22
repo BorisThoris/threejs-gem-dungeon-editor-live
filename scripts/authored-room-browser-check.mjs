@@ -7,6 +7,7 @@ const ids = [
   "vault-round-counting-house",
   "trap-cross-machine-floor",
   "library-hex-scriptorium",
+  "hall-sealkeepers-ring",
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
@@ -54,6 +55,10 @@ try {
       camera.position.set(room.size * 0.34, room.size * 0.54, room.size * 0.48);
       camera.lookAt(0, 0.6, 0); camera.updateMatrixWorld();
       window.__scene.updateMatrixWorld(true); renderer.render(window.__scene, camera);
+      if (!renderer.info.render.calls) {
+        await new Promise(requestAnimationFrame);
+        renderer.render(window.__scene, camera);
+      }
       const result = { room: { template: room.template, shape: room.shape, props: authoredProps(room).length }, title: roomPlaceName(room, state.dungeon.seed),
         calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
         image: renderer.domElement.toDataURL() };
@@ -67,7 +72,7 @@ try {
     console.log(`${id}: ${fixture.shape}, ${fixture.props} authored props, ${mounted.calls} calls, ${mounted.triangles} triangles`);
   }
   assert.deepEqual(errors, []);
-  console.log("PASS four named irregular authored rooms mount in native generation and render without errors");
+  console.log("PASS five named irregular authored rooms mount in native generation and render without errors");
 } finally {
   await browser.close();
 }

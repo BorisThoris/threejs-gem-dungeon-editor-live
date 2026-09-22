@@ -1905,5 +1905,39 @@
     }
    }
   ]
+ },
+ {
+  "id": "hall-sealkeepers-ring",
+  "name": "Sealkeepers' Circuit",
+  "story": "Four inspection tables face the sealed machinery core, with each district's stores held against the outer walk so every approach can circle the old engine.",
+  "kind": "normal",
+  "size": 30,
+  "shape": "ring",
+  "props": [
+   { "kind": "table", "x": -7, "z": -7, "rotation": 0.7853981633974483 },
+   { "kind": "chair", "x": -8.7, "z": -7, "rotation": 1.5707963267948966 },
+   { "kind": "crate", "x": -11, "z": -7, "rotation": 0, "slot": "stores" },
+   { "kind": "table", "x": 7, "z": -7, "rotation": -0.7853981633974483 },
+   { "kind": "chair", "x": 8.7, "z": -7, "rotation": -1.5707963267948966 },
+   { "kind": "barrel", "x": 11, "z": -7, "rotation": 0, "slot": "stores" },
+   { "kind": "table", "x": -7, "z": 7, "rotation": 2.356194490192345 },
+   { "kind": "chair", "x": -8.7, "z": 7, "rotation": 1.5707963267948966 },
+   { "kind": "urn", "x": -11, "z": 7, "rotation": 0, "slot": "stores" },
+   { "kind": "table", "x": 7, "z": 7, "rotation": -2.356194490192345 },
+   { "kind": "chair", "x": 8.7, "z": 7, "rotation": -1.5707963267948966 },
+   { "kind": "crate", "x": 11, "z": 7, "rotation": 0, "slot": "stores" }
+  ],
+  "slots": [
+   {
+    "slot": "stores",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn", "crate"]
+    }
+   }
+  ]
  }
 ]

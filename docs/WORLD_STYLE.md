@@ -64,11 +64,21 @@ simple materials, imperfect cuts and authored purpose. Check imports at player
 eye height and measure their triangles, materials and draw calls in game;
 repeated room construction should remain batched or instanced.
 
+For handbuilt furniture, join fixed pieces that share a material into one
+shared model. Remove buried contact faces and use flat facets where a round
+profile needs fewer sides. Keep moving lids and distinct materials separate,
+and retain room-level culling; one enormous mesh for all rooms would obscure
+both the authored arrangements and their performance cost.
+
 Room shape must change how a place is used. Service-ring chambers wrap one
 continuous walk around a sealed, block-cut machinery core. Floor, ceiling,
 inner and outer walls, collision, routing, terrain, landmarks and the minimap
 must all use that same void. A system that needs an open centre moves to a real
 walk or avoids the room; it may not paint, spawn or route through the core.
+An authored service ring places its inspection stations around the core, with
+district stores against the outer walk. All four door approaches must join the
+continuous circuit, and the stations turn with the room rather than filling
+the sealed machinery well.
 
 Elbow halls remove one seeded outer quadrant and keep the other three as one
 working L-shaped floor. The missing corner turns between all four orientations,

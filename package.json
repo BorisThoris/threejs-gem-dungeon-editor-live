@@ -62,6 +62,7 @@
         "test:creatures": "node scripts/creature-render-check.mjs",
         "test:bat-flight": "node scripts/bat-flight-check.mjs",
         "test:authored-rooms": "node scripts/authored-room-browser-check.mjs",
+        "test:handbuilt": "node scripts/handbuilt-model-check.mjs",
         "test:strata": "node scripts/strata-browser-check.mjs",
     "test:threshold-echo": "node scripts/threshold-echo-browser-check.mjs",
     "test:channel-frames": "node scripts/channel-frame-browser-check.mjs",

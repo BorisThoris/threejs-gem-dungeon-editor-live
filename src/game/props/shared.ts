@@ -20,6 +20,7 @@ import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
 import { croakerGeometry } from "../mobs/croakerGeometry";
 import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
 import { harrierBodyGeometry, harrierWingGeometry } from "../mobs/harrierGeometry";
+import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, tableLegGeometry } from "./handbuiltGeometry";
 
 /**
  * One of each shape, and one of each material, for the whole program.
@@ -65,7 +66,12 @@ export type GeometryKind =
   | "harrier-body"
   | "harrier-wing"
   | "harrier-wing-left"
-  | "skull-sockets";
+  | "skull-sockets"
+  | "chair-wood"
+  | "chair-legs"
+  | "table-legs"
+  | "crate-slats"
+  | "barrel-hoops";
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   box: (a) => new BoxGeometry(...(a as [number, number, number])),
@@ -87,6 +93,11 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   "harrier-wing": () => harrierWingGeometry(),
   "harrier-wing-left": () => harrierWingGeometry(true),
   "skull-sockets": () => skullSocketsGeometry(),
+  "chair-wood": () => chairWoodGeometry(),
+  "chair-legs": () => chairLegGeometry(),
+  "table-legs": () => tableLegGeometry(),
+  "crate-slats": () => crateSlatGeometry(),
+  "barrel-hoops": () => barrelHoopGeometry(),
 };
 
 /** The one geometry of this shape and these dimensions. */

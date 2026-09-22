@@ -1351,3 +1351,20 @@ The 78-room sweep peaks at 79 draw calls, 7,304 triangles, 87 geometries
 and 10 textures; ten revisits add no geometry, a 574-frame sprint retains
 0.00 MB after collection, and 20,000 held-audio updates retain one voice
 with zero bytes per update.
+
+The authored library now includes the Sealkeepers' Circuit, a 30-metre
+service ring with four inspection tables around its real sealed machinery
+core. Twelve furnishings preserve a continuous walk among all four doors;
+the storage props substitute by district without changing the arrangement's
+purpose. The layout suite checks every orientation and mirror, all props,
+rewards and traversable routes. Native browser review mounts the ring from
+generation at 71 calls and 5,166 triangles.
+
+Four repeated handmade furniture types now join fixed parts per material.
+Chairs, tables, crates and barrels fall from 17 to eight material draws per
+one-of-each set. Removing buried leg faces and reducing barrel facets cuts
+that set from 448 to 302 triangles while retaining the original silhouettes,
+materials and independent colliders. Animated chest lids remain separate.
+The isolated 78-room sweep peaks at 79 calls, 7,288 triangles, 91 geometries
+and 10 textures. Ten revisits add no geometry; a 419-frame sprint retains
+0.00 MB after collection, and 20,000 held-audio updates retain one voice.
