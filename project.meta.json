@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T00:51:49.097Z",
+  "generatedAt": "2026-09-22T01:35:40.671Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -113,7 +113,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T00:50:35.758Z"
+        "capturedAt": "2026-09-22T01:34:27.133Z"
       },
       {
         "profile": "desktop",
@@ -122,7 +122,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T00:50:54.088Z"
+        "capturedAt": "2026-09-22T01:34:45.447Z"
       },
       {
         "profile": "full",
@@ -131,7 +131,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T00:51:30.635Z"
+        "capturedAt": "2026-09-22T01:35:22.195Z"
       },
       {
         "profile": "mobile",
@@ -140,7 +140,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T00:51:12.359Z"
+        "capturedAt": "2026-09-22T01:35:03.851Z"
       },
       {
         "profile": "og",
@@ -149,7 +149,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T00:51:48.928Z"
+        "capturedAt": "2026-09-22T01:35:40.505Z"
       }
     ]
   },
@@ -202,13 +202,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 356,
+    "sourceFiles": 358,
     "testFiles": 1,
-    "sourceLines": 64391,
+    "sourceLines": 64643,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 247
+        "files": 249
       },
       {
         "directory": "output",
@@ -243,10 +243,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "838da2b",
-    "lastCommitDate": "2026-09-22T03:47:40+03:00",
-    "lastCommitSubject": "Connect district landmarks to sealed histories",
-    "commitCount": 406,
+    "head": "6cbb710",
+    "lastCommitDate": "2026-09-22T04:31:24+03:00",
+    "lastCommitSubject": "Give crystal rings a living warning",
+    "commitCount": 408,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
