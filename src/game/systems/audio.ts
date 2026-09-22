@@ -8,6 +8,7 @@
  */
 
 import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
+import type { LandmarkId } from "../worldbuilding/landmarks";
 
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -800,6 +801,20 @@ export const ambience = {
 };
 
 export const sfx = {
+  /** A short material signature when a district's navigation anchor is entered. */
+  landmark(id: LandmarkId = "rootwell") {
+    if (id === "rootwell") {
+      noiseBurst(0.24, 0.12, 520);
+      tone(86, 0.42, "triangle", 0.1, 63);
+    } else if (id === "hoist") {
+      noiseBurst(0.13, 0.15, 1450);
+      tone(132, 0.28, "square", 0.1, 88);
+      later(95, () => tone(176, 0.16, "square", 0.07, 112));
+    } else {
+      tone(294, 0.42, "triangle", 0.11, 220);
+      later(110, () => tone(440, 0.5, "triangle", 0.08, 330));
+    }
+  },
   beetleScatter(pan = 0) {
     noiseBurst(0.14, 0.14, 2100, pan);
     tone(690, 0.12, "triangle", 0.14, 420, pan);

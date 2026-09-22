@@ -34,6 +34,14 @@ stay inside shaped floors, have no collision, and cost at most two draw calls.
 The audio changes the existing held ambience voice rather than allocating more
 voices at each doorway.
 
+Each district also owns one graph-selected landmark room per floor. Rootwater
+has a hanging root knot, the old works a chain hoist, and the buried choir a
+cantor's resonator. They use floor inlays and overhead blockwork, keep the
+whole walking volume clear, announce themselves with a short material cue,
+and retain a small symbol on the minimap after discovery. Landmarks should be
+places a player can navigate by, rather than large decorations repeated in
+every room.
+
 Terrain uses contiguous fields of deposits and courses of paving. Its low relief
 is decorative, with at most two additional draw calls; it does not introduce
 invisible movement obstacles or change the existing room-wide noise rule. Water

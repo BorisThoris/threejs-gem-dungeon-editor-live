@@ -14,7 +14,7 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { bus } = await import("/src/game/events.ts");
@@ -23,6 +23,7 @@ try {
         const dungeon = generateDungeon({ seed, floor: 2 });
         const room = dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
           : wanted === "crossroads" ? r.template === "hall-crossroads"
+          : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
         window.__run.setState({ dungeon, floor: 2, currentRoomId: room.id, visited: [room.id],
@@ -44,6 +45,15 @@ try {
       const embers = await page.evaluate(() => window.__foundryEmbers);
       assert.ok(embers?.count > 0, "foundry kiln aprons emit visible embers");
       assert.equal(embers.drawCalls, 1, "foundry embers stay in one instanced draw call");
+    }
+    if (["rootwell", "hoist", "cantor"].includes(wanted)) {
+      const landmark = await page.evaluate(() => window.__districtLandmark);
+      assert.equal(landmark?.id, wanted, `${wanted} exposes its rendered landmark probe`);
+      assert.ok(landmark.structure >= 3 && landmark.marks >= 2 && landmark.drawCalls === 2,
+        `${wanted} stays readable in two instanced draw calls`);
+      assert.ok(await page.evaluate(name => !!window.__scene.getObjectByName(name), `district-landmark-${wanted}`));
+      assert.equal(await page.locator(`[data-testid="map-district-landmark"][data-landmark="${wanted}"]`).count(), 1,
+        `${wanted} remains a learned navigation mark on the minimap`);
     }
     await page.screenshot({ path: `${output}/${wanted}.png` });
     review.push({ wanted, ...fixture, player: await page.evaluate(() => ({ ...window.__playerDebug })), perf: await page.evaluate(() => ({ ...window.__perf })) });

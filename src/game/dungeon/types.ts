@@ -157,6 +157,8 @@ export interface Room {
   waterway?: import("../worldbuilding/watercourse").Waterway;
   /** Connected geographical region; generated once with the room graph. */
   district?: import("../rooms/districts").DistrictId;
+  /** One graph-selected navigation anchor in each district. */
+  landmark?: import("../worldbuilding/landmarks").LandmarkId;
   biome?: import("../rooms/biomes").BiomeId;
   id: string;
   kind: RoomKind;

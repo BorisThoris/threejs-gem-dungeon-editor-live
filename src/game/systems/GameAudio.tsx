@@ -78,6 +78,10 @@ export function Audio() {
   useEffect(() => {
     const offs = [
       bus.on("gemCollected", () => sfx.gem()),
+      bus.on("roomEntered", ({ roomId }) => {
+        const landmark = useRun.getState().dungeon?.rooms.find(r => r.id === roomId)?.landmark;
+        if (landmark) sfx.landmark(landmark);
+      }),
       bus.on("doorOpened", () => sfx.door()),
       bus.on("damaged", () => sfx.hurt()),
       bus.on("lifeBought", () => sfx.heal()),

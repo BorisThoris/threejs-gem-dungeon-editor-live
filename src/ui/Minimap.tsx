@@ -170,6 +170,9 @@ export function Minimap() {
       marked: marks.includes(r.id),
       waterLandmark: seen.has(r.id) && r.waterway && r.waterway.role !== "channel" ? r.waterway.role : null,
       serviceMark: rubbing && seen.has(r.id) && dungeon.serviceTrail?.route.includes(r.id),
+      // A landmark is learned by standing under it. Once learned it stays
+      // on the map as the district's navigation anchor.
+      landmark: seen.has(r.id) ? r.landmark : undefined,
       /**
        * The map no longer knows where the Warden is or which rooms still
        * hold a gem. Both were SUBSTITUTES for knowing rather than
@@ -281,6 +284,17 @@ export function Minimap() {
                 </text>}
                 {c.serviceMark && <text data-testid="map-service-mark" x={-cell * 0.25} y={cell * 0.35}
                   textAnchor="middle" fontSize={7} fill={c.state === "here" ? onAccent : "#cc9869"}>Ⅲ</text>}
+                {c.landmark && <g data-testid="map-district-landmark" data-landmark={c.landmark}
+                  stroke={c.state === "here" ? onAccent : colors.gold} strokeWidth={1.4} fill="none">
+                  {c.landmark === "rootwell" ? <>
+                    <circle r={3.2} /><path d="M -5 0 H 5 M 0 -5 V 5" />
+                  </> : c.landmark === "hoist" ? <>
+                    <path d="M -4 -4 V 4 M 4 -4 V 4 M -4 -2 H 4" /><path d="M 0 -2 V 4" />
+                  </> : <>
+                    <path d="M -4 4 V -1 M 0 4 V -4 M 4 4 V -1" />
+                    <path d="M -5 4 H 5" />
+                  </>}
+                </g>}
                 {c.felt && (
                   <circle
                     data-testid="map-felt"

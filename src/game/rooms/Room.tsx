@@ -50,6 +50,7 @@ import { Architecture } from "../worldbuilding/Architecture";
 import { Terraces } from "../worldbuilding/Terraces";
 import { PassageLamps } from "../worldbuilding/PassageLamps";
 import { DistrictLintels } from "../worldbuilding/DistrictLintels";
+import { DistrictLandmark } from "../worldbuilding/DistrictLandmark";
 import { DistrictWays } from "../worldbuilding/DistrictWaymarks";
 import { WallCourses } from "../worldbuilding/WallCourses";
 import { FoundryEmbers } from "../worldbuilding/FoundryEmbers";
@@ -309,6 +310,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <Architecture room={room} />
       <Terrain room={room} />
       <DistrictWays room={room} />
+      <DistrictLandmark room={room} />
       <Terraces room={room} color={tint.floor} map={floorSurface} />
       <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
       <DistrictLintels room={room} />

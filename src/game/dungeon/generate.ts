@@ -1,5 +1,6 @@
 import { shapeFits } from "./layout";
 import { assignDistricts } from "../rooms/districts";
+import { assignDistrictLandmarks } from "../worldbuilding/landmarks";
 import { assignWatercourse } from "../worldbuilding/watercourse";
 import { serviceTrailFor } from "../worldbuilding/serviceTrail";
 import { stitchExplorationLoops } from "./explorationLoops";
@@ -407,6 +408,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   }
 
   assignDistricts(rooms, "start", endId, floor);
+  assignDistrictLandmarks(rooms);
   for (const room of rooms) for (const dir of DIRS) {
     if (!room.wings?.[dir] || room.links[dir] || room.secret?.dir === dir || room.district === "works") continue;
     if (createRng(`${seed}:${room.id}:${dir}:apse`)() < 0.7) room.wingProfiles = { ...room.wingProfiles, [dir]: "apse" };

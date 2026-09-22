@@ -774,3 +774,19 @@ peaks at 76 draw calls, 6,578 triangles, 87 live geometries and 10 textures,
 within the 96 / 8,800 / 112 / 16 budgets. Ten repeated room laps show no
 geometry growth, 1,493 sprint frames retain no heap after collection, and
 20,000 held-audio updates still retain one voice.
+
+District landmarks now give the connected regions fixed navigation anchors.
+Every generated floor selects one real room in Rootwater, the old works and
+the buried choir, preferring broad ordinary junctions without changing the
+room graph. The rootwater knot, chain hoist and cantor's resonator each combine
+paint-depth floor marks with overhead blockwork, keep doorway-height movement
+clear, replace the generic place name in the readout and remain on the minimap
+after discovery. Three short procedural arrival cues make them recognizable
+without looking at the HUD.
+
+A 360-floor generation sweep finds all 1,080 expected landmarks with every
+block inside its room's true footprint. Native browser review covers all three
+structures and their map marks. The full 78-room performance sweep peaks at
+78 draw calls, 6,637 triangles, 87 geometries and 10 textures; repeated visits,
+sprint memory and held-audio stability remain within budget. All 48 measured
+one-shot cues, including the three landmark signatures, clear the room tone.

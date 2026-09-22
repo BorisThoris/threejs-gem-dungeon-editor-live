@@ -10,6 +10,7 @@ const temp = mkdtempSync(join(tmpdir(), "world-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
+  "worldbuilding/landmarks",
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
@@ -71,6 +72,8 @@ let mites = 0;
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
+let landmarkRooms = 0;
+const landmarkKinds = new Set();
 const loopFloors = [0, 0, 0];
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
@@ -84,6 +87,10 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   }
   assert.deepEqual(d, L.generateDungeon({ seed, floor }), "geography reproduces from seed and depth");
   const byId = new Map(d.rooms.map(r => [r.id, r]));
+  const landmarks = d.rooms.filter(r => r.landmark);
+  assert.equal(landmarks.length, 3, "every floor has one navigation landmark per district");
+  for (const district of Object.keys(L.DISTRICTS))
+    assert.equal(landmarks.filter(r => r.district === district).length, 1, `${district} has exactly one landmark`);
   if (d.serviceTrail) {
     serviceTrails++;
     const { route, hostId } = d.serviceTrail;
@@ -153,6 +160,24 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(seen.size, members.length, "each district is connected through real doors");
   }
   for (const r of d.rooms) {
+    const landmark = L.landmarkPattern(r);
+    assert.equal(!!landmark, !!r.landmark, "landmark data and room assignment agree");
+    if (landmark) {
+      landmarkRooms++; landmarkKinds.add(landmark.id);
+      assert.equal(L.LANDMARKS[landmark.id].district, r.district, "landmark tradition matches its connected district");
+      assert.ok(landmark.structure.length >= 3 && landmark.marks.length >= 2, "landmarks have a readable structure and floor signature");
+      for (const block of [...landmark.structure, ...landmark.marks]) {
+        for (const sx of [-1, 1]) for (const sz of [-1, 1])
+          assert.ok(L.insideRoom(r, block.position[0] + sx * block.size[0] / 2,
+            block.position[2] + sz * block.size[2] / 2, 0.03), "landmark blocks stay inside the true room footprint");
+      }
+      for (const block of landmark.structure)
+        assert.ok(block.position[1] - block.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT,
+          "hanging landmark structures preserve doorway-height movement clearance");
+      for (const block of landmark.marks)
+        assert.ok(block.position[1] + block.size[1] / 2 < L.GROUND_Y + 0.05,
+          "landmark floor marks remain paint-depth and non-blocking");
+    }
     for (const home of L.ratsFor(r, d.seed)) {
       assert.ok(L.insideRoom(r, home.x, home.z, 0.6), "rat home has body clearance in the actual footprint");
       assert.ok(L.roomSegmentClear(r, home.x, home.z, home.shelter.x, home.shelter.z, 0), "rat shelter has a continuous floor approach");
@@ -413,3 +438,5 @@ console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biom
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);
+assert.deepEqual([...landmarkKinds].sort(), Object.keys(L.LANDMARKS).sort(), "all district landmarks occur in generated floors");
+console.log(`District landmarks: ${landmarkRooms} named navigation anchors across ${landmarkKinds.size} traditions.`);

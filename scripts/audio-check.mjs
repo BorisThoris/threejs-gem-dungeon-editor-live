@@ -226,6 +226,9 @@ ok("something is connected to the speakers", await page.evaluate(() => !!window.
  * reason.
  */
 const CUES = [
+  ["landmark", 650, ["rootwell"]],
+  ["landmark", 650, ["hoist"]],
+  ["landmark", 750, ["cantor"]],
   ["gem", 300, []],
   ["door", 400, []],
   ["hurt", 400, []],
