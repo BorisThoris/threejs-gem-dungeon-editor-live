@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T21:04:13.131Z",
+  "generatedAt": "2026-09-22T21:18:06.417Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -119,7 +119,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T21:02:59.752Z"
+        "capturedAt": "2026-09-22T21:16:52.971Z"
       },
       {
         "profile": "desktop",
@@ -128,7 +128,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:03:18.065Z"
+        "capturedAt": "2026-09-22T21:17:11.333Z"
       },
       {
         "profile": "full",
@@ -137,7 +137,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:03:54.629Z"
+        "capturedAt": "2026-09-22T21:17:47.963Z"
       },
       {
         "profile": "mobile",
@@ -146,7 +146,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T21:03:36.336Z"
+        "capturedAt": "2026-09-22T21:17:29.654Z"
       },
       {
         "profile": "og",
@@ -155,7 +155,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T21:04:12.956Z"
+        "capturedAt": "2026-09-22T21:18:06.241Z"
       }
     ]
   },
@@ -210,7 +210,7 @@
   "metrics": {
     "sourceFiles": 380,
     "testFiles": 1,
-    "sourceLines": 68252,
+    "sourceLines": 68261,
     "largestDirectories": [
       {
         "directory": "src",
@@ -249,10 +249,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "b20d085",
-    "lastCommitDate": "2026-09-22T23:55:37+03:00",
-    "lastCommitSubject": "Carry watercourse silt banks through shaped rooms",
-    "commitCount": 454,
+    "head": "c2f3c57",
+    "lastCommitDate": "2026-09-23T00:13:00+03:00",
+    "lastCommitSubject": "Set frogs on connected silt-bank habitat",
+    "commitCount": 456,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
