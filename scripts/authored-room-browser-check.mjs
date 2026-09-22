@@ -8,6 +8,7 @@ const ids = [
   "trap-cross-machine-floor",
   "library-hex-scriptorium",
   "hall-sealkeepers-ring",
+  "hall-turnkeepers-relay",
 ];
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
@@ -40,10 +41,12 @@ try {
     await page.evaluate(fixture => {
       window.__run.setState({ dungeon: fixture.dungeon, floor: fixture.floor, currentRoomId: fixture.roomId,
         phase: "playing", paused: false, inputLocks: 0, transitioning: false, wardenRoomId: null,
-        harrierSlain: true, reaperAwake: false, thiefPhase: "away", broken: [], looted: [], invulnerableUntil: 1e9 });
+        harrierSlain: true, reaperAwake: false, thiefPhase: "away", broken: [], looted: [], invulnerableUntil: 1e9,
+        glim: fixture.shape === "elbow" ? 90 : 0, oil: 100 });
       window.__bus.emit("teleport", { position: [0, 1.5, 0] });
     }, fixture);
     await page.waitForFunction(roomId => window.__roomHazards?.roomId === roomId, fixture.roomId);
+    if (fixture.shape === "elbow") await page.waitForFunction(() => window.__lantern?.distance > 13);
     const mounted = await page.evaluate(async fixture => {
       const { authoredProps } = await import("/src/game/rooms/templates.ts");
       const { roomPlaceName } = await import("/src/game/rooms/placeName.ts");
@@ -94,11 +97,21 @@ try {
       }, { name, expected: before - 1 });
     }
     assert.ok(fixture.name && fixture.story, `${id} keeps its authored name and purpose`);
+    if (id === "hall-turnkeepers-relay") {
+      const aligned = await page.evaluate(async () => {
+        const { elbowMissing } = await import("/src/game/dungeon/types.ts");
+        const { orient, orientationOf } = await import("/src/game/dungeon/layout.ts");
+        const state = window.__run.getState(), room = state.dungeon.rooms.find(r => r.id === state.currentRoomId);
+        const [x, z] = orient(1, 1, orientationOf(room));
+        return { missing: elbowMissing(room), authored: { x, z } };
+      });
+      assert.deepEqual(aligned.missing, aligned.authored, "the uncut elbow quadrant turns with its authored furniture");
+    }
     writeFileSync(`output/world-review/authored-rooms/${id}.png`, Buffer.from(mounted.image.split(",")[1], "base64"));
     console.log(`${id}: ${fixture.shape}, ${fixture.props} authored props, ${mounted.calls} calls, ${mounted.triangles} triangles`);
   }
   assert.deepEqual(errors, []);
-  console.log("PASS five named irregular authored rooms mount in native generation and render without errors");
+  console.log("PASS six named irregular authored rooms mount in native generation and render without errors");
 } finally {
   await browser.close();
 }

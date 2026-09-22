@@ -1,4 +1,5 @@
 import type { SlotRule, SlottedPlacement } from "../rooms/slots";
+import { orient, orientationOf } from "./orientation";
 
 /**
  * The dungeon, as data.
@@ -290,9 +291,13 @@ export function bayHeadDirection(room: Pick<Room, "id" | "seed" | "links" | "sec
   return choices[roomDirectionHash(room) % choices.length];
 }
 
-/** The quadrant deliberately left unexcavated. Its seeded turn makes elbow
- * halls face all four ways without adding a second rotation field to rooms. */
-export function elbowMissing(room: Pick<Room, "id" | "seed">): { x: -1 | 1; z: -1 | 1 } {
+/** The quadrant deliberately left unexcavated. A shipped composition turns
+ * its floor with its props; a seeded hall keeps its independent hashed turn. */
+export function elbowMissing(room: Pick<Room, "id" | "seed" | "grid" | "template">): { x: -1 | 1; z: -1 | 1 } {
+  if (room.template) {
+    const [x, z] = orient(1, 1, orientationOf(room));
+    return { x: x < 0 ? -1 : 1, z: z < 0 ? -1 : 1 };
+  }
   const hash = roomDirectionHash(room);
   return ([{ x: 1, z: 1 }, { x: -1, z: 1 }, { x: -1, z: -1 }, { x: 1, z: -1 }] as const)[hash & 3];
 }

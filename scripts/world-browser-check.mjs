@@ -33,12 +33,14 @@ try {
           : wanted === "elbow" ? r.shape === "elbow" && !r.landmark && !r.waterway && !r.template
           : wanted === "junction" ? r.shape === "junction" && Object.keys(r.links).length >= 3 && !r.landmark && !r.waterway && !r.template
           : wanted === "crossroads" ? r.template === "hall-crossroads"
+          : wanted === "relay" ? r.template === "hall-turnkeepers-relay"
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
         window.__run.setState({ dungeon, floor, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
-          thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9 });
+          thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9,
+          glim: wanted === "relay" ? 90 : 0, oil: 100 });
         const spawnZ = wanted === "gallery" || wanted === "dark-gallery" ? -room.size / 2 + 3
           : wanted === "ring" ? -ringCoreWidth(room.size) / 2 - 2.2 : 0;
         bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, spawnZ] });
