@@ -44,6 +44,9 @@ export const SHAPE_SIDES: Record<Shape, number> = {
   // `junction` grows only toward real doors, secrets and side galleries.
   // Four describes its central work bay; the graph supplies its arms.
   junction: 4,
+  // `bay` is a square work court with a narrow processional neck and a
+  // broad hammer-head end. Its orientation comes from the room graph.
+  bay: 4,
   circle: 48,
   hexagon: 6,
   octagon: 8,
@@ -57,6 +60,7 @@ export const SHAPES = [
   "ring",
   "elbow",
   "junction",
+  "bay",
   "circle",
   "hexagon",
   "octagon",
@@ -263,12 +267,33 @@ export const elbowShoulder = (size: number): number =>
 export const junctionHubWidth = (size: number): number =>
   Math.min(16, Math.max(12, Math.round((size - 6) / 2) * 2));
 
-/** The quadrant deliberately left unexcavated. Its seeded turn makes elbow
- * halls face all four ways without adding a second rotation field to rooms. */
-export function elbowMissing(room: Pick<Room, "id" | "seed">): { x: -1 | 1; z: -1 | 1 } {
+/** Width of the furnished court at the centre of a processional bay. */
+export const bayHubWidth = (size: number): number =>
+  Math.min(16, Math.max(12, Math.round((size - 6) / 2) * 2));
+
+/** Depth of the broad work platform at the far end of a processional bay. */
+export const bayHeadDepth = (size: number): number => Math.min(5, Math.max(4, size / 6));
+
+const roomDirectionHash = (room: Pick<Room, "id" | "seed">): number => {
   let hash = Math.floor(room.seed) >>> 0;
   for (let i = 0; i < room.id.length; i++) hash = Math.imul(hash ^ room.id.charCodeAt(i), 16777619) >>> 0;
   hash ^= hash >>> 16; hash = Math.imul(hash, 0x7feb352d); hash ^= hash >>> 15;
+  return hash >>> 0;
+};
+
+/** The destination that gives a processional bay its broad working end.
+ * Links, sealed routes and closed galleries all count, so revealing a secret
+ * changes the doorway state without rotating the chamber around the player. */
+export function bayHeadDirection(room: Pick<Room, "id" | "seed" | "links" | "secret" | "wings">): Dir {
+  const destinations = DIRS.filter(dir => !!room.links[dir] || room.secret?.dir === dir || !!room.wings?.[dir]);
+  const choices = destinations.length ? destinations : DIRS;
+  return choices[roomDirectionHash(room) % choices.length];
+}
+
+/** The quadrant deliberately left unexcavated. Its seeded turn makes elbow
+ * halls face all four ways without adding a second rotation field to rooms. */
+export function elbowMissing(room: Pick<Room, "id" | "seed">): { x: -1 | 1; z: -1 | 1 } {
+  const hash = roomDirectionHash(room);
   return ([{ x: 1, z: 1 }, { x: -1, z: 1 }, { x: -1, z: -1 }, { x: 1, z: -1 }] as const)[hash & 3];
 }
 
@@ -287,6 +312,7 @@ export function inscribedRadius(room: Room): number {
   if (room.shape === "ring") return half;
   if (room.shape === "elbow") return Math.min(half, elbowShoulder(room.size) * Math.SQRT2);
   if (room.shape === "junction") return junctionHubWidth(room.size) / 2;
+  if (room.shape === "bay") return bayHubWidth(room.size) / 2;
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
 
@@ -336,6 +362,15 @@ export function floorReach(room: Room, angle: number): number {
   }
   if (room.shape === "junction") {
     const hub = junctionHubWidth(room.size) / 2;
+    return Math.min(
+      Math.abs(hub / Math.cos(angle)),
+      Math.abs(hub / Math.sin(angle))
+    );
+  }
+  if (room.shape === "bay") {
+    // Placement uses the central court. The neck and broad head are route
+    // space, derived from the shared rectangle footprint below this API.
+    const hub = bayHubWidth(room.size) / 2;
     return Math.min(
       Math.abs(hub / Math.cos(angle)),
       Math.abs(hub / Math.sin(angle))

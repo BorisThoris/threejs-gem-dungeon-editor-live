@@ -18,6 +18,7 @@ import {
   elbowShoulder,
   halfSize,
   junctionHubWidth,
+  bayHubWidth,
   diagonalReach,
   floorReach,
   type Dir,
@@ -362,11 +363,11 @@ export function cornerSpots(room: Room): Vec3[] {
     corners.push([missing.x * (shoulder + CORNER_INSET), missing.z * (shoulder - CORNER_INSET)]);
     return corners.map(([x, z]) => [x, GROUND_Y, z]);
   }
-  if (room.shape === "junction") {
+  if (room.shape === "junction" || room.shape === "bay") {
     // Arrangements use corner anchors for more than lamps. Pull the whole
     // family in by the widest furnishing so a web, rubble pile or future
     // solid remains wholly inside the graph-shaped central bay.
-    const c = junctionHubWidth(room.size) / 2 - WIDEST - MARGIN;
+    const c = (room.shape === "bay" ? bayHubWidth(room.size) : junctionHubWidth(room.size)) / 2 - WIDEST - MARGIN;
     return QUADRANTS.map(([sx, sz]) => [sx * c, GROUND_Y, sz * c]);
   }
   const box = halfSize(room) - CORNER_INSET;
@@ -403,6 +404,8 @@ export function shapeFits(shape: Shape, size: number): boolean {
   if (shape === "elbow") return size >= 20 && anchors.filter(({ p, radius }) =>
     insideRoom(room, p[0], p[2], radius)).length >= anchors.length - 1;
   if (shape === "junction") return size >= 20 && anchors.every(({ p, radius }) =>
+    insideRoom(room, p[0], p[2], radius));
+  if (shape === "bay") return size >= 20 && anchors.every(({ p, radius }) =>
     insideRoom(room, p[0], p[2], radius));
   return anchors.every(({ p, radius }) =>
     Math.hypot(p[0], p[2]) + radius <= floorReach(room, Math.atan2(p[2], p[0])) + 1e-8);

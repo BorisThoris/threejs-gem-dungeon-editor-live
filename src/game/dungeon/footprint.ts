@@ -1,4 +1,4 @@
-import { crossArmWidth, DIRS, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
+import { bayHeadDepth, bayHeadDirection, bayHubWidth, crossArmWidth, DIRS, DIR_STEP, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -79,6 +79,32 @@ function chamberRects(room: Room): FloorRect[] {
         depth: vertical ? half : width,
       });
     }
+    return rects;
+  }
+  if (room.shape === "bay") {
+    const hub = bayHubWidth(room.size), half = halfSize(room);
+    const head = bayHeadDirection(room), headAxis = DIR_STEP[head];
+    const rects: FloorRect[] = [{ x: 0, z: 0, width: hub, depth: hub }];
+    // Every physical destination gets a narrow arm from the central court.
+    // The selected route then opens into a full-width work platform at its end.
+    for (const dir of new Set([...junctionDirections(room), head])) {
+      const vertical = dir === "north" || dir === "south";
+      const sign = dir === "north" || dir === "west" ? -1 : 1;
+      const width = Math.min(hub, corridorWidth(room, dir));
+      rects.push({
+        x: vertical ? corridorOffset(room, dir) : sign * half / 2,
+        z: vertical ? sign * half / 2 : corridorOffset(room, dir),
+        width: vertical ? width : half,
+        depth: vertical ? half : width,
+      });
+    }
+    const depth = bayHeadDepth(room.size), along = half - depth / 2;
+    rects.push({
+      x: headAxis.x * along,
+      z: headAxis.z * along,
+      width: headAxis.x ? depth : room.size,
+      depth: headAxis.z ? depth : room.size,
+    });
     return rects;
   }
   const half = halfSize(room), sides = SHAPE_SIDES[room.shape];

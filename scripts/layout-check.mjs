@@ -450,6 +450,54 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   check("topology-hall frames mark only the arms the graph supplies", badFrames === 0, `${badFrames} bad frame sets`);
 }
 
+// A processional bay is a graph-facing hammer plan: a central furnished court,
+// narrow approaches to real destinations, and one broad working end. Exercise
+// every graph form so the broad end never invents a doorway or blocks a route.
+{
+  let badHeads = 0, badMouths = 0, falseMouths = 0, badRoutes = 0, badProps = 0, badFrames = 0;
+  const heads = new Set();
+  for (let mask = 1; mask < 16; mask++) {
+    const r = { ...room(24, "normal", "bay"), id: `bay_${mask}`, links: {} };
+    const active = L.DIRS.filter((dir, i) => mask & (1 << i));
+    for (const dir of active) r.links[dir] = `next_${dir}`;
+    const head = L.bayHeadDirection(r); heads.add(head);
+    if (!active.includes(head)) badHeads++;
+    const half = r.size / 2;
+    const mouth = dir => ({ x: L.DIR_STEP[dir].x * (half - 1), z: L.DIR_STEP[dir].z * (half - 1) });
+    for (const dir of L.DIRS) {
+      const p = mouth(dir), inside = L.insideRoom(r, p.x, p.z, 0.55);
+      if (active.includes(dir) ? !inside : inside) (active.includes(dir) ? badMouths++ : falseMouths++);
+    }
+    for (const dir of active) {
+      const p = mouth(dir);
+      if (!L.roomSegmentClear(r, p.x, p.z, 0, 0, 0.55)) badRoutes++;
+    }
+    for (const p of L.placementsFor(r, r.seed))
+      if (!L.insideRoom(r, p.x, p.z, L.PROP_SPECS[p.kind].radius)) badProps++;
+    const procession = L.bayProcessionFor(r);
+    const blocks = [...procession.structure, ...procession.detail, ...procession.marks];
+    if (procession.direction !== head || procession.structure.length !== 2
+      || procession.detail.length !== 4 || procession.marks.length !== 2
+      || !blocks.every(b => {
+        const [x, , z] = b.position, [w, , d] = b.size;
+        return [[x - w / 2, z - d / 2], [x + w / 2, z - d / 2],
+          [x - w / 2, z + d / 2], [x + w / 2, z + d / 2]]
+          .every(([cx, cz]) => L.insideRoom(r, cx, cz, 0.001));
+      })) badFrames++;
+  }
+  const sealed = { ...room(24, "normal", "bay"), id: "bay_secret", links: { west: "old" }, secret: { dir: "north", to: "hidden" } };
+  const before = L.bayHeadDirection(sealed);
+  const opened = { ...sealed, links: { ...sealed.links, north: "hidden" }, secret: undefined };
+  check("processional bays face all four ways across generated graph plans", heads.size === 4, [...heads].join(", "));
+  check("a bay's broad end always faces a physical destination", badHeads === 0, `${badHeads} false heads`);
+  check("processional bays open every real doorway mouth", badMouths === 0, `${badMouths} closed mouths`);
+  check("processional bays invent no doorway on an unused side", falseMouths === 0, `${falseMouths} false mouths`);
+  check("every bay doorway reaches the central furnished court", badRoutes === 0, `${badRoutes} blocked routes`);
+  check("bay furnishings stay inside the central court", badProps === 0, `${badProps} off-floor props`);
+  check("bay gates mark both ends of the real processional neck", badFrames === 0, `${badFrames} bad frame sets`);
+  check("revealing a bay's secret does not rotate its built plan", before === L.bayHeadDirection(opened), `${before} -> ${L.bayHeadDirection(opened)}`);
+}
+
 // A service ring is a real concave chamber with a sealed core. Its four
 // walks must remain one navigable loop; the centre is wall, not decorative
 // floor that only looks blocked.

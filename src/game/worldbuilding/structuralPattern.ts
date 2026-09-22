@@ -1,4 +1,4 @@
-import { DIR_STEP, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, type Room } from "../dungeon/types";
+import { bayHeadDepth, bayHeadDirection, bayHubWidth, DIR_STEP, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, type Room } from "../dungeon/types";
 import { corridorOffset, corridorWidth, doorReach, floorRects, junctionDirections } from "../dungeon/footprint";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
@@ -76,6 +76,37 @@ export function junctionFramesFor(room: Room) {
       axis.x ? 0.16 : span - 0.5, 0.05, axis.z ? 0.16 : span - 0.5);
   }
   return { structure, detail, marks };
+}
+
+/** A processional bay makes its route legible twice: a narrow measured neck
+ * leaves the central court, then a second frame announces the broad work end.
+ * The selected direction is one of the room's physical destinations, so the
+ * architecture explains the generated plan rather than decorating over it. */
+export function bayProcessionFor(room: Room) {
+  const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
+  if (room.shape !== "bay") return { direction: null, structure, detail, marks };
+  const direction = bayHeadDirection(room), axis = DIR_STEP[direction], across = { x: -axis.z, z: axis.x };
+  const shift = corridorOffset(room, direction), half = halfSize(room);
+  const neck = Math.min(bayHubWidth(room.size), corridorWidth(room, direction));
+  const point = (along: number, lateral: number, y: number): [number, number, number] => [
+    axis.x * along + (axis.z ? shift : 0) + across.x * lateral,
+    GROUND_Y + y,
+    axis.z * along + (axis.x ? shift : 0) + across.z * lateral,
+  ];
+  const block = (into: CorridorBlock[], along: number, lateral: number, y: number,
+    wide: number, height: number, deep: number) => into.push({
+      position: point(along, lateral, y),
+      size: axis.x ? [deep, height, wide] : [wide, height, deep],
+    });
+  const courtGate = bayHubWidth(room.size) / 2 - 0.18;
+  const platformGate = half - bayHeadDepth(room.size) + 0.18;
+  for (const along of [courtGate, platformGate]) {
+    block(structure, along, 0, WALL_HEIGHT - 0.56, neck - 0.4, 0.24, 0.28);
+    for (const lateral of [-1, 1])
+      block(detail, along, lateral * (neck / 2 - 0.34), DOOR_HEIGHT + 0.5, 0.24, 0.9, 0.24);
+    block(marks, along - 0.18, 0, 0.025, neck * 0.72, 0.04, 0.16);
+  }
+  return { direction, structure, detail, marks };
 }
 
 export interface SealedThresholdDefinition {
@@ -195,6 +226,10 @@ export function architectureFor(room: Room) {
   structure.push(...junction.structure);
   detail.push(...junction.detail);
   marks.push(...junction.marks);
+  const bay = bayProcessionFor(room);
+  structure.push(...bay.structure);
+  detail.push(...bay.detail);
+  marks.push(...bay.marks);
   const sealed = sealedThresholdFor(room);
   structure.push(...sealed.structure);
   detail.push(...sealed.detail);
@@ -207,5 +242,5 @@ export function architectureFor(room: Room) {
   structure.push(...gallery.structure);
   detail.push(...gallery.detail);
   marks.push(...gallery.marks);
-  return { identity, crown, gallery, turn, junction, sealed, structure, detail, marks };
+  return { identity, crown, gallery, turn, junction, bay, sealed, structure, detail, marks };
 }

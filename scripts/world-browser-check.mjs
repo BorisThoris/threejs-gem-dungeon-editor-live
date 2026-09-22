@@ -17,7 +17,7 @@ try {
   for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "junction", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
-      const { ringCoreWidth } = await import("/src/game/dungeon/types.ts");
+      const { bayHeadDirection, DIR_YAW, ringCoreWidth } = await import("/src/game/dungeon/types.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
@@ -40,8 +40,9 @@ try {
         const spawnZ = wanted === "gallery" ? -room.size / 2 + 3
           : wanted === "ring" ? -ringCoreWidth(room.size) / 2 - 2.2 : 0;
         bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, spawnZ] });
-        bus.emit("lookSet", { yaw: wanted === "gallery" ? 0 : wanted === "ring" ? Math.PI : -0.65, pitch: -0.16 });
-        return { roomId: room.id, shape: room.shape, biome: room.biome, district: room.district, size: room.size, seed };
+        const head = room.shape === "bay" ? bayHeadDirection(room) : null;
+        bus.emit("lookSet", { yaw: wanted === "gallery" ? 0 : wanted === "ring" ? Math.PI : head ? DIR_YAW[head] : -0.65, pitch: -0.12 });
+        return { roomId: room.id, shape: room.shape, biome: room.biome, district: room.district, size: room.size, seed, head };
       }
       return null;
     }, wanted);

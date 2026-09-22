@@ -106,6 +106,8 @@ const apseDirs = new Set();
 let apses = 0;
 let junctionRooms = 0;
 const junctionForms = new Set();
+let bayRooms = 0;
+const bayHeads = new Set(), bayDistricts = new Set();
 let sealedThresholds = 0;
 const sealedThresholdTraditions = new Set();
 let passageLights = 0, formerPassageLights = 0;
@@ -529,6 +531,15 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         ? (L.OPPOSITE[dirs[0]] === dirs[1] ? "passage" : "turn")
         : dirs.length === 3 ? "tee" : "crossing");
     }
+    if (r.shape === "bay") {
+      bayRooms++;
+      const head = L.bayHeadDirection(r), destinations = L.junctionDirections(r);
+      bayHeads.add(head); bayDistricts.add(r.district);
+      assert.ok(destinations.includes(head), "a processional bay faces one of its real destinations");
+      const procession = L.bayProcessionFor(r);
+      assert.equal(procession.direction, head, "the built neck follows the footprint's broad end");
+      assert.equal(procession.structure.length, 2, "the central court and broad platform each frame the neck");
+    }
     const architecture = L.architectureFor(r);
     assert.ok(architecture.structure.length > 0, "every room shape supports its district architecture");
     assert.equal(architecture.crown.definition, L.BIOME_CROWNS[r.biome], "room architecture publishes its biome's crown rule");
@@ -749,6 +760,9 @@ assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id
 assert.deepEqual([...junctionForms].sort(), ["crossing", "passage", "tee", "terminus", "turn"],
   "generated topology halls cover every graph-shaped plan");
 console.log(`Topology halls: ${junctionRooms} graph-shaped rooms cover ${[...junctionForms].join(", ")}.`);
+assert.ok(bayRooms > 50 && bayHeads.size === 4 && bayDistricts.size === 3,
+  "processional bays occur throughout the world in every orientation and district");
+console.log(`Processional bays: ${bayRooms} graph-facing courts span ${bayHeads.size} orientations and ${bayDistricts.size} district traditions.`);
 assert.equal(sealedThresholds, 360, "every generated floor gives its hidden route one built threshold");
 assert.equal(sealedThresholdTraditions.size, 3, "all three districts build hidden thresholds in their own language");
 console.log(`Sealed thresholds: ${sealedThresholds} hidden routes use ${sealedThresholdTraditions.size} district constructions.`);

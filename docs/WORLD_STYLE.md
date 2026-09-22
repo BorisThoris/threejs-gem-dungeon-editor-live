@@ -190,6 +190,16 @@ Walls and ceilings are instanced; the floor uses one continuous surface mesh,
 so a stepped outline does not cost a draw call per block. Region growth remains based on real door connectivity,
 while the minimap fits each footprint inside its graph cell.
 
+Processional bays use a hammer-shaped plan tied to the room graph. A square
+furnished court narrows into a measured neck and opens onto one broad working
+platform; other arms exist only for real doors, cracked walls or galleries.
+The broad end must face one of those destinations and must not rotate when a
+secret is opened. Two overhead gates and floor tallies mark the neck inside the
+existing architecture batches. Rootwater reads the plan as a grafting bay, the
+Old Works as a receiving bay and the Buried Choir as a vigil bay. Floor, walls,
+ceiling, collision, navigation, terrain, furnishing clearance and the minimap
+must continue to consume the same footprint.
+
 The shipped authored set includes purpose-built diamond, circle, cross and
 hexagon layouts as well as square rooms. Every layout must survive all four
 turns and both mirrors, keep its full prop count, preserve door-to-door paths,
@@ -213,7 +223,7 @@ Their wall habitat candidates follow the actual room footprint. Refuges and
 migration paths use the same furniture seed as the rendered room and clear the
 whole body. Noise still makes them dive, and draining still sends them to cover.
 
-`npm run test:creatures` checks all fifteen creature types in generated rooms
+`npm run test:creatures` checks all seventeen creature types in generated rooms
 using native Chrome rendering. It compares frames with and without creature
 meshes while preserving scene lights, and saves standing-eye-height review
 images in `output/creature-review`. This checks representative visible states;

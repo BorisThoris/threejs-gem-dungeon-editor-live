@@ -1194,3 +1194,24 @@ changed pixels and remaining entirely above their wax beds. Their two shared
 instance batches add no light or texture; the fixed 78-room sweep remains at
 78 calls, 7,208 triangles, 87 geometries and 10 textures. Repeated laps show no
 geometry growth and a 1,497-frame sprint retains no heap after collection.
+
+Processional bays add an eleventh generated room shape. Their hammer plan has
+one safe furnished court, a narrow route neck and a broad work platform facing
+one destination the room graph actually supplies. Every other arm is likewise
+earned by a door, sealed route or gallery. Revealing a secret preserves the
+chosen direction, so the physical chamber never turns around the player.
+
+Two block-cut overhead gates and paired floor tallies explain the transition
+from court to neck to platform without adding a render batch. The three
+districts name and furnish the same inherited plan differently: Rootwater uses
+a Grafting bay, the Old Works a Receiving bay and the Buried Choir a Vigil bay.
+Across 360 generated floors, 72 bays span all four orientations and all three
+traditions. The layout audit exercises every one of the 15 non-empty cardinal
+door graphs, real and absent doorway mouths, routes back to the court, prop
+clearance, both structural gates and secret-opening stability.
+
+Native review renders a 24-metre receiving bay at 44 calls and 4,542 triangles.
+The fixed 78-room sweep remains at 78 calls, 7,208 triangles, 87 geometries and
+10 textures. Ten repeated room laps retain no geometry, a 195-frame sprint
+retains 0.00 MB after collection, and 20,000 held-audio updates retain one voice
+with zero bytes per update.

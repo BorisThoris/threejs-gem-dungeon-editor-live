@@ -155,7 +155,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   /** Whether a prop of this kind may stand here at all. */
   const allowed = (p: PropPlacement): boolean => {
     const solid = CATALOG[p.kind].solid;
-    if (room.shape === "elbow" && !insideRoom(room, p.x, p.z, CATALOG[p.kind].radius)) return false;
+    if ((room.shape === "elbow" || room.shape === "bay") && !insideRoom(room, p.x, p.z, CATALOG[p.kind].radius)) return false;
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (solid && CATALOG[p.kind].radius > 0.2 && hidesACrystal(p)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
