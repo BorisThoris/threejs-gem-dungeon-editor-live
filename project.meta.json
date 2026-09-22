@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T21:37:22.836Z",
+  "generatedAt": "2026-09-22T21:49:34.761Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -120,7 +120,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T21:36:09.159Z"
+        "capturedAt": "2026-09-22T21:48:21.357Z"
       },
       {
         "profile": "desktop",
@@ -129,7 +129,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:36:27.574Z"
+        "capturedAt": "2026-09-22T21:48:39.703Z"
       },
       {
         "profile": "full",
@@ -138,7 +138,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T21:37:04.321Z"
+        "capturedAt": "2026-09-22T21:49:16.300Z"
       },
       {
         "profile": "mobile",
@@ -147,7 +147,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T21:36:45.929Z"
+        "capturedAt": "2026-09-22T21:48:57.973Z"
       },
       {
         "profile": "og",
@@ -156,7 +156,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T21:37:22.698Z"
+        "capturedAt": "2026-09-22T21:49:34.596Z"
       }
     ]
   },
@@ -211,7 +211,7 @@
   "metrics": {
     "sourceFiles": 382,
     "testFiles": 1,
-    "sourceLines": 68418,
+    "sourceLines": 68448,
     "largestDirectories": [
       {
         "directory": "src",
@@ -250,10 +250,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "4d2a4e1",
-    "lastCommitDate": "2026-09-23T00:30:43+03:00",
-    "lastCommitSubject": "Frame the directed watercourse in three district traditions",
-    "commitCount": 458,
+    "head": "67084ce",
+    "lastCommitDate": "2026-09-23T00:45:29+03:00",
+    "lastCommitSubject": "Batch directed water reaches into one surface",
+    "commitCount": 460,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
