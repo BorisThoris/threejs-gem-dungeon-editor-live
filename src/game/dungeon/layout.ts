@@ -14,6 +14,8 @@ import {
   DIR_YAW,
   OPPOSITE,
   crossArmWidth,
+  elbowMissing,
+  elbowShoulder,
   halfSize,
   diagonalReach,
   floorReach,
@@ -262,7 +264,7 @@ export function quadrantDistance(room: Room, which: Anchor): number {
  * one and they cannot have both.
  */
 function reach(room: Room, inset: number): number {
-  if (room.shape === "square") return Infinity;
+  if (room.shape === "square" || room.shape === "elbow") return Infinity;
   return Math.max(INNER + RING_GAP, (diagonalReach(room) - inset) / Math.SQRT2);
 }
 
@@ -351,6 +353,14 @@ export function cornerSpots(room: Room): Vec3[] {
       return [rx, GROUND_Y, rz];
     });
   }
+  if (room.shape === "elbow") {
+    const box = halfSize(room) - CORNER_INSET, shoulder = elbowShoulder(room.size), missing = elbowMissing(room);
+    const corners: [number, number][] = [];
+    for (const [sx, sz] of QUADRANTS) if (sx !== missing.x || sz !== missing.z) corners.push([sx * box, sz * box]);
+    // The fourth lamp marks the return corner where the retained pier begins.
+    corners.push([missing.x * (shoulder + CORNER_INSET), missing.z * (shoulder - CORNER_INSET)]);
+    return corners.map(([x, z]) => [x, GROUND_Y, z]);
+  }
   const box = halfSize(room) - CORNER_INSET;
   const onFloor =
     room.shape === "square" ? box : (diagonalReach(room) - CORNER_INSET) / Math.SQRT2;
@@ -382,6 +392,8 @@ export function shapeFits(shape: Shape, size: number): boolean {
     ...cornerSpots(room).map(p => ({ p, radius: BRAZIER + MARGIN }))]
   if (shape === "ring") return size >= 20 && anchors.every(({ p, radius }) =>
     insideRoom(room, p[0], p[2], radius));
+  if (shape === "elbow") return size >= 20 && anchors.filter(({ p, radius }) =>
+    insideRoom(room, p[0], p[2], radius)).length >= anchors.length - 1;
   return anchors.every(({ p, radius }) =>
     Math.hypot(p[0], p[2]) + radius <= floorReach(room, Math.atan2(p[2], p[0])) + 1e-8);
 }
@@ -413,22 +425,22 @@ export function keyPosition(room: Room, seed: number, reserved: Vec3[] = []): Ve
  */
 function freeAnchor(room: Room, seedKey: string, reserved: Vec3[], height: number): Vec3 {
   const rng = createRng(seedKey);
-  const candidates = [...quadrantSpots(room, "far"), ...quadrantSpots(room, "near")];
+  const families = [quadrantSpots(room, "far"), quadrantSpots(room, "near")]
+    .map(family => family.filter(p => room.shape !== "elbow" || insideRoom(room, p[0], p[2], 0.8)));
   const start = Math.floor(rng() * 4);
-  let best: Vec3 = candidates[start];
+  let best: Vec3 = families.flat()[0];
   let bestScore = -Infinity;
-  for (let i = 0; i < candidates.length; i++) {
-    // Far anchors first, each family rotated by the seed.
-    const family = Math.floor(i / 4) * 4;
-    const c = candidates[family + ((i + start) % 4)];
-    const score = reserved.length
-      ? Math.min(...reserved.map((r) => dist2(c, r)))
-      : Infinity;
-    // Prefer a far anchor unless a near one is clearly freer.
-    const weighted = family === 0 ? score + 1 : score;
-    if (weighted > bestScore) {
-      bestScore = weighted;
-      best = c;
+  for (let family = 0; family < families.length; family++) {
+    const candidates = families[family];
+    for (let i = 0; i < candidates.length; i++) {
+      const c = candidates[(i + start) % candidates.length];
+      const score = reserved.length ? Math.min(...reserved.map((r) => dist2(c, r))) : Infinity;
+      // Prefer a far anchor unless a near one is clearly freer.
+      const weighted = family === 0 ? score + 1 : score;
+      if (weighted > bestScore) {
+        bestScore = weighted;
+        best = c;
+      }
     }
   }
   return [best[0], GROUND_Y + height, best[2]];

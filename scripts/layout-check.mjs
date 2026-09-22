@@ -67,6 +67,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/secret";
    export * from "${root}src/game/worldbuilding/secretHistoryPattern";
    export * from "${root}src/game/worldbuilding/foundryEmberSites";
+   export * from "${root}src/game/worldbuilding/structuralPattern";
    export * from "${root}src/game/props/breakable";
    export * from "${root}src/game/mobs/lamplighter";
    export * from "${root}src/game/mobs/harrierRoost";
@@ -365,6 +366,44 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   check("a cross chamber removes all four box corners",
     [[-12, -12], [12, -12], [-12, 12], [12, 12]].every(([x, z]) => !L.insideRoom(r, x, z, 0)),
     `arm half-width ${arm}`);
+}
+
+// An elbow hall is an asymmetric concave footprint rather than a square
+// with a cosmetic corner painted out. Its retained pier turns with the room
+// seed while all four cardinal doorway mouths remain usable.
+{
+  const examples = Array.from({ length: 24 }, (_, i) => ({ ...room(28, "normal", "elbow"), id: `elbow_${i}`, seed: 91 + i }));
+  const turns = new Set(examples.map(r => {
+    const m = L.elbowMissing(r);
+    return `${m.x},${m.z}`;
+  }));
+  check("seeded elbow halls turn through all four missing quadrants", turns.size === 4, `${turns.size} turns`);
+  let badWalls = 0, badCorners = 0, badDoors = 0, badProps = 0, badTurns = 0;
+  for (const r of examples) {
+    const missing = L.elbowMissing(r), half = r.size / 2;
+    if (L.wallEdges(r).length !== 6) badWalls++;
+    for (const [sx, sz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]]) {
+      const inside = L.insideRoom(r, sx * (half - 1), sz * (half - 1), 0.5);
+      if (inside === (sx === missing.x && sz === missing.z)) badCorners++;
+    }
+    if (![[0, -half + 1], [0, half - 1], [-half + 1, 0], [half - 1, 0]]
+      .every(([x, z]) => L.insideRoom(r, x, z, 0.6))) badDoors++;
+    for (const p of L.placementsFor(r, r.seed)) if (!L.insideRoom(r, p.x, p.z, L.PROP_SPECS[p.kind].radius)) badProps++;
+    const turn = L.elbowTurnFor(r);
+    const blocks = [...turn.structure, ...turn.detail, ...turn.marks];
+    const onFloor = blocks.every(b => {
+      const [x, , z] = b.position, [w, , d] = b.size;
+      return [[x - w / 2, z - d / 2], [x + w / 2, z - d / 2],
+        [x - w / 2, z + d / 2], [x + w / 2, z + d / 2]]
+        .every(([cx, cz]) => L.insideRoom(r, cx, cz, 0.001));
+    });
+    if (turn.structure.length !== 2 || turn.detail.length !== 1 || turn.marks.length !== 2 || !onFloor) badTurns++;
+  }
+  check("an elbow hall has six real wall courses", badWalls === 0, `${badWalls} wrong outlines`);
+  check("an elbow hall removes exactly its seeded outer corner", badCorners === 0, `${badCorners} wrong corners`);
+  check("every cardinal doorway opens onto an elbow hall's floor", badDoors === 0, `${badDoors} closed mouths`);
+  check("elbow furnishings stay on the three usable work quadrants", badProps === 0, `${badProps} off-floor props`);
+  check("elbow pier rails and tally marks trace only real floor", badTurns === 0, `${badTurns} bad turns`);
 }
 
 // A service ring is a real concave chamber with a sealed core. Its four

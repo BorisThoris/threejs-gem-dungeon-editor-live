@@ -33,6 +33,14 @@ inner and outer walls, collision, routing, terrain, landmarks and the minimap
 must all use that same void. A system that needs an open centre moves to a real
 walk or avoids the room; it may not paint, spawn or route through the core.
 
+Elbow halls remove one seeded outer quadrant and keep the other three as one
+working L-shaped floor. The missing corner turns between all four orientations,
+while every cardinal doorway still opens onto real ground. A retained pier,
+paired overhead rails and floor tallies explain the turn in the room's district
+tradition. Terrain, walls, ceiling, collision, routing, props and the minimap
+must agree on the same concave outline; furniture assigned to the absent work
+quadrant is omitted rather than scattered somewhere unrelated.
+
 Authored rooms keep that rule in their data. A composition may carry a name
 and one sentence explaining its former use; the HUD and World atlas preserve
 the name instead of reducing it to a generic chamber. Furniture repeats around

@@ -14,7 +14,7 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { ringCoreWidth } = await import("/src/game/dungeon/types.ts");
@@ -27,6 +27,7 @@ try {
           ? dungeon.rooms.find(r => r.id === dungeon.secretTrail?.sourceId)
           : dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
           : wanted === "salt" ? r.biome === "salt" && r.shape !== "square" && r.kind === "normal"
+          : wanted === "elbow" ? r.shape === "elbow" && !r.landmark && !r.waterway && !r.template
           : wanted === "crossroads" ? r.template === "hall-crossroads"
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);

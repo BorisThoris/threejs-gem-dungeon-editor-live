@@ -38,6 +38,9 @@ export const SHAPE_SIDES: Record<Shape, number> = {
   // `ring` is four connected service walks around a sealed square core.
   // Four describes its outer boundary; footprint owns the inner one.
   ring: 4,
+  // `elbow` is a seeded L-shaped union. Four keeps the cardinal vocabulary;
+  // its six real wall courses come from the shared rectangle footprint.
+  elbow: 4,
   circle: 48,
   hexagon: 6,
   octagon: 8,
@@ -49,6 +52,7 @@ export const SHAPES = [
   "square",
   "cross",
   "ring",
+  "elbow",
   "circle",
   "hexagon",
   "octagon",
@@ -247,6 +251,19 @@ export const crossArmWidth = (size: number): number =>
 export const ringCoreWidth = (size: number): number =>
   Math.min(6, Math.max(4, Math.round(size * 0.2 / 2) * 2));
 
+/** How far an elbow hall's two arms extend past its centre lines. */
+export const elbowShoulder = (size: number): number =>
+  Math.min(8, Math.max(6, Math.round(size * 0.24 / 2) * 2));
+
+/** The quadrant deliberately left unexcavated. Its seeded turn makes elbow
+ * halls face all four ways without adding a second rotation field to rooms. */
+export function elbowMissing(room: Pick<Room, "id" | "seed">): { x: -1 | 1; z: -1 | 1 } {
+  let hash = Math.floor(room.seed) >>> 0;
+  for (let i = 0; i < room.id.length; i++) hash = Math.imul(hash ^ room.id.charCodeAt(i), 16777619) >>> 0;
+  hash ^= hash >>> 16; hash = Math.imul(hash, 0x7feb352d); hash ^= hash >>> 15;
+  return ([{ x: 1, z: 1 }, { x: -1, z: 1 }, { x: -1, z: -1 }, { x: 1, z: -1 }] as const)[hash & 3];
+}
+
 /**
  * How far the drawn floor reaches in the worst direction.
  *
@@ -260,6 +277,7 @@ export function inscribedRadius(room: Room): number {
   if (room.shape === "square") return half;
   if (room.shape === "cross") return crossArmWidth(room.size) / Math.SQRT2;
   if (room.shape === "ring") return half;
+  if (room.shape === "elbow") return Math.min(half, elbowShoulder(room.size) * Math.SQRT2);
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
 
@@ -296,6 +314,16 @@ export function floorReach(room: Room, angle: number): number {
       Math.abs(half / Math.cos(angle)),
       Math.abs(half / Math.sin(angle))
     );
+  }
+  if (room.shape === "elbow") {
+    const missing = elbowMissing(room), x = Math.cos(angle) * missing.x, z = Math.sin(angle) * missing.z;
+    const outer = Math.min(
+      Math.abs(half / Math.cos(angle)),
+      Math.abs(half / Math.sin(angle))
+    );
+    if (x <= 1e-9 || z <= 1e-9) return outer;
+    const shoulder = elbowShoulder(room.size);
+    return Math.min(outer, Math.max(shoulder / x, shoulder / z));
   }
   if (room.shape === "cross") {
     const arm = crossArmWidth(room.size) / 2;

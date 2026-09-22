@@ -1081,3 +1081,24 @@ fixed 78-room performance corpus, the two generated rings peak at 51 calls and
 5,584 triangles. The overall peak is a dense square trap room at 84 calls,
 7,334 triangles and 93 geometries; 10 textures, repeated-room resources and
 retained sprint heap remain stable.
+
+Elbow halls add a seeded asymmetric room to ordinary halls and treasure
+vaults. Each removes one outer quadrant while preserving real floor at all four
+cardinal doorways. The missing corner rotates through all four orientations;
+six wall courses, the ceiling, collision, routing, terrain clipping and the
+minimap are derived from the same two-rectangle floor union. Furnishings stay
+in the three usable work quadrants instead of being moved into arbitrary gaps.
+
+The retained corner is treated as a working pier. Paired overhead rails, one
+hanging joint and two floor tallies trace its faces inside the existing three
+architecture batches. Rootwater calls the space a Tending elbow, the Old Works
+a Transfer elbow, and the Buried Choir a Processional turn, so shape, district
+history and visible construction describe the same former use.
+
+Across the generated layout corpus, elbows account for 2.6% of rooms and all
+nine declared shapes remain reachable. Native review renders a fungal elbow at
+41 calls and 4,516 triangles. All sixteen creature types remain visible, with
+the frog changing 5,854 pixels in native room light. The fixed 78-room sweep
+peaks at 78 calls, 6,869 triangles, 87 geometries and 10 textures; ten repeated
+transitions add no geometry, a 562-frame sprint retains no heap after
+collection, and 20,000 held-audio updates retain one voice.

@@ -1,4 +1,4 @@
-import type { Room } from "../dungeon/types";
+import { elbowMissing, elbowShoulder, halfSize, type Room } from "../dungeon/types";
 import { floorRects } from "../dungeon/footprint";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
@@ -23,6 +23,28 @@ export function structuralSpans(room: Room): CrownSpan[] {
       spans.push({ x: (left + right) / 2, z, width: right - left - 0.4 });
   }
   return spans;
+}
+
+/** The retained pier of an elbow chamber is readable at both eye level and
+ * underfoot. Keeping this small pattern separate also lets the layout audit
+ * prove that every face stays on the real L-shaped floor. */
+export function elbowTurnFor(room: Room) {
+  const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
+  if (room.shape !== "elbow") return { structure, detail, marks };
+  const block = (into: CorridorBlock[], x: number, y: number, z: number, w: number, h: number, d: number) =>
+    into.push({ position: [x, GROUND_Y + y, z], size: [w, h, d] });
+  const missing = elbowMissing(room), shoulder = elbowShoulder(room.size), half = halfSize(room);
+  const length = half - shoulder - 0.8, along = (half + shoulder - 0.8) / 2;
+  const x = missing.x * (shoulder - 0.28), z = missing.z * (shoulder - 0.28);
+  // Paired rails and floor tallies follow the two faces of the retained pier.
+  // The right angle reads as former work instead of an arbitrary missing tile.
+  block(structure, x, WALL_HEIGHT - 0.78, missing.z * along, 0.22, 0.22, length);
+  block(structure, missing.x * along, WALL_HEIGHT - 0.78, z, length, 0.22, 0.22);
+  block(detail, missing.x * (shoulder - 0.5), WALL_HEIGHT - 1.1,
+    missing.z * (shoulder - 0.5), 0.55, 0.65, 0.55);
+  block(marks, missing.x * (shoulder - 0.18), 0.025, missing.z * along, 0.14, 0.05, length);
+  block(marks, missing.x * along, 0.025, missing.z * (shoulder - 0.18), length, 0.05, 0.14);
+  return { structure, detail, marks };
 }
 
 export function architectureFor(room: Room) {
@@ -57,6 +79,10 @@ export function architectureFor(room: Room) {
       block(marks, x, WALL_HEIGHT - 0.48, z, 0.38, 0.3, 0.42);
     }
   }
+  const turn = elbowTurnFor(room);
+  structure.push(...turn.structure);
+  detail.push(...turn.detail);
+  marks.push(...turn.marks);
   const crown = biomeCrownFor(room, spans);
   const gallery = galleryTerminiFor(room);
   structure.push(...crown.structure);
@@ -65,5 +91,5 @@ export function architectureFor(room: Room) {
   structure.push(...gallery.structure);
   detail.push(...gallery.detail);
   marks.push(...gallery.marks);
-  return { identity, crown, gallery, structure, detail, marks };
+  return { identity, crown, gallery, turn, structure, detail, marks };
 }

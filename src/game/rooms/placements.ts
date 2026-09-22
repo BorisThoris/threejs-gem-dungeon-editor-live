@@ -25,6 +25,7 @@ import { arrangementFor, type Spots } from "./layouts";
 import { purposeFurnishing, secretFurnishing } from "../worldbuilding/furnishing";
 import { authoredProps } from "./templates";
 import { secretStoryFor } from "../dungeon/secret";
+import { insideRoom } from "../dungeon/footprint";
 
 
 /** How close a prop may stand to the gem or to the kind's own content. */
@@ -154,6 +155,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   /** Whether a prop of this kind may stand here at all. */
   const allowed = (p: PropPlacement): boolean => {
     const solid = CATALOG[p.kind].solid;
+    if (room.shape === "elbow" && !insideRoom(room, p.x, p.z, CATALOG[p.kind].radius)) return false;
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (solid && CATALOG[p.kind].radius > 0.2 && hidesACrystal(p)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;

@@ -4,6 +4,7 @@ import { createRng } from "../rng";
 /** Building traditions describe what a space was made for, independently of
  * its current encounter. Materials, architecture and the atlas read this row. */
 export const PLACE_IDENTITIES = {
+  tendingTurn: { title: "Tending elbow", tradition: "trellis", structure: "#766b48", detail: "#566c3d", accent: "#a1b16a", story: "The growing walk turns around a pier of roots nobody cut through." },
   nursery: { title: "Root nursery", tradition: "trellis", structure: "#766b48", detail: "#566c3d", accent: "#a1b16a", story: "Roots once fed the beds beneath these trellises." },
   orchard: { title: "Mycelium orchard", tradition: "trellis", structure: "#665b46", detail: "#586b62", accent: "#94beb0", story: "The old growing frames carry a second, quieter harvest." },
   cistern: { title: "Cistern beds", tradition: "trellis", structure: "#6e7a6b", detail: "#476a62", accent: "#94b4a4", story: "Water was settled here before it reached the gardens." },
@@ -12,14 +13,18 @@ export const PLACE_IDENTITIES = {
   flue: { title: "Flue settling hall", tradition: "ironwork", structure: "#5c5550", detail: "#746158", accent: "#b58a70", story: "Baffles once slowed the kiln breath until its ash fell here." },
   condenser: { title: "Copper condenser hall", tradition: "ironwork", structure: "#4f625d", detail: "#6e897d", accent: "#9abf9e", story: "Paired pipes cooled kiln vapour into the green drain plates below." },
   store: { title: "Provisioning hall", tradition: "ironwork", structure: "#705f4c", detail: "#8e7a59", accent: "#c3b385", story: "Goods passed below the numbered loading frames." },
+  transferTurn: { title: "Transfer elbow", tradition: "ironwork", structure: "#625853", detail: "#96744f", accent: "#c4a16a", story: "Loaded carts turned around the retained pier between two workshop runs." },
   procession: { title: "Processional hall", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "The repeated arches once measured a slow procession." },
   ossuary: { title: "Ossuary ambulatory", tradition: "vaulting", structure: "#99907b", detail: "#716c61", accent: "#c1b99b", story: "The dead were carried around this hall before burial." },
   resonance: { title: "Resonance chapel", tradition: "vaulting", structure: "#77718a", detail: "#625c74", accent: "#b1a2c6", story: "Stone ribs gather the last note of every footfall." },
   brine: { title: "Last-water chapel", tradition: "vaulting", structure: "#777b73", detail: "#676d68", accent: "#b8c8bd", story: "Shallow pans dried the choir's last water into pale votive salt." },
+  processionalTurn: { title: "Processional turn", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "The burial route bends around one sealed interment pier." },
 } as const;
 export type PlaceIdentity = keyof typeof PLACE_IDENTITIES;
 
 export function identityFor(room: Room): PlaceIdentity {
+  if (room.shape === "elbow") return room.district === "gardens" ? "tendingTurn"
+    : room.district === "works" ? "transferTurn" : "processionalTurn";
   // The works built the settling halls; the choir later reused its ash
   // chambers as processional space, so material alone does not erase history.
   if (room.biome === "ash" && room.district === "works") return "flue";

@@ -16,7 +16,8 @@ export function wallCoursesFor(room: Room) {
   for (const edge of wallEdges(room)) {
     const axis = DIR_STEP[edge.dir], centre = edge.along === "x" ? edge.x : edge.z;
     const normal = edge.along === "x" ? edge.z : edge.x;
-    const portal = centre === 0 && Math.abs(normal) === doorReach(room, edge.dir) && (room.links[edge.dir] || room.secret?.dir === edge.dir);
+    const portal = Math.abs(centre) <= edge.length / 2 && Math.abs(normal) === doorReach(room, edge.dir)
+      && (room.links[edge.dir] || room.secret?.dir === edge.dir);
     const lo = centre - edge.length / 2 + 0.06, hi = centre + edge.length / 2 - 0.06;
     for (let start = lo; start < hi; start += 2) {
       const end = Math.min(start + 1.94, hi), along = (start + end) / 2;

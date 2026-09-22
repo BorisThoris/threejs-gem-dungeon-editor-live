@@ -1,4 +1,4 @@
-import { crossArmWidth, DIRS, halfSize, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
+import { crossArmWidth, DIRS, elbowMissing, elbowShoulder, halfSize, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -50,6 +50,14 @@ function chamberRects(room: Room): FloorRect[] {
       { x: 0, z: (half + core) / 2, width: room.size, depth: span },
       { x: -(half + core) / 2, z: 0, width: span, depth: core * 2 },
       { x: (half + core) / 2, z: 0, width: span, depth: core * 2 },
+    ];
+  }
+  if (room.shape === "elbow") {
+    const half = halfSize(room), shoulder = elbowShoulder(room.size), missing = elbowMissing(room);
+    const arm = half + shoulder;
+    return [
+      { x: -missing.x * (half - shoulder) / 2, z: 0, width: arm, depth: room.size },
+      { x: 0, z: -missing.z * (half - shoulder) / 2, width: room.size, depth: arm },
     ];
   }
   const half = halfSize(room), sides = SHAPE_SIDES[room.shape];
