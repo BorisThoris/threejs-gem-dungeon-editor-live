@@ -1,5 +1,5 @@
 import { insideRoom } from "../dungeon/footprint";
-import type { Room } from "../dungeon/types";
+import { halfSize, ringCoreWidth, type Room } from "../dungeon/types";
 import type { DistrictId } from "../rooms/districts";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { GROUND_Y } from "../world";
@@ -71,7 +71,12 @@ export function landmarkPattern(room: Room): LandmarkPattern | null {
   if (!room.landmark) return null;
   const identity = LANDMARKS[room.landmark];
   const structure: CorridorBlock[] = [], marks: CorridorBlock[] = [];
+  // Ring chambers turn the sealed core into the landmark's plinth. Shift the
+  // existing district signature onto the north service walk instead of
+  // silently clipping every piece that crosses the machinery void.
+  const originZ = room.shape === "ring" ? -(halfSize(room) + ringCoreWidth(room.size) / 2) / 2 : 0;
   const add = (into: CorridorBlock[], x: number, y: number, z: number, w: number, h: number, d: number) => {
+    z += originZ;
     const inset = 0.04;
     const fits = [[-1, -1], [-1, 1], [1, -1], [1, 1]].every(([sx, sz]) =>
       insideRoom(room, x + sx * w / 2, z + sz * d / 2, inset));

@@ -25,7 +25,7 @@ const CHROMIUM =
   (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 /**
- * The current shaped-room baseline is 78 calls, 6,878 triangles, 87
+ * The current shaped-room baseline is 84 calls, 7,334 triangles, 93
  * geometries and 10 textures. The larger number is accounted for: structural
  * bays, habitat terrain and district paths now describe one connected place
  * instead of a bare square with scattered props. The limits retain meaningful
@@ -73,7 +73,7 @@ const BUDGET = {
    */
   retainedMB: 8,
 };
-const BASELINE = { calls: 78, triangles: 6897, geometries: 87, textures: 10 };
+const BASELINE = { calls: 84, triangles: 7334, geometries: 93, textures: 10 };
 const SEEDS = [4242, 77];
 
 let failures = 0;
@@ -135,16 +135,18 @@ for (const seed of SEEDS) {
           run.getState().roomReady(d.endId);
           await wait(900);
         }
-        return run.getState().dungeon.rooms.map((r) => [r.id, r.kind]);
+        return run.getState().dungeon.rooms.map((r) => [r.id, r.kind, r.shape, r.size]);
       },
       [seed, floor]
     );
-    for (const [id, kind] of ids) {
-      const p = await page.evaluate(async (id) => {
+    for (const [id, kind, shape, size] of ids) {
+      const p = await page.evaluate(async ([id, shape, size]) => {
         const run = window.__run;
+        const { ringCoreWidth } = await import("/src/game/dungeon/types.ts");
         const expectedFloor = run.getState().floor, expectedDungeon = run.getState().dungeon;
         run.setState({ transitioning: false, currentRoomId: id });
-        window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+        const spawnZ = shape === "ring" ? -ringCoreWidth(size) / 2 - 2.2 : 0;
+        window.__bus.emit("teleport", { position: [0, 1.5, spawnZ] });
         // Long enough for the room to mount and for a frame to be drawn
         // with everything in it.
         await new Promise((r) => setTimeout(r, 1100));
@@ -161,8 +163,8 @@ for (const seed of SEEDS) {
         if (run.getState().floor !== expectedFloor || run.getState().dungeon !== expectedDungeon || run.getState().currentRoomId !== id)
           throw Error("Performance sampling changed the inspected floor or room");
         return peak;
-      }, id);
-      rooms.push({ seed, floor, kind, id, ...p });
+      }, [id, shape, size]);
+      rooms.push({ seed, floor, kind, shape, id, ...p });
     }
   }
 }

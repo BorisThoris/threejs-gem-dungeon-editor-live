@@ -27,6 +27,12 @@ new mesh, material or light per ornament.
 - Build places with purposes and histories. Creatures need habitats; secrets
   need clues. Furnish arrangements, not disconnected random objects.
 
+Room shape must change how a place is used. Service-ring chambers wrap one
+continuous walk around a sealed, block-cut machinery core. Floor, ceiling,
+inner and outer walls, collision, routing, terrain, landmarks and the minimap
+must all use that same void. A system that needs an open centre moves to a real
+walk or avoids the room; it may not paint, spawn or route through the core.
+
 Authored rooms keep that rule in their data. A composition may carry a name
 and one sentence explaining its former use; the HUD and World atlas preserve
 the name instead of reducing it to a generic chamber. Furniture repeats around

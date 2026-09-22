@@ -244,7 +244,7 @@ for (const size of L.ROOM_SIZES) {
         const centre = L.centreSpots(r);
         // Two spots or none, and never in a room whose doors cross the middle.
         if (!oneAxis && centre.length !== 0) wrongCount++;
-        if (oneAxis && centre.length !== 2) wrongCount++;
+        if (oneAxis && centre.length !== 0 && centre.length !== 2) wrongCount++;
         if (centre.length) withMiddle.push(`${shape}${size}`);
         const anchors = [...L.quadrantSpots(r, "near"), ...L.quadrantSpots(r, "far"), ...L.cornerSpots(r)];
         for (const c of centre) {
@@ -365,6 +365,32 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   check("a cross chamber removes all four box corners",
     [[-12, -12], [12, -12], [-12, 12], [12, 12]].every(([x, z]) => !L.insideRoom(r, x, z, 0)),
     `arm half-width ${arm}`);
+}
+
+// A service ring is a real concave chamber with a sealed core. Its four
+// walks must remain one navigable loop; the centre is wall, not decorative
+// floor that only looks blocked.
+{
+  const r = room(24, "normal", "ring");
+  const core = L.ringCoreWidth(r.size) / 2;
+  check("a service ring has four outer and four inner wall courses", L.wallEdges(r).length === 8,
+    `${L.wallEdges(r).length} courses`);
+  check("a service ring seals its machinery core",
+    !L.insideRoom(r, 0, 0, 0) && [[0, -core], [core, 0], [0, core], [-core, 0]].every(([x, z]) => !L.insideRoom(r, x, z, 0.1)),
+    `${L.ringCoreWidth(r.size)}m core`);
+  check("all four sides of a service ring are walkable",
+    [[0, -core - 1], [core + 1, 0], [0, core + 1], [-core - 1, 0]].every(([x, z]) => L.insideRoom(r, x, z, 0.6)),
+    "north, east, south and west");
+  let point = { x: 0, z: -r.size / 2 + 1 };
+  const target = { x: 0, z: r.size / 2 - 1 };
+  let legal = true;
+  for (let step = 0; step < 4 && Math.hypot(point.x - target.x, point.z - target.z) > 0.1; step++) {
+    const next = L.roomWaypoint(r, point.x, point.z, target.x, target.z, 0.6);
+    if (!L.roomSegmentClear(r, point.x, point.z, next.x, next.z, 0.6)) legal = false;
+    point = next;
+  }
+  check("room routing walks around a service ring's core", legal && Math.hypot(point.x - target.x, point.z - target.z) <= 0.1,
+    `ended at ${point.x.toFixed(1)},${point.z.toFixed(1)}`);
 }
 
 // Foundry effects occupy the same kiln aprons as the terrain grammar and

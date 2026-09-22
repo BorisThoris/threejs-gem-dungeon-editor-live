@@ -35,6 +35,9 @@ export const SHAPE_SIDES: Record<Shape, number> = {
   // `cross` is a rectangle union rather than a polygon. Four is only its
   // cardinal vocabulary; footprint and reach handle its concave outline.
   cross: 4,
+  // `ring` is four connected service walks around a sealed square core.
+  // Four describes its outer boundary; footprint owns the inner one.
+  ring: 4,
   circle: 48,
   hexagon: 6,
   octagon: 8,
@@ -45,6 +48,7 @@ export const SHAPE_SIDES: Record<Shape, number> = {
 export const SHAPES = [
   "square",
   "cross",
+  "ring",
   "circle",
   "hexagon",
   "octagon",
@@ -239,6 +243,10 @@ export const halfSize = (room: Room): number => room.size / 2;
 export const crossArmWidth = (size: number): number =>
   Math.min(size, Math.max(8, Math.round(size * 0.46 / 2) * 2));
 
+/** Width of the sealed machinery core inside a service-ring chamber. */
+export const ringCoreWidth = (size: number): number =>
+  Math.min(6, Math.max(4, Math.round(size * 0.2 / 2) * 2));
+
 /**
  * How far the drawn floor reaches in the worst direction.
  *
@@ -251,6 +259,7 @@ export function inscribedRadius(room: Room): number {
   const half = halfSize(room);
   if (room.shape === "square") return half;
   if (room.shape === "cross") return crossArmWidth(room.size) / Math.SQRT2;
+  if (room.shape === "ring") return half;
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
 
@@ -275,6 +284,14 @@ export function floorReach(room: Room, angle: number): number {
   const half = halfSize(room);
   if (room.shape === "square") {
     // A square room's floor is its own box, not a polygon inscribed in it.
+    return Math.min(
+      Math.abs(half / Math.cos(angle)),
+      Math.abs(half / Math.sin(angle))
+    );
+  }
+  // Reach describes the outer wall for placement. The inner core is handled
+  // by the shared footprint and segment-clearance functions.
+  if (room.shape === "ring") {
     return Math.min(
       Math.abs(half / Math.cos(angle)),
       Math.abs(half / Math.sin(angle))

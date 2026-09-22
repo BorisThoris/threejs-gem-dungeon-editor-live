@@ -1061,3 +1061,23 @@ integrated 78-room sweep remains at 78 calls, 6,853 triangles, 87 geometries
 and 10 textures. Ten repeated laps show no geometry growth, a 1,497-frame
 sprint retains no heap after collection, and 20,000 held-audio updates retain
 one voice.
+
+Service-ring chambers add a second kind of concave room to ordinary halls and
+treasure vaults. Four broad walks surround a sealed square machinery core, so
+opposite doors require a real turn through the room instead of another straight
+crossing. The same four-bar footprint cuts the floor and ceiling, builds four
+outer and four inner wall courses, drives collision and pursuit routing, clips
+terrain beds and appears as a hollow outline on the minimap.
+
+Landmark structures shift onto the north service walk when a district chooses
+a ring, retaining their full floor signature without crossing the core. The
+directed watercourse excludes rings because its central channel cannot pass
+through sealed masonry. Normal furniture remains on legal anchors and the room
+has no false middle slots. Across 500 generated dungeons, rings account for
+3.1% of rooms and every declared shape remains reachable.
+
+Native review renders a 24-metre ring at 38 calls and 4,888 triangles. In the
+fixed 78-room performance corpus, the two generated rings peak at 51 calls and
+5,584 triangles. The overall peak is a dense square trap room at 84 calls,
+7,334 triangles and 93 geometries; 10 textures, repeated-room resources and
+retained sprint heap remain stable.

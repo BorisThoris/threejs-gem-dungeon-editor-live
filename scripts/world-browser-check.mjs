@@ -14,9 +14,10 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+      const { ringCoreWidth } = await import("/src/game/dungeon/types.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
@@ -33,8 +34,10 @@ try {
         window.__run.setState({ dungeon, floor: 2, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
           thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9 });
-        bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, wanted === "gallery" ? -room.size / 2 + 3 : 0] });
-        bus.emit("lookSet", { yaw: wanted === "gallery" ? 0 : -0.65, pitch: -0.16 });
+        const spawnZ = wanted === "gallery" ? -room.size / 2 + 3
+          : wanted === "ring" ? -ringCoreWidth(room.size) / 2 - 2.2 : 0;
+        bus.emit("teleport", { position: [0, PLAYER_SPAWN_Y, spawnZ] });
+        bus.emit("lookSet", { yaw: wanted === "gallery" ? 0 : wanted === "ring" ? Math.PI : -0.65, pitch: -0.16 });
         return { roomId: room.id, shape: room.shape, biome: room.biome, district: room.district, size: room.size, seed };
       }
       return null;

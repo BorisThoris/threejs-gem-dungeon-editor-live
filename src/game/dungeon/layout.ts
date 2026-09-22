@@ -1,5 +1,5 @@
 import { createRng } from "../rng";
-import { doorReach } from "./footprint";
+import { doorReach, insideRoom } from "./footprint";
 import {
   CLOSE_REACH,
   DOOR_WIDTH,
@@ -301,6 +301,7 @@ const MIDDLE_DISTANCE = INNER + 0.6;
  * least d away from either axis, and these sit on an axis.
  */
 export function centreSpots(room: Room): Vec3[] {
+  if (room.shape === "ring") return [];
   const lanes = laneAxes(room);
   // Doors on both axes leave the cross covering the whole middle; doors on
   // neither is not a room the generator makes.
@@ -377,9 +378,12 @@ export function shapeFits(shape: Shape, size: number): boolean {
   const room = { id: "fit", kind: "normal", seed: 0, grid: { x: 0, z: 0 }, size, shape, links: {} } as Room;
   // A painted outline could tolerate overhanging props; a physical wall cannot.
   // Check every quadrant because a triangle has unequal diagonal reaches.
-  return [...quadrantSpots(room, "far").map(p => ({ p, radius: WIDEST + MARGIN })),
+  const anchors = [...quadrantSpots(room, "far").map(p => ({ p, radius: WIDEST + MARGIN })),
     ...cornerSpots(room).map(p => ({ p, radius: BRAZIER + MARGIN }))]
-    .every(({ p, radius }) => Math.hypot(p[0], p[2]) + radius <= floorReach(room, Math.atan2(p[2], p[0])) + 1e-8);
+  if (shape === "ring") return size >= 20 && anchors.every(({ p, radius }) =>
+    insideRoom(room, p[0], p[2], radius));
+  return anchors.every(({ p, radius }) =>
+    Math.hypot(p[0], p[2]) + radius <= floorReach(room, Math.atan2(p[2], p[0])) + 1e-8);
 }
 
 const GEM_HEIGHT = 0.9;

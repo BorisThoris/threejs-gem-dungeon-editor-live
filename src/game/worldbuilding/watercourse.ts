@@ -70,7 +70,12 @@ export function assignWatercourse(rooms: Room[], startId: string, vaultId: strin
   const pathsFrom = (source: string) => {
     const paths = new Map<string, string[]>([[source, [source]]]);
     for (const [id, path] of paths) for (const next of Object.values(byId.get(id)!.links)) {
-      if (next && next !== vaultId && byId.get(next)?.kind !== "end" && !paths.has(next)) paths.set(next, [...path, next]);
+      const destination = next ? byId.get(next) : undefined;
+      // A service ring has a sealed machinery core where a straight central
+      // channel would disappear through masonry. Keep the watercourse on the
+      // connected galleries that can carry its visible, continuous run.
+      if (next && next !== vaultId && destination?.kind !== "end" && destination?.shape !== "ring" && !paths.has(next))
+        paths.set(next, [...path, next]);
     }
     return paths;
   };

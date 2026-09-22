@@ -1,6 +1,6 @@
 import { chamberTerrainCell, galleryTerrainCell, TERRAIN_GRAMMAR } from "./terrainGrammar";
-import { DIRS, DIR_STEP, floorReach, type Room } from "../dungeon/types";
-import { corridorOffset, wingWidthAt } from "../dungeon/footprint";
+import { DIRS, DIR_STEP, type Room } from "../dungeon/types";
+import { corridorOffset, insideRoom, wingWidthAt } from "../dungeon/footprint";
 import { floorHeightAt, terracesFor } from "../worldbuilding/elevation";
 import { GROUND_Y } from "../world";
 import { biomeIdFor } from "./biomes";
@@ -19,7 +19,7 @@ export function terrainFor(room: Room) {
     for (let z = -half + step; z < half - 0.5; z += step) {
       // Keep all four tile corners inside shaped floors.
       if ([-0.75, 0.75].some(dx => [-0.75, 0.75].some(dz =>
-        Math.hypot(x + dx, z + dz) > floorReach(room, Math.atan2(z + dz, x + dx)) - 0.15))) continue;
+        !insideRoom(room, x + dx, z + dz, 0.15)))) continue;
       const cell = chamberTerrainCell(room, biome, x, z);
       if (cell === "bare") continue;
       const deposit = cell === "deposit";

@@ -1,4 +1,4 @@
-import { crossArmWidth, DIRS, halfSize, SHAPE_SIDES, type Dir, type Room } from "./types";
+import { crossArmWidth, DIRS, halfSize, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -42,6 +42,15 @@ function chamberRects(room: Room): FloorRect[] {
   if (room.shape === "cross") {
     const arm = crossArmWidth(room.size);
     return [{ x: 0, z: 0, width: arm, depth: room.size }, { x: 0, z: 0, width: room.size, depth: arm }];
+  }
+  if (room.shape === "ring") {
+    const half = halfSize(room), core = ringCoreWidth(room.size) / 2, span = half - core;
+    return [
+      { x: 0, z: -(half + core) / 2, width: room.size, depth: span },
+      { x: 0, z: (half + core) / 2, width: room.size, depth: span },
+      { x: -(half + core) / 2, z: 0, width: span, depth: core * 2 },
+      { x: (half + core) / 2, z: 0, width: span, depth: core * 2 },
+    ];
   }
   const half = halfSize(room), sides = SHAPE_SIDES[room.shape];
   const vertices = Array.from({ length: sides }, (_, i) => ({
@@ -246,6 +255,14 @@ export function roomSegmentClear(room: Room, x: number, z: number, tx: number, t
 /** Route through a corridor mouth before turning into an off-axis destination. */
 export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: number, margin = 0.6): { x: number; z: number } {
   if (roomSegmentClear(room, x, z, tx, tz, margin)) return { x: tx, z: tz };
+  if (room.shape === "ring") {
+    const around = ringCoreWidth(room.size) / 2 + margin + 0.12;
+    const candidates = [[-around, -around], [around, -around], [around, around], [-around, around]]
+      .map(([px, pz]) => ({ x: px, z: pz }))
+      .filter(p => Math.hypot(p.x - x, p.z - z) > 0.1 && roomSegmentClear(room, x, z, p.x, p.z, margin));
+    candidates.sort((a, b) => Math.hypot(a.x - tx, a.z - tz) - Math.hypot(b.x - tx, b.z - tz));
+    if (candidates.length) return candidates[0];
+  }
   const half = halfSize(room) - margin;
   const mouth = (px: number, pz: number) => {
     if (Math.abs(px) > half) return { x: Math.sign(px) * (half - 0.05), z: corridorOffset(room, px < 0 ? "west" : "east") };
