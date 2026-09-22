@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-21T23:40:52.090Z",
+  "generatedAt": "2026-09-22T00:09:09.087Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -110,46 +110,46 @@
         "profile": "card",
         "file": "card.jpg",
         "path": "project-media/card.jpg",
-        "bytes": 49803,
+        "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-21T23:39:38.588Z"
+        "capturedAt": "2026-09-22T00:07:55.584Z"
       },
       {
         "profile": "desktop",
         "file": "desktop.jpg",
         "path": "project-media/desktop.jpg",
-        "bytes": 48876,
+        "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T23:39:56.904Z"
+        "capturedAt": "2026-09-22T00:08:13.948Z"
       },
       {
         "profile": "full",
         "file": "full.jpg",
         "path": "project-media/full.jpg",
-        "bytes": 43703,
+        "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-21T23:40:33.634Z"
+        "capturedAt": "2026-09-22T00:08:50.596Z"
       },
       {
         "profile": "mobile",
         "file": "mobile.jpg",
         "path": "project-media/mobile.jpg",
-        "bytes": 27290,
+        "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-21T23:40:15.225Z"
+        "capturedAt": "2026-09-22T00:08:32.285Z"
       },
       {
         "profile": "og",
         "file": "og.jpg",
         "path": "project-media/og.jpg",
-        "bytes": 41782,
+        "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-21T23:40:51.928Z"
+        "capturedAt": "2026-09-22T00:09:08.906Z"
       }
     ]
   },
@@ -202,13 +202,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 351,
+    "sourceFiles": 353,
     "testFiles": 1,
-    "sourceLines": 63864,
+    "sourceLines": 64054,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 242
+        "files": 244
       },
       {
         "directory": "output",
@@ -243,10 +243,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "0b9e82e",
-    "lastCommitDate": "2026-09-22T02:36:30+03:00",
-    "lastCommitSubject": "Add ash halls and reactive mite colonies",
-    "commitCount": 402,
+    "head": "2ebffe3",
+    "lastCommitDate": "2026-09-22T03:05:01+03:00",
+    "lastCommitSubject": "Add district navigation landmarks",
+    "commitCount": 404,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
