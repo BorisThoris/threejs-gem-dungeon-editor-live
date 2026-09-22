@@ -158,6 +158,16 @@ export interface BusEvents {
   lifeBought: undefined;
   doorOpened: { toRoomId: string };
   roomEntered: { roomId: string };
+  /** A delver reached the working end of a raised side gallery. */
+  galleryReached: {
+    roomId: string;
+    district: import("./rooms/districts").DistrictId;
+    x: number;
+    z: number;
+    answerX: number;
+    answerZ: number;
+    secretFlank: boolean;
+  };
   /** Something in reach of the player, or nothing. */
   prompt: Prompt | null;
   /** A line of guidance for the room the player is in, or nothing. */

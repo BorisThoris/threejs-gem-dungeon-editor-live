@@ -86,6 +86,9 @@ export function Audio() {
         if (trail && index > 0 && run.visited.includes(trail.sourceId))
           sfx.secretTrail(trail.landmark, roomId === trail.hostId);
       }),
+      bus.on("galleryReached", ({ district, x, z, answerX, answerZ, secretFlank }) =>
+        sfx.galleryResponse(district, sideOf(x - playerAt.x, z - playerAt.z), secretFlank,
+          sideOf(answerX - playerAt.x, answerZ - playerAt.z))),
       bus.on("doorOpened", () => sfx.door()),
       bus.on("damaged", () => sfx.hurt()),
       bus.on("lifeBought", () => sfx.heal()),

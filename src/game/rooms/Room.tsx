@@ -62,6 +62,7 @@ import { Terrain } from "./Terrain";
 import { StrataSeams } from "../worldbuilding/StrataSeams";
 import { SaltFalls } from "../worldbuilding/SaltFalls";
 import { BrineCrabs } from "../mobs/BrineCrabs";
+import { GalleryResponses } from "../worldbuilding/GalleryResponses";
 
 interface RoomProps {
   room: RoomData;
@@ -323,6 +324,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <SecretTrailMarks room={room} />
       <Terraces room={room} color={tint.floor} map={floorSurface} />
       <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
+      <GalleryResponses room={room} />
       <DistrictLintels room={room} />
       {room.waterway && <Watercourse room={room} />}
       <ServiceMarks room={room} />

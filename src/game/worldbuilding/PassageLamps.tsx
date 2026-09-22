@@ -32,12 +32,14 @@ export function PassageLamps({ room, intensity }: { room: Room; intensity: numbe
     const run = useRun.getState();
     if (!canControl(run)) return;
     const time = runClock(run);
-    lamps.forEach((lamp, i) => { if (lights.current[i]) lights.current[i]!.intensity = intensity * passageLampPulse(time, lamp.phase); });
+    lamps.forEach((lamp, i) => { if (lights.current[i]) lights.current[i]!.intensity = intensity * passageLampPulse(time, lamp.phase, room.district, lamp.terminal); });
   });
   return <group name="passage-lamps">
     <Blocks blocks={frames} color={room.district === "gardens" ? "#746047" : room.district === "works" ? "#383b38" : "#8a7350"} />
-    <Blocks blocks={panes} color="#ffd38a" glow />
+    <Blocks blocks={panes} color={lamps[0]?.colour ?? "#ffd38a"} glow />
     {lamps.map((lamp, i) => <pointLight key={`${lamp.dir}-${i}`} ref={v => { lights.current[i] = v; }}
-      position={lamp.position} color="#ffc47c" intensity={intensity} distance={17} decay={1.5} />)}
+      name={lamp.terminal ? "gallery-answer-lamp" : "passage-lamp"}
+      position={lamp.position} color={lamp.colour} intensity={intensity} distance={17} decay={1.5}
+      userData={{ dir: lamp.dir, terminal: lamp.terminal }} />)}
   </group>;
 }

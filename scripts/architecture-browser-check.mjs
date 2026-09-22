@@ -82,13 +82,39 @@ try {
   await page.waitForFunction(() => window.__scene.getObjectByName("room-architecture")?.userData.gallerySites === 2);
   const mountedTransept = await page.evaluate(fixture => {
     const architecture = window.__scene.getObjectByName("room-architecture");
+    const lamps = [];
+    window.__scene.traverse(object => { if (object.name === "gallery-answer-lamp") lamps.push(object); });
     return { name: architecture.userData.galleryTerminus, sites: architecture.userData.gallerySites,
       batches: architecture.children.filter(child => child.isInstancedMesh).length,
       raised: fixture.dirs.filter(dir => !!window.__scene.getObjectByName(`raised-floor-${dir}`)).length,
-      terrain: !!window.__scene.getObjectByName("terrain-deposits") };
+      terrain: !!window.__scene.getObjectByName("terrain-deposits"), answerLamps: lamps.length,
+      responseSites: window.__galleryResponses?.sites.length ?? 0,
+      response: window.__galleryResponses?.response ?? "" };
   }, transept);
-  assert.deepEqual(mountedTransept, { name: transept.name, sites: 2, batches: 3, raised: 2, terrain: true },
-    "a secret-host transept mounts both physical landings, continuous terrain and district architecture in three batches");
+  assert.deepEqual({ ...mountedTransept, response: undefined }, { name: transept.name, sites: 2, batches: 3,
+    raised: 2, terrain: true, answerLamps: 2, responseSites: 2, response: undefined },
+    "a secret-host transept mounts both physical landings, responsive lamps, continuous terrain and district architecture in three batches");
+  assert.ok(mountedTransept.response.length > 24, "the mounted transept publishes its district acoustic response");
+  const responses = await page.evaluate(async () => {
+    const events = [];
+    const off = window.__bus.on("galleryReached", event => events.push(event));
+    const sites = window.__galleryResponses.sites;
+    for (const site of sites) {
+      window.__bus.emit("teleport", { position: [site.x, site.raised + 1.2, site.z] });
+      await new Promise(resolve => setTimeout(resolve, 180));
+    }
+    // Revisiting a station during the same room visit must not restart its answer.
+    const first = sites[0];
+    window.__bus.emit("teleport", { position: [first.x, first.raised + 1.2, first.z] });
+    await new Promise(resolve => setTimeout(resolve, 180));
+    off();
+    return events;
+  });
+  assert.equal(responses.length, 2, "each transept landing answers once per room visit");
+  assert.ok(responses.every(event => event.roomId === transept.roomId && event.secretFlank),
+    "both answers remain tied to the physical cracked-wall host");
+  assert.ok(responses.every(event => Math.hypot(event.answerX - event.x, event.answerZ - event.z) > 2),
+    "secret transept answers point from each landing toward the actual cracked wall");
   if (process.env.TRANSEPT_REVIEW) {
     const image = await page.evaluate(async dir => {
       const T = await import("/node_modules/three/build/three.module.js");

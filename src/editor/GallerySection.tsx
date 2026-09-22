@@ -71,6 +71,7 @@ export function GallerySection({ room, probe, onProbe }: { room: Room; probe: { 
     <p style={small}><strong>{termini.definition.name}</strong> · {termini.definition.description}
       {termini.sites.length > 1 ? " This room has a paired transept." : ""}
       {termini.sites.some(site => site.secretFlank) ? " Its two sides flank the cracked-wall approach." : ""}</p>
+    <p style={small}><strong>Landing response</strong> · {termini.definition.response}</p>
     <p style={small}>{rampLength} m ramp · {length} m gallery · {Math.min(...widths).toFixed(1)}–{Math.max(...widths).toFixed(1)} m floor width.
       Side view shows the actual ramp, landing and hanging lamps. The blueprint above shows the changing width.</p>
   </section>;

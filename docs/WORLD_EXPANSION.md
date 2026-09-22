@@ -1000,3 +1000,21 @@ Ten repeated laps add no geometry, a 1,499-frame sprint retains no heap after
 collection, and 20,000 held-audio updates retain one voice. The creature render
 suite also confirms all 15 creature types, including frogs and kiln newts,
 contribute visible pixels under native room lighting.
+
+The three gallery termini now carry a sensory rule as well as a silhouette.
+Walking onto a Rootwater landing produces a filtered timber breath, an Old
+Works gantry answers in three uneven counting ticks, and a Buried Choir apse
+returns two low notes. A secret-flanking station adds a quieter answer from the
+opposite side, reinforcing the cracked-wall geography without exposing it as a
+marker. Each station fires once per room visit and only after the player reaches
+the physical raised landing.
+
+The response also uses the existing final passage lamp: district tint and a
+small block-stepped pulse distinguish the station while ordinary travel lamps
+remain steady. Gallery area, district material and paired or secret wings now
+shape the existing three-tap room return. Ten thousand acoustic profile changes
+retain the original eight audio nodes, pause removes the return, and resuming
+restores it. All 58 procedural cues measure above live room tone. The integrated
+78-room sweep remains at 78 draw calls, 6,876 triangles, 87 geometries and 10
+textures; ten repeated laps show no geometry growth, and a 1,500-frame sprint
+retains no heap after collection.

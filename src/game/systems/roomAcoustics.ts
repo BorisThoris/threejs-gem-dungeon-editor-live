@@ -1,6 +1,7 @@
 import type { Room } from "../dungeon/types";
 import { floorSurfaceRects } from "../rooms/floorSurfacePattern";
 import { biomeIdFor } from "../rooms/biomes";
+import { galleryTerminiFor } from "../worldbuilding/galleryTermini";
 
 export interface RoomAcoustics { delay: number; gain: number; cutoff: number }
 
@@ -12,10 +13,16 @@ export function acousticsFor(room: Room): RoomAcoustics {
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
   const soft = biome === "mossy" || biome === "fungal" || biome === "ash";
   const timber = biome === "timber";
+  const gallery = galleryTerminiFor(room);
+  const stations = gallery.sites.length;
+  const secretFlank = gallery.sites.some(site => site.secretFlank);
+  const districtGain = !stations ? 1 : room.district === "gardens" ? .82 : room.district === "works" ? 1.02 : 1.16;
+  const districtCutoff = room.district === "gardens" ? 720 : room.district === "works" ? 1450 : 2200;
+  const materialCutoff = biome === "ash" ? 480 : soft ? 650 : timber ? 1100 : biome === "crystal" ? 2600 : biome === "salt" ? 2350 : 1900;
   return {
-    delay: Math.max(.025, Math.min(.14, span / 343)),
-    gain: (soft ? .055 : timber ? .1 : .19) * Math.min(1.2, Math.max(.65, span / 24)),
-    cutoff: biome === "ash" ? 480 : soft ? 650 : timber ? 1100 : biome === "crystal" ? 2600 : biome === "salt" ? 2350 : 1900,
+    delay: Math.max(.025, Math.min(.16, span / 343 + stations * .004 + (secretFlank ? .004 : 0))),
+    gain: (soft ? .055 : timber ? .1 : .19) * Math.min(1.28, Math.max(.65, span / 24)) * districtGain,
+    cutoff: stations ? Math.round(materialCutoff * .72 + districtCutoff * .28) : materialCutoff,
   };
 }
 

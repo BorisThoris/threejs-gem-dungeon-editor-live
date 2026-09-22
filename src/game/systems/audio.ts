@@ -9,6 +9,7 @@
 
 import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
 import type { LandmarkId } from "../worldbuilding/landmarks";
+import type { DistrictId } from "../rooms/districts";
 
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -831,6 +832,21 @@ export const sfx = {
     } else {
       tone(final ? 440 : 349, 0.24, "triangle", gain, 270);
       if (final) later(80, () => tone(523, 0.28, "triangle", gain * 0.72, 390));
+    }
+  },
+  /** The physical end of a district gallery answering the player's arrival. */
+  galleryResponse(district: DistrictId = "tombs", pan = 0, secretFlank = false, answerPan = -pan * .55) {
+    if (district === "gardens") {
+      noiseBurst(0.22, 0.12, 560, pan, true);
+      tone(92, 0.32, "triangle", 0.1, 70, pan, true);
+      if (secretFlank) later(135, () => noiseBurst(0.16, 0.055, 410, answerPan, true));
+    } else if (district === "works") {
+      for (const [delay, pitch, gain] of [[0, 174, 0.09], [72, 147, 0.075], [166, 196, 0.06]] as const)
+        later(delay, () => tone(pitch, 0.09, "square", gain, pitch * 0.72, pan, true));
+      if (secretFlank) later(275, () => noiseBurst(0.07, 0.045, 980, answerPan, true));
+    } else {
+      tone(220, 0.38, "triangle", 0.08, 164, pan, true);
+      later(145, () => tone(secretFlank ? 277 : 247, 0.46, "triangle", 0.06, 185, answerPan, true));
     }
   },
   beetleScatter(pan = 0) {

@@ -8,6 +8,8 @@ import { terracePoint, terracesFor, type Terrace } from "./elevation";
 export interface GalleryTerminusDefinition {
   name: string;
   description: string;
+  response: string;
+  lamp: string;
 }
 
 /** A closed gallery ends in the working language of its connected district. */
@@ -15,14 +17,20 @@ export const GALLERY_TERMINI: Record<DistrictId, GalleryTerminusDefinition> = {
   gardens: {
     name: "root tending bay",
     description: "A crossbeam and three floor roots mark where a nursery line was tied off.",
+    response: "Dry roots breathe against the beam when someone reaches the bay.",
+    lamp: "#d7bd78",
   },
   works: {
     name: "sorting gantry",
     description: "Paired floor rails finish beneath a low counting beam and its hangers.",
+    response: "The hangers answer a footfall with three uneven counting ticks.",
+    lamp: "#e4a064",
   },
   tombs: {
     name: "listening apse",
     description: "Processional slabs end beneath a rib whose hanging teeth gather the room's echo.",
+    response: "The apse returns two low notes, with the second arriving from deeper stone.",
+    lamp: "#d4c6a0",
   },
 };
 

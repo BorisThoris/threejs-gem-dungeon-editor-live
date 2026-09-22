@@ -67,6 +67,15 @@ apses. Their ramps, raised floors, walls, collision and minimap outline all come
 from the same footprint; their terminal beams and marks stay in the existing
 three architecture batches.
 
+Reaching a gallery's raised landing should complete the same story in sound
+and light. Root tending bays breathe through dry timber, sorting gantries count
+three uneven iron ticks, and listening apses return a low two-note answer. The
+last existing gallery lamp carries a restrained district tint and a few hard
+intensity steps; travel-passage lamps remain steady. The answer uses the room's
+bounded reflection taps, plays once per landing per visit, and becomes slightly
+deeper on a wing that flanks a cracked wall. Do not add a light, mesh, looping
+voice or floating secret marker for this response.
+
 District data lives on rooms and drives the HUD, corridor rhythms and biome
 selection. Biomes drive terrain colors, lighting, footstep surfaces, sound carry,
 ambient creature habitat and the air's timbre. Moths favor the rootwater

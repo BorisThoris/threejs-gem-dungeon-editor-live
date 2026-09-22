@@ -475,10 +475,17 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     if (gallery.sites.length) {
       galleryTermini += gallery.sites.length;
       galleryTraditions.add(gallery.definition.name);
+      assert.ok(gallery.definition.response.length > 24, "every district gallery has an authored acoustic response");
+      assert.match(gallery.definition.lamp, /^#[0-9a-f]{6}$/i, "every district gallery owns a restrained lamp tint");
       if (gallery.sites.length > 1) pairedGalleryRooms++;
       if (r.secret && gallery.sites.length > 1 && gallery.sites.every(site => site.secretFlank)) secretTransepts++;
       assert.equal(gallery.sites.length, L.terracesFor(r).length,
         "every raised annex ends in its district's visible working station");
+      const lamps = L.passageLampsFor(r);
+      assert.equal(lamps.filter(lamp => lamp.terminal).length, gallery.sites.length,
+        "every gallery has exactly one existing lamp assigned to its terminal response");
+      assert.ok(lamps.filter(lamp => lamp.terminal).every(lamp => lamp.colour === gallery.definition.lamp),
+        "terminal lamps use their district's authored practical-light tint");
       for (const site of gallery.sites) {
         assert.ok(L.insideRoom(r, site.x, site.z, 0.35), "gallery termini stand on their true landing floor");
         assert.ok(Math.abs(L.floorRiseAt(r, site.x, site.z) - site.raised) < 1e-6,
