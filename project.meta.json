@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T18:25:36.853Z",
+  "generatedAt": "2026-09-22T19:08:47.815Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -117,7 +117,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T18:24:23.252Z"
+        "capturedAt": "2026-09-22T19:07:33.846Z"
       },
       {
         "profile": "desktop",
@@ -126,7 +126,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T18:24:41.598Z"
+        "capturedAt": "2026-09-22T19:07:52.259Z"
       },
       {
         "profile": "full",
@@ -135,7 +135,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T18:25:18.296Z"
+        "capturedAt": "2026-09-22T19:08:29.126Z"
       },
       {
         "profile": "mobile",
@@ -144,7 +144,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T18:24:59.935Z"
+        "capturedAt": "2026-09-22T19:08:10.764Z"
       },
       {
         "profile": "og",
@@ -153,7 +153,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T18:25:36.672Z"
+        "capturedAt": "2026-09-22T19:08:47.620Z"
       }
     ]
   },
@@ -208,7 +208,7 @@
   "metrics": {
     "sourceFiles": 377,
     "testFiles": 1,
-    "sourceLines": 67775,
+    "sourceLines": 67905,
     "largestDirectories": [
       {
         "directory": "src",
@@ -247,10 +247,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "2de7f40",
-    "lastCommitDate": "2026-09-22T21:20:58+03:00",
-    "lastCommitSubject": "Carry connected strata through doorways",
-    "commitCount": 446,
+    "head": "4c0f864",
+    "lastCommitDate": "2026-09-22T22:03:40+03:00",
+    "lastCommitSubject": "Build readable district handovers",
+    "commitCount": 448,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
