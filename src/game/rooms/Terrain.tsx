@@ -8,6 +8,7 @@ import { runClock, useRun } from "../state/run";
 import { useSurface } from "../textures/registry";
 import { terrainFor, TERRAIN_COLORS, type TerrainTile } from "./terrainPattern";
 import { geo } from "../props/shared";
+import { TERRAIN_EFFECTS } from "./terrainMaterial";
 
 /** Paint-depth terrain has no traversable sides. Keep the original top height
  * and UV direction while submitting only its visible, upward-facing surface. */
@@ -36,6 +37,7 @@ export function Terrain({ room }: { room: Room }) {
   const beds = useMemo(() => mergeTerrainBeds(data.deposits), [data.deposits]);
   const time = useRef({ value: runClock(useRun.getState()) });
   const wet = data.biome === "flooded";
+  const effect = TERRAIN_EFFECTS[data.biome];
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
   const pavingSurface = useSurface("stone", 0.5);
   const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss" : data.biome === "ash" ? "dirt" : "stone", 0.5);
@@ -46,19 +48,18 @@ export function Terrain({ room }: { room: Room }) {
     <Tiles blocks={data.paving} name="terrain-paving"><meshStandardMaterial color={stone} map={pavingSurface} roughness={0.9} /></Tiles>
     <Tiles blocks={beds} name="terrain-deposits">
       <meshStandardMaterial color={deposit} map={wet ? null : bedSurface} roughness={wet ? 0.45 : 1}
-        userData={{ terrainTime: time.current }}
-        emissive={wet ? "#233d42" : "#000000"} emissiveIntensity={0.15}
-        customProgramCacheKey={() => wet ? "block-water-v2" : "terrain-world-grain-v2"}
+        userData={{ terrainTime: time.current, terrainEffect: effect.name, terrainAnimated: effect.animated }}
+        emissive={effect.emissive} emissiveIntensity={effect.emissiveIntensity}
+        customProgramCacheKey={() => `terrain-${data.biome}-style-v3`}
         onBeforeCompile={shader => {
           shader.vertexShader = "varying vec2 terrainXZ;\n" + shader.vertexShader;
           shader.vertexShader = shader.vertexShader.replace("#include <project_vertex>",
             "#include <project_vertex>\nterrainXZ = (instanceMatrix * vec4(position, 1.0)).xz;\n#ifdef USE_MAP\nvMapUv = (mapTransform * vec3(terrainXZ.x * 0.5, -terrainXZ.y * 0.5, 1.0)).xy;\n#endif");
-          // Adjacent deposit tiles share world-space grain, including ramp cuts.
-          if (!wet) return;
+          // Adjacent deposit tiles share world-space marks, including ramp cuts.
           shader.uniforms.terrainTime = time.current;
           shader.fragmentShader = "uniform float terrainTime; varying vec2 terrainXZ;\n" + shader.fragmentShader;
           shader.fragmentShader = shader.fragmentShader.replace("#include <color_fragment>",
-            "#include <color_fragment>\nfloat ripple = floor((sin(terrainXZ.x * 3.0 + terrainXZ.y * 2.0 + terrainTime * 1.2) * 0.5 + 0.5) * 3.0) / 3.0; diffuseColor.rgb *= 0.88 + ripple * 0.24;");
+            `#include <color_fragment>\n${effect.fragment}`);
         }} />
     </Tiles>
   </group>;

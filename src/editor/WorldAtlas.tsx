@@ -1,4 +1,5 @@
 import { TERRAIN_GRAMMAR } from "../game/rooms/terrainGrammar";
+import { TERRAIN_EFFECTS } from "../game/rooms/terrainMaterial";
 import { channelSediment } from "../game/worldbuilding/channelSediment";
 import { roomPlaceName } from "../game/rooms/placeName";
 import { biomeIdFor } from "../game/rooms/biomes";
@@ -84,6 +85,7 @@ export function WorldAtlas() {
   const station = useMemo(() => room.waterway && room.waterway.role !== "channel" ? waterStation(room) : null, [room]);
   const ink = INK[room.district ?? "tombs"];
   const identity = PLACE_IDENTITIES[identityFor(room)];
+  const terrainStyle = TERRAIN_EFFECTS[biomeIdFor(room.kind, room.id, room.seed, room)];
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -310,7 +312,7 @@ export function WorldAtlas() {
         </output>
         <p style={small}>Select a floor position to inspect it. Arrow keys move the probe 0.5 m; Shift moves 2 m; Home returns to the room center.</p>
         <p style={small}>Stone outline: walls · muted circles: furnishings · blue: water · gold: mechanism and its clear approach.</p>
-        {terrain && <p style={small}><strong>{TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].name}</strong> · {TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].description} Raised galleries use the same terrain rules; the drawing matches the game.</p>}
+        {terrain && <p style={small}><strong>{TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].name}</strong> · {TERRAIN_GRAMMAR[biomeIdFor(room.kind, room.id, room.seed, room)].description} Surface: {terrainStyle.name}{terrainStyle.animated ? ", moving on the paused run clock" : ", fixed in world space"}. Raised galleries use the same terrain rules; the drawing matches the game.</p>}
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
         <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
         {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · violet diamonds: shardbacks · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}

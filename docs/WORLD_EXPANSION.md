@@ -829,3 +829,20 @@ All 53 procedural cues remain audible. The 78-room performance sweep peaks at
 96 / 8,800 / 112 / 16 budgets. Ten repeated room laps add no geometries, 1,085
 sprint frames retain no heap after collection, and 20,000 held-audio updates
 retain one voice.
+
+Terrain materials now carry the same place-specific vocabulary as terrain
+layout. All ten biomes compile a separate world-space, block-quantized rule:
+chisel checks, tended rows, mortar wear, stepped ripples, kiln heat bands,
+saw-cut bays, ossuary flecks, resonant facets, spore breathing and sifting
+windrows. The moving five read the persistent run clock and freeze through
+pause and room remount; the fixed five stay attached to the floor. Merged beds
+continue marks across former tile seams. The atlas names the rule and whether
+it moves, so an author can review layout and finish together.
+
+Native Chrome compiles and inspects every biome variant, checks unique shader
+cache keys and verifies the water phase across play, pause, remount and resume.
+Overhead review renders cover all ten materials. The full 78-room performance
+sweep remains at 78 draw calls, 6,603 triangles, 87 geometries and 10 textures.
+Ten repeated laps add no geometry; 1,500 sprint frames and 20,000 held-audio
+updates retain no heap or extra voice. The new finish costs no scene submission,
+texture, light or geometry.

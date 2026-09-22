@@ -16,6 +16,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
   "rooms/floorSurfacePattern",
+  "rooms/terrainMaterial",
   "rooms/underfoot",
   "rooms/blockFaces",
   "rooms/mergeTerrainBeds",
@@ -26,6 +27,14 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+assert.deepEqual(Object.keys(L.TERRAIN_EFFECTS).sort(), [...L.BIOMES].sort(), "every biome owns one terrain material rule");
+assert.equal(new Set(Object.values(L.TERRAIN_EFFECTS).map(effect => effect.name)).size, L.BIOMES.length,
+  "terrain effects have distinct author-facing names");
+for (const [biome, effect] of Object.entries(L.TERRAIN_EFFECTS)) {
+  assert.ok(effect.fragment.includes("floor(") && effect.fragment.includes("terrainXZ"), `${biome} terrain stays block-quantized in world space`);
+  assert.equal(effect.fragment.includes("terrainTime"), effect.animated, `${biome} declares whether its terrain moves`);
+  assert.ok(!effect.fragment.includes("smoothstep"), `${biome} terrain does not grow a smooth procedural finish`);
+}
 const cube = { position: [0, 0, 0], size: [2, 2, 2] };
 assert.equal(L.blockFaces([cube]).length, 6, "isolated blocks retain all six surfaces");
 assert.equal(L.blockFaces([cube, { position: [2, 0, 0], size: [2, 2, 2] }]).length, 10, "touching blocks omit only their two buried joining faces");

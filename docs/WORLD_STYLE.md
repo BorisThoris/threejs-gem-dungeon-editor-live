@@ -4,6 +4,14 @@ Old-school, blocky, handmade. This is a permanent art-direction rule, also
 shown in the game's Credits and the editor's World Style panel. The shared
 in-app wording lives in `src/game/rooms/style.ts`.
 
+Terrain shaders follow the same rule. Effects are tied to the room's authored
+land use and use a few hard value steps in world space: planted rows, mortar
+wear, water glints, kiln bands, saw cuts, bone flecks, crystal facets, spore
+rings and ash windrows. They must not become smooth noise, screen-space polish
+or free-floating decoration. Adjacent terrain beds share their marks, the run
+clock freezes every moving effect on pause, and the ten biomes retain separate
+compiled variants without extra geometry, textures, lights or draw calls.
+
 - Chunky silhouettes, visible stone courses, earthy palettes, imperfect surfaces.
 - Warm practical light; cold light belongs to water and mineral deposits.
 - Restrained effects. No photorealistic assets, glossy generic materials, or

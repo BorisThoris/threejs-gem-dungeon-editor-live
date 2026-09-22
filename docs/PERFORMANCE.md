@@ -25,8 +25,8 @@ broad slowdown.
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
-6,789 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 1,085-frame sprint
+6,603 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 1,500-frame sprint
 sample retained no heap after collection. Draw calls remain below the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback colony does with two submissions per room.
@@ -43,6 +43,7 @@ comparable across that environment.
 | Dense trap rooms | Measure | Use the ranked report to identify the owning scene groups before adding another high-detail hazard. |
 | Draw calls | Monitored | Hidden histories and district paths batch repeated marks by material. Keep room-scale decoration to a fixed number of submissions. |
 | Structural faces | Monitored | Shaped-room architecture is the largest triangle owner. Simplify hidden or repeated construction faces before raising the budget again. |
+| Terrain shaders | Stable | Ten biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a
