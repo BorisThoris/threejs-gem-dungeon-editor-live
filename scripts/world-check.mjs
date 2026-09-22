@@ -77,6 +77,8 @@ assert.equal(L.waterTravel(10, 16), 13);
 assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current or revisit phase drift");
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
 let strataLinks = 0, matchingStrataLinks = 0, strataDoors = 0, strataSeamMarks = 0;
+let strataVeinMarks = 0, strataVeinDoors = 0;
+const strataVeinMaterials = new Set();
 let districtWaymarks = 0;
 const biomes = new Set();
 const identities = new Set();
@@ -641,6 +643,22 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       assert.ok(mark.position[1] + mark.size[1] / 2 - L.floorHeightAt(r, mark.position[0], mark.position[2]) < 0.05,
         "strata chips remain paint-depth and non-blocking");
     }
+    const veins = L.strataVeinsFor(r, d.rooms);
+    assert.ok(veins.length <= 144, "stratum continuity has a fixed per-room instance ceiling");
+    strataVeinMarks += veins.length;
+    strataVeinDoors += new Set(veins.map(mark => mark.destination)).size;
+    if (veins.length) strataVeinMaterials.add(r.stratum);
+    for (const mark of veins) {
+      const next = byId.get(mark.destination);
+      assert.ok(Object.values(r.links).includes(mark.destination), "stratum veins follow real open doors");
+      assert.equal(next.district, r.district, "stratum veins never cross a district boundary");
+      assert.equal(next.stratum, r.stratum, "stratum veins continue only through matching geology");
+      assert.equal(mark.stratum, r.stratum, "a vein uses the material beneath its own room");
+      assert.ok(L.insideRoom(r, mark.position[0], mark.position[2], Math.hypot(mark.size[0], mark.size[2]) / 2 + 0.015),
+        "stratum veins stay on the true shaped floor from threshold to court");
+      assert.ok(mark.position[1] + mark.size[1] / 2 - L.floorHeightAt(r, mark.position[0], mark.position[2]) < 0.04,
+        "stratum veins remain paint-depth and non-blocking");
+    }
     const terrain = L.terrainFor(r);
     if (terrain.biome === "salt") {
       saltRooms++;
@@ -775,6 +793,8 @@ assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migrating
 assert.ok(matching / links > 0.65, "most doorways continue the same district");
 assert.ok(matchingStrataLinks / strataLinks > 0.9, "connected geology continues across at least nine in ten links inside districts");
 assert.ok(strataDoors > 200 && strataSeamMarks >= strataDoors * 3, "material transitions are visibly marked at real doorways");
+assert.equal(strataVeinDoors, matchingStrataLinks, "every matching geological doorway carries a visible vein on both room faces");
+assert.deepEqual(Object.keys(L.STRATUM_VEINS).sort(), [...L.BIOMES].sort(), "every material owns a named continuity pattern");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
 assert.equal(L.waterLevel(null, 100), 1);
 assert.equal(L.waterLevel(10, 13), 0.5);
@@ -782,6 +802,7 @@ assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
+console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
 console.log(`Verdigris condensers: ${verdigrisRooms} rooms across ${verdigrisShapes.size} shapes carry metal plates, pipe yokes and pressure air.`);
 console.log(`Tallow chantries: ${tallowRooms} rooms across ${tallowShapes.size} shapes carry wax runs, wick ladders and damped air.`);

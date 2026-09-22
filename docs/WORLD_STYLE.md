@@ -20,6 +20,14 @@ clipped to the same irregular floor union as the walls. They join the existing
 three architecture batches; do not turn them into loose ceiling clutter or a
 new mesh, material or light per ornament.
 
+Geology must remain legible between connected rooms. When two open doorways
+share a district and stratum, that material carries a named block-cut vein
+inward along the threshold shoulders. The centre stays available for the
+district's circulation marks, so building use and underlying material read as
+two related layers. Where the stratum changes, transition chips interrupt the
+vein and preview the destination material. Both systems must stay paint-depth,
+clip to the true room footprint and share one bounded instanced batch.
+
 - Chunky silhouettes, visible stone courses, earthy palettes, imperfect surfaces.
 - Warm practical light; cold light belongs to water and mineral deposits.
 - Restrained effects. No photorealistic assets, glossy generic materials, or

@@ -1215,3 +1215,21 @@ The fixed 78-room sweep remains at 78 calls, 7,208 triangles, 87 geometries and
 10 textures. Ten repeated room laps retain no geometry, a 195-frame sprint
 retains 0.00 MB after collection, and 20,000 held-audio updates retain one voice
 with zero bytes per update.
+
+Connected geology now continues visibly through matching doorways. Every one
+of the thirteen strata owns a named block-cut grammar: courses, braided
+threads, structural ties or tesserae. These marks begin at both threshold
+shoulders and travel toward the room court, leaving the central district route
+clear. At a material change, the existing destination-colored chips interrupt
+that continuity and turn the same doorway into a readable transition.
+
+Across 360 generated floors, all 3,137 two-sided same-stratum doorways receive
+more than 84,000 paint-depth marks inside their real irregular footprints. The 217
+two-sided material transitions retain 2,170 preview chips. Native district
+fixtures mount both systems in one batch: Rootwater renders 14 continuity
+marks, the Old Works 16 and the Buried Choir 12, while each fixture also shows
+five transition chips. The generator caps continuity at 144 instances per room
+and the fixed 78-room sweep peaks at 79 calls, 8,072 triangles, 87 geometries
+and 10 textures. Ten repeated room laps retain no geometry, a 554-frame sprint
+retains 0.00 MB after collection, and 20,000 held-audio updates retain one
+voice with zero bytes per update.

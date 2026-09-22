@@ -14,14 +14,15 @@ try {
 
   const fixtures = await page.evaluate(async districts => {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
-    const { strataSeamsFor } = await import("/src/game/worldbuilding/strataSeamPattern.ts");
+    const { strataSeamsFor, strataVeinsFor } = await import("/src/game/worldbuilding/strataSeamPattern.ts");
     const found = {};
     for (let seed = 1; seed <= 300 && Object.keys(found).length < districts.length; seed++) for (const floor of [1, 2, 3]) {
       const dungeon = generateDungeon({ seed, floor });
       for (const room of dungeon.rooms) {
         const marks = strataSeamsFor(room, dungeon.rooms);
-        if (room.district && districts.includes(room.district) && marks.length && !found[room.district])
-          found[room.district] = { dungeon, floor, roomId: room.id, marks };
+        const veins = strataVeinsFor(room, dungeon.rooms);
+        if (room.district && districts.includes(room.district) && marks.length && veins.length && !found[room.district])
+          found[room.district] = { dungeon, floor, roomId: room.id, marks, veins };
       }
     }
     return found;
@@ -44,11 +45,12 @@ try {
       if (!seams) throw new Error("strata seam batch did not mount");
       const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
       renderer.setSize(720, 540); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
-      const box = new T.Box3().setFromObject(seams), center = box.getCenter(new T.Vector3());
       const camera = new T.PerspectiveCamera(55, 4 / 3, 0.1, 120);
       const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[fixture.marks[0].dir];
-      camera.position.set(center.x - step[0] * 6, 3.6, center.z - step[1] * 6);
-      camera.lookAt(center.x, 0, center.z); camera.updateMatrixWorld();
+      const target = fixture.marks.reduce((sum, mark) => ({ x: sum.x + mark.position[0] / fixture.marks.length,
+        z: sum.z + mark.position[2] / fixture.marks.length }), { x: 0, z: 0 });
+      camera.position.set(target.x - step[0] * 5.5, 3.6, target.z - step[1] * 5.5);
+      camera.lookAt(target.x, 0, target.z); camera.updateMatrixWorld();
       window.__scene.updateMatrixWorld(true); renderer.render(window.__scene, camera);
       const gl = renderer.getContext(), shown = new Uint8Array(720 * 540 * 4), hidden = new Uint8Array(shown.length);
       gl.readPixels(0, 0, 720, 540, gl.RGBA, gl.UNSIGNED_BYTE, shown);
@@ -64,14 +66,16 @@ try {
         room: window.__run.getState().dungeon.rooms.find(room => room.id === fixture.roomId) };
     }, fixture);
     assert.equal(result.probe.marks, fixture.marks.length, `${district} mounts every generated seam chip`);
+    assert.equal(result.probe.veins, fixture.veins.length, `${district} mounts every connected geological vein in the same batch`);
+    assert.ok(result.probe.continuities.length > 0, `${district} exposes a matching-stratum doorway`);
     assert.ok(result.pixels > 30, `${district} seam contributes visible pixels`);
     assert.ok(result.calls < 96, `${district} seam room stays below the draw-call watch band`);
     assert.equal(result.room.district, district);
     writeFileSync(`output/world-review/strata/${district}.png`, Buffer.from(result.image.split(",")[1], "base64"));
-    console.log(`${district}: ${result.probe.destinations.length} transition doorway, ${result.probe.marks} chips, ${result.pixels} pixels, ${result.calls} calls, ${result.triangles} triangles`);
+    console.log(`${district}: ${result.probe.destinations.length} transition doorway, ${result.probe.marks} chips and ${result.probe.veins} continuity marks, ${result.pixels} pixels, ${result.calls} calls, ${result.triangles} triangles`);
   }
   assert.deepEqual(errors, []);
-  console.log("PASS connected strata render as one block-cut threshold batch in every district");
+  console.log("PASS connected strata render transitions and continuous veins in one block-cut batch in every district");
 } finally {
   await browser.close();
 }
