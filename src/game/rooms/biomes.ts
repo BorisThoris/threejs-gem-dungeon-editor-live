@@ -36,6 +36,7 @@ export const BIOMES = [
   "ash",
   "salt",
   "verdigris",
+  "tallow",
 ] as const;
 export type BiomeId = (typeof BIOMES)[number];
 
@@ -49,7 +50,7 @@ export type BiomeId = (typeof BIOMES)[number];
  * show is the room behind you. `still` is a real value - hewn stone is
  * silent on purpose - so a biome cannot be added without saying.
  */
-export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss"] as const;
+export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss", "wick"] as const;
 export type AirId = (typeof AIRS)[number];
 
 export interface Biome {
@@ -164,6 +165,10 @@ export const BIOME: Record<BiomeId, Biome> = {
   /** Copper condensers caught kiln vapour before it reached the upper
    * galleries. Their oxidized plates ring underfoot and still leak pressure. */
   verdigris: { name: "Verdigris condensers", floor: "#829b8d", wall: "#536c66", surface: "iron", glow: "#72a997", light: 0.86, litter: ["barrel", "rubble"], carry: 1.3, ground: "oxidized plates", life: ["rat", "copperback"], air: "hiss" },
+  /** Votive wax was rendered and sorted in broad side channels before the
+   * choir carried it onward. The cooled runs soften footsteps while old wick
+   * ends still answer with tiny dry snaps. */
+  tallow: { name: "Tallow chantry", floor: "#b7ad91", wall: "#655b4f", surface: "stone", glow: "#d0a36c", light: 0.94, litter: ["urn", "skull"], carry: 0.82, ground: "cooled wax", life: ["rat", "bat"], air: "wick" },
 };
 
 /**
@@ -178,21 +183,21 @@ export const BIOME: Record<BiomeId, Biome> = {
 export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
-  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash", "salt", "verdigris"],
+  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash", "salt", "verdigris", "tallow"],
   // Flooded as well as dry, because the room that most tempts a player to
   // grab and run is the one where running is loudest: a drowned strongroom
   // makes the haul a decision rather than a pickup. Without it the three
   // treasure biomes were 1, 1.25 and 1, which is one room in three coats.
-  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash", "salt", "verdigris"],
+  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash", "salt", "verdigris", "tallow"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
-  trap: ["hewn", "flooded", "foundry", "fungal", "ash", "salt", "verdigris"],
+  trap: ["hewn", "flooded", "foundry", "fungal", "ash", "salt", "verdigris", "tallow"],
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
-  challenge: ["catacomb", "hewn", "flooded", "ash", "salt", "verdigris"],
-  shrine: ["catacomb", "bone", "crystal", "fungal", "ash", "salt"],
+  challenge: ["catacomb", "hewn", "flooded", "ash", "salt", "verdigris", "tallow"],
+  shrine: ["catacomb", "bone", "crystal", "fungal", "ash", "salt", "tallow"],
   // Walled up for a reason: dry, and older than the rest of the floor.
-  secret: ["catacomb", "bone", "hewn", "ash", "salt"],
+  secret: ["catacomb", "bone", "hewn", "ash", "salt", "tallow"],
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */

@@ -162,7 +162,25 @@ for (const seed of SEEDS) {
         }
         if (run.getState().floor !== expectedFloor || run.getState().dungeon !== expectedDungeon || run.getState().currentRoomId !== id)
           throw Error("Performance sampling changed the inspected floor or room");
-        return peak;
+        // Attribute submitted geometry to the highest named scene group. This
+        // is deliberately recorded beside the renderer totals: when a room
+        // approaches a budget, the report should identify what to simplify
+        // instead of leaving a developer to guess from the room kind.
+        const ownerMap = new Map();
+        window.__scene.traverseVisible(object => {
+          if (!object.isMesh || !object.geometry) return;
+          let owner = "unlabelled scene content";
+          for (let node = object; node && node !== window.__scene; node = node.parent)
+            if (node.name) owner = node.name;
+          const instances = object.isInstancedMesh ? object.count : 1;
+          const faces = (object.geometry.index?.count ?? object.geometry.attributes.position?.count ?? 0) / 3;
+          const row = ownerMap.get(owner) ?? { owner, triangles: 0, meshBatches: 0 };
+          row.triangles += faces * instances;
+          row.meshBatches++;
+          ownerMap.set(owner, row);
+        });
+        const owners = [...ownerMap.values()].sort((a, b) => b.triangles - a.triangles).slice(0, 8);
+        return { ...peak, owners };
       }, [id, shape, size]);
       rooms.push({ seed, floor, kind, shape, id, ...p });
     }
@@ -173,6 +191,8 @@ const worst = (key) => rooms.reduce((a, b) => (b[key] > a[key] ? b : a));
 mkdirSync("output/world-review", { recursive: true });
 writeFileSync("output/world-review/performance-rooms.json", JSON.stringify(rooms, null, 2));
 const report = (r, key) => `${r.kind} ${r.id} on floor ${r.floor} of seed ${r.seed}: ${r[key]}`;
+const ownerReport = r => r.owners.slice(0, 5)
+  .map(owner => `${owner.owner} ${Math.round(owner.triangles)} tris/${owner.meshBatches} batches`).join(", ");
 
 const byCalls = worst("calls");
 ok(`no room costs more than ${BUDGET.calls} draw calls`, byCalls.calls <= BUDGET.calls, report(byCalls, "calls"));
@@ -183,6 +203,8 @@ ok(`no room holds more than ${BUDGET.geometries} live geometries`, byGeo.geometr
 const byTex = worst("textures");
 ok(`no room holds more than ${BUDGET.textures} live textures`, byTex.textures <= BUDGET.textures, report(byTex, "textures"));
 ok("every room was measured", rooms.length > 40, `${rooms.length} rooms`);
+console.log(`HOT   draw-call room scene owners  - ${ownerReport(byCalls)}`);
+console.log(`HOT   triangle room scene owners  - ${ownerReport(byTris)}`);
 
 const budgetRows = [
   ["draw calls", "calls", BUDGET.calls, byCalls],
@@ -193,7 +215,7 @@ const budgetRows = [
   label, key, budget, baseline: BASELINE[key], actual: room[key], utilization: room[key] / budget,
   status: room[key] > budget ? "breached" : room[key] > BASELINE[key] ? "regressed"
     : room[key] / budget >= 0.85 ? "watch" : "healthy",
-  offender: { seed: room.seed, floor: room.floor, id: room.id, kind: room.kind },
+  offender: { seed: room.seed, floor: room.floor, id: room.id, kind: room.kind, owners: room.owners },
 }));
 
 /**

@@ -12,6 +12,7 @@ export function acousticsFor(room: Room): RoomAcoustics {
   const span = Math.sqrt(area);
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
   const soft = biome === "mossy" || biome === "fungal" || biome === "ash";
+  const wax = biome === "tallow";
   const timber = biome === "timber";
   const gallery = galleryTerminiFor(room);
   const stations = gallery.sites.length;
@@ -19,11 +20,11 @@ export function acousticsFor(room: Room): RoomAcoustics {
   const sealedThreshold = !!room.secret && !room.links[room.secret.dir];
   const districtGain = !stations ? 1 : room.district === "gardens" ? .82 : room.district === "works" ? 1.02 : 1.16;
   const districtCutoff = room.district === "gardens" ? 720 : room.district === "works" ? 1450 : 2200;
-  const materialCutoff = biome === "ash" ? 480 : soft ? 650 : timber ? 1100 : biome === "crystal" ? 2600
+  const materialCutoff = biome === "ash" ? 480 : soft ? 650 : wax ? 820 : timber ? 1100 : biome === "crystal" ? 2600
     : biome === "salt" ? 2350 : biome === "verdigris" ? 1750 : 1900;
   return {
     delay: Math.max(.025, Math.min(.16, span / 343 + stations * .004 + (secretFlank ? .004 : 0) + (sealedThreshold ? .006 : 0))),
-    gain: (soft ? .055 : timber ? .1 : .19) * Math.min(1.28, Math.max(.65, span / 24)) * districtGain * (sealedThreshold ? 1.045 : 1),
+    gain: (soft ? .055 : wax ? .08 : timber ? .1 : .19) * Math.min(1.28, Math.max(.65, span / 24)) * districtGain * (sealedThreshold ? 1.045 : 1),
     cutoff: stations ? Math.round(materialCutoff * .72 + districtCutoff * .28) : materialCutoff,
   };
 }

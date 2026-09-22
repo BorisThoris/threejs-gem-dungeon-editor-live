@@ -13,6 +13,7 @@ try {
     const room = { id: "acoustic", seed: 4, kind: "normal", size: 20, shape: "square", grid: { x: 0, z: 0 }, links: {}, biome: "hewn" };
     const small = acousticsFor(room), large = acousticsFor({ ...room, size: 36 });
     const soft = acousticsFor({ ...room, biome: "mossy" });
+    const wax = acousticsFor({ ...room, biome: "tallow" });
     const circle = acousticsFor({ ...room, shape: "circle" });
     const gallery = acousticsFor({ ...room, district: "works", wings: { north: 10 }, wingWidths: { north: 10 } });
     const paired = acousticsFor({ ...room, district: "tombs", secret: { dir: "north", to: "sealed" },
@@ -44,7 +45,7 @@ try {
       }
       return { first, energy, tail, built, nodes };
     }
-    return { small, large, soft, circle, gallery, paired, opened, rooted,
+    return { small, large, soft, wax, circle, gallery, paired, opened, rooted,
       stoneSound: await impulse(small), largeSound: await impulse(large), softSound: await impulse(soft), muted: await impulse(null) };
   });
   assert.ok(measured.large.delay > measured.small.delay);
@@ -56,6 +57,8 @@ try {
   assert.ok(measured.paired.gain > measured.opened.gain);
   assert.ok(measured.rooted.gain < measured.gallery.gain);
   assert.ok(measured.rooted.cutoff < measured.paired.cutoff);
+  assert.ok(measured.wax.gain < measured.small.gain && measured.wax.gain > measured.soft.gain);
+  assert.ok(measured.wax.cutoff < measured.small.cutoff && measured.wax.cutoff > measured.soft.cutoff);
   assert.ok(measured.softSound.energy < measured.stoneSound.energy * .2);
   assert.ok(Math.abs(measured.stoneSound.first - measured.small.delay) < .002);
   assert.ok(measured.largeSound.first > measured.stoneSound.first + .04);

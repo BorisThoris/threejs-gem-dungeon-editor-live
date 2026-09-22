@@ -1147,3 +1147,28 @@ with its floor tally aligned to the crack. The fixed 78-room sweep remains at
 78 calls, 7,208 triangles, 87 geometries and 10 textures. Ten repeated room
 laps add no geometry, a 551-frame sprint retains no heap after collection, and
 20,000 held-audio updates retain one voice with no bytes per update.
+
+Tallow chantries add a sixth connected primary stratum to the Buried Choir.
+These are former votive workrooms rather than loose candles on an ordinary
+floor. Two broad wax runs follow the room's outer work lanes, repeated cross
+cuts join them into one processional system, and every tile is clipped by the
+same circular, polygonal, concave, topology and raised-gallery footprint used
+by walls, collision and navigation.
+
+Overhead votive ladders and squared hanging wick tabs repeat by structural bay
+inside the existing architecture batches. A hard, quantized shader cuts wick
+shadows into the wax without another texture, light or animated pass. Wax
+footsteps have a damp scuff and low body, the room return sits between soft
+growth and bare stone, sparse wick snaps replace the existing air voice, and a
+restrained amber bounce preserves the readability of practical lamps. The
+Votive Chantry identity and its history reach the HUD and World Atlas through
+the same biome data.
+
+Across 360 generated floors, 75 chantries span nine room shapes and remain
+inside the Choir's connected geological bands. Native review confirms all 13
+terrain shaders and 13 overhead traditions compile and mount in the existing
+submissions. The fixed 78-room performance corpus remains at 78 draw calls,
+7,208 triangles, 87 geometries and 10 textures; repeated laps show no geometry
+growth, a 1,492-frame sprint retains no heap after collection, and 20,000
+held-audio updates retain one voice. The performance report now also records
+the named scene owners behind its draw-call and triangle peaks.

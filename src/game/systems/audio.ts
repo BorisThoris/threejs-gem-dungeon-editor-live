@@ -517,7 +517,7 @@ const buildChorus: HeldBuilder = (ctx, into) => {
  * - a drip, an ember - because a drip on an oscillator is a tremolo, and a
  * tremolo is not a drip.
  */
-type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift" | "tick" | "hiss";
+type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift" | "tick" | "hiss" | "wick";
 
 interface Air {
   id: AirId;
@@ -639,6 +639,13 @@ const AIR_DROPS: Partial<Record<AirId, { play: () => void; gapMs: [number, numbe
   tick: {
     gapMs: [650, 2100],
     play: () => tone(2300 + Math.random() * 1400, 0.035, "triangle", 0.13, 1350, Math.random() * 1.5 - 0.75),
+  },
+  wick: {
+    gapMs: [900, 2600],
+    play: () => {
+      tone(1180 + Math.random() * 480, 0.045, "triangle", 0.11, 720, Math.random() * 1.2 - 0.6);
+      later(36, () => noiseBurst(0.025, 0.1, 1850 + Math.random() * 700, Math.random() * 1.2 - 0.6));
+    },
   },
 };
 
@@ -877,8 +884,8 @@ export const sfx = {
   },
   /** Paired oxidized shells clipping shut against a condenser plate. */
   copperClick(pan = 0) {
-    tone(740, 0.07, "square", 0.09, 430, pan);
-    later(36, () => tone(520, 0.09, "triangle", 0.08, 310, pan));
+    tone(740, 0.07, "square", 0.11, 430, pan);
+    later(36, () => tone(520, 0.09, "triangle", 0.1, 310, pan));
     later(78, () => noiseBurst(0.035, 0.1, 1900, pan));
   },
   /** Brittle shell and small claws crossing a dry salt shelf. */
@@ -1004,6 +1011,11 @@ export const sfx = {
     if (surface === "crust") {
       scuff(0.075, (strong ? 0.25 : 0.18) * loud, 2200 * wobble);
       body(760 * wobble, 0.055, "triangle", (strong ? 0.13 : 0.09) * loud, 430);
+      return;
+    }
+    if (surface === "wax") {
+      scuff(0.09, (strong ? 0.24 : 0.17) * loud, 360 * wobble);
+      body(105 * wobble, 0.075, "triangle", (strong ? 0.15 : 0.1) * loud, 68);
       return;
     }
     scuff((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);

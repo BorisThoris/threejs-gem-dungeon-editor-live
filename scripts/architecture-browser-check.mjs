@@ -12,14 +12,15 @@ try {
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   const fixtures = await page.evaluate(async () => {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+    const { BIOMES } = await import("/src/game/rooms/biomes.ts");
     const { BIOME_CROWNS } = await import("/src/game/worldbuilding/biomeCrown.ts");
     const found = {};
-    for (let seed = 1; seed < 200 && Object.keys(found).length < 12; seed++) for (const floor of [1, 2, 3]) {
+    for (let seed = 1; seed < 200 && Object.keys(found).length < BIOMES.length; seed++) for (const floor of [1, 2, 3]) {
       const dungeon = generateDungeon({ seed, floor });
       for (const room of dungeon.rooms) if (!found[room.biome])
         found[room.biome] = { dungeon, floor, roomId: room.id, crown: BIOME_CROWNS[room.biome].name };
     }
-    if (Object.keys(found).length !== 12) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
+    if (Object.keys(found).length !== BIOMES.length) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
     return found;
   });
 
@@ -162,5 +163,5 @@ try {
   assert.deepEqual(openedThreshold, { threshold: "", batches: 3 },
     "opening the real wall removes the blind threshold without adding a draw batch");
   assert.deepEqual(errors, []);
-  console.log(`PASS biome crowns and transepts: twelve overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
+  console.log(`PASS biome crowns and transepts: ${Object.keys(fixtures).length} overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
 } finally { await browser.close(); }

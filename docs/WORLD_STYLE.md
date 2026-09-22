@@ -7,15 +7,15 @@ in-app wording lives in `src/game/rooms/style.ts`.
 Terrain shaders follow the same rule. Effects are tied to the room's authored
 land use and use a few hard value steps in world space: planted rows, mortar
 wear, water glints, kiln bands, saw cuts, bone flecks, crystal facets, spore
-rings, ash windrows and condenser weeps. They must not become smooth noise, screen-space polish
+rings, ash windrows, condenser weeps and block-cut wick shadows. They must not become smooth noise, screen-space polish
 or free-floating decoration. Adjacent terrain beds share their marks, the run
-clock freezes every moving effect on pause, and the twelve biomes retain separate
+clock freezes every moving effect on pause, and the thirteen biomes retain separate
 compiled variants without extra geometry, textures, lights or draw calls.
 
 Biome identity continues above eye level. Every material tradition owns one
 purposeful roof motif: quarry wedges, root combs, burial tallies, sluice rails,
 kiln dampers, pit props, ossuary ribs, resonator forks, growing shelves, flue
-baffles, pan rakes or pipe yokes. These repeat by structural bay, remain above doorway clearance and are
+baffles, pan rakes, pipe yokes or votive ladders. These repeat by structural bay, remain above doorway clearance and are
 clipped to the same irregular floor union as the walls. They join the existing
 three architecture batches; do not turn them into loose ceiling clutter or a
 new mesh, material or light per ornament.
@@ -76,6 +76,14 @@ lanes preserve the crossing, and a slow block-stepped weep follows the plates.
 Metal footfalls, a held pressure hiss and cold green mineral bounce belong to
 that same former use. Warm practical lamps remain the readable source of light;
 verdigris must not become a uniform teal colour grade.
+
+The Buried Choir also carries tallow chantries as a connected primary stratum.
+Paired wax runs leave a processional lane, cross cuts join them at structural
+bays, and overhead votive ladders suspend squared wick tabs above the same
+route. Wax footfalls are close and damped, the air answers with sparse wick
+ticks, and a restrained amber bounce supports existing practical lamps. The
+wax layout, crown, acoustics, air and Votive Chantry history must travel as one
+place rule through circular, concave, topology and gallery footprints.
 
 Copperbacks belong to those plates rather than being general dungeon clutter.
 Their paired block-cut shells open with the condenser's slow breath and fold at

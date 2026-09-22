@@ -72,4 +72,5 @@ export const TERRAIN_COLORS = {
   ash: ["#837d74", "#4e4944"],
   salt: ["#aaa99c", "#d0cbb2"],
   verdigris: ["#786f62", "#4f8176"],
+  tallow: ["#8f8470", "#c6ad72"],
 } as const;

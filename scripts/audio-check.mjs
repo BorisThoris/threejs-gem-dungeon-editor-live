@@ -487,7 +487,7 @@ for (const [start, stop, args] of VOICES) {
   const airs = await page.evaluate(async (flush) => {
     const ambience = window.__ambience;
     const out = {};
-    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss"]) {
+    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss", "wick"]) {
       // From the moment it is set: the timed airs drop their first sound
       // at once and a creak's next may be seven seconds off, and the held
       // ones come up over a second and a half. One window covers both.

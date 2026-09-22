@@ -20,6 +20,7 @@ export const PLACE_IDENTITIES = {
   ossuary: { title: "Ossuary ambulatory", tradition: "vaulting", structure: "#99907b", detail: "#716c61", accent: "#c1b99b", story: "The dead were carried around this hall before burial." },
   resonance: { title: "Resonance chapel", tradition: "vaulting", structure: "#77718a", detail: "#625c74", accent: "#b1a2c6", story: "Stone ribs gather the last note of every footfall." },
   brine: { title: "Last-water chapel", tradition: "vaulting", structure: "#777b73", detail: "#676d68", accent: "#b8c8bd", story: "Shallow pans dried the choir's last water into pale votive salt." },
+  votive: { title: "Tallow chantry", tradition: "vaulting", structure: "#786f5f", detail: "#8d7658", accent: "#d0a36c", story: "Rendered wax cooled in paired runs before the choir carried each light below." },
   processionalTurn: { title: "Processional turn", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "The burial route bends around one sealed interment pier." },
   cantorJunction: { title: "Cantor junction", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "Processions divided here, each open way counted beneath the same stone bay." },
 } as const;
@@ -45,5 +46,6 @@ export function identityFor(room: Room): PlaceIdentity {
   }
   if (room.biome === "crystal") return "resonance";
   if (room.biome === "salt") return "brine";
+  if (room.biome === "tallow") return "votive";
   return room.biome === "bone" || room.biome === "catacomb" ? "ossuary" : "procession";
 }

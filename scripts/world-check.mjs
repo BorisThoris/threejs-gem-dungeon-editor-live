@@ -52,7 +52,7 @@ const softRoom = { ...pen, biome: "mossy" };
 assert.ok(L.loudnessIn("sprint", softRoom, "soft") < L.loudnessIn("sprint", softRoom, "stone"), "paving carries more sprint noise than its moss bed");
 assert.ok(L.loudnessIn("sprint", softRoom, "water") > L.loudnessIn("sprint", softRoom, "stone"), "crossing water carries more sprint noise than dry paving");
 assert.equal(L.loudnessIn("bombBurst", softRoom, "soft"), L.loudnessIn("bombBurst", softRoom, "water"), "non-footstep emissions ignore footing");
-for (const surface of ["stone", "water", "soft", "wood", "metal", "crust"]) assert.ok(L.loudnessIn("walk", softRoom, surface) < 0.1, "walking stays below creature hearing thresholds");
+for (const surface of ["stone", "water", "soft", "wood", "metal", "crust", "wax"]) assert.ok(L.loudnessIn("walk", softRoom, surface) < 0.1, "walking stays below creature hearing thresholds");
 assert.deepEqual(L.groundHeading(pen, 0, 0, 0, 0, []), { dx: 0, dz: 0 }, "stationary targets do not create a heading");
 const cage = Array.from({ length: 16 }, (_, i) => ({ x: Math.cos(i * Math.PI / 8), z: Math.sin(i * Math.PI / 8), r: 0.35 }));
 assert.deepEqual(L.groundHeading(pen, 0, 0, 3, 0, cage), { dx: 0, dz: 0 }, "a cornered ambient animal does not take the enemy fallback through furniture");
@@ -99,6 +99,8 @@ let saltRooms = 0, saltFalls = 0;
 const saltShapes = new Set();
 let verdigrisRooms = 0;
 const verdigrisShapes = new Set();
+let tallowRooms = 0;
+const tallowShapes = new Set();
 const apseDirs = new Set();
 let apses = 0;
 let junctionRooms = 0;
@@ -624,6 +626,12 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       assert.equal(r.district, "works", "condenser strata remain part of the Old Works");
       assert.ok(terrain.deposits.length > 0, "verdigris rooms render connected condenser plates");
     }
+    if (terrain.biome === "tallow") {
+      tallowRooms++;
+      tallowShapes.add(r.shape);
+      assert.equal(r.district, "tombs", "votive strata remain part of the Buried Choir");
+      assert.ok(terrain.deposits.length > 0, "tallow rooms render connected votive runs");
+    }
     const ways = L.districtWaysFor(r);
     districtWaymarks += ways.length;
     assert.ok(ways.length <= 96, "district paths have a fixed per-room detail ceiling");
@@ -639,18 +647,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
-    if (["flooded", "mossy", "fungal", "ash", "salt", "verdigris"].includes(terrain.biome)) {
+    if (["flooded", "mossy", "fungal", "ash", "salt", "verdigris", "tallow"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
         const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
         if (!next || tile.size[0] !== 1.5 || tile.size[2] !== 1.5 || next.size[0] !== 1.5 || next.size[2] !== 1.5) continue;
         assert.equal(L.footingAt(r, tile.position[0] + dx / 2, tile.position[2] + dz / 2, 0, 100),
-          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : terrain.biome === "verdigris" ? "metal" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
+          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : terrain.biome === "verdigris" ? "metal" : terrain.biome === "tallow" ? "wax" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
       }
     }
     for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
-      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : r.biome === "verdigris" ? "metal" : "stone", "independent terrain beds retain their material after channel drainage");
+      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : r.biome === "verdigris" ? "metal" : r.biome === "tallow" ? "wax" : "stone", "independent terrain beds retain their material after channel drainage");
     if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
@@ -673,6 +681,8 @@ assert.ok(saltRooms > 100 && saltFalls > 300, `salt pans and their shedding occu
 assert.ok(saltShapes.size >= 5, `salt terrain crosses the irregular-room system: ${[...saltShapes].join(", ")}`);
 assert.ok(verdigrisRooms > 100, `condenser strata recur throughout the Old Works: ${verdigrisRooms}`);
 assert.ok(verdigrisShapes.size >= 5, `condenser plates cross the irregular-room system: ${[...verdigrisShapes].join(", ")}`);
+assert.ok(tallowRooms > 50, `votive strata recur throughout the Buried Choir: ${tallowRooms}`);
+assert.ok(tallowShapes.size >= 5, `votive runs cross the irregular-room system: ${[...tallowShapes].join(", ")}`);
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
 assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
 assert.ok(newts > 100, `kiln newts occupy fired foundry aprons: ${newts}`);
@@ -732,6 +742,7 @@ console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biom
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
 console.log(`Verdigris condensers: ${verdigrisRooms} rooms across ${verdigrisShapes.size} shapes carry metal plates, pipe yokes and pressure air.`);
+console.log(`Tallow chantries: ${tallowRooms} rooms across ${tallowShapes.size} shapes carry wax runs, wick ladders and damped air.`);
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);

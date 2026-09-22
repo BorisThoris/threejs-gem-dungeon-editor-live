@@ -14,6 +14,6 @@ export function Architecture({ room }: { room: Room }) {
     gallerySites: data.gallery.sites.length, sealedThreshold: data.sealed.dir ? data.sealed.definition.name : "" }}>
     <Blocks blocks={data.structure} occluders={occluders} color={data.identity.structure} map={surface} />
     <Blocks blocks={data.detail} occluders={occluders} color={data.identity.detail} map={surface} />
-    <Blocks blocks={data.marks} occluders={occluders} color={data.identity.accent} glow={room.biome === "fungal" || room.biome === "crystal" || room.biome === "salt"} />
+    <Blocks blocks={data.marks} occluders={occluders} color={data.identity.accent} glow={room.biome === "fungal" || room.biome === "crystal" || room.biome === "salt" || room.biome === "tallow"} />
   </group>;
 }

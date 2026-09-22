@@ -66,5 +66,9 @@ export const TERRAIN_EFFECTS: Record<BiomeId, TerrainEffect> = {
     name: "stepped condenser weep", animated: true, emissive: "#244a40", emissiveIntensity: 0.1,
     fragment: "float seam = mod(floor(terrainXZ.x * 1.2) + floor(terrainXZ.y * 0.65), 4.0); float weep = floor((sin(terrainXZ.y * 1.15 - terrainTime * 0.28) * 0.5 + 0.5) * 3.0) / 3.0; diffuseColor.rgb *= vec3(0.78 + weep * 0.12, 0.88 + weep * 0.18 + step(2.5, seam) * 0.06, 0.84 + weep * 0.15);",
   },
+  tallow: {
+    name: "block-cut wick shadows", animated: false, emissive: "#4b3219", emissiveIntensity: 0.06,
+    fragment: "float run = mod(floor(terrainXZ.x * 1.3) + floor(terrainXZ.y * 0.7), 5.0); float wick = mod(floor(terrainXZ.x * 2.6) * 3.0 + floor(terrainXZ.y * 1.3), 7.0); diffuseColor.rgb *= 0.84 + step(2.5, run) * 0.12 + step(5.5, wick) * 0.08;",
+  },
 };
 
