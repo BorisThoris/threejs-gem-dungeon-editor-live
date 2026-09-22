@@ -103,6 +103,8 @@ const apseDirs = new Set();
 let apses = 0;
 let junctionRooms = 0;
 const junctionForms = new Set();
+let sealedThresholds = 0;
+const sealedThresholdTraditions = new Set();
 let passageLights = 0, formerPassageLights = 0;
 let landmarkRooms = 0;
 const landmarkKinds = new Set();
@@ -507,6 +509,20 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       "every generated room receives a visible biome crown");
     crowns.add(architecture.crown.biome);
     crownBlocks += architecture.crown.structure.length + architecture.crown.detail.length + architecture.crown.marks.length;
+    if (r.secret && !r.links[r.secret.dir]) {
+      sealedThresholds++;
+      sealedThresholdTraditions.add(architecture.sealed.definition.name);
+      assert.equal(architecture.sealed.dir, r.secret.dir,
+        "the district threshold frames the actual cracked wall");
+      assert.ok(architecture.sealed.structure.length && architecture.sealed.detail.length && architecture.sealed.marks.length,
+        "a sealed route has silhouette, overhead detail and wear underfoot");
+      const opened = L.sealedThresholdFor({ ...r, links: { ...r.links, [r.secret.dir]: r.secret.to } });
+      assert.equal(opened.dir, null, "opening the hidden route removes its blind threshold");
+      assert.equal(opened.structure.length + opened.detail.length + opened.marks.length, 0,
+        "opened secret doors do not retain sealed construction");
+    } else {
+      assert.equal(architecture.sealed.dir, null, "ordinary and opened doorways have no blind threshold");
+    }
     const gallery = architecture.gallery;
     if (gallery.sites.length) {
       galleryTermini += gallery.sites.length;
@@ -695,6 +711,9 @@ assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id
 assert.deepEqual([...junctionForms].sort(), ["crossing", "passage", "tee", "terminus", "turn"],
   "generated topology halls cover every graph-shaped plan");
 console.log(`Topology halls: ${junctionRooms} graph-shaped rooms cover ${[...junctionForms].join(", ")}.`);
+assert.equal(sealedThresholds, 360, "every generated floor gives its hidden route one built threshold");
+assert.equal(sealedThresholdTraditions.size, 3, "all three districts build hidden thresholds in their own language");
+console.log(`Sealed thresholds: ${sealedThresholds} hidden routes use ${sealedThresholdTraditions.size} district constructions.`);
 assert.deepEqual(L.BIOMES.filter(biome => !crowns.has(biome)), [], "all biome crown traditions occur in the generated world");
 console.log(`Biome crowns: ${crownBlocks} purposeful overhead blocks across ${crowns.size} material traditions.`);
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);

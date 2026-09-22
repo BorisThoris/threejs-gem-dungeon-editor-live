@@ -39,6 +39,7 @@ import { GROUND_Y, NOISE_HOLD_S } from "../game/world";
 import type { Room } from "../game/dungeon/types";
 import { getTemplate } from "../game/rooms/templates";
 import { strataSeamsFor } from "../game/worldbuilding/strataSeamPattern";
+import { sealedThresholdFor } from "../game/worldbuilding/structuralPattern";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
@@ -100,6 +101,8 @@ export function WorldAtlas() {
   const newts = useMemo(() => newtsFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
   const secretMarks = useMemo(() => secretTrailPattern(dungeon, room), [dungeon, room]);
+  const sealedThreshold = useMemo(() => sealedThresholdFor(room), [room]);
+  const secretHost = useMemo(() => dungeon.rooms.find(r => r.secret), [dungeon]);
   const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
   const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed), dungeon.seed), [room, dungeon.seed]);
   const ratHomes = useMemo(() => ratsFor(room, dungeon.seed), [room, dungeon.seed]);
@@ -128,6 +131,8 @@ export function WorldAtlas() {
       }}>Next gallery</button>
       <button style={{ ...button, width: "auto" }} disabled={!dungeon.secretTrail}
         onClick={() => dungeon.secretTrail && setSelected(dungeon.secretTrail.sourceId)}>Landmark route</button>
+      <button style={{ ...button, width: "auto" }} disabled={!secretHost}
+        onClick={() => secretHost && setSelected(secretHost.id)}>Secret threshold</button>
       <span style={small}>{dungeon.rooms.length} rooms · {dungeon.rooms.filter(r => r.waterway).length} on the watercourse</span>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1.4fr) minmax(340px, 1fr)", gap: 20 }}>
@@ -191,6 +196,9 @@ export function WorldAtlas() {
         <p style={{ ...small, color: ink }}>{identity.title} · {identity.story}</p>
         {authored?.story && <p data-testid="atlas-authored-story" style={small}><strong>{authored.name}</strong> · {authored.story}</p>}
         <p style={small}><strong>{crown.name}</strong> · {crown.description} It joins the room's existing batched architecture.</p>
+        {sealedThreshold.dir && <p data-testid="atlas-sealed-threshold" style={{ ...small, color: ink }}>
+          <strong>{sealedThreshold.definition.name}</strong> · {sealedThreshold.definition.description} {sealedThreshold.definition.response}
+        </p>}
         {strataSeams.length > 0 && <p data-testid="atlas-strata-seams" style={small}>
           Block-cut seams preview {new Set(strataSeams.map(mark => mark.stratum)).size} neighbouring {new Set(strataSeams.map(mark => mark.stratum)).size === 1 ? "stratum" : "strata"} at {new Set(strataSeams.map(mark => mark.destination)).size} doorway{new Set(strataSeams.map(mark => mark.destination)).size === 1 ? "" : "s"}.
         </p>}

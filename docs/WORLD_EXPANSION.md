@@ -1126,3 +1126,24 @@ T-junction at 40 calls and 4,441 triangles. The fixed 78-room sweep remains at
 cross room. Ten repeated transitions add no geometry, a 461-frame sprint
 retains no heap after collection, and 20,000 held-audio updates retain one
 voice.
+
+Hidden routes now retain a district-built threshold on the host side of the
+actual cracked wall. Rootwater ties a lintel over trimmed root ends, the Old
+Works leaves a counting beam and rivet tallies around a bricked service hatch,
+and the Buried Choir preserves the corbels and centre tooth of a stopped
+processional arch. Their overhead silhouette, detail and floor wear join the
+existing three architecture batches and are clipped to the same real approach
+used by polygonal, concave, offset-gallery and topology rooms.
+
+The threshold also changes the existing bounded room return: while sealed,
+footsteps carry one slightly later and stronger answer from the cavity. Opening
+the real wall removes the blind construction and the acoustic tell together.
+The World Atlas can jump to the host and names both cues. Across 360 generated
+floors every hidden route receives exactly one threshold and all three district
+traditions occur; ordinary and opened walls receive none.
+
+Native review shows the bricked service hatch as a heavy, readable wall frame
+with its floor tally aligned to the crack. The fixed 78-room sweep remains at
+78 calls, 7,208 triangles, 87 geometries and 10 textures. Ten repeated room
+laps add no geometry, a 551-frame sprint retains no heap after collection, and
+20,000 held-audio updates retain one voice with no bytes per update.

@@ -1,5 +1,5 @@
 import { DIR_STEP, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, type Room } from "../dungeon/types";
-import { corridorOffset, corridorWidth, floorRects, junctionDirections } from "../dungeon/footprint";
+import { corridorOffset, corridorWidth, doorReach, floorRects, junctionDirections } from "../dungeon/footprint";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
 import { identityFor, PLACE_IDENTITIES } from "./identity";
@@ -78,6 +78,83 @@ export function junctionFramesFor(room: Room) {
   return { structure, detail, marks };
 }
 
+export interface SealedThresholdDefinition {
+  name: string;
+  description: string;
+  response: string;
+}
+
+/** A hidden room belonged to the building before it was sealed. The surviving
+ * threshold uses the host district's construction language at the real cracked
+ * wall, and disappears with that wall after it opens. It joins the room's
+ * existing three architecture batches, so a clue never costs its own draw. */
+export const SEALED_THRESHOLDS = {
+  gardens: {
+    name: "root-bound blind gate",
+    description: "A tied lintel and three trimmed root ends survive above the sealed growing run.",
+    response: "Footsteps return with a dry wooden breath from behind the tied roots.",
+  },
+  works: {
+    name: "bricked service hatch",
+    description: "A counting beam, paired hangers and four worn rivet tallies frame the buried workshop way.",
+    response: "The blocked hatch gives one short iron answer after the room's ordinary return.",
+  },
+  tombs: {
+    name: "stopped processional arch",
+    description: "Low corbels and a broken centre tooth preserve the measure of a passage filled with stone.",
+    response: "The blind arch sends back a second low note from deeper masonry.",
+  },
+} as const;
+
+export function sealedThresholdFor(room: Room) {
+  const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
+  const district = room.district ?? "tombs";
+  const definition = SEALED_THRESHOLDS[district];
+  const dir = room.secret?.dir;
+  if (!dir || room.links[dir]) return { definition, dir: null, structure, detail, marks };
+
+  const axis = DIR_STEP[dir], across = { x: -axis.z, z: axis.x };
+  const span = Math.min(5.2, corridorWidth(room, dir) - 0.7);
+  const shift = corridorOffset(room, dir), reach = doorReach(room, dir);
+  const point = (along: number, lateral: number, y: number): [number, number, number] => [
+    axis.x * along + (axis.z ? shift : 0) + across.x * lateral,
+    GROUND_Y + y,
+    axis.z * along + (axis.x ? shift : 0) + across.z * lateral,
+  ];
+  const block = (into: CorridorBlock[], along: number, lateral: number, y: number,
+    wide: number, height: number, deep: number) => into.push({
+      position: point(along, lateral, y),
+      size: axis.x ? [deep, height, wide] : [wide, height, deep],
+    });
+
+  // Pull every face inside the physical approach. This works for polygon
+  // collars, offset wings and topology-hall arms through the same footprint.
+  const lintel = reach - 0.42;
+  if (district === "gardens") {
+    block(structure, lintel, 0, WALL_HEIGHT - 0.38, span, 0.28, 0.34);
+    for (const lateral of [-span * 0.32, 0, span * 0.32]) {
+      block(detail, lintel - 0.02, lateral, DOOR_HEIGHT + 0.5, 0.18, 0.82, 0.2);
+      block(marks, reach - 1.1, lateral, 0.025, 0.13, 0.04, 1.05);
+    }
+  } else if (district === "works") {
+    block(structure, lintel, 0, WALL_HEIGHT - 0.36, span, 0.32, 0.4);
+    for (const lateral of [-span * 0.36, span * 0.36])
+      block(detail, lintel - 0.02, lateral, DOOR_HEIGHT + 0.54, 0.2, 0.88, 0.24);
+    for (const lateral of [-span * 0.36, -span * 0.12, span * 0.12, span * 0.36])
+      block(marks, lintel - 0.24, lateral, DOOR_HEIGHT + 0.35, 0.18, 0.12, 0.22);
+    block(marks, reach - 1.12, 0, 0.025, span * 0.78, 0.04, 0.14);
+  } else {
+    block(structure, lintel, 0, WALL_HEIGHT - 0.32, span, 0.3, 0.42);
+    for (const lateral of [-span * 0.4, span * 0.4]) for (let tier = 0; tier < 2; tier++)
+      block(detail, lintel - tier * 0.12, lateral - Math.sign(lateral) * tier * 0.34,
+        DOOR_HEIGHT + 0.38 + tier * 0.3, 0.4, 0.28, 0.32);
+    block(marks, lintel - 0.03, 0, DOOR_HEIGHT + 0.48, 0.34, 0.34, 0.34);
+    for (const lateral of [-span * 0.26, 0, span * 0.26])
+      block(marks, reach - 1.05, lateral, 0.025, 0.28, 0.04, 0.5);
+  }
+  return { definition, dir, structure, detail, marks };
+}
+
 export function architectureFor(room: Room) {
   const identity = PLACE_IDENTITIES[identityFor(room)];
   const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
@@ -118,6 +195,10 @@ export function architectureFor(room: Room) {
   structure.push(...junction.structure);
   detail.push(...junction.detail);
   marks.push(...junction.marks);
+  const sealed = sealedThresholdFor(room);
+  structure.push(...sealed.structure);
+  detail.push(...sealed.detail);
+  marks.push(...sealed.marks);
   const crown = biomeCrownFor(room, spans);
   const gallery = galleryTerminiFor(room);
   structure.push(...crown.structure);
@@ -126,5 +207,5 @@ export function architectureFor(room: Room) {
   structure.push(...gallery.structure);
   detail.push(...gallery.detail);
   marks.push(...gallery.marks);
-  return { identity, crown, gallery, turn, junction, structure, detail, marks };
+  return { identity, crown, gallery, turn, junction, sealed, structure, detail, marks };
 }

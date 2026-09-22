@@ -61,6 +61,9 @@ try {
     "the selected source names the route and its direction");
   assert.ok(await page.getByTestId("atlas-secret-mark").count() > 0,
     "the blueprint projects the same floor marks as the game");
+  await page.getByRole("button", { name: "Secret threshold", exact: true }).click();
+  assert.equal(await page.getByTestId("atlas-sealed-threshold").count(), 1,
+    "the atlas names the district construction and acoustic tell at the actual cracked wall");
   const restored = await page.evaluate(async () => {
     const { draftStore } = await import("/src/editor/drafts.ts");
     const { SHIPPED } = await import("/src/game/rooms/shipped.ts");

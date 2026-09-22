@@ -69,7 +69,7 @@ try {
       const room = dungeon.rooms.find(room => room.secret && galleryTerminiFor(room).sites.length === 2
         && galleryTerminiFor(room).sites.every(site => site.secretFlank));
       if (room) return { dungeon, floor: 3, roomId: room.id,
-        name: galleryTerminiFor(room).definition.name, dirs: galleryTerminiFor(room).sites.map(site => site.dir) };
+        name: galleryTerminiFor(room).definition.name, dirs: galleryTerminiFor(room).sites.map(site => site.dir), secretDir: room.secret.dir };
     }
     throw Error("Missing paired secret-host transept fixture");
   });
@@ -85,15 +85,18 @@ try {
     const lamps = [];
     window.__scene.traverse(object => { if (object.name === "gallery-answer-lamp") lamps.push(object); });
     return { name: architecture.userData.galleryTerminus, sites: architecture.userData.gallerySites,
+      sealedThreshold: architecture.userData.sealedThreshold,
       batches: architecture.children.filter(child => child.isInstancedMesh).length,
       raised: fixture.dirs.filter(dir => !!window.__scene.getObjectByName(`raised-floor-${dir}`)).length,
       terrain: !!window.__scene.getObjectByName("terrain-deposits"), answerLamps: lamps.length,
       responseSites: window.__galleryResponses?.sites.length ?? 0,
       response: window.__galleryResponses?.response ?? "" };
   }, transept);
-  assert.deepEqual({ ...mountedTransept, response: undefined }, { name: transept.name, sites: 2, batches: 3,
+  assert.deepEqual({ ...mountedTransept, response: undefined, sealedThreshold: undefined }, { name: transept.name, sites: 2, sealedThreshold: undefined, batches: 3,
     raised: 2, terrain: true, answerLamps: 2, responseSites: 2, response: undefined },
     "a secret-host transept mounts both physical landings, responsive lamps, continuous terrain and district architecture in three batches");
+  assert.ok(mountedTransept.sealedThreshold.length > 8,
+    "the live secret host publishes its district-built sealed threshold");
   assert.ok(mountedTransept.response.length > 24, "the mounted transept publishes its district acoustic response");
   const responses = await page.evaluate(async () => {
     const events = [];
@@ -135,7 +138,29 @@ try {
     }, transept.dirs[0]);
     mkdirSync("output/world-review", { recursive: true });
     writeFileSync("output/world-review/secret-transept.png", Buffer.from(image.split(",")[1], "base64"));
+    const thresholdImage = await page.evaluate(async dir => {
+      const T = await import("/node_modules/three/build/three.module.js");
+      const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
+      const { doorReach } = await import("/src/game/dungeon/footprint.ts");
+      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
+      const axis = DIR_STEP[dir], camera = new T.PerspectiveCamera(70, 1.5, 0.1, 100);
+      camera.position.set(-axis.x * 3.5, 1.65, -axis.z * 3.5);
+      camera.lookAt(axis.x * (doorReach(room, dir) - 0.6), 3.1, axis.z * (doorReach(room, dir) - 0.6));
+      camera.updateMatrixWorld(); window.__scene.updateMatrixWorld(true); renderer.render(window.__scene, camera);
+      const result = renderer.domElement.toDataURL(); renderer.dispose(); return result;
+    }, transept.secretDir);
+    writeFileSync("output/world-review/sealed-threshold.png", Buffer.from(thresholdImage.split(",")[1], "base64"));
   }
+  const openedThreshold = await page.evaluate(async roomId => {
+    window.__run.getState().revealSecret(roomId);
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const architecture = window.__scene.getObjectByName("room-architecture");
+    return { threshold: architecture?.userData.sealedThreshold, batches: architecture?.children.filter(child => child.isInstancedMesh).length };
+  }, transept.roomId);
+  assert.deepEqual(openedThreshold, { threshold: "", batches: 3 },
+    "opening the real wall removes the blind threshold without adding a draw batch");
   assert.deepEqual(errors, []);
   console.log(`PASS biome crowns and transepts: twelve overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
 } finally { await browser.close(); }

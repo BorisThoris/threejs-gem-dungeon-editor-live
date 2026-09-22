@@ -26,7 +26,7 @@ broad slowdown.
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
 7,208 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 461-frame sprint
+room. Repeated room laps showed no geometry growth, and the 551-frame sprint
 sample retained no heap after collection. Draw calls are in the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
@@ -57,6 +57,7 @@ comparable across that environment.
 | Service-ring rooms | Stable | Four floor bars, four inner walls and four outer walls share the existing floor, wall, ceiling and map systems. The two sampled rings peak at 51 calls and 5,584 triangles; neither owns the 78-call corpus peak. |
 | Elbow halls | Stable | The seeded L-shaped footprint and its retained-pier rails use existing floor, wall, ceiling, minimap and three architecture batches. Direct review costs 41 calls and 4,516 triangles; the current fixed corpus peak is 78 calls and 7,208 triangles. |
 | Topology halls | Stable | Their central bay grows arms from actual doors, cracked walls and galleries, while doorway frames remain in the three architecture batches. A reviewed T-junction costs 40 calls and 4,441 triangles; the fixed corpus peak remains 78 calls and shifts to 7,208 triangles in a dense cross room. |
+| Sealed thresholds | Stable | Root-bound gates, service hatches and stopped arches join the existing three architecture batches and are removed with the wall. The fixed corpus stays at 78 calls, 7,208 triangles, 87 geometries and 10 textures; ten repeated room laps show no growth and the 551-frame sprint retains no heap. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a

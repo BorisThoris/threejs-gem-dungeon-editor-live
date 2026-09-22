@@ -253,4 +253,13 @@ make a room more coherent without making its rendering cost harder to explain.
 The layout suite checks all nine histories, their district materials, the
 actual footprint of every mark and the clearance around every focal reward.
 
+The host wall also keeps evidence that the hidden route belonged to the
+building. Rootwater uses a root-bound blind gate, the Old Works a bricked
+service hatch, and the Buried Choir a stopped processional arch. Each threshold
+frames only the actual cracked wall with an overhead silhouette, small district
+details and wear underfoot. It shares the room's three architecture batches and
+adds a restrained second return to footsteps. Opening the wall removes both the
+blind construction and its acoustic cavity. Never put this language on an
+ordinary closed wall or leave it floating after the route opens.
+
 Performance budgets and the issue ledger live in `docs/PERFORMANCE.md`.

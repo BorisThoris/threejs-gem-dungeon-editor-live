@@ -17,6 +17,8 @@ try {
     const gallery = acousticsFor({ ...room, district: "works", wings: { north: 10 }, wingWidths: { north: 10 } });
     const paired = acousticsFor({ ...room, district: "tombs", secret: { dir: "north", to: "sealed" },
       wings: { east: 10, west: 10 }, wingWidths: { east: 10, west: 10 } });
+    const opened = acousticsFor({ ...room, district: "tombs", secret: { dir: "north", to: "sealed" },
+      links: { north: "sealed" }, wings: { east: 10, west: 10 }, wingWidths: { east: 10, west: 10 } });
     const rooted = acousticsFor({ ...room, district: "gardens", wings: { north: 10 }, wingWidths: { north: 10 } });
     async function impulse(profile) {
       const ctx = new OfflineAudioContext(1, 44100, 44100);
@@ -42,7 +44,7 @@ try {
       }
       return { first, energy, tail, built, nodes };
     }
-    return { small, large, soft, circle, gallery, paired, rooted,
+    return { small, large, soft, circle, gallery, paired, opened, rooted,
       stoneSound: await impulse(small), largeSound: await impulse(large), softSound: await impulse(soft), muted: await impulse(null) };
   });
   assert.ok(measured.large.delay > measured.small.delay);
@@ -50,6 +52,8 @@ try {
   assert.ok(measured.gallery.delay > measured.small.delay);
   assert.ok(measured.paired.delay > measured.gallery.delay);
   assert.ok(measured.paired.gain > measured.gallery.gain);
+  assert.ok(measured.paired.delay > measured.opened.delay);
+  assert.ok(measured.paired.gain > measured.opened.gain);
   assert.ok(measured.rooted.gain < measured.gallery.gain);
   assert.ok(measured.rooted.cutoff < measured.paired.cutoff);
   assert.ok(measured.softSound.energy < measured.stoneSound.energy * .2);
