@@ -108,6 +108,15 @@ rooms, and remains as dry evidence after the sluice drains. Leave the central
 water and walking line clear. Use the biome's existing deposit batch and
 world-space material marks rather than scattering unrelated puddle props.
 
+Where the channel actually passes, its builders left one overhead frame aligned
+with the downstream reach (or the upstream reach at a terminus). Rootwater
+uses a root comb, the Old Works a sluice screen and the Buried Choir a
+last-water tally. Place the frame over the real strip, clear of doorways and
+walking height, and fit every block to the room's true outline, including
+curved and concave chambers. The Atlas must show the same span. Reuse the
+three architecture instance batches; do not add an individual mesh or light
+for each frame.
+
 The buried choir also carries a salt-and-brine stratum: stepped evaporation
 shelves, scored rake lanes and overhead pan rakes belong to one former use.
 Its pale crust has a sharp footfall, cold mineral bounce and sparse drying

@@ -5,6 +5,7 @@ import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
 import { identityFor, PLACE_IDENTITIES } from "./identity";
 import { biomeCrownFor, type CrownSpan } from "./biomeCrown";
 import { galleryTerminiFor } from "./galleryTermini";
+import { channelFrameFor } from "./channelFrames";
 
 /** Cut the same room union into structural bays. Each span is wholly inside
  * the floor below it; a polygon's clipped corner cannot acquire a square roof. */
@@ -236,11 +237,17 @@ export function architectureFor(room: Room) {
   marks.push(...sealed.marks);
   const crown = biomeCrownFor(room, spans);
   const gallery = galleryTerminiFor(room);
+  const channelFrame = channelFrameFor(room);
   structure.push(...crown.structure);
   detail.push(...crown.detail);
   marks.push(...crown.marks);
   structure.push(...gallery.structure);
   detail.push(...gallery.detail);
   marks.push(...gallery.marks);
-  return { identity, crown, gallery, turn, junction, bay, sealed, structure, detail, marks };
+  if (channelFrame) {
+    structure.push(...channelFrame.structure);
+    detail.push(...channelFrame.detail);
+    marks.push(...channelFrame.marks);
+  }
+  return { identity, crown, gallery, channelFrame, turn, junction, bay, sealed, structure, detail, marks };
 }

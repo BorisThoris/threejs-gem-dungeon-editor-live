@@ -44,6 +44,7 @@ import { getTemplate } from "../game/rooms/templates";
 import { STRATUM_VEINS, strataSeamsFor, strataVeinsFor } from "../game/worldbuilding/strataSeamPattern";
 import { districtHandoverFor } from "../game/worldbuilding/districtThresholds";
 import { thresholdEchoSitesFor } from "../game/worldbuilding/thresholdEcho";
+import { channelFrameFor } from "../game/worldbuilding/channelFrames";
 import { sealedThresholdFor } from "../game/worldbuilding/structuralPattern";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
@@ -103,6 +104,7 @@ export function WorldAtlas() {
   const strataVeins = useMemo(() => strataVeinsFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const districtHandovers = useMemo(() => districtHandoverFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const thresholdEchoes = useMemo(() => thresholdEchoSitesFor(room, dungeon.rooms), [room, dungeon.rooms]);
+  const channelFrame = useMemo(() => channelFrameFor(room), [room]);
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -286,6 +288,14 @@ export function WorldAtlas() {
             cx={site.x * scale} cy={site.z * scale} r={4} fill="none" stroke="#dfc792" strokeWidth={1.5}>
             <title>{site.district ? DISTRICTS[site.district].name : `${site.mode} material contact`} heard before the {site.dir} doorway</title>
           </circle>)}
+          {channelFrame && <line data-testid="atlas-channel-frame"
+            x1={(channelFrame.site.x - (DIR_STEP[channelFrame.site.dir].z ? channelFrame.site.width / 2 : 0)) * scale}
+            y1={(channelFrame.site.z - (DIR_STEP[channelFrame.site.dir].x ? channelFrame.site.width / 2 : 0)) * scale}
+            x2={(channelFrame.site.x + (DIR_STEP[channelFrame.site.dir].z ? channelFrame.site.width / 2 : 0)) * scale}
+            y2={(channelFrame.site.z + (DIR_STEP[channelFrame.site.dir].x ? channelFrame.site.width / 2 : 0)) * scale}
+            stroke="#dfbf83" strokeWidth={3} strokeDasharray="3 2">
+            <title>{channelFrame.site.name}: {channelFrame.site.description}</title>
+          </line>}
           {secretMarks && [...secretMarks.base, ...secretMarks.accents].map((mark, i) => {
             const accent = i >= secretMarks.base.length;
             return <rect key={`secret-mark-${i}`} data-testid="atlas-secret-mark"
@@ -436,6 +446,7 @@ export function WorldAtlas() {
         {wicklings.length > 0 && <p style={small}>{wicklings.length} wicklings graze the cooled wax runs. Noise snuffs their embers for five seconds{wicklings.some(home => home.towardSecret) ? "; every raised tip leans toward the cracked-wall draft" : ""}.</p>}
         {room.waterway && <p style={{ ...small, color: "#d0b477" }}>Water {room.waterway.upstream ? `arrives from the ${room.waterway.upstream}` : "begins at the sluice"}
           {room.waterway.downstream ? ` and leaves to the ${room.waterway.downstream}.` : "; the reliquary lies at its outfall."} Paired silt banks stay visible after drainage.</p>}
+        {channelFrame && <p style={small}><strong>{channelFrame.site.name}</strong> · {channelFrame.site.description} It hangs above the {channelFrame.site.dir} channel strip without narrowing the passage.</p>}
         {source && outfall ? <p style={small}>The sluice at {source.id} drains the channel to {outfall.id}. Both endpoints are reachable without the vault key; the circuit never enters the exit stairs.</p>
           : <p style={small}>This floor has no complete watercourse: the available rooms cannot support both safe endpoints.</p>}
       </section>

@@ -15,6 +15,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/biomeCrown",
   "worldbuilding/districtThresholds",
   "worldbuilding/thresholdEcho",
+  "worldbuilding/channelFrames",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
   "worldbuilding/strataSeamPattern",
@@ -83,6 +84,8 @@ let strataFanMarks = 0, strataFanDoors = 0;
 let strataVeinMarks = 0, strataVeinDoors = 0;
 let districtHandoverMarks = 0, districtHandoverDoors = 0;
 let districtEchoes = 0, materialEchoes = 0;
+let channelFrames = 0;
+const channelFrameNames = new Set();
 const strataVeinMaterials = new Set();
 let districtWaymarks = 0;
 const biomes = new Set();
@@ -612,6 +615,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       assert.equal(architecture.sealed.dir, null, "ordinary and opened doorways have no blind threshold");
     }
     const gallery = architecture.gallery;
+    const channelFrame = architecture.channelFrame;
+    if (r.waterway) {
+      assert.ok(channelFrame, "each real watercourse room carries a shaped-floor overhead marker");
+      assert.equal(channelFrame.site.dir, r.waterway.downstream ?? r.waterway.upstream,
+        "the overhead marker faces the real directed channel");
+      assert.ok(L.watercourseBlocks(r).some(b =>
+        Math.abs(channelFrame.site.x - b.position[0]) <= b.size[0] / 2 &&
+        Math.abs(channelFrame.site.z - b.position[2]) <= b.size[2] / 2),
+      "channel frame hangs over the rendered watercourse, not a false route");
+      channelFrames++;
+      channelFrameNames.add(channelFrame.site.name);
+    } else assert.equal(channelFrame, null, "unrelated rooms acquire no channel frame");
     if (gallery.sites.length) {
       galleryTermini += gallery.sites.length;
       galleryTraditions.add(gallery.definition.name);
@@ -881,6 +896,7 @@ assert.equal(L.waterLevel(10, 13), 0.5);
 assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`Channel banks: ${channelBankCells} terrain cells follow ${channelBankRooms} watercourse rooms.`);
+console.log(`Channel architecture: ${channelFrames} overhead markers in ${channelFrameNames.size} district traditions.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks - strataFanMarks} block-cut chips and ${strataFanMarks} contact cuts.`);
 console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);

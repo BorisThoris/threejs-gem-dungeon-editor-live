@@ -11,7 +11,8 @@ export function Architecture({ room }: { room: Room }) {
   const surface = useSurface(data.identity.tradition === "trellis" ? "wood" : "stone", 0.5);
   return <group name="room-architecture" userData={{ crown: data.crown.definition.name,
     crownBiome: data.crown.biome, galleryTerminus: data.gallery.definition.name,
-    gallerySites: data.gallery.sites.length, sealedThreshold: data.sealed.dir ? data.sealed.definition.name : "" }}>
+    gallerySites: data.gallery.sites.length, channelFrame: data.channelFrame?.site.name ?? "",
+    sealedThreshold: data.sealed.dir ? data.sealed.definition.name : "" }}>
     <Blocks blocks={data.structure} occluders={occluders} color={data.identity.structure} map={surface} />
     <Blocks blocks={data.detail} occluders={occluders} color={data.identity.detail} map={surface} />
     <Blocks blocks={data.marks} occluders={occluders} color={data.identity.accent} glow={room.biome === "fungal" || room.biome === "crystal" || room.biome === "salt" || room.biome === "tallow"} />

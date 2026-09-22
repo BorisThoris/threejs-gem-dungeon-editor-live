@@ -1313,3 +1313,17 @@ The latest isolated 78-room sweep peaks at 79 draw calls, 7,248 triangles,
 93 geometries and 10 textures; ten repeated room laps add no geometry, a
 613-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
 updates retain one voice with zero bytes per update.
+
+The old watercourse now has a visible building language above its wet strip.
+Each linked channel room receives one overhead frame on the real directed
+reach, clear of doorways and walking height. Rootwater's root comb, the Old
+Works' settling screen and the Buried Choir's last-water tally distinguish
+the three histories without adding a draw call per frame. The frame footprint
+is checked against the same irregular room outline as the floor, and the Atlas
+shows its actual span. The 360-floor audit finds 1,699 frames on real channel
+rooms and none elsewhere. Native standing-height review confirms all three
+forms mount in the existing three architecture batches.
+The isolated 78-room sweep peaks at 79 draw calls, 7,304 triangles,
+93 geometries and 10 textures. Ten revisited rooms add no geometry, a
+599-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
+updates retain one voice with zero bytes per update.
