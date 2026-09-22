@@ -61,7 +61,9 @@
         "test:creatures": "node scripts/creature-render-check.mjs",
         "test:bat-flight": "node scripts/bat-flight-check.mjs",
         "test:authored-rooms": "node scripts/authored-room-browser-check.mjs",
-        "test:strata": "node scripts/strata-browser-check.mjs"
+        "test:strata": "node scripts/strata-browser-check.mjs",
+        "test:threshold-echo": "node scripts/threshold-echo-browser-check.mjs",
+        "test:audio-threshold": "node scripts/audio-check.mjs --threshold-only"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

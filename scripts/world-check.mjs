@@ -14,6 +14,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/secretTrail",
   "worldbuilding/biomeCrown",
   "worldbuilding/districtThresholds",
+  "worldbuilding/thresholdEcho",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
   "worldbuilding/strataSeamPattern",
@@ -80,6 +81,7 @@ let strataLinks = 0, matchingStrataLinks = 0, strataDoors = 0, strataSeamMarks =
 let strataFanMarks = 0, strataFanDoors = 0;
 let strataVeinMarks = 0, strataVeinDoors = 0;
 let districtHandoverMarks = 0, districtHandoverDoors = 0;
+let districtEchoes = 0, materialEchoes = 0;
 const strataVeinMaterials = new Set();
 let districtWaymarks = 0;
 const biomes = new Set();
@@ -317,6 +319,30 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         Math.abs((edge.along === "x" ? b.position[0] - edge.x : b.position[2] - edge.z)) <= edge.length / 2), "construction courses stay attached to actual walls");
     }
     const thresholds = L.districtThresholds(r, d.rooms);
+    const echoes = L.thresholdEchoSitesFor(r, d.rooms);
+    assert.ok(echoes.length <= 4, "at most one approach cue belongs to each cardinal doorway");
+    const changed = Object.values(r.links).filter(id => {
+      const next = byId.get(id);
+      return next.district !== r.district || next.stratum !== r.stratum;
+    });
+    assert.deepEqual(echoes.map(site => site.destination).sort(), changed.sort(),
+      "every real district or geological crossing has one approach sound and no ordinary doorway does");
+    for (const site of echoes) {
+      const next = byId.get(site.destination);
+      assert.equal(r.links[site.dir], site.destination, "approach sound follows an open graph edge");
+      assert.ok(L.insideRoom(r, site.x, site.z, 0.1), "approach sound comes from the real shaped doorway");
+      if (site.district) {
+        districtEchoes++;
+        assert.equal(site.district, next.district);
+        assert.notEqual(site.district, r.district);
+        assert.equal(site.mode, undefined, "district construction takes precedence at mixed borders");
+      } else {
+        materialEchoes++;
+        assert.equal(site.mode, L.STRATUM_VEINS[next.stratum].mode);
+        assert.equal(next.district, r.district);
+        assert.notEqual(next.stratum, r.stratum);
+      }
+    }
     const handovers = L.districtHandoverFor(r, d.rooms);
     districtHandoverDoors += thresholds.length;
     districtHandoverMarks += handovers.length;
@@ -822,6 +848,8 @@ assert.ok(matchingStrataLinks / strataLinks > 0.9, "connected geology continues 
 assert.ok(strataDoors > 200 && strataSeamMarks >= strataDoors * 3, "material transitions are visibly marked at real doorways");
 assert.equal(strataVeinDoors, matchingStrataLinks, "every matching geological doorway carries a visible vein on both room faces");
 assert.equal(strataFanDoors, strataDoors, "every material transition carries its destination's contact fan");
+assert.equal(districtEchoes, districtHandoverDoors, "every district handover has a sound from the destination");
+assert.equal(materialEchoes, strataDoors, "every intra-district contact has a material sound");
 assert.equal(districtHandoverMarks, districtHandoverDoors * 4, "district border paving covers every open crossing");
 assert.deepEqual(Object.keys(L.STRATUM_VEINS).sort(), [...L.BIOMES].sort(), "every material owns a named continuity pattern");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
@@ -833,6 +861,7 @@ console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biom
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks - strataFanMarks} block-cut chips and ${strataFanMarks} contact cuts.`);
 console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);
 console.log(`District handovers: ${districtHandoverDoors / 2} two-sided borders carry ${districtHandoverMarks} color cuts below their named lintels.`);
+console.log(`Threshold acoustics: ${districtEchoes / 2} district borders and ${materialEchoes / 2} material contacts have one approach cue per face.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
 console.log(`Verdigris condensers: ${verdigrisRooms} rooms across ${verdigrisShapes.size} shapes carry metal plates, pipe yokes and pressure air.`);
 console.log(`Tallow chantries: ${tallowRooms} rooms across ${tallowShapes.size} shapes carry wax runs, wick ladders and damped air.`);

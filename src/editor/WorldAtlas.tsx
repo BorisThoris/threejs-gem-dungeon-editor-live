@@ -43,6 +43,7 @@ import type { Room } from "../game/dungeon/types";
 import { getTemplate } from "../game/rooms/templates";
 import { STRATUM_VEINS, strataSeamsFor, strataVeinsFor } from "../game/worldbuilding/strataSeamPattern";
 import { districtHandoverFor } from "../game/worldbuilding/districtThresholds";
+import { thresholdEchoSitesFor } from "../game/worldbuilding/thresholdEcho";
 import { sealedThresholdFor } from "../game/worldbuilding/structuralPattern";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
@@ -101,6 +102,7 @@ export function WorldAtlas() {
   const strataSeams = useMemo(() => strataSeamsFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const strataVeins = useMemo(() => strataVeinsFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const districtHandovers = useMemo(() => districtHandoverFor(room, dungeon.rooms), [room, dungeon.rooms]);
+  const thresholdEchoes = useMemo(() => thresholdEchoSitesFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -217,6 +219,9 @@ export function WorldAtlas() {
         {districtHandovers.length > 0 && <p data-testid="atlas-district-handovers" style={small}>
           Threshold paving hands {DISTRICTS[room.district!].name} over to {Array.from(new Set(districtHandovers.map(mark => DISTRICTS[mark.district].name))).join(" and ")} at {new Set(districtHandovers.map(mark => mark.destination)).size} real doorway{new Set(districtHandovers.map(mark => mark.destination)).size === 1 ? "" : "s"}.
         </p>}
+        {thresholdEchoes.length > 0 && <p data-testid="atlas-threshold-echoes" style={small}>
+          {thresholdEchoes.length} open threshold{thresholdEchoes.length === 1 ? "" : "s"} give a quiet directional answer on approach: {thresholdEchoes.map(site => site.district ? DISTRICTS[site.district].name : `${site.mode} material contact`).join(", ")}.
+        </p>}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
           <label style={small}>Water preview <select aria-label="Water preview" value={waterPreview}
             style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setWaterPreview(e.target.value as typeof waterPreview)}>
@@ -277,6 +282,10 @@ export function WorldAtlas() {
             fill={mark.color}>
             <title>{DISTRICTS[room.district!].name} to {DISTRICTS[mark.district].name} via {mark.dir}</title>
           </rect>)}
+          {thresholdEchoes.map((site, i) => <circle key={`threshold-echo-${i}`} data-testid="atlas-threshold-echo"
+            cx={site.x * scale} cy={site.z * scale} r={4} fill="none" stroke="#dfc792" strokeWidth={1.5}>
+            <title>{site.district ? DISTRICTS[site.district].name : `${site.mode} material contact`} heard before the {site.dir} doorway</title>
+          </circle>)}
           {secretMarks && [...secretMarks.base, ...secretMarks.accents].map((mark, i) => {
             const accent = i >= secretMarks.base.length;
             return <rect key={`secret-mark-${i}`} data-testid="atlas-secret-mark"

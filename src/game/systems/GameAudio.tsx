@@ -78,6 +78,7 @@ export function Audio() {
   useEffect(() => {
     const offs = [
       bus.on("gemCollected", () => sfx.gem()),
+      bus.on("thresholdHeard", site => sfx.threshold(site, sideOf(site.x - playerAt.x, site.z - playerAt.z))),
       bus.on("roomEntered", ({ roomId }) => {
         const run = useRun.getState(), dungeon = run.dungeon;
         const landmark = dungeon?.rooms.find(r => r.id === roomId)?.landmark;

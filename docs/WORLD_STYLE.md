@@ -42,6 +42,15 @@ concave and graph-shaped rooms. Keep the bars shallow enough to walk over,
 bright enough to read in passage light, and in the same instance batch as the
 geological marks. No border treatment belongs on an unlinked wall.
 
+The doorway should also answer before the player crosses it. A real open
+district boundary may carry one quiet, directional signature of the builders
+ahead; an intra-district material contact may carry one short sound in the
+destination's course, thread, tie or tessera grammar. Ordinary matching doors
+stay quiet. Suppress the doorway the player just entered, play each approach
+at most once per room visit, and keep pause silent. These cues must use short
+existing procedural sources; they do not replace the room's held air or add a
+looping threshold voice.
+
 - Chunky silhouettes, visible stone courses, earthy palettes, imperfect surfaces.
 - Warm practical light; cold light belongs to water and mineral deposits.
 - Restrained effects. No photorealistic assets, glossy generic materials, or

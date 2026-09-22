@@ -1263,3 +1263,20 @@ the fixed 78-room sweep falls from 8,072 to 7,400 peak triangles. It remains
 at 85 draw calls, 87 geometries and 10 textures; ten repeated room laps retain
 no geometry, a 429-frame sprint retains 0.00 MB after collection, and 20,000
 held-audio updates retain one voice with zero bytes per update.
+
+Approaching an actual open district or geological boundary now gives one
+quiet, directional answer from the place ahead. Rootwater breathes through the
+opening, the Old Works gives a short iron note, and the Buried Choir answers
+with a hollow pitched return. Material contacts use the same course, thread,
+tie or tessera vocabulary as their floor cuts. The room entered through stays
+quiet; each other approach sounds once per visit, pause silences the watcher,
+and the held biome air continues until the room actually changes. The Atlas
+marks each approach point. Across 360 generated floors, the graph provides
+1,017 two-sided district borders and 217 two-sided material contacts with
+exactly one valid cue on each face, and no cue on an ordinary matching door.
+The native browser approach check confirms entry silence, one cue per later
+approach, pause silence and unchanged held biome air. Sample-level audio checks
+hear all seven signatures above room tone. The fixed 78-room sweep peaks at
+79 calls, 7,352 triangles, 87 geometries and 10 textures; ten laps show no
+geometry growth, a 612-frame sprint retains 0.00 MB after collection, and
+20,000 held-audio updates retain one voice with zero bytes per update.

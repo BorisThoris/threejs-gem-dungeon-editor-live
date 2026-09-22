@@ -160,6 +160,8 @@ export interface BusEvents {
   lifeBought: undefined;
   doorOpened: { toRoomId: string };
   roomEntered: { roomId: string };
+  /** A real district or material change heard while approaching its open doorway. */
+  thresholdHeard: import("./worldbuilding/thresholdEcho").ThresholdEchoSite & { roomId: string };
   /** A delver reached the working end of a raised side gallery. */
   galleryReached: {
     roomId: string;

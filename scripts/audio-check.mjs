@@ -30,9 +30,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const PORT = process.env.PORT || process.argv[2] || "5199";
+const PORT = process.env.PORT || process.argv.find((arg, index) => index > 1 && /^\d+$/.test(arg)) || "5199";
+const THRESHOLD_ONLY = process.argv.includes("--threshold-only");
 const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  process.env.CHROMIUM_PATH ||
+  (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 let failures = 0;
 const ok = (label, cond, detail = "") => {
@@ -172,7 +174,7 @@ const LOUD = 3;
 const FLUSH_MS = 150;
 
 const browser = await chromium.launch({
-  executablePath: CHROMIUM,
+  ...(CHROMIUM ? { executablePath: CHROMIUM } : {}),
   args: [
     "--no-sandbox",
     ...(process.platform !== "win32" || process.env.SOFTWARE_GL === "1"
@@ -236,6 +238,13 @@ const CUES = [
   ["galleryResponse", 550, ["gardens", 0.35, false]],
   ["galleryResponse", 650, ["works", -0.35, true]],
   ["galleryResponse", 750, ["tombs", 0.35, true]],
+  ["threshold", 400, [{ district: "gardens" }, 0.35]],
+  ["threshold", 400, [{ district: "works" }, 0.35]],
+  ["threshold", 500, [{ district: "tombs" }, 0.35]],
+  ["threshold", 400, [{ mode: "course" }, 0.35]],
+  ["threshold", 400, [{ mode: "thread" }, 0.35]],
+  ["threshold", 400, [{ mode: "tie" }, 0.35]],
+  ["threshold", 400, [{ mode: "tessera" }, 0.35]],
   ["gem", 300, []],
   ["door", 400, []],
   ["hurt", 400, []],
@@ -354,17 +363,18 @@ const hear = async (cue, ms, args, bar) => {
 };
 
 const retried = [];
-for (const [cue, ms, args] of CUES) {
+const sampledCues = THRESHOLD_ONLY ? CUES.filter(([cue]) => cue === "threshold") : CUES;
+for (const [cue, ms, args] of sampledCues) {
   const bar = LOUD_CUES.includes(cue) ? floorLevel * LOUD : AUDIBLE;
   const { peak, tries } = await hear(cue, ms, args, bar);
   if (tries > 1) retried.push(`${cue}x${tries}`);
-  const label = args.length ? `${cue}(${args.join(",")})` : cue;
+  const label = args.length ? `${cue}(${args.map(arg => typeof arg === "object" ? JSON.stringify(arg) : arg).join(",")})` : cue;
   heard.set(label, peak);
   if (peak < AUDIBLE) silent.push(`${label} ${peak < 0 ? "(missing)" : peak.toFixed(4)}`);
   if (LOUD_CUES.includes(cue) && peak < floorLevel * LOUD) quiet.push(`${label} ${peak.toFixed(4)}`);
 }
 ok(
-  `all ${CUES.length} cues are heard over the room`,
+  `all ${sampledCues.length} cues are heard over the room`,
   silent.length === 0,
   silent.join(", ") ||
     `each above ${AUDIBLE.toFixed(4)}, the room tone being ${floorLevel.toFixed(4)}` +
@@ -404,6 +414,10 @@ ok(
       `  tightest margin: ${tightest.label} at ${tightest.peak.toFixed(4)} against ` +
         `${tightest.bar.toFixed(4)} - ${((tightest.margin - 1) * 100).toFixed(0)}% clear`
     );
+}
+if (THRESHOLD_ONLY) {
+  await browser.close();
+  process.exit(failures === 0 ? 0 : 1);
 }
 
 // The one held sound: it starts, it keeps going, and it stops.
@@ -757,14 +771,20 @@ ok(
   );
 
   // And the volume the player set is the volume it plays at.
+  // The heartbeat check leaves the score stopped. Keep it running here:
+  // Chromium can return a stale final FFT window after an idle graph stops
+  // processing, even when the master gain has already reached zero.
+  await page.evaluate(() => window.__music.start("delve"));
+  await page.waitForTimeout(1800);
+  const unmutedPeak = await page.evaluate(() => window.__listen(2000));
   await page.evaluate(() => window.__sfx.setMuted(true));
   await page.waitForTimeout(2200);
-  const mutedNotes = await page.evaluate(async ([lo, hi]) => window.__band(lo, hi, 2000), NOTES);
+  const mutedPeak = await page.evaluate(() => window.__listen(2000));
   await page.evaluate(() => window.__sfx.setMuted(false));
   ok(
     "and the mute the player set silences the score with everything else",
-    mutedNotes < titleOn * 0.5,
-    `${mutedNotes.toFixed(4)} muted against ${titleOn.toFixed(4)} playing`
+    mutedPeak < unmutedPeak * 0.5,
+    `${mutedPeak.toFixed(4)} muted against ${unmutedPeak.toFixed(4)} playing`
   );
 }
 

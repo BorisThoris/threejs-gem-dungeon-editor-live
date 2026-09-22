@@ -10,6 +10,7 @@
 import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
 import type { LandmarkId } from "../worldbuilding/landmarks";
 import type { DistrictId } from "../rooms/districts";
+import type { ThresholdEchoSite } from "../worldbuilding/thresholdEcho";
 
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -826,6 +827,23 @@ export const ambience = {
 };
 
 export const sfx = {
+  /** A faint answer from the material or builders on the far side of a real
+   * open door. One short source per approach, never a held border voice. */
+  threshold(site: ThresholdEchoSite, pan = 0) {
+    if (site.district === "gardens") {
+      noiseBurst(0.17, 0.2, 720, pan, true);
+      tone(104, 0.24, "triangle", 0.16, 76, pan, true);
+    }
+    else if (site.district === "works") tone(154, 0.16, "square", 0.15, 108, pan, true);
+    else if (site.district === "tombs") tone(294, 0.3, "triangle", 0.18, 220, pan, true);
+    else if (site.mode === "course") {
+      noiseBurst(0.1, 0.17, 1600, pan, true);
+      tone(560, 0.11, "triangle", 0.15, 280, pan, true);
+    }
+    else if (site.mode === "thread") tone(390, 0.18, "triangle", 0.18, 310, pan, true);
+    else if (site.mode === "tie") tone(190, 0.12, "square", 0.15, 140, pan, true);
+    else if (site.mode === "tessera") tone(690, 0.085, "triangle", 0.19, 510, pan, true);
+  },
   /** A short material signature when a district's navigation anchor is entered. */
   landmark(id: LandmarkId = "rootwell") {
     if (id === "rootwell") {
@@ -857,16 +875,16 @@ export const sfx = {
   /** The physical end of a district gallery answering the player's arrival. */
   galleryResponse(district: DistrictId = "tombs", pan = 0, secretFlank = false, answerPan = -pan * .55) {
     if (district === "gardens") {
-      noiseBurst(0.22, 0.12, 560, pan, true);
-      tone(92, 0.32, "triangle", 0.1, 70, pan, true);
+      noiseBurst(0.22, 0.15, 560, pan, true);
+      tone(92, 0.32, "triangle", 0.12, 70, pan, true);
       if (secretFlank) later(135, () => noiseBurst(0.16, 0.055, 410, answerPan, true));
     } else if (district === "works") {
       for (const [delay, pitch, gain] of [[0, 174, 0.09], [72, 147, 0.075], [166, 196, 0.06]] as const)
         later(delay, () => tone(pitch, 0.09, "square", gain, pitch * 0.72, pan, true));
       if (secretFlank) later(275, () => noiseBurst(0.07, 0.045, 980, answerPan, true));
     } else {
-      tone(220, 0.38, "triangle", 0.08, 164, pan, true);
-      later(145, () => tone(secretFlank ? 277 : 247, 0.46, "triangle", 0.06, 185, answerPan, true));
+      tone(220, 0.38, "triangle", 0.1, 164, pan, true);
+      later(145, () => tone(secretFlank ? 277 : 247, 0.46, "triangle", 0.075, 185, answerPan, true));
     }
   },
   beetleScatter(pan = 0) {

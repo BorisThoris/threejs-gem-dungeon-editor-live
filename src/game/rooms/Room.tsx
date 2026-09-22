@@ -65,6 +65,7 @@ import { BrineCrabs } from "../mobs/BrineCrabs";
 import { Copperbacks } from "../mobs/Copperbacks";
 import { Wicklings } from "../mobs/Wicklings";
 import { GalleryResponses } from "../worldbuilding/GalleryResponses";
+import { ThresholdEchoes } from "../worldbuilding/ThresholdEchoes";
 
 interface RoomProps {
   room: RoomData;
@@ -329,6 +330,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <Terraces room={room} color={tint.floor} map={floorSurface} />
       <PassageLamps room={room} intensity={light.fillIntensity * 0.6} />
       <GalleryResponses room={room} />
+      <ThresholdEchoes room={room} />
       <DistrictLintels room={room} />
       {room.waterway && <Watercourse room={room} />}
       <ServiceMarks room={room} />
