@@ -18,6 +18,7 @@ import { button, field, label, panel, small } from "./styles";
 import "../game/rooms/shipped";
 import { identityFor, PLACE_IDENTITIES } from "../game/worldbuilding/identity";
 import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
+import { secretTrailPattern, secretTrailText } from "../game/worldbuilding/secretTrail";
 import { bellcapsFor, BELLCAP_REACH, BELLCAP_WARNING, BELLCAP_COOLDOWN } from "../game/worldbuilding/bellcaps";
 import { croakersFor, ratsFor } from "../game/mobs/ambient";
 import { croakerHabitats, croakerMigration } from "../game/mobs/croakerHabitat";
@@ -85,6 +86,7 @@ export function WorldAtlas() {
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
+  const secretMarks = useMemo(() => secretTrailPattern(dungeon, room), [dungeon, room]);
   const galleryRooms = useMemo(() => dungeon.rooms.filter(r => DIRS.some(dir => r.wings?.[dir] && !r.links[dir] && r.secret?.dir !== dir)), [dungeon]);
   const habitats = useMemo(() => croakerHabitats(room, croakersFor(room, dungeon.seed), dungeon.seed), [room, dungeon.seed]);
   const ratHomes = useMemo(() => ratsFor(room, dungeon.seed), [room, dungeon.seed]);
@@ -111,12 +113,14 @@ export function WorldAtlas() {
         const next = (galleryRooms.findIndex(r => r.id === room.id) + 1) % galleryRooms.length;
         if (galleryRooms[next]) setSelected(galleryRooms[next].id);
       }}>Next gallery</button>
+      <button style={{ ...button, width: "auto" }} disabled={!dungeon.secretTrail}
+        onClick={() => dungeon.secretTrail && setSelected(dungeon.secretTrail.sourceId)}>Landmark route</button>
       <span style={small}>{dungeon.rooms.length} rooms · {dungeon.rooms.filter(r => r.waterway).length} on the watercourse</span>
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1.4fr) minmax(340px, 1fr)", gap: 20 }}>
       <section style={panel}>
         <div style={label}>THE CONNECTED FLOOR</div>
-        <p style={small}>Select a room to inspect its true footprint. Bronze arrows follow the water downstream. Dashed branches are hidden walls. Copper dotted lines follow the maintenance rubbing.</p>
+        <p style={small}>Select a room to inspect its true footprint. Bronze arrows follow the water downstream. Dashed branches are hidden walls. Copper dots follow the maintenance rubbing; paired gold strokes trace the district landmark's sealed history.</p>
         <svg aria-label="Generated world map" role="img" viewBox={`${extent.x} ${extent.y} ${extent.width} ${extent.height}`}
           style={{ width: "100%", height: 540, background: "#0b1012", borderRadius: 8 }}>
           <defs><marker id="atlas-flow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -130,6 +134,13 @@ export function WorldAtlas() {
             const a = byId.get(dungeon.serviceTrail!.route[i])!, b = byId.get(id)!;
             return <line key={`service-${id}`} x1={a.grid.x * GRID + 6} y1={a.grid.z * GRID + 6}
               x2={b.grid.x * GRID + 6} y2={b.grid.z * GRID + 6} stroke="#cc9869" strokeWidth={3} strokeDasharray="2 6" />;
+          })}
+          {dungeon.secretTrail?.route.slice(1).map((id, i) => {
+            const a = byId.get(dungeon.secretTrail!.route[i])!, b = byId.get(id)!;
+            return <line key={`landmark-route-${id}`} data-testid="atlas-secret-route"
+              x1={a.grid.x * GRID - 6} y1={a.grid.z * GRID - 6}
+              x2={b.grid.x * GRID - 6} y2={b.grid.z * GRID - 6}
+              stroke="#d5bd79" strokeWidth={3} strokeDasharray="7 5" />;
           })}
           {dungeon.rooms.map(r => r.secret && <line key={`secret-${r.id}`} x1={r.grid.x * GRID} y1={r.grid.z * GRID}
             x2={byId.get(r.secret.to)!.grid.x * GRID} y2={byId.get(r.secret.to)!.grid.z * GRID} stroke="#9c79a9" strokeDasharray="4 5" />)}
@@ -180,6 +191,9 @@ export function WorldAtlas() {
           <output aria-live="polite" data-testid="atlas-drain-time">{drainSeconds.toFixed(1)} s · water {Math.round(level * 100)}% · toad retreat {Math.round(migration * 100)}%</output>
         </label>}
         {dungeon.serviceTrail?.route.includes(room.id) && <p style={small}>{serviceTrailText(dungeon, room.id)}</p>}
+        {dungeon.secretTrail?.route.includes(room.id) && <p data-testid="atlas-secret-guide" style={{ ...small, color: "#d5bd79" }}>
+          {secretTrailText(dungeon, room.id)}
+        </p>}
         <svg aria-label="Selected room blueprint" aria-describedby="atlas-ground-probe" tabIndex={0} viewBox="-200 -200 400 400"
           onClick={e => {
             const transform = e.currentTarget.getScreenCTM(); if (!transform) return;
@@ -200,6 +214,17 @@ export function WorldAtlas() {
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
           {terrain && <TerrainBlueprint room={room} scale={scale} />}
+          {secretMarks && [...secretMarks.base, ...secretMarks.accents].map((mark, i) => {
+            const accent = i >= secretMarks.base.length;
+            return <rect key={`secret-mark-${i}`} data-testid="atlas-secret-mark"
+              x={(mark.position[0] - mark.size[0] / 2) * scale}
+              y={(mark.position[2] - mark.size[2] / 2) * scale}
+              width={mark.size[0] * scale} height={mark.size[2] * scale}
+              fill={accent ? secretMarks.accent : secretMarks.colour}
+              transform={`rotate(${-(mark.rotationY ?? 0) * 180 / Math.PI} ${mark.position[0] * scale} ${mark.position[2] * scale})`}>
+              <title>{secretMarks.title}</title>
+            </rect>;
+          })}
           {watercourseBlocks(room).map((b, i) => <g key={i}>
             <rect data-testid="atlas-channel-bed" x={(b.position[0] - b.size[0] / 2) * scale} y={(b.position[2] - b.size[2] / 2) * scale}
               width={b.size[0] * scale} height={b.size[2] * scale} fill={channelSediment(room).color}>

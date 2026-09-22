@@ -79,8 +79,12 @@ export function Audio() {
     const offs = [
       bus.on("gemCollected", () => sfx.gem()),
       bus.on("roomEntered", ({ roomId }) => {
-        const landmark = useRun.getState().dungeon?.rooms.find(r => r.id === roomId)?.landmark;
+        const run = useRun.getState(), dungeon = run.dungeon;
+        const landmark = dungeon?.rooms.find(r => r.id === roomId)?.landmark;
         if (landmark) sfx.landmark(landmark);
+        const trail = dungeon?.secretTrail, index = trail?.route.indexOf(roomId) ?? -1;
+        if (trail && index > 0 && run.visited.includes(trail.sourceId))
+          sfx.secretTrail(trail.landmark, roomId === trail.hostId);
       }),
       bus.on("doorOpened", () => sfx.door()),
       bus.on("damaged", () => sfx.hurt()),

@@ -20,15 +20,36 @@ const FOR_DISTRICT: Record<DistrictId, LandmarkId> = {
 /** Give every connected district one memorable room, preferring a broad,
  * ordinary junction over a puzzle or the stairs. Selection depends only on
  * generated geography, so revisiting and replaying a seed preserve it. */
-export function assignDistrictLandmarks(rooms: Room[]): void {
+export function assignDistrictLandmarks(rooms: Room[], avoid: readonly string[] = []): void {
+  const avoided = new Set(avoid);
+  const byId = new Map(rooms.map(room => [room.id, room]));
   for (const room of rooms) delete room.landmark;
   for (const district of Object.keys(FOR_DISTRICT) as DistrictId[]) {
-    const candidates = rooms.filter(room => room.district === district && room.kind !== "secret");
+    let candidates = rooms.filter(room => room.district === district && room.kind !== "secret");
+    // The landmark that begins a hidden-history route must be reachable from
+    // its cracked wall without crossing a locked vault, the exit, or another
+    // district. Select from that safe component rather than shortening the
+    // route later through geography that tells a different story.
+    const host = candidates.find(room => room.secret);
+    if (host) {
+      const reachable = new Set([host.id]), queue = [host.id];
+      for (const id of queue) {
+        const room = byId.get(id);
+        for (const next of Object.values(room?.links ?? {})) {
+          const destination = next ? byId.get(next) : undefined;
+          if (!next || reachable.has(next) || avoided.has(next) || destination?.district !== district) continue;
+          reachable.add(next); queue.push(next);
+        }
+      }
+      candidates = candidates.filter(room => reachable.has(room.id));
+    }
     candidates.sort((a, b) => {
       const score = (room: Room) =>
         (room.kind === "normal" ? 40 : room.kind === "treasure" || room.kind === "library" ? 20 : 0)
         + (room.kind !== "start" && room.kind !== "end" ? 12 : 0)
-        + Object.keys(room.links).length * 4 + room.size / 4;
+        + Object.keys(room.links).length * 4 + room.size / 4
+        // The landmark should begin a discovery, not sit on its answer.
+        - (room.secret || avoided.has(room.id) ? 1000 : 0);
       return score(b) - score(a) || a.id.localeCompare(b.id);
     });
     if (candidates[0]) candidates[0].landmark = FOR_DISTRICT[district];

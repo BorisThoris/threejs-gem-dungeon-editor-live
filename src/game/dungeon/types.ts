@@ -204,6 +204,8 @@ export interface Room {
 
 export interface Dungeon {
   serviceTrail?: import("../worldbuilding/serviceTrail").ServiceTrail;
+  /** A district landmark's physical route to this floor's sealed history. */
+  secretTrail?: import("../worldbuilding/secretTrail").SecretTrail;
   /**
    * The room whose doors are locked, and the room its key lies in.
    *

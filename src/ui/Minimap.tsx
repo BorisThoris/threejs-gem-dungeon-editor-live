@@ -53,6 +53,8 @@ export function Minimap() {
   const visited = useRun((s) => s.visited);
   const marks = useRun((s) => s.marks);
   const rubbing = useRun(s => s.waterCacheTaken);
+  const secretTrailLearned = useRun(s => !!s.dungeon?.secretTrail
+    && s.visited.includes(s.dungeon.secretTrail.sourceId));
   /**
    * A wall you felt a draft at, marked without a bomb - but only for a
    * delver carrying the Sounding Rod, and only for a draft they stood in
@@ -170,6 +172,7 @@ export function Minimap() {
       marked: marks.includes(r.id),
       waterLandmark: seen.has(r.id) && r.waterway && r.waterway.role !== "channel" ? r.waterway.role : null,
       serviceMark: rubbing && seen.has(r.id) && dungeon.serviceTrail?.route.includes(r.id),
+      secretTrailMark: secretTrailLearned && seen.has(r.id) && dungeon.secretTrail?.route.includes(r.id),
       // A landmark is learned by standing under it. Once learned it stays
       // on the map as the district's navigation anchor.
       landmark: seen.has(r.id) ? r.landmark : undefined,
@@ -188,7 +191,7 @@ export function Minimap() {
         .map(([dir]) => dir),
     }));
     return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing]);
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned]);
 
   if (!dialled) return null;
   const { cells, spacing, cell } = dialled;
@@ -284,6 +287,11 @@ export function Minimap() {
                 </text>}
                 {c.serviceMark && <text data-testid="map-service-mark" x={-cell * 0.25} y={cell * 0.35}
                   textAnchor="middle" fontSize={7} fill={c.state === "here" ? onAccent : "#cc9869"}>Ⅲ</text>}
+                {c.secretTrailMark && <g data-testid="map-secret-trail" transform={`translate(${cell * 0.27} ${cell * 0.32})`}
+                  fill={c.state === "here" ? onAccent : colors.gold}>
+                  <rect x={-3.4} y={-1} width={2} height={2} transform="rotate(45 -2.4 0)" />
+                  <rect x={1.4} y={-1} width={2} height={2} transform="rotate(45 2.4 0)" />
+                </g>}
                 {c.landmark && <g data-testid="map-district-landmark" data-landmark={c.landmark}
                   stroke={c.state === "here" ? onAccent : colors.gold} strokeWidth={1.4} fill="none">
                   {c.landmark === "rootwell" ? <>

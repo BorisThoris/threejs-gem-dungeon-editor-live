@@ -11,6 +11,7 @@ const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
   "worldbuilding/landmarks",
+  "worldbuilding/secretTrail",
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
@@ -74,6 +75,7 @@ let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
 let landmarkRooms = 0;
 const landmarkKinds = new Set();
+let secretTrails = 0, secretTrailMulti = 0, secretTrailRooms = 0, secretTrailLongest = 0;
 const loopFloors = [0, 0, 0];
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
@@ -91,6 +93,43 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   assert.equal(landmarks.length, 3, "every floor has one navigation landmark per district");
   for (const district of Object.keys(L.DISTRICTS))
     assert.equal(landmarks.filter(r => r.district === district).length, 1, `${district} has exactly one landmark`);
+  if (d.secretId) {
+    const trail = d.secretTrail;
+    assert.ok(trail, "every generated sealed room has a landmark discovery route");
+    secretTrails++;
+    assert.ok(trail.route.length >= 1 && new Set(trail.route).size === trail.route.length,
+      "secret landmark routes contain no loops");
+    if (trail.route.length >= 2) secretTrailMulti++;
+    secretTrailLongest = Math.max(secretTrailLongest, trail.route.length);
+    assert.equal(trail.route[0], trail.sourceId, "the route starts beneath its landmark");
+    assert.equal(trail.route.at(-1), trail.hostId, "the route ends at the cracked wall's host");
+    const source = byId.get(trail.sourceId), host = byId.get(trail.hostId);
+    assert.equal(source.landmark, trail.landmark, "the route records its visible landmark tradition");
+    assert.equal(source.district, host.district, "landmark and sealed room share a district history");
+    assert.ok(host.secret && host.secret.to === d.secretId, "the trail ends at this floor's actual secret");
+    for (let i = 0; i < trail.route.length; i++) {
+      const room = byId.get(trail.route[i]), pattern = L.secretTrailPattern(d, room);
+      secretTrailRooms++;
+      assert.ok(room.id !== d.vaultId && room.kind !== "end", "the discovery never requires the vault or stairs");
+      assert.equal(room.district, host.district, "the whole old tally remains inside its own district");
+      if (i) assert.ok(Object.values(byId.get(trail.route[i - 1]).links).includes(room.id),
+        "each discovery step follows a real doorway");
+      assert.ok(pattern && pattern.base.length > 0 && pattern.accents.length > 0,
+        "every route room carries readable base and tradition marks");
+      for (const block of [...pattern.base, ...pattern.accents]) {
+        const [x, y, z] = block.position, [w, h, depth] = block.size;
+        const yaw = block.rotationY ?? 0, c = Math.cos(yaw), s = Math.sin(yaw);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+          const lx = sx * w / 2, lz = sz * depth / 2;
+          assert.ok(L.insideRoom(room, x + lx * c + lz * s, z + lz * c - lx * s, .02),
+            "route paint stays inside irregular room footprints");
+        }
+        assert.ok(y + h / 2 < L.GROUND_Y + .09, "route marks stay paint-depth and non-blocking");
+      }
+      const step = L.secretTrailStep(d, room);
+      assert.ok(step?.onward, "every route room points to a next door or cracked wall");
+    }
+  }
   if (d.serviceTrail) {
     serviceTrails++;
     const { route, hostId } = d.serviceTrail;
@@ -440,3 +479,6 @@ console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrai
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);
 assert.deepEqual([...landmarkKinds].sort(), Object.keys(L.LANDMARKS).sort(), "all district landmarks occur in generated floors");
 console.log(`District landmarks: ${landmarkRooms} named navigation anchors across ${landmarkKinds.size} traditions.`);
+assert.equal(secretTrails, 360, "every sampled floor ties its sealed room to a district landmark");
+assert.ok(secretTrailMulti > 300, "most landmark discoveries cross multiple rooms");
+console.log(`Landmark discoveries: ${secretTrails} routes (${secretTrailMulti} multi-room) across ${secretTrailRooms} rooms; longest route ${secretTrailLongest} rooms.`);

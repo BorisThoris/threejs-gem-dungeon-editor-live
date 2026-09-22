@@ -790,3 +790,22 @@ structures and their map marks. The full 78-room performance sweep peaks at
 78 draw calls, 6,637 triangles, 87 geometries and 10 textures; repeated visits,
 sprint memory and held-audio stability remain within budget. All 48 measured
 one-shot cues, including the three landmark signatures, clear the room tone.
+
+Those landmarks now begin a longer discovery instead of serving only as room
+names. The landmark belonging to the sealed room's district traces a physical
+tally through actual open doors to the cracked wall. Generation excludes the
+locked vault and descending stairs; each turn uses paint-depth marks clipped to
+the real room footprint. The route is unreadable until its landmark is visited,
+then its visited steps persist on the minimap and a concise heading reports the
+next door. Root, iron and choir routes retain distinct floor alphabets and quiet
+continuation cues. The World atlas draws the whole authoring route and projects
+the same marks into each selected blueprint.
+
+The 360-floor sweep finds a route on every floor: 315 are multi-room chains,
+covering 932 rooms in total, and the longest crosses six rooms. Browser checks
+cover hidden and learned states, live rendering, HUD direction and minimap
+persistence; the representative learned room uses 39 calls, 2,542 triangles,
+21 geometries and three textures. The integrated 78-room performance sample
+peaks at 78 calls, 6,661 triangles, 87 geometries and 10 textures. Ten repeated
+room laps show no geometry growth, 1,501 sprint frames retain no heap after
+collection, and 20,000 held-audio updates retain one voice.

@@ -14,14 +14,17 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
         const dungeon = generateDungeon({ seed, floor: 2 });
-        const room = dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
+        const trailKind = wanted.startsWith("trail-") ? wanted.slice(6) : null;
+        const room = trailKind && dungeon.secretTrail?.landmark === trailKind
+          ? dungeon.rooms.find(r => r.id === dungeon.secretTrail?.sourceId)
+          : dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
           : wanted === "crossroads" ? r.template === "hall-crossroads"
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
@@ -54,6 +57,23 @@ try {
       assert.ok(await page.evaluate(name => !!window.__scene.getObjectByName(name), `district-landmark-${wanted}`));
       assert.equal(await page.locator(`[data-testid="map-district-landmark"][data-landmark="${wanted}"]`).count(), 1,
         `${wanted} remains a learned navigation mark on the minimap`);
+    }
+    if (wanted.startsWith("trail-")) {
+      await page.evaluate(() => window.__run.setState({ visited: [] }));
+      await page.waitForFunction(() => window.__secretTrail?.learned === false);
+      assert.equal(await page.evaluate(() => !!window.__scene.getObjectByName("learned-secret-trail")), false,
+        "the route is illegible before its landmark is learned");
+      await page.evaluate(id => window.__run.setState({ visited: [id] }), fixture.roomId);
+      await page.waitForFunction(() => window.__secretTrail?.learned === true && window.__secretTrail.drawCalls === 2);
+      const trail = await page.evaluate(() => window.__secretTrail);
+      assert.ok(trail.base > 0 && trail.accents > 0 && trail.onward, "the learned route has a visible direction");
+      assert.equal(await page.evaluate(() => window.__run.getState().dungeon.secretTrail.landmark), wanted.slice(6),
+        `${wanted} uses its own district alphabet`);
+      assert.ok(await page.evaluate(() => !!window.__scene.getObjectByName("learned-secret-trail")));
+      assert.equal(await page.locator('[data-testid="secret-trail-guide"]').count(), 1,
+        "the learned tally names its live direction");
+      assert.equal(await page.locator('[data-testid="map-secret-trail"]').count(), 1,
+        "the learned route persists on its visited minimap room");
     }
     await page.screenshot({ path: `${output}/${wanted}.png` });
     review.push({ wanted, ...fixture, player: await page.evaluate(() => ({ ...window.__playerDebug })), perf: await page.evaluate(() => ({ ...window.__perf })) });

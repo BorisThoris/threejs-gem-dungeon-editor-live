@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
 import { ServiceRubbing } from "./ServiceRubbing";
+import { SecretTrailGuide } from "./SecretTrailGuide";
 import { BellcapWarning } from "./BellcapWarning";
 import {
   barredNow,
@@ -205,6 +206,7 @@ export function Hud() {
       <ShoveReadout />
       <BellcapWarning />
       <ServiceRubbing />
+      <SecretTrailGuide />
       {lines.map((line, i) => {
         /**
          * The rank the line already carries, spent on the screen.

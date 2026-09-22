@@ -815,6 +815,20 @@ export const sfx = {
       later(110, () => tone(440, 0.5, "triangle", 0.08, 330));
     }
   },
+  /** A restrained continuation of the landmark signature at each learned route step. */
+  secretTrail(id: LandmarkId = "rootwell", final = false) {
+    const gain = final ? 0.13 : 0.095;
+    if (id === "rootwell") {
+      noiseBurst(0.08, gain, 680);
+      tone(final ? 126 : 104, 0.2, "triangle", gain, 76);
+    } else if (id === "hoist") {
+      tone(final ? 196 : 154, 0.11, "square", gain, 112);
+      later(65, () => noiseBurst(0.055, gain * 0.8, 1320));
+    } else {
+      tone(final ? 440 : 349, 0.24, "triangle", gain, 270);
+      if (final) later(80, () => tone(523, 0.28, "triangle", gain * 0.72, 390));
+    }
+  },
   beetleScatter(pan = 0) {
     noiseBurst(0.14, 0.14, 2100, pan);
     tone(690, 0.12, "triangle", 0.14, 420, pan);

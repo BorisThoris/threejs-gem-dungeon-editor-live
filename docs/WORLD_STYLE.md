@@ -42,6 +42,14 @@ and retain a small symbol on the minimap after discovery. Landmarks should be
 places a player can navigate by, rather than large decorations repeated in
 every room.
 
+The landmark in the sealed room's district also begins one old tally route.
+Its marks follow only real doors, stay out of the vault and descending stairs,
+turn visibly through irregular rooms and end at the actual cracked wall. The
+marks use the district's block language and become legible after the landmark
+is visited. Later steps repeat that landmark's material sound quietly. This is
+the preferred form of a secret clue: a chain through places the player can
+understand, rather than an icon that gives away an unseen destination.
+
 Terrain uses contiguous fields of deposits and courses of paving. Its low relief
 is decorative, with at most two additional draw calls; it does not introduce
 invisible movement obstacles or change the existing room-wide noise rule. Water

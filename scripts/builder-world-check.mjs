@@ -53,6 +53,14 @@ try {
     return !getTemplate(previewTemplateId(id));
   }, draft.template.id);
   assert.ok(cleaned);
+  await page.getByLabel("World seed").fill("1");
+  await page.getByRole("button", { name: "Landmark route", exact: true }).click();
+  assert.ok(await page.getByTestId("atlas-secret-route").count() > 0,
+    "the atlas traces the landmark expedition across real doors");
+  assert.equal(await page.getByTestId("atlas-secret-guide").count(), 1,
+    "the selected source names the route and its direction");
+  assert.ok(await page.getByTestId("atlas-secret-mark").count() > 0,
+    "the blueprint projects the same floor marks as the game");
   const restored = await page.evaluate(async () => {
     const { draftStore } = await import("/src/editor/drafts.ts");
     const { SHIPPED } = await import("/src/game/rooms/shipped.ts");
@@ -69,5 +77,5 @@ try {
   });
   assert.ok(restored);
   assert.deepEqual(errors, []);
-  console.log("PASS shipped room copy, district/seed preview, unchanged export, live toggle and preview cleanup");
+  console.log("PASS shipped room copy, regional preview, unchanged export, live toggle, cleanup and landmark-route atlas");
 } finally { await browser.close(); }
