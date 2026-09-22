@@ -2,7 +2,7 @@ import { geo } from "../props/shared";
 import { ChannelBed } from "./ChannelBed";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import { CanvasTexture, NearestFilter, PlaneGeometry, type Group, MeshStandardMaterial } from "three";
+import { BufferGeometry, CanvasTexture, Float32BufferAttribute, NearestFilter, type Group, MeshStandardMaterial } from "three";
 import type { Room } from "../dungeon/types";
 import { DIR_YAW } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -15,6 +15,31 @@ import type { CorridorBlock } from "../rooms/corridorPattern";
 import { GROUND_Y } from "../world";
 import { floorHeightAt } from "./elevation";
 import { watercourseBlocks, waterLevel, waterTravel, waterFlowUV, waterStation, WATERWAY_NAMES, WATER_CACHE_GEMS } from "./watercourse";
+
+/** Each branch carries route-relative UVs, but all branches share one draw.
+ * World positions keep the old glint phase through turns and after revisits. */
+function channelSurface(room: Room, blocks: readonly CorridorBlock[]) {
+  const positions: number[] = [], uvs: number[] = [], indices: number[] = [];
+  blocks.forEach((block, segment) => {
+    const [cx, , cz] = block.position, [width, , depth] = block.size;
+    const corners = [
+      [cx - width / 2, cz + depth / 2], [cx + width / 2, cz + depth / 2],
+      [cx - width / 2, cz - depth / 2], [cx + width / 2, cz - depth / 2],
+    ];
+    const base = positions.length / 3;
+    for (const [x, z] of corners) {
+      positions.push(x, GROUND_Y + 0.044, z);
+      uvs.push(...waterFlowUV(room, segment, x, z));
+    }
+    indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+  });
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 const FLOW_ARROWS: CorridorBlock[] = [2, 4].flatMap(z => [-1, 1].map(sign => ({
   position: [sign * 0.22, GROUND_Y + 0.052, -z] as [number, number, number],
@@ -69,16 +94,8 @@ export function Watercourse({ room }: { room: Room }) {
   useEffect(() => () => water.dispose(), [water]);
   const blocks = useMemo(() => watercourseBlocks(room), [room]);
   useEffect(() => () => ambience.stopCurrent(), []);
-  const surfaces = useMemo(() => blocks.map((b, segment) => {
-    const geometry = new PlaneGeometry(b.size[0], b.size[2]);
-    const positions = geometry.attributes.position, uv = geometry.attributes.uv;
-    for (let i = 0; i < positions.count; i++) {
-      const coords = waterFlowUV(room, segment, b.position[0] + positions.getX(i), b.position[2] - positions.getY(i));
-      uv.setXY(i, ...coords);
-    }
-    return geometry;
-  }), [blocks, room]);
-  useEffect(() => () => surfaces.forEach(geometry => geometry.dispose()), [surfaces]);
+  const surface = useMemo(() => channelSurface(room, blocks), [blocks, room]);
+  useEffect(() => () => surface.dispose(), [surface]);
   const station = useMemo(() => room.waterway?.role !== "channel" ? waterStation(room) : null, [room]);
   useFrame(() => {
     const s = useRun.getState(), now = runClock(s), level = waterLevel(openedAt, now);
@@ -105,15 +122,10 @@ export function Watercourse({ room }: { room: Room }) {
     <Blocks blocks={blocks.map(b => ({ ...b, position: [b.position[0], GROUND_Y + 0.032, b.position[2]],
       size: [b.size[0] === 0.8 ? 1.02 : b.size[0], 0.008, b.size[2] === 0.8 ? 1.02 : b.size[2]] }))} color="#806a47" />
     <ChannelBed room={room} blocks={blocks} />
-    <group>
-      {blocks.map((b, i) => {
-        return <mesh key={i} name="directed-channel-surface" position={[b.position[0], GROUND_Y + 0.044, b.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-        <primitive object={surfaces[i]} attach="geometry" />
-        {/* One material instance shared by the channel segments. */}
-        <primitive object={water} attach="material" />
-      </mesh>;
-      })}
-    </group>
+    <mesh name="directed-channel-surface">
+      <primitive object={surface} attach="geometry" />
+      <primitive object={water} attach="material" />
+    </mesh>
     {room.waterway.downstream && <group rotation={[0, DIR_YAW[room.waterway.downstream], 0]}>
       <Blocks blocks={FLOW_ARROWS} color="#d8b873" emissive="#695027" roughness={1} />
     </group>}

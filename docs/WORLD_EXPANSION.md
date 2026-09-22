@@ -1327,3 +1327,14 @@ The isolated 78-room sweep peaks at 79 draw calls, 7,304 triangles,
 93 geometries and 10 textures. Ten revisited rooms add no geometry, a
 599-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
 updates retain one voice with zero bytes per update.
+
+The live water now joins a room's incoming and outgoing reaches into one
+four-triangle surface mesh. Each vertex retains its direction along the actual
+route, so the glint remains continuous through turns, while the sediment bed
+stays separate and visible after drainage. The browser route check covers a
+two-reach room, the sluice, paused drainage, revisits and the dry reliquary.
+The fixed 78-room sweep still peaks at 79 draw calls, 7,304 triangles,
+93 geometries and 10 textures; the improvement applies to rooms with two
+reaches while the fixed corpus peak remains unchanged. Ten revisits add no
+geometry, a 614-frame sprint retains 0.00 MB,
+and 20,000 held-audio updates retain one voice with zero bytes per update.

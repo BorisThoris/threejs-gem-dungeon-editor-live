@@ -107,6 +107,9 @@ banks follows only its generated channel strips, including bends and shaped
 rooms, and remains as dry evidence after the sluice drains. Leave the central
 water and walking line clear. Use the biome's existing deposit batch and
 world-space material marks rather than scattering unrelated puddle props.
+Wet reaches in one room share a single surface draw. Their vertices still
+carry route-relative flow coordinates, so a bend keeps the glint moving toward
+the outfall; drainage reveals the separate cut-stone sediment bed below.
 
 Where the channel actually passes, its builders left one overhead frame aligned
 with the downstream reach (or the upstream reach at a terminus). Rootwater

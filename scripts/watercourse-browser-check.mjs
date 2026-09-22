@@ -62,13 +62,31 @@ try {
       if (o.name !== "directed-channel-surface") return;
       const p = o.geometry.attributes.position, uv = o.geometry.attributes.uv;
       for (let i = 0; i < p.count; i++) {
-        const x = o.position.x + p.getX(i), z = o.position.z - p.getY(i);
+        const x = p.getX(i), z = p.getZ(i);
         valid &&= Math.abs(uv.getX(i) + x * axis[0] + z * axis[1]) < 0.00001;
         count++;
       }
     });
     return valid && count === 4;
   }), "rendered incoming water uses physical coordinates flowing toward the reliquary");
+  const joined = await page.evaluate(async () => {
+    const s = window.__run.getState(), room = s.dungeon.rooms.find(r =>
+      r.waterway?.upstream && r.waterway?.downstream);
+    window.__run.setState({ currentRoomId: room.id, transitioning: false,
+      visited: [...new Set([...s.visited, room.id])] });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    return room.id;
+  });
+  await page.waitForFunction(id => window.__watercourse?.roomId === id, joined);
+  const bend = await page.evaluate(() => {
+    const meshes = [];
+    window.__scene.traverse(o => { if (o.name === "directed-channel-surface") meshes.push(o); });
+    return { meshes: meshes.length, vertices: meshes[0]?.geometry.attributes.position.count,
+      triangles: meshes[0]?.geometry.index.count / 3 };
+  });
+  assert.deepEqual(bend, { meshes: 1, vertices: 8, triangles: 4 },
+    "a two-reach channel draws as one four-triangle water surface");
+  await visit(fixture.cache);
   assert.equal(await page.locator('[data-testid="service-rubbing"]').count(), 0, "the route is not explained before the rubbing is found");
   assert.equal(await page.locator('[data-water-role="sluice"]').count(), 0, "unvisited valve is not revealed on the map");
   const visitCatch = async () => {
