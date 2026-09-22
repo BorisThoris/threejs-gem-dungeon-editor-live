@@ -342,15 +342,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <GlowBeetles room={room} />
       <CorridorDetails room={room} seed={seed} wall={tint.wall} glow={tint.glow} />
 
-      {/* A dim overhead fill so no corner is ever fully black; the torches do
-          the rest, and do more of it the deeper the floor is. */}
-      <pointLight
-        position={[0, GROUND_Y + WALL_HEIGHT - 0.6, 0]}
-        color={tint.glow}
-        intensity={light.fillIntensity * tint.light}
-        distance={room.size * 1.6}
-        decay={1.5}
-      />
+      {/* Light comes from fixtures and the carried lantern; no invisible ceiling lamp. */}
 
       {DIRS.map((dir) =>
         room.links[dir] ? <DoorTrigger key={dir} room={room} dir={dir} /> : null

@@ -2,9 +2,9 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Color, type PointLight } from "three";
 
-import { CANDELA_MAX, SEES_MAX, candelaAt } from "../lantern/glim";
+import { candelaAt } from "../lantern/glim";
 import { modifiers } from "../relics/catalog";
-import { lanternBand, useRun } from "../state/run";
+import { lanternBand, lanternLit, useRun } from "../state/run";
 
 /**
  * The light the player carries, and the clock that burns it.
@@ -41,7 +41,7 @@ export function Lantern() {
    * five values rather than one of two and a normalised level would have
    * to be un-normalised against whichever pair it sat between.
    */
-  const reach = useRef(SEES_MAX);
+  const reach = useRef(0);
   /**
    * The colour of the flame, which is the one thing of the delver's the
    * player sees all run.
@@ -67,13 +67,13 @@ export function Lantern() {
      */
     const band = lanternBand(run);
 
-    const target = band.sees;
+    const target = lanternLit(run) ? band.sees : 0;
     reach.current += (target - reach.current) * Math.min(1, delta * 3.2);
     l.distance = reach.current;
     // Derived from the reach it actually has this frame rather than from
     // the band it is heading for, so the two ease together instead of the
     // brightness arriving before the reach does.
-    l.intensity = candelaAt(reach.current);
+    l.intensity = lanternLit(run) ? candelaAt(reach.current) : 0;
     // Slightly ahead of and below the eye, so it lights the floor in front
     // rather than the inside of the player's own head.
     l.position.set(state.camera.position.x, state.camera.position.y - 0.25, state.camera.position.z);
@@ -121,5 +121,5 @@ export function Lantern() {
      */
   });
 
-  return <pointLight ref={light} color={tint} intensity={CANDELA_MAX} decay={1.5} />;
+  return <pointLight ref={light} name="carried-lantern" color={tint} intensity={0} decay={1.5} />;
 }

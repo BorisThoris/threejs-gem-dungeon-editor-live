@@ -26,6 +26,7 @@ import { purposeFurnishing, secretFurnishing } from "../worldbuilding/furnishing
 import { authoredProps } from "./templates";
 import { secretStoryFor } from "../dungeon/secret";
 import { insideRoom } from "../dungeon/footprint";
+import { isUnlitRoom } from "../lighting/field";
 
 
 /** How close a prop may stand to the gem or to the kind's own content. */
@@ -154,6 +155,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
 
   /** Whether a prop of this kind may stand here at all. */
   const allowed = (p: PropPlacement): boolean => {
+    if (p.kind === "torch" && isUnlitRoom(room, seed)) return false;
     const solid = CATALOG[p.kind].solid;
     if ((room.shape === "elbow" || room.shape === "bay") && !insideRoom(room, p.x, p.z, CATALOG[p.kind].radius)) return false;
     if (solid && inDoorLane(p.x, p.z, room)) return false;

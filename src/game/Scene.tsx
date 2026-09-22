@@ -4,6 +4,8 @@ import { Physics } from "@react-three/rapier";
 
 import { readGamepad } from "./input/gamepad";
 import { Lantern } from "./player/Lantern";
+import { BlockLighting } from "./lighting/BlockLighting";
+import { isUnlitRoom } from "./lighting/field";
 import { Player } from "./player/Player";
 import { ShoveHand } from "./player/ShoveHand";
 // Registers what each room kind puts inside its shell.
@@ -64,12 +66,15 @@ function PadPause() {
  */
 function FloorLight() {
   const light = useRun((s) => floorRules(s.floor).light);
+  const room = useCurrentRoom();
+  const seed = useRun(s => s.dungeon?.seed ?? 0);
+  const ambient = room && isUnlitRoom(room, seed) ? 0.003 : light.ambient * 0.22;
   return (
     <>
       {/* Depth cue only: the far wall of the largest room is still visible. */}
       <fog attach="fog" args={["#050608", 10, light.fogFar]} />
-      <ambientLight intensity={light.ambient} />
-      <hemisphereLight args={[light.sky, "#3a3126", light.ambient * 0.86]} />
+      <ambientLight intensity={ambient} />
+      <hemisphereLight args={[light.sky, "#3a3126", ambient * 0.5]} />
     </>
   );
 }
@@ -115,6 +120,7 @@ export function Scene() {
       <Anisotropy />
       <Perf />
       <FloorLight />
+      <BlockLighting />
       <PadPause />
       {/* The Warden walks the floor whether or not its room is mounted, and
           the Cutpurse's timer runs whichever room the player is standing
