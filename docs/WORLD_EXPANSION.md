@@ -951,3 +951,25 @@ histories remain reachable. The current 78-room performance sweep peaks at 78 ca
 6,897 triangles, 87 geometries and 10 textures. Ten repeated laps add no
 geometry, 1,499 sprint frames retain no heap after collection, and 20,000
 held-audio updates still retain one voice.
+
+Salt shelves now support brine-crab colonies. Their deterministic homes come
+from actual rendered crust cells, remain clear of solid furnishings and keep a
+continuous body-width route to a real wall shadow. Raised lantern light or a
+blast sends the colony under cover for six seconds; lowering the light lets it
+return. In a room that hosts a secret, eligible crabs prefer the actual cracked
+wall, so light, habitat and discovery use one rule instead of adding a marker.
+
+The broad pale shell, splayed dark legs, front claws and eye stalks use two
+instanced batches for up to four animals. They add no texture, dynamic light or
+per-animal timer. Their short brittle-shell scuttle joins the procedural sound
+set, their first response has a teaching line, and their Din and awareness rows
+describe the same light behavior. The full native renderer now verifies all 15
+creature types, including the light-triggered retreat and paused pose.
+
+Across 360 generated floors, 513 brine crabs occupy valid salt shelves and 35
+retreat routes reach actual cracked-wall approaches. All 55 procedural cues are
+audible above room tone. The current 78-room performance sweep remains at 78
+draw calls, 87 geometries and 10 textures; the triangle peak is 7,256 against
+the 8,800 budget. Ten repeated room laps show no geometry growth, a 1,496-frame
+sprint retains no heap after collection, and 20,000 held-audio updates retain
+one voice.

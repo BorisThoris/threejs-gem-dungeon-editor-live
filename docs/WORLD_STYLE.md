@@ -14,8 +14,8 @@ compiled variants without extra geometry, textures, lights or draw calls.
 
 Biome identity continues above eye level. Every material tradition owns one
 purposeful roof motif: quarry wedges, root combs, burial tallies, sluice rails,
-kiln dampers, pit props, ossuary ribs, resonator forks, growing shelves or flue
-baffles. These repeat by structural bay, remain above doorway clearance and are
+kiln dampers, pit props, ossuary ribs, resonator forks, growing shelves, flue
+baffles or pan rakes. These repeat by structural bay, remain above doorway clearance and are
 clipped to the same irregular floor union as the walls. They join the existing
 three architecture batches; do not turn them into loose ceiling clutter or a
 new mesh, material or light per ornament.
@@ -67,6 +67,11 @@ Kiln newts bask only on the foundry's rendered ember aprons. Noise sends them
 along a physically clear route to a wall seam; in a secret host they prefer the
 actual cracked wall, so animal behavior reinforces the same geography instead
 of adding an unrelated hint marker.
+Brine crabs graze only on rendered salt shelves. Raised lantern light sends
+their pale block shells and dark jointed legs toward a physically clear wall
+shadow; in a secret host they prefer the actual cracked seam. Their claws,
+eye stalks and legs share one dark instance batch, their shells another, and
+they add no creature light or texture. Lowering the lantern lets them return.
 Each district also draws its old circulation system across the actual room
 graph: paired root lines in Rootwater, iron sleepers in the Old Works, and
 processional stones in the Buried Choir. The marks stop at real thresholds,
@@ -136,13 +141,15 @@ Their wall habitat candidates follow the actual room footprint. Refuges and
 migration paths use the same furniture seed as the rendered room and clear the
 whole body. Noise still makes them dive, and draining still sends them to cover.
 
-`npm run test:creatures` checks all thirteen creature types in generated rooms
+`npm run test:creatures` checks all fifteen creature types in generated rooms
 using native Chrome rendering. It compares frames with and without creature
 meshes while preserving scene lights, and saves standing-eye-height review
 images in `output/creature-review`. This checks representative visible states;
 intentional hiding, spawning conditions and behavioral transitions have separate
 world and ecology checks. The ash-mite render fixture also makes a loud footfall
-and verifies that the visible colony burrows as one.
+and verifies that the visible colony burrows as one. Kiln-newt and brine-crab
+fixtures verify that colonies run toward a real cracked wall and freeze while
+the game is paused.
 
 Crystal fauna belongs to crystal terrain. Shardbacks use squat block-cut bodies
 and paired rectangular plates, graze only actual resonance-ring cells and never

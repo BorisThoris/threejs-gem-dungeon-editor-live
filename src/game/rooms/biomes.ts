@@ -159,7 +159,7 @@ export const BIOME: Record<BiomeId, Biome> = {
   /** Mineral water once evaporated in stepped pans beneath the choir. The
    * pale crust throws a footfall sharply and its drying joints tick in the
    * cold, so it reads as a brittle working layer rather than white stone. */
-  salt: { name: "Salt pans", floor: "#b8b5a5", wall: "#6e716b", surface: "stone", glow: "#9eb9b5", light: 0.88, litter: ["urn", "rubble"], carry: 1.4, ground: "salt crust", life: ["bat"], air: "tick" },
+  salt: { name: "Salt pans", floor: "#b8b5a5", wall: "#6e716b", surface: "stone", glow: "#9eb9b5", light: 0.88, litter: ["urn", "rubble"], carry: 1.4, ground: "salt crust", life: ["bat", "brinecrab"], air: "tick" },
 };
 
 /**

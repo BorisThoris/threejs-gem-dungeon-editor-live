@@ -25,11 +25,11 @@ broad slowdown.
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
-6,897 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 1,499-frame sprint
+7,256 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 1,496-frame sprint
 sample retained no heap after collection. Draw calls remain below the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
-instanced batches, as the shardback and kiln-newt colonies do with two
+instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
 submissions per room.
 
 Frame rate is recorded only as a liveness observation. The automated browser
@@ -44,12 +44,13 @@ comparable across that environment.
 | Dense trap rooms | Measure | Use the ranked report to identify the owning scene groups before adding another high-detail hazard. |
 | Draw calls | Monitored | Hidden histories and district paths batch repeated marks by material. Keep room-scale decoration to a fixed number of submissions. |
 | Structural faces | Monitored | Shaped-room architecture is the largest triangle owner. Simplify hidden or repeated construction faces before raising the budget again. |
-| Terrain shaders | Stable | Ten biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
-| Biome crowns | Stable | Ten roof motifs add 120 worst-case triangles inside the three existing architecture submissions; preserve that batching. |
-| Ambient colonies | Stable | Kiln newts add two instanced submissions for a whole colony, no individual lights or timers, and keep the measured peak at 78 calls. |
+| Terrain shaders | Stable | Eleven biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
+| Biome crowns | Stable | Eleven roof motifs remain inside the three existing architecture submissions; preserve that batching. |
+| Ambient colonies | Stable | Kiln newts and brine crabs each use two instanced submissions for a whole colony, with no individual lights or timers; the measured peak remains 78 calls. |
 | Authored irregular rooms | Stable | Four new diamond, circle, cross and hexagon compositions peak at 87 calls in direct review; the fixed 78-room corpus remains at 78 calls. |
 | Connected strata | Stable | Only real intra-district material transitions add geometry: five shallow chips share one instanced draw call, with sampled transition rooms at 25–28 calls. |
 | Salt-pan biome | Stable | The eleventh terrain and crown variant reuses the two terrain and three architecture batches. Twelve paused-clock flakes share one extra instance draw; a furnished circular fixture uses 51 calls and the corpus peak remains 78. |
+| Salt-pan ecology | Stable | Up to four brine crabs share two instance batches. The 360-floor audit finds 513 legal homes and 35 real cracked-wall retreats; the corpus peak remains 78 calls and 7,256 triangles. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a

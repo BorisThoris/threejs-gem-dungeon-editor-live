@@ -142,6 +142,9 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "newt", event: "newtsScurried", line: ({ towardSecret }) => towardSecret
     ? "The kiln newts fled into that cracked seam. Old heat finds openings before a delver does."
     : "The kiln newts fled from the fired apron. A loud foundry sends them to the wall.", sample: { roomId: "r", towardSecret: true } }),
+  lesson({ id: "brinecrab", event: "brineCrabsScuttled", line: ({ towardSecret }) => towardSecret
+    ? "The brine crabs fled your light into that cracked seam. Pale shells know the old wall's shadow."
+    : "The brine crabs fled your light to the wall. Lower the lantern and they return to the salt crust.", sample: { roomId: "r", towardSecret: true } }),
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
@@ -168,6 +171,7 @@ export const LOOP_EVENTS: readonly (keyof BusEvents)[] = [
   "croakersDove",
   "mitesBurrowed",
   "newtsScurried",
+  "brineCrabsScuttled",
   "trapSprung",
   "draftFelt",
   "wallSound",

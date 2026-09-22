@@ -28,6 +28,7 @@ export interface BusEvents {
   beetlesScattered: { roomId: string };
   mitesBurrowed: { roomId: string };
   newtsScurried: { roomId: string; towardSecret: boolean };
+  brineCrabsScuttled: { roomId: string; towardSecret: boolean };
   shardbacksWarning: { roomId: string };
   shardbacksChimed: { roomId: string; x: number; z: number };
   waterCacheTaken: { roomId: string };

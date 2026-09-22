@@ -846,6 +846,12 @@ export const sfx = {
       tone(310, 0.08, "square", 0.07, 190, pan);
     });
   },
+  /** Brittle shell and small claws crossing a dry salt shelf. */
+  brineScuttle(pan = 0) {
+    noiseBurst(0.07, 0.15, 3600, pan);
+    later(48, () => tone(920, 0.07, "triangle", 0.1, 560, pan));
+    later(105, () => noiseBurst(0.055, 0.12, 2900, pan));
+  },
   /** Three imperfect glass notes: the whole resonance ring answering at once. */
   shardChime(pan = 0) {
     tone(740, 0.28, "triangle", 0.12, 520, pan);

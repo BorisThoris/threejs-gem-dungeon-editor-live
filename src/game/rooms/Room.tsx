@@ -61,6 +61,7 @@ import { Shardbacks } from "../mobs/Shardbacks";
 import { Terrain } from "./Terrain";
 import { StrataSeams } from "../worldbuilding/StrataSeams";
 import { SaltFalls } from "../worldbuilding/SaltFalls";
+import { BrineCrabs } from "../mobs/BrineCrabs";
 
 interface RoomProps {
   room: RoomData;
@@ -315,6 +316,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <Architecture room={room} />
       <Terrain room={room} />
       <SaltFalls room={room} />
+      <BrineCrabs room={room} />
       <StrataSeams room={room} />
       <DistrictWays room={room} />
       <DistrictLandmark room={room} />

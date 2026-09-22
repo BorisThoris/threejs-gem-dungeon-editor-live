@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  brinecrab: {
+    name: "brine crabs", role: "ambient", body: "ground",
+    lives: "They graze the crust shelves of salt-pan rooms and flee raised lantern light toward a wall shadow; in a secret host they prefer the cracked seam.",
+    harm: "none", answers: ["lower the lantern to watch them feed", "raise it and follow their run to the wall"],
+    voice: { held: null, moments: ["brineScuttle"] }, events: ["brineCrabsScuttled"],
+    lesson: "brinecrab", component: "mobs/BrineCrabs.tsx", probe: "__brineCrabs", tell: false,
+  },
   newt: {
     name: "kiln newts", role: "ambient", body: "ground",
     lives: "They bask on the fired aprons of foundry rooms and flee along clear floor to a wall seam; where a cracked wall exists, they prefer it.",

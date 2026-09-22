@@ -281,6 +281,7 @@ const CUES = [
   ["bellcapBurst", 650, [-0.3]],
   ["beetleScatter", 350, [0.3]],
   ["newtSkitter", 350, [0.3]],
+  ["brineScuttle", 350, [0.3]],
   ["shardChime", 650, [0.3]],
 ];
 

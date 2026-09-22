@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  brinecrab: {
+    answers: { bright: 0.35, blast: 0.1 },
+    deaf: ["loud"],
+    tell: "Raised light sends them to the nearest wall shadow. In old salt pans, that shadow may be a cracked seam.",
+  },
   newt: {
     answers: { loud: 0.3, blast: 0.1 },
     deaf: ["bright"],
