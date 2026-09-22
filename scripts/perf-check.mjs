@@ -25,8 +25,8 @@ const CHROMIUM =
   (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 /**
- * The current shaped-room baseline is 78 calls, 7,208 triangles, 87
- * geometries and 10 textures. The larger number is accounted for: structural
+ * The recorded pre-strata shaped-room baseline is 78 calls, 7,208 triangles,
+ * 87 geometries and 10 textures. The larger number is accounted for: structural
  * bays, habitat terrain and district paths now describe one connected place
  * instead of a bare square with scattered props. The limits retain meaningful
  * growth above that measured world, while the generated report keeps

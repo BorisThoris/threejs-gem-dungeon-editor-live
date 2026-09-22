@@ -78,6 +78,7 @@ assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current 
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
 let strataLinks = 0, matchingStrataLinks = 0, strataDoors = 0, strataSeamMarks = 0;
 let strataVeinMarks = 0, strataVeinDoors = 0;
+let districtHandoverMarks = 0, districtHandoverDoors = 0;
 const strataVeinMaterials = new Set();
 let districtWaymarks = 0;
 const biomes = new Set();
@@ -315,6 +316,25 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         Math.abs((edge.along === "x" ? b.position[0] - edge.x : b.position[2] - edge.z)) <= edge.length / 2), "construction courses stay attached to actual walls");
     }
     const thresholds = L.districtThresholds(r, d.rooms);
+    const handovers = L.districtHandoverFor(r, d.rooms);
+    districtHandoverDoors += thresholds.length;
+    districtHandoverMarks += handovers.length;
+    assert.ok(handovers.length <= 16, "district thresholds have a fixed four-mark ceiling per side");
+    assert.deepEqual([...new Set(handovers.map(mark => mark.destination))].sort(),
+      thresholds.map(mark => mark.destination).sort(), "every named district crossing carries a floor handover");
+    assert.equal(handovers.length, thresholds.length * 4, "every open district doorway receives all four handover cuts");
+    for (const mark of handovers) {
+      const next = byId.get(mark.destination);
+      assert.equal(r.links[mark.dir], next.id, "handover follows a real open doorway");
+      assert.equal(mark.district, next.district, "handover previews the named destination district");
+      assert.notEqual(mark.district, r.district, "same-district doors keep their own circulation language");
+      assert.ok([-1, 1].every(sx => [-1, 1].every(sz =>
+        L.insideRoom(r, mark.position[0] + sx * mark.size[0] / 2,
+          mark.position[2] + sz * mark.size[2] / 2, 0.02))),
+        "handover paving stays inside the real shaped floor");
+      assert.ok(mark.position[1] + mark.size[1] / 2 - L.floorHeightAt(r, mark.position[0], mark.position[2]) < 0.06,
+        "handover paving remains paint-depth and non-blocking");
+    }
     for (const t of thresholds) {
       const next = byId.get(t.destination);
       assert.equal(r.links[t.dir], next.id, "district names describe actual door destinations");
@@ -794,6 +814,7 @@ assert.ok(matching / links > 0.65, "most doorways continue the same district");
 assert.ok(matchingStrataLinks / strataLinks > 0.9, "connected geology continues across at least nine in ten links inside districts");
 assert.ok(strataDoors > 200 && strataSeamMarks >= strataDoors * 3, "material transitions are visibly marked at real doorways");
 assert.equal(strataVeinDoors, matchingStrataLinks, "every matching geological doorway carries a visible vein on both room faces");
+assert.equal(districtHandoverMarks, districtHandoverDoors * 4, "district border paving covers every open crossing");
 assert.deepEqual(Object.keys(L.STRATUM_VEINS).sort(), [...L.BIOMES].sort(), "every material owns a named continuity pattern");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
 assert.equal(L.waterLevel(null, 100), 1);
@@ -803,6 +824,7 @@ console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} con
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
 console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);
+console.log(`District handovers: ${districtHandoverDoors / 2} two-sided borders carry ${districtHandoverMarks} color cuts below their named lintels.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
 console.log(`Verdigris condensers: ${verdigrisRooms} rooms across ${verdigrisShapes.size} shapes carry metal plates, pipe yokes and pressure air.`);
 console.log(`Tallow chantries: ${tallowRooms} rooms across ${tallowShapes.size} shapes carry wax runs, wick ladders and damped air.`);

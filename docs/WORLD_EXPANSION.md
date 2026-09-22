@@ -1233,3 +1233,18 @@ and the fixed 78-room sweep peaks at 79 calls, 8,072 triangles, 87 geometries
 and 10 textures. Ten repeated room laps retain no geometry, a 554-frame sprint
 retains 0.00 MB after collection, and 20,000 held-audio updates retain one
 voice with zero bytes per update.
+
+The three district traditions now meet visibly at their actual open borders.
+Four shallow transverse cuts sit below each named lintel: two in the room's
+pigment and two in the arriving district's pigment. The opposite face repeats
+the handover in its own travel direction. The cuts are clipped by all four
+corners to the true chamber or gallery floor, share the existing strata mark
+batch, and appear in the World Atlas. Native standing-height review confirms
+the two pigments read clearly over the threshold floor. The same review also
+exposed and fixed a color-material setting that had rendered earlier stratum
+veins and transition chips almost black. Across 360 generated floors, 1,017
+two-sided district borders receive all 8,136 color cuts. The fixed 78-room performance sweep
+peaks at 85 calls, 8,072 triangles, 87 geometries and 10 textures. Ten
+repeated room laps retain no geometry, a 590-frame sprint retains 0.00 MB
+after collection, and 20,000 held-audio updates retain one voice with zero
+bytes per update.

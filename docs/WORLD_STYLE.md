@@ -28,12 +28,27 @@ two related layers. Where the stratum changes, transition chips interrupt the
 vein and preview the destination material. Both systems must stay paint-depth,
 clip to the true room footprint and share one bounded instanced batch.
 
+Where a real open door joins two districts, cut four transverse handover bars
+under its named lintel. The inner pair takes the current district's pigment;
+the outer pair takes the destination's. Both room faces use this order, so the
+threshold reads as a deliberate change of builders from either direction.
+Check each rectangular corner against the actual floor, including circular,
+concave and graph-shaped rooms. Keep the bars shallow enough to walk over,
+bright enough to read in passage light, and in the same instance batch as the
+geological marks. No border treatment belongs on an unlinked wall.
+
 - Chunky silhouettes, visible stone courses, earthy palettes, imperfect surfaces.
 - Warm practical light; cold light belongs to water and mineral deposits.
 - Restrained effects. No photorealistic assets, glossy generic materials, or
   visual clutter that hides a threat, puzzle cue, pickup, or doorway.
 - Build places with purposes and histories. Creatures need habitats; secrets
   need clues. Furnish arrangements, not disconnected random objects.
+
+Blender may supply bespoke creature bodies, landmarks and modular structure
+when hand modeling makes the result clearer. Keep the same chunky silhouette,
+simple materials, imperfect cuts and authored purpose. Check imports at player
+eye height and measure their triangles, materials and draw calls in game;
+repeated room construction should remain batched or instanced.
 
 Room shape must change how a place is used. Service-ring chambers wrap one
 continuous walk around a sealed, block-cut machinery core. Floor, ceiling,

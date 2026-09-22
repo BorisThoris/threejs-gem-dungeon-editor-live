@@ -42,6 +42,7 @@ import { GROUND_Y, NOISE_HOLD_S } from "../game/world";
 import type { Room } from "../game/dungeon/types";
 import { getTemplate } from "../game/rooms/templates";
 import { STRATUM_VEINS, strataSeamsFor, strataVeinsFor } from "../game/worldbuilding/strataSeamPattern";
+import { districtHandoverFor } from "../game/worldbuilding/districtThresholds";
 import { sealedThresholdFor } from "../game/worldbuilding/structuralPattern";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
@@ -99,6 +100,7 @@ export function WorldAtlas() {
   const authored = room.template ? getTemplate(room.template) : undefined;
   const strataSeams = useMemo(() => strataSeamsFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const strataVeins = useMemo(() => strataVeinsFor(room, dungeon.rooms), [room, dungeon.rooms]);
+  const districtHandovers = useMemo(() => districtHandoverFor(room, dungeon.rooms), [room, dungeon.rooms]);
   const colonies = useMemo(() => bellcapsFor(room), [room]);
   const beetles = useMemo(() => beetlesFor(room), [room]);
   const shardbacks = useMemo(() => shardbacksFor(room), [room]);
@@ -212,6 +214,9 @@ export function WorldAtlas() {
         {strataVeins.length > 0 && <p data-testid="atlas-strata-veins" style={small}>
           <strong>{STRATUM_VEINS[room.stratum!].name}</strong> · {STRATUM_VEINS[room.stratum!].description} It continues through {new Set(strataVeins.map(mark => mark.destination)).size} matching doorway{new Set(strataVeins.map(mark => mark.destination)).size === 1 ? "" : "s"}.
         </p>}
+        {districtHandovers.length > 0 && <p data-testid="atlas-district-handovers" style={small}>
+          Threshold paving hands {DISTRICTS[room.district!].name} over to {Array.from(new Set(districtHandovers.map(mark => DISTRICTS[mark.district].name))).join(" and ")} at {new Set(districtHandovers.map(mark => mark.destination)).size} real doorway{new Set(districtHandovers.map(mark => mark.destination)).size === 1 ? "" : "s"}.
+        </p>}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16, marginBottom: 12 }}>
           <label style={small}>Water preview <select aria-label="Water preview" value={waterPreview}
             style={{ ...field, width: "auto", marginLeft: 8 }} onChange={e => setWaterPreview(e.target.value as typeof waterPreview)}>
@@ -257,6 +262,13 @@ export function WorldAtlas() {
             width={mark.size[0] * scale} height={mark.size[2] * scale}
             fill={mark.color} opacity={mark.tone === "accent" ? 0.95 : 0.72}>
             <title>{STRATUM_VEINS[mark.stratum].name} toward {mark.dir}</title>
+          </rect>)}
+          {terrain && districtHandovers.map((mark, i) => <rect key={`district-handover-${i}`} data-testid="atlas-district-handover"
+            x={(mark.position[0] - mark.size[0] / 2) * scale}
+            y={(mark.position[2] - mark.size[2] / 2) * scale}
+            width={mark.size[0] * scale} height={mark.size[2] * scale}
+            fill={mark.color}>
+            <title>{DISTRICTS[room.district!].name} to {DISTRICTS[mark.district].name} via {mark.dir}</title>
           </rect>)}
           {secretMarks && [...secretMarks.base, ...secretMarks.accents].map((mark, i) => {
             const accent = i >= secretMarks.base.length;
