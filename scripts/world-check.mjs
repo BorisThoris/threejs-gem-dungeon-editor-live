@@ -77,6 +77,7 @@ assert.equal(L.waterTravel(10, 16), 13);
 assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current or revisit phase drift");
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
 let strataLinks = 0, matchingStrataLinks = 0, strataDoors = 0, strataSeamMarks = 0;
+let strataFanMarks = 0, strataFanDoors = 0;
 let strataVeinMarks = 0, strataVeinDoors = 0;
 let districtHandoverMarks = 0, districtHandoverDoors = 0;
 const strataVeinMaterials = new Set();
@@ -650,16 +651,22 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       }
     }
     const seams = L.strataSeamsFor(r, d.rooms);
+    assert.ok(seams.length <= 52, "material contacts keep a fixed per-room mark ceiling");
     strataSeamMarks += seams.length;
     strataDoors += new Set(seams.map(mark => mark.destination)).size;
+    const fans = seams.filter(mark => mark.kind === "fan");
+    strataFanMarks += fans.length;
+    strataFanDoors += new Set(fans.map(mark => mark.destination)).size;
     for (const mark of seams) {
       const next = byId.get(mark.destination);
       assert.ok(Object.values(r.links).includes(mark.destination), "strata seams point through real open doors");
       assert.equal(next.district, r.district, "district lintels, not geology chips, own region boundaries");
       assert.notEqual(next.stratum, r.stratum, "a seam marks a real geological transition");
       assert.equal(mark.stratum, next.stratum, "the threshold previews the destination stratum");
-      assert.ok(L.insideRoom(r, mark.position[0], mark.position[2], Math.hypot(mark.size[0], mark.size[2]) / 2 + 0.02),
-        "strata chips stay on the shaped floor beside their doorway");
+      assert.ok([-1, 1].every(sx => [-1, 1].every(sz =>
+        L.insideRoom(r, mark.position[0] + sx * mark.size[0] / 2,
+          mark.position[2] + sz * mark.size[2] / 2, 0.02))),
+        "strata contact cuts stay on the true shaped floor beside their doorway");
       assert.ok(mark.position[1] + mark.size[1] / 2 - L.floorHeightAt(r, mark.position[0], mark.position[2]) < 0.05,
         "strata chips remain paint-depth and non-blocking");
     }
@@ -814,6 +821,7 @@ assert.ok(matching / links > 0.65, "most doorways continue the same district");
 assert.ok(matchingStrataLinks / strataLinks > 0.9, "connected geology continues across at least nine in ten links inside districts");
 assert.ok(strataDoors > 200 && strataSeamMarks >= strataDoors * 3, "material transitions are visibly marked at real doorways");
 assert.equal(strataVeinDoors, matchingStrataLinks, "every matching geological doorway carries a visible vein on both room faces");
+assert.equal(strataFanDoors, strataDoors, "every material transition carries its destination's contact fan");
 assert.equal(districtHandoverMarks, districtHandoverDoors * 4, "district border paving covers every open crossing");
 assert.deepEqual(Object.keys(L.STRATUM_VEINS).sort(), [...L.BIOMES].sort(), "every material owns a named continuity pattern");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
@@ -822,7 +830,7 @@ assert.equal(L.waterLevel(10, 13), 0.5);
 assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
-console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
+console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks - strataFanMarks} block-cut chips and ${strataFanMarks} contact cuts.`);
 console.log(`Stratum veins: ${strataVeinMarks} paint-depth marks carry ${strataVeinMaterials.size} material patterns through ${strataVeinDoors / 2} two-sided matching doorways.`);
 console.log(`District handovers: ${districtHandoverDoors / 2} two-sided borders carry ${districtHandoverMarks} color cuts below their named lintels.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);

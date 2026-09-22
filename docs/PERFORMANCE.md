@@ -26,10 +26,10 @@ broad slowdown.
 
 The recorded pre-strata baseline across the fixed 78-room corpus is 78 draw
 calls, 7,208 visible triangles, 87 live geometries and 10 live textures. The
-current run peaks at 85 calls, 8,072 triangles, 87 geometries and 10 textures.
+current run peaks at 85 calls, 7,400 triangles, 87 geometries and 10 textures.
 Its draw-call peak includes six Warden batches in the sampled trap room; the
 geology and district border marks share one batch. Ten repeated room laps
-showed no geometry growth, and the 590-frame sprint sample retained no heap
+showed no geometry growth, and the 429-frame sprint sample retained no heap
 after collection. Draw calls have 11 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
 submissions per room.
@@ -45,13 +45,13 @@ comparable across that environment.
 |---|---|---|
 | Dense trap rooms | Tracked | The report now attributes hot rooms to named scene owners. The 85-call trap is led by building blocks and room architecture at 1,796 triangles each; unlabelled content owns 43 smaller batches, while the active Warden adds six. Consolidating unlabelled content remains the clearest draw-call opportunity. |
 | Draw calls | Watch | The fixed corpus peaks at 85 of 96 calls in a dense trap room with the Warden present. The border handover adds no separate batch; keep new room-scale decoration in shared batches. |
-| Structural faces | Watch | A dense normal room owns the 8,072-triangle peak with 728 triangles of hard-budget headroom; the strata batch owns 864 triangles in that view. Simplify hidden or repeated construction faces before raising the budget. |
+| Structural faces | Monitored | A dense trap room owns the 7,400-triangle peak with 1,400 triangles of hard-budget headroom. The previous 8,072 peak fell when flat strata marks became planes. Simplify hidden or repeated construction faces before raising the budget. |
 | Terrain shaders | Stable | Thirteen biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
 | Biome crowns | Stable | Thirteen roof motifs remain inside the three existing architecture submissions; preserve that batching. |
 | Ambient colonies | Stable | Kiln newts and brine crabs each use two instanced submissions for a whole colony, with no individual lights or timers; the measured peak remains 78 calls. |
 | Authored irregular rooms | Stable | Four new diamond, circle, cross and hexagon compositions peak at 87 calls in direct review; the fixed 78-room corpus remains at 78 calls. |
-| Connected strata | Watch | Matching doors carry visible material veins and real transitions preview the destination with five chips. The busiest fixed room spends 864 triangles in their shared instance batch; keep the per-room mark ceiling and watch the 8,800-triangle limit. |
-| District border handovers | Stable | Four shallow pigment cuts below each real named lintel join the same strata instance batch. Native review shows both districts from inside a border room at 26 calls and 1,901 triangles; the full corpus peaks at 85 calls and 8,072 triangles. |
+| Connected strata | Stable | Matching doors carry visible material veins; real transitions preview the destination with five chips and eight inward contact cuts. Their shared plane instance batch replaces six-sided boxes and returns 672 triangles of peak headroom despite the added detail. Keep the per-room mark ceiling. |
+| District border handovers | Stable | Four shallow pigment cuts below each real named lintel join the same strata instance batch. Native review shows both districts from inside a border room at 26 calls and 1,830 triangles; the full corpus peaks at 85 calls and 7,400 triangles. |
 | Salt-pan biome | Stable | The eleventh terrain and crown variant reuses the two terrain and three architecture batches. Twelve paused-clock flakes share one extra instance draw; a furnished circular fixture uses 51 calls and the corpus peak remains 78. |
 | Salt-pan ecology | Stable | Up to four brine crabs share two instance batches. The 360-floor audit finds 513 legal homes and 35 real cracked-wall retreats; the corpus peak remains 78 calls and 7,256 triangles. |
 | Paired gallery transepts | Stable | Raised wings, ramps and terminal stations reuse the terrain surface and three architecture batches. District answers reuse one lamp and the three bounded reflection taps, with no looping voice or added node. The 360-floor audit finds 853 stations, 87 paired rooms and 21 secret-host transepts; the corpus peak remains 78 calls. |

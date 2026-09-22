@@ -66,13 +66,15 @@ try {
         room: window.__run.getState().dungeon.rooms.find(room => room.id === fixture.roomId) };
     }, fixture);
     assert.equal(result.probe.marks, fixture.marks.length, `${district} mounts every generated seam chip`);
+    assert.ok(fixture.marks.some(mark => mark.kind === "threshold") && fixture.marks.some(mark => mark.kind === "fan"),
+      `${district} material transitions show both threshold chips and inward contact fans`);
     assert.equal(result.probe.veins, fixture.veins.length, `${district} mounts every connected geological vein in the same batch`);
     assert.ok(result.probe.continuities.length > 0, `${district} exposes a matching-stratum doorway`);
     assert.ok(result.pixels > 30, `${district} seam contributes visible pixels`);
     assert.ok(result.calls < 96, `${district} seam room stays below the draw-call watch band`);
     assert.equal(result.room.district, district);
     writeFileSync(`output/world-review/strata/${district}.png`, Buffer.from(result.image.split(",")[1], "base64"));
-    console.log(`${district}: ${result.probe.destinations.length} transition doorway, ${result.probe.marks} chips and ${result.probe.veins} continuity marks, ${result.pixels} pixels, ${result.calls} calls, ${result.triangles} triangles`);
+    console.log(`${district}: ${result.probe.destinations.length} transition doorway, ${fixture.marks.filter(mark => mark.kind === "threshold").length} chips, ${fixture.marks.filter(mark => mark.kind === "fan").length} contact cuts and ${result.probe.veins} continuity marks, ${result.pixels} pixels, ${result.calls} calls, ${result.triangles} triangles`);
   }
   const border = await page.evaluate(async () => {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");

@@ -1248,3 +1248,18 @@ peaks at 85 calls, 8,072 triangles, 87 geometries and 10 textures. Ten
 repeated room laps retain no geometry, a 590-frame sprint retains 0.00 MB
 after collection, and 20,000 held-audio updates retain one voice with zero
 bytes per update.
+
+Geological contacts now reach farther than the five threshold chips. Eight
+paired cuts fan inward from each material-changing doorway, using the
+destination's course, thread, tie or tessera grammar and leaving the central
+travel line open. All 217 two-sided contacts across 360 generated floors carry
+their complete fans: 3,472 new cuts, clipped to the actual shaped floor. The
+Atlas draws the same marks, and native review shows them in all three districts.
+
+The entire geological and district-threshold batch now uses upward-facing
+planes for its paint-depth marks. The visible top remains the same while five
+unseen box faces disappear from each instance. Even with the new contact fans,
+the fixed 78-room sweep falls from 8,072 to 7,400 peak triangles. It remains
+at 85 draw calls, 87 geometries and 10 textures; ten repeated room laps retain
+no geometry, a 429-frame sprint retains 0.00 MB after collection, and 20,000
+held-audio updates retain one voice with zero bytes per update.

@@ -27,6 +27,11 @@ district's circulation marks, so building use and underlying material read as
 two related layers. Where the stratum changes, transition chips interrupt the
 vein and preview the destination material. Both systems must stay paint-depth,
 clip to the true room footprint and share one bounded instanced batch.
+The preview continues inward as a short fan in that material's course, thread,
+tie or tessera grammar. Its paired cuts occupy the doorway shoulders and leave
+the central circulation line readable. Render these flat marks as upward-facing
+planes: their visible tops are the entire authored surface, and side faces waste
+triangles without making the terrain more legible.
 
 Where a real open door joins two districts, cut four transverse handover bars
 under its named lintel. The inner pair takes the current district's pigment;

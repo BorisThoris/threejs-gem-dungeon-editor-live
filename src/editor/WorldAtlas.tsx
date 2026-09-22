@@ -209,7 +209,7 @@ export function WorldAtlas() {
           <strong>{sealedThreshold.definition.name}</strong> · {sealedThreshold.definition.description} {sealedThreshold.definition.response}
         </p>}
         {strataSeams.length > 0 && <p data-testid="atlas-strata-seams" style={small}>
-          Block-cut seams preview {new Set(strataSeams.map(mark => mark.stratum)).size} neighbouring {new Set(strataSeams.map(mark => mark.stratum)).size === 1 ? "stratum" : "strata"} at {new Set(strataSeams.map(mark => mark.destination)).size} doorway{new Set(strataSeams.map(mark => mark.destination)).size === 1 ? "" : "s"}.
+          Block-cut chips and contact fans preview {new Set(strataSeams.map(mark => mark.stratum)).size} neighbouring {new Set(strataSeams.map(mark => mark.stratum)).size === 1 ? "stratum" : "strata"} at {new Set(strataSeams.map(mark => mark.destination)).size} doorway{new Set(strataSeams.map(mark => mark.destination)).size === 1 ? "" : "s"}.
         </p>}
         {strataVeins.length > 0 && <p data-testid="atlas-strata-veins" style={small}>
           <strong>{STRATUM_VEINS[room.stratum!].name}</strong> · {STRATUM_VEINS[room.stratum!].description} It continues through {new Set(strataVeins.map(mark => mark.destination)).size} matching doorway{new Set(strataVeins.map(mark => mark.destination)).size === 1 ? "" : "s"}.
@@ -256,6 +256,13 @@ export function WorldAtlas() {
           <path d={blueprint.floor} fill="#1e2925" />
           <path d={blueprint.terraces} fill="#594a32" stroke="#b39766" strokeWidth={1} />
           {terrain && <TerrainBlueprint room={room} scale={scale} />}
+          {terrain && strataSeams.map((mark, i) => <rect key={`strata-seam-${i}`} data-testid="atlas-strata-seam"
+            x={(mark.position[0] - mark.size[0] / 2) * scale}
+            y={(mark.position[2] - mark.size[2] / 2) * scale}
+            width={mark.size[0] * scale} height={mark.size[2] * scale}
+            fill={mark.color} opacity={mark.kind === "fan" ? 0.76 : 1}>
+            <title>{BIOME[mark.stratum].name} {mark.kind === "fan" ? "contact fan" : "threshold chip"} via {mark.dir}</title>
+          </rect>)}
           {terrain && strataVeins.map((mark, i) => <rect key={`strata-vein-${i}`} data-testid="atlas-strata-vein"
             x={(mark.position[0] - mark.size[0] / 2) * scale}
             y={(mark.position[2] - mark.size[2] / 2) * scale}

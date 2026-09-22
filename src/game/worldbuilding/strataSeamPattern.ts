@@ -8,6 +8,7 @@ export interface StrataSeamMark {
   dir: Dir;
   destination: string;
   stratum: BiomeId;
+  kind: "threshold" | "fan";
   position: [number, number, number];
   size: [number, number, number];
   color: string;
@@ -81,9 +82,9 @@ export function strataVeinsFor(room: Room, rooms: readonly Room[]): StratumVeinM
 }
 
 /**
- * Block-cut chips of the next stratum at a real doorway. District boundaries
- * already own a named lintel, so these quieter floor seams only explain a
- * material change within one connected region.
+ * Block-cut chips and a short material-specific contact fan at a real doorway.
+ * District boundaries already own a named lintel; these quieter floor cuts
+ * explain a geological change within one connected region.
  */
 export function strataSeamsFor(room: Room, rooms: readonly Room[]): StrataSeamMark[] {
   if (!room.district || !room.stratum) return [];
@@ -104,8 +105,26 @@ export function strataSeamsFor(room: Room, rooms: readonly Room[]): StrataSeamMa
       const z = axis.z * (reach - inward) + across.z * side * 0.58;
       const width = axis.x ? 0.34 : 0.48, depth = axis.z ? 0.34 : 0.48;
       if (!insideRoom(room, x, z, Math.hypot(width, depth) / 2 + 0.02)) continue;
-      marks.push({ dir, destination, stratum: next.stratum,
+      marks.push({ dir, destination, stratum: next.stratum, kind: "threshold",
         position: [x, floorHeightAt(room, x, z) + 0.034, z], size: [width, 0.025, depth], color });
+    }
+    // The destination bed reaches under this room as a short contact fan.
+    // Its cuts inherit the same material grammar as continuous geology, but
+    // spread along the threshold shoulders so the central travel route stays
+    // legible. The real floor footprint trims them on concave and ring plans.
+    const mode = STRATUM_VEINS[next.stratum].mode;
+    for (let row = 0; row < 4; row++) for (const side of [-1, 1]) {
+      const along = reach - 1.48 - row * 0.86;
+      const lateral = side * (1.08 + row * 0.12);
+      const wide = mode === "thread" ? 0.13 : mode === "tie" ? 0.62 : mode === "tessera" ? 0.46 : 0.58;
+      const deep = mode === "thread" ? 0.68 : mode === "tie" ? 0.16 : mode === "tessera" ? 0.48 : 0.3;
+      const x = axis.x * along + across.x * lateral, z = axis.z * along + across.z * lateral;
+      const width = axis.x ? deep : wide, depth = axis.z ? deep : wide;
+      if (![-1, 1].every(sx => [-1, 1].every(sz =>
+        insideRoom(room, x + sx * width / 2, z + sz * depth / 2, 0.02)))) continue;
+      marks.push({ dir, destination, stratum: next.stratum, kind: "fan",
+        position: [x, floorHeightAt(room, x, z) + 0.034, z], size: [width, 0.025, depth],
+        color: TERRAIN_COLORS[next.stratum][row === 0 || row === 3 ? 0 : 1] });
     }
   }
   return marks;

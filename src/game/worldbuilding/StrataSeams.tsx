@@ -17,8 +17,10 @@ export function StrataSeams({ room }: { room: Room }) {
   useLayoutEffect(() => {
     if (!mesh.current) return;
     const pose = new Object3D();
+    pose.rotation.x = -Math.PI / 2;
     marks.forEach((mark, index) => {
-      pose.position.set(...mark.position); pose.scale.set(...mark.size); pose.updateMatrix();
+      pose.position.set(mark.position[0], mark.position[1] + mark.size[1] / 2, mark.position[2]);
+      pose.scale.set(mark.size[0], mark.size[2], 1); pose.updateMatrix();
       mesh.current!.setMatrixAt(index, pose.matrix);
       mesh.current!.setColorAt(index, new Color(mark.color));
     });
@@ -36,7 +38,7 @@ export function StrataSeams({ room }: { room: Room }) {
     return () => { delete win.__strataSeams; };
   }, [seams, veins, handovers, room.id]);
   if (!marks.length) return null;
-  return <instancedMesh name="strata-seams" ref={mesh} args={[geo("box", 1, 1, 1), undefined, marks.length]}>
+  return <instancedMesh name="strata-seams" ref={mesh} args={[geo("plane", 1, 1), undefined, marks.length]}>
     <meshStandardMaterial roughness={1} />
   </instancedMesh>;
 }
