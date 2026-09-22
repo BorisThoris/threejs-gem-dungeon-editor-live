@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T20:13:13.247Z",
+  "generatedAt": "2026-09-22T21:04:13.131Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -119,7 +119,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T20:11:59.516Z"
+        "capturedAt": "2026-09-22T21:02:59.752Z"
       },
       {
         "profile": "desktop",
@@ -128,7 +128,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T20:12:17.995Z"
+        "capturedAt": "2026-09-22T21:03:18.065Z"
       },
       {
         "profile": "full",
@@ -137,7 +137,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T20:12:54.760Z"
+        "capturedAt": "2026-09-22T21:03:54.629Z"
       },
       {
         "profile": "mobile",
@@ -146,7 +146,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T20:12:36.333Z"
+        "capturedAt": "2026-09-22T21:03:36.336Z"
       },
       {
         "profile": "og",
@@ -155,7 +155,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T20:13:13.072Z"
+        "capturedAt": "2026-09-22T21:04:12.956Z"
       }
     ]
   },
@@ -210,7 +210,7 @@
   "metrics": {
     "sourceFiles": 380,
     "testFiles": 1,
-    "sourceLines": 68191,
+    "sourceLines": 68252,
     "largestDirectories": [
       {
         "directory": "src",
@@ -249,10 +249,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "11c4c5e",
-    "lastCommitDate": "2026-09-22T23:06:31+03:00",
-    "lastCommitSubject": "Give real thresholds directional approach sounds",
-    "commitCount": 452,
+    "head": "b20d085",
+    "lastCommitDate": "2026-09-22T23:55:37+03:00",
+    "lastCommitSubject": "Carry watercourse silt banks through shaped rooms",
+    "commitCount": 454,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
