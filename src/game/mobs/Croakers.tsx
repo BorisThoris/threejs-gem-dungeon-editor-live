@@ -157,8 +157,9 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
           }}
           position={[s.x, floorHeightAt(room, s.x, s.z) + 0.045, s.z]}
           rotation={[0, Math.atan2(-s.x, -s.z), 0]}
+          scale={1.16}
         >
-          <mesh geometry={geo("croaker")} material={mat({ color: "#70894d", roughness: 1 })} />
+          <mesh geometry={geo("croaker")} material={mat({ color: "#849b58", roughness: 1 })} />
           <group ref={el => { throats.current[i] = el; }} position={[0, .16, .245]}>
             <mesh scale={[.23, .14, .09]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#c5ce91", roughness: 1 })} />
           </group>

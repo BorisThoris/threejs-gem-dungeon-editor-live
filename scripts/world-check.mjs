@@ -89,7 +89,7 @@ const biomes = new Set();
 const identities = new Set();
 const crowns = new Set();
 let crownBlocks = 0;
-let migratingToads = 0;
+let migratingToads = 0, bankToads = 0;
 const terraceDirs = new Set();
 let terraceCount = 0;
 let galleryTermini = 0, pairedGalleryRooms = 0, secretTransepts = 0;
@@ -652,7 +652,13 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     for (const habitat of L.croakerHabitats(r, L.croakersFor(r, d.seed), d.seed)) {
       if (habitat.refugeBed) assert.ok(L.terrainFor(r).deposits.some(tile =>
         Math.abs(tile.position[0] - habitat.refuge.x) < 1e-6 && Math.abs(tile.position[2] - habitat.refuge.z) < 1e-6), "toad bed refuges occupy visible terrain deposits");
-      if (habitat.followsChannel) migratingToads++;
+      if (habitat.followsChannel) {
+        migratingToads++;
+        assert.ok(L.terrainFor(r).deposits.some(tile => tile.bank &&
+          Math.abs(tile.position[0] - habitat.wet.x) < 1e-6 && Math.abs(tile.position[2] - habitat.wet.z) < 1e-6),
+        "feeding toads stand on rendered silt banks, not unseen water edges");
+        if (r.district === "gardens" && r.biome === "mossy") bankToads++;
+      }
       assert.ok(L.insideRoom(r, habitat.wet.x, habitat.wet.z, 0.25) && L.insideRoom(r, habitat.refuge.x, habitat.refuge.z, 0.25));
       assert.ok(L.roomSegmentClear(r, habitat.wet.x, habitat.wet.z, habitat.refuge.x, habitat.refuge.z, 0.25), "toad migration never crosses a room wall");
       if (habitat.followsChannel) for (const prop of L.placementsFor(r, d.seed).filter(p => L.PROP_SPECS[p.kind].solid)) {
@@ -856,7 +862,8 @@ console.log(`Sealed thresholds: ${sealedThresholds} hidden routes use ${sealedTh
 assert.deepEqual(L.BIOMES.filter(biome => !crowns.has(biome)), [], "all biome crown traditions occur in the generated world");
 console.log(`Biome crowns: ${crownBlocks} purposeful overhead blocks across ${crowns.size} material traditions.`);
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);
-  console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
+console.log(`Architecture/ecology: ${identities.size} place identities, ${migratingToads} toads with clear channel-to-refuge routes.`);
+console.log(`Silt-bank ecology: ${bankToads} Rootwater moss toads feed on connected watercourse banks.`);
   assert.ok(wallTurns > 1000, "animals actively turn along walls across generated room shapes");
   console.log(`Ambient movement: ${wallTurns} legal turns away from chamber boundaries.`);
 assert.ok(matching / links > 0.65, "most doorways continue the same district");

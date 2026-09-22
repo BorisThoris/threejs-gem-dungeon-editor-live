@@ -265,6 +265,11 @@ front toes, pale throat and amber eyes; only the throat inflates when calling.
 Their wall habitat candidates follow the actual room footprint. Refuges and
 migration paths use the same furniture seed as the rendered room and clear the
 whole body. Noise still makes them dive, and draining still sends them to cover.
+Where a real watercourse crosses Rootwater moss, toads also feed on its visible
+silt banks; dry moss elsewhere remains beetle country. Feeding points must be
+actual bank cells, with a clear retreat to a separate damp bed or wall refuge.
+Keep the body broad and light enough to recognize at standing eye height,
+without adding a creature light or a smooth imported skin.
 
 `npm run test:creatures` checks all seventeen creature types in generated rooms
 using native Chrome rendering. It compares frames with and without creature

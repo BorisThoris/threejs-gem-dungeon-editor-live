@@ -95,7 +95,11 @@ export function roostFor(room: Room, seed: number): Spot | null {
  */
 export function croakersFor(room: Room, seed: number): Spot[] {
   if (!RAT_KINDS.has(room.kind)) return [];
-  if (!livesHere("croaker", room, seed)) return [];
+  // Rootwater's moss becomes a wet feeding ground where the actual
+  // watercourse cuts it. Dry moss elsewhere keeps its beetle ecology.
+  const bankColony = room.waterway && room.district === "gardens" &&
+    biomeIdFor(room.kind, room.id, seed, room) === "mossy";
+  if (!livesHere("croaker", room, seed) && !bankColony) return [];
   const rng = createRng(`${seed}:${room.id}:croakers`);
   const count = 2 + Math.floor(rng() * 3);
   const solid = placementsFor(room, seed).filter((p) => PROP_SPECS[p.kind].solid);

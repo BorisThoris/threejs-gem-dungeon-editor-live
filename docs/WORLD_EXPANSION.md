@@ -1297,3 +1297,19 @@ The isolated 78-room performance sweep peaks at 79 calls, 7,248 triangles,
 87 geometries and 10 textures; ten revisited rooms add no geometry, a
 574-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
 updates retain one voice with zero bytes per update.
+
+Toads now use those banks as real feeding ground. Their former fixed offset
+from a channel could leave them hovering beside the newly drawn silt; each
+feeding point now lands on a rendered bank cell with a clear route back to an
+independent damp refuge. Rootwater moss rooms gain frogs only where the
+generated watercourse actually passes, while ordinary dry moss retains its
+beetle ecology. The frog's block-cut body is slightly broader and lighter in
+the room's practical light. Across the 360-floor audit, 818 toads have clear
+channel-to-refuge routes, including 62 new moss-bank feeders. Native browser
+checks confirm gathering, drainage retreat, pause, revisit and dry silence;
+the creature render sweep confirms all 17 types contribute visible pixels,
+with the frog changing 7,735 pixels at standing eye height.
+The latest isolated 78-room sweep peaks at 79 draw calls, 7,248 triangles,
+93 geometries and 10 textures; ten repeated room laps add no geometry, a
+613-frame sprint retains 0.00 MB after collection, and 20,000 held-audio
+updates retain one voice with zero bytes per update.

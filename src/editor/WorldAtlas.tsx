@@ -422,6 +422,9 @@ export function WorldAtlas() {
         {lighting && <p style={small}>{lamps.length} hanging passage {lamps.length === 1 ? "lamp" : "lamps"} · gold diamonds show fixtures; spacing follows passage length. Arrows follow the current; dashed arrows remain as marks after drainage.</p>}
         <GallerySection room={room} probe={{ x: probeX, z: probeZ }} onProbe={moveProbe} />
         {ecology && <p style={small}>Green dots: toads · dotted paths: clear retreat routes · tan brackets: rat shelters · pale squares: bellcaps · violet diamonds: shardbacks · orange lizards: kiln newts · pale hexagons: brine crabs · green split shells: copperbacks · amber wicks: wicklings · dashed rings: raised-lantern range; walls still block exposure. This preview changes the diagram only.</p>}
+        {ecology && habitats.some(home => home.followsChannel) && <p style={small}>
+          {habitats.filter(home => home.followsChannel).length} toad{habitats.filter(home => home.followsChannel).length === 1 ? "" : "s"} feed on the visible silt banks and retreat to separate damp refuges when the channel drains.
+        </p>}
         {colonies.length > 0 && <p style={small}>{colonies.length} bellcap {colonies.length === 1 ? "colony" : "colonies"} on this channel bank. {dormant
           ? "Draining collapses the caps and prevents further spore bursts."
           : `Lower the lantern one band or retreat during the ${BELLCAP_WARNING}-second warning. Bursts carry sound through the room graph; recovery lasts ${BELLCAP_COOLDOWN} seconds.`}</p>}
