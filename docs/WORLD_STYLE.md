@@ -90,13 +90,20 @@ Their wall habitat candidates follow the actual room footprint. Refuges and
 migration paths use the same furniture seed as the rendered room and clear the
 whole body. Noise still makes them dive, and draining still sends them to cover.
 
-`npm run test:creatures` checks all twelve creature types in generated rooms
+`npm run test:creatures` checks all thirteen creature types in generated rooms
 using native Chrome rendering. It compares frames with and without creature
 meshes while preserving scene lights, and saves standing-eye-height review
 images in `output/creature-review`. This checks representative visible states;
 intentional hiding, spawning conditions and behavioral transitions have separate
 world and ecology checks. The ash-mite render fixture also makes a loud footfall
 and verifies that the visible colony burrows as one.
+
+Crystal fauna belongs to crystal terrain. Shardbacks use squat block-cut bodies
+and paired rectangular plates, graze only actual resonance-ring cells and never
+appear in memory trials where crystals already form a puzzle language. Their
+silhouette, rising plates and three rough glass notes carry the warning; no
+particle cloud, dynamic light or smooth imported surface should replace that
+handmade read. A whole colony remains two instanced draw calls.
 
 Bats hang with folded angular wings and pointed ears, then open their wings
 and wheel below the ceiling when disturbed. The flock uses two instanced mesh

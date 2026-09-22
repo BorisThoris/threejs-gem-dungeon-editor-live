@@ -24,12 +24,12 @@ broad slowdown.
 | Live textures | 16 | Finds duplicate or unbounded procedural surfaces. |
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
-Current measured baseline across the fixed 78-room corpus: 82 draw calls,
-6,945 visible triangles, 93 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the sprint sample left
-0 MB retained after collection. Draw calls are already in the watch band; the
-next broad visual layer should reuse an existing batch or remove an equivalent
-submission elsewhere.
+Current measured baseline across the fixed 78-room corpus: 78 draw calls,
+6,789 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 1,085-frame sprint
+sample retained no heap after collection. Draw calls remain below the watch band
+with 18 calls of hard-budget headroom. New ecology should keep using fixed
+instanced batches, as the shardback colony does with two submissions per room.
 
 Frame rate is recorded only as a liveness observation. The automated browser
 often uses a software rasterizer, so its frames per second do not predict a

@@ -14,23 +14,24 @@ try{
   const {croakersFor,ratsFor,roostFor,mothRoom}=await import('/src/game/mobs/ambient.ts');
   const {beetlesFor}=await import('/src/game/mobs/beetleHabitat.ts');
   const {mitesFor}=await import('/src/game/mobs/miteHabitat.ts');
+  const {shardbacksFor}=await import('/src/game/mobs/shardbackHabitat.ts');
   const {keeperPostsFor}=await import('/src/game/keeper/posts.ts');
   const found={};
   for(let seed=1;seed<80;seed++){
    const d=generateDungeon({seed,floor:3});
    for(const r of d.rooms){
-    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
+    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,shardbacks:shardbacksFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
     for(const [k,v]of Object.entries(conditions))if(v&&!found[k])found[k]={d,r};
    }
-   if(Object.keys(found).length===8)return found;
+   if(Object.keys(found).length===9)return found;
   }throw Error('missing habitat');
  });
- const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
+ const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{
    const {d,r}=f; (await import('/src/game/din/din.ts')).reset();
-   window.__run.setState({dungeon:d,currentRoomId:r.id,floor:3,phase:'playing',paused:false,inputLocks:0,transitioning:false,waterOpenedAt:null,glim:kind==='beetles'?0:90,oil:100,litUntil:kind==='wisp'?1e9:0,wardenRoomId:kind==='warden'?r.id:null,wardenAwake:kind==='warden',harrierAwake:kind.startsWith('harrier'),harrierSlain:!kind.startsWith('harrier'),harrierDownedUntil:kind==='harrierDown'?1e9:0,reaperAwake:kind==='reaper',thiefPhase:kind==='cutpurse'?'stalking':'away',invulnerableUntil:1e9,alarm:0});
+   window.__run.setState({dungeon:d,currentRoomId:r.id,floor:3,phase:'playing',paused:false,inputLocks:0,transitioning:false,waterOpenedAt:null,glim:['beetles','shardbacks'].includes(kind)?0:90,oil:100,litUntil:kind==='wisp'?1e9:0,wardenRoomId:kind==='warden'?r.id:null,wardenAwake:kind==='warden',harrierAwake:kind.startsWith('harrier'),harrierSlain:!kind.startsWith('harrier'),harrierDownedUntil:kind==='harrierDown'?1e9:0,reaperAwake:kind==='reaper',thiefPhase:kind==='cutpurse'?'stalking':'away',invulnerableUntil:1e9,alarm:0});
    window.__bus.emit('teleport',{position:[0,1.5,0]});
   },{f:fixtures[kind]??(kind==='batFlight'?fixtures.bat:fixtures.actors),kind});
   await page.waitForFunction(name=>!!window.__scene.getObjectByName(name),name);
@@ -44,6 +45,7 @@ try{
    obj.traverse(o=>{if(o.isInstancedMesh)o.computeBoundingBox();});
    const box=new T.Box3().setFromObject(obj),center=box.getCenter(new T.Vector3());
    if(kind==='beetles'){const p=window.__beetles.poses[0];center.set(p.x,p.y,p.z);}
+   if(kind==='shardbacks'){const p=window.__shardbacks.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='bat'){
     const timber=new T.Box3().setFromObject(scene.getObjectByName('bat-roost-timber'));
     if(Math.abs(box.max.y-timber.min.y)>.01)throw Error('roosting bats must hang directly beneath their timber perch');
@@ -99,6 +101,34 @@ try{
    assert.equal(reaction.burrows,1,'the colony announces one shared burrow response');
    await page.evaluate(()=>window.__run.getState().pause());
   }
+  if(kind==='shardbacks'){
+   await page.evaluate(()=>{
+    window.__shardbackEvents={warning:0,chime:0};
+    window.__bus.on('shardbacksWarning',()=>window.__shardbackEvents.warning++);
+    window.__bus.on('shardbacksChimed',()=>window.__shardbackEvents.chime++);
+    const p=window.__shardbacks.poses[0],s=window.__run.getState();
+    window.__bus.emit('teleport',{position:[p.x,1.5,p.z]});
+    window.__run.setState({glim:90});s.resume();
+   });
+   await page.waitForFunction(()=>window.__shardbacks?.charge>.2);
+   const frozen=await page.evaluate(()=>{window.__run.getState().pause();return window.__shardbacks.charge;});
+   await page.waitForTimeout(300);
+   assert.equal(await page.evaluate(()=>window.__shardbacks.charge),frozen,'paused shardbacks freeze their warning charge');
+   await page.evaluate(()=>{window.__run.setState({glim:0});window.__run.getState().resume();});
+   await page.waitForFunction(()=>window.__shardbacks?.charge===0);
+   assert.equal(await page.evaluate(()=>window.__shardbackEvents.chime),0,'lowering the lantern cancels the warning');
+   await page.evaluate(()=>window.__run.setState({glim:90}));
+   await page.waitForFunction(()=>window.__shardbacks?.cooling===true,null,{timeout:5000});
+   const response=await page.evaluate(async()=>{
+    const din=await import('/src/game/din/din.ts'),s=window.__run.getState();
+    return {events:window.__shardbackEvents,charge:window.__shardbacks.charge,cooling:window.__shardbacks.cooling,
+      heard:din.snapshot(s.currentRoomId).some(signal=>signal.source==='shardbacksChimed'&&signal.tags.includes('loud'))};
+   });
+   assert.deepEqual(response.events,{warning:2,chime:1},'the colony warns once per approach and chimes once after a renewed warning');
+   assert.ok(response.cooling&&response.charge===0,'the chime folds the colony into cooldown');
+   assert.ok(response.heard,'the shardback chime enters the room Din');
+   await page.evaluate(()=>window.__run.getState().pause());
+  }
  }
- assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 12 creature types contribute visible pixels in native room lighting');
+ assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 13 creature types contribute visible pixels in native room lighting');
 }finally{await browser.close();}

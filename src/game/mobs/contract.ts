@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  shardback: {
+    name: "shardbacks", role: "ambient", body: "ground",
+    lives: "They graze the resonance rings of crystal chambers, except the authored memory trials where every crystal is part of the puzzle.",
+    harm: "alarm", answers: ["lower the lantern during their warning", "back away before their plates finish rising", "a blast makes the ring answer immediately"],
+    voice: { held: null, moments: ["shardChime"] }, events: ["shardbacksWarning", "shardbacksChimed"],
+    lesson: "shardback", component: "mobs/Shardbacks.tsx", probe: "__shardbacks", tell: false,
+  },
   mite: {
     name: "ash mites", role: "ambient", body: "ground",
     lives: "They comb the soft windrows beneath old flues and vanish into the ash when a loud signal reaches the room.",

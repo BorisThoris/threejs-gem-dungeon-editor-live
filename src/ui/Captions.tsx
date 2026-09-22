@@ -56,6 +56,8 @@ export function Captions() {
       bus.on("bellcapWarning", () => say("The bellcaps swell toward your light. Lower the lantern or step away.")),
       bus.on("bellcapBurst", () => say("The bellcaps pop. Spores hiss across the channel.")),
       bus.on("beetlesScattered", () => say("Tiny wings fold beneath the bellcaps. Their glow fades.")),
+      bus.on("shardbacksWarning", () => say("Crystal plates lift with a thin rising note.")),
+      bus.on("shardbacksChimed", () => say("The resonance ring answers in one bright peal.")),
       bus.on("waterCacheTaken", () => say("The dry seal lifts; gems chime inside.")),
       bus.on("wardenWoke", () => say("Something wakes, far off")),
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),

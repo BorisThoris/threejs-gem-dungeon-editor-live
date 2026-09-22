@@ -78,6 +78,7 @@ export function DinDriver() {
       bus.on("snareSprung", () => strike("snareSprung", null)),
       bus.on("batsRoused", () => strike("batsRoused", null)),
       bus.on("croakersDove", ({ roomId }) => strike("splash", roomId)),
+      bus.on("shardbacksChimed", ({ roomId, x, z }) => strike("shardbacksChimed", roomId, x, z)),
       bus.on("barBroken", () => strike("barBroken", null)),
       bus.on("doorBarred", ({ roomId }) => strike("doorBarred", roomId)),
       bus.on("vaultOpened", ({ roomId }) => strike("vaultOpened", roomId)),

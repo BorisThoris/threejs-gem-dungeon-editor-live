@@ -30,6 +30,7 @@ import type { Cone, Rung } from "./rungs";
  *   vocabulary as the thing that kills you.
  */
 export const CAPS: Record<ReceiverId, AlertCap> = {
+  shardback: { max: 2, min: 0, floorAfterPeak: false },
   mite: { max: 2, min: 0, floorAfterPeak: false },
   beetle: { max: 2, min: 0, floorAfterPeak: false },
   /** The foreman. It commits, and it remembers the floor. */

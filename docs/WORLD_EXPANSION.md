@@ -809,3 +809,23 @@ persistence; the representative learned room uses 39 calls, 2,542 triangles,
 peaks at 78 calls, 6,661 triangles, 87 geometries and 10 textures. Ten repeated
 room laps show no geometry growth, 1,501 sprint frames retain no heap after
 collection, and 20,000 held-audio updates retain one voice.
+
+Crystal resonance rings now support shardbacks: small mineral grazers placed on
+the actual rendered deposit cells, clear of furniture and the room crossing.
+Memory trials exclude them so the authored puzzle crystals keep one meaning. A
+raised lantern within 4.5 metres lifts the colony's paired plates over a
+1.6-second warning; lowering the lantern or leaving cancels it. If the warning
+finishes, the ring answers with a panned three-note chime that enters the Din and
+can alert the room. A blast produces the same immediate response. The colony
+then folds for nine seconds. Bodies and plates remain two instanced draw calls,
+with no creature lights or per-animal timers. The World atlas draws each home,
+its blocked-by-walls light range and the same counterplay used in the game.
+
+The generation sweep finds 75 valid shardback homes across 4,539 shaped rooms.
+Native Chrome verifies visible pixels, pause freezing, lantern cancellation, one
+warning and chime per completed approach, cooldown and the resulting Din signal.
+All 53 procedural cues remain audible. The 78-room performance sweep peaks at
+78 draw calls, 6,789 triangles, 87 geometries and 10 textures, within the
+96 / 8,800 / 112 / 16 budgets. Ten repeated room laps add no geometries, 1,085
+sprint frames retain no heap after collection, and 20,000 held-audio updates
+retain one voice.

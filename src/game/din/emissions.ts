@@ -43,6 +43,8 @@ export const EMISSIONS = {
   grateDrop: { tags: ["loud", "metal"], magnitude: 0.7 },
   /** A roost going up: the answer to a noise is a bigger noise. */
   batsRoused: { tags: ["loud"], magnitude: 0.7 },
+  /** Raised crystal plates returning the lantern as one room-wide peal. */
+  shardbacksChimed: { tags: ["loud"], magnitude: 0.4 },
   /** Staves and hoops giving way. */
   propBroken: { tags: ["loud", "broken"], magnitude: 0.6 },
   /** Wood off stone, and the Warden's own doing half the time. */

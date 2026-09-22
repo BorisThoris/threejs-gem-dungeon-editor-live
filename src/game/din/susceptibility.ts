@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  shardback: {
+    answers: { bright: 0.35, blast: 0.1 },
+    deaf: ["loud"],
+    tell: "Bright light raises their crystal plates. Lower it or leave before the ring answers.",
+  },
   mite: {
     answers: { loud: 0.3, blast: 0.1 },
     deaf: ["bright"],

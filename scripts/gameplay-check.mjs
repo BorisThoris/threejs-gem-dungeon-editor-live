@@ -17,7 +17,7 @@ await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node"
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
 const summary = [];
-let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0, arrivals = 0;
+let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0, galleryOcclusions = 0, arrivals = 0;
 for (const floor of [1, 2, 3]) {
   let area = 0, wings = 0, rooms = 0, irregular = 0, galleries = 0, shifted = 0;
   for (let seed = 1; seed <= 120; seed++) {
@@ -77,24 +77,30 @@ for (const floor of [1, 2, 3]) {
         }
         assert.ok(Math.hypot(x - target.x, z - target.z) <= 0.11, "closed gallery is reachable from the chamber");
         assert.ok(!L.roomSegmentClear(room, x, z, target.x + axis.x * 2, target.z + axis.z * 2, 0.6), "closed gallery ends in a solid wall");
-        const hidden = { x: room.size / 2 - 1, z: room.size / 2 - 1 };
-        if (axis.x) { hidden.x = axis.x * (room.size / 2 - 1); hidden.z *= shift > 0 ? -1 : 1; }
-        else { hidden.z = axis.z * (room.size / 2 - 1); hidden.x *= shift > 0 ? -1 : 1; }
-        if (room.shape !== "square") {
-          const reach = L.floorReach(room, Math.atan2(hidden.z, hidden.x)) - 1.5;
-          const scale = reach / Math.hypot(hidden.x, hidden.z);
-          hidden.x *= scale; hidden.z *= scale;
+        // Search the room's actual floor instead of inventing a box corner.
+        // A cross chamber has no diagonal corner, so radial scaling could pull
+        // the old sample back into direct view and test a point the shape does
+        // not mean to have. An occluded legal point marks a real bend.
+        let hidden = null;
+        findHidden: for (const rect of L.floorRects(room))
+          for (let hx = rect.x - rect.width / 2 + 1; hx <= rect.x + rect.width / 2 - 1; hx += 1)
+            for (let hz = rect.z - rect.depth / 2 + 1; hz <= rect.z + rect.depth / 2 - 1; hz += 1) {
+              if (L.insideRoom(room, hx, hz, 0.6) && !L.roomSegmentClear(room, x, z, hx, hz, 0.6)) {
+                hidden = { x: hx, z: hz }; break findHidden;
+              }
+          }
+        if (hidden) {
+          galleryOcclusions++;
+          let gx = edgeX, gz = edgeZ;
+          for (let i = 0; i < 1500 && Math.hypot(gx - hidden.x, gz - hidden.z) > 0.11; i++) {
+            const heading = L.steerInRoom(room, gx, gz, hidden.x, hidden.z, [], 0);
+            const step = Math.min(0.1, Math.hypot(gx - hidden.x, gz - hidden.z));
+            const next = L.roomStep(room, gx, gz, heading.dx * step, heading.dz * step);
+            assert.ok(L.roomSegmentClear(room, gx, gz, ...next, 0.6), "shifted-gallery pursuit stays on real floor");
+            [gx, gz] = next;
+          }
+          assert.ok(Math.hypot(gx - hidden.x, gz - hidden.z) <= 0.11, "pursuers route out through an occluded gallery mouth");
         }
-        assert.ok(!L.roomSegmentClear(room, x, z, hidden.x, hidden.z), "gallery corner can break chamber sight");
-        let gx = edgeX, gz = edgeZ;
-        for (let i = 0; i < 1500 && Math.hypot(gx - hidden.x, gz - hidden.z) > 0.11; i++) {
-          const heading = L.steerInRoom(room, gx, gz, hidden.x, hidden.z, [], 0);
-          const step = Math.min(0.1, Math.hypot(gx - hidden.x, gz - hidden.z));
-          const next = L.roomStep(room, gx, gz, heading.dx * step, heading.dz * step);
-          assert.ok(L.roomSegmentClear(room, gx, gz, ...next, 0.6), "shifted-gallery pursuit stays on real floor");
-          [gx, gz] = next;
-        }
-        assert.ok(Math.hypot(gx - hidden.x, gz - hidden.z) <= 0.11, "pursuers route out through the shifted gallery mouth");
       }
       for (const dir of L.DIRS.filter((dir) => room.links[dir])) {
         assert.equal(L.corridorOffset(room, dir), 0, "linked travel entrances remain centred");
@@ -236,7 +242,8 @@ assert.ok(!L.clearShove(crossRoom, { x: 3.49, z: -10.102 }, { x: 3.52, z: -9.802
 const swept = L.roomStep(crossRoom, 0, -18, 18, 18);
 assert.ok(L.roomSegmentClear(crossRoom, 0, -18, ...swept, 0.6));
 assert.ok(summary[1].shifted > 0 && summary[2].shifted > 0, "deeper floors contain genuinely asymmetric galleries");
-console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, arrivals }));
+assert.ok(galleryOcclusions > 0, "closed galleries create real occluded chamber positions where their shapes allow it");
+console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, galleryOcclusions, arrivals }));
 if (process.argv.includes("--geometry-only")) process.exit(0);
 
 const softwareGL = process.env.SOFTWARE_GL === "1" || process.platform !== "win32";

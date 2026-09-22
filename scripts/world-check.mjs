@@ -21,7 +21,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat", "mobs/miteHabitat",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -70,6 +70,7 @@ let serviceTrails = 0;
 let colonies = 0;
 let beetles = 0;
 let mites = 0;
+let shardbacks = 0;
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
@@ -320,6 +321,22 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         assert.ok(L.insideRoom(r, pose.x, pose.z, 0.2), "ash mites remain inside their windrow while combing and burrowing");
       }
     }
+    for (const home of L.shardbacksFor(r)) {
+      shardbacks++;
+      assert.equal(r.biome, "crystal", "shardbacks only graze crystal chambers");
+      assert.ok(L.BIOME[r.biome].life.includes("shardback"), "the crystal biome declares its shardback ecology");
+      assert.ok(L.insideRoom(r, home.x, home.z, 0.45), "shardback bodies fit their shaped room");
+      assert.ok(L.terrainFor(r).deposits.some(tile =>
+        Math.abs(tile.position[0] - home.x) < 1e-6 && Math.abs(tile.position[2] - home.z) < 1e-6),
+      "shardback homes occupy actual rendered resonance-ring cells");
+      for (const prop of L.placementsFor(r, r.seed).filter(p => L.PROP_SPECS[p.kind].solid))
+        assert.ok(Math.hypot(home.x - prop.x, home.z - prop.z) >= L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.65,
+          "shardback homes clear solid furnishings");
+      for (const folded of [0, 1]) for (let time = 0; time < 10; time += 0.5) {
+        const pose = L.shardbackPose(home, time, folded);
+        assert.ok(L.insideRoom(r, pose.x, pose.z, 0.3), "shardbacks stay on their ring while grazing and folding");
+      }
+    }
     for (const dir of L.DIRS.filter(dir => r.wingProfiles?.[dir] === "apse")) {
       apses++; apseDirs.add(dir);
       assert.ok(!r.links[dir] && r.secret?.dir !== dir && r.district !== "works");
@@ -445,11 +462,13 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
 assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
+assert.ok(shardbacks > 50, `shardbacks occupy crystal resonance rings: ${shardbacks}`);
 assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
 console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
 console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
 console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
+console.log(`Shardbacks: ${shardbacks} grazers grounded in clear resonance-ring cells.`);
 assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
 console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);
 assert.ok(colonies > 100, `bellcap colonies occupy the channel ecosystem: ${colonies}`);

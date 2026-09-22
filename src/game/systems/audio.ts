@@ -833,6 +833,12 @@ export const sfx = {
     noiseBurst(0.14, 0.14, 2100, pan);
     tone(690, 0.12, "triangle", 0.14, 420, pan);
   },
+  /** Three imperfect glass notes: the whole resonance ring answering at once. */
+  shardChime(pan = 0) {
+    tone(740, 0.28, "triangle", 0.12, 520, pan);
+    later(75, () => tone(1110, 0.35, "triangle", 0.1, 760, pan));
+    later(145, () => tone(1480, 0.25, "triangle", 0.08, 980, pan));
+  },
   bellcapWarning(pan = 0) {
     tone(310, 0.45, "triangle", 0.09, 470, pan);
   },
