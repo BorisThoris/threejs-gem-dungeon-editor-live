@@ -8665,7 +8665,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const quiet = panel();
     // The floor runs out of patience and the thing that cannot be
     // outwalked is in the room.
-    run.setState({ reaperAwake: true, wardenRoomId: run.getState().currentRoomId, alarm: 4 });
+    run.setState({ reaperAwake: true, reaperRoomId: window.__run.getState().currentRoomId, wardenRoomId: run.getState().currentRoomId, alarm: 4 });
     let loud = quiet;
     for (let i = 0; i < 40; i++) {
       loud = panel();

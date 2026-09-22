@@ -18,11 +18,8 @@ import type { Cone, Rung } from "./rungs";
  *
  * Two rows are the design stated as data:
  *
- *   The Reaper is pinned at the top. Min and max are both the engage rung,
- *   so it never rises because it was never not risen and it can never be
- *   slid back down. It answers to nothing in the Din and it is always
- *   hunting here, and between those two rows there is nothing left to
- *   write about it anywhere else.
+ *   The Reaper commits immediately on sight, but can now lose the trail
+ *   like the other pursuers. It still ignores distractions in the Din.
  *
  *   The moth's max is 1. It notices, it drifts, and there is no state in
  *   which it is a threat - but it is on the same ladder as everything
@@ -47,8 +44,8 @@ export const CAPS: Record<ReceiverId, AlertCap> = {
   sentry: { max: 3, min: 1, floorAfterPeak: false },
   /** It commits - to your satchel - and it is shy afterwards. */
   cutpurse: { max: 3, min: 0, floorAfterPeak: false },
-  /** Pinned. See above. */
-  reaper: { max: 3, min: 3, floorAfterPeak: false },
+  /** Immediate sight reaction is reported by its body; a lost trail can cool. */
+  reaper: { max: 3, min: 0, floorAfterPeak: false },
   /** Scatters and settles. It never comes for you. */
   rat: { max: 2, min: 0, floorAfterPeak: false },
   /** It notices a light. That is the whole creature. */

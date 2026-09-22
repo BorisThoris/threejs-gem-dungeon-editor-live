@@ -279,7 +279,7 @@ try {
   await page.waitForFunction(() => window.__run.getState().shoveReadyAt > window.__derived.clock());
   console.log("PASS controller RT shove");
   await page.evaluate(() => { window.testPad = null; });
-  await page.evaluate(() => window.__run.setState({ paused: true, shoveReadyAt: 0, gems: 10, thiefPhase: "stalking" }));
+  await page.evaluate(() => window.__run.setState({ paused: true, shoveReadyAt: 0, gems: 10, thiefPhase: "stalking", thiefRoomId: window.__run.getState().currentRoomId }));
   await page.waitForFunction(() => document.querySelector('[data-testid="shove-status"]')?.textContent.includes("SHOVE button"));
   assert.match(await page.locator('[data-testid="hud-cutpurse"]').innerText(), /face it and shove/);
   assert.match(await page.locator('[data-testid="hud-gems"]').innerText(), /find the stairs/);
@@ -309,7 +309,7 @@ try {
     const { cutpurseAt } = await import("/src/game/thief/position.ts");
     const run = window.__run, id = run.getState().currentRoomId;
     const reset = () => run.setState({ shoveReadyAt: 0, harrierRetreatUntil: 0, wardenStaggerUntil: 0, wardenWounds: 0,
-      wardenRoomId: id, harrierAwake: true, harrierSlain: false });
+      wardenRoomId: id, harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false });
     Object.assign(playerAt, { x: 0, z: 0 });
     Object.assign(harrierAt, { x: 0, z: -2, roomId: id, away: false, down: false });
     Object.assign(wardenAt, { x: 0, z: -2, roomId: id });
@@ -354,11 +354,11 @@ try {
     run.getState().shove(axis.x, axis.z);
     const keeper = { notice, stalled: window.__derived.keeper().stalled };
     Object.assign(reaperAt, { ...post, roomId });
-    run.setState({ reaperAwake: true, shoveReadyAt: 0 });
+    run.setState({ reaperAwake: true, reaperRoomId: window.__run.getState().currentRoomId, shoveReadyAt: 0 });
     run.getState().shove(axis.x, axis.z);
     const reaper = { notice, stalled: window.__derived.reaper().stalled };
     Object.assign(harrierAt, { ...post, roomId, away: false, down: false });
-    run.setState({ harrierAwake: true, harrierSlain: false, shoveReadyAt: 0, harrierRetreatUntil: 0 });
+    run.setState({ harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false, shoveReadyAt: 0, harrierRetreatUntil: 0 });
     run.getState().shove(axis.x, axis.z);
     const mixed = { notice, retreat: run.getState().harrierRetreatUntil > window.__derived.clock() };
     off();
@@ -386,7 +386,7 @@ try {
     const key = dungeon.keyRoomId === roomId ? keyFor(room, dungeon.seed) : null;
     const post = sentryFor(room, dungeon.seed, 3, key ? [key] : []).at;
     run.setState({ dungeon, currentRoomId: roomId, floor: 3, transitioning: false, paused: false, inputLocks: 0,
-      wardenRoomId: null, thiefPhase: "away", harrierAwake: true, harrierSlain: false, broken: [] });
+      wardenRoomId: null, thiefPhase: "away", harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false, broken: [] });
     let notice = "";
     const off = window.__bus.on("notice", (line) => { notice = line; });
     const shove = (offset) => {
@@ -625,7 +625,7 @@ try {
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   const arrival = await page.evaluate(() => {
     delete window.__harrier;
-    window.__run.setState({ floor: 2, harrierAwake: true, harrierSlain: false, harrierRetreatUntil: 0, lives: 3, lastDamageAt: -100 });
+    window.__run.setState({ floor: 2, harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false, harrierRetreatUntil: 0, lives: 3, lastDamageAt: -100 });
     return window.__derived.clock();
   });
   await page.waitForFunction(() => window.__harrier?.room === window.__run.getState().currentRoomId);
@@ -646,7 +646,7 @@ try {
         off();
       }
     });
-    window.__run.setState({ floor: 2, harrierAwake: true, harrierSlain: false,
+    window.__run.setState({ floor: 2, harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false,
       harrierRetreatUntil: 0, shoveReadyAt: 0, lives: 3, lastDamageAt: -100 });
   });
   await page.waitForFunction(() => window.__run.getState().paused, null, { timeout: 10000 });

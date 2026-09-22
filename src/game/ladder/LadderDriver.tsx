@@ -49,7 +49,7 @@ export function LadderDriver() {
       bus.on("harrierWoke", () => ladder.wake("harrier")),
       bus.on("thiefCame", () => ladder.wake("cutpurse")),
       bus.on("keeperBars", () => ladder.wake("keeper")),
-      /** It arrives already hunting: its cap pins it there. */
+      /** Its body reports sight immediately, but may later lose the trail. */
       bus.on("reaperWoke", () => ladder.wake("reaper")),
     ];
     return () => off.forEach((fn) => fn());

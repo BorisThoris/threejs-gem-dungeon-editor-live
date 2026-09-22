@@ -125,7 +125,7 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
 function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
   const watcher = useWatcherPost(room, seed);
   const visiting = useRun((s) => s.thiefPhase !== "away");
-  const here = useRun((s) => s.currentRoomId === room.id);
+  const here = useRun((s) => s.thiefRoomId === room.id);
   const placed = useRun((s) => s.placed);
   const sprung = useRun((s) => s.sprung);
   const broken = useRun((s) => s.broken);
@@ -135,13 +135,17 @@ function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
 }
 
 /**
- * The Reaper, once the floor has given up on the player. It is always in
- * their room: mounting it with the room is how it follows.
+ * The Reaper occupies its own room and arrives only after its pursuit delay.
  */
-function RoomReaper({ room }: { room: RoomData }) {
+function RoomReaper({ room, seed }: { room: RoomData; seed: number }) {
+  const watcher = useWatcherPost(room, seed);
+  const placed = useRun((s) => s.placed);
+  const broken = useRun((s) => s.broken);
+  const cover = useMemo(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher),
+    [room, seed, placed, broken, watcher]);
   const awake = useRun((s) => s.reaperAwake);
-  const here = useRun((s) => s.currentRoomId === room.id);
-  return awake && here ? <Reaper room={room} /> : null;
+  const here = useRun((s) => s.reaperRoomId === room.id);
+  return awake && here ? <Reaper room={room} cover={cover} /> : null;
 }
 
 /**
@@ -174,10 +178,10 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
 }
 
 /** The lamplighter wisp, in the player's room, while their light can be seen. */
-/** The Harrier, in the player's room while it is awake and not slain: it comes for you wherever you are. */
+/** The Harrier stays in its last room until a perceived doorway lets it follow. */
 function RoomHarrier({ room }: { room: RoomData }) {
   const awake = useRun((s) => s.harrierAwake && !s.harrierSlain);
-  const here = useRun((s) => s.currentRoomId === room.id);
+  const here = useRun((s) => s.harrierRoomId === room.id);
   return awake && here ? <Harrier room={room} /> : null;
 }
 
@@ -362,7 +366,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       )}
       <RoomWarden room={room} hazards={wardenHazards} seed={seed} />
       <RoomThief room={room} seed={seed} />
-      <RoomReaper room={room} />
+      <RoomReaper room={room} seed={seed} />
       <RoomAmbient room={room} seed={seed} />
       <RoomTraps room={room} seed={seed} />
       <RoomDraft room={room} />

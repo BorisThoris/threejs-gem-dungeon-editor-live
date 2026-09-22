@@ -2,6 +2,13 @@ import { insideRoom, doorReach, corridorWidth } from "./footprint";
 import { spawnAfterTravel } from "./layout";
 import { DIRS, DIR_STEP, OPPOSITE, halfSize, type Dir, type Room } from "./types";
 
+/** Pursuers visibly enter the actual doorway; attack grace protects its landing. */
+export function pursuitArrival(room: Room, from: Dir): { x: number; z: number } {
+  const axis = DIR_STEP[from];
+  const along = doorReach(room, from) - 0.9;
+  return { x: axis.x * along, z: axis.z * along };
+}
+
 interface Point { x: number; z: number }
 interface Obstacle extends Point { r: number }
 export const ENCOUNTER_CLEARANCE = 5;

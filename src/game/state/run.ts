@@ -42,6 +42,8 @@ import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
 import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../player/combat";
 import { wardenAt } from "../warden/position";
+import * as ladder from "../ladder/state";
+import { leaveTrail } from "../ladder/pursuit";
 import { harrierAt } from "../mobs/harrierRoost";
 import { cutpurseAt } from "../thief/position";
 import { reaperAt } from "../reaper/position";
@@ -309,6 +311,8 @@ export interface RunState {
    * which is what turns a theft from a loss into a walk.
    */
   thiefPhase: ThiefPhase;
+  thiefRoomId: string | null;
+  thiefCameFrom: string | null;
   thiefNextAt: number;
   /** Gems it is carrying right now: dropped if it is caught. */
   thiefHolding: number;
@@ -447,12 +451,16 @@ export interface RunState {
   floorEnteredAt: number;
   /** The floor's patience ran out and the Reaper is on it. */
   reaperAwake: boolean;
+  reaperRoomId: string | null;
+  reaperCameFrom: string | null;
   /** Run-clock second a blast stops holding the Reaper. */
   reaperStalledUntil: number;
   /** Run-clock second of the Reaper's last strike, for the grace between two. */
   reaperLastStrikeAt: number;
   /** The floor's Harrier is up and hunting. */
   harrierAwake: boolean;
+  harrierRoomId: string | null;
+  harrierCameFrom: string | null;
   /** It was downed over something that bites, and is gone for the floor. */
   harrierSlain: boolean;
   /** Run-clock second it gets back off the floor after a blast. */
@@ -859,6 +867,8 @@ export const useRun = create<RunState>()(
     looted: [],
     placed: [],
     thiefPhase: "away",
+    thiefRoomId: null,
+    thiefCameFrom: null,
     thiefNextAt: 0,
     thiefHolding: 0,
     nestGems: 0,
@@ -892,7 +902,11 @@ export const useRun = create<RunState>()(
     wardenWary: false,
     floorEnteredAt: 0,
     reaperAwake: false,
+    reaperRoomId: null,
+    reaperCameFrom: null,
     harrierAwake: false,
+    harrierRoomId: null,
+    harrierCameFrom: null,
     keeperStalledUntil: 0,
     keeperLastStrikeAt: 0,
     harrierSlain: false,
@@ -1029,6 +1043,8 @@ export const useRun = create<RunState>()(
         looted: [],
         placed: [],
         thiefPhase: "away",
+        thiefRoomId: null,
+        thiefCameFrom: null,
         thiefNextAt: 0,
         thiefHolding: 0,
         nestGems: 0,
@@ -1064,7 +1080,11 @@ export const useRun = create<RunState>()(
         // `startedAt`, and cleared with it.
         floorEnteredAt: performance.now() / 1000,
         reaperAwake: false,
+        reaperRoomId: null,
+        reaperCameFrom: null,
         harrierAwake: false,
+        harrierRoomId: null,
+        harrierCameFrom: null,
         keeperStalledUntil: 0,
         keeperLastStrikeAt: 0,
         harrierSlain: false,
@@ -1157,6 +1177,19 @@ export const useRun = create<RunState>()(
        * before.
        */
       get().burnOilEntering(seen);
+      const now = runClock(s);
+      const lostWarden = leaveTrail("warden", s.wardenRoomId, room.id, toId, now, ladder.commits("warden"));
+      const lostReaper = leaveTrail("reaper", s.reaperRoomId, room.id, toId, now, s.reaperAwake);
+      const lostHarrier = leaveTrail("harrier", s.harrierRoomId, room.id, toId, now,
+        s.harrierAwake && !s.harrierSlain && now >= s.harrierRetreatUntil && now >= s.harrierDownedUntil);
+      const lostThief = leaveTrail("cutpurse", s.thiefRoomId, room.id, toId, now, s.thiefPhase === "stalking");
+      if (lostWarden) ladder.loseTrail("warden");
+      if (lostReaper) ladder.loseTrail("reaper");
+      if (lostHarrier) ladder.loseTrail("harrier");
+      if (lostThief) ladder.loseTrail("cutpurse");
+      if (lostWarden || lostReaper || lostHarrier || lostThief) bus.emit("notice", "You slipped away before your pursuer reached the room.");
+      // A thief already fleeing finishes its escape in the room left behind.
+      if (s.thiefPhase === "fleeing") get().thiefEscapes();
       set({
         transitioning: true,
         currentRoomId: toId,
@@ -1283,6 +1316,8 @@ export const useRun = create<RunState>()(
           // on the floor above and you did not go back for is gone, which
           // is the whole price of walking on rather than walking back.
           thiefPhase: "away",
+          thiefRoomId: null,
+          thiefCameFrom: null,
           thiefNextAt: 0,
           thiefHolding: 0,
           nestGems: 0,
@@ -1324,7 +1359,11 @@ export const useRun = create<RunState>()(
           // the last one stays there. Going down is the way out of it.
           floorEnteredAt: runClock(s),
           reaperAwake: false,
+          reaperRoomId: null,
+          reaperCameFrom: null,
           harrierAwake: false,
+          harrierRoomId: null,
+          harrierCameFrom: null,
           keeperStalledUntil: 0,
           keeperLastStrikeAt: 0,
           harrierSlain: false,
@@ -1833,14 +1872,14 @@ export const useRun = create<RunState>()(
       if (wardNow(s) === s.currentRoomId) return false;
       // Nor into the room the floor started you in, until you have left it.
       if (sanctuaryRoom(s) === s.currentRoomId) return false;
-      set({ thiefPhase: "stalking" });
+      set({ thiefPhase: "stalking", thiefRoomId: s.currentRoomId, thiefCameFrom: null });
       bus.emit("thiefCame", { roomId: s.currentRoomId });
       return true;
     },
 
     thiefSteals: () => {
       const s = get();
-      if (s.thiefPhase !== "stalking") return false;
+      if (s.thiefPhase !== "stalking" || s.thiefRoomId !== s.currentRoomId) return false;
       if (s.gems < 1) {
         // Nothing in the purse, but a heavy piece of cut metal in your
         // hands. It takes that instead, and the vault's other two ways
@@ -1866,6 +1905,8 @@ export const useRun = create<RunState>()(
       const held = s.thiefHolding;
       set({
         thiefPhase: "away",
+        thiefRoomId: null,
+        thiefCameFrom: null,
         thiefHolding: 0,
         // The key goes into the heap with everything else it has taken.
         // A theft you cannot answer is a punishment; the nest is the
@@ -1888,6 +1929,8 @@ export const useRun = create<RunState>()(
       const held = s.thiefHolding;
       set({
         thiefPhase: "away",
+        thiefRoomId: null,
+        thiefCameFrom: null,
         thiefHolding: 0,
         gems: s.gems + held,
         // Caught with the key on it: it drops that too, like everything
@@ -2399,7 +2442,7 @@ export const useRun = create<RunState>()(
     wakeHarrier: () => {
       const s = get();
       if (s.harrierAwake || s.harrierSlain || s.phase !== "playing") return;
-      set({ harrierAwake: true });
+      set({ harrierAwake: true, harrierRoomId: s.currentRoomId, harrierCameFrom: null });
       bus.emit("harrierWoke");
     },
 
@@ -2449,7 +2492,7 @@ export const useRun = create<RunState>()(
 
     harrierStrike: () => {
       const s = get();
-      if (!s.harrierAwake || s.harrierSlain) return;
+      if (!s.harrierAwake || s.harrierSlain || s.harrierRoomId !== s.currentRoomId) return;
       const now = runClock(s);
       if (now < s.harrierRetreatUntil || now < s.harrierDownedUntil) return;
       // Hit and run: it wheels away whether or not the hit landed, so a
@@ -2495,13 +2538,13 @@ export const useRun = create<RunState>()(
     wakeReaper: () => {
       const s = get();
       if (s.reaperAwake || s.phase !== "playing") return;
-      set({ reaperAwake: true });
+      set({ reaperAwake: true, reaperRoomId: s.currentRoomId, reaperCameFrom: null });
       bus.emit("reaperWoke");
     },
 
     reaperStrike: () => {
       const s = get();
-      if (!s.reaperAwake) return;
+      if (!s.reaperAwake || s.reaperRoomId !== s.currentRoomId) return;
       const now = runClock(s);
       if (now - s.reaperLastStrikeAt < REAPER_STRIKE_GRACE_S) return;
       // The ordinary damage path, as the Warden's strike is: the charm,
@@ -2631,14 +2674,13 @@ export const useRun = create<RunState>()(
        */
       const w = get().wardenRoomId;
       if (w && dinReaches("warden", "blast", w)) get().routWarden();
-      // The Reaper, which is always in the room the player is in. Its row
+      // The Reaper's row
       // is deaf to [blast] and this is the exception the row itself names:
       // not a signal it answers to, but the pressure wave in the room it
       // stands in, which holds it.
-      if (get().reaperAwake && get().currentRoomId === roomId) get().stallReaper();
-      // The Harrier, in the player's room rather than wheeling away from
-      // it: knocked out of the air, and a ground body until it is up.
-      if (get().harrierAwake && dinReaches("harrier", "blast", get().currentRoomId) && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
+      if (get().reaperAwake && get().reaperRoomId === roomId) get().stallReaper();
+      // The Harrier can now be in a room the player has already left.
+      if (get().harrierAwake && dinReaches("harrier", "blast", get().harrierRoomId) && runClock(get()) >= get().harrierRetreatUntil) get().downHarrier();
       // The Keeper, at whichever of its posts the blast reaches: it kneels.
       // The one thing on the floor that opens the last stairs.
       if (keeperPostsFor(s.dungeon, s.floor).some((p) => dinReaches("keeper", "blast", p.roomId))) get().stallKeeper();

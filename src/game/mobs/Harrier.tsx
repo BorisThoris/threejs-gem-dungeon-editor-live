@@ -4,13 +4,16 @@ import { DoubleSide, Group } from "three";
 
 import { geo, mat } from "../props/shared";
 
-import { encounterArrival } from "../dungeon/arrival";
+import { encounterArrival, pursuitArrival } from "../dungeon/arrival";
+import { perceive } from "../ladder/pursuit";
+import { sightLineClear } from "../ladder/sight";
+import * as ladder from "../ladder/state";
 import { keyFor } from "../rooms/kinds";
 import { sentryFor } from "../sentry/placement";
 import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
-import { type Room } from "../dungeon/types";
+import { DIRS, type Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
@@ -44,6 +47,8 @@ export function Harrier({ room }: { room: Room }) {
   const windingAt = useRef<number | null>(null);
   /** Whether it was wheeling away last frame, so the frame it starts to is heard once. */
   const wasAway = useRef(false);
+  const remembered = useRef<{ x: number; z: number } | null>(null);
+  const cameFrom = useRun(s => s.harrierCameFrom);
   const dungeon = useRun((s) => s.dungeon);
   const floor = useRun((s) => s.floor);
   const placed = useRun((s) => s.placed);
@@ -51,7 +56,8 @@ export function Harrier({ room }: { room: Room }) {
   const sprung = useRun((s) => s.sprung);
   const seed = dungeon?.seed ?? 0;
   const roost = useMemo(() => (dungeon ? harrierRoostFor(dungeon, floor) : null), [dungeon, floor]);
-  const entry = useMemo(() => (dungeon && roost ? harrierEntryFor(dungeon, roost, room.id) : null), [dungeon, roost, room.id]);
+  const entry = useMemo(() => DIRS.find(d => room.links[d] === cameFrom)
+    ?? (dungeon && roost ? harrierEntryFor(dungeon, roost, room.id) : null), [cameFrom, dungeon, roost, room]);
   const to = entry ? room.links[entry] : undefined;
   const obstacles = useMemo(() => {
     const key = dungeon?.keyRoomId === room.id ? keyFor(room, seed) : null;
@@ -84,7 +90,7 @@ export function Harrier({ room }: { room: Room }) {
     // Wheeling away, or kept out by the grate: unseen until it returns.
     const kept = away || barred;
     if (!p.placed && !kept && canControl(run)) {
-      const start = encounterArrival(room, entry, cam, obstacles, 1);
+      const start = cameFrom && entry ? pursuitArrival(room, entry) : encounterArrival(room, entry, cam, obstacles, 1);
       p.placed = true;
       p.x = start.x;
       p.z = start.z;
@@ -150,6 +156,12 @@ export function Harrier({ room }: { room: Room }) {
       report();
       return;
     }
+    const sees = roomSegmentClear(room, p.x, p.z, cam.x, cam.z) && sightLineClear(p, cam, obstacles);
+    if (sees) {
+      remembered.current = { x: cam.x, z: cam.z };
+      perceive("harrier", room.id, now);
+      ladder.report("harrier", 3, true, true, room.id);
+    }
     if (now - arrivedAt.current < HARRIER_ENTRY_GRACE_S) {
       g.position.set(p.x, FLIGHT_HEIGHT + floorRiseAt(room, p.x, p.z), p.z);
       g.rotation.set(0, Math.atan2(dx, dz), 0);
@@ -164,7 +176,7 @@ export function Harrier({ room }: { room: Room }) {
     g.children[1].rotation.y = 0;
     g.children[2].rotation.y = 0;
     g.rotation.y = Math.atan2(dx, dz);
-    if (distance <= HARRIER_WINDUP_REACH && roomSegmentClear(room, p.x, p.z, cam.x, cam.z)) {
+    if (sees && distance <= HARRIER_WINDUP_REACH) {
       if (windingAt.current === null) {
         windingAt.current = now;
         bus.emit("notice", "The Harrier draws back. Dodge or shove.");
@@ -190,8 +202,11 @@ export function Harrier({ room }: { room: Room }) {
       report();
       return;
     }
-    const step = Math.min(HARRIER_SPEED * delta, HARRIER_MAX_STEP, Math.max(0, distance - HARRIER_TOUCH_RADIUS * 0.5));
-    const heading = steerInRoom(room, p.x, p.z, cam.x, cam.z, obstacles, 0, 1);
+    const target = remembered.current;
+    if (!target) { report(); return; }
+    const remaining = Math.hypot(target.x - p.x, target.z - p.z);
+    const step = Math.min(HARRIER_SPEED * delta, HARRIER_MAX_STEP, Math.max(0, remaining - 0.1));
+    const heading = steerInRoom(room, p.x, p.z, target.x, target.z, obstacles, 0, 1);
     [p.x, p.z] = roomStep(room, p.x, p.z, heading.dx * step, heading.dz * step, 1);
     // It dives as it closes: at height across the room, at head height on
     // you. That descent is its tell - the same number the Warden's grace

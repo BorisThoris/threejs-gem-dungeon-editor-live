@@ -28,6 +28,7 @@ import { Taken } from "./props/Taken";
 import { CycleDriver } from "./cycle/CycleDriver";
 import { HeatDriver } from "./heat/HeatDriver";
 import { WardenDriver } from "./warden/WardenDriver";
+import { PursuitDriver } from "./ladder/PursuitDriver";
 import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
 
 /**
@@ -128,6 +129,7 @@ export function Scene() {
       <DinDriver />
       <LadderDriver />
       <WardenDriver />
+      <PursuitDriver />
       <CutpurseDriver />
       <BombDriver />
       <CycleDriver />

@@ -18,6 +18,7 @@ import * as ladder from "../ladder/state";
 import { barToBreak } from "./bars";
 import { nextRoom } from "./roam";
 import { behaviourFor } from "./tuning";
+import { advanceTrail } from "../ladder/pursuit";
 
 /**
  * Reused, because this is asked on the frame the Warden steps and an
@@ -37,11 +38,16 @@ const heard = emptyArrival();
  */
 export function WardenDriver() {
   const since = useRef(0);
+  const previousRoom = useRef<string | null>(null);
 
   useFrame((_, delta) => {
     const run = useRun.getState();
     if (!run.wardenRoomId || !run.dungeon || !run.currentRoomId) return;
     if (!canControl(run)) return;
+    if (previousRoom.current !== run.currentRoomId) {
+      previousRoom.current = run.currentRoomId;
+      since.current = 0;
+    }
     // Reeling from the floor's spikes: it is not going anywhere, and the
     // timer does not run while it is down - otherwise a stagger that
     // straddled a step boundary was spent the instant it ended, and the
@@ -88,6 +94,18 @@ export function WardenDriver() {
     const investigating = noise === run.wardenRoomId ? null : noise;
     const going = lure ?? investigating;
 
+    const pursuit = advanceTrail("warden", run.wardenRoomId, run.currentRoomId, delta,
+      !lure && ladder.commits("warden"));
+    if (pursuit.waiting || pursuit.to) {
+      since.current = 0;
+      if (pursuit.to && pursuit.to !== wardNow(run) && pursuit.to !== sanctuaryRoom(run)) {
+        const wall = barToBreak(run.dungeon, run.wardenRoomId, pursuit.to, barsNow(run));
+        if (wall) run.breakBar();
+        else run.moveWarden(pursuit.to);
+      }
+      return;
+    }
+
     /**
      * Hearing is the other half of the ladder, and the half that works
      * through walls.
@@ -130,7 +148,10 @@ export function WardenDriver() {
      * this step and is heard everywhere, so the bar never simply stops
      * working without the player being told.
      */
-    const wall = barToBreak(run.dungeon, run.wardenRoomId, going ?? run.currentRoomId, bars);
+    // Alarm controls pace, never knowledge. Search only the last perceived room.
+    const target = going ?? (ladder.rungOf("warden") >= 2 ? ladder.markOf("warden") : null);
+    if (target === run.wardenRoomId) return;
+    const wall = target ? barToBreak(run.dungeon, run.wardenRoomId, target, bars) : null;
     if (wall) {
       run.breakBar();
       return;
@@ -139,7 +160,7 @@ export function WardenDriver() {
     const to = nextRoom(
       run.dungeon,
       run.wardenRoomId,
-      going ?? run.currentRoomId,
+      target ?? run.wardenRoomId,
       /**
        * Hunting, and the third way into it.
        *
@@ -152,7 +173,7 @@ export function WardenDriver() {
        * difference between "the floor allowed this" and "the floor did
        * this".
        */
-      going ? true : behaviour.hunts || ladder.commits("warden"),
+      target !== null,
       run.wardenCameFrom,
       Math.random(),
       bars

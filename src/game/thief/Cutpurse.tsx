@@ -3,7 +3,10 @@ import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
-import { encounterArrival } from "../dungeon/arrival";
+import { encounterArrival, pursuitArrival } from "../dungeon/arrival";
+import { perceive } from "../ladder/pursuit";
+import { sightLineClear } from "../ladder/sight";
+import * as ladder from "../ladder/state";
 import { playerAt } from "../player/where";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { cutpurseAt } from "./position";
@@ -53,12 +56,15 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   const arrivedAt = useRef<number | null>(null);
   const phase = useRun((s) => s.thiefPhase);
   const holding = useRun((s) => s.thiefHolding);
+  const cameFrom = useRun(s => s.thiefCameFrom);
+  const remembered = useRef<{ x: number; z: number } | null>(null);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
 
   /** The doorway it came in by, which is also the one it leaves by. */
   const door = useMemo<{ dir: Dir; at: [number, number] }>(() => {
     const open = DIRS.filter((d) => room.links[d]);
-    const dir = open.length ? open[Math.floor(Math.random() * open.length)] : "north";
+    const dir = DIRS.find(d => room.links[d] === cameFrom)
+      ?? (open.length ? open[Math.floor(Math.random() * open.length)] : "north");
     const [x, , z] = doorPosition(room, dir);
     return { dir, at: [x * 0.9, z * 0.9] };
     // Chosen once, when it arrives. Re-rolling it mid-visit would move the
@@ -87,13 +93,22 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     Object.assign(cutpurseAt, { x: g.position.x, z: g.position.z, roomId: room.id });
     if (!canControl(run)) return;
     if (arrivedAt.current === null) {
-      const start = encounterArrival(room, door.dir, state.camera.position, [...obstacles, ...hazards], 0.4);
+      const start = cameFrom ? pursuitArrival(room, door.dir)
+        : encounterArrival(room, door.dir, state.camera.position, [...obstacles, ...hazards], 0.4);
       g.position.x = start.x;
       g.position.z = start.z;
       Object.assign(cutpurseAt, { x: start.x, z: start.z });
       arrivedAt.current = runClock(run);
     }
+    const sees = roomSegmentClear(room, g.position.x, g.position.z, state.camera.position.x, state.camera.position.z)
+      && sightLineClear(g.position, state.camera.position, obstacles);
+    if (sees && run.thiefPhase === "stalking") {
+      remembered.current = { x: state.camera.position.x, z: state.camera.position.z };
+      perceive("cutpurse", room.id, runClock(run));
+      ladder.report("cutpurse", 3, true, true, room.id);
+    }
     if (runClock(run) - arrivedAt.current < 1.5) return;
+    if (run.thiefPhase === "stalking" && !remembered.current) return;
     // The same cap everything that moves on a delta uses. A hitch must not
     // teleport it out of the room with your gem any more than it may
     // teleport the Warden onto you.
@@ -106,7 +121,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const target =
       run.thiefPhase === "fleeing"
         ? { x: door.at[0], z: door.at[1] }
-        : { x: cam.x, z: cam.z };
+        : remembered.current!;
     const dx = target.x - g.position.x;
     const dz = target.z - g.position.z;
     const distance = Math.hypot(dx, dz) || 1;
@@ -150,7 +165,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     }
 
     if (run.thiefPhase === "stalking") {
-      if (Math.hypot(cam.x - g.position.x, cam.z - g.position.z) <= CUTPURSE_TOUCH_RADIUS
+      if (sees && Math.hypot(cam.x - g.position.x, cam.z - g.position.z) <= CUTPURSE_TOUCH_RADIUS
         && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) useRun.getState().thiefSteals();
       return;
     }

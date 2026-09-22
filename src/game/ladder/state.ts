@@ -3,6 +3,7 @@ import type { ReceiverId } from "../din/susceptibility";
 import { CAPS } from "./caps";
 import { engaged, fresh, step, type AlertCap, type Awareness } from "./awareness";
 import { RUNG_NAME, type Rung } from "./rungs";
+import { resetPursuit } from "./pursuit";
 
 /**
  * Where every creature on the floor currently is on the ladder.
@@ -56,6 +57,7 @@ const OPENS_AT: Partial<Record<ReceiverId, Rung>> = { warden: 2 };
 
 /** Everything forgets everything when a floor does. */
 export function reset(): void {
+  resetPursuit();
   state.clear();
   pending.clear();
   ceiling.clear();
@@ -93,6 +95,15 @@ export const commits = (who: ReceiverId): boolean => engaged(awarenessOf(who), c
 
 /** The room it last had the player in - what "searching" is searching. */
 export const markOf = (who: ReceiverId): string | null => awarenessOf(who).markRoomId;
+
+/** A missed doorway leaves suspicion, but no knowledge of the player's room. */
+export function loseTrail(who: ReceiverId): void {
+  const a = awarenessOf(who);
+  const rung = Math.max(capOf(who).min, Math.min(a.rung, 2)) as Rung;
+  state.set(who, { ...a, rung, pendingTo: rung, pendingSince: -1, primedUntil: 0, markRoomId: null });
+  pending.delete(who);
+  if (rung !== a.rung) bus.emit("rungChanged", { who, rung, rose: false, name: RUNG_NAME[rung] });
+}
 
 /**
  * An informant's view this frame. The strongest wins; a weaker report

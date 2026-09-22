@@ -46,6 +46,19 @@ export const IN_THE_OPEN = 1;
 /** And pressed up against something solid. Never zero: cover is not a cloak. */
 export const BEHIND_SOMETHING = 0.35;
 
+/** Horizontal cover silhouettes interrupt the line between creature and player. */
+export function sightLineClear(from: { x: number; z: number }, to: { x: number; z: number },
+  cover: readonly Patch[]): boolean {
+  const dx = to.x - from.x, dz = to.z - from.z;
+  const length2 = dx * dx + dz * dz;
+  if (length2 === 0) return true;
+  return !cover.some(p => {
+    const along = ((p.x - from.x) * dx + (p.z - from.z) * dz) / length2;
+    return along > 0 && along < 1
+      && Math.hypot(from.x + along * dx - p.x, from.z + along * dz - p.z) < p.r;
+  });
+}
+
 /**
  * How much of a body at (x, z) is in the open.
  *

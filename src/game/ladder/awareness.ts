@@ -110,6 +110,13 @@ export function step(
   const min = floorOf(a, cap);
   const wants = Math.max(min, Math.min(cap.max, target)) as Rung;
 
+  // Sustained perception holds awareness and updates the last known room.
+  // Previously even a visible player discharged the hunting rung on a timer.
+  if (wants === a.rung && target > cap.min) {
+    return { ...a, pendingTo: a.rung, pendingSince: -1, slidAt: now,
+      markRoomId: markRoomId ?? a.markRoomId };
+  }
+
   if (wants > a.rung) {
     /**
      * Up is a gated jump.

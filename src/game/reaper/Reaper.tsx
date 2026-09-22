@@ -2,8 +2,13 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
-import { halfSize, type Room } from "../dungeon/types";
-import { doorReach } from "../dungeon/footprint";
+import { DIRS, halfSize, type Room } from "../dungeon/types";
+import { doorReach, roomSegmentClear } from "../dungeon/footprint";
+import { pursuitArrival } from "../dungeon/arrival";
+import { perceive } from "../ladder/pursuit";
+import * as ladder from "../ladder/state";
+import { sightLineClear } from "../ladder/sight";
+import type { Patch } from "../warden/steer";
 import { canControl, reaperStalled, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
@@ -12,24 +17,23 @@ import { reaperAt } from "./position";
 import { floorHeightAt } from "../worldbuilding/elevation";
 
 /**
- * The Reaper, in the room the player is standing in - which is the only
- * room it is ever in.
+ * The Reaper follows a visible trail through doorways, after a delay.
  *
  * A ghost body, and this component is what "ghost" means: it asks the
  * floor for nothing. No obstacles, because `obstaclesFor("ghost")` is an
  * empty list and it would be given nothing to steer round; no hazards,
- * because nothing on the floor bites it. It comes in through the corner
- * farthest from the player, drifts straight at them, and when they leave
- * through a doorway it is simply in the next room too. Being remounted
- * with the room is how it follows: there is no path to walk and nothing
- * it has to find.
+ * because nothing on the floor bites it. It first wakes in a far corner,
+ * then follows the last visible position. PursuitDriver handles delayed
+ * doorway arrivals; cover or another doorway can break its trail.
  *
  * It cannot be fought, lured, warded or barred. A blast holds it for a
- * few seconds, and the exit is the only other answer.
+ * few seconds; breaking its trail also buys an escape.
  */
-export function Reaper({ room }: { room: Room }) {
+export function Reaper({ room, cover = [] }: { room: Room; cover?: readonly Patch[] }) {
   const group = useRef<Group>(null);
   const placed = useRef(false);
+  const arrivedAt = useRef(0);
+  const remembered = useRef<{ x: number; z: number } | null>(null);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
   useEffect(() => () => { reaperAt.roomId = null; }, []);
   // Remounted with the room, so the voice restarts a frame later: fine.
@@ -51,7 +55,11 @@ export function Reaper({ room }: { room: Room }) {
     // first moment the camera - the player - can be asked where it is.
     if (!placed.current) {
       placed.current = true;
-      g.position.set(Math.sign(-cam.x || 1) * half * 0.8, GROUND_Y, Math.sign(-cam.z || 1) * half * 0.8);
+      const dir = DIRS.find(d => room.links[d] === run.reaperCameFrom);
+      const p = dir ? pursuitArrival(room, dir)
+        : { x: Math.sign(-cam.x || 1) * half * 0.8, z: Math.sign(-cam.z || 1) * half * 0.8 };
+      g.position.set(p.x, GROUND_Y, p.z);
+      arrivedAt.current = runClock(run);
     }
     const t = runClock(run);
     const stalled = reaperStalled(run);
@@ -61,7 +69,15 @@ export function Reaper({ room }: { room: Room }) {
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
-    g.rotation.y = Math.atan2(dx, dz);
+    const sees = roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)
+      && sightLineClear(g.position, cam, cover);
+    if (sees) {
+      remembered.current = { x: cam.x, z: cam.z };
+      perceive("reaper", room.id, t);
+      ladder.report("reaper", 3, true, true, room.id);
+    }
+    const target = remembered.current;
+    if (target) g.rotation.y = Math.atan2(target.x - g.position.x, target.z - g.position.z);
     Object.assign(reaperAt, { x: g.position.x, z: g.position.z, roomId: room.id });
 
     if (import.meta.env.DEV) {
@@ -85,16 +101,21 @@ export function Reaper({ room }: { room: Room }) {
       // Held by the blast: a shudder in place, so the hold can be seen.
       return;
     }
-    if (distance <= REAPER_TOUCH_RADIUS) {
+    if (sees && distance <= REAPER_TOUCH_RADIUS) {
+      if (t - arrivedAt.current < 1.5) return;
       run.reaperStrike();
       return;
     }
+    if (!target) return;
+    const tx = target.x - g.position.x, tz = target.z - g.position.z;
+    const remaining = Math.hypot(tx, tz);
+    if (remaining < 0.1) return;
     const step = Math.min(
       REAPER_SPEED * delta,
       REAPER_MAX_STEP,
-      Math.max(0, distance - REAPER_TOUCH_RADIUS * 0.5)
+      Math.max(0, remaining - 0.1)
     );
-    scratch.to.set(dx / distance, 0, dz / distance).multiplyScalar(step);
+    scratch.to.set(tx / remaining, 0, tz / remaining).multiplyScalar(step);
     // A ghost crosses solid cover and concave corners. Its outer bounds
     // still include every wing, so a closed gallery cannot shelter the
     // player forever merely by sitting beyond the furnished chamber.

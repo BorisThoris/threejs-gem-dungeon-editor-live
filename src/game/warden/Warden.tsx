@@ -3,7 +3,8 @@ import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { useFrame } from "@react-three/fiber";
 import { Group, PointLight, Vector3 } from "three";
 
-import { encounterArrival } from "../dungeon/arrival";
+import { encounterArrival, pursuitArrival } from "../dungeon/arrival";
+import { perceive } from "../ladder/pursuit";
 import { doorPosition } from "../dungeon/layout";
 import { DIRS, halfSize, type Room } from "../dungeon/types";
 import { bus } from "../events";
@@ -12,7 +13,7 @@ import * as ladder from "../ladder/state";
 import { CONES } from "../ladder/caps";
 import { closeEnough } from "../ladder/awareness";
 import { coneFor, rungFor, seenAt } from "../ladder/rungs";
-import { exposureAt, visibilityFor } from "../ladder/sight";
+import { exposureAt, visibilityFor, sightLineClear } from "../ladder/sight";
 import { playerAt } from "../player/where";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
@@ -91,7 +92,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
   // a direction the player can learn to read.
   const entry = useMemo<[number, number, number]>(() => {
     const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
-    const p = encounterArrival(room, dir ?? null, playerAt, [...obstacles, ...hazards]);
+    const p = dir ? pursuitArrival(room, dir) : encounterArrival(room, null, playerAt, [...obstacles, ...hazards]);
     return [p.x, GROUND_Y, p.z];
     // `cameFrom` is read once, at the moment it enters: it must not move the
     // Warden again while it is in the room.
@@ -144,7 +145,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     if (!controlled) { sfx.stalkStop(); return; }
     if (arrivedIn.current !== room.id) {
       const dir = DIRS.find((d) => room.links[d] && room.links[d] === cameFrom);
-      const p = encounterArrival(room, dir ?? null, state.camera.position, [...obstacles, ...hazards]);
+      const p = dir ? pursuitArrival(room, dir) : encounterArrival(room, null, state.camera.position, [...obstacles, ...hazards]);
       g.position.x = p.x;
       g.position.z = p.z;
       remembered.current = { x: 0, z: 0 };
@@ -161,7 +162,10 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
-    if (controlled && wardenSenses(useRun.getState())) remembered.current = { x: cam.x, z: cam.z };
+    if (controlled && wardenSenses(run)) {
+      remembered.current = { x: cam.x, z: cam.z };
+      perceive("warden", room.id, t);
+    }
 
     /**
      * Which way it is looking - and, for the first time, not always at you.
@@ -220,11 +224,15 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
      * that flickers.
      */
     const cone = coneFor(CONES.warden ?? [], Math.sin(facing.current), Math.cos(facing.current), dx, dz);
-    const canSee = !!cone && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z);
+    const canSee = !!cone && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)
+      && sightLineClear(g.position, cam, obstacles);
     if (canSee && cone) {
-      if (controlled) remembered.current = { x: cam.x, z: cam.z };
       const v = visibilityFor("warden", room.id, playerAt.speed, exposureAt(cam.x, cam.z, obstacles));
       const seen = seenAt(cone, v);
+      if (rungFor(seen) >= 2) {
+        remembered.current = { x: cam.x, z: cam.z };
+        perceive("warden", room.id, t);
+      }
       ladder.report("warden", rungFor(seen), closeEnough(distance), seen >= 0.7, room.id);
     }
 

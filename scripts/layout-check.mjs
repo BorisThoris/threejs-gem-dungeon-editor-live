@@ -4802,7 +4802,7 @@ check("the shipped room templates reach the floors the game generates", authored
       "the store asks the Warden's, the Harrier's and the Keeper's rows whether a blast reached them",
       /dinReaches\("warden", "blast"/.test(store) && /dinReaches\("harrier", "blast"/.test(store) && /dinReaches\("keeper", "blast"/.test(store)
     );
-    check("and holds the Reaper by the room it stands in, saying so", /reaperAwake && get\(\)\.currentRoomId === roomId\) get\(\)\.stallReaper/.test(store));
+    check("and holds the Reaper by the room it stands in, saying so", /reaperAwake && get\(\)\.reaperRoomId === roomId\) get\(\)\.stallReaper/.test(store));
     check("the rats scatter from what their row says, not from feet alone", /din\.answering\(\w+, "rat", room\.id\)/.test(src("src/game/mobs/Rats.tsx")));
     check("the moth is drawn by light, whoever carries it", /din\.answering\(\w+, "moth", room\.id\)/.test(src("src/game/mobs/Moth.tsx")) && !/lanternRaised/.test(src("src/game/mobs/Moth.tsx")));
     check("the Sentry's patience is halved by the light its row names, not by a flag about the player", /din\.reaches\("sentry", "bright"/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
@@ -5067,9 +5067,9 @@ check("the shipped room templates reach the floors the game generates", authored
     ids.filter((id) => caps[id].max >= L.ENGAGE).every((id) => L.engaged(L.fresh(3), caps[id]))
   );
 
-  /** Pinned: it never rises because it never was not risen, and never falls. */
-  check("the Reaper is pinned at the top rung", L.pinnedAt("reaper") === L.ENGAGE, `${L.pinnedAt("reaper")}`);
-  check("and it is the only thing on the floor that is pinned there", ids.filter((id) => L.pinnedAt(id) === L.ENGAGE).length === 1);
+  /** Every pursuer can lose detection after a broken trail. */
+  check("the Reaper can lose detection", L.pinnedAt("reaper") === null && caps.reaper.min === 0);
+  check("no pursuer is permanently pinned to hunting", ids.every((id) => L.pinnedAt(id) !== L.ENGAGE));
 
   /**
    * UP IS A JUMP. Gated by a delay that belongs to the rung it is leaving,
