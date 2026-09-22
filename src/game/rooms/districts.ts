@@ -6,11 +6,11 @@ import { createRng } from "../rng";
 export const DISTRICTS = {
   gardens: { name: "Rootwater galleries", biomes: ["mossy", "flooded", "fungal", "hewn", "timber", "catacomb", "crystal", "bone", "ash", "foundry"] },
   works: { name: "The old works", biomes: ["foundry", "ash", "hewn", "timber", "catacomb", "crystal", "bone", "flooded", "mossy"] },
-  tombs: { name: "The buried choir", biomes: ["bone", "catacomb", "ash", "crystal", "hewn", "timber", "foundry", "flooded", "mossy"] },
+  tombs: { name: "The buried choir", biomes: ["bone", "catacomb", "ash", "crystal", "salt", "hewn", "timber", "foundry", "flooded", "mossy"] },
 } as const;
 export type DistrictId = keyof typeof DISTRICTS;
 
-const PRIMARY_STRATA: Record<DistrictId, number> = { gardens: 4, works: 3, tombs: 4 };
+const PRIMARY_STRATA: Record<DistrictId, number> = { gardens: 4, works: 3, tombs: 5 };
 
 /**
  * Lay a district's materials down as connected geological bands.

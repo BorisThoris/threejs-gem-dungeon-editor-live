@@ -34,6 +34,7 @@ export const BIOMES = [
   "crystal",
   "fungal",
   "ash",
+  "salt",
 ] as const;
 export type BiomeId = (typeof BIOMES)[number];
 
@@ -47,7 +48,7 @@ export type BiomeId = (typeof BIOMES)[number];
  * show is the room behind you. `still` is a real value - hewn stone is
  * silent on purpose - so a biome cannot be added without saying.
  */
-export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift"] as const;
+export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick"] as const;
 export type AirId = (typeof AIRS)[number];
 
 export interface Biome {
@@ -155,6 +156,10 @@ export const BIOME: Record<BiomeId, Biome> = {
   /** Dry settling rooms downstream of the kilns: soft underfoot, but alive
    * with rats and a faint fall of grit from the old flues. */
   ash: { name: "Ash drifts", floor: "#918b82", wall: "#554f4b", surface: "dirt", glow: "#a2765d", light: 0.82, litter: ["rubble", "urn"], carry: 0.7, ground: "deep ash", life: ["rat", "mite"], air: "sift" },
+  /** Mineral water once evaporated in stepped pans beneath the choir. The
+   * pale crust throws a footfall sharply and its drying joints tick in the
+   * cold, so it reads as a brittle working layer rather than white stone. */
+  salt: { name: "Salt pans", floor: "#b8b5a5", wall: "#6e716b", surface: "stone", glow: "#9eb9b5", light: 0.88, litter: ["urn", "rubble"], carry: 1.4, ground: "salt crust", life: ["bat"], air: "tick" },
 };
 
 /**
@@ -169,21 +174,21 @@ export const BIOME: Record<BiomeId, Biome> = {
 export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
-  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash"],
+  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash", "salt"],
   // Flooded as well as dry, because the room that most tempts a player to
   // grab and run is the one where running is loudest: a drowned strongroom
   // makes the haul a decision rather than a pickup. Without it the three
   // treasure biomes were 1, 1.25 and 1, which is one room in three coats.
-  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash"],
+  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash", "salt"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
-  trap: ["hewn", "flooded", "foundry", "fungal", "ash"],
+  trap: ["hewn", "flooded", "foundry", "fungal", "ash", "salt"],
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
-  challenge: ["catacomb", "hewn", "flooded", "ash"],
-  shrine: ["catacomb", "bone", "crystal", "fungal", "ash"],
+  challenge: ["catacomb", "hewn", "flooded", "ash", "salt"],
+  shrine: ["catacomb", "bone", "crystal", "fungal", "ash", "salt"],
   // Walled up for a reason: dry, and older than the rest of the floor.
-  secret: ["catacomb", "bone", "hewn", "ash"],
+  secret: ["catacomb", "bone", "hewn", "ash", "salt"],
 };
 
 /** Which biome a room is in. The room's own seed decides, once. */

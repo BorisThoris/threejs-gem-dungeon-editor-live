@@ -58,5 +58,9 @@ export const TERRAIN_EFFECTS: Record<BiomeId, TerrainEffect> = {
     name: "sifting windrows", animated: true, emissive: "#261b17", emissiveIntensity: 0.06,
     fragment: "float sift = floor((sin(terrainXZ.x * 0.7 + terrainXZ.y * 2.4 + terrainTime * 0.28) * 0.5 + 0.5) * 2.0) / 2.0; diffuseColor.rgb *= 0.80 + sift * 0.18;",
   },
+  salt: {
+    name: "raked salt checks", animated: false, emissive: "#31413f", emissiveIntensity: 0.07,
+    fragment: "float rake = mod(floor((terrainXZ.x + terrainXZ.y) * 1.5) + floor((terrainXZ.x - terrainXZ.y) * 0.75), 5.0); diffuseColor.rgb *= 0.82 + step(2.5, rake) * 0.19;",
+  },
 };
 

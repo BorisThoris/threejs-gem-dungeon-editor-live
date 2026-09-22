@@ -12,6 +12,6 @@ export function Architecture({ room }: { room: Room }) {
   return <group name="room-architecture" userData={{ crown: data.crown.definition.name, crownBiome: data.crown.biome }}>
     <Blocks blocks={data.structure} occluders={occluders} color={data.identity.structure} map={surface} />
     <Blocks blocks={data.detail} occluders={occluders} color={data.identity.detail} map={surface} />
-    <Blocks blocks={data.marks} occluders={occluders} color={data.identity.accent} glow={room.biome === "fungal" || room.biome === "crystal"} />
+    <Blocks blocks={data.marks} occluders={occluders} color={data.identity.accent} glow={room.biome === "fungal" || room.biome === "crystal" || room.biome === "salt"} />
   </group>;
 }

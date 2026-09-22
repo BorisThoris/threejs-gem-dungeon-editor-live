@@ -9,7 +9,7 @@ land use and use a few hard value steps in world space: planted rows, mortar
 wear, water glints, kiln bands, saw cuts, bone flecks, crystal facets, spore
 rings and ash windrows. They must not become smooth noise, screen-space polish
 or free-floating decoration. Adjacent terrain beds share their marks, the run
-clock freezes every moving effect on pause, and the ten biomes retain separate
+clock freezes every moving effect on pause, and the eleven biomes retain separate
 compiled variants without extra geometry, textures, lights or draw calls.
 
 Biome identity continues above eye level. Every material tradition owns one
@@ -43,6 +43,11 @@ may line that layer with a material its purpose can safely use; the atlas names
 both. A real change of stratum leaves five shallow, block-cut chips at both
 faces of the doorway. District borders keep their named lintels and do not also
 pretend to be geological seams.
+
+The buried choir also carries a salt-and-brine stratum: stepped evaporation
+shelves, scored rake lanes and overhead pan rakes belong to one former use.
+Its pale crust has a sharp footfall, cold mineral bounce and sparse drying
+ticks. These cues travel together; salt is never just a white material swap.
 
 The generator grows three regions through actual doorways. Rootwater galleries
 are the damp, reclaimed wing; the old works are the industrial middle; the

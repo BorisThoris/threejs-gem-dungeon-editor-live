@@ -516,7 +516,7 @@ const buildChorus: HeldBuilder = (ctx, into) => {
  * - a drip, an ember - because a drip on an oscillator is a tremolo, and a
  * tremolo is not a drip.
  */
-type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift";
+type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift" | "tick";
 
 interface Air {
   id: AirId;
@@ -621,6 +621,10 @@ const AIR_DROPS: Partial<Record<AirId, { play: () => void; gapMs: [number, numbe
   sift: {
     gapMs: [350, 1200],
     play: () => noiseBurst(0.045, 0.26, 2400 + Math.random() * 1800, Math.random() * 1.4 - 0.7),
+  },
+  tick: {
+    gapMs: [650, 2100],
+    play: () => tone(2300 + Math.random() * 1400, 0.035, "triangle", 0.13, 1350, Math.random() * 1.5 - 0.75),
   },
 };
 
@@ -954,6 +958,11 @@ export const sfx = {
     if (surface === "metal") {
       scuff(0.06, (strong ? 0.22 : 0.16) * loud, 1600 * wobble);
       body(420 * wobble, 0.14, "triangle", (strong ? 0.16 : 0.11) * loud, 260);
+      return;
+    }
+    if (surface === "crust") {
+      scuff(0.075, (strong ? 0.25 : 0.18) * loud, 2200 * wobble);
+      body(760 * wobble, 0.055, "triangle", (strong ? 0.13 : 0.09) * loud, 430);
       return;
     }
     scuff((strong ? 0.085 : 0.07) * loud, (strong ? 0.28 : 0.2) * loud, 420 * wobble);

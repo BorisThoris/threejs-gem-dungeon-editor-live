@@ -12,17 +12,18 @@ try {
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   const fixtures = await page.evaluate(async () => {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+    const { BIOMES } = await import("/src/game/rooms/biomes.ts");
     const { terrainFor } = await import("/src/game/rooms/terrainPattern.ts");
     const { TERRAIN_EFFECTS } = await import("/src/game/rooms/terrainMaterial.ts");
     const found = {};
-    for (let seed = 1; seed < 140 && Object.keys(found).length < 10; seed++) for (const floor of [1, 2, 3]) {
+    for (let seed = 1; seed < 140 && Object.keys(found).length < BIOMES.length; seed++) for (const floor of [1, 2, 3]) {
       const dungeon = generateDungeon({ seed, floor });
       for (const room of dungeon.rooms) if (!found[room.biome] && terrainFor(room).deposits.length)
         found[room.biome] = { dungeon, floor, roomId: room.id,
           otherId: dungeon.rooms.find(candidate => candidate.id !== room.id).id,
           effect: TERRAIN_EFFECTS[room.biome].name };
     }
-    if (Object.keys(found).length !== 10) throw Error(`Missing terrain fixtures: ${Object.keys(found).join(", ")}`);
+    if (Object.keys(found).length !== BIOMES.length) throw Error(`Missing terrain fixtures: ${Object.keys(found).join(", ")}`);
     return found;
   });
 
@@ -65,7 +66,7 @@ try {
       writeFileSync(`output/world-review/terrain-styles/${biome}.png`, Buffer.from(image.split(",")[1], "base64"));
     }
   }
-  assert.equal(cacheKeys.size, 10, "each biome owns a stable shader cache variant");
+  assert.equal(cacheKeys.size, Object.keys(fixtures).length, "each biome owns a stable shader cache variant");
 
   const fixture = fixtures.flooded;
   await page.evaluate(fixture => {
@@ -104,5 +105,5 @@ try {
   await page.waitForTimeout(350);
   assert.ok((await sample()).time > frozen.time, "pool glint resumes");
   assert.deepEqual(errors, []);
-  console.log("PASS terrain styles: ten quantized biome shaders plus persistent water clock, pause, remount and resume");
+  console.log(`PASS terrain styles: ${Object.keys(fixtures).length} quantized biome shaders plus persistent water clock, pause, remount and resume`);
 } finally { await browser.close(); }

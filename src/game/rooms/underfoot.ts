@@ -3,7 +3,7 @@ import { waterUnderfoot } from "../worldbuilding/watercourse";
 import { BIOME, biomeIdFor } from "./biomes";
 import { terrainFor, type TerrainTile } from "./terrainPattern";
 
-export type Footing = "stone" | "water" | "soft" | "wood" | "metal";
+export type Footing = "stone" | "water" | "soft" | "wood" | "metal" | "crust";
 /** Retain authored biome acoustics on their native ground, while paving and
  * water crossings use the material actually visible beneath the player. */
 export function footingCarry(room: Room, footing: Footing): number {
@@ -12,6 +12,7 @@ export function footingCarry(room: Room, footing: Footing): number {
   if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : biome === "ash" ? BIOME.ash.carry : BIOME.mossy.carry;
   if (footing === "wood") return BIOME.timber.carry;
   if (footing === "metal") return BIOME.foundry.carry;
+  if (footing === "crust") return BIOME.salt.carry;
   return biome === "bone" ? BIOME.bone.carry : BIOME.hewn.carry;
 }
 const terrainCache = new WeakMap<Room, ReturnType<typeof terrainFor>>();
@@ -29,10 +30,12 @@ export function footingAt(room: Room, x: number, z: number, openedAt: number | n
   if (terrain.deposits.some(tile => covers(tile, x, z))) {
     if (biome === "flooded") return "water";
     if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
+    if (biome === "salt") return "crust";
     return "stone";
   }
   if (biome === "timber") return "wood";
   if (biome === "foundry") return "metal";
   if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
+  if (biome === "salt") return "crust";
   return "stone";
 }

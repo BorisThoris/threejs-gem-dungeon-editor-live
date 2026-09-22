@@ -28,6 +28,7 @@ export const BIOME_CROWNS: Record<BiomeId, CrownDefinition> = {
   crystal: { name: "Resonator forks", description: "A split stone fork holds three small tuning blocks." },
   fungal: { name: "Growing shelves", description: "A stem and broad cap continue the orchard overhead." },
   ash: { name: "Flue baffles", description: "Offset plates and soot counters show how kiln breath was slowed." },
+  salt: { name: "Pan rakes", description: "Paired rake heads and drying pegs repeat above the old evaporation bays." },
 };
 
 export interface CrownSpan { x: number; z: number; width: number }
@@ -104,6 +105,13 @@ export function biomeCrownFor(room: Room, spans: readonly CrownSpan[]): CrownPat
         block(detail, span, -pair * 0.45, WALL_HEIGHT - 0.68, Math.min(1.9, span.width * 0.3), 0.42, 0.28);
         block(detail, span, pair * 0.45, WALL_HEIGHT - 0.94, Math.min(1.9, span.width * 0.3), 0.42, 0.28);
         for (const dx of [-pair, 0, pair]) block(marks, span, dx, DOOR_HEIGHT + 0.38, 0.26, 0.1, 0.3);
+        break;
+      case "salt":
+        for (const dx of [-pair * 0.72, pair * 0.72]) {
+          block(detail, span, dx, WALL_HEIGHT - 0.74, 0.22, 0.68, 0.24);
+          block(marks, span, dx, WALL_HEIGHT - 1.1, 0.86, 0.1, 0.28);
+        }
+        for (const dx of [-pair, 0, pair]) block(marks, span, dx, DOOR_HEIGHT + 0.42, 0.18, 0.16, 0.26);
         break;
     }
   });

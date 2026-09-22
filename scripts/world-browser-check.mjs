@@ -14,7 +14,7 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { bus } = await import("/src/game/events.ts");
@@ -25,6 +25,7 @@ try {
         const room = trailKind && dungeon.secretTrail?.landmark === trailKind
           ? dungeon.rooms.find(r => r.id === dungeon.secretTrail?.sourceId)
           : dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
+          : wanted === "salt" ? r.biome === "salt" && r.shape !== "square" && r.kind === "normal"
           : wanted === "crossroads" ? r.template === "hall-crossroads"
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
@@ -44,6 +45,21 @@ try {
     await page.waitForFunction(n => window.__perf.frames > n + 8, frames);
     await page.waitForTimeout(1000);
     assert.ok(await page.locator(`[data-testid="map-room-footprint"][data-room-id="${fixture.roomId}"]`).count());
+    if (wanted === "salt") {
+      await page.waitForFunction(id => window.__saltFalls?.roomId === id && window.__saltFalls.count > 0, fixture.roomId);
+      assert.ok(await page.evaluate(() => !!window.__scene.getObjectByName("salt-falls")), "salt-pan shedding mounts in one room batch");
+      const moving = await page.evaluate(() => Array.from(window.__scene.getObjectByName("salt-falls").instanceMatrix.array));
+      await page.waitForTimeout(220);
+      assert.notDeepEqual(await page.evaluate(() => Array.from(window.__scene.getObjectByName("salt-falls").instanceMatrix.array)), moving,
+        "salt chips shed while the run clock advances");
+      await page.evaluate(() => window.__run.getState().pause());
+      await page.waitForTimeout(100);
+      const before = await page.evaluate(() => Array.from(window.__scene.getObjectByName("salt-falls").instanceMatrix.array));
+      await page.waitForTimeout(350);
+      assert.deepEqual(await page.evaluate(() => Array.from(window.__scene.getObjectByName("salt-falls").instanceMatrix.array)), before,
+        "salt shedding freezes exactly with the run clock");
+      await page.evaluate(() => window.__run.getState().resume());
+    }
     if (wanted === "foundry") {
       const embers = await page.evaluate(() => window.__foundryEmbers);
       assert.ok(embers?.count > 0, "foundry kiln aprons emit visible embers");

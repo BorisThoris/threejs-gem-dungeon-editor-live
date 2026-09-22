@@ -60,6 +60,7 @@ import { KilnNewts } from "../mobs/KilnNewts";
 import { Shardbacks } from "../mobs/Shardbacks";
 import { Terrain } from "./Terrain";
 import { StrataSeams } from "../worldbuilding/StrataSeams";
+import { SaltFalls } from "../worldbuilding/SaltFalls";
 
 interface RoomProps {
   room: RoomData;
@@ -313,6 +314,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <WallCourses room={room} />
       <Architecture room={room} />
       <Terrain room={room} />
+      <SaltFalls room={room} />
       <StrataSeams room={room} />
       <DistrictWays room={room} />
       <DistrictLandmark room={room} />

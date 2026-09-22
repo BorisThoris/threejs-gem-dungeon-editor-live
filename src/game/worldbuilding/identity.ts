@@ -14,6 +14,7 @@ export const PLACE_IDENTITIES = {
   procession: { title: "Processional hall", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "The repeated arches once measured a slow procession." },
   ossuary: { title: "Ossuary ambulatory", tradition: "vaulting", structure: "#99907b", detail: "#716c61", accent: "#c1b99b", story: "The dead were carried around this hall before burial." },
   resonance: { title: "Resonance chapel", tradition: "vaulting", structure: "#77718a", detail: "#625c74", accent: "#b1a2c6", story: "Stone ribs gather the last note of every footfall." },
+  brine: { title: "Last-water chapel", tradition: "vaulting", structure: "#777b73", detail: "#676d68", accent: "#b8c8bd", story: "Shallow pans dried the choir's last water into pale votive salt." },
 } as const;
 export type PlaceIdentity = keyof typeof PLACE_IDENTITIES;
 
@@ -31,5 +32,6 @@ export function identityFor(room: Room): PlaceIdentity {
     return createRng(`${room.seed}:${room.id}:purpose`)() < 0.5 ? "service" : "store";
   }
   if (room.biome === "crystal") return "resonance";
+  if (room.biome === "salt") return "brine";
   return room.biome === "bone" || room.biome === "catacomb" ? "ossuary" : "procession";
 }

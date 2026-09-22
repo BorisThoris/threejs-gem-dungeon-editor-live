@@ -17,6 +17,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
   "worldbuilding/strataSeamPattern",
+  "worldbuilding/saltFallPattern",
   "rooms/floorSurfacePattern",
   "rooms/terrainMaterial",
   "rooms/underfoot",
@@ -50,7 +51,7 @@ const softRoom = { ...pen, biome: "mossy" };
 assert.ok(L.loudnessIn("sprint", softRoom, "soft") < L.loudnessIn("sprint", softRoom, "stone"), "paving carries more sprint noise than its moss bed");
 assert.ok(L.loudnessIn("sprint", softRoom, "water") > L.loudnessIn("sprint", softRoom, "stone"), "crossing water carries more sprint noise than dry paving");
 assert.equal(L.loudnessIn("bombBurst", softRoom, "soft"), L.loudnessIn("bombBurst", softRoom, "water"), "non-footstep emissions ignore footing");
-for (const surface of ["stone", "water", "soft", "wood", "metal"]) assert.ok(L.loudnessIn("walk", softRoom, surface) < 0.1, "walking stays below creature hearing thresholds");
+for (const surface of ["stone", "water", "soft", "wood", "metal", "crust"]) assert.ok(L.loudnessIn("walk", softRoom, surface) < 0.1, "walking stays below creature hearing thresholds");
 assert.deepEqual(L.groundHeading(pen, 0, 0, 0, 0, []), { dx: 0, dz: 0 }, "stationary targets do not create a heading");
 const cage = Array.from({ length: 16 }, (_, i) => ({ x: Math.cos(i * Math.PI / 8), z: Math.sin(i * Math.PI / 8), r: 0.35 }));
 assert.deepEqual(L.groundHeading(pen, 0, 0, 3, 0, cage), { dx: 0, dz: 0 }, "a cornered ambient animal does not take the enemy fallback through furniture");
@@ -89,6 +90,8 @@ let beetles = 0;
 let mites = 0;
 let shardbacks = 0;
 let newts = 0, secretNewts = 0;
+let saltRooms = 0, saltFalls = 0;
+const saltShapes = new Set();
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
@@ -482,6 +485,20 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         "strata chips remain paint-depth and non-blocking");
     }
     const terrain = L.terrainFor(r);
+    if (terrain.biome === "salt") {
+      saltRooms++;
+      saltShapes.add(r.shape);
+      const falls = L.saltFallSites(r);
+      saltFalls += falls.length;
+      for (const site of falls) {
+        assert.ok(L.insideRoom(r, site.x, site.z, 0.16), "salt shedding hangs above the real shaped floor");
+        assert.ok(site.ceiling > site.floor && site.floor >= L.floorHeightAt(r, site.x, site.z), "salt shedding spans usable room height");
+        for (const now of [0, 1, 11]) {
+          const pose = L.saltFallPose(site, now);
+          assert.ok(pose.y >= site.floor && pose.y <= site.ceiling, "salt chips fall between their crust bed and ceiling");
+        }
+      }
+    } else assert.equal(L.saltFallSites(r).length, 0, "salt shedding belongs only to salt-pan rooms");
     const ways = L.districtWaysFor(r);
     districtWaymarks += ways.length;
     assert.ok(ways.length <= 96, "district paths have a fixed per-room detail ceiling");
@@ -497,18 +514,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
-    if (["flooded", "mossy", "fungal", "ash"].includes(terrain.biome)) {
+    if (["flooded", "mossy", "fungal", "ash", "salt"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
         const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
         if (!next || tile.size[0] !== 1.5 || tile.size[2] !== 1.5 || next.size[0] !== 1.5 || next.size[2] !== 1.5) continue;
         assert.equal(L.footingAt(r, tile.position[0] + dx / 2, tile.position[2] + dz / 2, 0, 100),
-          terrain.biome === "flooded" ? "water" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
+          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
       }
     }
     for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
-      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : "stone", "independent terrain beds retain their material after channel drainage");
+      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : "stone", "independent terrain beds retain their material after channel drainage");
     if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
@@ -527,6 +544,8 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   if (shut) assert.ok(shut.has(d.endId), "district assignment preserves the unlocked exit route");
 }
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
+assert.ok(saltRooms > 100 && saltFalls > 300, `salt pans and their shedding occur throughout the choir: ${saltRooms} rooms, ${saltFalls} chips`);
+assert.ok(saltShapes.size >= 5, `salt terrain crosses the irregular-room system: ${[...saltShapes].join(", ")}`);
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
 assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
 assert.ok(newts > 100, `kiln newts occupy fired foundry aprons: ${newts}`);
@@ -568,6 +587,7 @@ assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
+console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);

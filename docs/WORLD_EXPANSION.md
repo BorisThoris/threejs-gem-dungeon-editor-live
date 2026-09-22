@@ -927,3 +927,27 @@ Cutters' Diamond and shallow seam blocks move the measured peaks to 6,980
 triangles and 93 geometries, inside the 8,800 and 112 budgets. Repeated laps do
 not grow room resources, 158 sprint frames retain no heap after collection,
 and 20,000 held-audio updates still retain one voice.
+
+The buried choir now includes an eleventh material tradition: last-water salt
+pans. Salt is one of the choir's connected primary strata, so it arrives in
+three-room geological bands and uses the same block-cut threshold language as
+the older stone. Its rooms retain a dry central crossing while stepped crust
+shelves and scored rake lanes follow the true floor shape. Paired pan rakes and
+drying pegs repeat in the existing roof batches, and the Last-water Chapel
+history ties the material to the choir's former work.
+
+The crust has its own sharp footstep carry, crisp room return, cold mineral
+bounce, static raked-check shader and sparse drying ticks. Up to twelve small
+salt chips shed above actual crust cells in one instanced draw call. Their
+positions remain inside square, circular, polygonal and concave floors; their
+stepped rotation and fall use the persistent run clock and freeze exactly on
+pause. Native review covers a furnished circular salt room at 51 calls and 5,009
+triangles. The audible-air sweep measures the new drying tick above the room
+tone alongside every existing biome voice.
+
+Across 360 generated floors the salt layer appears in 169 rooms across six
+room shapes, shedding 850 bounded chips, while all eleven biomes and place
+histories remain reachable. The current 78-room performance sweep peaks at 78 calls,
+6,897 triangles, 87 geometries and 10 textures. Ten repeated laps add no
+geometry, 1,499 sprint frames retain no heap after collection, and 20,000
+held-audio updates still retain one voice.

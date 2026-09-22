@@ -15,7 +15,7 @@ export function acousticsFor(room: Room): RoomAcoustics {
   return {
     delay: Math.max(.025, Math.min(.14, span / 343)),
     gain: (soft ? .055 : timber ? .1 : .19) * Math.min(1.2, Math.max(.65, span / 24)),
-    cutoff: biome === "ash" ? 480 : soft ? 650 : timber ? 1100 : biome === "crystal" ? 2600 : 1900,
+    cutoff: biome === "ash" ? 480 : soft ? 650 : timber ? 1100 : biome === "crystal" ? 2600 : biome === "salt" ? 2350 : 1900,
   };
 }
 
