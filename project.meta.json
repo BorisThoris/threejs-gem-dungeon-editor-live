@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T19:25:34.080Z",
+  "generatedAt": "2026-09-22T20:13:13.247Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -88,7 +88,9 @@
       "test:creatures",
       "test:bat-flight",
       "test:authored-rooms",
-      "test:strata"
+      "test:strata",
+      "test:threshold-echo",
+      "test:audio-threshold"
     ]
   },
   "capture": {
@@ -117,7 +119,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T19:24:20.557Z"
+        "capturedAt": "2026-09-22T20:11:59.516Z"
       },
       {
         "profile": "desktop",
@@ -126,7 +128,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T19:24:38.902Z"
+        "capturedAt": "2026-09-22T20:12:17.995Z"
       },
       {
         "profile": "full",
@@ -135,7 +137,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T19:25:15.567Z"
+        "capturedAt": "2026-09-22T20:12:54.760Z"
       },
       {
         "profile": "mobile",
@@ -144,7 +146,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T19:24:57.223Z"
+        "capturedAt": "2026-09-22T20:12:36.333Z"
       },
       {
         "profile": "og",
@@ -153,7 +155,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T19:25:33.911Z"
+        "capturedAt": "2026-09-22T20:13:13.072Z"
       }
     ]
   },
@@ -206,13 +208,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 377,
+    "sourceFiles": 380,
     "testFiles": 1,
-    "sourceLines": 67943,
+    "sourceLines": 68191,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 265
+        "files": 267
       },
       {
         "directory": "output",
@@ -220,7 +222,7 @@
       },
       {
         "directory": "scripts",
-        "files": 52
+        "files": 53
       },
       {
         "directory": ".",
@@ -247,10 +249,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "b5927bf",
-    "lastCommitDate": "2026-09-22T22:21:36+03:00",
-    "lastCommitSubject": "Build material contact fans with lean floor marks",
-    "commitCount": 450,
+    "head": "11c4c5e",
+    "lastCommitDate": "2026-09-22T23:06:31+03:00",
+    "lastCommitSubject": "Give real thresholds directional approach sounds",
+    "commitCount": 452,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
