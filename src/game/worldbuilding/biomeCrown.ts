@@ -13,8 +13,8 @@ export interface CrownDefinition {
  *
  * Each motif is a repeated piece of the room's former work, rather than loose
  * decoration: quarry wedges, root combs, tally tabs, sluice rails, kiln
- * dampers, pit props, ossuary ribs, resonator forks, growing shelves and flue
- * baffles. They join the architecture component's existing three instanced
+ * dampers, pit props, ossuary ribs, resonator forks, growing shelves, flue
+ * baffles and pan rakes. They join the architecture component's existing three instanced
  * material batches, so a distinct silhouette does not mean another draw call.
  */
 export const BIOME_CROWNS: Record<BiomeId, CrownDefinition> = {

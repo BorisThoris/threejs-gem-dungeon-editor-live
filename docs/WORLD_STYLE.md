@@ -57,6 +57,16 @@ compatibility preserved: libraries stay dry and puzzle crystals stay distinct.
 Hidden rooms inherit their host's district but retain their dry, older materials.
 Existing cracks, drafts, sounds behind walls and rewards remain their clues.
 
+Closed side galleries are part of that connected plan, not random alcoves. On
+deeper floors the door graph may open two opposite wings into a transept. A
+secret host prefers paired wings beside its cracked wall when the available
+links permit it, turning the final approach into a memorable room shape without
+giving away the hidden door. Rootwater galleries end in root tending bays, Old
+Works galleries in sorting gantries, and Buried Choir galleries in listening
+apses. Their ramps, raised floors, walls, collision and minimap outline all come
+from the same footprint; their terminal beams and marks stay in the existing
+three architecture batches.
+
 District data lives on rooms and drives the HUD, corridor rhythms and biome
 selection. Biomes drive terrain colors, lighting, footstep surfaces, sound carry,
 ambient creature habitat and the air's timbre. Moths favor the rootwater
@@ -108,8 +118,11 @@ Circular, hexagonal, octagonal, diamond, triangular and concave cross chambers
 use block-cut floor courses. The union of these courses and corridor wings is
 the single source for walls, colliders, movement clearance, beam clipping and minimap
 outlines. Cardinal door collars connect pointed chambers to the room graph;
-shifted side galleries make asymmetric footprints. Unvisited rooms keep their
-shape hidden until explored or mapped.
+shifted side galleries make asymmetric footprints, while paired opposite
+galleries form larger transepts. Gallery placement must reserve real closed
+edges in the room graph, and each wing must remain part of the shared terrain,
+collision and minimap footprint. Unvisited rooms keep their shape hidden until
+explored or mapped.
 
 Generation enlarges unusual chambers when the furnishings and corner braziers
 need room, with sizes up to 40 metres available in the builder. Authored layouts

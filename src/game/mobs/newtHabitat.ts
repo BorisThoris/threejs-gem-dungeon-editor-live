@@ -42,7 +42,10 @@ export function newtsFor(room: Room): NewtHome[] {
       : { x: step.x * reach, z: corridorOffset(room, secret) };
   })() : null;
   const edges = wallEdges(room);
-  const candidates = vents.filter((_, i) => i % 2 === 0).map(vent => {
+  // The feeding orbit is wider than the resting body. A block-cut apse can
+  // expose a chamber-edge vent that was legal as a particle source but not as
+  // the centre of a whole animal's circle, so reserve the full orbit here.
+  const candidates = vents.filter((vent, i) => i % 2 === 0 && insideRoom(room, vent.x, vent.z, 0.43)).map(vent => {
     let refuge: { x: number; z: number; towardSecret: boolean } | null = null;
     if (secretTarget && insideRoom(room, secretTarget.x, secretTarget.z, 0.25)
       && clearRun(vent.x, vent.z, secretTarget.x, secretTarget.z)) {

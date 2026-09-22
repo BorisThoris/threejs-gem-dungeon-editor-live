@@ -973,3 +973,30 @@ draw calls, 87 geometries and 10 textures; the triangle peak is 7,256 against
 the 8,800 budget. Ten repeated room laps show no geometry growth, a 1,496-frame
 sprint retains no heap after collection, and 20,000 held-audio updates retain
 one voice.
+
+Closed side galleries now grow from the real room graph into larger authored
+footprints. Deeper chambers may reserve two opposite closed edges for a paired
+transept, and cracked-wall hosts prefer wings that flank the secret when their
+links permit it. Every wing remains one continuous system: its shaped terrain,
+ramp, wall collision, creature clearance and minimap outline use the same floor
+union. This adds room-scale structure instead of scattering more props through
+the chamber.
+
+Every raised landing now explains its former use through its district. The
+Rootwater Galleries end in root tending bays, the Old Works in sorting gantries,
+and the Buried Choir in listening apses. Crossbeams, hanging details and floor
+marks join the architecture component's existing structure, detail and mark
+batches. The World Atlas names the terminus, identifies paired transepts and
+calls out wings that flank a cracked wall.
+
+Across 360 generated floors, the audit finds 853 district-owned terminal
+stations, 87 paired rooms and 21 secret-host transepts, with all three district
+traditions represented. Native review confirms a paired secret room has two
+physical raised landings, continuous terrain and only the existing three
+architecture submissions. All four gallery directions still pass real ascent,
+descent and tapered-wall collision checks. The current 78-room performance
+sweep remains at 78 draw calls, 6,875 triangles, 87 geometries and 10 textures.
+Ten repeated laps add no geometry, a 1,499-frame sprint retains no heap after
+collection, and 20,000 held-audio updates retain one voice. The creature render
+suite also confirms all 15 creature types, including frogs and kiln newts,
+contribute visible pixels under native room lighting.

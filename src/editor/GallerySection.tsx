@@ -5,11 +5,13 @@ import { floorHeightAt, terracePoint, terracesFor } from "../game/worldbuilding/
 import { wingWidthAt } from "../game/dungeon/footprint";
 import { passageLampsFor } from "../game/worldbuilding/passageLighting";
 import { GROUND_Y, WALL_HEIGHT } from "../game/world";
+import { galleryTerminiFor } from "../game/worldbuilding/galleryTermini";
 import { field, label, small } from "./styles";
 
 /** Side elevation of the same ramp and lamps used by the physical room. */
 export function GallerySection({ room, probe, onProbe }: { room: Room; probe: { x: number; z: number }; onProbe: (x: number, z: number) => void }) {
   const galleries = useMemo(() => terracesFor(room), [room]);
+  const termini = useMemo(() => galleryTerminiFor(room), [room]);
   const lamps = useMemo(() => passageLampsFor(room), [room]);
   const selected = galleries.find(g => {
     const axis = DIR_STEP[g.dir], along = probe.x * axis.x + probe.z * axis.z;
@@ -66,6 +68,9 @@ export function GallerySection({ room, probe, onProbe }: { room: Room; probe: { 
       {selected ? <>{distance.toFixed(1)} m from mouth · floor +{height.toFixed(2)} m · {width.toFixed(1)} m wide · {(WALL_HEIGHT - height).toFixed(2)} m to ceiling.
         {" "}Room position ({x.toFixed(1)}, {z.toFixed(1)}).</> : "Move the slider or select a gallery position in the blueprint to inspect it."}
     </output>
+    <p style={small}><strong>{termini.definition.name}</strong> · {termini.definition.description}
+      {termini.sites.length > 1 ? " This room has a paired transept." : ""}
+      {termini.sites.some(site => site.secretFlank) ? " Its two sides flank the cracked-wall approach." : ""}</p>
     <p style={small}>{rampLength} m ramp · {length} m gallery · {Math.min(...widths).toFixed(1)}–{Math.max(...widths).toFixed(1)} m floor width.
       Side view shows the actual ramp, landing and hanging lamps. The blueprint above shows the changing width.</p>
   </section>;

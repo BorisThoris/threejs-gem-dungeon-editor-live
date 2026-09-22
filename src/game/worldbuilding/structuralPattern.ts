@@ -4,6 +4,7 @@ import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
 import { identityFor, PLACE_IDENTITIES } from "./identity";
 import { biomeCrownFor, type CrownSpan } from "./biomeCrown";
+import { galleryTerminiFor } from "./galleryTermini";
 
 /** Cut the same room union into structural bays. Each span is wholly inside
  * the floor below it; a polygon's clipped corner cannot acquire a square roof. */
@@ -57,8 +58,12 @@ export function architectureFor(room: Room) {
     }
   }
   const crown = biomeCrownFor(room, spans);
+  const gallery = galleryTerminiFor(room);
   structure.push(...crown.structure);
   detail.push(...crown.detail);
   marks.push(...crown.marks);
-  return { identity, crown, structure, detail, marks };
+  structure.push(...gallery.structure);
+  detail.push(...gallery.detail);
+  marks.push(...gallery.marks);
+  return { identity, crown, gallery, structure, detail, marks };
 }

@@ -391,28 +391,45 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
     const selected = shuffle(architecture, doors).slice(0, floor === 1 ? 1 : floor === 2 ? 2 : 4);
     room.wings = {};
     for (const dir of selected) room.wings[dir] = 3 + floor * 2 + Math.floor(architecture() * floor) * 2;
-    // A side gallery creates another place to turn out of sight even in
-    // a room with just one exit. Keep secret walls in the chamber and use
-    // a separate draw so galleries do not change the travel passages.
-    if (floor > 1) {
-      const galleryRng = createRng(`${seed}:${room.id}:side-gallery`);
-      const closed = DIRS.filter((dir) => !room.links[dir] && room.secret?.dir !== dir);
-      const gallery = closed.length ? pick(galleryRng, closed) : undefined;
-      if (gallery) {
-        room.wings[gallery] = 3 + floor * 2;
-        room.wingWidths = { [gallery]: Math.min(room.size - 4, CORRIDOR_WIDTH + (floor - 1) * 2) };
-        const width = room.wingWidths[gallery]!;
-        const shift = Math.max(0, Math.min(width / 2 - 1, room.size / 2 - width / 2 - 2));
-        room.wingOffsets = { [gallery]: (galleryRng() < 0.5 ? -1 : 1) * shift };
-      }
-    }
   }
 
   assignDistricts(rooms, "start", endId, floor);
+  // Closed galleries are room-scale annexes, chosen from the actual door
+  // graph after districts exist. Broad third-floor rooms may receive an
+  // opposite pair, making a coherent transept instead of two unrelated
+  // protrusions. A cracked-wall host prefers the two flanking walls: its
+  // final discovery room therefore has a recognizable listening cross.
+  if (floor > 1) {
+    const galleryRooms = [...new Set([...candidates.slice(0, count), ...rooms.filter(room => room.secret)])];
+    for (const room of galleryRooms) {
+      const galleryRng = createRng(`${seed}:${room.id}:side-gallery`);
+      const closed = DIRS.filter(dir => !room.links[dir] && room.secret?.dir !== dir);
+      if (!closed.length) continue;
+      const flanks = room.secret?.dir === "north" || room.secret?.dir === "south"
+        ? (["east", "west"] as Dir[]) : (["north", "south"] as Dir[]);
+      const primary = room.secret ? flanks.filter(dir => closed.includes(dir)) : [pick(galleryRng, closed)];
+      const first = primary[0] ?? pick(galleryRng, closed);
+      const opposite = OPPOSITE[first];
+      const paired = (room.secret || floor === 3 && room.size >= 18 && galleryRng() < 0.68)
+        && closed.includes(opposite);
+      const galleries = [...new Set([first, ...(paired ? [opposite] : [])])];
+      room.wings ??= {};
+      room.wingWidths ??= {};
+      room.wingOffsets ??= {};
+      for (const dir of galleries) {
+        room.wings[dir] = 3 + floor * 2;
+        room.wingWidths[dir] = Math.min(room.size - 4, CORRIDOR_WIDTH + (floor - 1) * 2);
+        const width = room.wingWidths[dir]!;
+        const shift = Math.max(0, Math.min(width / 2 - 1, room.size / 2 - width / 2 - 2));
+        room.wingOffsets[dir] = galleries.length > 1 ? 0 : (galleryRng() < 0.5 ? -1 : 1) * shift;
+      }
+    }
+  }
   assignDistrictLandmarks(rooms, [endId, ...(vault ? [vault.id] : [])]);
   for (const room of rooms) for (const dir of DIRS) {
     if (!room.wings?.[dir] || room.links[dir] || room.secret?.dir === dir || room.district === "works") continue;
-    if (createRng(`${seed}:${room.id}:${dir}:apse`)() < 0.7) room.wingProfiles = { ...room.wingProfiles, [dir]: "apse" };
+    if (room.secret || createRng(`${seed}:${room.id}:${dir}:apse`)() < 0.7)
+      room.wingProfiles = { ...room.wingProfiles, [dir]: "apse" };
   }
   assignWatercourse(rooms, "start", vault?.id ?? null);
   return {

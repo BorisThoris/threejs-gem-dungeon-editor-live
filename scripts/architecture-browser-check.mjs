@@ -14,12 +14,12 @@ try {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
     const { BIOME_CROWNS } = await import("/src/game/worldbuilding/biomeCrown.ts");
     const found = {};
-    for (let seed = 1; seed < 160 && Object.keys(found).length < 10; seed++) for (const floor of [1, 2, 3]) {
+    for (let seed = 1; seed < 200 && Object.keys(found).length < 11; seed++) for (const floor of [1, 2, 3]) {
       const dungeon = generateDungeon({ seed, floor });
       for (const room of dungeon.rooms) if (!found[room.biome])
         found[room.biome] = { dungeon, floor, roomId: room.id, crown: BIOME_CROWNS[room.biome].name };
     }
-    if (Object.keys(found).length !== 10) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
+    if (Object.keys(found).length !== 11) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
     return found;
   });
 
@@ -61,6 +61,55 @@ try {
     }
   }
   assert.ok(signatures.size >= 7, `biome crown silhouettes do not collapse into one repeated batch (${signatures.size} signatures)`);
+  const transept = await page.evaluate(async () => {
+    const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+    const { galleryTerminiFor } = await import("/src/game/worldbuilding/galleryTermini.ts");
+    for (let seed = 1; seed < 240; seed++) {
+      const dungeon = generateDungeon({ seed, floor: 3 });
+      const room = dungeon.rooms.find(room => room.secret && galleryTerminiFor(room).sites.length === 2
+        && galleryTerminiFor(room).sites.every(site => site.secretFlank));
+      if (room) return { dungeon, floor: 3, roomId: room.id,
+        name: galleryTerminiFor(room).definition.name, dirs: galleryTerminiFor(room).sites.map(site => site.dir) };
+    }
+    throw Error("Missing paired secret-host transept fixture");
+  });
+  await page.evaluate(fixture => {
+    window.__run.setState({ dungeon: fixture.dungeon, floor: fixture.floor, currentRoomId: fixture.roomId,
+      phase: "playing", paused: false, inputLocks: 0, transitioning: false, wardenRoomId: null,
+      harrierSlain: true, reaperAwake: false, thiefPhase: "away", invulnerableUntil: 1e9 });
+    window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+  }, transept);
+  await page.waitForFunction(() => window.__scene.getObjectByName("room-architecture")?.userData.gallerySites === 2);
+  const mountedTransept = await page.evaluate(fixture => {
+    const architecture = window.__scene.getObjectByName("room-architecture");
+    return { name: architecture.userData.galleryTerminus, sites: architecture.userData.gallerySites,
+      batches: architecture.children.filter(child => child.isInstancedMesh).length,
+      raised: fixture.dirs.filter(dir => !!window.__scene.getObjectByName(`raised-floor-${dir}`)).length,
+      terrain: !!window.__scene.getObjectByName("terrain-deposits") };
+  }, transept);
+  assert.deepEqual(mountedTransept, { name: transept.name, sites: 2, batches: 3, raised: 2, terrain: true },
+    "a secret-host transept mounts both physical landings, continuous terrain and district architecture in three batches");
+  if (process.env.TRANSEPT_REVIEW) {
+    const image = await page.evaluate(async dir => {
+      const T = await import("/node_modules/three/build/three.module.js");
+      const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
+      const { doorReach } = await import("/src/game/dungeon/footprint.ts");
+      const { floorHeightAt } = await import("/src/game/worldbuilding/elevation.ts");
+      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
+      const axis = DIR_STEP[dir], camera = new T.PerspectiveCamera(68, 1.5, 0.1, 100);
+      const lateral = { x: axis.z, z: -axis.x }, mouth = room.size / 2 + 0.65;
+      const px = axis.x * mouth + lateral.x * 0.8, pz = axis.z * mouth + lateral.z * 0.8;
+      camera.position.set(px, floorHeightAt(room, px, pz) + 1.55, pz);
+      const end = doorReach(room, dir) - 1.15;
+      camera.lookAt(axis.x * end, floorHeightAt(room, axis.x * end, axis.z * end) + 1.75, axis.z * end);
+      camera.updateMatrixWorld(); window.__scene.updateMatrixWorld(true); renderer.render(window.__scene, camera);
+      const result = renderer.domElement.toDataURL(); renderer.dispose(); return result;
+    }, transept.dirs[0]);
+    mkdirSync("output/world-review", { recursive: true });
+    writeFileSync("output/world-review/secret-transept.png", Buffer.from(image.split(",")[1], "base64"));
+  }
   assert.deepEqual(errors, []);
-  console.log(`PASS biome crowns: ten purposeful overhead traditions in three existing architecture batches (${signatures.size} face signatures)`);
+  console.log(`PASS biome crowns and transepts: eleven overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
 } finally { await browser.close(); }

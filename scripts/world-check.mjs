@@ -18,6 +18,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/districtWays",
   "worldbuilding/strataSeamPattern",
   "worldbuilding/saltFallPattern",
+  "worldbuilding/galleryTermini",
   "rooms/floorSurfacePattern",
   "rooms/terrainMaterial",
   "rooms/underfoot",
@@ -84,6 +85,8 @@ let crownBlocks = 0;
 let migratingToads = 0;
 const terraceDirs = new Set();
 let terraceCount = 0;
+let galleryTermini = 0, pairedGalleryRooms = 0, secretTransepts = 0;
+const galleryTraditions = new Set();
 let serviceTrails = 0;
 let colonies = 0;
 let beetles = 0;
@@ -468,10 +471,32 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       "every generated room receives a visible biome crown");
     crowns.add(architecture.crown.biome);
     crownBlocks += architecture.crown.structure.length + architecture.crown.detail.length + architecture.crown.marks.length;
-    for (const b of [...architecture.structure, ...architecture.detail, ...architecture.marks]) {
+    const gallery = architecture.gallery;
+    if (gallery.sites.length) {
+      galleryTermini += gallery.sites.length;
+      galleryTraditions.add(gallery.definition.name);
+      if (gallery.sites.length > 1) pairedGalleryRooms++;
+      if (r.secret && gallery.sites.length > 1 && gallery.sites.every(site => site.secretFlank)) secretTransepts++;
+      assert.equal(gallery.sites.length, L.terracesFor(r).length,
+        "every raised annex ends in its district's visible working station");
+      for (const site of gallery.sites) {
+        assert.ok(L.insideRoom(r, site.x, site.z, 0.35), "gallery termini stand on their true landing floor");
+        assert.ok(Math.abs(L.floorRiseAt(r, site.x, site.z) - site.raised) < 1e-6,
+          "gallery termini use the same elevation as rendering and collision");
+      }
+    }
+    for (const b of [...architecture.structure, ...architecture.detail]) {
       assert.ok(b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT, "structural details preserve full doorway-height movement clearance");
       for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
         assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "structural spans follow the true floor below them");
+    }
+    for (const b of architecture.marks) {
+      const floor = L.floorHeightAt(r, b.position[0], b.position[2]);
+      assert.ok(b.position[1] + b.size[1] / 2 < floor + 0.06
+        || b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT,
+      "architecture marks are either paint-depth or above full movement clearance");
+      for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
+        assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "architecture marks follow the true floor below them");
     }
     for (const habitat of L.croakerHabitats(r, L.croakersFor(r, d.seed), d.seed)) {
       if (habitat.refugeBed) assert.ok(L.terrainFor(r).deposits.some(tile =>
@@ -603,6 +628,10 @@ assert.equal(terraceDirs.size, 4, "raised terrain is checked in every cardinal d
 assert.ok(serviceTrails > 150, `linked maintenance discoveries occur throughout the world: ${serviceTrails}`);
 console.log(`Discovery: ${serviceTrails} reliquary-to-secret expeditions through real doors.`);
 console.log(`Elevation: ${terraceCount} shaped galleries with continuous ramps and matching collision surfaces.`);
+assert.equal(galleryTraditions.size, 3, "all districts give their annexes a distinct former use");
+assert.ok(pairedGalleryRooms > 75, `paired side galleries create room-scale transepts: ${pairedGalleryRooms}`);
+assert.ok(secretTransepts > 0, `cracked-wall hosts receive paired listening transepts when their graph permits: ${secretTransepts}`);
+console.log(`Gallery termini: ${galleryTermini} district-owned stations; ${pairedGalleryRooms} paired rooms and ${secretTransepts} secret-host transepts.`);
 assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id)), [],
   "all building identities occur in the generated world");
 assert.deepEqual(L.BIOMES.filter(biome => !crowns.has(biome)), [], "all biome crown traditions occur in the generated world");
