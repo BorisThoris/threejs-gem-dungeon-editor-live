@@ -1,5 +1,5 @@
-import { elbowMissing, elbowShoulder, halfSize, type Room } from "../dungeon/types";
-import { floorRects } from "../dungeon/footprint";
+import { DIR_STEP, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, type Room } from "../dungeon/types";
+import { corridorOffset, corridorWidth, floorRects, junctionDirections } from "../dungeon/footprint";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { DOOR_HEIGHT, GROUND_Y, WALL_HEIGHT } from "../world";
 import { identityFor, PLACE_IDENTITIES } from "./identity";
@@ -47,6 +47,37 @@ export function elbowTurnFor(room: Room) {
   return { structure, detail, marks };
 }
 
+/** A topology hall frames only the roads that actually exist. The same
+ * doorway graph that cuts its floor therefore remains readable overhead and
+ * in the worn tally across each neck. */
+export function junctionFramesFor(room: Room) {
+  const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
+  if (room.shape !== "junction") return { structure, detail, marks };
+  const block = (into: CorridorBlock[], x: number, y: number, z: number, w: number, h: number, d: number) =>
+    into.push({ position: [x, GROUND_Y + y, z], size: [w, h, d] });
+  const hub = junctionHubWidth(room.size) / 2;
+  for (const dir of junctionDirections(room)) {
+    const axis = DIR_STEP[dir], across = { x: -axis.z, z: axis.x };
+    const span = Math.min(junctionHubWidth(room.size), corridorWidth(room, dir));
+    const along = hub - 0.18;
+    const shift = corridorOffset(room, dir);
+    // corridorOffset is already a world-axis coordinate, not a signed local
+    // offset: north/south use x and east/west use z directly.
+    const x = axis.x * along + (axis.z ? shift : 0);
+    const z = axis.z * along + (axis.x ? shift : 0);
+    block(structure, x, WALL_HEIGHT - 0.72, z,
+      axis.x ? 0.24 : span - 0.4, 0.24, axis.z ? 0.24 : span - 0.4);
+    for (const sign of [-1, 1]) block(detail,
+      x + across.x * sign * (span / 2 - 0.25), DOOR_HEIGHT + 0.42,
+      z + across.z * sign * (span / 2 - 0.25), 0.18, 0.7, 0.18);
+    const tally = hub + 0.18;
+    block(marks, axis.x * tally + (axis.z ? shift : 0), 0.025,
+      axis.z * tally + (axis.x ? shift : 0),
+      axis.x ? 0.16 : span - 0.5, 0.05, axis.z ? 0.16 : span - 0.5);
+  }
+  return { structure, detail, marks };
+}
+
 export function architectureFor(room: Room) {
   const identity = PLACE_IDENTITIES[identityFor(room)];
   const structure: CorridorBlock[] = [], detail: CorridorBlock[] = [], marks: CorridorBlock[] = [];
@@ -83,6 +114,10 @@ export function architectureFor(room: Room) {
   structure.push(...turn.structure);
   detail.push(...turn.detail);
   marks.push(...turn.marks);
+  const junction = junctionFramesFor(room);
+  structure.push(...junction.structure);
+  detail.push(...junction.detail);
+  marks.push(...junction.marks);
   const crown = biomeCrownFor(room, spans);
   const gallery = galleryTerminiFor(room);
   structure.push(...crown.structure);
@@ -91,5 +126,5 @@ export function architectureFor(room: Room) {
   structure.push(...gallery.structure);
   detail.push(...gallery.detail);
   marks.push(...gallery.marks);
-  return { identity, crown, gallery, turn, structure, detail, marks };
+  return { identity, crown, gallery, turn, junction, structure, detail, marks };
 }

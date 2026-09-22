@@ -41,6 +41,9 @@ export const SHAPE_SIDES: Record<Shape, number> = {
   // `elbow` is a seeded L-shaped union. Four keeps the cardinal vocabulary;
   // its six real wall courses come from the shared rectangle footprint.
   elbow: 4,
+  // `junction` grows only toward real doors, secrets and side galleries.
+  // Four describes its central work bay; the graph supplies its arms.
+  junction: 4,
   circle: 48,
   hexagon: 6,
   octagon: 8,
@@ -53,6 +56,7 @@ export const SHAPES = [
   "cross",
   "ring",
   "elbow",
+  "junction",
   "circle",
   "hexagon",
   "octagon",
@@ -255,6 +259,10 @@ export const ringCoreWidth = (size: number): number =>
 export const elbowShoulder = (size: number): number =>
   Math.min(8, Math.max(6, Math.round(size * 0.24 / 2) * 2));
 
+/** Width of the central work bay in a topology-shaped junction hall. */
+export const junctionHubWidth = (size: number): number =>
+  Math.min(16, Math.max(12, Math.round((size - 6) / 2) * 2));
+
 /** The quadrant deliberately left unexcavated. Its seeded turn makes elbow
  * halls face all four ways without adding a second rotation field to rooms. */
 export function elbowMissing(room: Pick<Room, "id" | "seed">): { x: -1 | 1; z: -1 | 1 } {
@@ -278,6 +286,7 @@ export function inscribedRadius(room: Room): number {
   if (room.shape === "cross") return crossArmWidth(room.size) / Math.SQRT2;
   if (room.shape === "ring") return half;
   if (room.shape === "elbow") return Math.min(half, elbowShoulder(room.size) * Math.SQRT2);
+  if (room.shape === "junction") return junctionHubWidth(room.size) / 2;
   return half * Math.cos(Math.PI / SHAPE_SIDES[room.shape]);
 }
 
@@ -324,6 +333,13 @@ export function floorReach(room: Room, angle: number): number {
     if (x <= 1e-9 || z <= 1e-9) return outer;
     const shoulder = elbowShoulder(room.size);
     return Math.min(outer, Math.max(shoulder / x, shoulder / z));
+  }
+  if (room.shape === "junction") {
+    const hub = junctionHubWidth(room.size) / 2;
+    return Math.min(
+      Math.abs(hub / Math.cos(angle)),
+      Math.abs(hub / Math.sin(angle))
+    );
   }
   if (room.shape === "cross") {
     const arm = crossArmWidth(room.size) / 2;

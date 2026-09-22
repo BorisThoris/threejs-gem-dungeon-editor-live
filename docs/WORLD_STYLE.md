@@ -41,6 +41,13 @@ tradition. Terrain, walls, ceiling, collision, routing, props and the minimap
 must agree on the same concave outline; furniture assigned to the absent work
 quadrant is omitted rather than scattered somewhere unrelated.
 
+Topology halls are drawn from the generated doorway graph. Their central work
+bay grows an arm only toward a real door, cracked wall or raised side gallery,
+so the same rule produces a terminus, straight passage, turn, T-junction or
+crossing. A district frame and worn tally mark every surviving neck. Floor,
+walls, ceiling, collision, routes, terrain and minimap must read the same graph;
+an unlinked wall must never receive a decorative false corridor.
+
 Authored rooms keep that rule in their data. A composition may carry a name
 and one sentence explaining its former use; the HUD and World atlas preserve
 the name instead of reducing it to a generic chamber. Furniture repeats around

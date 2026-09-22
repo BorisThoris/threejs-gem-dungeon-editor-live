@@ -29,7 +29,10 @@ try{
    if(Object.keys(found).length===12&&found.newts.r.secret&&found.brinecrabs.r.secret&&found.copperbacks.r.secret)return found;
   }throw Error('missing habitat');
  });
- const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',newts:'creature-newts',brinecrabs:'creature-brine-crabs',copperbacks:'creature-copperbacks',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
+ // Habitat reaction checks emit shared Din signals. Run them before the mite
+ // and flight fixtures make noise, otherwise an overlapping generated floor
+ // can begin a retreat before that habitat's event listener is attached.
+ const names={frog:'croaker-0',newts:'creature-newts',brinecrabs:'creature-brine-crabs',copperbacks:'creature-copperbacks',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{

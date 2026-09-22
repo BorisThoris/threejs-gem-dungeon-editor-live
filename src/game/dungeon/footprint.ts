@@ -1,4 +1,4 @@
-import { crossArmWidth, DIRS, elbowMissing, elbowShoulder, halfSize, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
+import { crossArmWidth, DIRS, elbowMissing, elbowShoulder, halfSize, junctionHubWidth, ringCoreWidth, SHAPE_SIDES, type Dir, type Room } from "./types";
 
 export interface FloorRect { x: number; z: number; width: number; depth: number }
 export interface WallEdge { x: number; z: number; length: number; along: "x" | "z"; dir: Dir }
@@ -11,6 +11,11 @@ export const corridorOffset = (room: Room, dir: Dir): number => room.links[dir] 
     Math.min(halfSize(room) - corridorWidth(room, dir) / 2, room.wingOffsets?.[dir] ?? 0));
 
 export const doorReach = (room: Room, dir: Dir): number => halfSize(room) + (room.wings?.[dir] ?? 0);
+
+/** The graph-facing sides of a topology hall. A cracked wall and a closed
+ * gallery are physical destinations too, so their arms follow the same rule. */
+export const junctionDirections = (room: Room): Dir[] => DIRS.filter(dir =>
+  !!room.links[dir] || room.secret?.dir === dir || !!room.wings?.[dir]);
 
 export interface WingCourse { start: number; end: number; width: number }
 export const hasShapedWings = (room: Room): boolean => DIRS.some(dir => room.wingProfiles?.[dir] === "apse" && !room.links[dir]);
@@ -59,6 +64,22 @@ function chamberRects(room: Room): FloorRect[] {
       { x: -missing.x * (half - shoulder) / 2, z: 0, width: arm, depth: room.size },
       { x: 0, z: -missing.z * (half - shoulder) / 2, width: room.size, depth: arm },
     ];
+  }
+  if (room.shape === "junction") {
+    const hub = junctionHubWidth(room.size), half = halfSize(room);
+    const rects: FloorRect[] = [{ x: 0, z: 0, width: hub, depth: hub }];
+    for (const dir of junctionDirections(room)) {
+      const vertical = dir === "north" || dir === "south";
+      const sign = dir === "north" || dir === "west" ? -1 : 1;
+      const width = Math.min(hub, corridorWidth(room, dir));
+      rects.push({
+        x: vertical ? corridorOffset(room, dir) : sign * half / 2,
+        z: vertical ? sign * half / 2 : corridorOffset(room, dir),
+        width: vertical ? width : half,
+        depth: vertical ? half : width,
+      });
+    }
+    return rects;
   }
   const half = halfSize(room), sides = SHAPE_SIDES[room.shape];
   const vertices = Array.from({ length: sides }, (_, i) => ({

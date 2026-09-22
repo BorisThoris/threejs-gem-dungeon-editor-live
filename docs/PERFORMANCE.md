@@ -25,8 +25,8 @@ broad slowdown.
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
-6,869 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 562-frame sprint
+7,208 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 461-frame sprint
 sample retained no heap after collection. Draw calls are in the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
@@ -43,7 +43,7 @@ comparable across that environment.
 |---|---|---|
 | Dense trap rooms | Measure | Use the ranked report to identify the owning scene groups before adding another high-detail hazard. |
 | Draw calls | Stable | The fixed corpus peaks at 78 of 96 calls in a dense square trap room. Elbow rooms use the existing floor, wall and architecture submissions; keep new room-scale decoration in shared batches. |
-| Structural faces | Monitored | Shaped-room architecture is the largest triangle owner. Simplify hidden or repeated construction faces before raising the budget again. |
+| Structural faces | Monitored | A dense cross-shaped normal room owns the 7,208-triangle peak with 1,592 triangles of hard-budget headroom. Simplify hidden or repeated construction faces before raising the budget. |
 | Terrain shaders | Stable | Twelve biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |
 | Biome crowns | Stable | Twelve roof motifs remain inside the three existing architecture submissions; preserve that batching. |
 | Ambient colonies | Stable | Kiln newts and brine crabs each use two instanced submissions for a whole colony, with no individual lights or timers; the measured peak remains 78 calls. |
@@ -55,7 +55,8 @@ comparable across that environment.
 | Verdigris condenser biome | Stable | The twelfth shader and crown variant reuse the two terrain and three architecture batches. Its hiss replaces the held room-air voice on entry. Across 360 floors, 164 rooms and five shapes stay inside the Old Works; the corpus peak remains 78 calls. |
 | Copperback colonies | Stable | Up to five grazers share two instanced batches, with no individual lights or timers. The 360-floor audit finds 673 legal homes and 80 secret-aligned colonies; the measured peak remains 78 calls, 6,878 triangles, 87 geometries and 10 textures. |
 | Service-ring rooms | Stable | Four floor bars, four inner walls and four outer walls share the existing floor, wall, ceiling and map systems. The two sampled rings peak at 51 calls and 5,584 triangles; neither owns the 78-call corpus peak. |
-| Elbow halls | Stable | The seeded L-shaped footprint and its retained-pier rails use existing floor, wall, ceiling, minimap and three architecture batches. Direct review costs 41 calls and 4,516 triangles; the fixed corpus peak is 78 calls and 6,869 triangles. |
+| Elbow halls | Stable | The seeded L-shaped footprint and its retained-pier rails use existing floor, wall, ceiling, minimap and three architecture batches. Direct review costs 41 calls and 4,516 triangles; the current fixed corpus peak is 78 calls and 7,208 triangles. |
+| Topology halls | Stable | Their central bay grows arms from actual doors, cracked walls and galleries, while doorway frames remain in the three architecture batches. A reviewed T-junction costs 40 calls and 4,441 triangles; the fixed corpus peak remains 78 calls and shifts to 7,208 triangles in a dense cross room. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a

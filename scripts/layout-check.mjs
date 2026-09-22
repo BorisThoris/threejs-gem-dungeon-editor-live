@@ -406,6 +406,50 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   check("elbow pier rails and tally marks trace only real floor", badTurns === 0, `${badTurns} bad turns`);
 }
 
+// A topology hall is shaped by the graph rather than ornamented after it.
+// Exercise every non-empty combination of doors: terminus, passage, turn,
+// T-junction and crossing all share one footprint rule.
+{
+  let badMouths = 0, falseArms = 0, badRoutes = 0, badProps = 0, badFrames = 0;
+  const forms = new Set();
+  for (let mask = 1; mask < 16; mask++) {
+    const r = { ...room(22, "normal", "junction"), id: `junction_${mask}`, links: {} };
+    const active = L.DIRS.filter((dir, i) => mask & (1 << i));
+    for (const dir of active) r.links[dir] = `next_${dir}`;
+    forms.add(active.length === 1 ? "terminus" : active.length === 2
+      ? (L.OPPOSITE[active[0]] === active[1] ? "passage" : "turn")
+      : active.length === 3 ? "tee" : "crossing");
+    const half = r.size / 2;
+    const mouth = dir => ({ x: L.DIR_STEP[dir].x * (half - 1), z: L.DIR_STEP[dir].z * (half - 1) });
+    for (const dir of L.DIRS) {
+      const p = mouth(dir), inside = L.insideRoom(r, p.x, p.z, 0.6);
+      if (active.includes(dir) ? !inside : inside) (active.includes(dir) ? badMouths++ : falseArms++);
+    }
+    for (let a = 0; a < active.length; a++) for (let b = a + 1; b < active.length; b++) {
+      const from = mouth(active[a]), to = mouth(active[b]);
+      if (!L.roomSegmentClear(r, from.x, from.z, to.x, to.z, 0.55)) badRoutes++;
+    }
+    for (const p of L.placementsFor(r, r.seed))
+      if (!L.insideRoom(r, p.x, p.z, L.PROP_SPECS[p.kind].radius)) badProps++;
+    const frames = L.junctionFramesFor(r), blocks = [...frames.structure, ...frames.detail, ...frames.marks];
+    const onFloor = blocks.every(b => {
+      const [x, , z] = b.position, [w, , d] = b.size;
+      return [[x - w / 2, z - d / 2], [x + w / 2, z - d / 2],
+        [x - w / 2, z + d / 2], [x + w / 2, z + d / 2]]
+        .every(([cx, cz]) => L.insideRoom(r, cx, cz, 0.001));
+    });
+    if (frames.structure.length !== active.length || frames.detail.length !== active.length * 2
+      || frames.marks.length !== active.length || !onFloor) badFrames++;
+  }
+  check("topology halls cover terminus, passage, turn, T and crossing plans", forms.size === 5,
+    [...forms].join(", "));
+  check("topology halls open every real doorway mouth", badMouths === 0, `${badMouths} closed mouths`);
+  check("topology halls grow no arm toward a missing doorway", falseArms === 0, `${falseArms} false arms`);
+  check("every pair of topology-hall doors has a clear route", badRoutes === 0, `${badRoutes} blocked routes`);
+  check("topology-hall furnishings stay in the central work bay", badProps === 0, `${badProps} off-floor props`);
+  check("topology-hall frames mark only the arms the graph supplies", badFrames === 0, `${badFrames} bad frame sets`);
+}
+
 // A service ring is a real concave chamber with a sealed core. Its four
 // walks must remain one navigable loop; the centre is wall, not decorative
 // floor that only looks blocked.

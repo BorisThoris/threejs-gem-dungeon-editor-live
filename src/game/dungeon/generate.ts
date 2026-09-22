@@ -137,10 +137,10 @@ const SHAPES_FOR: Partial<Record<RoomKind, readonly Shape[]>> = {
   arena: ["circle", "octagon", "triangle"],
   memory: ["hexagon", "octagon"],
   end: ["circle", "octagon", "square", "triangle"],
-  normal: ["square", "square", "circle", "cross", "ring", "elbow"],
+  normal: ["square", "square", "circle", "cross", "ring", "elbow", "junction"],
   library: ["square", "cross"],
   challenge: ["square", "hexagon", "cross"],
-  treasure: ["square", "diamond", "hexagon", "cross", "ring", "elbow"],
+  treasure: ["square", "diamond", "hexagon", "cross", "ring", "elbow", "junction"],
   // Round or many-sided, so it reads as built for something.
   shrine: ["hexagon", "octagon", "circle"],
   secret: ["square", "square", "octagon"],

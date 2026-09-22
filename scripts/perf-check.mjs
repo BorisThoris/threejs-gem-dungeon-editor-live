@@ -25,7 +25,7 @@ const CHROMIUM =
   (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 /**
- * The current shaped-room baseline is 78 calls, 6,869 triangles, 87
+ * The current shaped-room baseline is 78 calls, 7,208 triangles, 87
  * geometries and 10 textures. The larger number is accounted for: structural
  * bays, habitat terrain and district paths now describe one connected place
  * instead of a bare square with scattered props. The limits retain meaningful
@@ -73,7 +73,7 @@ const BUDGET = {
    */
   retainedMB: 8,
 };
-const BASELINE = { calls: 78, triangles: 6869, geometries: 87, textures: 10 };
+const BASELINE = { calls: 78, triangles: 7208, geometries: 87, textures: 10 };
 const SEEDS = [4242, 77];
 
 let failures = 0;

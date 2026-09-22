@@ -101,6 +101,8 @@ let verdigrisRooms = 0;
 const verdigrisShapes = new Set();
 const apseDirs = new Set();
 let apses = 0;
+let junctionRooms = 0;
+const junctionForms = new Set();
 let passageLights = 0, formerPassageLights = 0;
 let landmarkRooms = 0;
 const landmarkKinds = new Set();
@@ -491,6 +493,13 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       }
     }
     identities.add(L.identityFor(r));
+    if (r.shape === "junction") {
+      junctionRooms++;
+      const dirs = L.junctionDirections(r);
+      junctionForms.add(dirs.length === 1 ? "terminus" : dirs.length === 2
+        ? (L.OPPOSITE[dirs[0]] === dirs[1] ? "passage" : "turn")
+        : dirs.length === 3 ? "tee" : "crossing");
+    }
     const architecture = L.architectureFor(r);
     assert.ok(architecture.structure.length > 0, "every room shape supports its district architecture");
     assert.equal(architecture.crown.definition, L.BIOME_CROWNS[r.biome], "room architecture publishes its biome's crown rule");
@@ -521,8 +530,11 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     }
     for (const b of [...architecture.structure, ...architecture.detail]) {
       assert.ok(b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT, "structural details preserve full doorway-height movement clearance");
-      for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
-        assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "structural spans follow the true floor below them");
+      for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2]) {
+        const x = b.position[0] + dx, z = b.position[2] + dz;
+        assert.ok(L.insideRoom(r, x, z),
+          `structural spans follow the true floor below them: ${r.id} ${r.shape} at ${x},${z} ${JSON.stringify(b)} floor=${JSON.stringify(L.floorRects(r))}`);
+      }
     }
     for (const b of architecture.marks) {
       const floor = L.floorHeightAt(r, b.position[0], b.position[2]);
@@ -530,7 +542,8 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         || b.position[1] - b.size[1] / 2 > L.GROUND_Y + L.DOOR_HEIGHT,
       "architecture marks are either paint-depth or above full movement clearance");
       for (const dx of [-b.size[0] / 2, b.size[0] / 2]) for (const dz of [-b.size[2] / 2, b.size[2] / 2])
-        assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz), "architecture marks follow the true floor below them");
+        assert.ok(L.insideRoom(r, b.position[0] + dx, b.position[2] + dz),
+          `architecture marks follow the true floor below them: ${r.id} ${r.shape} ${JSON.stringify(b)}`);
     }
     for (const habitat of L.croakerHabitats(r, L.croakersFor(r, d.seed), d.seed)) {
       if (habitat.refugeBed) assert.ok(L.terrainFor(r).deposits.some(tile =>
@@ -679,6 +692,9 @@ assert.ok(secretTransepts > 0, `cracked-wall hosts receive paired listening tran
 console.log(`Gallery termini: ${galleryTermini} district-owned stations; ${pairedGalleryRooms} paired rooms and ${secretTransepts} secret-host transepts.`);
 assert.deepEqual(Object.keys(L.PLACE_IDENTITIES).filter(id => !identities.has(id)), [],
   "all building identities occur in the generated world");
+assert.deepEqual([...junctionForms].sort(), ["crossing", "passage", "tee", "terminus", "turn"],
+  "generated topology halls cover every graph-shaped plan");
+console.log(`Topology halls: ${junctionRooms} graph-shaped rooms cover ${[...junctionForms].join(", ")}.`);
 assert.deepEqual(L.BIOMES.filter(biome => !crowns.has(biome)), [], "all biome crown traditions occur in the generated world");
 console.log(`Biome crowns: ${crownBlocks} purposeful overhead blocks across ${crowns.size} material traditions.`);
 assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migratingToads}`);

@@ -14,25 +14,27 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
+  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "junction", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { ringCoreWidth } = await import("/src/game/dungeon/types.ts");
       const { bus } = await import("/src/game/events.ts");
       const { PLAYER_SPAWN_Y } = await import("/src/game/world.ts");
       for (let seed = 1; seed <= 200; seed++) {
-        const dungeon = generateDungeon({ seed, floor: 2 });
+        const floor = wanted === "junction" ? 3 : 2;
+        const dungeon = generateDungeon({ seed, floor });
         const trailKind = wanted.startsWith("trail-") ? wanted.slice(6) : null;
         const room = trailKind && dungeon.secretTrail?.landmark === trailKind
           ? dungeon.rooms.find(r => r.id === dungeon.secretTrail?.sourceId)
           : dungeon.rooms.find(r => wanted === "gallery" ? r.wings?.north >= 6 && !r.links.north
           : wanted === "salt" ? r.biome === "salt" && r.shape !== "square" && r.kind === "normal"
           : wanted === "elbow" ? r.shape === "elbow" && !r.landmark && !r.waterway && !r.template
+          : wanted === "junction" ? r.shape === "junction" && Object.keys(r.links).length >= 3 && !r.landmark && !r.waterway && !r.template
           : wanted === "crossroads" ? r.template === "hall-crossroads"
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
-        window.__run.setState({ dungeon, floor: 2, currentRoomId: room.id, visited: [room.id],
+        window.__run.setState({ dungeon, floor, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
           thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9 });
         const spawnZ = wanted === "gallery" ? -room.size / 2 + 3

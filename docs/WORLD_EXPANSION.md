@@ -1102,3 +1102,27 @@ the frog changing 5,854 pixels in native room light. The fixed 78-room sweep
 peaks at 78 calls, 6,869 triangles, 87 geometries and 10 textures; ten repeated
 transitions add no geometry, a 562-frame sprint retains no heap after
 collection, and 20,000 held-audio updates retain one voice.
+
+Topology halls make the generated door graph visible as room-scale terrain.
+A broad central work bay grows a paved arm only toward a real door, cracked
+wall or raised side gallery. The same footprint therefore becomes a terminus,
+straight passage, turn, T-junction or crossing without painting a false route
+onto an unlinked wall. Floor, ceiling, wall courses, collision, pursuer routes,
+terrain clipping and the minimap all consume that shared rectangle union.
+
+Every open neck receives one overhead district frame, two hanging tabs and one
+floor tally in the existing architecture batches. Rootwater names these Root
+exchanges, the Old Works Marshalling junctions and the Buried Choir Cantor
+junctions. Furnishings remain inside the central bay while watercourses,
+secrets and offset rounded galleries continue through the arms supplied by
+their actual graph positions.
+
+Across 360 generated floors, 91 topology halls cover all five plans and all 18
+building identities occur. The layout audit crosses every pair of doors in all
+15 non-empty cardinal combinations and checks that no absent side receives
+floor, props or a frame. Native review renders a third-floor marshalling
+T-junction at 40 calls and 4,441 triangles. The fixed 78-room sweep remains at
+78 calls, 87 geometries and 10 textures; its triangle peak is 7,208 in a dense
+cross room. Ten repeated transitions add no geometry, a 461-frame sprint
+retains no heap after collection, and 20,000 held-audio updates retain one
+voice.
