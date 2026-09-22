@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T14:40:53.159Z",
+  "generatedAt": "2026-09-22T15:14:44.616Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -117,7 +117,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T14:39:39.166Z"
+        "capturedAt": "2026-09-22T15:13:30.573Z"
       },
       {
         "profile": "desktop",
@@ -126,7 +126,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T14:39:57.562Z"
+        "capturedAt": "2026-09-22T15:13:49.154Z"
       },
       {
         "profile": "full",
@@ -135,7 +135,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T14:40:34.509Z"
+        "capturedAt": "2026-09-22T15:14:26.050Z"
       },
       {
         "profile": "mobile",
@@ -144,7 +144,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T14:40:16.034Z"
+        "capturedAt": "2026-09-22T15:14:07.574Z"
       },
       {
         "profile": "og",
@@ -153,7 +153,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T14:40:52.986Z"
+        "capturedAt": "2026-09-22T15:14:44.446Z"
       }
     ]
   },
@@ -208,7 +208,7 @@
   "metrics": {
     "sourceFiles": 375,
     "testFiles": 1,
-    "sourceLines": 66742,
+    "sourceLines": 66864,
     "largestDirectories": [
       {
         "directory": "src",
@@ -247,10 +247,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "f318f63",
-    "lastCommitDate": "2026-09-22T17:30:45+03:00",
-    "lastCommitSubject": "Add navigable service-ring chambers",
-    "commitCount": 432,
+    "head": "3fb5ff6",
+    "lastCommitDate": "2026-09-22T18:07:29+03:00",
+    "lastCommitSubject": "Add seeded elbow halls",
+    "commitCount": 434,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
