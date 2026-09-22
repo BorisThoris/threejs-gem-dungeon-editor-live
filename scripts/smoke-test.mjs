@@ -1546,7 +1546,14 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const { ITEMS, ITEM_IDS } = await import("/src/game/items/catalog.ts");
     const seen = new Map();
-    for (const id of ITEM_IDS) {
+    // Exercise an unrestricted representative for the device family here.
+    // The first catalogued device is the snare, whose refusal on glazed
+    // floors is intentional terrain behavior rather than an inert slot.
+    const representatives = [
+      ...ITEM_IDS.filter((id) => id !== "snare"),
+      ...ITEM_IDS.filter((id) => id === "snare"),
+    ];
+    for (const id of representatives) {
       const family = ITEMS[id].family;
       if (seen.has(family)) continue;
       let said = false;
@@ -1943,7 +1950,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.setState({ mapped: true, visited: s.dungeon.rooms.map((r) => r.id) });
     await wait(500);
     const svg = document.querySelector("svg");
-    const spots = [...svg.querySelectorAll("g > g > g[transform]")].map((g) => {
+    const spots = [...svg.querySelectorAll('[data-testid="map-room"]')].map((g) => {
       const m = g.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/);
       return m ? [Math.abs(+m[1]), Math.abs(+m[2])] : [0, 0];
     });

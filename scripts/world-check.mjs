@@ -16,6 +16,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/districtThresholds",
   "worldbuilding/wallCoursePattern",
   "worldbuilding/districtWays",
+  "worldbuilding/strataSeamPattern",
   "rooms/floorSurfacePattern",
   "rooms/terrainMaterial",
   "rooms/underfoot",
@@ -73,6 +74,7 @@ assert.equal(L.waterTravel(10, 13), 12.25, "current slows continuously with the 
 assert.equal(L.waterTravel(10, 16), 13);
 assert.equal(L.waterTravel(10, 100), 13, "dry channels have no residual current or revisit phase drift");
 let rooms = 0, tiles = 0, matching = 0, links = 0, circuits = 0, channelRooms = 0;
+let strataLinks = 0, matchingStrataLinks = 0, strataDoors = 0, strataSeamMarks = 0;
 let districtWaymarks = 0;
 const biomes = new Set();
 const identities = new Set();
@@ -453,9 +455,32 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     }
     assert.ok(L.BIOMES_FOR[r.kind].includes(r.biome), "room purpose constrains its materials");
     assert.equal(L.biomeIdFor(r.kind, r.id, r.seed, r), r.biome, "runtime reads generated geography");
+    assert.ok(r.stratum && L.DISTRICTS[r.district].biomes.includes(r.stratum), "every room belongs to its district's connected geology");
     biomes.add(r.biome);
     if (r.secret) assert.equal(byId.get(r.secret.to).district, r.district, "secrets inherit host history");
-    for (const id of Object.values(r.links)) { links++; if (byId.get(id).district === r.district) matching++; }
+    for (const id of Object.values(r.links)) {
+      links++;
+      const next = byId.get(id);
+      if (next.district === r.district) {
+        matching++;
+        strataLinks++;
+        if (next.stratum === r.stratum) matchingStrataLinks++;
+      }
+    }
+    const seams = L.strataSeamsFor(r, d.rooms);
+    strataSeamMarks += seams.length;
+    strataDoors += new Set(seams.map(mark => mark.destination)).size;
+    for (const mark of seams) {
+      const next = byId.get(mark.destination);
+      assert.ok(Object.values(r.links).includes(mark.destination), "strata seams point through real open doors");
+      assert.equal(next.district, r.district, "district lintels, not geology chips, own region boundaries");
+      assert.notEqual(next.stratum, r.stratum, "a seam marks a real geological transition");
+      assert.equal(mark.stratum, next.stratum, "the threshold previews the destination stratum");
+      assert.ok(L.insideRoom(r, mark.position[0], mark.position[2], Math.hypot(mark.size[0], mark.size[2]) / 2 + 0.02),
+        "strata chips stay on the shaped floor beside their doorway");
+      assert.ok(mark.position[1] + mark.size[1] / 2 - L.floorHeightAt(r, mark.position[0], mark.position[2]) < 0.05,
+        "strata chips remain paint-depth and non-blocking");
+    }
     const terrain = L.terrainFor(r);
     const ways = L.districtWaysFor(r);
     districtWaymarks += ways.length;
@@ -534,12 +559,15 @@ assert.ok(migratingToads > 50, `channel habitats occur in the world: ${migrating
   assert.ok(wallTurns > 1000, "animals actively turn along walls across generated room shapes");
   console.log(`Ambient movement: ${wallTurns} legal turns away from chamber boundaries.`);
 assert.ok(matching / links > 0.65, "most doorways continue the same district");
+assert.ok(matchingStrataLinks / strataLinks > 0.9, "connected geology continues across at least nine in ten links inside districts");
+assert.ok(strataDoors > 200 && strataSeamMarks >= strataDoors * 3, "material transitions are visibly marked at real doorways");
 assert.ok(circuits > 250, `watercourse expeditions appear throughout the generated world: ${circuits}/360`);
 assert.equal(L.waterLevel(null, 100), 1);
 assert.equal(L.waterLevel(10, 13), 0.5);
 assert.equal(L.waterLevel(10, 16), 0);
 console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} connected rooms.`);
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
+console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);

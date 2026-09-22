@@ -1793,9 +1793,12 @@
    { "kind": "chair", "x": -5.1, "z": -7.6, "rotation": 2.356194490192345 },
    { "kind": "table", "x": 6, "z": 6, "rotation": 0.7853981633974483 },
    { "kind": "chair", "x": 5.1, "z": 7.6, "rotation": -0.7853981633974483 },
+   { "kind": "candle", "x": -7, "z": -4.8, "rotation": 0 },
+   { "kind": "candle", "x": 7, "z": 4.8, "rotation": 0 },
    { "kind": "crate", "x": -5.1, "z": 7.4, "rotation": 0, "slot": "cut-stone" },
    { "kind": "barrel", "x": 5.1, "z": -7.4, "rotation": 0, "slot": "cut-stone" },
-   { "kind": "rubble", "x": -4.3, "z": 4.3, "rotation": 0 }
+   { "kind": "rubble", "x": -4.3, "z": 4.3, "rotation": 0 },
+   { "kind": "rubble", "x": 4.3, "z": -4.3, "rotation": 0 }
   ],
   "slots": [
    {

@@ -902,7 +902,28 @@ prop, walks all door pairs, approaches gems, keys, traps and room mechanisms,
 and samples native generation. The four designs produce 16–24 visibly distinct
 arrangements each and raise non-square generated share while preserving the
 generator's one-third authored-room rate. Native review renders cover diamond,
-circle, cross and hexagon fixtures; direct costs are 80, 61, 50 and 69 draw
-calls respectively. The integrated 78-room sweep remains at 78 calls, 6,722
-triangles, 87 geometries and 10 textures. Repeated laps do not grow resources,
-and 1,496 sprint frames retain no heap after collection.
+circle, cross and hexagon fixtures; direct costs are 87, 61, 50 and 69 draw
+calls respectively.
+
+Terrain geography now has a graph rule beneath the room palette. Each district
+lays down three-room strata from its own root through real door links. Room
+purpose can still choose a safe lining—a timber library over a moss layer, for
+example—without inventing a geological break. Hidden rooms continue the host
+wall's stratum, keeping the secret physically tied to the place that concealed
+it. The World Atlas names the underlying layer separately from the visible
+lining.
+
+When the underlying material really changes inside a district, both doorway
+faces carry five shallow masonry chips in the colour of the destination layer.
+They are non-colliding, block-cut, and rendered in one instanced batch. Across
+360 sampled floors, 93.5% of intra-district links continue the same stratum;
+217 real two-sided transitions use 2,170 chips. Native browser fixtures cover
+gardens, works and tombs transitions at 25–28 calls. The world check also keeps
+all ten biomes, every shaped footprint, terrain sound, and existing creature
+habitat under test.
+
+The integrated 78-room sweep remains at 78 calls and 10 textures. The denser
+Cutters' Diamond and shallow seam blocks move the measured peaks to 6,980
+triangles and 93 geometries, inside the 8,800 and 112 budgets. Repeated laps do
+not grow room resources, 158 sprint frames retain no heap after collection,
+and 20,000 held-audio updates still retain one voice.

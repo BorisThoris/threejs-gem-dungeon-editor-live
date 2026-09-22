@@ -163,6 +163,8 @@ export interface Room {
   district?: import("../rooms/districts").DistrictId;
   /** One graph-selected navigation anchor in each district. */
   landmark?: import("../worldbuilding/landmarks").LandmarkId;
+  /** Connected geological band beneath any purpose-specific room lining. */
+  stratum?: import("../rooms/biomes").BiomeId;
   biome?: import("../rooms/biomes").BiomeId;
   id: string;
   kind: RoomKind;

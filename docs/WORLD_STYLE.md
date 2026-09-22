@@ -36,6 +36,14 @@ materials without changing what the arrangement means.
 
 ## Connected geography
 
+Geology follows the room graph. Each district grows an underlying stratum in
+three-room depth bands, so nine links in ten continue the same material layer
+instead of rerolling terrain room by room. A library, shrine or machine room
+may line that layer with a material its purpose can safely use; the atlas names
+both. A real change of stratum leaves five shallow, block-cut chips at both
+faces of the doorway. District borders keep their named lintels and do not also
+pretend to be geological seams.
+
 The generator grows three regions through actual doorways. Rootwater galleries
 are the damp, reclaimed wing; the old works are the industrial middle; the
 buried choir surrounds the exit. On the deepest floor the entrance is already
