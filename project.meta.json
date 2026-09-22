@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T22:45:14.040Z",
+  "generatedAt": "2026-09-22T23:00:33.290Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -122,7 +122,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T22:44:00.413Z"
+        "capturedAt": "2026-09-22T22:59:18.880Z"
       },
       {
         "profile": "desktop",
@@ -131,7 +131,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T22:44:18.843Z"
+        "capturedAt": "2026-09-22T22:59:37.261Z"
       },
       {
         "profile": "full",
@@ -140,7 +140,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T22:44:55.559Z"
+        "capturedAt": "2026-09-22T23:00:14.124Z"
       },
       {
         "profile": "mobile",
@@ -149,7 +149,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T22:44:37.164Z"
+        "capturedAt": "2026-09-22T22:59:55.800Z"
       },
       {
         "profile": "og",
@@ -158,7 +158,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T22:45:13.869Z"
+        "capturedAt": "2026-09-22T23:00:33.137Z"
       }
     ]
   },
@@ -211,13 +211,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 391,
+    "sourceFiles": 393,
     "testFiles": 1,
-    "sourceLines": 69315,
+    "sourceLines": 69422,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 273
+        "files": 275
       },
       {
         "directory": "scripts",
@@ -252,10 +252,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "a15bb5d",
-    "lastCommitDate": "2026-09-23T01:38:52+03:00",
-    "lastCommitSubject": "Batch handbuilt furniture and add sealkeepers ring",
-    "commitCount": 466,
+    "head": "5347190",
+    "lastCommitDate": "2026-09-23T01:53:56+03:00",
+    "lastCommitSubject": "Instance repeated room furniture by model part",
+    "commitCount": 468,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
