@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T19:08:47.815Z",
+  "generatedAt": "2026-09-22T19:25:34.080Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -117,7 +117,7 @@
         "bytes": 49779,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T19:07:33.846Z"
+        "capturedAt": "2026-09-22T19:24:20.557Z"
       },
       {
         "profile": "desktop",
@@ -126,7 +126,7 @@
         "bytes": 48874,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T19:07:52.259Z"
+        "capturedAt": "2026-09-22T19:24:38.902Z"
       },
       {
         "profile": "full",
@@ -135,7 +135,7 @@
         "bytes": 43688,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T19:08:29.126Z"
+        "capturedAt": "2026-09-22T19:25:15.567Z"
       },
       {
         "profile": "mobile",
@@ -144,7 +144,7 @@
         "bytes": 27345,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T19:08:10.764Z"
+        "capturedAt": "2026-09-22T19:24:57.223Z"
       },
       {
         "profile": "og",
@@ -153,7 +153,7 @@
         "bytes": 41796,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T19:08:47.620Z"
+        "capturedAt": "2026-09-22T19:25:33.911Z"
       }
     ]
   },
@@ -208,7 +208,7 @@
   "metrics": {
     "sourceFiles": 377,
     "testFiles": 1,
-    "sourceLines": 67905,
+    "sourceLines": 67943,
     "largestDirectories": [
       {
         "directory": "src",
@@ -247,10 +247,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "4c0f864",
-    "lastCommitDate": "2026-09-22T22:03:40+03:00",
-    "lastCommitSubject": "Build readable district handovers",
-    "commitCount": 448,
+    "head": "b5927bf",
+    "lastCommitDate": "2026-09-22T22:21:36+03:00",
+    "lastCommitSubject": "Build material contact fans with lean floor marks",
+    "commitCount": 450,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
