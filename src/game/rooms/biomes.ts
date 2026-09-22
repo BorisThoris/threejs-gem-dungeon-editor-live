@@ -163,7 +163,7 @@ export const BIOME: Record<BiomeId, Biome> = {
   salt: { name: "Salt pans", floor: "#b8b5a5", wall: "#6e716b", surface: "stone", glow: "#9eb9b5", light: 0.88, litter: ["urn", "rubble"], carry: 1.4, ground: "salt crust", life: ["bat", "brinecrab"], air: "tick" },
   /** Copper condensers caught kiln vapour before it reached the upper
    * galleries. Their oxidized plates ring underfoot and still leak pressure. */
-  verdigris: { name: "Verdigris condensers", floor: "#829b8d", wall: "#536c66", surface: "iron", glow: "#72a997", light: 0.86, litter: ["barrel", "rubble"], carry: 1.3, ground: "oxidized plates", life: ["rat"], air: "hiss" },
+  verdigris: { name: "Verdigris condensers", floor: "#829b8d", wall: "#536c66", surface: "iron", glow: "#72a997", light: 0.86, litter: ["barrel", "rubble"], carry: 1.3, ground: "oxidized plates", life: ["rat", "copperback"], air: "hiss" },
 };
 
 /**

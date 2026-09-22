@@ -974,6 +974,23 @@ the 8,800 budget. Ten repeated room laps show no geometry growth, a 1,496-frame
 sprint retains no heap after collection, and 20,000 held-audio updates retain
 one voice.
 
+Copperbacks now make the condenser plates a living habitat. Up to five small,
+block-cut grazers occupy actual oxidized bed cells while leaving the paved
+service crossing and solid furniture clear. Their two shell plates breathe
+open against the slow condenser weep. A loud signal folds the whole colony
+shut with one paired metal click, and the persistent run clock freezes that
+motion while paused.
+
+The animals also extend the world's secret language. Their resting heading
+follows the local pressure gradient; in a room with a sealed doorway, every
+shell points at the real cracked-wall approach. Across 360 generated floors,
+673 copperbacks occupy legal condenser cells and 80 colonies align with an
+actual secret-wall leak. Two shared instanced batches draw the entire colony.
+All sixteen creature types contribute visible pixels in native room lighting,
+including frogs and copperbacks. The 78-room performance corpus remains at 78
+calls, 6,878 triangles, 87 geometries and 10 textures, with no geometry growth
+over ten repeated laps and no retained heap after a 1,498-frame sprint.
+
 Closed side galleries now grow from the real room graph into larger authored
 footprints. Deeper chambers may reserve two opposite closed edges for a paired
 transept, and cracked-wall hosts prefer wings that flank the secret when their

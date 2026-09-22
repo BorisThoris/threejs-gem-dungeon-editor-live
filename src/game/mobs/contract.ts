@@ -3,7 +3,7 @@ import type { Body, MobId } from "./body";
 /**
  * What every creature on the floor must have. The prototype.
  *
- * Ten creatures were built one at a time over thirty runs, and each one
+ * The creatures were built one at a time over many runs, and each one
  * was complete in a different way: the Warden had a held voice and no row
  * in the body table for eight runs; the Harrier had a body and a row and
  * four borrowed sounds; the rats had a row nothing read. Nothing said what
@@ -18,7 +18,7 @@ import type { Body, MobId } from "./body";
  * before it does.
  *
  * Add a creature by adding a row; the suite says what is missing. The
- * fields are the ones the ten creatures already had between them, in one
+ * fields are the ones the existing creatures already had between them, in one
  * place, rather than an ideal nothing satisfies.
  */
 export type Role =
@@ -70,6 +70,13 @@ export interface CreatureSpec {
 }
 
 export const CREATURES: Record<MobId, CreatureSpec> = {
+  copperback: {
+    name: "copperbacks", role: "ambient", body: "ground",
+    lives: "They graze oxidized condenser plates and align their paired shells with pressure leaks; a cracked wall becomes the strongest gradient.",
+    harm: "none", answers: ["walk quietly to watch their shells breathe", "make noise and read the direction in which the colony folds"],
+    voice: { held: null, moments: ["copperClick"] }, events: ["copperbacksFolded"],
+    lesson: "copperback", component: "mobs/Copperbacks.tsx", probe: "__copperbacks", tell: false,
+  },
   brinecrab: {
     name: "brine crabs", role: "ambient", body: "ground",
     lives: "They graze the crust shelves of salt-pan rooms and flee raised lantern light toward a wall shadow; in a secret host they prefer the cracked seam.",

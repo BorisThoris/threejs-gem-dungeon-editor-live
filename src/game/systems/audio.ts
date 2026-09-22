@@ -875,6 +875,12 @@ export const sfx = {
       tone(310, 0.08, "square", 0.07, 190, pan);
     });
   },
+  /** Paired oxidized shells clipping shut against a condenser plate. */
+  copperClick(pan = 0) {
+    tone(740, 0.07, "square", 0.09, 430, pan);
+    later(36, () => tone(520, 0.09, "triangle", 0.08, 310, pan));
+    later(78, () => noiseBurst(0.035, 0.1, 1900, pan));
+  },
   /** Brittle shell and small claws crossing a dry salt shelf. */
   brineScuttle(pan = 0) {
     noiseBurst(0.07, 0.15, 3600, pan);

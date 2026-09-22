@@ -62,6 +62,7 @@ import { Terrain } from "./Terrain";
 import { StrataSeams } from "../worldbuilding/StrataSeams";
 import { SaltFalls } from "../worldbuilding/SaltFalls";
 import { BrineCrabs } from "../mobs/BrineCrabs";
+import { Copperbacks } from "../mobs/Copperbacks";
 import { GalleryResponses } from "../worldbuilding/GalleryResponses";
 
 interface RoomProps {
@@ -318,6 +319,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <Terrain room={room} />
       <SaltFalls room={room} />
       <BrineCrabs room={room} />
+      <Copperbacks room={room} />
       <StrataSeams room={room} />
       <DistrictWays room={room} />
       <DistrictLandmark room={room} />

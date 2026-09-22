@@ -56,6 +56,13 @@ Metal footfalls, a held pressure hiss and cold green mineral bounce belong to
 that same former use. Warm practical lamps remain the readable source of light;
 verdigris must not become a uniform teal colour grade.
 
+Copperbacks belong to those plates rather than being general dungeon clutter.
+Their paired block-cut shells open with the condenser's slow breath and fold at
+a loud sound. A colony follows the room's pressure gradient; where a real
+cracked wall exists, every shell points toward that leak. Creature placement,
+animation, sound and secret language must continue to read the same authored
+terrain rule.
+
 The generator grows three regions through actual doorways. Rootwater galleries
 are the damp, reclaimed wing; the old works are the industrial middle; the
 buried choir surrounds the exit. On the deepest floor the entrance is already

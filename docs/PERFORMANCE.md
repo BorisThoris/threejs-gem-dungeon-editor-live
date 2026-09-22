@@ -25,8 +25,8 @@ broad slowdown.
 | Retained heap after sprint | 8 MB | Finds data that survives collection during the busiest frame loop. |
 
 Current measured baseline across the fixed 78-room corpus: 78 draw calls,
-6,853 visible triangles, 87 live geometries and 10 live textures in the worst
-room. Repeated room laps showed no geometry growth, and the 1,497-frame sprint
+6,878 visible triangles, 87 live geometries and 10 live textures in the worst
+room. Repeated room laps showed no geometry growth, and the 1,498-frame sprint
 sample retained no heap after collection. Draw calls remain below the watch band
 with 18 calls of hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
@@ -52,7 +52,8 @@ comparable across that environment.
 | Salt-pan biome | Stable | The eleventh terrain and crown variant reuses the two terrain and three architecture batches. Twelve paused-clock flakes share one extra instance draw; a furnished circular fixture uses 51 calls and the corpus peak remains 78. |
 | Salt-pan ecology | Stable | Up to four brine crabs share two instance batches. The 360-floor audit finds 513 legal homes and 35 real cracked-wall retreats; the corpus peak remains 78 calls and 7,256 triangles. |
 | Paired gallery transepts | Stable | Raised wings, ramps and terminal stations reuse the terrain surface and three architecture batches. District answers reuse one lamp and the three bounded reflection taps, with no looping voice or added node. The 360-floor audit finds 853 stations, 87 paired rooms and 21 secret-host transepts; the corpus peak remains 78 calls. |
-| Verdigris condenser biome | Stable | The twelfth shader and crown variant reuse the two terrain and three architecture batches. Its hiss replaces the held room-air voice on entry. Across 360 floors, 164 rooms and five shapes stay inside the Old Works; the corpus peak remains 78 calls and 6,853 triangles. |
+| Verdigris condenser biome | Stable | The twelfth shader and crown variant reuse the two terrain and three architecture batches. Its hiss replaces the held room-air voice on entry. Across 360 floors, 164 rooms and five shapes stay inside the Old Works; the corpus peak remains 78 calls. |
+| Copperback colonies | Stable | Up to five grazers share two instanced batches, with no individual lights or timers. The 360-floor audit finds 673 legal homes and 80 secret-aligned colonies; the measured peak remains 78 calls, 6,878 triangles, 87 geometries and 10 textures. |
 
 Update this ledger when a measured issue is fixed, accepted with a new budget,
 or replaced by a more precise check. Never increase a budget solely to make a

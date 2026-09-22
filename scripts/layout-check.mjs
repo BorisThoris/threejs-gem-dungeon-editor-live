@@ -4686,8 +4686,8 @@ check("the shipped room templates reach the floors the game generates", authored
    * creature from being as finished as the run that added it: a creature
    * with a body and no voice, a voice nothing plays, an event nothing
    * emits, a lesson nobody wrote, or a probe the checks cannot read fails
-   * here by name. The rows are the floor's ten creatures; the checks are
-   * what "ten" means.
+   * here by name. The rows are the floor's creatures; the checks are what
+   * makes each row complete.
    */
   {
     const C = L.CREATURES;

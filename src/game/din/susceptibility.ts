@@ -39,6 +39,11 @@ export interface Susceptibility {
 }
 
 export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
+  copperback: {
+    answers: { loud: 0.3, blast: 0.1 },
+    deaf: ["bright"],
+    tell: "Noise folds their paired shells along the pressure gradient. A whole colony facing one wall is reading a leak.",
+  },
   brinecrab: {
     answers: { bright: 0.35, blast: 0.1 },
     deaf: ["loud"],

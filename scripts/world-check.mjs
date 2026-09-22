@@ -26,7 +26,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "worldbuilding/foundryEmberSites", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat", "mobs/newtHabitat", "mobs/brineCrabHabitat",
+  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "worldbuilding/foundryEmberSites", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat", "mobs/newtHabitat", "mobs/brineCrabHabitat", "mobs/copperbackHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -94,6 +94,7 @@ let mites = 0;
 let shardbacks = 0;
 let newts = 0, secretNewts = 0;
 let brineCrabs = 0, secretBrineCrabs = 0;
+let copperbacks = 0, secretCopperbacks = 0;
 let saltRooms = 0, saltFalls = 0;
 const saltShapes = new Set();
 let verdigrisRooms = 0;
@@ -399,6 +400,30 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         assert.ok(L.insideRoom(r, pose.x, pose.z, 0.2), "brine crabs stay on connected floor while grazing and fleeing");
       }
     }
+    for (const home of L.copperbacksFor(r)) {
+      copperbacks++;
+      assert.equal(r.biome, "verdigris", "copperbacks only inhabit condenser rooms");
+      assert.ok(L.BIOME[r.biome].life.includes("copperback"), "the condenser biome declares its copperback ecology");
+      assert.ok(L.terrainFor(r).deposits.some(tile =>
+        Math.abs(tile.position[0] - home.x) < 1e-6 && Math.abs(tile.position[2] - home.z) < 1e-6),
+      "copperbacks stand on rendered oxidized plates");
+      for (const prop of L.placementsFor(r, r.seed).filter(prop => L.PROP_SPECS[prop.kind].solid))
+        assert.ok(Math.hypot(home.x - prop.x, home.z - prop.z) >= L.PROP_SPECS[prop.kind].radius * (prop.scale ?? 1) + 0.55,
+          "copperback colonies clear solid furnishings");
+      if (home.towardSecret) {
+        secretCopperbacks++;
+        assert.ok(r.secret, "only a secret host can align copperbacks with a cracked-wall leak");
+        const step = L.DIR_STEP[r.secret.dir], target = r.secret.dir === "north" || r.secret.dir === "south"
+          ? { x: L.corridorOffset(r, r.secret.dir), z: step.z * (L.doorReach(r, r.secret.dir) - 0.35) }
+          : { x: step.x * (L.doorReach(r, r.secret.dir) - 0.35), z: L.corridorOffset(r, r.secret.dir) };
+        assert.ok(Math.abs(Math.sin(home.yaw) - (target.x - home.x) / Math.hypot(target.x - home.x, target.z - home.z)) < 1e-6,
+          "secret-host copperbacks face the real pressure leak");
+      }
+      for (const time of [0, 3.25, 11.5]) for (const folded of [0, 0.5, 1]) {
+        const pose = L.copperbackPose(home, time, folded);
+        assert.ok(L.insideRoom(r, pose.x, pose.z, 0.3), "copperbacks stay on their shaped condenser floor while grazing and folding");
+      }
+    }
     for (const home of L.shardbacksFor(r)) {
       shardbacks++;
       assert.equal(r.biome, "crystal", "shardbacks only graze crystal chambers");
@@ -625,6 +650,8 @@ assert.ok(newts > 100, `kiln newts occupy fired foundry aprons: ${newts}`);
 assert.ok(secretNewts > 0, `kiln newts reveal reachable cracked-wall refuges: ${secretNewts}`);
 assert.ok(brineCrabs > 100, `brine crabs occupy salt-crust shelves: ${brineCrabs}`);
 assert.ok(secretBrineCrabs > 0, `brine crabs reveal reachable cracked-wall refuges: ${secretBrineCrabs}`);
+assert.ok(copperbacks > 100, `copperbacks occupy oxidized condenser plates: ${copperbacks}`);
+assert.ok(secretCopperbacks > 0, `copperback colonies align with real cracked-wall pressure leaks: ${secretCopperbacks}`);
 assert.ok(shardbacks > 50, `shardbacks occupy crystal resonance rings: ${shardbacks}`);
 assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
 console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
@@ -633,6 +660,7 @@ console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter pa
 console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
 console.log(`Kiln newts: ${newts} baskers on ember vents; ${secretNewts} retreat routes point to cracked walls.`);
 console.log(`Brine crabs: ${brineCrabs} grazers on salt shelves; ${secretBrineCrabs} retreat routes point to cracked walls.`);
+console.log(`Copperbacks: ${copperbacks} plate grazers; ${secretCopperbacks} colonies align with cracked-wall pressure leaks.`);
 console.log(`Shardbacks: ${shardbacks} grazers grounded in clear resonance-ring cells.`);
 assert.ok(apses > 100 && apseDirs.size === 4, "rounded galleries occur in all four directions");
 console.log(`Apse geometry: ${apses} rounded galleries with real tapered walls and ramps.`);

@@ -17,18 +17,19 @@ try{
   const {shardbacksFor}=await import('/src/game/mobs/shardbackHabitat.ts');
   const {newtsFor}=await import('/src/game/mobs/newtHabitat.ts');
   const {brineCrabsFor}=await import('/src/game/mobs/brineCrabHabitat.ts');
+  const {copperbacksFor}=await import('/src/game/mobs/copperbackHabitat.ts');
   const {keeperPostsFor}=await import('/src/game/keeper/posts.ts');
   const found={};
   for(let seed=1;seed<160;seed++){
    const d=generateDungeon({seed,floor:3});
    for(const r of d.rooms){
-    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,shardbacks:shardbacksFor(r).length>0,newts:newtsFor(r).length>0,brinecrabs:brineCrabsFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
-    for(const [k,v]of Object.entries(conditions))if(v&&(!found[k]||(['newts','brinecrabs'].includes(k)&&!found[k].r.secret&&r.secret)))found[k]={d,r};
+    const conditions={frog:croakersFor(r,d.seed).length>0,rat:ratsFor(r,d.seed).length>0,bat:!!roostFor(r,d.seed),moth:mothRoom(d)===r.id,beetles:beetlesFor(r).length>0,mites:mitesFor(r).length>0,shardbacks:shardbacksFor(r).length>0,newts:newtsFor(r).length>0,brinecrabs:brineCrabsFor(r).length>0,copperbacks:copperbacksFor(r).length>0,keeper:keeperPostsFor(d,3).some(p=>p.roomId===r.id),actors:r.kind==='normal'};
+    for(const [k,v]of Object.entries(conditions))if(v&&(!found[k]||(['newts','brinecrabs','copperbacks'].includes(k)&&!found[k].r.secret&&r.secret)))found[k]={d,r};
    }
-   if(Object.keys(found).length===11&&found.newts.r.secret&&found.brinecrabs.r.secret)return found;
+   if(Object.keys(found).length===12&&found.newts.r.secret&&found.brinecrabs.r.secret&&found.copperbacks.r.secret)return found;
   }throw Error('missing habitat');
  });
- const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',newts:'creature-newts',brinecrabs:'creature-brine-crabs',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
+ const names={frog:'croaker-0',rat:'rat-0',bat:'ambient-bats',batFlight:'ambient-bats',moth:'creature-moth',beetles:'creature-beetles',mites:'creature-mites',newts:'creature-newts',brinecrabs:'creature-brine-crabs',copperbacks:'creature-copperbacks',shardbacks:'creature-shardbacks',keeper:'creature-keeper',warden:'creature-warden',cutpurse:'creature-cutpurse',reaper:'creature-reaper',harrier:'creature-harrier',harrierDown:'creature-harrier',wisp:'creature-wisp'};
  for(const [kind,name]of Object.entries(names)){
   if(process.env.CREATURES&&!process.env.CREATURES.split(',').includes(kind))continue;
   await page.evaluate(async({f,kind})=>{
@@ -50,6 +51,7 @@ try{
    if(kind==='shardbacks'){const p=window.__shardbacks.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='newts'){const p=window.__newts.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='brinecrabs'){const p=window.__brineCrabs.poses[0];center.x=p.x;center.z=p.z;}
+   if(kind==='copperbacks'){const p=window.__copperbacks.poses[0];center.x=p.x;center.z=p.z;}
    if(kind==='bat'){
     const timber=new T.Box3().setFromObject(scene.getObjectByName('bat-roost-timber'));
     if(Math.abs(box.max.y-timber.min.y)>.01)throw Error('roosting bats must hang directly beneath their timber perch');
@@ -133,6 +135,19 @@ try{
    await page.waitForTimeout(300);
    assert.equal(await page.evaluate(()=>window.__brineCrabs.retreat),before,'paused brine crabs freeze in their retreat');
   }
+  if(kind==='copperbacks'){
+   await page.evaluate(()=>{
+    window.__copperbackEvents=[];window.__bus.on('copperbacksFolded',event=>window.__copperbackEvents.push(event));
+    const s=window.__run.getState();s.resume();window.__bus.emit('sprinted',{roomId:s.currentRoomId,x:0,z:0,surface:'metal'});
+   });
+   await page.waitForFunction(()=>window.__copperbacks?.fold>.65);
+   const reaction=await page.evaluate(()=>({probe:window.__copperbacks,events:window.__copperbackEvents}));
+   assert.equal(reaction.events.length,1,'the condenser colony announces one shared fold response');
+   assert.ok(reaction.probe.towardSecret&&reaction.events[0].towardSecret,'the secret-host fixture aligns copperbacks with its cracked-wall leak');
+   const before=await page.evaluate(()=>{window.__run.getState().pause();return window.__copperbacks.fold;});
+   await page.waitForTimeout(300);
+   assert.equal(await page.evaluate(()=>window.__copperbacks.fold),before,'paused copperbacks freeze their shell fold');
+  }
   if(kind==='shardbacks'){
    await page.evaluate(()=>{
     window.__shardbackEvents={warning:0,chime:0};
@@ -162,5 +177,5 @@ try{
    await page.evaluate(()=>window.__run.getState().pause());
   }
  }
- assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 15 creature types contribute visible pixels in native room lighting');
+ assert.deepEqual(errors,[]);console.log(process.env.CREATURES?`PASS visible creature states: ${process.env.CREATURES}`:'PASS all 16 creature types contribute visible pixels in native room lighting');
 }finally{await browser.close();}
