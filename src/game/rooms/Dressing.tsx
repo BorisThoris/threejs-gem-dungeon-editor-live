@@ -19,6 +19,8 @@ import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
 import { describe } from "../items/charge";
 import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
+import { FurnitureBatches } from "../props/FurnitureBatches";
+import { BATCHED_FURNITURE } from "../props/furnitureStyle";
 import { BREAKABLE, breakKey } from "../props/breakable";
 import { Prop, PropColliders } from "../props/catalog";
 import { useRun } from "../state/run";
@@ -95,11 +97,12 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
     () => placements.filter((p) => BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))),
     [placements, broken, room]
   );
-  const [braziers, rest] = useMemo(() => {
+  const [braziers, furniture, rest] = useMemo(() => {
     const lit: PropPlacement[] = [];
+    const fixed: PropPlacement[] = [];
     const other: PropPlacement[] = [];
-    for (const p of standing) (p.kind === "torch" ? lit : other).push(p);
-    return [lit, other];
+    for (const p of standing) (p.kind === "torch" ? lit : BATCHED_FURNITURE.has(p.kind) ? fixed : other).push(p);
+    return [lit, fixed, other];
   }, [standing]);
   /**
    * Which of the room's chests stand open.
@@ -123,6 +126,7 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
   return (
     <group>
       <Braziers places={braziers} roomId={room.id} />
+      <FurnitureBatches placements={furniture} />
       {rest.map((p) => (
         <Prop
           key={`${p.kind}@${p.x.toFixed(1)},${p.z.toFixed(1)}`}

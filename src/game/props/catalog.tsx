@@ -9,6 +9,7 @@ import type { PropKind } from "../dungeon/types";
 import { Hazard } from "./Hazard";
 import { Braziers } from "./Braziers";
 import { geo, mat } from "./shared";
+import { DARK_WOOD_LIT, IRON, WOOD_LIT } from "./furnitureStyle";
 import { PROP_SPECS, type PropSpec } from "./specs";
 
 // The numbers live in specs.ts, which has no React in it: the collider
@@ -72,14 +73,11 @@ const DARK_WOOD = "#4a3320";
  * of it is to divide by the number rather than to pick one that looks
  * about right.
  */
-const WOOD_LIT = "#eff7f9";
-const DARK_WOOD_LIT = "#a5aab9";
 const STONE_LIT = "#ffffff";
 const STONE_DARK_LIT = "#dcdbe1";
 /** Darker cut stone: a statue's plinth and the slab of a broken wall. */
 const STONE_PLINTH = "#c9c7cf";
 const STONE_SLAB = "#b8b6be";
-const IRON = "#8d939c";
 const BONE = "#d9d2c0";
 
 function Barrel(p: PropProps) {

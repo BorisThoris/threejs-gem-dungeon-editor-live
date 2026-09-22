@@ -69,6 +69,10 @@ shared model. Remove buried contact faces and use flat facets where a round
 profile needs fewer sides. Keep moving lids and distinct materials separate,
 and retain room-level culling; one enormous mesh for all rooms would obscure
 both the authored arrangements and their performance cost.
+Within a room, draw repeated fixed furniture as instances of those shared
+model parts. Preserve each placement's turn and scale, and remove a broken
+crate or barrel without affecting its neighbours. Collision and contact
+shadows still follow the individual placed objects.
 
 Room shape must change how a place is used. Service-ring chambers wrap one
 continuous walk around a sealed, block-cut machinery core. Floor, ceiling,

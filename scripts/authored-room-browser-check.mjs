@@ -59,14 +59,40 @@ try {
         await new Promise(requestAnimationFrame);
         renderer.render(window.__scene, camera);
       }
+      const furniture = {};
+      window.__scene.traverseVisible(object => {
+        if (object.isInstancedMesh && object.name.startsWith("furniture-"))
+          furniture[object.name] = { batches: (furniture[object.name]?.batches ?? 0) + 1, copies: object.count };
+      });
       const result = { room: { template: room.template, shape: room.shape, props: authoredProps(room).length }, title: roomPlaceName(room, state.dungeon.seed),
-        calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
+        calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, furniture,
         image: renderer.domElement.toDataURL() };
       renderer.dispose(); return result;
     }, fixture);
     assert.deepEqual(mounted.room, { template: id, shape: fixture.shape, props: fixture.props }, `${id} mounts its complete authored composition`);
     assert.ok(mounted.title.includes(fixture.name), `${id} keeps its authored name in the room readout`);
     assert.ok(mounted.calls > 0 && mounted.triangles > 0, `${id} contributes rendered geometry`);
+    if (id === "hall-sealkeepers-ring") {
+      for (const part of ["table-top", "table-legs", "chair-wood", "chair-legs"])
+        assert.deepEqual(mounted.furniture[`furniture-${part}`], { batches: 1, copies: 4 }, `${part} joins the four repeated stations`);
+    }
+    if (id === "vault-round-counting-house") {
+      const broken = await page.evaluate(async () => {
+        const { authoredProps } = await import("/src/game/rooms/templates.ts");
+        const { breakKey } = await import("/src/game/props/breakable.ts");
+        const state = window.__run.getState(), room = state.dungeon.rooms.find(room => room.id === state.currentRoomId);
+        const prop = authoredProps(room).find(p => p.kind === "barrel" || p.kind === "crate");
+        if (!prop) throw Error("Counting house has no breakable store");
+        window.__run.setState({ broken: [breakKey(room, prop)] });
+        return { part: prop.kind === "barrel" ? "barrel-staves" : "crate-body" };
+      });
+      const name = `furniture-${broken.part}`, before = mounted.furniture[name].copies;
+      await page.waitForFunction(({ name, expected }) => {
+        let copies = 0;
+        window.__scene.traverseVisible(object => { if (object.isInstancedMesh && object.name === name) copies += object.count; });
+        return copies === expected;
+      }, { name, expected: before - 1 });
+    }
     assert.ok(fixture.name && fixture.story, `${id} keeps its authored name and purpose`);
     writeFileSync(`output/world-review/authored-rooms/${id}.png`, Buffer.from(mounted.image.split(",")[1], "base64"));
     console.log(`${id}: ${fixture.shape}, ${fixture.props} authored props, ${mounted.calls} calls, ${mounted.triangles} triangles`);

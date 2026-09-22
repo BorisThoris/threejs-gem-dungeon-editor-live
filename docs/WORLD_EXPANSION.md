@@ -1368,3 +1368,12 @@ materials and independent colliders. Animated chest lids remain separate.
 The isolated 78-room sweep peaks at 79 calls, 7,288 triangles, 91 geometries
 and 10 textures. Ten revisits add no geometry; a 419-frame sprint retains
 0.00 MB after collection, and 20,000 held-audio updates retain one voice.
+
+Repeated barrels, chairs, crates and tables now render through room-local
+instance batches, retaining every placement's rotation, scale, collider and
+contact shadow. Breaking a stored barrel or crate removes only that copy.
+The generated Sealkeepers' Circuit drops from 71 to 59 draw calls with its
+same 5,166 triangles; browser inspection confirms all four tables and four
+chairs occupy one batch per model part. The fixed 78-room sweep peaks at 78
+calls, 7,288 triangles, 97 geometries and 11 textures. Ten revisits add no
+geometry and a 361-frame sprint retains 0.00 MB after collection.

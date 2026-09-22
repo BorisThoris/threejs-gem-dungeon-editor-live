@@ -26,7 +26,7 @@ broad slowdown.
 
 The recorded pre-strata baseline across the fixed 78-room corpus is 78 draw
 calls, 7,208 visible triangles, 87 live geometries and 10 live textures. The
-latest run peaks at 79 calls, 7,288 triangles, 91 geometries and 10 textures.
+latest run peaks at 78 calls, 7,288 triangles, 97 geometries and 11 textures.
 The previous sweeps reached 79 calls and 7,352 triangles, or 85 calls and
 7,400 triangles, as the active Warden shifted through sampled rooms; all are
 within budget. Geological and district border marks share one batch, and the
@@ -48,6 +48,7 @@ comparable across that environment.
 
 | Area | State | Action |
 |---|---|---|
+| Repeated furniture | Stable | Barrel, chair, crate and table copies share one instance draw per model part within each room. The same generated Sealkeepers' Circuit falls from 71 to 59 calls at 5,166 triangles, with all four tables and chairs verified in their batches. The 78-room sweep peaks at 78 calls, 7,288 triangles, 97 geometries and 11 textures; ten revisits add no geometry, a 361-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. Renderer resource counts can vary with sampled live scene state. |
 | Handbuilt furniture | Stable | Chairs, tables, crates and barrels now join fixed pieces by material. A one-of-each set falls from 17 to eight draws and 448 to 302 triangles; that fixture is a model-level comparison, not a claim about the full room. The isolated 78-room sweep peaks at 79 calls, 7,288 triangles, 91 geometries and 10 textures. Ten revisits add no geometry, a 419-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. The new furnished Sealkeepers' Circuit renders at 71 calls and 5,166 triangles in direct review. |
 | Dense trap rooms | Tracked | The report now attributes hot rooms to named scene owners. The 85-call trap is led by building blocks and room architecture at 1,796 triangles each; unlabelled content owns 43 smaller batches, while the active Warden adds six. Consolidating unlabelled content remains the clearest draw-call opportunity. |
 | Draw calls | Watch | The fixed corpus peaks at 85 of 96 calls in a dense trap room with the Warden present. The border handover adds no separate batch; keep new room-scale decoration in shared batches. |
