@@ -517,7 +517,7 @@ const buildChorus: HeldBuilder = (ctx, into) => {
  * - a drip, an ember - because a drip on an oscillator is a tremolo, and a
  * tremolo is not a drip.
  */
-type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift" | "tick";
+type AirId = "still" | "drip" | "wind" | "ember" | "creak" | "hum" | "hollow" | "spore" | "sift" | "tick" | "hiss";
 
 interface Air {
   id: AirId;
@@ -597,6 +597,19 @@ const AIR_VOICES: Partial<Record<AirId, { build: HeldBuilder; level: number }>> 
       glow.connect(glowGain).connect(into);
       glow.start();
       return { filter: null, lfo: null, pitch: null, sources: [glow] };
+    },
+  },
+  hiss: {
+    level: 0.16,
+    build: (ctx, into) => {
+      const pressure = heldNoise(ctx, into, "bandpass", 980, 1.8, null);
+      const valve = ctx.createOscillator();
+      valve.frequency.value = 0.18;
+      const depth = ctx.createGain();
+      depth.gain.value = 260;
+      valve.connect(depth).connect(pressure.filter.frequency);
+      valve.start();
+      return { filter: pressure.filter, lfo: null, pitch: null, sources: [pressure.source, valve] };
     },
   },
 };

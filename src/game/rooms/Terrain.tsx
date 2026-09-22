@@ -40,7 +40,8 @@ export function Terrain({ room }: { room: Room }) {
   const effect = TERRAIN_EFFECTS[data.biome];
   const [stone, deposit] = TERRAIN_COLORS[data.biome];
   const pavingSurface = useSurface("stone", 0.5);
-  const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss" : data.biome === "ash" ? "dirt" : "stone", 0.5);
+  const bedSurface = useSurface(data.biome === "mossy" || data.biome === "fungal" ? "moss"
+    : data.biome === "ash" ? "dirt" : data.biome === "verdigris" ? "iron" : "stone", 0.5);
   useFrame(() => {
     time.current.value = runClock(useRun.getState());
   });

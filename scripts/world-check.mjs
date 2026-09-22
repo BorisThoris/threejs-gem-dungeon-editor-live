@@ -96,6 +96,8 @@ let newts = 0, secretNewts = 0;
 let brineCrabs = 0, secretBrineCrabs = 0;
 let saltRooms = 0, saltFalls = 0;
 const saltShapes = new Set();
+let verdigrisRooms = 0;
+const verdigrisShapes = new Set();
 const apseDirs = new Set();
 let apses = 0;
 let passageLights = 0, formerPassageLights = 0;
@@ -562,6 +564,12 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
         }
       }
     } else assert.equal(L.saltFallSites(r).length, 0, "salt shedding belongs only to salt-pan rooms");
+    if (terrain.biome === "verdigris") {
+      verdigrisRooms++;
+      verdigrisShapes.add(r.shape);
+      assert.equal(r.district, "works", "condenser strata remain part of the Old Works");
+      assert.ok(terrain.deposits.length > 0, "verdigris rooms render connected condenser plates");
+    }
     const ways = L.districtWaysFor(r);
     districtWaymarks += ways.length;
     assert.ok(ways.length <= 96, "district paths have a fixed per-room detail ceiling");
@@ -577,18 +585,18 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
-    if (["flooded", "mossy", "fungal", "ash", "salt"].includes(terrain.biome)) {
+    if (["flooded", "mossy", "fungal", "ash", "salt", "verdigris"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
         const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
         if (!next || tile.size[0] !== 1.5 || tile.size[2] !== 1.5 || next.size[0] !== 1.5 || next.size[2] !== 1.5) continue;
         assert.equal(L.footingAt(r, tile.position[0] + dx / 2, tile.position[2] + dz / 2, 0, 100),
-          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
+          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : terrain.biome === "verdigris" ? "metal" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
       }
     }
     for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
-      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : "stone", "independent terrain beds retain their material after channel drainage");
+      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : r.biome === "verdigris" ? "metal" : "stone", "independent terrain beds retain their material after channel drainage");
     if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
@@ -609,6 +617,8 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
 assert.equal(biomes.size, L.BIOMES.length, "every declared biome remains reachable");
 assert.ok(saltRooms > 100 && saltFalls > 300, `salt pans and their shedding occur throughout the choir: ${saltRooms} rooms, ${saltFalls} chips`);
 assert.ok(saltShapes.size >= 5, `salt terrain crosses the irregular-room system: ${[...saltShapes].join(", ")}`);
+assert.ok(verdigrisRooms > 100, `condenser strata recur throughout the Old Works: ${verdigrisRooms}`);
+assert.ok(verdigrisShapes.size >= 5, `condenser plates cross the irregular-room system: ${[...verdigrisShapes].join(", ")}`);
 assert.ok(beetles > 300, `glow beetles occupy living channel banks: ${beetles}`);
 assert.ok(mites > 300, `ash mites occupy settled windrows: ${mites}`);
 assert.ok(newts > 100, `kiln newts occupy fired foundry aprons: ${newts}`);
@@ -658,6 +668,7 @@ console.log(`Watercourse checks: ${circuits} circuits across ${channelRooms} con
 console.log(`World checks passed: ${rooms} rooms, ${tiles} terrain tiles, ${biomes.size} biomes; ${(matching / links * 100).toFixed(1)}% of doorways stay within a district.`);
 console.log(`Connected strata: ${(matchingStrataLinks / strataLinks * 100).toFixed(1)}% continuity across district links; ${strataDoors / 2} two-sided transition doors use ${strataSeamMarks} block-cut chips.`);
 console.log(`Salt pans: ${saltRooms} rooms across ${saltShapes.size} shapes shed ${saltFalls} paused-clock mineral chips.`);
+console.log(`Verdigris condensers: ${verdigrisRooms} rooms across ${verdigrisShapes.size} shapes carry metal plates, pipe yokes and pressure air.`);
 
 console.log(`Terrain beds: ${terrainBedCells} habitat cells rendered as ${terrainBedFaces} coplanar faces.`);
 console.log(`District circulation: ${districtWaymarks} batched route marks connect real doorways.`);

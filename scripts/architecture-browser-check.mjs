@@ -14,12 +14,12 @@ try {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
     const { BIOME_CROWNS } = await import("/src/game/worldbuilding/biomeCrown.ts");
     const found = {};
-    for (let seed = 1; seed < 200 && Object.keys(found).length < 11; seed++) for (const floor of [1, 2, 3]) {
+    for (let seed = 1; seed < 200 && Object.keys(found).length < 12; seed++) for (const floor of [1, 2, 3]) {
       const dungeon = generateDungeon({ seed, floor });
       for (const room of dungeon.rooms) if (!found[room.biome])
         found[room.biome] = { dungeon, floor, roomId: room.id, crown: BIOME_CROWNS[room.biome].name };
     }
-    if (Object.keys(found).length !== 11) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
+    if (Object.keys(found).length !== 12) throw Error(`Missing crown fixtures: ${Object.keys(found).join(", ")}`);
     return found;
   });
 
@@ -137,5 +137,5 @@ try {
     writeFileSync("output/world-review/secret-transept.png", Buffer.from(image.split(",")[1], "base64"));
   }
   assert.deepEqual(errors, []);
-  console.log(`PASS biome crowns and transepts: eleven overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
+  console.log(`PASS biome crowns and transepts: twelve overhead traditions plus a paired secret-host room in three architecture batches (${signatures.size} face signatures)`);
 } finally { await browser.close(); }

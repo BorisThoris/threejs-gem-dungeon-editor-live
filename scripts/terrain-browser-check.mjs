@@ -47,7 +47,7 @@ try {
         injected: shader.fragmentShader.includes(TERRAIN_EFFECTS[biome].fragment) };
     }, biome);
     assert.equal(style.effect, fixture.effect, `${biome} publishes its terrain effect`);
-    assert.equal(style.animated, ["flooded", "foundry", "crystal", "fungal", "ash"].includes(biome));
+    assert.equal(style.animated, ["flooded", "foundry", "crystal", "fungal", "ash", "verdigris"].includes(biome));
     assert.ok(style.uniform && style.injected, `${biome} compiles its world-space terrain rule`);
     cacheKeys.add(style.cache);
     if (process.env.TERRAIN_REVIEW) {

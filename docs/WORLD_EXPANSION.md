@@ -1018,3 +1018,29 @@ restores it. All 58 procedural cues measure above live room tone. The integrated
 78-room sweep remains at 78 draw calls, 6,876 triangles, 87 geometries and 10
 textures; ten repeated laps show no geometry growth, and a 1,500-frame sprint
 retains no heap after collection.
+
+The Old Works now has a fourth primary connected stratum: verdigris condenser
+halls. These are former pressure-cooling rooms rather than green variants of
+ordinary stone. Oxidized metal plates form two broad drain fields around a
+paved service cross, continue into raised galleries, and leave transverse
+inspection lanes at a repeated structural interval. The layout is clipped by
+the same circular, polygonal, concave and gallery footprint union as every
+other terrain field.
+
+Paired pipe yokes and valve tabs repeat above those plates inside the existing
+three architecture batches. The terrain material carries a slow three-step
+condensation weep in world space, driven by the persistent run clock. Iron
+footfalls use the visible plates' noise carry, the room has a low pressure hiss,
+and cold green mineral bounce sits beneath warm practical lamps. The Copper
+Condenser Hall identity and its history reach the HUD and World Atlas through
+the same room data.
+
+Across 360 generated floors, 164 condenser rooms appear in five room shapes.
+The generator keeps them inside the Old Works and lays them down in three-room
+geological bands; terrain, underlying stratum, threshold seams, sound, crown,
+lighting and place history therefore describe the same connected machinery.
+Native review renders the complete room at 50 calls and 3,818 triangles. The
+integrated 78-room sweep remains at 78 calls, 6,853 triangles, 87 geometries
+and 10 textures. Ten repeated laps show no geometry growth, a 1,497-frame
+sprint retains no heap after collection, and 20,000 held-audio updates retain
+one voice.

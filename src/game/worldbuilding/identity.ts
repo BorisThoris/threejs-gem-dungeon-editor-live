@@ -10,6 +10,7 @@ export const PLACE_IDENTITIES = {
   service: { title: "Service gallery", tradition: "ironwork", structure: "#625853", detail: "#96744f", accent: "#c4a16a", story: "Every frame carried a line to another workshop." },
   kiln: { title: "Kiln hall", tradition: "ironwork", structure: "#61504a", detail: "#9b6546", accent: "#c39266", story: "Soot marks the roof above the old firing lanes." },
   flue: { title: "Flue settling hall", tradition: "ironwork", structure: "#5c5550", detail: "#746158", accent: "#b58a70", story: "Baffles once slowed the kiln breath until its ash fell here." },
+  condenser: { title: "Copper condenser hall", tradition: "ironwork", structure: "#4f625d", detail: "#6e897d", accent: "#9abf9e", story: "Paired pipes cooled kiln vapour into the green drain plates below." },
   store: { title: "Provisioning hall", tradition: "ironwork", structure: "#705f4c", detail: "#8e7a59", accent: "#c3b385", story: "Goods passed below the numbered loading frames." },
   procession: { title: "Processional hall", tradition: "vaulting", structure: "#858070", detail: "#655e53", accent: "#b9af89", story: "The repeated arches once measured a slow procession." },
   ossuary: { title: "Ossuary ambulatory", tradition: "vaulting", structure: "#99907b", detail: "#716c61", accent: "#c1b99b", story: "The dead were carried around this hall before burial." },
@@ -29,6 +30,7 @@ export function identityFor(room: Room): PlaceIdentity {
   }
   if (room.district === "works") {
     if (room.biome === "foundry") return "kiln";
+    if (room.biome === "verdigris") return "condenser";
     return createRng(`${room.seed}:${room.id}:purpose`)() < 0.5 ? "service" : "store";
   }
   if (room.biome === "crystal") return "resonance";

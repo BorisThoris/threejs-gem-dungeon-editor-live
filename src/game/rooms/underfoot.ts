@@ -11,7 +11,7 @@ export function footingCarry(room: Room, footing: Footing): number {
   if (footing === "water") return BIOME.flooded.carry;
   if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : biome === "ash" ? BIOME.ash.carry : BIOME.mossy.carry;
   if (footing === "wood") return BIOME.timber.carry;
-  if (footing === "metal") return BIOME.foundry.carry;
+  if (footing === "metal") return biome === "verdigris" ? BIOME.verdigris.carry : BIOME.foundry.carry;
   if (footing === "crust") return BIOME.salt.carry;
   return biome === "bone" ? BIOME.bone.carry : BIOME.hewn.carry;
 }
@@ -31,10 +31,11 @@ export function footingAt(room: Room, x: number, z: number, openedAt: number | n
     if (biome === "flooded") return "water";
     if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
     if (biome === "salt") return "crust";
+    if (biome === "verdigris") return "metal";
     return "stone";
   }
   if (biome === "timber") return "wood";
-  if (biome === "foundry") return "metal";
+  if (biome === "foundry" || biome === "verdigris") return "metal";
   if (biome === "mossy" || biome === "fungal" || biome === "ash") return "soft";
   if (biome === "salt") return "crust";
   return "stone";

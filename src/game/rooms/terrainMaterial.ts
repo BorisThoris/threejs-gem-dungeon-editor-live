@@ -62,5 +62,9 @@ export const TERRAIN_EFFECTS: Record<BiomeId, TerrainEffect> = {
     name: "raked salt checks", animated: false, emissive: "#31413f", emissiveIntensity: 0.07,
     fragment: "float rake = mod(floor((terrainXZ.x + terrainXZ.y) * 1.5) + floor((terrainXZ.x - terrainXZ.y) * 0.75), 5.0); diffuseColor.rgb *= 0.82 + step(2.5, rake) * 0.19;",
   },
+  verdigris: {
+    name: "stepped condenser weep", animated: true, emissive: "#244a40", emissiveIntensity: 0.1,
+    fragment: "float seam = mod(floor(terrainXZ.x * 1.2) + floor(terrainXZ.y * 0.65), 4.0); float weep = floor((sin(terrainXZ.y * 1.15 - terrainTime * 0.28) * 0.5 + 0.5) * 3.0) / 3.0; diffuseColor.rgb *= vec3(0.78 + weep * 0.12, 0.88 + weep * 0.18 + step(2.5, seam) * 0.06, 0.84 + weep * 0.15);",
+  },
 };
 

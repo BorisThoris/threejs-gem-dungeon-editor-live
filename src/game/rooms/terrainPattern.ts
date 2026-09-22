@@ -71,4 +71,5 @@ export const TERRAIN_COLORS = {
   bone: ["#a6a18c", "#777667"], crystal: ["#8b849e", "#5e526f"],
   ash: ["#837d74", "#4e4944"],
   salt: ["#aaa99c", "#d0cbb2"],
+  verdigris: ["#786f62", "#4f8176"],
 } as const;

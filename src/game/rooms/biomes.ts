@@ -35,6 +35,7 @@ export const BIOMES = [
   "fungal",
   "ash",
   "salt",
+  "verdigris",
 ] as const;
 export type BiomeId = (typeof BIOMES)[number];
 
@@ -48,7 +49,7 @@ export type BiomeId = (typeof BIOMES)[number];
  * show is the room behind you. `still` is a real value - hewn stone is
  * silent on purpose - so a biome cannot be added without saying.
  */
-export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick"] as const;
+export const AIRS = ["still", "drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss"] as const;
 export type AirId = (typeof AIRS)[number];
 
 export interface Biome {
@@ -160,6 +161,9 @@ export const BIOME: Record<BiomeId, Biome> = {
    * pale crust throws a footfall sharply and its drying joints tick in the
    * cold, so it reads as a brittle working layer rather than white stone. */
   salt: { name: "Salt pans", floor: "#b8b5a5", wall: "#6e716b", surface: "stone", glow: "#9eb9b5", light: 0.88, litter: ["urn", "rubble"], carry: 1.4, ground: "salt crust", life: ["bat", "brinecrab"], air: "tick" },
+  /** Copper condensers caught kiln vapour before it reached the upper
+   * galleries. Their oxidized plates ring underfoot and still leak pressure. */
+  verdigris: { name: "Verdigris condensers", floor: "#829b8d", wall: "#536c66", surface: "iron", glow: "#72a997", light: 0.86, litter: ["barrel", "rubble"], carry: 1.3, ground: "oxidized plates", life: ["rat"], air: "hiss" },
 };
 
 /**
@@ -174,18 +178,18 @@ export const BIOME: Record<BiomeId, Biome> = {
 export const BIOMES_FOR: Record<RoomKind, readonly BiomeId[]> = {
   start: ["mossy", "hewn"],
   end: ["bone", "catacomb", "hewn"],
-  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash", "salt"],
+  normal: ["hewn", "mossy", "catacomb", "flooded", "bone", "fungal", "ash", "salt", "verdigris"],
   // Flooded as well as dry, because the room that most tempts a player to
   // grab and run is the one where running is loudest: a drowned strongroom
   // makes the haul a decision rather than a pickup. Without it the three
   // treasure biomes were 1, 1.25 and 1, which is one room in three coats.
-  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash", "salt"],
+  treasure: ["catacomb", "foundry", "hewn", "flooded", "ash", "salt", "verdigris"],
   shop: ["timber", "catacomb"],
   library: ["timber", "catacomb"],
-  trap: ["hewn", "flooded", "foundry", "fungal", "ash", "salt"],
+  trap: ["hewn", "flooded", "foundry", "fungal", "ash", "salt", "verdigris"],
   arena: ["hewn", "foundry", "bone"],
   memory: ["crystal", "catacomb"],
-  challenge: ["catacomb", "hewn", "flooded", "ash", "salt"],
+  challenge: ["catacomb", "hewn", "flooded", "ash", "salt", "verdigris"],
   shrine: ["catacomb", "bone", "crystal", "fungal", "ash", "salt"],
   // Walled up for a reason: dry, and older than the rest of the floor.
   secret: ["catacomb", "bone", "hewn", "ash", "salt"],

@@ -14,7 +14,7 @@ export interface CrownDefinition {
  * Each motif is a repeated piece of the room's former work, rather than loose
  * decoration: quarry wedges, root combs, tally tabs, sluice rails, kiln
  * dampers, pit props, ossuary ribs, resonator forks, growing shelves, flue
- * baffles and pan rakes. They join the architecture component's existing three instanced
+ * baffles, pan rakes and pipe yokes. They join the architecture component's existing three instanced
  * material batches, so a distinct silhouette does not mean another draw call.
  */
 export const BIOME_CROWNS: Record<BiomeId, CrownDefinition> = {
@@ -29,6 +29,7 @@ export const BIOME_CROWNS: Record<BiomeId, CrownDefinition> = {
   fungal: { name: "Growing shelves", description: "A stem and broad cap continue the orchard overhead." },
   ash: { name: "Flue baffles", description: "Offset plates and soot counters show how kiln breath was slowed." },
   salt: { name: "Pan rakes", description: "Paired rake heads and drying pegs repeat above the old evaporation bays." },
+  verdigris: { name: "Pipe yokes", description: "Green cross-yokes and low valve tabs repeat above the condenser plates." },
 };
 
 export interface CrownSpan { x: number; z: number; width: number }
@@ -112,6 +113,14 @@ export function biomeCrownFor(room: Room, spans: readonly CrownSpan[]): CrownPat
           block(marks, span, dx, WALL_HEIGHT - 1.1, 0.86, 0.1, 0.28);
         }
         for (const dx of [-pair, 0, pair]) block(marks, span, dx, DOOR_HEIGHT + 0.42, 0.18, 0.16, 0.26);
+        break;
+      case "verdigris":
+        for (const dx of [-pair * 0.7, pair * 0.7]) {
+          block(structure, span, dx, WALL_HEIGHT - 0.7, 0.24, 0.72, 0.28);
+          block(detail, span, dx, WALL_HEIGHT - 1.05, 0.72, 0.16, 0.3);
+          block(marks, span, dx, DOOR_HEIGHT + 0.4, 0.22, 0.16, 0.28);
+        }
+        block(detail, span, 0, WALL_HEIGHT - 0.58, Math.min(2.8, span.width * 0.48), 0.24, 0.32);
         break;
     }
   });

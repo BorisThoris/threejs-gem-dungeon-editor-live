@@ -7,15 +7,15 @@ in-app wording lives in `src/game/rooms/style.ts`.
 Terrain shaders follow the same rule. Effects are tied to the room's authored
 land use and use a few hard value steps in world space: planted rows, mortar
 wear, water glints, kiln bands, saw cuts, bone flecks, crystal facets, spore
-rings and ash windrows. They must not become smooth noise, screen-space polish
+rings, ash windrows and condenser weeps. They must not become smooth noise, screen-space polish
 or free-floating decoration. Adjacent terrain beds share their marks, the run
-clock freezes every moving effect on pause, and the eleven biomes retain separate
+clock freezes every moving effect on pause, and the twelve biomes retain separate
 compiled variants without extra geometry, textures, lights or draw calls.
 
 Biome identity continues above eye level. Every material tradition owns one
 purposeful roof motif: quarry wedges, root combs, burial tallies, sluice rails,
 kiln dampers, pit props, ossuary ribs, resonator forks, growing shelves, flue
-baffles or pan rakes. These repeat by structural bay, remain above doorway clearance and are
+baffles, pan rakes or pipe yokes. These repeat by structural bay, remain above doorway clearance and are
 clipped to the same irregular floor union as the walls. They join the existing
 three architecture batches; do not turn them into loose ceiling clutter or a
 new mesh, material or light per ornament.
@@ -48,6 +48,13 @@ The buried choir also carries a salt-and-brine stratum: stepped evaporation
 shelves, scored rake lanes and overhead pan rakes belong to one former use.
 Its pale crust has a sharp footfall, cold mineral bounce and sparse drying
 ticks. These cues travel together; salt is never just a white material swap.
+
+The Old Works carries a verdigris condenser stratum in connected three-room
+bands. Oxidized drain plates run beneath paired pipe yokes, transverse service
+lanes preserve the crossing, and a slow block-stepped weep follows the plates.
+Metal footfalls, a held pressure hiss and cold green mineral bounce belong to
+that same former use. Warm practical lamps remain the readable source of light;
+verdigris must not become a uniform teal colour grade.
 
 The generator grows three regions through actual doorways. Rootwater galleries
 are the damp, reclaimed wing; the old works are the industrial middle; the
