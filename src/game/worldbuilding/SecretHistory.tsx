@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { Object3D, type InstancedMesh } from "three";
 import type { Room } from "../dungeon/types";
-import { secretStoryFor } from "../dungeon/secret";
+import { secretEntranceDirection, secretStoryFor } from "../dungeon/secret";
 import { geo, mat } from "../props/shared";
+import { useRun } from "../state/run";
 import { secretHistoryMarks, type SecretHistoryMark } from "./secretHistoryPattern";
 
 function MarkBatch({ marks }: { marks: SecretHistoryMark[] }) {
@@ -27,8 +28,10 @@ function MarkBatch({ marks }: { marks: SecretHistoryMark[] }) {
 }
 
 export function SecretHistory({ room, seed }: { room: Room; seed: number }) {
+  const dungeon = useRun(state => state.dungeon);
+  const entrance = dungeon ? secretEntranceDirection(dungeon, room.id) : null;
   const story = useMemo(() => secretStoryFor(room, seed), [room, seed]);
-  const marks = useMemo(() => secretHistoryMarks(room, seed), [room, seed]);
+  const marks = useMemo(() => secretHistoryMarks(room, seed, entrance), [room, seed, entrance]);
   const batches = useMemo(() => {
     const grouped = new Map<string, SecretHistoryMark[]>();
     for (const mark of marks) {
@@ -42,9 +45,9 @@ export function SecretHistory({ room, seed }: { room: Room; seed: number }) {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const win = window as unknown as { __secretHistory?: unknown };
-    win.__secretHistory = { roomId: room.id, ...story, marks: marks.length };
+    win.__secretHistory = { roomId: room.id, ...story, marks: marks.length, entrance };
     return () => { delete win.__secretHistory; };
-  }, [room.id, story, marks.length]);
+  }, [room.id, story, marks.length, entrance]);
   return <group name={`secret-history-${story.material}`}>
     {batches.map((batch, i) => <MarkBatch key={i} marks={batch} />)}
   </group>;

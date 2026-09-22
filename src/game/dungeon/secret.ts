@@ -1,6 +1,6 @@
 import { createRng } from "../rng";
 import type { DistrictId } from "../rooms/districts";
-import type { Dungeon, Room } from "./types";
+import { OPPOSITE, type Dir, type Dungeon, type Room } from "./types";
 
 /**
  * What is behind the cracked wall.
@@ -58,4 +58,11 @@ export function secretStory(d: Dungeon): SecretStory | null {
 
 export function secretFlavour(d: Dungeon): SecretFlavour | null {
   return secretStory(d)?.flavour ?? null;
+}
+
+/** The side of the hidden chamber reached through its real cracked wall.
+ * The unopened secret has no link of its own, so the host is authoritative. */
+export function secretEntranceDirection(d: Dungeon, roomId: string): Dir | null {
+  const host = d.rooms.find(room => room.secret?.to === roomId);
+  return host?.secret ? OPPOSITE[host.secret.dir] : null;
 }

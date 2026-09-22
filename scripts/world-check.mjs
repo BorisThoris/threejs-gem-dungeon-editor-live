@@ -12,6 +12,8 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
   "worldbuilding/landmarks",
   "worldbuilding/secretTrail",
+  "worldbuilding/secretHistoryPattern",
+  "lighting/field",
   "worldbuilding/biomeCrown",
   "worldbuilding/districtThresholds",
   "worldbuilding/thresholdEcho",
@@ -28,7 +30,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "rooms/mergeTerrainBeds",
   "mobs/groundHeading",
   "din/emissions",
-  "dungeon/generate", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "worldbuilding/foundryEmberSites", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat", "mobs/newtHabitat", "mobs/brineCrabHabitat", "mobs/copperbackHabitat", "mobs/wicklingHabitat",
+  "dungeon/generate", "dungeon/secret", "dungeon/types", "dungeon/footprint", "rooms/districts", "rooms/biomes", "rooms/terrainPattern", "rooms/placements", "props/specs", "world", "worldbuilding/watercourse", "worldbuilding/structuralPattern", "worldbuilding/identity", "mobs/ambient", "mobs/croakerHabitat", "worldbuilding/elevation", "worldbuilding/bellcaps", "worldbuilding/foundryEmberSites", "mobs/beetleHabitat", "mobs/miteHabitat", "mobs/shardbackHabitat", "mobs/newtHabitat", "mobs/brineCrabHabitat", "mobs/copperbackHabitat", "mobs/wicklingHabitat",
 ].map(f => `export * from "${root}src/game/${f}";`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
@@ -121,9 +123,12 @@ const bayHeads = new Set(), bayDistricts = new Set();
 let sealedThresholds = 0;
 const sealedThresholdTraditions = new Set();
 let passageLights = 0, formerPassageLights = 0;
+let unlitGalleryRooms = 0;
 let landmarkRooms = 0;
 const landmarkKinds = new Set();
 let secretTrails = 0, secretTrailMulti = 0, secretTrailRooms = 0, secretTrailLongest = 0;
+let secretEntranceMarks = 0;
+const secretEntrances = new Set(), secretShapes = new Set();
 const loopFloors = [0, 0, 0];
 for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
   const d = L.generateDungeon({ seed, floor });
@@ -155,6 +160,21 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(source.landmark, trail.landmark, "the route records its visible landmark tradition");
     assert.equal(source.district, host.district, "landmark and sealed room share a district history");
     assert.ok(host.secret && host.secret.to === d.secretId, "the trail ends at this floor's actual secret");
+    const hidden = byId.get(d.secretId), entrance = L.secretEntranceDirection(d, hidden.id);
+    assert.equal(entrance, L.OPPOSITE[host.secret.dir], "the secret floor marks begin at the real cracked-wall side");
+    secretEntrances.add(entrance); secretShapes.add(hidden.shape);
+    const thresholdMarks = L.secretHistoryMarks(hidden, d.seed, entrance).filter(mark => mark.role === "entrance");
+    assert.ok(thresholdMarks.length >= 6, "every hidden chamber has a paired approach from its entrance");
+    secretEntranceMarks += thresholdMarks.length;
+    for (const mark of thresholdMarks) {
+      const [x, y, z] = mark.position, [w, h, depth] = mark.size;
+      assert.ok(L.insideRoom(hidden, x, z, Math.hypot(w, depth) / 2 + .12),
+        "secret approach cuts stay on the actual shaped floor");
+      assert.ok(y + h / 2 < L.floorHeightAt(hidden, x, z) + .09,
+        "secret approach cuts stay paint-depth above the local terrain");
+      assert.ok((entrance === "east" ? x : entrance === "west" ? -x : entrance === "south" ? z : -z) > 0,
+        "secret approach cuts remain on the entrance half of the chamber");
+    }
     for (let i = 0; i < trail.route.length; i++) {
       const room = byId.get(trail.route[i]), pattern = L.secretTrailPattern(d, room);
       secretTrailRooms++;
@@ -649,6 +669,7 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       assert.equal(gallery.sites.length, L.terracesFor(r).length,
         "every raised annex ends in its district's visible working station");
       const lamps = L.passageLampsFor(r);
+      if (L.isUnlitRoom(r, d.seed)) unlitGalleryRooms++;
       assert.equal(lamps.filter(lamp => lamp.terminal).length, gallery.sites.length,
         "every gallery has exactly one existing lamp assigned to its terminal response");
       assert.ok(lamps.filter(lamp => lamp.terminal).every(lamp => lamp.colour === gallery.definition.lamp),
@@ -853,6 +874,8 @@ assert.ok(shardbacks > 50, `shardbacks occupy crystal resonance rings: ${shardba
 assert.ok(passageLights < formerPassageLights, "shaped galleries no longer add a light per floor course");
 console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate routes at depths 1, 2, 3.`);
 console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
+assert.ok(unlitGalleryRooms > 0, "dark rooms still contain practical gallery terminals");
+console.log(`Dark galleries: ${unlitGalleryRooms} retain their working terminal lamps.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
 console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
 console.log(`Kiln newts: ${newts} baskers on ember vents; ${secretNewts} retreat routes point to cracked walls.`);
@@ -925,3 +948,6 @@ console.log(`District landmarks: ${landmarkRooms} named navigation anchors acros
 assert.equal(secretTrails, 360, "every sampled floor ties its sealed room to a district landmark");
 assert.ok(secretTrailMulti > 300, "most landmark discoveries cross multiple rooms");
 console.log(`Landmark discoveries: ${secretTrails} routes (${secretTrailMulti} multi-room) across ${secretTrailRooms} rooms; longest route ${secretTrailLongest} rooms.`);
+assert.equal(secretEntrances.size, 4, "secrets approach from all four cracked-wall directions");
+assert.ok(secretShapes.has("square") && secretShapes.has("octagon"), "secret approach cuts fit both hidden-room footprints");
+console.log(`Hidden-room approaches: ${secretEntranceMarks} paired cuts across ${secretTrails} rooms, ${secretEntrances.size} directions and ${secretShapes.size} shapes.`);

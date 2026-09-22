@@ -3,7 +3,6 @@ import { DIRS, DIR_STEP, type Dir, type Room } from "../dungeon/types";
 import type { DistrictId } from "../rooms/districts";
 import { GROUND_Y, WALL_HEIGHT } from "../world";
 import { GALLERY_TERMINI } from "./galleryTermini";
-import { isUnlitRoom } from "../lighting/field";
 
 export interface PassageLamp {
   dir: Dir;
@@ -15,7 +14,6 @@ export interface PassageLamp {
 
 /** A light belongs to a passage, never to each floor course in its mesh. */
 export function passageLampsFor(room: Room): PassageLamp[] {
-  if (isUnlitRoom(room, room.seed)) return [];
   return DIRS.flatMap((dir, direction) => {
     const length = room.wings?.[dir] ?? 0;
     if (length <= 0) return [];

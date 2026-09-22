@@ -1377,3 +1377,20 @@ same 5,166 triangles; browser inspection confirms all four tables and four
 chairs occupy one batch per model part. The fixed 78-room sweep peaks at 78
 calls, 7,288 triangles, 97 geometries and 11 textures. Ten revisits add no
 geometry and a 361-frame sprint retains 0.00 MB after collection.
+
+Hidden-room history now continues from the real cracked-wall entrance into
+the sealed chamber. Paired paint-depth root slats, iron punches or stone
+cuts flank the approach to its existing district-specific reward, following
+local floor height and clipping to square and octagonal outlines. The
+360-floor generation audit finds 2,616 legal entrance cuts across all four
+approach directions and both hidden-room shapes. Browser review confirms all
+nine district/reward histories still render their matched marks and rewards.
+
+Raised gallery stations keep their existing practical terminal lamps even
+when the enclosing chamber is unlit. The lamp remains visible with the
+carried lantern lowered, while the chamber retains its dark-room rule. The
+world audit verifies the terminal lamp for every one of 853 gallery stations,
+including 209 rooms that retain the dark-room rule.
+The fixed 78-room sweep remains at 78 calls, 7,288 triangles, 97 geometries
+and 11 textures. Ten revisits add no geometry, a 573-frame sprint retains
+0.00 MB after collection, and 20,000 held-audio updates retain one voice.

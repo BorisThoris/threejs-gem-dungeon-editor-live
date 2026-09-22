@@ -58,6 +58,18 @@ try {
 
     const result = await page.evaluate(async ({ story }) => {
       const T = await import("/node_modules/three/build/three.module.js");
+      const { secretEntranceDirection } = await import("/src/game/dungeon/secret.ts");
+      const { secretHistoryMarks } = await import("/src/game/worldbuilding/secretHistoryPattern.ts");
+      const { insideRoom } = await import("/src/game/dungeon/footprint.ts");
+      const { floorHeightAt } = await import("/src/game/worldbuilding/elevation.ts");
+      const state = window.__run.getState();
+      const room = state.dungeon.rooms.find(candidate => candidate.id === state.currentRoomId);
+      const entrance = secretEntranceDirection(state.dungeon, room.id);
+      const trail = secretHistoryMarks(room, state.dungeon.seed, entrance).filter(mark => mark.role === "entrance");
+      if (!entrance || trail.length < 6 || trail.some(mark =>
+        !insideRoom(room, mark.position[0], mark.position[2], Math.hypot(mark.size[0], mark.size[2]) / 2 + .12) ||
+        Math.abs(mark.position[1] - floorHeightAt(room, mark.position[0], mark.position[2]) - .03) > .01))
+        throw Error("hidden-room trail must follow its real entrance on the drawn floor");
       const history = window.__scene.getObjectByName(`secret-history-${story.material}`);
       const reward = window.__scene.getObjectByName(`secret-reward-${story.flavour}`);
       if (!history || !reward) throw new Error("secret history or reward group did not render");
@@ -80,12 +92,14 @@ try {
       const image = renderer.domElement.toDataURL();
       const probe = window.__secretHistory;
       renderer.dispose();
-      return { pixels, image, probe, historyMeshes: history.children.length, rewardChildren: reward.children.length };
+      return { pixels, image, probe, entrance, trailMarks: trail.length,
+        historyMeshes: history.children.length, rewardChildren: reward.children.length };
     }, fixture);
     writeFileSync(`output/playwright/secret-history-${key}.png`, Buffer.from(result.image.split(",")[1], "base64"));
     delete result.image;
     assert.equal(result.probe.title, fixture.story.title);
     assert.equal(result.probe.purpose, fixture.story.purpose);
+    assert.equal(result.probe.entrance, result.entrance);
     assert.ok(result.historyMeshes > 0 && result.rewardChildren > 1, `${key} needs history and reward geometry`);
     assert.ok(result.pixels > 8, `${key} history marks need to contribute visible pixels`);
     console.log(key, result);

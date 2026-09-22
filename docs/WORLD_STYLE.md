@@ -58,6 +58,15 @@ looping threshold voice.
 - Build places with purposes and histories. Creatures need habitats; secrets
   need clues. Furnish arrangements, not disconnected random objects.
 
+Hidden-room marks must begin at the cracked wall that actually opens into the
+room. Carry that room's root, iron or stone workmanship along the floor toward
+its named reward, clipped to the true square or octagonal footprint and low
+enough to walk across. Keep the room's generated history and furnishing tied
+to its district; a random secret template must not replace that relationship.
+An unlit chamber may still show the practical lamp at the end of a built side
+gallery. That lamp identifies a real work station without lighting the whole
+room or replacing the player's lantern.
+
 Blender may supply bespoke creature bodies, landmarks and modular structure
 when hand modeling makes the result clearer. Keep the same chunky silhouette,
 simple materials, imperfect cuts and authored purpose. Check imports at player
