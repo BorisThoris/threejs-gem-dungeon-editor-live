@@ -39,7 +39,10 @@ try {
     const camera = new T.PerspectiveCamera(75, 800 / 560, 0.1, 120);
     camera.position.set(0, 1.8, 4); camera.lookAt(0, 1, -5);
     window.__lightingCapture = () => {
+      const hand = window.__scene.getObjectByName("shove-hand"), handVisible = hand?.visible;
+      if (hand) hand.visible = false;
       renderer.render(window.__scene, camera);
+      if (hand) hand.visible = handVisible;
       const canvas = document.createElement("canvas"); canvas.width = 800; canvas.height = 560;
       const ctx = canvas.getContext("2d"); ctx.drawImage(renderer.domElement, 0, 0);
       const pixels = ctx.getImageData(0, 0, 800, 560).data;
@@ -61,6 +64,8 @@ try {
   assert.ok(dark.probe.unlit);
   assert.ok(raised.brightness > dark.brightness * 2, `lantern reveals room: ${dark.brightness.toFixed(2)} → ${raised.brightness.toFixed(2)}`);
   assert.ok(dark.brightness < 25, "unlit room remains difficult to read");
+  assert.ok(dark.brightness > 12, `empty-lantern room remains navigable (${dark.brightness})`);
+  assert.ok(raised.brightness > 35, `raised lantern reveals surface detail (${raised.brightness})`);
   const bands = [];
   for (const glim of [75, 50, 25, 0]) {
     await page.evaluate(glim => window.__run.setState({ glim }), glim);
@@ -79,6 +84,29 @@ try {
   });
   assert.equal(sources.gpu, 0, "no per-source point lights enter the GPU lighting loop");
   assert.ok(sources.block > 0);
+  const environments = [];
+  const biomes = await page.evaluate(async () => (await import("/src/game/rooms/biomes.ts")).BIOMES);
+  for (const biome of biomes) {
+    await page.evaluate(async biome => {
+      const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
+      const { bus } = await import("/src/game/events.ts");
+      const dungeon = generateDungeon({ seed: 1, floor: 3 });
+      // The sanctuary is a deterministic fixture for material readability on
+      // the darkest floor, with its own practical lights and an empty lantern.
+      const room = dungeon.rooms.find(r => r.id === dungeon.startId);
+      room.biome = biome;
+      window.__run.setState({ dungeon, floor: 3, currentRoomId: room.id, glim: 0, oil: 100,
+        wardenRoomId: null, reaperAwake: false, harrierAwake: false, wispOut: false });
+      bus.emit("teleport", { position: [0, 1.8, 4] });
+    }, biome);
+    await page.waitForTimeout(500);
+    const frame = await page.evaluate(() => window.__lightingCapture());
+    environments.push({ biome, brightness: frame.brightness });
+    writeFileSync(`output/playwright/block-lighting/${biome}.png`, Buffer.from(frame.image.split(",")[1], "base64"));
+    assert.ok(frame.brightness > 22, `${biome}: practical lights reveal the environment without a lantern (${frame.brightness})`);
+  }
+  // Return to the original floor before resource comparisons; ids are floor-local.
+  await page.evaluate(fixture => window.__run.setState({ dungeon: fixture.dungeon, floor: 2, currentRoomId: fixture.roomId }), fixture);
   await page.evaluate(() => window.__disposeLightingCapture());
   // Revisit the same room: texture and shader counts should settle, not grow per visit.
   const settled = [];
@@ -93,5 +121,5 @@ try {
   assert.equal(settled[2].programs, settled[1].programs, "shader variants do not grow on revisit");
   assert.deepEqual(errors, [], "no runtime or shader errors");
   console.log(JSON.stringify({ pass: true, dark: dark.brightness, raised: raised.brightness, bands,
-    sources, settled, probe: raised.probe }, null, 2));
+    sources, settled, environments, probe: raised.probe }, null, 2));
 } finally { await browser.close(); }

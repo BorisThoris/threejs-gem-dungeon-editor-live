@@ -66,7 +66,7 @@ export function BlockLighting() {
         const compile = m.onBeforeCompile, key = m.customProgramCacheKey;
         const originalKey = key.call(m);
         materials.current.set(m, { compile, key });
-        m.customProgramCacheKey = () => `${originalKey}:block-light-v1`;
+        m.customProgramCacheKey = () => `${originalKey}:block-light-v2`;
         m.onBeforeCompile = (shader, renderer) => {
           compile.call(m, shader, renderer);
           Object.assign(shader.uniforms, uniforms);
@@ -85,7 +85,7 @@ export function BlockLighting() {
             vec2 blockUV = (blockWorld.xz - blockBounds.xy) / blockBounds.zw;
             vec3 blockGlow = texture2D(blockField, blockUV).rgb;
             float blockHeight = 1.0 / (1.0 + max(0.0, floor(blockWorld.y) - 2.0) * 0.18);
-            reflectedLight.indirectDiffuse += diffuseColor.rgb * blockGlow * blockHeight;`);
+            reflectedLight.indirectDiffuse += diffuseColor.rgb * blockGlow * blockHeight * 2.8;`);
         };
         m.needsUpdate = true;
       }

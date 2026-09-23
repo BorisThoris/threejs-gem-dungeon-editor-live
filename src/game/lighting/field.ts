@@ -60,7 +60,7 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
     while (head < tail) {
       const i = queue[head++], distance = steps[i] * cell;
       const falloff = Math.max(0, 1 - distance / s.range);
-      const value = Math.min(1.6, s.intensity / 14) * falloff * falloff;
+      const value = Math.min(1.6, s.intensity / 14) * Math.pow(falloff, 1.4);
       energy[i * 3] += value * s.r; energy[i * 3 + 1] += value * s.g; energy[i * 3 + 2] += value * s.b;
       if (distance + cell >= s.range) continue;
       const nextStep = steps[i] + 1;

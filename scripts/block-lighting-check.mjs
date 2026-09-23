@@ -38,7 +38,7 @@ for (let seed = 1; seed <= 50; seed++) {
     if (unlit) {
       dark++;
       assert.ok(!L.placementsFor(r, dungeon.seed).some(p => p.kind === "torch"), "unlit rooms have no braziers");
-      assert.deepEqual(L.passageLampsFor(r), [], "atlas and renderer agree on unlit passages");
+      assert.ok(L.passageLampsFor(r).every(lamp => r.wings?.[lamp.dir] > 0), "dark chambers retain practical lamps only in passages");
     }
     if (r.kind !== "normal" && r.kind !== "treasure") assert.equal(unlit, false, "safe rooms and trials keep fixtures");
   }
