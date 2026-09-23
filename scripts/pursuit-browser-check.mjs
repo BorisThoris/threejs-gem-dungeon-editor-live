@@ -48,13 +48,12 @@ try {
     return results.length;
   });
   await page.locator('[data-testid="menu-start"]').click();
-  await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning, { timeout: 90000 });
+  await page.waitForFunction(() => window.__pursuit && window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning, { timeout: 90000 });
   async function depart() {
     return page.evaluate(async () => {
-      const p = await import("/src/game/ladder/pursuit.ts");
-      const ladder = await import("/src/game/ladder/state.ts");
-      const din = await import("/src/game/din/din.ts");
-      const { runClock } = await import("/src/game/state/run.ts");
+      const p = window.__pursuit;
+      const ladder = window.__awareness;
+      const din = window.__din;
       const store = window.__run, s = store.getState();
       const a = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
       const [dir, b] = Object.entries(a.links).find(([, id]) => {
@@ -70,7 +69,7 @@ try {
         harrierAwake: true, harrierSlain: false, harrierRoomId: a.id, harrierCameFrom: null,
         harrierDownedUntil: 0, harrierRetreatUntil: 0,
         thiefPhase: "stalking", thiefRoomId: a.id, thiefCameFrom: null });
-      const now = runClock(store.getState());
+      const now = window.__derived.clock();
       for (const who of ["warden", "reaper", "harrier", "cutpurse"]) {
         ladder.wake(who); ladder.report(who, 3, true, true, a.id); p.perceive(who, a.id, now);
       }

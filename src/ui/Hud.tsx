@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { SHOVE_CHARGE_S } from "../game/player/combat";
+import { SHOVE_CHARGE_S, SHOVE_COOLDOWN_S } from "../game/player/combat";
+import { playerLightIn } from "../game/ladder/sight";
+import { playerAt } from "../game/player/where";
 
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
@@ -8,6 +10,7 @@ import { SecretTrailGuide } from "./SecretTrailGuide";
 import { BellcapWarning } from "./BellcapWarning";
 import {
   barredNow,
+  barsRemaining,
   harrierAway,
   harrierDowned,
   keeperHolds,
@@ -38,9 +41,9 @@ import { DISTRICTS } from "../game/rooms/districts";
 import { roomPlaceName } from "../game/rooms/placeName";
 
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
-import { device, useTouchControls } from "../game/input/device";
+import { useCompactViewport, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
-import { FLOORS } from "../game/world";
+import { BARRICADE_KITS, FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 import { hudLines, type HudLine } from "./hudLines";
@@ -181,7 +184,7 @@ export function Hud() {
   // Eight lines at a monitor's spacing is more than half of a phone held
   // sideways. Closer together and a size down there, so the room is still
   // the thing on the screen.
-  const compact = device === "phone";
+  const compact = useCompactViewport();
   return (
     <div
       data-testid="hud"
@@ -189,7 +192,7 @@ export function Hud() {
         position: "fixed",
         top: compact ? 12 : 20,
         left: compact ? 12 : 20,
-        maxWidth: "min(460px, 40vw)",
+        maxWidth: compact ? "calc(100vw - 150px)" : "min(460px, 40vw)",
         boxSizing: "border-box",
         overflowWrap: "anywhere",
         padding: compact ? "8px 10px" : "14px 16px",
@@ -204,11 +207,12 @@ export function Hud() {
         zIndex: 900,
       }}
     >
-      <ShoveReadout />
+      <ShoveReadout compact={compact} />
       <BellcapWarning />
       <ServiceRubbing />
       <SecretTrailGuide />
       {lines.map((line, i) => {
+        if (compact && line.rank >= 4) return null;
         /**
          * The rank the line already carries, spent on the screen.
          *
@@ -276,7 +280,7 @@ export function Hud() {
   );
 }
 
-function ShoveReadout() {
+function ShoveReadout({ compact }: { compact: boolean }) {
   const [, refresh] = useState(0);
   const binding = useSettings((s) => s.bindings.shove);
   const touch = useTouchControls();
@@ -286,10 +290,26 @@ function ShoveReadout() {
   }, []);
   const run = useRun.getState();
   const now = runClock(run);
+  const kits = barsRemaining(run);
   const remaining = Math.max(0, Math.ceil((run.shoveReadyAt - now) * 10) / 10);
   const charge = run.shoveChargingAt === null ? null : Math.min(100, Math.round((now - run.shoveChargingAt) / SHOVE_CHARGE_S * 100));
-  return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: charge !== null ? colors.gold : remaining ? colors.dim : colors.accent }}>
-    SHOVE · {charge !== null ? `charging ${charge}%` : remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : `Left click / ${keysLabel(binding)} / RT`} · face a close threat`}
+  const light = run.currentRoomId ? playerLightIn(run.currentRoomId) : 0;
+  const lightLabel = light >= 0.5 ? "in bright light" : light >= 0.15 ? "in dim light" : "in shadow";
+  const movement = playerAt.speed > 4.5 ? "running" : playerAt.speed > 0.2 ? "moving" : "still";
+  const progress = charge !== null ? charge : (1 - remaining / SHOVE_COOLDOWN_S) * 100;
+  return <div style={{ fontSize: "0.85em" }}>
+    <div data-testid="bars-stock" style={{ color: kits ? colors.ink : colors.gold, marginBottom: 4 }}>
+      BARS · {kits}/{BARRICADE_KITS} ready{run.barricades.length ? ` · ${run.barricades.length} standing` : ""}
+    </div>
+    <div data-testid="stealth-status" style={{ color: light >= 0.5 ? colors.gold : colors.dim, marginBottom: 4 }}>
+      VISIBILITY · {lightLabel} · {movement}
+    </div>
+    <div data-testid="shove-status" style={{ color: charge !== null ? colors.gold : remaining ? colors.dim : colors.accent }}>
+    SHOVE · {charge !== null ? `charging ${charge}%` : remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : compact ? keysLabel(binding) : `Left click / ${keysLabel(binding)} / RT`}${compact ? " · ready" : " · face a close threat"}`}
+    </div>
+    <div aria-hidden="true" style={{ width: 100, height: 2, background: colors.line, marginTop: 4, marginBottom: 5 }}>
+      <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: "100%", background: charge !== null ? colors.gold : colors.accent }} />
+    </div>
   </div>;
 }
 

@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 
 import { bus } from "../events";
 import { roomById, type Dungeon } from "../dungeon/types";
-import { runClock, useRun } from "../state/run";
+import { barsNow, runClock, useRun } from "../state/run";
 import * as din from "./din";
 
 /**
@@ -35,6 +35,7 @@ export function DinDriver() {
   });
 
   useEffect(() => {
+    if (import.meta.env.DEV) Object.assign(window, { __din: din });
     const at = (dungeon: Dungeon | null, roomId: string | null | undefined) =>
       dungeon && roomId ? roomById(dungeon, roomId) : undefined;
 
@@ -42,8 +43,7 @@ export function DinDriver() {
     const floor = () => {
       const s = useRun.getState();
       // One bar at a time, and only while it stands.
-      const bars = new Set<string>();
-      if (s.barredDoor && runClock(s) < s.barUntil) bars.add(s.barredDoor);
+      const bars = barsNow(s);
       return { s, bars };
     };
 
@@ -169,8 +169,7 @@ export function DinDriver() {
       bus.on("roomEntered", ({ roomId }) => {
         const s = useRun.getState();
         if (!s.dungeon) return;
-        const bars = new Set<string>();
-        if (s.barredDoor && runClock(s) < s.barUntil) bars.add(s.barredDoor);
+        const bars = barsNow(s);
         for (const [key, id] of [
           ["lantern", "lantern"],
           ["carried:key", "carriedKey"],

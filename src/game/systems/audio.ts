@@ -8,6 +8,7 @@
  */
 
 import { createRoomReflections, type RoomAcoustics } from "./roomAcoustics";
+import { waterSamples } from "./waterSound";
 import type { LandmarkId } from "../worldbuilding/landmarks";
 import type { DistrictId } from "../rooms/districts";
 import type { ThresholdEchoSite } from "../worldbuilding/thresholdEcho";
@@ -528,13 +529,18 @@ interface Air {
 
 let air: Air | null = null;
 
+let currentBuffer: AudioBuffer | null = null;
 const buildCurrent: HeldBuilder = (ctx, into) => {
-  const stream = heldNoise(ctx, into, "bandpass", 1400, 0.7, null);
-  const ripple = ctx.createOscillator(), depth = ctx.createGain();
-  ripple.frequency.value = 0.8; depth.gain.value = 180;
-  ripple.connect(depth).connect(stream.filter.frequency);
-  ripple.start();
-  return { filter: stream.filter, lfo: null, pitch: null, sources: [stream.source, ripple] };
+  if (!currentBuffer || currentBuffer.sampleRate !== ctx.sampleRate) {
+    currentBuffer = ctx.createBuffer(2, ctx.sampleRate * 16, ctx.sampleRate);
+    for (let channel = 0; channel < 2; channel++)
+      currentBuffer.getChannelData(channel).set(waterSamples(ctx.sampleRate, 16, 719 + channel * 97));
+  }
+  const source = ctx.createBufferSource(), filter = ctx.createBiquadFilter();
+  source.buffer = currentBuffer; source.loop = true;
+  filter.type = "lowpass"; filter.frequency.value = 1800; filter.Q.value = 0.5;
+  source.connect(filter).connect(into); source.start();
+  return { filter, lfo: null, pitch: null, sources: [source] };
 };
 
 /** A held voice for the airs that are continuous. Null for the ones that are not. */
@@ -698,7 +704,7 @@ export const ambience = {
   /** Running water is infrastructure, independent of a room's native air. */
   setCurrent(level: number, pan = 0) {
     const amount = Math.max(0, Math.min(1, level));
-    heldSet("water-current", buildCurrent, amount, pan, { level: amount * 0.28, filterHz: 650 + amount * 1000 });
+    heldSet("water-current", buildCurrent, amount, pan, { level: amount * 1.2, filterHz: 1000 + amount * 900 });
   },
   stopCurrent() { heldStop("water-current"); },
   currentLevel: () => held.get("water-current")?.gain.gain.value ?? 0,
@@ -1013,8 +1019,9 @@ export const sfx = {
     // too: the same footstep, harder and with more body under it.
     const loud = running ? 1.7 : 1;
     if (surface === "water") {
-      scuff(0.14, (strong ? 0.22 : 0.15) * loud, 1250 * wobble);
-      body(170 * wobble, 0.1, "sine", 0.12 * loud, 80);
+      scuff(0.09, (strong ? 0.09 : 0.06) * loud, 480 * wobble);
+      body(280 * wobble, 0.13, "sine", 0.12 * loud, 110);
+      later(45, () => tone(650 * wobble, 0.07, "sine", 0.045 * loud, 880, 0, true));
       return;
     }
     if (surface === "soft") {

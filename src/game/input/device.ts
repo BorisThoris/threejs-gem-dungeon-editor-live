@@ -95,6 +95,19 @@ const subscribe = (fn: () => void): (() => void) => {
 export const useTouchControls = (): boolean =>
   useSyncExternalStore(subscribe, touchControlsActive, () => false);
 
+const compactQuery = "(max-width: 700px)";
+const compactSnapshot = () => typeof window !== "undefined" && window.matchMedia(compactQuery).matches;
+const subscribeCompact = (notify: () => void) => {
+  const query = window.matchMedia(compactQuery);
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+/** Layout follows resized windows as well as phones; input mode stays independent. */
+export function useCompactViewport(): boolean {
+  const narrow = useSyncExternalStore(subscribeCompact, compactSnapshot, () => false);
+  return narrow || device === "phone";
+}
+
 /**
  * A phone playing a first-person game wants the whole screen and wants it
  * sideways. Asked for on the tap that starts a run, which is the user

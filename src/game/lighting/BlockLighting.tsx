@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { DataTexture, NearestFilter, Vector3, Vector4, type Material, type Mesh, type PointLight } from "three";
 import { useCurrentRoom, useRun } from "../state/run";
 import { createLightField, isUnlitRoom, updateLightField, type FieldSource } from "./field";
+import { publishLightField, releaseLightField } from "./perception";
 
 /** Gameplay light transport. Existing animated PointLights are source handles on
  * a non-rendered layer; their colours, motion and intensity still have one owner.
@@ -26,7 +27,7 @@ export function BlockLighting() {
   const previousField = useRef(field);
   const scratch = useMemo(() => ({ sources: [] as FieldSource[], lights: new Set<PointLight>(), materials: new Set<Material>() }), []);
   const position = useMemo(() => new Vector3(), []);
-  useEffect(() => () => { texture?.dispose(); }, [texture]);
+  useEffect(() => () => { texture?.dispose(); if (field) releaseLightField(field); }, [texture, field]);
   useEffect(() => {
     const patched = materials.current, captured = lights.current;
     return () => {
@@ -66,7 +67,7 @@ export function BlockLighting() {
         const compile = m.onBeforeCompile, key = m.customProgramCacheKey;
         const originalKey = key.call(m);
         materials.current.set(m, { compile, key });
-        m.customProgramCacheKey = () => `${originalKey}:block-light-v1`;
+        m.customProgramCacheKey = () => `${originalKey}:block-light-v2`;
         m.onBeforeCompile = (shader, renderer) => {
           compile.call(m, shader, renderer);
           Object.assign(shader.uniforms, uniforms);
@@ -85,7 +86,7 @@ export function BlockLighting() {
             vec2 blockUV = (blockWorld.xz - blockBounds.xy) / blockBounds.zw;
             vec3 blockGlow = texture2D(blockField, blockUV).rgb;
             float blockHeight = 1.0 / (1.0 + max(0.0, floor(blockWorld.y) - 2.0) * 0.18);
-            reflectedLight.indirectDiffuse += diffuseColor.rgb * blockGlow * blockHeight;`);
+            reflectedLight.indirectDiffuse += diffuseColor.rgb * blockGlow * blockHeight * 2.8;`);
         };
         m.needsUpdate = true;
       }
@@ -101,6 +102,7 @@ export function BlockLighting() {
     if (elapsed.current < 0.1) return;
     elapsed.current = 0;
     updateLightField(field, sources); texture.needsUpdate = true;
+    if (room) publishLightField(room.id, field);
     if (import.meta.env.DEV) Object.assign(window, { __blockLighting: {
       roomId: room?.id, unlit: room ? isUnlitRoom(room, useRun.getState().dungeon?.seed ?? 0) : false,
       cells: field.width * field.height, cellSize: field.cell, sources: sources.length,

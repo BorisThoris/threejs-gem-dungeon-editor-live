@@ -20,8 +20,8 @@ furniture, but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
 
-Space (or RT on a controller, SHOVE on touch) pushes back a threat within
-three metres in front of you. It drives off the Harrier, scatters the
+Space or left click (RT on a controller, SHOVE on touch) winds up the hand
+for 0.3 seconds, then pushes back a threat within three metres in front of you. It drives off the Harrier, scatters the
 Cutpurse and recovers anything it stole, or staggers the Warden for a short
 escape window. Each shove needs 2.4 seconds to recover. Solid cover,
 including watcher posts, blocks the hand; a blocked shove prompts you to
@@ -79,20 +79,31 @@ that has bitten it - so the room is worth exactly twice, and then it is a
 trap room again.
 
 There is one thing you can do to the dungeon rather than to yourself.
-Press B at a doorway and you bar it, and for the next forty-five seconds
-that doorway is not on the Warden's map: it walks round. Hammering a plank
-across a door is also the loudest thing you can do in a place whose only
-threat hunts by sound, so a bar buys distance and spends surprise. One at
-a time, walking back through your own bar lifts it, and if there is no way
-round at all it comes through the bar instead - which you will hear.
+Each floor gives you three reusable barricade kits. Press B at a doorway
+(D-pad down on a controller, BAR on touch) to put one up. The planks stay
+until you remove them and block that doorway from both sides, including
+an enemy chase already underway. The Warden may take another open route;
+it cannot instantly smash your barricade. Harriers, Cutpurses and the Reaper
+also stop at barred doorways. Building still makes noise.
 
-You carry a lantern. It starts down, and whether you raise it is the other
-question the game asks all the time. Raised, you can see the room - and you are the brightest
-thing on a dark floor: the Warden walks straight for you, and a watcher
-needs half as long to be sure of what it is looking at. Lowered, you have a
-hand's worth of glow and nothing knows where you are. It only burns oil
-while it is up, so keeping it down costs nothing but sight, and you fill it
-at the braziers, which are the brightest place in any room to be standing.
+Press B again, or use the doorway's tear-down prompt, to recover the kit.
+Removing a barricade does not also open the door: use it again to travel.
+Your remaining kits and standing barricades appear in the HUD. Timed trap
+grates are separate and never consume or replace your barricades.
+
+The lantern has five light bands. Lowering it is instant; raising it from
+darkness takes 1.4 seconds and costs four oil. Lit travel costs six oil for
+a new room and one for a revisit. Standing still costs nothing; replacement
+oil is bought at the shop. Braziers provide light and clear clinging gloom.
+
+Warm fixture light spreads around the actual room outline. Corner braziers
+reach across larger chambers, passage lamps mark the galleries, and unlit
+chambers still make the carried lantern valuable. The hand responds to local
+light and shows shove recovery. The visibility readout reports the light on
+you and your movement: a watcher acquires you faster in bright light, whether
+it comes from your lantern or a nearby fixture. Dark corners reduce that
+exposure; solid cover and room walls still matter. The Warden remains blind
+to light and follows its existing movement, sound, and pursuit rules.
 
 Speed is not free either. A sprint is loud, and while it can hear you the
 Warden stops wandering and walks straight for the room you are in. Walking

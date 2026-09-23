@@ -1,7 +1,10 @@
 import { doorPosition } from "../dungeon/layout";
 import { useTouchControls } from "../input/device";
 import { roomById, type Dir, type Room } from "../dungeon/types";
-import { barredNow, keeperHolds, keeperStalled, tollNow, useRun } from "../state/run";
+import { barsRemaining, doorIsBarred, keeperHolds, keeperStalled, tollNow, useRun } from "../state/run";
+import { CuboidCollider, RigidBody } from "@react-three/rapier";
+import { useSettings } from "../state/settings";
+import { keysLabel } from "../input/bindings";
 import { barKey } from "../warden/bars";
 import { DOOR_HEIGHT, DOOR_WIDTH, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
@@ -74,8 +77,11 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   // it. Both come off the store rather than being worked out here, so the
   // planks the player sees and the edge the Warden avoids cannot disagree.
   const barred = useRun((s) =>
-    toId && s.currentRoomId ? barredNow(s) === barKey(s.currentRoomId, toId) : false
+    toId ? doorIsBarred(s, room.id, toId) : false
   );
+  const ownBar = useRun(s => !!toId && s.barricades.includes(barKey(room.id, toId)));
+  const stock = useRun(barsRemaining);
+  const barBinding = useSettings(s => s.bindings.bar);
   // The Keeper: whether it holds the last stairs, and whether it is
   // kneeling - both the store's, so the prompt, the frame and the refusal
   // in `travel` are one fact.
@@ -89,7 +95,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const kept = isExit && held;
   // A vault stays locked until a key is spent on it, and then stays open.
   const locked = target.id === vaultId && !unlocked;
-  const enabled = (!isExit || gems >= toll) && !kept && !sealed && (!locked || keys > 0);
+  const enabled = ownBar || (!barred && (!isExit || gems >= toll) && !kept && !sealed && (!locked || keys > 0));
   /**
    * The lamp over the lintel, or none at all.
    *
@@ -133,23 +139,28 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
           a player can see at a glance which doorway they shut and from
           which side - it is the only thing in the game they have changed
           about the dungeon itself. */}
-      {barred && (
-        <group position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
+      {ownBar && (
+        <RigidBody type="fixed" colliders={false} position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]} name="player-barricade">
+          <CuboidCollider args={[DOOR_WIDTH / 2, DOOR_HEIGHT / 2, 0.14]} position={[0, DOOR_HEIGHT / 2, 0]} />
           {[0.7, 1.5, 2.3].map((y) => (
             <mesh key={y} position={[0, y, 0]} rotation={[0, 0, (y - 1.5) * 0.05]} castShadow>
-              <boxGeometry args={[DOOR_WIDTH + 0.5, 0.22, 0.16]} />
+              <boxGeometry args={[DOOR_WIDTH + 0.5, 0.3, 0.2]} />
               <meshStandardMaterial color="#6b4a2c" roughness={0.95} />
             </mesh>
           ))}
-        </group>
+          {[-1, 1].map(side => <mesh key={side} position={[side * DOOR_WIDTH * 0.4, 1.5, 0]}>
+            <boxGeometry args={[0.14, 2.1, 0.24]} />
+            <meshStandardMaterial color="#48413b" roughness={0.65} metalness={0.45} />
+          </mesh>)}
+        </RigidBody>
       )}
       <InteractTrigger
         position={position}
         label={
-          locked
+          ownBar ? "Tear down your barricade · recover 1 kit" : locked
             ? `Unlock the vault (1 iron key)`
             : barred
-              ? `Lift your bar and open ${KIND_LABEL[target.kind] ?? "the door"}`
+              ? "The grate is still down"
               : // The bar's key is said on the prompt the player is already
                 // reading. It is the only verb in the game that is not E,
                 // and a control nobody is told about is a control nobody
@@ -157,11 +168,11 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
                 // locked vault do not carry a hint about a thing they will
                 // refuse.
                 (isExit && knelt ? "Pay the toll and go - now" : `Open ${KIND_LABEL[target.kind] ?? "the door"}`) +
-                (isExit || locked ? "" : touch ? "   ·   BAR shuts it" : "   ·   B bars it")
+                (isExit || locked ? "" : `   ·   ${touch ? "BAR" : keysLabel(barBinding)} barricades (${stock} left)`)
         }
         enabled={enabled}
         blockedReason={
-          kept
+          barred ? "The grate is still down" : kept
             ? "The Keeper holds the stairs. A blast would make it kneel."
             : sealed
             ? "The door will not move"
@@ -171,6 +182,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
         }
         onInteract={() => {
           const run = useRun.getState();
+          if (ownBar) { run.tearDownBar(target.id); return; }
           if (locked && !run.unlockRoom(target.id)) return;
           if (isExit && !run.spendGems(tollNow(run))) return;
           run.travel(dir);

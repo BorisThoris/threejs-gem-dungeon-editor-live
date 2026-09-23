@@ -7,6 +7,7 @@ import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, text } from "./overlay";
 import { minimapFootprint } from "./minimapGeometry";
+import { useCompactViewport } from "../game/input/device";
 
 const SIZE = MINIMAP_SIZE;
 const CELL = 26;
@@ -48,6 +49,7 @@ const FADE = "radial-gradient(circle at 50% 50%, #000 58%, transparent 92%)";
 const EMPTY: readonly string[] = [];
 
 export function Minimap() {
+  const compact = useCompactViewport();
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
   const visited = useRun((s) => s.visited);
@@ -203,8 +205,8 @@ export function Minimap() {
       data-testid="minimap"
       style={{
         position: "fixed",
-        top: 20,
-        right: 20,
+        top: compact ? 12 : 20,
+        right: compact ? 12 : 20,
         width: SIZE,
         height: SIZE,
         borderRadius: "50%",
@@ -214,7 +216,7 @@ export function Minimap() {
         fontFamily: FONT,
         pointerEvents: "none",
         zIndex: 900,
-        transform: MINIMAP_SCALE === 1 ? undefined : `scale(${MINIMAP_SCALE})`,
+        transform: `scale(${compact ? 0.6 : MINIMAP_SCALE})`,
         transformOrigin: "top right",
       }}
     >

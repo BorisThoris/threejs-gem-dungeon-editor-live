@@ -60,7 +60,7 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
     while (head < tail) {
       const i = queue[head++], distance = steps[i] * cell;
       const falloff = Math.max(0, 1 - distance / s.range);
-      const value = Math.min(1.6, s.intensity / 14) * falloff * falloff;
+      const value = Math.min(1.6, s.intensity / 14) * Math.pow(falloff, 1.4);
       energy[i * 3] += value * s.r; energy[i * 3 + 1] += value * s.g; energy[i * 3 + 2] += value * s.b;
       if (distance + cell >= s.range) continue;
       const nextStep = steps[i] + 1;
@@ -84,4 +84,12 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
     }
     data[i * 4 + 3] = 255;
   }
+}
+
+/** Same nearest-cell sample as the material shader. Outside the room is dark. */
+export function sampleLightField(f: LightField, x: number, z: number): number {
+  const col = Math.floor((x - f.minX) / f.cell), row = Math.floor((z - f.minZ) / f.cell);
+  if (col < 0 || row < 0 || col >= f.width || row >= f.height) return 0;
+  const i = (row * f.width + col) * 4;
+  return Math.min(1, (f.data[i] * 0.2126 + f.data[i + 1] * 0.7152 + f.data[i + 2] * 0.0722) / 255 * 1.6);
 }

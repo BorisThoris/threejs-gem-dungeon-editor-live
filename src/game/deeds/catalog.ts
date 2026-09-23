@@ -100,7 +100,7 @@ export const DEEDS: Record<DeedId, Deed> = {
   shutout: {
     id: "shutout",
     name: "Shut Out",
-    blurb: "Bar a doorway and have the Warden come through it anyway.",
+    blurb: "Hear the Warden break through a fallen trap grate.",
     steam: "BAR_BROKEN",
   },
   darkrunner: {

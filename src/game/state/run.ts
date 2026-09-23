@@ -77,7 +77,7 @@ import { behaviourFor } from "../warden/tuning";
 import {
   ALARM_PER_GEM,
   BAR_NOISE_S,
-  BAR_S,
+  BARRICADE_KITS,
   BATS_NOISE_FACTOR,
   BATS_ROUSED_S,
   BOMB_FUSE_S,
@@ -320,17 +320,11 @@ export interface RunState {
   nestGems: number;
   nestRoomId: string | null;
   nestSeen: boolean;
-  /**
-   * The doorway the player has barred, and when it gives way on its own.
-   *
-   * One at a time: two would let a player wall themselves into a corner
-   * and wait, which is a hiding place rather than a decision, and the
-   * Warden's whole job is that there is nowhere to wait. Held as an edge
-   * key (`warden/bars.ts`) rather than a room and a direction, because
-   * barring a doorway from either side is the same act.
-   */
+  /** Timed trap grate edge and deadline; independent of reusable barricades. */
   barredDoor: string | null;
   barUntil: number;
+  /** Persistent player-built barriers. Timed grates use barredDoor separately. */
+  barricades: string[];
   /** A room whose doors are barred while something in it is happening. */
   sealedRoomId: string | null;
   /** Iron keys in hand. One opens one vault. */
@@ -667,6 +661,7 @@ export interface RunState {
    * and it replaces whatever was barred before. False when it cannot.
    */
   barDoor: (toRoomId: string) => boolean;
+  tearDownBar: (toRoomId: string) => boolean;
   /**
    * The bar is gone: the Warden came through it, or the player lifted it
    * walking out. Two very different events with one piece of state, so the
@@ -862,7 +857,7 @@ export const useRun = create<RunState>()(
     glimUpAt: 0,
     oil: LANTERN_OIL_FULL,
     litUntil: 0,
-    barredDoor: null,
+    barricades: [], barredDoor: null,
     barUntil: 0,
     mapped: false,
     looted: [],
@@ -1039,7 +1034,7 @@ export const useRun = create<RunState>()(
         floorRecord: { ...NO_PLEDGE },
         pledgesKept: 0,
         booksSpent: false,
-        barredDoor: null,
+        barricades: [], barredDoor: null,
         barUntil: 0,
         mapped: false,
         looted: [],
@@ -1158,18 +1153,12 @@ export const useRun = create<RunState>()(
         return;
       }
 
-      /**
-       * Walking out through your own bar lifts it.
-       *
-       * A bar the player can pass and the Warden cannot would otherwise be
-       * a door that only opens one way for forty-five seconds, and the
-       * play it invites is to stand behind it - which is a hiding place,
-       * and hiding places are the one thing this dungeon is built not to
-       * have. Lifting it means a bar is spent the moment you use the
-       * doorway yourself: it buys you the room you are leaving, not a
-       * corridor you can pace.
-       */
-      if (barredNow(s) === barKey(s.currentRoomId!, toId)) get().breakBar(false);
+      // Dismantling and travelling are separate actions from either side.
+      if (doorIsBarred(s, s.currentRoomId!, toId)) {
+        bus.emit("notice", s.barricades.includes(barKey(s.currentRoomId!, toId))
+          ? "Tear down your barricade before opening this door." : "The grate is still down.");
+        return;
+      }
 
       const seen = s.visited.includes(toId);
       /**
@@ -1308,7 +1297,7 @@ export const useRun = create<RunState>()(
           litUntil: 0,
           // A plank across a doorway on the floor above is on the floor
           // above, like the key and the lock and the snares.
-          barredDoor: null,
+          barricades: [], barredDoor: null,
           barUntil: 0,
           mapped: false,
           looted: [],
@@ -2239,11 +2228,19 @@ export const useRun = create<RunState>()(
       const here = roomById(s.dungeon, s.currentRoomId);
       if (!here || !Object.values(here.links).includes(toRoomId)) return false;
       const key = barKey(s.currentRoomId, toRoomId);
-      if (key === barredNow(s)) return false;
+      if (s.barricades.includes(key)) return get().tearDownBar(toRoomId);
+      if (key === barredNow(s) || s.sealedRoomId === here.id) return false;
+      if (roomById(s.dungeon, toRoomId)?.kind === "end" || (s.dungeon.vaultId === toRoomId && !s.unlocked.includes(toRoomId))) {
+        bus.emit("notice", "You cannot barricade the stairs or a locked vault.");
+        return false;
+      }
+      if (barsRemaining(s) === 0) {
+        bus.emit("notice", "No barricade kits left. Tear down one of your bars to recover a kit.");
+        return false;
+      }
       const now = runClock(s);
       set({
-        barredDoor: key,
-        barUntil: now + BAR_S,
+        barricades: [...s.barricades, key],
         floorRecord: { ...s.floorRecord, barredADoor: true },
         // Hammering is the loudest thing in the game, and it is made
         // standing still. What the bar buys is distance; what it spends is
@@ -2251,6 +2248,19 @@ export const useRun = create<RunState>()(
         noisyUntil: Math.max(s.noisyUntil, now + BAR_NOISE_S),
       });
       bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
+      return true;
+    },
+
+    tearDownBar: (toRoomId) => {
+      const s = get();
+      if (!canControl(s) || !s.currentRoomId || !s.dungeon) return false;
+      const here = roomById(s.dungeon, s.currentRoomId);
+      if (!here || !Object.values(here.links).includes(toRoomId)) return false;
+      const key = barKey(here.id, toRoomId);
+      if (!s.barricades.includes(key)) return false;
+      set({ barricades: s.barricades.filter(bar => bar !== key) });
+      bus.emit("barBroken", { byWarden: false });
+      bus.emit("notice", "Barricade removed. Kit recovered.");
       return true;
     },
 
@@ -2327,6 +2337,7 @@ export const useRun = create<RunState>()(
     moveWarden: (roomId) => {
       const s = get();
       if (!s.wardenRoomId || s.wardenRoomId === roomId) return;
+      if (doorIsBarred(s, s.wardenRoomId, roomId)) return;
       set({ wardenRoomId: roomId, wardenCameFrom: s.wardenRoomId });
       // It got to the noise and found nothing, so the noise is over. Left
       // set, the lure came back the moment it stepped away again and it
@@ -3074,18 +3085,21 @@ export const alarmFloorOn = (floor: number, delver: DelverId): number =>
 /** The same question asked of the run as it stands. */
 export const alarmFloorFor = (s: RunState): number => alarmFloorOn(s.floor, s.delver);
 
-/**
- * The doorway currently barred, or null. A bar is a deadline like every
- * other timed thing in the run, so whether one is standing is asked here
- * rather than remembered anywhere else.
- */
+/** The timed trap grate currently standing, or null. */
 export const barredNow = (s: RunState): string | null =>
   s.barredDoor && running(s, s.barUntil) ? s.barredDoor : null;
 
-/** The bars the Warden's pathing has to work around: none, or the one. */
+export const barsRemaining = (s: RunState): number => Math.max(0, BARRICADE_KITS - s.barricades.length);
+export const doorIsBarred = (s: RunState, from: string | null, to: string | null): boolean => {
+  if (!from || !to) return false;
+  const key = barKey(from, to);
+  return s.barricades.includes(key) || barredNow(s) === key;
+};
+
+/** Every blocked edge, shared by navigation and sound propagation. */
 export const barsNow = (s: RunState): Set<string> => {
   const bar = barredNow(s);
-  return bar ? new Set([bar]) : EMPTY_BARS;
+  return bar || s.barricades.length ? new Set([...s.barricades, ...(bar ? [bar] : [])]) : EMPTY_BARS;
 };
 
 /**

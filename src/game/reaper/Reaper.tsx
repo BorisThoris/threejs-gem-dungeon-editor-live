@@ -26,8 +26,8 @@ import { floorHeightAt } from "../worldbuilding/elevation";
  * then follows the last visible position. PursuitDriver handles delayed
  * doorway arrivals; cover or another doorway can break its trail.
  *
- * It cannot be fought, lured, warded or barred. A blast holds it for a
- * few seconds; breaking its trail also buys an escape.
+ * It cannot be fought, lured or warded. Door barricades stop its room-to-room
+ * pursuit; a blast or a broken trail also buys an escape.
  */
 export function Reaper({ room, cover = [] }: { room: Room; cover?: readonly Patch[] }) {
   const group = useRef<Group>(null);

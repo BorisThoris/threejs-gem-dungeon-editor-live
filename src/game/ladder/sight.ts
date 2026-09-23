@@ -2,6 +2,8 @@ import * as din from "../din/din";
 import { SUSCEPTIBILITY, type ReceiverId } from "../din/susceptibility";
 import type { Patch } from "../warden/steer";
 import type { Visibility } from "./rungs";
+import { localLightAt } from "../lighting/perception";
+import { playerAt } from "../player/where";
 
 /**
  * Building the analog value, with the receiver still declaring what it
@@ -12,9 +14,9 @@ import type { Visibility } from "./rungs";
  * cannot do anything about it - and all three of ours are things the
  * player is choosing continuously, which is the whole point.
  *
- * The light channel reads the Din rather than the lantern, so a brazier, a
- * lamplighter and a raised lamp are the same fact arriving from the same
- * place with the same units. And it is zeroed for a receiver that declared
+ * The light channel samples the rendered field at the player, so a brazier,
+ * lamplighter and raised lamp expose only the places they actually illuminate.
+ * It is zeroed for a receiver that declared
  * itself deaf to [bright] - the susceptibility table stays the one owner
  * of that, rather than the Warden's cone profile quietly holding a second
  * opinion in a different file.
@@ -35,7 +37,7 @@ export function visibilityFor(
 ): Visibility {
   const blind = (SUSCEPTIBILITY[who].deaf ?? []).includes("bright");
   return {
-    light: blind ? 0 : Math.min(1, din.arriving("bright", roomId)),
+    light: blind ? 0 : playerLightIn(roomId),
     movement: Math.min(1, Math.max(0, speed) / MOVEMENT_REFERENCE),
     exposure,
   };
@@ -57,6 +59,12 @@ export function sightLineClear(from: { x: number; z: number }, to: { x: number; 
     return along > 0 && along < 1
       && Math.hypot(from.x + along * dx - p.x, from.z + along * dz - p.z) < p.r;
   });
+}
+
+/** A distant lamp cannot expose the player through a wall. Keep room signals
+ * as a fallback for simulations without a mounted lighting field. */
+export function playerLightIn(roomId: string): number {
+  return localLightAt(roomId, playerAt.x, playerAt.z) ?? Math.min(1, din.arriving("bright", roomId));
 }
 
 /**

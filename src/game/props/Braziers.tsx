@@ -6,7 +6,7 @@ import { WISP_FLARE_REACH } from "../world";
 import { Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
-import { mapIsDark, useRun } from "../state/run";
+import { mapIsDark, runClock, useCurrentRoom, useRun } from "../state/run";
 import { LANTERN_FILL_REACH } from "../world";
 import { geo, mat } from "./shared";
 
@@ -123,11 +123,11 @@ function Part({
 }
 
 /** One flickering light per brazier, out of step with the others. */
-function Flame({ at, roomId }: { at: PropPlacement; roomId?: string }) {
+function Flame({ at, roomId, reach }: { at: PropPlacement; roomId?: string; reach: number }) {
   const light = useRef<PointLight>(null);
-  useFrame((state) => {
+  useFrame(() => {
     if (!light.current) return;
-    const t = state.clock.elapsedTime * 11 + at.x * 3 + at.z;
+    const t = runClock(useRun.getState()) * 11 + at.x * 3 + at.z;
     // The lamplighter: a brazier the wisp passes burns brighter. The way
     // is lit as it goes, which is the helper part a player can see.
     const flare =
@@ -140,7 +140,7 @@ function Flame({ at, roomId }: { at: PropPlacement; roomId?: string }) {
       position={[at.x, 1.8, at.z]}
       color="#ffb86c"
       intensity={TORCH_INTENSITY}
-      distance={11}
+      distance={reach}
       decay={1.6}
     />
   );
@@ -192,6 +192,9 @@ function Firelight({ places }: { places: PropPlacement[] }) {
 }
 
 export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?: string }) {
+  const room = useCurrentRoom();
+  // Corner fires must overlap across the chamber as room sizes grow with depth.
+  const reach = Math.max(14, Math.min(24, room?.size ?? 14));
   // A stable identity for the list, so the matrices are not rewritten on
   // every render of the room around them.
   const at = useMemo(() => places, [places]);
@@ -203,7 +206,7 @@ export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?:
         <Part key={part.key} part={part} places={at} />
       ))}
       {at.map((place, i) => (
-        <Flame key={i} at={place} roomId={roomId} />
+        <Flame key={i} at={place} roomId={roomId} reach={reach} />
       ))}
     </group>
   );

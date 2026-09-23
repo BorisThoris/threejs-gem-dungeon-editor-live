@@ -310,6 +310,10 @@ export function roomSegmentClear(room: Room, x: number, z: number, tx: number, t
 /** Route through a corridor mouth before turning into an off-axis destination. */
 export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: number, margin = 0.6): { x: number; z: number } {
   if (roomSegmentClear(room, x, z, tx, tz, margin)) return { x: tx, z: tz };
+  if (room.shape !== "square" || hasShapedWings(room)) {
+    const route = outlineWaypoint(room, x, z, tx, tz, margin);
+    if (route) return route;
+  }
   if (room.shape === "ring") {
     const around = ringCoreWidth(room.size) / 2 + margin + 0.12;
     const candidates = [[-around, -around], [around, -around], [around, around], [-around, around]]
@@ -325,6 +329,64 @@ export function roomWaypoint(room: Room, x: number, z: number, tx: number, tz: n
     return null;
   };
   return mouth(x, z) ?? mouth(tx, tz) ?? (room.shape === "square" ? { x: tx, z: tz } : { x: 0, z: 0 });
+}
+
+type RoutePoint = { x: number; z: number };
+type OutlineGraph = { points: RoutePoint[]; edges: { to: number; cost: number }[][];
+  tx: number; tz: number; distances: number[] };
+const outlineGraphs = new WeakMap<Room, Map<number, OutlineGraph>>();
+
+/** Cached visibility graph around actual wall corners. A guessed corridor mouth
+ * can sit across a bay shoulder; every edge here clears the creature's body. */
+function outlineWaypoint(room: Room, x: number, z: number, tx: number, tz: number, margin: number): RoutePoint | null {
+  let byMargin = outlineGraphs.get(room);
+  if (!byMargin) { byMargin = new Map(); outlineGraphs.set(room, byMargin); }
+  let graph = byMargin.get(margin);
+  if (!graph) {
+    const points: RoutePoint[] = [], unique = new Set<string>();
+    const add = (px: number, pz: number) => {
+      const key = `${px.toFixed(4)}:${pz.toFixed(4)}`;
+      if (unique.has(key) || !insideRoom(room, px, pz, margin)) return;
+      unique.add(key); points.push({ x: px, z: pz });
+    };
+    for (const rect of floorRects(room)) add(rect.x, rect.z);
+    const clearance = margin + 0.12;
+    for (const edge of wallEdges(room)) for (const end of [-1, 1]) {
+      const cx = edge.x + (edge.along === "x" ? end * edge.length / 2 : 0);
+      const cz = edge.z + (edge.along === "z" ? end * edge.length / 2 : 0);
+      for (const dx of [-clearance, clearance]) for (const dz of [-clearance, clearance]) add(cx + dx, cz + dz);
+    }
+    const edges: OutlineGraph["edges"] = points.map(() => []);
+    for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) {
+      const a = points[i], b = points[j];
+      if (!roomSegmentClear(room, a.x, a.z, b.x, b.z, margin)) continue;
+      const cost = Math.hypot(a.x - b.x, a.z - b.z);
+      edges[i].push({ to: j, cost }); edges[j].push({ to: i, cost });
+    }
+    graph = { points, edges, tx: NaN, tz: NaN, distances: [] };
+    byMargin.set(margin, graph);
+  }
+  const { points, edges } = graph;
+  if (graph.tx !== tx || graph.tz !== tz) {
+    graph.tx = tx; graph.tz = tz;
+    const distances = points.map(p => roomSegmentClear(room, p.x, p.z, tx, tz, margin) ? Math.hypot(p.x - tx, p.z - tz) : Infinity);
+    const visited = new Set<number>();
+    for (let step = 0; step < points.length; step++) {
+      let next = -1, best = Infinity;
+      for (let i = 0; i < points.length; i++) if (!visited.has(i) && distances[i] < best) { best = distances[i]; next = i; }
+      if (next < 0) break;
+      visited.add(next);
+      for (const edge of edges[next]) distances[edge.to] = Math.min(distances[edge.to], best + edge.cost);
+    }
+    graph.distances = distances;
+  }
+  let best = Infinity, result: RoutePoint | null = null;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i], distance = Math.hypot(p.x - x, p.z - z), cost = distance + graph.distances[i];
+    if (distance < 0.05 || cost >= best || !roomSegmentClear(room, x, z, p.x, p.z, margin)) continue;
+    best = cost; result = p;
+  }
+  return result;
 }
 
 function distanceToEdge(x: number, z: number, e: WallEdge): number {

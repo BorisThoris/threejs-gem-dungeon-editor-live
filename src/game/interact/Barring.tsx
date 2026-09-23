@@ -6,6 +6,7 @@ import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
 import { canControl, useRun } from "../state/run";
 import { INTERACT_RADIUS } from "../world";
+import { bus } from "../events";
 
 /**
  * Barring the doorway you are standing at.
@@ -29,11 +30,11 @@ export function Barring({ room }: { room: Room }) {
     // between two rooms: the same predicate everything else asks.
     if (!canControl(run)) return;
 
-    // Peeked rather than consumed until there is actually a doorway in
-    // reach, so a press near no door is not silently eaten - the keyboard
-    // module's presses are one-shot and whoever asks first wins.
+    // Consume each press once, including misses, so approaching a door
+    // later cannot unexpectedly build a barricade from an old press.
     const pad = readGamepad().barPressed;
     if (!pad && !keyboard.peekAction("bar")) return;
+    keyboard.consumeAction("bar");
 
     const cam = state.camera.position;
     let best: { dir: Dir; to: string; d: number } | null = null;
@@ -45,8 +46,7 @@ export function Barring({ room }: { room: Room }) {
       if (d > INTERACT_RADIUS) continue;
       if (!best || d < best.d) best = { dir, to, d };
     }
-    if (!best) return;
-    if (!pad) keyboard.consumeAction("bar");
+    if (!best) { bus.emit("notice", "Move close to a doorway to build or remove a barricade."); return; }
     useRun.getState().barDoor(best.to);
   });
 

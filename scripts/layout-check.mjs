@@ -515,7 +515,9 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   let point = { x: 0, z: -r.size / 2 + 1 };
   const target = { x: 0, z: r.size / 2 - 1 };
   let legal = true;
-  for (let step = 0; step < 4 && Math.hypot(point.x - target.x, point.z - target.z) > 0.1; step++) {
+  // The outline graph includes corridor mouths as well as core corners.
+  // Bound the complete route, rather than assuming exactly four waypoints.
+  for (let step = 0; step < 32 && Math.hypot(point.x - target.x, point.z - target.z) > 0.1; step++) {
     const next = L.roomWaypoint(r, point.x, point.z, target.x, target.z, 0.6);
     if (!L.roomSegmentClear(r, point.x, point.z, next.x, next.z, 0.6)) legal = false;
     point = next;
@@ -2303,7 +2305,7 @@ check("the shipped room templates reach the floors the game generates", authored
   check("a ghost springs nothing and is hurt by nothing", !!T && Object.values(T).every((t) => !t.springs.includes("ghost") && !t.hurts.includes("ghost")));
   check("darts fly over a rat and through a ghost: they hurt what has feet or wings", !!T && T.darts.hurts.includes("ground") && T.darts.hurts.includes("flying"));
   check("a dart plate re-arms after its volley, not during it", L.DART_REARM_S > L.DART_FLIGHT_S, `${L.DART_REARM_S}s against ${L.DART_FLIGHT_S}s`);
-  check("a grate the player did not make holds for less than a bar they did", L.GRATE_HOLD_S > 0 && L.GRATE_HOLD_S < L.BAR_S, `${L.GRATE_HOLD_S}s against ${L.BAR_S}s`);
+  check("a trap grate has a finite hold", L.GRATE_HOLD_S > 0 && L.GRATE_HOLD_S < 90, `${L.GRATE_HOLD_S}s`);
   if (L.trapsFor) {
     const NEVER = new Set(["start", "end", "shop", "library", "memory", "challenge", "secret"]);
     let rooms = 0, withTraps = 0, wrongKind = 0, tooMany = 0, badDarts = 0, badGrate = 0, pitInLane = 0, pitOnGem = 0, pitInProp = 0, pits = 0;
@@ -3585,9 +3587,9 @@ check("the shipped room templates reach the floors the game generates", authored
     );
   }
   check(
-    "a bar outlasts several of its steps but not a floor",
-    L.BAR_S > L.WARDEN_STEP_CALM_S * 3 && L.BAR_S < 90,
-    `${L.BAR_S}s against steps of ${L.WARDEN_STEP_ROUSED_S}-${L.WARDEN_STEP_CALM_S}s`
+    "each floor supplies a fixed reusable barricade stock",
+    Number.isInteger(L.BARRICADE_KITS) && L.BARRICADE_KITS === 3,
+    `${L.BARRICADE_KITS} kits`
   );
   check(
     "and putting one up is the loudest thing in the game",
@@ -4805,7 +4807,7 @@ check("the shipped room templates reach the floors the game generates", authored
     check("and holds the Reaper by the room it stands in, saying so", /reaperAwake && get\(\)\.reaperRoomId === roomId\) get\(\)\.stallReaper/.test(store));
     check("the rats scatter from what their row says, not from feet alone", /din\.answering\(\w+, "rat", room\.id\)/.test(src("src/game/mobs/Rats.tsx")));
     check("the moth is drawn by light, whoever carries it", /din\.answering\(\w+, "moth", room\.id\)/.test(src("src/game/mobs/Moth.tsx")) && !/lanternRaised/.test(src("src/game/mobs/Moth.tsx")));
-    check("the Sentry's patience is halved by the light its row names, not by a flag about the player", /din\.reaches\("sentry", "bright"/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
+    check("the Sentry's patience samples local light against its susceptibility threshold", /playerLightIn\(room.id\) >= SUSCEPTIBILITY.sentry.answers.bright/.test(src("src/game/sentry/Sentry.tsx")) && !/lanternLit/.test(src("src/game/sentry/Sentry.tsx")));
     check("the roost answers to its own row", /SUSCEPTIBILITY\.bat/.test(src("src/game/mobs/Bats.tsx")));
     check("the toads answer to theirs, and go under", /din\.answering\(\w+, "croaker", room\.id\)/.test(src("src/game/mobs/Croakers.tsx")));
     check(

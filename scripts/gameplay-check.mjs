@@ -16,6 +16,7 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm",
   jsx: "automatic", logLevel: "error", define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
+if (!process.argv.includes("--browser-only")) {
 const summary = [];
 let landings = 0, trapChecks = 0, corridorChecks = 0, cornerRoutes = 0, galleryOcclusions = 0, arrivals = 0;
 for (const floor of [1, 2, 3]) {
@@ -59,7 +60,8 @@ for (const floor of [1, 2, 3]) {
           "movement reaches the widened gallery edges");
         assert.ok(Math.abs(L.roomRayReach(centreX, centreZ, axis.z, axis.x, 20,
           L.wallEdges(room)) - middleWidth / 2) < 1e-8, "gallery side walls match their actual floor course");
-        if (!room.template && ["normal", "treasure"].includes(room.kind)) {
+        const rewardGallery = L.DIRS.find(other => (room.wings?.[other] ?? 0) >= 5 && !room.links[other] && room.secret?.dir !== other);
+        if (!room.template && ["normal", "treasure"].includes(room.kind) && dir === rewardGallery) {
           const gem = L.gemFor(room, d.seed);
           assert.deepEqual(gem, L.gemFor(room, d.seed), "gallery reward stays put on revisiting");
           assert.ok(axis.x * gem[0] + axis.z * gem[2] > room.size / 2 + 2,
@@ -70,10 +72,12 @@ for (const floor of [1, 2, 3]) {
         }
         const distance = L.doorReach(room, dir) - 1;
         const target = { x: axis.x * distance + (axis.x ? 0 : shift), z: axis.z * distance + (axis.x ? shift : 0) };
-        let x = 0, z = 0;
+        const chamber = L.floorRects(room)[0];
+        let x = room.shape === "ring" ? chamber.x : 0, z = room.shape === "ring" ? chamber.z : 0;
         for (let i = 0; i < 600 && Math.hypot(x - target.x, z - target.z) > 0.11; i++) {
           const distance = Math.hypot(target.x - x, target.z - z);
-          [x, z] = L.roomStep(room, x, z, (target.x - x) / distance * 0.1, (target.z - z) / distance * 0.1);
+          const heading = L.steerInRoom(room, x, z, target.x, target.z, [], 0);
+          [x, z] = L.roomStep(room, x, z, heading.dx * Math.min(0.1, distance), heading.dz * Math.min(0.1, distance));
         }
         assert.ok(Math.hypot(x - target.x, z - target.z) <= 0.11, "closed gallery is reachable from the chamber");
         assert.ok(!L.roomSegmentClear(room, x, z, target.x + axis.x * 2, target.z + axis.z * 2, 0.6), "closed gallery ends in a solid wall");
@@ -125,16 +129,21 @@ for (const floor of [1, 2, 3]) {
           }
         }
         const door = L.doorPosition(room, dir);
-        const edge = L.wallEdges(room).find((e) => e.x === door[0] && e.z === door[2]);
-        assert.ok(edge && edge.length >= L.DOOR_WIDTH, "every portal has a matching physical wall opening");
+        const edge = L.wallEdges(room).find((e) => e.dir === dir && (e.along === "x"
+          ? e.z === door[2] && Math.abs(e.x - door[0]) + L.DOOR_WIDTH / 2 <= e.length / 2
+          : e.x === door[0] && Math.abs(e.z - door[2]) + L.DOOR_WIDTH / 2 <= e.length / 2));
+        assert.ok(edge, `every portal fits its physical wall span: ${floor} ${seed} ${room.id} ${dir}`);
         if (room.wings?.[dir]) {
           // Walk the new corridor into its chamber at actual movement-step scale.
           let x = spawn[0], z = spawn[2];
-          for (let i = 0; i < 500 && Math.hypot(x, z) > 0.1; i++) {
-            const dist = Math.hypot(x, z), step = Math.min(0.1, dist);
-            [x, z] = L.roomStep(room, x, z, -x / dist * step, -z / dist * step);
+          // Ring centres are solid cores, so their destination is the inner walk.
+          const chamberX = room.shape === "ring" ? Math.sign(x) * room.size * 0.35 : 0;
+          const chamberZ = room.shape === "ring" ? Math.sign(z) * room.size * 0.35 : 0;
+          for (let i = 0; i < 500 && Math.hypot(x - chamberX, z - chamberZ) > 0.1; i++) {
+            const dist = Math.hypot(x - chamberX, z - chamberZ), step = Math.min(0.1, dist);
+            [x, z] = L.roomStep(room, x, z, (chamberX - x) / dist * step, (chamberZ - z) / dist * step);
           }
-          assert.ok(Math.hypot(x, z) <= 0.11, "ground creatures can follow through a wing");
+          assert.ok(Math.hypot(x - chamberX, z - chamberZ) <= 0.11, `ground creatures can follow through a wing: floor ${floor}, seed ${seed}, room ${room.id}, shape ${room.shape}, dir ${dir}, stopped ${x},${z}`);
           corridorChecks++;
           const diagonal = (L.floorReach(room, Math.PI / 4) - 1.5) / Math.SQRT2;
           const targets = [[diagonal, diagonal], ...L.DIRS
@@ -153,7 +162,7 @@ for (const floor of [1, 2, 3]) {
               assert.ok(L.roomSegmentClear(room, x, z, nx, nz, 0.6), "pursuer never crosses a corner wall");
               x = nx; z = nz;
             }
-            assert.ok(Math.hypot(tx - x, tz - z) <= 0.11, "pursuer reaches off-axis chamber and adjacent wings");
+            assert.ok(Math.hypot(tx - x, tz - z) <= 0.11, `pursuer reaches off-axis chamber and adjacent wings: floor ${floor} seed ${seed} ${room.id} ${room.shape} from ${dir}, target ${tx},${tz}, stopped ${x},${z}`);
             cornerRoutes++;
           }
         }
@@ -245,6 +254,7 @@ assert.ok(summary[1].shifted > 0 && summary[2].shifted > 0, "deeper floors conta
 assert.ok(galleryOcclusions > 0, "closed galleries create real occluded chamber positions where their shapes allow it");
 console.log("PASS geometry", JSON.stringify({ summary, landings, trapChecks, corridorChecks, cornerRoutes, galleryOcclusions, arrivals }));
 if (process.argv.includes("--geometry-only")) process.exit(0);
+}
 
 const softwareGL = process.env.SOFTWARE_GL === "1" || process.platform !== "win32";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
@@ -303,7 +313,7 @@ try {
   await page.evaluate(() => window.__run.setState({ floor: 1, satchel: [] }));
   console.log("PASS pre-descent bomb preparation and live packed-bomb guidance");
   const combat = await page.evaluate(async () => {
-    const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
+    const harrierAt = window.__harrierAt;
     const { wardenAt } = await import("/src/game/warden/position.ts");
     const { playerAt } = await import("/src/game/player/where.ts");
     const { cutpurseAt } = await import("/src/game/thief/position.ts");
@@ -341,7 +351,7 @@ try {
     const { keeperPostPosition } = await import("/src/game/keeper/posts.ts");
     const { playerAt } = await import("/src/game/player/where.ts");
     const { reaperAt } = await import("/src/game/reaper/position.ts");
-    const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
+    const harrierAt = window.__harrierAt;
     const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
     const room = dungeon.rooms.find((r) => r.id === roomId);
     const dir = Object.keys(room.links).find((d) => room.links[d] === dungeon.endId);
@@ -379,7 +389,7 @@ try {
   assert.ok(watchedRoom, "a generated room has a real watcher for shove cover");
   const watcherCover = await page.evaluate(async ({ dungeon, roomId }) => {
     const { playerAt } = await import("/src/game/player/where.ts");
-    const { harrierAt } = await import("/src/game/mobs/harrierRoost.ts");
+    const harrierAt = window.__harrierAt;
     const { sentryFor } = await import("/src/game/sentry/placement.ts");
     const { keyFor } = await import("/src/game/rooms/kinds.ts");
     const run = window.__run, room = dungeon.rooms.find((r) => r.id === roomId);
@@ -499,6 +509,12 @@ try {
   assert.equal(await page.evaluate((roomId) => window.__run.getState().collectGem(roomId), galleryFixture.roomId), false,
     "a gallery gem remains the room's single reward and cannot be collected twice");
   console.log("PASS physical gallery gem pickup and single room reward");
+  // The gallery widens beyond its entrance. Return to the passage centre
+  // before walking back; the gem's lateral offset may face a solid shoulder.
+  const centreKey = await page.evaluate(shift => window.__playerDebug.x < shift ? "KeyD" : "KeyA", galleryFixture.shift);
+  await page.keyboard.down(centreKey);
+  await page.waitForFunction(shift => Math.abs(window.__playerDebug.x - shift) < 0.3, galleryFixture.shift);
+  await page.keyboard.up(centreKey);
   await page.keyboard.down("KeyS");
   await page.waitForFunction(half => window.__playerDebug.z > -half + 1, galleryFixture.half, { timeout: 20000 });
   await page.keyboard.up("KeyS");
@@ -579,7 +595,7 @@ try {
   await page.waitForTimeout(5500);
   assert.ok(await page.evaluate(() => !window.__bats.roused && !window.__bats.stirring), "the flock does not startle itself again");
   await page.evaluate(async () => {
-    const din = await import("/src/game/din/din.ts");
+    const din = window.__din;
     const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
     din.strike("bombBurst", s.dungeon.rooms, room);
   });
@@ -617,7 +633,14 @@ try {
     window.__run.setState({ sprung: {}, lastDamageAt: -100 });
     window.__bus.emit("teleport", { position: [t.x, 1.5, t.z] });
   }, trap);
-  await page.waitForFunction(() => window.__run.getState().lives < 3, null, { timeout: 5000 });
+  await page.waitForFunction(() => window.__run.getState().lives < 3, null, { timeout: 5000 }).catch(async error => {
+    console.error("Dart fixture state", await page.evaluate(t => {
+      const s = window.__run.getState();
+      return { trap: t, player: window.__playerDebug, paused: s.paused, locks: s.inputLocks,
+        transitioning: s.transitioning, phase: s.phase, sprung: s.sprung, clock: window.__derived.clock(), effects: s.effects };
+    }, trap));
+    throw error;
+  });
   const dartDelay = await page.evaluate((key) => window.__run.getState().lastDamageAt - window.__run.getState().sprung[key], trap.key);
   assert.ok(dartDelay >= 0.65, `dart damage waits for the warning: ${dartDelay}`);
   console.log("PASS dart warning, escape window and delayed damage");
@@ -740,11 +763,18 @@ try {
     floor: 3, transitioning: true, enteredBy: null, wardenRoomId: null,
     harrierAwake: false, reaperAwake: false, thiefPhase: "away", alarm: 0 }), galleryFixture);
   await page.waitForFunction(() => !window.__run.getState().transitioning);
-  await page.evaluate((reach) => window.__bus.emit("teleport", { position: [0, 1.5, -reach + 1] }), galleryFixture.reach);
+  await page.evaluate(({ reach, shift }) => window.__bus.emit("teleport", { position: [shift, 1.5, -reach + 1] }), galleryFixture);
   await page.waitForTimeout(150);
   await page.evaluate(() => window.__run.getState().wakeReaper());
   await page.waitForFunction((roomId) => window.__reaper?.room === roomId, galleryFixture.roomId);
   assert.ok(await page.evaluate(() => window.__reaper.distance >= 5), "Reaper arrival gives the gallery player room to react");
+  // Pursuit now requires a visible trail. Stage the ghost at the gallery
+  // mouth so this checks travel after acquisition, not tracking through walls.
+  await page.evaluate(({ half, shift }) => {
+    const ghost = window.__scene.getObjectByName("creature-reaper");
+    ghost.position.x = shift; ghost.position.z = -half + 1;
+  }, galleryFixture);
+  await page.waitForTimeout(150);
   const pausedReaper = await page.evaluate(() => {
     window.__run.getState().pause();
     return { x: window.__reaper.x, y: window.__reaper.y, z: window.__reaper.z, facing: window.__reaper.facing };

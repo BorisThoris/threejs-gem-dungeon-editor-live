@@ -69,13 +69,15 @@ function FloorLight() {
   const light = useRun((s) => floorRules(s.floor).light);
   const room = useCurrentRoom();
   const seed = useRun(s => s.dungeon?.seed ?? 0);
-  const ambient = room && isUnlitRoom(room, seed) ? 0.003 : light.ambient * 0.22;
+  // Keep navigation readable even with an empty lantern. Local block light
+  // supplies the contrast; ambient fill must not fall back to near-black.
+  const ambient = room && isUnlitRoom(room, seed) ? 0.65 : Math.max(1.1, light.ambient * 1.6);
   return (
     <>
       {/* Depth cue only: the far wall of the largest room is still visible. */}
       <fog attach="fog" args={["#050608", 10, light.fogFar]} />
       <ambientLight intensity={ambient} />
-      <hemisphereLight args={[light.sky, "#3a3126", ambient * 0.5]} />
+      <hemisphereLight args={[light.sky, "#625443", ambient * 0.9]} />
     </>
   );
 }

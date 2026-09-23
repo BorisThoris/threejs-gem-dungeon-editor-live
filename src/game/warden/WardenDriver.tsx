@@ -4,6 +4,8 @@ import { useFrame } from "@react-three/fiber";
 import { bus } from "../events";
 import {
   barsNow,
+  barredNow,
+  doorIsBarred,
   canControl,
   lureNow,
   sanctuaryRoom,
@@ -94,14 +96,13 @@ export function WardenDriver() {
     const investigating = noise === run.wardenRoomId ? null : noise;
     const going = lure ?? investigating;
 
+    const blocked = doorIsBarred(run, run.wardenRoomId, run.currentRoomId);
     const pursuit = advanceTrail("warden", run.wardenRoomId, run.currentRoomId, delta,
-      !lure && ladder.commits("warden"));
-    if (pursuit.waiting || pursuit.to) {
+      !lure && ladder.commits("warden"), blocked);
+    if (!blocked && (pursuit.waiting || pursuit.to)) {
       since.current = 0;
       if (pursuit.to && pursuit.to !== wardNow(run) && pursuit.to !== sanctuaryRoom(run)) {
-        const wall = barToBreak(run.dungeon, run.wardenRoomId, pursuit.to, barsNow(run));
-        if (wall) run.breakBar();
-        else run.moveWarden(pursuit.to);
+        run.moveWarden(pursuit.to);
       }
       return;
     }
@@ -139,21 +140,14 @@ export function WardenDriver() {
     if (!going && run.wardenRoomId === run.currentRoomId) return;
 
     const bars = barsNow(run);
-    /**
-     * A bar it cannot get round, it breaks.
-     *
-     * Never a wall it can never cross: a player who could shut it out of
-     * half the floor would have somewhere to wait, and there being nowhere
-     * to wait is the whole of what this thing is for. Breaking costs it
-     * this step and is heard everywhere, so the bar never simply stops
-     * working without the player being told.
-     */
+    // Detour around barricades when possible. Only timed trap grates can
+    // be broken; player-built barriers remain until deliberately removed.
     // Alarm controls pace, never knowledge. Search only the last perceived room.
     const target = going ?? (ladder.rungOf("warden") >= 2 ? ladder.markOf("warden") : null);
     if (target === run.wardenRoomId) return;
     const wall = target ? barToBreak(run.dungeon, run.wardenRoomId, target, bars) : null;
     if (wall) {
-      run.breakBar();
+      if (wall === barredNow(run) && !run.barricades.includes(wall)) run.breakBar();
       return;
     }
 

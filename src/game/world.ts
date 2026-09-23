@@ -387,30 +387,8 @@ export const SENTRY_COOLDOWN_S = 6;
 
 // --- Barring a doorway ------------------------------------------------------
 
-/**
- * The one thing the player can do to the dungeon itself.
- *
- * Everything else in the run is done to the player's own state - what they
- * carry, how fast they move, how much light they show. A bar is done to
- * the floor: a doorway goes out of the Warden's map, and it has to walk
- * round. That is a different kind of answer from running, and it is the
- * only one that is about the shape of the place rather than about speed.
- *
- * It is loud, which is the price and also the joke - you are hammering a
- * plank across a doorway in a dungeon whose only threat hunts by sound, so
- * the thing you just made take the long way round now knows exactly which
- * way you went. A bar buys distance and spends surprise.
- *
- * One at a time. Two would let a player wall themselves into a corner of
- * the floor and wait, which is not a decision, it is a hiding place - and
- * the Warden's whole job is that there is nowhere to wait.
- *
- * The Warden can break one, and will when there is no way round: a bar
- * must never make a room it cannot reach, or a player could shut it out of
- * the half of the floor they are working. Breaking costs it a step and is
- * heard across the floor, so the player always learns the bar has gone.
- */
-export const BAR_S = 45;
+/** Reusable player barricades available on each floor. */
+export const BARRICADE_KITS = 3;
 /**
  * How long the hammering keeps the player placed, over the four seconds a
  * sprint does.

@@ -37,12 +37,16 @@ export function leaveTrail(who: Pursuer, enemyRoom: string | null, from: string,
 
 /** Active gameplay time only: pausing, loading and staggering cannot spend the delay. */
 export function advanceTrail(who: Pursuer, enemyRoom: string | null, playerRoom: string,
-  delta: number, detected: boolean): { waiting: boolean; to: string | null } {
+  delta: number, detected: boolean, blocked = false): { waiting: boolean; to: string | null } {
   const trail = trails[who];
   if (!trail.to) return { waiting: false, to: null };
   if (!detected || enemyRoom !== trail.from || playerRoom !== trail.to) {
     trails[who] = fresh();
     return { waiting: false, to: null };
+  }
+  if (blocked) {
+    trail.remaining = PURSUIT_DELAY_S;
+    return { waiting: true, to: null };
   }
   trail.remaining -= Math.min(Math.max(delta, 0), 0.1);
   if (trail.remaining > 0) return { waiting: true, to: null };

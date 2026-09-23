@@ -107,10 +107,10 @@ export const LESSONS: readonly Lesson[] = [
         : `Your lantern is up, and it is the brightest thing on this floor. ${keysLabel(useSettings.getState().bindings.lantern)} puts it down.`,
     sample: { raised: true },
   }),
-  lesson({ id: "barred", event: "doorBarred", line: "That doorway is shut to it. It will walk round - and everything down here heard you shut it." }),
+  lesson({ id: "barred", event: "doorBarred", line: "That doorway blocks pursuit. You have three barricade kits per floor; tear down your own bars to recover one. Building makes noise." }),
   // Every time: a bar going is a rule changing back, and the player is
   // usually looking the other way when it happens.
-  lesson({ id: "smashed", event: "barBroken", every: true, when: ({ byWarden }) => byWarden, line: "It came through the bar. There was no way round, and now it knows exactly where you are.", sample: { byWarden: true } }),
+  lesson({ id: "smashed", event: "barBroken", every: true, when: ({ byWarden }) => byWarden, line: "It broke through the trap grate. The doorway is open again.", sample: { byWarden: true } }),
   // Once, to teach the one rule a player cannot see: a device outlives
   // the visit it was set during.
   lesson({ id: "set", event: "devicePlaced", when: ({ id }) => id !== "bomb", line: "It stays where you left it, and it is still there when you come back through.", sample: { id: "snare", cruel: false } }),

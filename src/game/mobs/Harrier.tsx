@@ -14,10 +14,9 @@ import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
 import { DIRS, type Room } from "../dungeon/types";
-import { barredNow, canControl, runClock, useRun } from "../state/run";
+import { doorIsBarred, canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
-import { barKey } from "../warden/bars";
 import { patchAt, steerInRoom } from "../warden/steer";
 import { FLIGHT_HEIGHT, HARRIER_MAX_STEP, HARRIER_SPEED, HARRIER_TOUCH_RADIUS } from "../world";
 import { floorRiseAt, floorHeightAt } from "../worldbuilding/elevation";
@@ -86,7 +85,7 @@ export function Harrier({ room }: { room: Room }) {
     const p = pos.current;
     const away = now < run.harrierRetreatUntil;
     const down = now < run.harrierDownedUntil;
-    const barred = to !== undefined && barredNow(run) === barKey(room.id, to);
+    const barred = !p.placed && to !== undefined && doorIsBarred(run, room.id, to);
     // Wheeling away, or kept out by the grate: unseen until it returns.
     const kept = away || barred;
     if (!p.placed && !kept && canControl(run)) {
