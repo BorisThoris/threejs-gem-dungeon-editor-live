@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T10:26:55.899Z",
+  "generatedAt": "2026-09-23T11:04:05.092Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -122,7 +122,7 @@
         "bytes": 49778,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-23T10:25:42.530Z"
+        "capturedAt": "2026-09-23T11:02:51.611Z"
       },
       {
         "profile": "desktop",
@@ -131,7 +131,7 @@
         "bytes": 48879,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-23T10:26:00.844Z"
+        "capturedAt": "2026-09-23T11:03:10.056Z"
       },
       {
         "profile": "full",
@@ -140,7 +140,7 @@
         "bytes": 43698,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-23T10:26:37.443Z"
+        "capturedAt": "2026-09-23T11:03:46.638Z"
       },
       {
         "profile": "mobile",
@@ -149,7 +149,7 @@
         "bytes": 27320,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-23T10:26:19.150Z"
+        "capturedAt": "2026-09-23T11:03:28.328Z"
       },
       {
         "profile": "og",
@@ -158,7 +158,7 @@
         "bytes": 41793,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-23T10:26:55.720Z"
+        "capturedAt": "2026-09-23T11:04:04.915Z"
       }
     ]
   },
@@ -211,13 +211,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 393,
+    "sourceFiles": 394,
     "testFiles": 1,
-    "sourceLines": 69574,
+    "sourceLines": 69649,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 275
+        "files": 276
       },
       {
         "directory": "scripts",
@@ -252,10 +252,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "104a910",
-    "lastCommitDate": "2026-09-23T13:21:18+03:00",
-    "lastCommitSubject": "Keep player hand visible and charge shove on left click",
-    "commitCount": 472,
+    "head": "adee03f",
+    "lastCommitDate": "2026-09-23T13:59:45+03:00",
+    "lastCommitSubject": "Bake handmade wood furniture into single tinted meshes",
+    "commitCount": 475,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {
