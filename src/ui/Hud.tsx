@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { SHOVE_CHARGE_S } from "../game/player/combat";
 
 import { modifiers } from "../game/relics/catalog";
 import { RELICS } from "../game/relics/catalog";
@@ -276,16 +277,19 @@ export function Hud() {
 }
 
 function ShoveReadout() {
-  const read = () => Math.max(0, Math.ceil((useRun.getState().shoveReadyAt - runClock(useRun.getState())) * 10) / 10);
-  const [remaining, setRemaining] = useState(read);
+  const [, refresh] = useState(0);
   const binding = useSettings((s) => s.bindings.shove);
   const touch = useTouchControls();
   useEffect(() => {
-    const timer = window.setInterval(() => setRemaining(read()), 100);
+    const timer = window.setInterval(() => refresh((value) => value + 1), 50);
     return () => window.clearInterval(timer);
   }, []);
-  return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: remaining ? colors.dim : colors.accent }}>
-    SHOVE · {remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : `${keysLabel(binding)} / RT`} · face a close threat`}
+  const run = useRun.getState();
+  const now = runClock(run);
+  const remaining = Math.max(0, Math.ceil((run.shoveReadyAt - now) * 10) / 10);
+  const charge = run.shoveChargingAt === null ? null : Math.min(100, Math.round((now - run.shoveChargingAt) / SHOVE_CHARGE_S * 100));
+  return <div data-testid="shove-status" style={{ fontSize: "0.85em", color: charge !== null ? colors.gold : remaining ? colors.dim : colors.accent }}>
+    SHOVE · {charge !== null ? `charging ${charge}%` : remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : `Left click / ${keysLabel(binding)} / RT`} · face a close threat`}
   </div>;
 }
 

@@ -180,7 +180,7 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>{keysLabel(bindings.interact)} at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Shove</dt>
-              <dd style={{ margin: 0 }}>{keysLabel(bindings.shove)} or RT shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
+              <dd style={{ margin: 0 }}>Left click, {keysLabel(bindings.shove)}, or RT charges and shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
               <dd style={{ margin: 0 }}>Slots 1–4: {[bindings.slot1, bindings.slot2, bindings.slot3, bindings.slot4].map(keysLabel).join("; ")}. Drink or read that slot, or use X, Y and the shoulders on a pad.</dd>
               <dt style={{ color: colors.accent }}>Run</dt>

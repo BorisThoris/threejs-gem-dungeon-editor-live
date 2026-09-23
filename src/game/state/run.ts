@@ -466,6 +466,7 @@ export interface RunState {
   /** Run-clock second it gets back off the floor after a blast. */
   harrierDownedUntil: number;
   shoveReadyAt: number;
+  shoveChargingAt: number | null;
   shove: (forwardX: number, forwardZ: number) => boolean;
   /** Run-clock second it comes back after a strike. */
   harrierRetreatUntil: number;
@@ -912,6 +913,7 @@ export const useRun = create<RunState>()(
     harrierSlain: false,
     harrierDownedUntil: 0,
     shoveReadyAt: 0,
+    shoveChargingAt: null,
     harrierRetreatUntil: 0,
     reaperStalledUntil: 0,
     reaperLastStrikeAt: 0,
@@ -1090,6 +1092,7 @@ export const useRun = create<RunState>()(
         harrierSlain: false,
         harrierDownedUntil: 0,
         shoveReadyAt: 0,
+        shoveChargingAt: null,
         harrierRetreatUntil: 0,
         reaperStalledUntil: 0,
         reaperLastStrikeAt: 0,

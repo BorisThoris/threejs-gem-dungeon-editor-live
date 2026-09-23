@@ -46,7 +46,7 @@ export interface Lesson<K extends keyof BusEvents = keyof BusEvents> {
 }
 
 const lesson = <K extends keyof BusEvents>(l: Lesson<K>): Lesson => l as unknown as Lesson;
-const shoveControl = (touch: boolean) => touch ? "SHOVE" : `${keysLabel(useSettings.getState().bindings.shove)} or RT`;
+const shoveControl = (touch: boolean) => touch ? "SHOVE" : `Left click / ${keysLabel(useSettings.getState().bindings.shove)} / RT`;
 const sprintControl = (touch: boolean) => touch ? "RUN" : `${keysLabel(useSettings.getState().bindings.sprint)} or L3`;
 
 export const LESSONS: readonly Lesson[] = [

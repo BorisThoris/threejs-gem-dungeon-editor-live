@@ -6,6 +6,7 @@ import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "../sentry/placement";
 
 export const SHOVE_REACH = 3;
 export const SHOVE_COOLDOWN_S = 2.4;
+export const SHOVE_CHARGE_S = 0.3;
 export const SHOVE_STAGGER_S = 0.9;
 /** The hand is below eye level; knee-high furniture stays below its path. */
 export const SHOVE_HEIGHT = 1.25;

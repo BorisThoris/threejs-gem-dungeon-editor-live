@@ -16,6 +16,7 @@ import {
 import { pointerLockWanted } from "./device";
 import { readGamepad } from "./gamepad";
 import { look } from "./look";
+import { keyboard } from "./keyboard";
 import { takeTouchLook } from "./touch";
 
 const PITCH_LIMIT = Math.PI / 2 - 0.05;
@@ -116,7 +117,10 @@ export function useMouseLook() {
      */
     const onMouseDown = (event: MouseEvent) => {
       if ((event.target as Element | null)?.closest?.("button, input, a, select")) return;
-      if (canControl(useRun.getState())) requestLock();
+      if (!canControl(useRun.getState())) return;
+      // Shove on the same gesture that captures the view if it was not locked yet.
+      if (event.button === 0) keyboard.pressAction("shove");
+      requestLock();
     };
     const onLockChange = () => {
       if (document.pointerLockElement === canvas) return;

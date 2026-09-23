@@ -17,6 +17,7 @@ import { readTouch } from "../input/touch";
 import { canControl, speedNow, runClock, useRun } from "../state/run";
 import { footingAt } from "../rooms/underfoot";
 import { playerAt } from "./where";
+import { SHOVE_CHARGE_S } from "./combat";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
 import {
@@ -177,6 +178,8 @@ export function Player() {
 
     const run = useRun.getState();
     if (!canControl(run)) {
+      if (run.shoveChargingAt !== null) useRun.setState({ shoveChargingAt: null });
+      keyboard.consumeAction("shove");
       scratch.vel.x = 0;
       scratch.vel.y = vy;
       scratch.vel.z = 0;
@@ -187,10 +190,14 @@ export function Player() {
     const { walk, dash: dashSpeed } = speedNow(run);
 
     const pad = readGamepad();
-    if (keyboard.consumeAction("shove") || pad.shovePressed) {
-      const facing = new Vector3();
-      camera.getWorldDirection(facing);
-      run.shove(facing.x, facing.z);
+    const shovePressed = keyboard.consumeAction("shove") || pad.shovePressed;
+    const now = runClock(run);
+    if (run.shoveChargingAt !== null && now - run.shoveChargingAt >= SHOVE_CHARGE_S) {
+      useRun.setState({ shoveChargingAt: null });
+      camera.getWorldDirection(scratch.dir);
+      run.shove(scratch.dir.x, scratch.dir.z);
+    } else if (shovePressed && run.shoveChargingAt === null && now >= run.shoveReadyAt) {
+      useRun.setState({ shoveChargingAt: now });
     }
     const stick = readTouch();
     const forward = keyboard.actionDown("forward");
