@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T23:41:25.772Z",
+  "generatedAt": "2026-09-23T20:16:12.747Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -119,46 +119,46 @@
         "profile": "card",
         "file": "card.jpg",
         "path": "project-media/card.jpg",
-        "bytes": 49779,
+        "bytes": 49778,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-22T23:40:12.254Z"
+        "capturedAt": "2026-09-23T20:14:59.302Z"
       },
       {
         "profile": "desktop",
         "file": "desktop.jpg",
         "path": "project-media/desktop.jpg",
-        "bytes": 48874,
+        "bytes": 48879,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T23:40:30.584Z"
+        "capturedAt": "2026-09-23T20:15:17.650Z"
       },
       {
         "profile": "full",
         "file": "full.jpg",
         "path": "project-media/full.jpg",
-        "bytes": 43688,
+        "bytes": 43698,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-22T23:41:07.249Z"
+        "capturedAt": "2026-09-23T20:15:54.249Z"
       },
       {
         "profile": "mobile",
         "file": "mobile.jpg",
         "path": "project-media/mobile.jpg",
-        "bytes": 27345,
+        "bytes": 27320,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-22T23:40:48.889Z"
+        "capturedAt": "2026-09-23T20:15:35.954Z"
       },
       {
         "profile": "og",
         "file": "og.jpg",
         "path": "project-media/og.jpg",
-        "bytes": 41796,
+        "bytes": 41793,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-22T23:41:25.592Z"
+        "capturedAt": "2026-09-23T20:16:12.557Z"
       }
     ]
   },
@@ -211,13 +211,13 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 393,
+    "sourceFiles": 394,
     "testFiles": 1,
-    "sourceLines": 69504,
+    "sourceLines": 69679,
     "largestDirectories": [
       {
         "directory": "src",
-        "files": 275
+        "files": 276
       },
       {
         "directory": "scripts",
@@ -252,10 +252,10 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "48e2d91",
-    "lastCommitDate": "2026-09-23T02:18:35+03:00",
-    "lastCommitSubject": "Link hidden-room floor marks to real entrances",
-    "commitCount": 470,
+    "head": "d2ab33d",
+    "lastCommitDate": "2026-09-23T23:10:38+03:00",
+    "lastCommitSubject": "Restore dungeon lighting readability and guard brightness",
+    "commitCount": 477,
     "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
   },
   "readme": {

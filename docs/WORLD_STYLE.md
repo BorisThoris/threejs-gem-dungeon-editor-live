@@ -100,6 +100,10 @@ paired overhead rails and floor tallies explain the turn in the room's district
 tradition. Terrain, walls, ceiling, collision, routing, props and the minimap
 must agree on the same concave outline; furniture assigned to the absent work
 quadrant is omitted rather than scattered somewhere unrelated.
+When an elbow carries an authored composition, its uncut quadrant must use
+the same seeded turn and mirror as that composition. The Turnkeepers' Relay
+uses two handoff tables in the long arms and a tally shelf in the retained
+corner, leaving the unexcavated fourth quadrant free of invented floor.
 
 Topology halls are drawn from the generated doorway graph. Their central work
 bay grows an arm only toward a real door, cracked wall or raised side gallery,

@@ -1,5 +1,6 @@
-import { BoxGeometry, TorusGeometry, type BufferGeometry } from "three";
+import { BoxGeometry, Color, Float32BufferAttribute, TorusGeometry, type BufferGeometry } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { DARK_WOOD_LIT, WOOD_LIT } from "./furnitureStyle";
 
 interface BoxPart {
   at: [number, number, number];
@@ -57,6 +58,28 @@ export function crateSlatGeometry(): BufferGeometry {
   return boxes([0.12, 0.68].map(y => ({
     at: [0, y, 0] as [number, number, number], size: [0.88, 0.1, 0.88] as [number, number, number],
   })));
+}
+
+/** Bake each furniture piece's tint into one wood-grained mesh. This keeps the
+ * light top and dark supports while allowing one room-local instance draw per
+ * chair, crate or table. Separate props still cull with their own room. */
+export function finishedWoodGeometry(kind: "chair" | "crate" | "table"): BufferGeometry {
+  const light = kind === "chair" ? chairWoodGeometry()
+    : kind === "crate" ? new BoxGeometry(.84, .8, .84).translate(0, .4, 0)
+      : new BoxGeometry(1.8, .08, 1).translate(0, .78, 0);
+  const dark = kind === "chair" ? chairLegGeometry()
+    : kind === "crate" ? crateSlatGeometry() : tableLegGeometry();
+  for (const [piece, tint] of [[light, WOOD_LIT], [dark, DARK_WOOD_LIT]] as const) {
+    const color = new Color(tint), colors = new Float32Array(piece.attributes.position.count * 3);
+    for (let i = 0; i < colors.length; i += 3) {
+      colors[i] = color.r; colors[i + 1] = color.g; colors[i + 2] = color.b;
+    }
+    piece.setAttribute("color", new Float32BufferAttribute(colors, 3));
+  }
+  const joined = mergeGeometries([light, dark]);
+  light.dispose(); dark.dispose();
+  if (!joined) throw new Error(`finished ${kind} wood could not be joined`);
+  return joined;
 }
 
 /** Two eight-sided iron hoops, one shared draw. The flat facets suit the

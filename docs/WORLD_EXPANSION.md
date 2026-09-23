@@ -1394,3 +1394,18 @@ including 209 rooms that retain the dark-room rule.
 The fixed 78-room sweep remains at 78 calls, 7,288 triangles, 97 geometries
 and 11 textures. Ten revisits add no geometry, a 573-frame sprint retains
 0.00 MB after collection, and 20,000 held-audio updates retain one voice.
+
+Authored elbow halls now turn their L-shaped floor with the same seed-based
+orientation and mirror as their furnishings. The Turnkeepers' Relay uses its
+three surviving corners as two handoff stations and a tally shelf, while
+the fourth remains uncut rock. District stores substitute without blocking
+door routes or changing that purpose. The authoring bench now runs on Windows
+and can show shipped compositions as well as drafts. Its placement probe finds
+no problems across the sampled turns and seeds; the full layout suite verifies
+all nine props, door routes, and every orientation. Native browser review
+renders the generated elbow at 61 calls and 4,764 triangles. Across 360
+generated floors, 16 relays use all four uncut corners and both mirrors,
+with every prop inside its actual map footprint.
+The fixed 78-room sweep remains at 78 calls, 7,288 triangles, 97 geometries
+and 11 textures. Ten revisits add no geometry, a 579-frame sprint retains
+0.00 MB after collection, and 20,000 held-audio updates retain one voice.

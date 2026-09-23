@@ -2,9 +2,10 @@ import { build } from "esbuild";
 import { writeFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 // The repo root, from this file rather than from where node was started, so
 // the bench works whichever directory you run it in.
-const root = new URL("../../", import.meta.url).pathname;
+const root = fileURLToPath(new URL("../../", import.meta.url)).replaceAll("\\", "/");
 const dir = mkdtempSync(join(tmpdir(), "space-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, `
@@ -22,7 +23,7 @@ export * from "${root}src/game/rooms/placements";
 `);
 const out = join(dir, "out.mjs");
 await build({ entryPoints: [entry], bundle: true, outfile: out, format: "esm", platform: "node", logLevel: "error", define: { "import.meta.env.DEV": "false" } });
-export const L = await import(out);
+export const L = await import(pathToFileURL(out).href);
 
 export const GRIDS = [];
 for (let x = 0; x < 2; x++) for (let z = 0; z < 2; z++) GRIDS.push({ x, z });

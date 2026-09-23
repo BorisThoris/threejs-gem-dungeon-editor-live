@@ -14,6 +14,8 @@ writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/secretTrail",
   "worldbuilding/secretHistoryPattern",
   "lighting/field",
+  "dungeon/orientation",
+  "rooms/templates",
   "worldbuilding/biomeCrown",
   "worldbuilding/districtThresholds",
   "worldbuilding/thresholdEcho",
@@ -124,6 +126,8 @@ let sealedThresholds = 0;
 const sealedThresholdTraditions = new Set();
 let passageLights = 0, formerPassageLights = 0;
 let unlitGalleryRooms = 0;
+let relayRooms = 0;
+const relayCorners = new Set(), relayMirrors = new Set();
 let landmarkRooms = 0;
 const landmarkKinds = new Set();
 let secretTrails = 0, secretTrailMulti = 0, secretTrailRooms = 0, secretTrailLongest = 0;
@@ -279,6 +283,17 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
     assert.equal(seen.size, members.length, "each district is connected through real doors");
   }
   for (const r of d.rooms) {
+    if (r.template === "hall-turnkeepers-relay") {
+      relayRooms++;
+      assert.equal(r.shape, "elbow", "the handoff stations keep their L-shaped floor");
+      const o = L.orientationOf(r), [x, z] = L.orient(1, 1, o), missing = L.elbowMissing(r);
+      assert.deepEqual(missing, { x, z }, "the uncut quadrant turns and mirrors with the authored stations");
+      relayCorners.add(`${x},${z}`); relayMirrors.add(o.mirror);
+      const props = L.authoredProps(r);
+      assert.equal(props.length, 9, "the three work bays keep all their furnishings");
+      for (const p of props) assert.ok(L.insideRoom(r, p.x, p.z, L.PROP_SPECS[p.kind].radius),
+        "authored stations stay on the same elbow floor shown by the map");
+    }
     const landmark = L.landmarkPattern(r);
     assert.equal(!!landmark, !!r.landmark, "landmark data and room assignment agree");
     if (landmark) {
@@ -876,6 +891,9 @@ console.log(`Exploration: ${loopFloors.join(", ")} of 120 floors have alternate 
 console.log(`Passage lighting: ${passageLights} practical lamps replace ${formerPassageLights} floor-course lights.`);
 assert.ok(unlitGalleryRooms > 0, "dark rooms still contain practical gallery terminals");
 console.log(`Dark galleries: ${unlitGalleryRooms} retain their working terminal lamps.`);
+assert.ok(relayRooms > 0 && relayCorners.size === 4 && relayMirrors.size === 2,
+  "authored elbow relays generate in every quarter turn and both mirrors");
+console.log(`Turnkeepers' relays: ${relayRooms} rooms use all four uncut corners and both mirrors.`);
 console.log(`Glow beetles: ${beetles} feeders with clear foraging and shelter paths.`);
 console.log(`Ash mites: ${mites} burrowers grounded in clear, rendered windrows.`);
 console.log(`Kiln newts: ${newts} baskers on ember vents; ${secretNewts} retreat routes point to cracked walls.`);

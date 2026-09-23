@@ -18,15 +18,23 @@ const specimens = {
   "table legs": [models.tableLegGeometry(), 32],
   "crate slats": [models.crateSlatGeometry(), 24],
   "barrel hoops": [models.barrelHoopGeometry(), 128],
+  "finished chair": [models.finishedWoodGeometry("chair"), 54],
+  "finished crate": [models.finishedWoodGeometry("crate"), 36],
+  "finished table": [models.finishedWoodGeometry("table"), 44],
 };
 for (const [name, [geometry, expected]] of Object.entries(specimens)) {
   assert.equal(triangles(geometry), expected, `${name} removes its buried or excess faces`);
   geometry.computeBoundingBox();
   assert.ok(geometry.boundingBox && geometry.boundingBox.min.y >= -0.01 && geometry.boundingBox.max.y <= 1.16,
     `${name} remains in the original prop footprint`);
+  if (name.startsWith("finished")) {
+    const colors = geometry.attributes.color;
+    assert.equal(colors.count, geometry.attributes.position.count, `${name} bakes both wood tints`);
+    assert.ok(colors.getX(0) > colors.getX(colors.count - 1), `${name} retains lighter top and darker supports`);
+  }
   geometry.dispose();
 }
 const oldTriangles = 72 + 60 + 36 + 56 + 224;
 const newTriangles = 54 + 44 + 36 + 40 + 128;
 assert.ok(newTriangles < oldTriangles * 0.7);
-console.log(`PASS handbuilt furniture: four prop types fall from 17 to 8 material draws and ${oldTriangles} to ${newTriangles} triangles per set`);
+console.log(`PASS handbuilt furniture: four prop types fall from 17 to 5 material draws and ${oldTriangles} to ${newTriangles} triangles per set`);

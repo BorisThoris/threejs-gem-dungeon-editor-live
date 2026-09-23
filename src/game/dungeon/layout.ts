@@ -1,4 +1,6 @@
 import { createRng } from "../rng";
+import { orient, orientationOf } from "./orientation";
+export { orient, orientationOf, type Orientation } from "./orientation";
 import { doorReach, insideRoom } from "./footprint";
 import {
   CLOSE_REACH,
@@ -149,7 +151,7 @@ const QUADRANTS: [number, number][] = [
   [-1, -1],
 ];
 
-/**
+/*
  * Which way round a room is furnished.
  *
  * Everything a room holds stands on an anchor, and the anchors were the
@@ -175,33 +177,9 @@ const QUADRANTS: [number, number][] = [
  * the floor reaches equally far along all four diagonals, so a turn cannot
  * push an anchor off the floor. (A triangle is the exception, and does not
  * fit a room at any size the game uses.)
+ * The shared turn lives in orientation.ts so an authored asymmetric floor
+ * and its furniture can use precisely the same transform.
  */
-export interface Orientation {
-  /** Quarter turns anticlockwise. */
-  turns: 0 | 1 | 2 | 3;
-  /** Whether x is flipped afterwards. */
-  mirror: boolean;
-}
-
-export function orientationOf(room: Room): Orientation {
-  // From the room itself, not from the run's seed: `quadrantSpots` takes a
-  // Room and nothing else, and every caller depends on that.
-  const rng = createRng(`orient:${room.seed}:${room.id}:${room.grid.x},${room.grid.z}`);
-  return { turns: Math.floor(rng() * 4) as 0 | 1 | 2 | 3, mirror: rng() < 0.5 };
-}
-
-/** A room-local point, turned and mirrored the way this room is. */
-export function orient(x: number, z: number, o: Orientation): [number, number] {
-  let px = x;
-  let pz = z;
-  for (let i = 0; i < o.turns; i++) {
-    const nx = pz;
-    pz = -px;
-    px = nx;
-  }
-  return [o.mirror ? -px : px, pz];
-}
-
 /**
  * How big the things standing on these anchors are, and therefore how far
  * apart the anchors have to be.

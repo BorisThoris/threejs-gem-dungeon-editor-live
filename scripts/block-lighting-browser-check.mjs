@@ -105,7 +105,10 @@ try {
     writeFileSync(`output/playwright/block-lighting/${biome}.png`, Buffer.from(frame.image.split(",")[1], "base64"));
     assert.ok(frame.brightness > 22, `${biome}: practical lights reveal the environment without a lantern (${frame.brightness})`);
   }
+<<<<<<< HEAD
   assert.match(await page.locator('[data-testid="stealth-status"]').innerText(), /VISIBILITY.*(light|shadow)/);
+=======
+>>>>>>> origin/main
   // Return to the original floor before resource comparisons; ids are floor-local.
   await page.evaluate(fixture => window.__run.setState({ dungeon: fixture.dungeon, floor: 2, currentRoomId: fixture.roomId }), fixture);
   await page.evaluate(() => window.__disposeLightingCapture());

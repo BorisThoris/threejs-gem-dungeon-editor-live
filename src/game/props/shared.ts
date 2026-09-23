@@ -20,7 +20,7 @@ import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
 import { croakerGeometry } from "../mobs/croakerGeometry";
 import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
 import { harrierBodyGeometry, harrierWingGeometry } from "../mobs/harrierGeometry";
-import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, tableLegGeometry } from "./handbuiltGeometry";
+import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, finishedWoodGeometry, tableLegGeometry } from "./handbuiltGeometry";
 
 /**
  * One of each shape, and one of each material, for the whole program.
@@ -71,7 +71,10 @@ export type GeometryKind =
   | "chair-legs"
   | "table-legs"
   | "crate-slats"
-  | "barrel-hoops";
+  | "barrel-hoops"
+  | "finished-chair"
+  | "finished-crate"
+  | "finished-table";
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   box: (a) => new BoxGeometry(...(a as [number, number, number])),
@@ -98,6 +101,9 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   "table-legs": () => tableLegGeometry(),
   "crate-slats": () => crateSlatGeometry(),
   "barrel-hoops": () => barrelHoopGeometry(),
+  "finished-chair": () => finishedWoodGeometry("chair"),
+  "finished-crate": () => finishedWoodGeometry("crate"),
+  "finished-table": () => finishedWoodGeometry("table"),
 };
 
 /** The one geometry of this shape and these dimensions. */
@@ -124,6 +130,7 @@ export interface MaterialSpec {
   side?: number;
   depthWrite?: boolean;
   basic?: true;
+  vertexColors?: boolean;
   /**
    * The grain on it, from the same registry the walls and floors use.
    *

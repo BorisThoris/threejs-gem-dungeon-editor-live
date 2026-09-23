@@ -1939,5 +1939,36 @@
     }
    }
   ]
+ },
+ {
+  "id": "hall-turnkeepers-relay",
+  "name": "Turnkeepers' Relay",
+  "story": "Two handoff tables occupy the long arms and a tally shelf holds the retained corner; the fourth quadrant was never cut from the rock.",
+  "kind": "normal",
+  "size": 30,
+  "shape": "elbow",
+  "props": [
+   { "kind": "table", "x": -8, "z": -8, "rotation": 0.7853981633974483 },
+   { "kind": "chair", "x": -8, "z": -10, "rotation": 0 },
+   { "kind": "crate", "x": -10, "z": -8, "rotation": 0, "slot": "stores" },
+   { "kind": "table", "x": 8, "z": -8, "rotation": -0.7853981633974483 },
+   { "kind": "chair", "x": 8, "z": -10, "rotation": 0 },
+   { "kind": "barrel", "x": 10, "z": -8, "rotation": 0, "slot": "stores" },
+   { "kind": "bookshelf", "x": -8, "z": 8, "rotation": 2.356194490192345 },
+   { "kind": "chest", "x": -10, "z": 8, "rotation": 0.7853981633974483 },
+   { "kind": "candle", "x": -8, "z": 10, "rotation": 0 }
+  ],
+  "slots": [
+   {
+    "slot": "stores",
+    "op": "subst",
+    "into": ["crate", "barrel", "urn"],
+    "byDistrict": {
+     "gardens": ["urn", "barrel"],
+     "works": ["crate", "barrel"],
+     "tombs": ["urn", "crate"]
+    }
+   }
+  ]
  }
 ]

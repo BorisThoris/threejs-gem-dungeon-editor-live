@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import { Matrix4, Vector3, type InstancedMesh } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
-import { DARK_WOOD_LIT, IRON, WOOD_LIT } from "./furnitureStyle";
+import { IRON, WOOD_LIT } from "./furnitureStyle";
 import { geo, mat } from "./shared";
 
 type FurnitureKind = "barrel" | "chair" | "crate" | "table";
@@ -15,28 +15,19 @@ type Part = {
   size?: [number, number, number];
 };
 
-/** Fixed furniture keeps its own two materials, but every copy of the same
- * material and shape in a room can share one submission. The geometry cache
- * still belongs to the whole game; the instance matrices belong to the room. */
+/** Fixed wood furniture bakes its two tints into vertex colors and uses one
+ * instance draw per kind. Iron barrel hoops keep their separate material. */
 const PARTS: readonly Part[] = [
   { key: "barrel-staves", kind: "barrel", geometry: () => geo("cylinder", 0.42, 0.38, 1.1, 10),
     material: () => mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" }), at: [0, 0.55, 0] },
   { key: "barrel-hoops", kind: "barrel", geometry: () => geo("barrel-hoops"),
     material: () => mat({ color: IRON, metalness: 0.7, roughness: 0.55 }) },
-  { key: "chair-wood", kind: "chair", geometry: () => geo("chair-wood"),
-    material: () => mat({ color: WOOD_LIT, surface: "wood" }) },
-  { key: "chair-legs", kind: "chair", geometry: () => geo("chair-legs"),
-    material: () => mat({ color: DARK_WOOD_LIT, surface: "wood" }) },
-  { key: "crate-body", kind: "crate", geometry: () => geo("box", 1, 1, 1),
-    material: () => mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" }),
-    at: [0, 0.4, 0], size: [0.84, 0.8, 0.84] },
-  { key: "crate-slats", kind: "crate", geometry: () => geo("crate-slats"),
-    material: () => mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" }) },
-  { key: "table-top", kind: "table", geometry: () => geo("box", 1, 1, 1),
-    material: () => mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" }),
-    at: [0, 0.78, 0], size: [1.8, 0.08, 1] },
-  { key: "table-legs", kind: "table", geometry: () => geo("table-legs"),
-    material: () => mat({ color: DARK_WOOD_LIT, surface: "wood" }) },
+  { key: "finished-chair", kind: "chair", geometry: () => geo("finished-chair"),
+    material: () => mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true }) },
+  { key: "finished-crate", kind: "crate", geometry: () => geo("finished-crate"),
+    material: () => mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true }) },
+  { key: "finished-table", kind: "table", geometry: () => geo("finished-table"),
+    material: () => mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true }) },
 ];
 
 function FurniturePart({ part, places }: { part: Part; places: PropPlacement[] }) {

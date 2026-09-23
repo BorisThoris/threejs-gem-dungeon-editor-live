@@ -1,7 +1,7 @@
 # The room authoring bench
 
-The twenty templates in `src/content/templates.json` were not typed by hand,
-and this is what made them.
+The templates in `src/content/templates.json` are held to the same placement
+rules as generated rooms. This bench finds safe positions for new compositions.
 
 Every prop in an authored room passes through the same filters the seeded
 dressing does - out of the door lanes, clear of the gem, clear of the floor's
@@ -27,7 +27,7 @@ has its own copy.
 | `probe.mjs` | how much legal floor each prop kind has, which is the first thing to know before composing |
 | `pairs.mjs` | the sizes and shapes each kind of room may actually be built at |
 | `props.mjs` | the prop catalogue, with radius and solidity |
-| `show.mjs` | draws a composed template, so you can see whether it still reads as a made thing after nudging |
+| `show.mjs` | draws a shipped or composed template, so you can see whether it still reads as a made thing after nudging |
 
 ## Using it
 
@@ -36,7 +36,7 @@ node scripts/authoring/probe.mjs                 # where anything may stand
 node scripts/authoring/map.mjs pillar library 18 # where one thing may stand
 node scripts/authoring/pairs.mjs                 # what sizes a kind allows
 node scripts/authoring/author.mjs                # compose, validate, write JSON
-node scripts/authoring/show.mjs hall-camp        # look at what came out
+node scripts/authoring/show.mjs hall-camp        # inspect shipped or draft content
 ```
 
 `author.mjs` writes `authored.json` beside itself; merging that into
