@@ -139,8 +139,8 @@ function Candle(p: PropProps) {
 function Chair(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh name="chair-wood" castShadow geometry={geo("chair-wood")} material={mat({ color: WOOD_LIT, surface: "wood" })} />
-      <mesh name="chair-legs" geometry={geo("chair-legs")} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
+      <mesh name="finished-chair" castShadow geometry={geo("finished-chair")}
+        material={mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true })} />
     </group>
   );
 }
@@ -204,8 +204,8 @@ function Skull(p: PropProps) {
 function Table(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.78, 0]} castShadow scale={[1.8, 0.08, 1]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.8, surface: "wood" })} />
-      <mesh name="table-legs" geometry={geo("table-legs")} material={mat({ color: DARK_WOOD_LIT, surface: "wood" })} />
+      <mesh name="finished-table" castShadow geometry={geo("finished-table")}
+        material={mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true })} />
     </group>
   );
 }
@@ -254,9 +254,8 @@ function Web(p: PropProps) {
 function Crate(p: PropProps) {
   return (
     <group {...frame(p)}>
-      <mesh position={[0, 0.4, 0]} castShadow scale={[0.84, 0.8, 0.84]} geometry={geo("box", 1, 1, 1)} material={mat({ color: WOOD_LIT, roughness: 0.85, surface: "wood" })} />
-      {/* Slats, so it is not a plain cube at close range. */}
-      <mesh name="crate-slats" geometry={geo("crate-slats")} material={mat({ color: DARK_WOOD_LIT, roughness: 0.9, surface: "wood" })} />
+      <mesh name="finished-crate" castShadow geometry={geo("finished-crate")}
+        material={mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true })} />
     </group>
   );
 }

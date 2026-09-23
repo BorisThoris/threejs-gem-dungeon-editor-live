@@ -76,7 +76,7 @@ try {
     assert.ok(mounted.title.includes(fixture.name), `${id} keeps its authored name in the room readout`);
     assert.ok(mounted.calls > 0 && mounted.triangles > 0, `${id} contributes rendered geometry`);
     if (id === "hall-sealkeepers-ring") {
-      for (const part of ["table-top", "table-legs", "chair-wood", "chair-legs"])
+      for (const part of ["finished-table", "finished-chair"])
         assert.deepEqual(mounted.furniture[`furniture-${part}`], { batches: 1, copies: 4 }, `${part} joins the four repeated stations`);
     }
     if (id === "vault-round-counting-house") {
@@ -87,7 +87,7 @@ try {
         const prop = authoredProps(room).find(p => p.kind === "barrel" || p.kind === "crate");
         if (!prop) throw Error("Counting house has no breakable store");
         window.__run.setState({ broken: [breakKey(room, prop)] });
-        return { part: prop.kind === "barrel" ? "barrel-staves" : "crate-body" };
+        return { part: prop.kind === "barrel" ? "barrel-staves" : "finished-crate" };
       });
       const name = `furniture-${broken.part}`, before = mounted.furniture[name].copies;
       await page.waitForFunction(({ name, expected }) => {
