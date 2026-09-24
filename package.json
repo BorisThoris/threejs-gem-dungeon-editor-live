@@ -64,9 +64,11 @@
         "test:authored-rooms": "node scripts/authored-room-browser-check.mjs",
         "test:handbuilt": "node scripts/handbuilt-model-check.mjs",
         "test:strata": "node scripts/strata-browser-check.mjs",
-    "test:threshold-echo": "node scripts/threshold-echo-browser-check.mjs",
-    "test:channel-frames": "node scripts/channel-frame-browser-check.mjs",
-        "test:audio-threshold": "node scripts/audio-check.mjs --threshold-only"
+        "test:threshold-echo": "node scripts/threshold-echo-browser-check.mjs",
+        "test:channel-frames": "node scripts/channel-frame-browser-check.mjs",
+        "test:audio-threshold": "node scripts/audio-check.mjs --threshold-only",
+        "trailers": "node scripts/build-project-trailers.mjs",
+        "trailers:check": "node scripts/build-project-trailers.mjs --check"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",
