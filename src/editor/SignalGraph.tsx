@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { generateRunFloor, runFloorSeed } from "../game/dungeon/runFloor";
 import { carryRoute, aged, AUDIBLE, DOORWAY, HALF_LIFE_S } from "../game/din/carry";
-import { EMISSIONS, HELD, loudnessIn, type EmissionId, type HeldId } from "../game/din/emissions";
+import { EMISSIONS, HELD, decayDelayFor, loudnessIn, type EmissionId, type HeldId } from "../game/din/emissions";
 import { answersTo, SUSCEPTIBILITY, type ReceiverId } from "../game/din/susceptibility";
 import type { Tag } from "../game/din/tags";
 import { CREATURES } from "../game/mobs/contract";
@@ -53,7 +53,7 @@ export function SignalGraph() {
   const route = magnitude < AUDIBLE || tags.length === 0
     ? { rooms: [], strengths: [], magnitude: 0 } : carryRoute(dungeon.rooms, from.id, to.id, magnitude, bars);
   const carried = route.magnitude;
-  const arriving = source.kind === "impulse" ? aged(carried, age) : carried;
+  const arriving = source.kind === "impulse" ? aged(carried, age - decayDelayFor(source.id)) : carried;
   const matches = RECEIVERS.map((id) => ({
     id,
     active: tags.some((tag) => answersTo(SUSCEPTIBILITY[id], tag, arriving)),

@@ -44,6 +44,7 @@ export function Harrier({ room }: { room: Room }) {
   const pos = useRef({ x: 0, z: 0, placed: false });
   const arrivedAt = useRef<number | null>(null);
   const windingAt = useRef<number | null>(null);
+  const recoveringUntil = useRef(0);
   /** Whether it was wheeling away last frame, so the frame it starts to is heard once. */
   const wasAway = useRef(false);
   const remembered = useRef<{ x: number; z: number } | null>(null);
@@ -141,6 +142,8 @@ export function Harrier({ room }: { room: Room }) {
     if (kept) {
       arrivedAt.current = null;
       windingAt.current = null;
+      recoveringUntil.current = 0;
+      tell.current = 0;
       p.placed = false;
       report();
       return;
@@ -151,6 +154,10 @@ export function Harrier({ room }: { room: Room }) {
     }
     if (arrivedAt.current === null) arrivedAt.current = now;
     if (down) {
+      // A blast interrupts the dive; getting up must offer a new warning.
+      windingAt.current = null;
+      recoveringUntil.current = 0;
+      tell.current = 0;
       // On the floor, twitching. The floor decides what happens to it here.
       g.position.set(p.x, floorHeightAt(room, p.x, p.z) + 0.18 + Math.abs(Math.sin(t * 9)) * 0.04, p.z);
       g.rotation.set(0, g.rotation.y, Math.sin(t * 9) * 0.04);
@@ -180,7 +187,13 @@ export function Harrier({ room }: { room: Room }) {
     g.children[1].rotation.y = 0;
     g.children[2].rotation.y = 0;
     g.rotation.y = Math.atan2(dx, dz);
-    if (sees && distance <= HARRIER_WINDUP_REACH) {
+    const canWind = sees && distance <= HARRIER_WINDUP_REACH;
+    if (!canWind && windingAt.current !== null) {
+      // Regroup for one attack beat after a dodge. Without this, walking
+      // across the reach boundary restarted the cue several times a second.
+      recoveringUntil.current = now + HARRIER_WINDUP_S;
+    }
+    if (canWind && now >= recoveringUntil.current) {
       if (windingAt.current === null) {
         windingAt.current = now;
         bus.emit("notice", "The Harrier draws back. Dodge or shove.");

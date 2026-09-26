@@ -3,6 +3,7 @@ import { create } from "zustand";
 import {
   DEFAULT_BINDINGS,
   bindTo,
+  restoreBindings,
   type Action,
   type Bindings,
 } from "../input/bindings";
@@ -132,22 +133,6 @@ const ranged = (v: unknown, lo: number, hi: number, fallback: number): number =>
 const oneOf = <T extends string>(v: unknown, options: readonly T[], fallback: T): T =>
   typeof v === "string" && (options as readonly string[]).includes(v) ? (v as T) : fallback;
 
-function loadBindings(v: unknown): Bindings {
-  const out = { ...DEFAULT_BINDINGS } as Bindings;
-  if (!v || typeof v !== "object") return out;
-  const stored = v as Record<string, unknown>;
-  for (const action of Object.keys(DEFAULT_BINDINGS) as Action[]) {
-    const keys = stored[action];
-    // An action the stored file does not mention keeps its default, and
-    // one it mentions with rubbish in it does too: a saved settings file
-    // is the one input to this game that some earlier build wrote.
-    if (Array.isArray(keys) && keys.every((k) => typeof k === "string")) {
-      out[action] = keys as string[];
-    }
-  }
-  return out;
-}
-
 function load(): Stored {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -168,7 +153,7 @@ function load(): Stored {
       touchControls: oneOf(p.touchControls, ["auto", "on", "off"], DEFAULTS.touchControls),
       touchLook: ranged(p.touchLook, 0.25, 3, DEFAULTS.touchLook),
       stickSide: oneOf(p.stickSide, ["left", "right"], DEFAULTS.stickSide),
-      bindings: loadBindings(p.bindings),
+      bindings: restoreBindings(p.bindings),
     };
   } catch {
     return DEFAULTS;

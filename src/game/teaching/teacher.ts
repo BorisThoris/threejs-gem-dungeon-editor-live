@@ -2,8 +2,9 @@ import { useEffect } from "react";
 
 import { bus, type BusEvents } from "../events";
 import { touchControlsActive } from "../input/device";
-import { useRun } from "../state/run";
-import { BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
+import { lanternRaiseBlock, useRun } from "../state/run";
+import { afflictionFor } from "../items/afflictions";
+import { BARRICADE_KITS, BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 
@@ -91,10 +92,16 @@ export const LESSONS: readonly Lesson[] = [
     event: "thiefCame",
     line: (_, touch) => `A Cutpurse wants your pockets. Face it and use ${shoveControl(touch)} when close. Catching or shoving it recovers anything it steals.`,
   }),
-  lesson({ id: "robbed", event: "thiefFled", line: "It took that to its nest. The nest is on your map - the gems are not gone, they are somewhere." }),
+  lesson({ id: "robbed", event: "thiefFled", line: "It took that to its nest. The nest is on your map - your belongings are not gone, they are somewhere." }),
   // Every time: running out is a thing to be told about whenever it
   // happens, because the answer to it is somewhere else in the room.
-  lesson({ id: "dry", event: "lanternOut", every: true, line: "The lantern is out. Fill it at a brazier - though a brazier is the brightest place to stand." }),
+  lesson({ id: "dry", event: "lanternOut", every: true, line: (_, touch) => {
+    const blocked = lanternRaiseBlock(useRun.getState());
+    if (blocked === "gloom") return `The dark clings to the lantern. ${afflictionFor("gloom")!.cure}`;
+    if (blocked === "oil") return "The lantern is out. Buy oil at a shop. Lowering the flame makes each room cost less.";
+    const control = touch ? "LAMP" : `${keysLabel(useSettings.getState().bindings.lantern)} or R3`;
+    return `The lantern was snuffed. Use ${control} to raise it again; raising spends oil.`;
+  } }),
   // The lantern starts down, so the first time it goes up is the first
   // time the player has chosen to be seen.
   lesson({
@@ -107,7 +114,7 @@ export const LESSONS: readonly Lesson[] = [
         : `Your lantern is up, and it is the brightest thing on this floor. ${keysLabel(useSettings.getState().bindings.lantern)} puts it down.`,
     sample: { raised: true },
   }),
-  lesson({ id: "barred", event: "doorBarred", line: "That doorway blocks pursuit. You have three barricade kits per floor; tear down your own bars to recover one. Building makes noise." }),
+  lesson({ id: "barred", event: "doorBarred", line: `That doorway blocks pursuit. You have ${BARRICADE_KITS} barricade kits per floor; tear down your own bars to recover one. Building makes noise.` }),
   // Every time: a bar going is a rule changing back, and the player is
   // usually looking the other way when it happens.
   lesson({ id: "smashed", event: "barBroken", every: true, when: ({ byWarden }) => byWarden, line: "It broke through the trap grate. The doorway is open again.", sample: { byWarden: true } }),

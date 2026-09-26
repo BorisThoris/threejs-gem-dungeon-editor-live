@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 import { bus, type Prompt as PromptData } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
+import { keysLabel } from "../game/input/bindings";
+import { useSettings } from "../game/state/settings";
 import { FONT, chip, colors, text } from "./overlay";
 
 /**
@@ -17,6 +19,7 @@ export function Prompt() {
   // button, not a key. Higher on a phone, where eighteen percent of the
   // height is inside the satchel.
   const touch = useTouchControls();
+  const interact = useSettings((s) => s.bindings.interact);
   if (!prompt) return null;
 
   return (
@@ -27,6 +30,9 @@ export function Prompt() {
         left: "50%",
         bottom: device === "phone" ? "36%" : "18%",
         transform: "translateX(-50%)",
+        width: "max-content",
+        maxWidth: "calc(100vw - 32px)",
+        boxSizing: "border-box",
         display: "flex",
         alignItems: "center",
         gap: 12,
@@ -42,10 +48,14 @@ export function Prompt() {
         zIndex: 950,
       }}
     >
-      <span data-testid="prompt-key" style={{ ...chip, background: prompt.enabled ? colors.accent : "#5a5f6e" }}>
-        {touch ? "USE" : prompt.key}
+      <span data-testid="prompt-key" style={{ ...chip, height: "auto", minHeight: "2.2em",
+        maxWidth: "45%", padding: "0.25em 0.4em", boxSizing: "border-box", flexShrink: 0,
+        overflowWrap: "anywhere", textAlign: "center", lineHeight: 1.5,
+        background: prompt.enabled ? colors.accent : "#5a5f6e" }}>
+        {touch ? "USE" : keysLabel(interact)}
       </span>
-      <span data-testid="prompt-text" style={{ color: prompt.enabled ? colors.ink : colors.danger }}>
+      <span data-testid="prompt-text" style={{ minWidth: 0, overflowWrap: "anywhere", lineHeight: 1.5,
+        color: prompt.enabled ? colors.ink : colors.danger }}>
         {prompt.text}
       </span>
     </div>

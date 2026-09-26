@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SHOVE_CHARGE_S, SHOVE_COOLDOWN_S } from "../game/player/combat";
+import { shoveStatusAt } from "../game/player/combat";
 import { playerLightIn } from "../game/ladder/sight";
 import { playerAt } from "../game/player/where";
 
@@ -46,8 +46,9 @@ import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { BARRICADE_KITS, FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
-import { hudLines, type HudLine } from "./hudLines";
+import { hudLines, type HudFacts, type HudLine } from "./hudLines";
 import { keysLabel } from "../game/input/bindings";
+import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow";
 
 /**
  * What the player needs to decide with: how deep they are, what the door
@@ -58,6 +59,7 @@ import { keysLabel } from "../game/input/bindings";
  * player is really asking: is one more room worth it?
  */
 export function Hud() {
+  const compact = useCompactViewport();
   const lives = useRun((s) => s.lives);
   const maxLives = useRun((s) => s.maxLives);
   const gems = useRun((s) => s.gems);
@@ -75,6 +77,7 @@ export function Hud() {
   const thiefHolding = useRun((s) => s.thiefHolding);
   const thiefKey = useRun((s) => s.thiefKey);
   const nestGems = useRun((s) => s.nestGems);
+  const nestKey = useRun((s) => s.nestKey);
   // Nothing said in colour alone. The alarm was a word whose *colour*
   // carried half its meaning and the gem count's danger likewise, which is
   // exactly the thing a colour-blind player cannot read.
@@ -96,7 +99,7 @@ export function Hud() {
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
   const croakers = room ? croakersFor(room, dungeonSeed).length > 0 : false;
-  const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
+  const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, reaperHere, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -158,6 +161,7 @@ export function Hud() {
     heatSays: heat.says,
     heatBand: heat.band,
     reaper,
+    reaperHere,
     wardenAwake,
     wardenSays: alarmLabel(alarm, heard, lured, reeling, seen),
     wardenTone: alarmTone,
@@ -175,25 +179,35 @@ export function Hud() {
     oil,
     barSeconds,
     nestGems,
+    nestKey,
     relics: relics.map((id) => RELICS[id].name),
     learned,
     watched,
     veinBand: veinBand.toLowerCase(),
-  });
+  }, compact);
 
   // Eight lines at a monitor's spacing is more than half of a phone held
   // sideways. Closer together and a size down there, so the room is still
   // the thing on the screen.
-  const compact = useCompactViewport();
+  const panel = usePanelOverflow(lives);
+  const instruments = <><ShoveReadout compact={compact} /><BellcapWarning /><ServiceRubbing /><SecretTrailGuide /></>;
   return (
     <div
       data-testid="hud"
+      ref={panel.ref}
+      role="region"
+      aria-label="Run status"
+      tabIndex={panel.overflow ? 0 : undefined}
+      onKeyDown={readoutKeys}
+      onMouseDown={readoutMouse}
       style={{
         position: "fixed",
         top: compact ? 12 : 20,
         left: compact ? 12 : 20,
         maxWidth: compact ? "calc(100vw - 150px)" : "min(460px, 40vw)",
         boxSizing: "border-box",
+        maxHeight: compact ? "50vh" : undefined,
+        overflowY: compact ? "auto" : undefined,
         overflowWrap: "anywhere",
         padding: compact ? "8px 10px" : "12px 16px",
         background: colors.panel,
@@ -203,14 +217,11 @@ export function Hud() {
         fontSize: compact ? text.small : text.body,
         lineHeight: compact ? 1.6 : 1.65,
         color: colors.ink,
-        pointerEvents: "none",
+        pointerEvents: panel.overflow ? "auto" : "none",
         zIndex: 900,
       }}
     >
-      <ShoveReadout compact={compact} />
-      <BellcapWarning />
-      <ServiceRubbing />
-      <SecretTrailGuide />
+      {!compact && instruments}
       {lines.map((line, i) => {
         if (compact && line.rank >= 4) return null;
         /**
@@ -276,6 +287,7 @@ export function Hud() {
           </div>
         );
       })}
+      {compact && instruments}
     </div>
   );
 }
@@ -291,12 +303,10 @@ function ShoveReadout({ compact }: { compact: boolean }) {
   const run = useRun.getState();
   const now = runClock(run);
   const kits = barsRemaining(run);
-  const remaining = Math.max(0, Math.ceil((run.shoveReadyAt - now) * 10) / 10);
-  const charge = run.shoveChargingAt === null ? null : Math.min(100, Math.round((now - run.shoveChargingAt) / SHOVE_CHARGE_S * 100));
+  const { remaining, charge, progress } = shoveStatusAt(run, now);
   const light = run.currentRoomId ? playerLightIn(run.currentRoomId) : 0;
   const lightLabel = light >= 0.5 ? "in bright light" : light >= 0.15 ? "in dim light" : "in shadow";
   const movement = playerAt.speed > 4.5 ? "running" : playerAt.speed > 0.2 ? "moving" : "still";
-  const progress = charge !== null ? charge : (1 - remaining / SHOVE_COOLDOWN_S) * 100;
   return <div style={{ fontSize: "0.85em" }}>
     <div data-testid="bars-stock" style={{ color: kits ? colors.ink : colors.gold, marginBottom: 4 }}>
       BARS · {kits}/{BARRICADE_KITS} ready{run.barricades.length ? ` · ${run.barricades.length} standing` : ""}
@@ -350,10 +360,11 @@ function useWardenSense(): {
    */
   heat: { says: string; band: number };
   reaper: boolean;
+  reaperHere: boolean;
   /** Standing in the draft from a cracked wall. */
   drafty: boolean;
-  /** The floor's Harrier: roosting in this room, hunting, wheeling away, or down. */
-  harrier: "roosts" | "hunting" | "away" | "down" | null;
+  /** Presence comes from the same room identity that mounts the creature. */
+  harrier: HudFacts["harrier"];
   /** Whole seconds until a downed Harrier is up again. */
   harrierUp: number;
   /** The Keeper: holding the last stairs, or kneeling. */
@@ -365,14 +376,16 @@ function useWardenSense(): {
     const s = useRun.getState();
     const lured = lureNow(s) !== null;
     const keeper: "holds" | "kneels" | null = keeperStalled(s) ? "kneels" : keeperHolds(s) ? "holds" : null;
-    const harrier: "roosts" | "hunting" | "away" | "down" | null = s.harrierSlain
+    const harrier: HudFacts["harrier"] = s.harrierSlain
       ? null
       : s.harrierAwake
-        ? harrierDowned(s)
-          ? "down"
-          : harrierAway(s)
-            ? "away"
-            : "hunting"
+        ? s.harrierRoomId !== s.currentRoomId
+          ? "elsewhere"
+          : harrierDowned(s)
+            ? "down"
+            : harrierAway(s)
+              ? "away"
+              : "hunting"
         : s.dungeon && harrierRoostFor(s.dungeon, s.floor) === s.currentRoomId
           ? "roosts"
           : null;
@@ -390,6 +403,7 @@ function useWardenSense(): {
       barSeconds: barredNow(s) ? Math.max(0, Math.ceil(s.barUntil - runClock(s))) : 0,
       heat: { says: heatSays(s), band: heatBand(s) },
       reaper: s.reaperAwake,
+      reaperHere: s.reaperRoomId !== null && s.reaperRoomId === s.currentRoomId,
       drafty: draft.near && draft.roomId === s.currentRoomId,
       harrier,
       harrierUp: harrierDowned(s) ? Math.max(0, Math.ceil(s.harrierDownedUntil - runClock(s))) : 0,
@@ -413,6 +427,7 @@ function useWardenSense(): {
           was.barSeconds === now.barSeconds &&
           was.heat.band === now.heat.band &&
           was.reaper === now.reaper &&
+          was.reaperHere === now.reaperHere &&
           was.drafty === now.drafty &&
           was.harrier === now.harrier &&
           was.harrierUp === now.harrierUp &&

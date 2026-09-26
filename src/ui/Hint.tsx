@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { bus } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
@@ -7,6 +7,7 @@ import { canControl, runClock, useRun } from "../game/state/run";
 import { useSettings } from "../game/state/settings";
 import { NOTICE_HOLD_S } from "../game/world";
 import { colors, FONT, text as textSize } from "./overlay";
+import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow";
 
 /**
  * The lines of guidance on screen: the room's, and whatever the game has
@@ -22,6 +23,8 @@ import { colors, FONT, text as textSize } from "./overlay";
 export function Hint() {
   const [text, setText] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const panel = usePanelOverflow(notice);
+  const noticeElement = panel.element;
   /** When the notice is due to go, on the run's clock. */
   const until = useRef(0);
   useEffect(() => bus.on("hint", setText), []);
@@ -38,10 +41,10 @@ export function Hint() {
   useEffect(() => {
     if (notice === null) return;
     const t = window.setInterval(() => {
-      if (runClock(useRun.getState()) >= until.current) setNotice(null);
+      if (runClock(useRun.getState()) >= until.current && document.activeElement !== noticeElement.current) setNotice(null);
     }, 200);
     return () => window.clearInterval(t);
-  }, [notice]);
+  }, [notice, noticeElement]);
   const captured = usePointerCaptured();
   const inControl = useRun(canControl);
   // Which of the two first-time lines applies: the mouse can be taken on a
@@ -57,18 +60,22 @@ export function Hint() {
     inControl && !captured && lockable ? "Click the game to look around" : null,
     inControl && touch && !tutored ? "One thumb walks, the other looks" : null,
   ].filter(Boolean);
-  const bounds = useGuidanceBounds(lines.length, touch);
   if (lines.length === 0) return null;
   return (
     <div
       data-testid="guidance"
+      ref={panel.ref}
+      role="region"
+      aria-label="Guidance"
+      tabIndex={panel.overflow ? 0 : undefined}
+      onKeyDown={readoutKeys}
+      onMouseDown={readoutMouse}
+      onPointerDown={event => { if (panel.overflow) event.currentTarget.focus({ preventScroll: true }); }}
+      onBlur={() => { if (runClock(useRun.getState()) >= until.current) setNotice(null); }}
       style={{
-        position: "fixed",
-        left: bounds.left,
-        right: bounds.right,
-        top: bounds.top,
-        maxWidth: 640,
-        marginInline: "auto",
+        flex: "0 1 auto",
+        minHeight: `calc(${textSize.small} * 1.7 + 22px)`,
+        overflowY: "auto",
         boxSizing: "border-box",
         overflowWrap: "anywhere",
         padding: "10px 16px",
@@ -81,8 +88,7 @@ export function Hint() {
         letterSpacing: "0.03em",
         color: colors.dim,
         textAlign: "center",
-        pointerEvents: "none",
-        zIndex: 900,
+        pointerEvents: panel.overflow ? "auto" : "none",
       }}
     >
       {lines.map((line) => (
@@ -90,32 +96,6 @@ export function Hint() {
       ))}
     </div>
   );
-}
-
-/** Reserve the actual HUD and map footprints, including scaled text and touch pause. */
-function useGuidanceBounds(lineCount: number, touch: boolean) {
-  const [bounds, setBounds] = useState({ left: 24, right: 24, top: 24 });
-  useLayoutEffect(() => {
-    const hud = document.querySelector('[data-testid="hud"]');
-    const map = document.querySelector('[data-testid="minimap"]');
-    const pause = document.querySelector('[data-testid="touch-pause"]');
-    const measure = () => {
-      const h = hud?.getBoundingClientRect();
-      const rightEdge = Math.min(map?.getBoundingClientRect().left ?? window.innerWidth - 12,
-        pause?.getBoundingClientRect().left ?? window.innerWidth - 12);
-      const left = (h?.right ?? 12) + 12;
-      const right = window.innerWidth - rightEdge + 12;
-      const next = window.innerWidth - left - right >= 180 ? { left, right, top: 24 }
-        : { left: 12, right: 12, top: Math.max(h?.bottom ?? 12, map?.getBoundingClientRect().bottom ?? 12) + 12 };
-      setBounds((old) => old.left === next.left && old.right === next.right && old.top === next.top ? old : next);
-    };
-    const observer = new ResizeObserver(measure);
-    for (const element of [hud, map, pause]) if (element) observer.observe(element);
-    window.addEventListener("resize", measure);
-    measure();
-    return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
-  }, [lineCount, touch]);
-  return bounds;
 }
 
 /** Whether the game holds the pointer, so the first-time player is told how to look. */

@@ -26,7 +26,7 @@ export function PauseMenu() {
   const panelRef = useRef<HTMLDivElement>(null);
   usePadMenu({ container: panelRef, onBack: resume });
   return (
-    <div data-testid="pause-menu" style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.72)" }}>
+    <div data-testid="pause-menu" style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.72)", zIndex: 1200 }}>
       <div style={panel} ref={panelRef}>
         <h2 style={title}>PAUSED</h2>
         <p style={body}>The dungeon waits.</p>

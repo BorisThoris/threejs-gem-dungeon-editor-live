@@ -18,6 +18,8 @@
  * place that turns one back into something a person reads.
  */
 
+export const SLOT_ACTIONS = ["slot1", "slot2", "slot3", "slot4"] as const;
+
 export const ACTIONS = [
   "forward",
   "back",
@@ -30,10 +32,7 @@ export const ACTIONS = [
   "bar",
   "mark",
   "dropKey",
-  "slot1",
-  "slot2",
-  "slot3",
-  "slot4",
+  ...SLOT_ACTIONS,
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -90,8 +89,49 @@ export const ACTION_LABEL: Record<Action, string> = {
  */
 const FORBIDDEN = new Set(["Escape", "Tab", "F5", "F11", "F12", "MetaLeft", "MetaRight"]);
 
+// Match complete physical codes: a saved "Key" or "Spacebar" is not a
+// usable binding. Keypad extensions intentionally have an open suffix:
+// https://www.w3.org/TR/uievents-code/#key-numpad-section
+const KEY_CODES = /^(?:Key[A-Z]|Digit[0-9]|Arrow(?:Up|Down|Left|Right)|(?:Shift|Control|Alt|Bracket)(?:Left|Right)|Space|Comma|Period|Slash|Semicolon|Quote|Backslash|Minus|Equal|Backquote)$/;
+const NUMPAD_CODE = /^Numpad[A-Za-z0-9]+$/;
+
 export const bindable = (code: string): boolean =>
-  !FORBIDDEN.has(code) && /^(Key|Digit|Numpad|Arrow|Shift|Control|Alt|Space|Comma|Period|Slash|Semicolon|Quote|Bracket|Backslash|Minus|Equal|Backquote)/.test(code);
+  code === code.trim() && !FORBIDDEN.has(code) && (KEY_CODES.test(code) || NUMPAD_CODE.test(code));
+
+/** Standalone Ctrl/Alt may be bound; shortcut chords belong to the browser. */
+export const isGameplayKey = (event: KeyboardEvent): boolean =>
+  !event.repeat && !event.defaultPrevented && !event.metaKey
+  && (!event.ctrlKey || /^Control(Left|Right)$/.test(event.code))
+  && (!event.altKey || /^Alt(Left|Right)$/.test(event.code));
+
+/**
+ * Restore the same unique assignments the rebinding menu can create.
+ * Saved rows claim their keys before missing/invalid rows receive defaults,
+ * so adding an action cannot steal a player's existing key after an update.
+ * An explicit empty row remains unbound. Conflicting saved rows resolve in
+ * ACTIONS order; the existing unbound warning makes any lost key visible.
+ */
+export function restoreBindings(value: unknown): Bindings {
+  const stored = value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown> : {};
+  const restored = {} as Bindings;
+  const claimed = new Set<string>();
+  const take = (keys: string[]) => keys.filter((code) => {
+    if (claimed.has(code)) return false;
+    claimed.add(code);
+    return true;
+  });
+  for (const action of ACTIONS) {
+    const keys = Object.hasOwn(stored, action) ? stored[action] : undefined;
+    if (Array.isArray(keys) && keys.every((code) => typeof code === "string" && bindable(code))) {
+      restored[action] = take(keys);
+    }
+  }
+  for (const action of ACTIONS) {
+    if (!Object.hasOwn(restored, action)) restored[action] = take(DEFAULT_BINDINGS[action]);
+  }
+  return restored;
+}
 
 /** "KeyW" -> "W", "ArrowUp" -> "Up", "ShiftLeft" -> "Left Shift". */
 export function keyLabel(code: string): string {
@@ -124,6 +164,7 @@ export const keysLabel = (codes: readonly string[]): string =>
  * which other row is holding the key.
  */
 export function bindTo(bindings: Bindings, action: Action, code: string): Bindings {
+  if (!bindable(code)) return bindings;
   const next = {} as Bindings;
   for (const other of ACTIONS) {
     next[other] = other === action ? [code] : bindings[other].filter((k) => k !== code);

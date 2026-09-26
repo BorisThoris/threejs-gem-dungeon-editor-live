@@ -85,7 +85,8 @@ export function PuzzleOverlay() {
 
   return (
     <div style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.82)", zIndex: 1100 }}>
-      <div style={{ ...panel, minWidth: 420 }}>
+      <div role="dialog" aria-modal="true" aria-label="The tome of numbers"
+        style={{ ...panel, minWidth: 0, width: "min(520px, calc(100vw - 32px))", padding: "24px clamp(12px, 4vw, 32px)" }}>
         {request.kind === "number" && (
           <NumberPuzzle
             difficulty={request.difficulty}

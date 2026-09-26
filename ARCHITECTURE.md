@@ -70,6 +70,9 @@ local gallery, keeping visual review tied to the same rooms
 the browser matrix mounts. The full gate also measures scene exposure in each
 dark and raised-lantern pair, catching black or ineffective light without
 freezing the art to pixel goldens.
+Gameplay review captures hide paused arrival and deed cards while retaining
+the HUD. Their exposure is checked against the matching unobstructed scene,
+so a frozen full-screen card cannot silently replace the room being reviewed.
 The gallery stores the scenario URL owner's path and lets reviewers choose
 the current development-server origin, so links remain usable after the
 verification server's temporary port closes.
@@ -342,6 +345,9 @@ Two stores that both claimed the player's stats. So:
   anyway - the lantern went up, a doorway was barred, something left the
   satchel - so nothing is tracked FOR the pledge and it never becomes a
   second economy running beside the first.
+  Device placement records spending only when the item actually leaves the
+  satchel. A snare refused by glazed ground keeps the Unspent pledge; the
+  store-level layout check covers both slot use and direct placement.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Everything that makes a sound from somewhere needs it - the
   Warden through a wall, a Sentry from its post, every creature's held
@@ -539,6 +545,65 @@ Two stores that both claimed the player's stats. So:
   on-screen buttons are not there, because a button is a key whose code is
   the action's name (`keyboard.pressAction`), so the trigger that consumes
   E consumes USE without knowing the difference.
+  Immediate actions and the frame-read keyboard buffer share `isGameplayKey`
+  in `input/bindings.ts`. Standalone Ctrl and Alt remain bindable, while
+  browser shortcut chords cannot become held movement or buffered actions.
+  `keyboard-bindings-browser-check.mjs` rebinds both sides of each modifier
+  through the pause menu and checks real play, repeat suppression and chords.
+  Saved bindings restore through `input/bindings.ts`: valid saved rows claim
+  keys before missing or invalid rows receive defaults. Empty rows remain
+  unbound, forbidden keys fall back, and duplicate assignments are removed.
+  Ordinary key codes must match a complete supported physical code, so
+  truncated or invented saved names cannot replace working controls.
+  Extended keypad names retain the standard's open Numpad suffix convention.
+  The same browser check reloads an older partial save and confirms its
+  custom map key does not also trigger the lantern, then saves and reloads
+  the repaired mapping without losing unrelated preferences.
+  Interaction prompts and satchel key labels read those same live bindings.
+  Prompt events carry the interaction text and availability, not a second
+  key mapping. `SLOT_ACTIONS` supplies the keyboard dispatcher and satchel;
+  touch labels retain USE and numbered slots. The control-labels browser
+  check rebinds a real door, checks item labels and measures long prompts
+  at maximum text size across narrow and wide viewports.
+  The Controls page shares lantern, barricade and shove explanations across
+  keyboard and touch, reading kit count and shove recovery from their game
+  owners. Its sprint instructions follow the current hold/press setting;
+  controller sprint remains held. The same browser check changes the setting
+  through the menu and guards the room-based oil and reusable-kit guidance.
+  The store's shove action builds its notice from the effects it applied:
+  Harrier retreat, Warden stagger, and Cutpurse recovery. One shove can name
+  several targets; an empty-handed Cutpurse never claims recovered loot.
+  The gameplay check compares these notices with the actual combat and
+  inventory changes, alongside misses, solid cover and immune targets.
+  Cutpurse theft, escape and recovery events carry both the gem count and
+  whether the iron key changed hands. Captions, the stolen-loot HUD and shove
+  feedback name that payload through `thief/loot.ts`; they never infer it from
+  inventory after the action. A key-only theft reveals the nest and its map
+  marker, while stealing a gem leaves the carried key's Din signal intact.
+  The cutpurse-loot browser check follows both items through escape and recovery,
+  checks the visible map and HUD, and guards empty-handed catches.
+  The nest renders and offers recovery even when it holds only the key, using
+  the floor key's shared `IronKeyModel`; the same check takes it back through
+  the ordinary E-key interaction and verifies the empty nest disappears.
+  `thief/nest.ts` also owns the heap's position and radius. It keeps the old
+  corner when clear, otherwise finds a nearby patch using the room's real
+  footprint, dressing, key, watcher, content anchors and spike beds. The
+  existing obstacle route planner verifies an approach from an entry landing;
+  floor height comes from the shared elevation owner. The heap never shifts
+  because furniture breaks or the player revisits it. `test:nest-placement`
+  checks placement over generated floors and uses an independent flood to
+  verify a safe pickup route. The recovery browser check visits a generated
+  native nest and uses the same mounted interaction as play.
+  `player/combat.ts` also owns `shoveStatusAt`, the charge and recovery
+  readout used by both the HUD and the touch SHOVE button. The larger touch
+  target shows readiness, windup and recovery beside the thumb; unavailable
+  presses cannot queue an attack. The focused touch-shove browser check taps
+  the real button on phone and tablet, compares its countdown with the HUD,
+  pauses recovery and checks text fit at maximum scale.
+  Keyboard and touch help share a responsive definition-list layout: narrow
+  screens put the label above the instruction so the text gets the full
+  reading width. The control-labels check measures both modes at maximum
+  text size and verifies that Back remains visible and reachable by scrolling.
 - How roused the Warden is comes from `src/game/warden/tuning.ts`. The
   driver, the figure itself, the audio and the HUD all read the same
   function, so "Hunting" in the corner and the thing in the doorway can
@@ -630,8 +695,9 @@ Two stores that both claimed the player's stats. So:
   lump once, all keyed on the second the floor began so a new run's first
   floor is announced again. The Reaper is a `ghost` in the body table and
   `reaper/Reaper.tsx` is what ghost means: it asks the floor for nothing.
-  It has no room of its own - it is mounted with whichever room the player
-  is in, which is how it follows - and the store owns the three things
+  Its store-owned room identity controls where it mounts; the pursuit driver
+  follows a perceived doorway after a delay, and a broken trail leaves it
+  behind. The store also owns the three things
   that can happen to it: waking, striking (through the ordinary damage
   path, like the Warden's strike) and being held by a blast, which
   `detonate` calls the same way it routs the Warden.
@@ -649,6 +715,10 @@ Two stores that both claimed the player's stats. So:
   roost carries a dash through `rouseBats` writing `noisyUntil` - the
   same two deadlines the lantern and the sprint write, so `wardenSenses`
   did not learn a third sense.
+  Every lantern action extends `litUntil` without shortening an existing
+  moth hold. The layout suite checks these competing deadlines through real
+  store actions; the smoke check observes departure and preservation after
+  the last dimming press, independently of frame timing.
 - Where the floor's traps are is `src/game/traps/placement.ts` -
   `trapsFor(room, seed, endId)` - and what each is to a body is `TRAPS`,
   in the body table's own words (`springs`, `hurts`). The store owns
@@ -703,6 +773,11 @@ Two stores that both claimed the player's stats. So:
   right now - a flier, or downed, a thing with feet. `body.ts` decides
   what a flier clears (`clearedInFlight`: anything whose collider stops
   under `FLIGHT_HEIGHT`); the Harrier, the moth and the bats all read it.
+  Its mounted attack loop owns windup and recovery. Leaving attack reach or
+  breaking sight cancels the dive and gives it one `HARRIER_WINDUP_S` beat
+  to regroup; a knockdown clears the interrupted windup. The focused Harrier
+  browser check walks away through the reach boundary and verifies a fresh,
+  complete warning after getting up, using real movement and store actions.
 - The Keeper is one state and many posts: `keeper/posts.ts` owns where
   it stands (`keeperPostsFor`: every doorway into the exit room on the
   Keeper's floor), the store owns whether it holds the stairs
@@ -726,6 +801,13 @@ Two stores that both claimed the player's stats. So:
   every time - and is the only thing that emits a teaching `notice`. A
   system that grows a rule the player cannot see adds a row; the store
   changes facts and never says sentences.
+  Lantern-out guidance reads the store's `lanternRaiseBlock`: Gloom points to
+  firelight, insufficient oil to a shop, and a snuffed lamp with oil to the
+  current relight control. Raising with the last oil is allowed, but entering
+  another room extinguishes that empty lamp. The item-feedback browser check
+  covers both sides of the raise-cost boundary, the resulting guidance, and
+  the actual scene light. `lanternLit` reads the glim alone: remaining oil
+  pays for future actions, not for a flame already paid for in this room.
 - One rule, asked by everything it binds: `sanctuaryRoom` in the run store
   is the floor's first room while the player has not left it and the floor
   has not reached its last band, and the Warden's step, the Harrier's waking and the
@@ -781,9 +863,33 @@ Two stores that both claimed the player's stats. So:
   whatever point in the file it happens to reach. No two lines may share a
   label and nothing drawn in the danger tone may lack a high-contrast
   mark; both are held by `yarn test:layout`.
+  Harrier and Reaper presence reads their store-owned room identities.
+  Threats elsewhere retain a floor warning without claiming to be overhead
+  or here, and rank below immediate attackers. The pursuit browser check
+  verifies the visible guidance before arrival, after arrival and after a
+  broken trail; the layout suite holds their urgency ordering.
   The desktop card keeps those lines but uses tighter leading. The quick
   browser gate measures a crowded third-floor HUD against a 425-pixel height
   budget at 1280×800 and checks that the guidance panel remains clear.
+  On compact screens the status card is capped at half the viewport height.
+  The line owner puts lives first there; threat and resource lines precede
+  the instrument readouts so scrolling cannot hide the initial life count.
+  `ui/Readouts.tsx` reserves the live HUD, map and touch-control footprints,
+  including swapped thumb sides. Captions and guidance share that space in
+  a vertical stack, with at least one full line of each visible; longer
+  messages scroll inside their own panel. These readouts and the status card
+  use `ui/usePanelOverflow.ts` to accept scrolling only when their content
+  overflows; otherwise pointer gestures still reach the game. The overlay
+  check verifies visible reading space, control clearance and keyboard scroll
+  access at maximum text scale.
+  A new notice or a life-count change resets its readout to the top, keeping
+  fresh combat information visible after the player scrolls older details.
+  Readout clicks cannot capture the view or shove. Focused readouts keep
+  reading keys out of gameplay while allowing Escape
+  to pause. A caption or guidance notice whose lifetime expires while focused stays until blur,
+  so scrolling cannot lose the sentence mid-read. The readout-interaction
+  browser check verifies scrolling, expiry, movement and shove isolation,
+  and access to pause through the real keyboard path.
 - The four moments the arc turns on are a table in `ui/momentBeats.ts` and
   one player in `ui/Moments.tsx`: an event, a hold, a wash and what it
   says. The descent holds the floor's blurb on the black rather than
@@ -791,6 +897,35 @@ Two stores that both claimed the player's stats. So:
   and it takes those words from `floorRules` like everything else about
   the descent - so the teacher does not also say them. None of the beats
   take a keypress.
+  Moments, captions, deed cards and item feedback retain their remaining display
+  time while paused; moment fades pause as well. Their DOM callbacks share the tome's
+  `state/runTimer.ts` scheduler, which reads `runClock` rather than a second
+  countdown. The focus-pause check holds each message past its normal display
+  duration, resumes it and confirms that only the remaining time is spent.
+  The overlay check exercises environmental warnings and the longest Ledger
+  entry on desktop, phone and tablet, checking that captions clear guidance
+  and controls as well as fitting within the viewport.
+  A new run clears captions, deed cards and moments through `runStarted`,
+  including a replay of the same seed. The restart check uses both summary
+  buttons and confirms that old messages disappear while new opening
+  guidance remains.
+  Mire, Gloom and Dread descriptions come from `items/afflictions.ts` through
+  the item catalogue. Item feedback keeps the drawback, useful side and cure
+  in one panel that fits the viewport; guidance keeps the cure available longer.
+  Consecutive notices must not erase the explanation.
+  `items/feedback.ts` describes the charged kind just used. Avarice's gem
+  count and Healing's capacity read the same charge helpers as the store;
+  cursed Healing names its noise cost and cursed Mapping includes Gloom's
+  effects and cure. The browser check compares the text with actual rewards.
+  The long smoke check reads the visible explanation, not retired notice wording.
+  Gloom and cursed Mapping share one application in the run store: the map
+  darkens, the flame goes out, and the lantern-out lesson explains the cure.
+  Clearing either effect preserves the floor revealed by Mapping.
+  Mire cure progress belongs to the current affliction. Swiftness clears it,
+  and a fresh Mire after expiry starts at zero; renewing an active Mire keeps
+  the containers already worked. The layout check exercises these actions.
+  The item-feedback browser check uses the real consumables and checks both
+  messages together, including large phone text.
 - The map marks what the readout names. A place the HUD tells you about -
   the harrier's roost, the stairs the Keeper holds - is on the minimap
   too, because a readout and a map that disagree about what is worth
@@ -975,6 +1110,25 @@ Two stores that both claimed the player's stats. So:
   satchel empty. The three places that still name the terms themselves are
   the pause toggles and the pointer, and they are the ones that should
   still work while the screen is dark.
+  The keyboard buffer reads that same predicate when accepting physical or
+  on-screen presses and clears pending edges whenever control changes.
+  Its one-second grace covers slow gameplay frames, never menus, puzzles or
+  room transitions. Held movement keys retain their physical state. The
+  input-boundary browser check guards both sides of each boundary and then
+  uses a fresh physical key to travel through a real door.
+  Consuming an action drains all of its pending keyboard and on-screen
+  alternatives together, so simultaneous inputs cannot repeat it on the
+  next frame. Held keys and later presses remain independent of that drain.
+  Changing hold/press sprint mode clears the player's toggle synchronously
+  with the setting. The sprint-noise check switches modes through the pause
+  menu and confirms fresh movement stays quiet until sprint is requested.
+  Window blur and a hidden document pause through the run store even when
+  no pointer lock is held. Focus returning never resumes automatically.
+  The pause menu sits above an open tome; the tome disables its controls
+  and reads `runClock` for memorization, answering and result delivery.
+  Escape or controller Start can resume that paused puzzle without also
+  closing it. The focus-pause browser check covers the free-cursor path,
+  preserved puzzle state, paused deadlines and reachable Resume controls.
 - What a room is *made of* is `src/game/rooms/biomes.ts`, and it is a
   different question from what the room is *for*. Kind decides content and
   rules; biome decides stone, damp and light. They used to be one fact -
@@ -1245,7 +1399,19 @@ src/
    Wire Snare (wounds the next thing across it, and is not in the list a
    routed Warden avoids, which is why it still works), a Ward Stone (the
    Warden will not enter this room while it holds) and a Knot of Loose Iron
-   (the cruel one: it lands loudly and gives the player away).
+   (it rouses the floor and makes a loud metal signal where it lands, then
+   can be recovered through the normal interaction prompt). `recoverIron`
+   guards control, room and reach and uses `takeItem` for satchel capacity.
+   The positioned `devicePlaced` event feeds Din's `ironDropped` emission;
+   its doorway attenuation and receiver thresholds use the existing sound
+   owners. Its `lingerSeconds` in the emission table lets the metal ring long
+   enough for a nearby listener to react; Din and the editor age preview share
+   that delay before normal decay. The iron-knot browser check drops and
+   recovers it with real keys and checks the signal's origin and a neighbouring
+   Warden's remembered investigation target.
+   The dropped key also publishes its stored landing coordinates through
+   `keyDropped`; the same browser check verifies that its sound originates
+   at the key rather than the room centre.
 5. Every gem taken raises the floor's `alarm`. The alarm decides how often
    the Warden steps from room to room, whether it wanders or walks towards
    the player, and how fast it crosses a room. Sprinting gives the player's
@@ -1269,8 +1435,9 @@ src/
    and the door. Touching the player costs a life and throws it three
    doorways away.
 6. From floor two, the Cutpurse comes for a player who has stopped moving
-   with gems on them. It takes one and runs for the doorway it came in by:
-   touch it and the gem comes back, let it out and the gem is in its nest,
+   with gems or the iron key on them. It takes a gem, or the key when no gems
+   remain, and runs for the doorway it came in by:
+   touch it and the loot comes back, let it out and the loot is in its nest,
    which is then on the map. Nothing is destroyed - a theft is a detour,
    and `thief/nest.ts` guarantees the detour is walkable (never the vault,
    never a room only reachable through it).
@@ -1366,6 +1533,10 @@ down until they clear it.
 
 ## Verification
 
+The runner replaces progress reports atomically. Brief Windows file locks
+receive bounded retries; persistent locks fail without truncating the previous
+report. `test:verification` injects both cases into the real runner.
+
 A note that cost a day to learn. **Nothing in a test may `import()` a
 module the app has already loaded.** On a dev server the app's copy of a
 source file can be served under a URL the bare path does not match, and
@@ -1385,6 +1556,11 @@ the store it is writing to.
   good; the memory trial is begun and repeated; the challenge room's trap is
   sprung. Each exposes what a probe cannot see - the number sequence and the
   pattern - behind `import.meta.env.DEV`.
+  The focused `tome-browser-check.mjs` also guards the answer timer during
+  memorization, held-digit repeat, correction and keypad completion. Its
+  responsive panel and six slots fit portrait and landscape screens at the
+  player's maximum text size; each digit submits immediately, without a
+  separate confirmation step.
 - Playing a puzzle correctly says nothing about what it costs to play it
   badly, and the cost is the room. The memory trial was played once, right,
   and its gem taken, for thirty-odd cycles; the first probe to press a wrong

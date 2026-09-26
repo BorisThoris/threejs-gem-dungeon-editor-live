@@ -52,8 +52,8 @@ export const AFFLICTIONS: readonly Affliction[] = [
      * which is the point.
      */
     id: "gloom",
-    lands: "The dark clings to you.",
-    edge: "Your glim is nothing: the watchers lose you, and the veins show in the walls.",
+    lands: "Your map goes dark and your lantern goes out.",
+    edge: "With the lantern down, you are harder to spot and gem veins show.",
     cure: "Stand in the light of a brazier.",
     clears: { kind: "brazier", count: 1 },
   },
@@ -65,7 +65,7 @@ export const AFFLICTIONS: readonly Affliction[] = [
      */
     id: "mire",
     lands: "Your hands shake and your legs go heavy.",
-    edge: "You cannot hurry, and nothing hears you: every footfall is a fifth as loud.",
+    edge: "You move more slowly, but every footfall is a fifth as loud.",
     cure: "Work your hands loose on three containers.",
     clears: { kind: "containers", count: 3 },
   },
@@ -78,28 +78,34 @@ export const AFFLICTIONS: readonly Affliction[] = [
      * reason to drink an unknown potion in a room you want emptied.
      */
     id: "dread",
-    lands: "Something followed you out of the dark.",
-    edge: "It is loud, and it is never quite where you are. Everything that hears goes to it.",
+    lands: "The floor stirs.",
+    edge: "The Warden is lured toward a distant room, giving you time to move.",
     cure: "Leave the floor. It does not use stairs.",
     clears: { kind: "floor", count: 1 },
   },
   {
     /**
      * Was a device whose own blurb said it hurt you. It is a knot of loose
-     * iron: dropped, it is [loud] where it LANDS rather than where you
-     * stand, which is the entire difference between a punishment and a
-     * tool, and it needed no new code to become one - only the Din.
+     * iron: its noise stays where it lands while the player moves away.
+     * Recovering it makes a second distraction possible, at another alarm cost.
      */
     id: "rattle",
-    lands: "The satchel goes over and the iron spills.",
-    edge: "The fall is the loudest honest noise you can make, and it is over there.",
-    cure: "Pick it up again.",
+    lands: "Metal clatters where you put it down, rousing the floor.",
+    edge: "Nearby listeners hear it. Move away before they arrive.",
+    cure: "Pick up the iron to use it again.",
     clears: { kind: "pickup", count: 1 },
   },
 ] as const;
 
 export const afflictionFor = (id: string): Affliction | undefined =>
   AFFLICTIONS.find((a) => a.id === id);
+
+/** Item feedback keeps the effects and cure together, from their shared owner. */
+export function afflictionBlurb(id: ItemId): string {
+  const effect = afflictionFor(id);
+  if (!effect) throw new Error(`Missing affliction description: ${id}`);
+  return `${effect.lands} ${effect.edge} ${effect.cure}`;
+}
 
 /**
  * Identification RESOLVES, and that is a feature.

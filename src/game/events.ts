@@ -8,7 +8,6 @@
  */
 
 export interface Prompt {
-  key: string;
   text: string;
   enabled: boolean;
 }
@@ -113,17 +112,17 @@ export interface BusEvents {
   /** A kind was lifted a step: cursed to plain, or plain to blessed. */
   itemBlessed: { id: string; charge: string };
   /** A device was set down on the floor of the room the player is in. */
-  devicePlaced: { id: string; cruel: boolean };
+  devicePlaced: { id: string; cruel: boolean; roomId?: string; x?: number; z?: number };
   /** Something small has come into the room, and it wants what you carry. */
   thiefCame: { roomId: string };
-  /** It got a gem off you and is running for a doorway. */
-  thiefTook: { gems: number };
+  /** It took gems or the iron key and is running for a doorway. */
+  thiefTook: { gems: number; key: boolean };
   /** It made it out with them, and they are in its nest now. */
-  thiefFled: { gems: number; roomId: string | null };
+  thiefFled: { gems: number; key: boolean; roomId: string | null };
   /** It was caught - by the player, or by something on the floor. */
-  thiefCaught: { gems: number };
+  thiefCaught: { gems: number; key: boolean };
   /** The nest was walked to and emptied. */
-  nestEmptied: { gems: number };
+  nestEmptied: { gems: number; key: boolean };
   /** The arena's arms have started or stopped. */
   arenaRun: { running: boolean };
   /** The floor's key has been picked up. */
@@ -132,7 +131,7 @@ export interface BusEvents {
    * The key has been set down. It is a heavy piece of cut metal, so this
    * is a noise where the key is rather than a number leaving a wallet.
    */
-  keyDropped: { roomId: string };
+  keyDropped: { roomId: string; x: number; z: number };
   /** The key is holding a plate down, and the plate is keeping it. */
   keySetOnPlate: { roomId: string };
   /** A vault has been unlocked. */

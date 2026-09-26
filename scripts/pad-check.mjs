@@ -792,6 +792,12 @@ const standAtLectern = () =>
       showing.up && !showing.keys && showing.locked > 0,
       JSON.stringify(showing)
     );
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    ok("focus loss pauses an open tome on a pad", await page.evaluate(() => window.__run.getState().paused));
+    await tap(page, BUTTON.start);
+    ok("Start resumes the tome without closing it", await page.evaluate(() =>
+      !window.__run.getState().paused && window.__run.getState().inputLocks > 0
+      && !!document.querySelector('[data-testid="tome-ready"]')));
     await tap(page, BUTTON.b);
     await page.waitForTimeout(600);
     const left = await page.evaluate(() => {

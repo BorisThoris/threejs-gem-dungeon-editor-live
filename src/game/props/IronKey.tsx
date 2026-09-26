@@ -44,6 +44,22 @@ export function IronKey({ roomId, position }: IronKeyProps) {
 
   return (
     <group name="iron-key" ref={group} position={at}>
+      <IronKeyModel />
+      <pointLight color="#ffd479" intensity={2.2} distance={3.2} />
+      <InteractTrigger
+        position={[0, 0, 0]}
+        label={lying ? "Pick the iron key back up" : "Take the iron key"}
+        radius={CLOSE_REACH}
+        onInteract={() => useRun.getState().takeKey(roomId)}
+      />
+    </group>
+  );
+}
+
+/** The same recognizable key, whether found on the floor or recovered from a nest. */
+export function IronKeyModel() {
+  return (
+    <group name="iron-key-model">
       {/* A bow, a shaft and two teeth: unmistakably a key at a glance. */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.12, 0.035, 8, 16]} />
@@ -59,13 +75,6 @@ export function IronKey({ roomId, position }: IronKeyProps) {
           <meshStandardMaterial color="#c9a227" metalness={0.85} roughness={0.3} />
         </mesh>
       ))}
-      <pointLight color="#ffd479" intensity={2.2} distance={3.2} />
-      <InteractTrigger
-        position={[0, 0, 0]}
-        label={lying ? "Pick the iron key back up" : "Take the iron key"}
-        radius={CLOSE_REACH}
-        onInteract={() => useRun.getState().takeKey(roomId)}
-      />
     </group>
   );
 }

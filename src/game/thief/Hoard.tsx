@@ -1,10 +1,13 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
+import { IronKeyModel } from "../props/IronKey";
 import { useRun } from "../state/run";
-import { CLOSE_REACH, GROUND_Y } from "../world";
+import { CLOSE_REACH } from "../world";
+import type { Vec3 } from "../dungeon/layout";
+import { NEST_RADIUS } from "./nest";
 
 /**
  * What the Cutpurse has taken, in a heap where it lives.
@@ -27,7 +30,7 @@ import { CLOSE_REACH, GROUND_Y } from "../world";
  * room's own gem or in a doorway lane: the nest room is an ordinary room
  * and still has everything an ordinary room has.
  */
-export function Hoard({ roomId, half }: { roomId: string; half: number }) {
+export function Hoard({ position }: { position: Vec3 }) {
   const group = useRef<Group>(null);
   const gems = useRun((s) => s.nestGems);
   /**
@@ -36,16 +39,6 @@ export function Hoard({ roomId, half }: { roomId: string; half: number }) {
    * prompt that counts gems would offer nothing at all for it.
    */
   const key = useRun((s) => s.nestKey);
-  // A corner, chosen from the room's own id so it is the same corner every
-  // time the player walks back in.
-  const at = useMemo<[number, number, number]>(() => {
-    let h = 0;
-    for (let i = 0; i < roomId.length; i++) h = (h * 31 + roomId.charCodeAt(i)) >>> 0;
-    const sx = h & 1 ? 1 : -1;
-    const sz = h & 2 ? 1 : -1;
-    const d = half * 0.62;
-    return [sx * d, GROUND_Y, sz * d];
-  }, [roomId, half]);
 
   useFrame((state) => {
     const g = group.current;
@@ -53,14 +46,14 @@ export function Hoard({ roomId, half }: { roomId: string; half: number }) {
     g.rotation.y = state.clock.elapsedTime * 0.6;
   });
 
-  if (gems < 1) return null;
+  if (gems < 1 && !key) return null;
 
   return (
-    <group position={at}>
+    <group name="cutpurse-hoard" position={position}>
       {/* The heap it sleeps on: bones and scraps, always drawn, so the
           room reads as a nest rather than as gems on the floor. */}
       <mesh position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.95, 16]} />
+        <circleGeometry args={[NEST_RADIUS, 16]} />
         <meshStandardMaterial color="#3b3025" roughness={1} />
       </mesh>
       {[0, 1, 2, 3, 4].map((i) => (
@@ -74,6 +67,7 @@ export function Hoard({ roomId, half }: { roomId: string; half: number }) {
         </mesh>
       ))}
       <group ref={group} position={[0, 0.3, 0]}>
+        {key && <IronKeyModel />}
         {Array.from({ length: Math.min(6, gems) }, (_, i) => {
           const a = (i / Math.min(6, gems)) * Math.PI * 2;
           return (

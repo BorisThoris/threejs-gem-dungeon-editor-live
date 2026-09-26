@@ -37,6 +37,37 @@ try {
   assert.ok(heard.noiseFor > 0 && Math.hypot(heard.player.x, heard.player.z) > 0.1,
     `the sprint moved and made noise: ${JSON.stringify(heard)}`);
   await page.waitForFunction(() => !window.__derived.hears() && !window.__derived.hunts(), null, { timeout: 9000 });
+  const toggleMode = async () => {
+    await page.evaluate(() => window.__run.getState().pause());
+    await page.getByTestId("opt-sprint").click();
+    await page.getByRole("button", { name: "Resume", exact: true }).click();
+  };
+  const resetPosition = async () => {
+    await page.evaluate(() => {
+      window.__bus.emit("teleport", { position: [0, 1.5, 0], yaw: 0 });
+      window.__bus.emit("lookSet", { yaw: 0, pitch: 0 });
+      window.__run.setState({ noisyUntil: 0 });
+    });
+    await page.waitForFunction(() => Math.hypot(window.__playerDebug.x, window.__playerDebug.z) < 0.1);
+  };
+  await toggleMode(); // hold -> press
+  await resetPosition();
+  await page.keyboard.press("ShiftLeft");
+  await page.keyboard.down("KeyW");
+  try {
+    await page.waitForFunction(() => window.__derived.hears());
+  } finally { await page.keyboard.up("KeyW"); }
+  console.log("PASS press-to-sprint keeps running after the sprint key is released");
+  await toggleMode(); // press -> hold; forget the previous toggle
+  await toggleMode(); // hold -> press; start walking until explicitly toggled
+  await resetPosition();
+  await page.keyboard.down("KeyW");
+  try {
+    await page.waitForFunction(() => Math.hypot(window.__playerDebug.x, window.__playerDebug.z) > 0.5);
+    assert.equal(await page.evaluate(() => window.__derived.hears()), false,
+      "changing sprint mode away and back cannot restore an old toggle or alert the Warden");
+  } finally { await page.keyboard.up("KeyW"); }
+  console.log("PASS switching sprint modes resets the old toggle: fresh movement stays quiet");
   assert.deepEqual(errors, [], "no browser errors");
   console.log(`PASS keyboard sprint in ${room} moves, alerts the Warden, and becomes quiet again`);
 } finally {

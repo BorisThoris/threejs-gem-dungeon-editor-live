@@ -32,6 +32,8 @@ export interface Emission {
   readonly magnitude: number;
   /** Whether feet and floor decide how far this carries. */
   readonly underfoot?: boolean;
+  /** How long an impulse rings at its initial strength before fading. */
+  readonly lingerSeconds?: number;
 }
 
 export const EMISSIONS = {
@@ -55,6 +57,8 @@ export const EMISSIONS = {
    * is what turns "the thing that opens the vault" into three verbs.
    */
   keyDropped: { tags: ["loud", "metal"], magnitude: 0.5 },
+  /** Loose iron carries through a doorway; unlike a blast it does no damage. */
+  ironDropped: { tags: ["loud", "metal"], magnitude: 0.9, lingerSeconds: 1.2 },
   /** Bolts across a doorway, into whatever is on the far side. */
   dartsFired: { tags: ["loud"], magnitude: 0.4 },
   /** A floor giving way, and everything that was standing on it. */
@@ -83,6 +87,10 @@ export const EMISSIONS = {
 } as const satisfies Record<string, Emission>;
 
 export type EmissionId = keyof typeof EMISSIONS;
+
+/** Read by both live signals and the editor's age preview. */
+export const decayDelayFor = (id: EmissionId): number =>
+  (EMISSIONS[id] as Emission).lingerSeconds ?? 0;
 
 /**
  * Sustained emissions: things that are true while they are true, rather

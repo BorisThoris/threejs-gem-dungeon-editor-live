@@ -169,6 +169,9 @@ const snap = () =>
     const d = window.__playerDebug;
     return {
       phase: s.phase,
+      seed: s.runSeed,
+      paused: s.paused,
+      inputLocks: s.inputLocks,
       room: s.currentRoomId,
       gems: s.gems,
       lives: s.lives,
@@ -269,7 +272,16 @@ for (let hop = 0; hop < 8; hop++) {
       break;
     }
   }
-  if (!moved) break;
+  if (!moved) {
+    console.log("Exploration stopped", JSON.stringify(await page.evaluate(() => {
+      const s = window.__run.getState();
+      return { seed: s.runSeed, room: s.currentRoomId, paused: s.paused, inputLocks: s.inputLocks,
+        sealed: s.sealedRoomId, player: window.__playerDebug,
+        prompt: document.querySelector('[data-testid="prompt"]')?.textContent ?? null,
+        nearest: Object.entries(window.__triggers ?? {}).sort((a, b) => a[1].dist - b[1].dist).slice(0, 3) };
+    })));
+    break;
+  }
   await keepOnItsFeet();
 }
 for (let i = 0; i < 20 && (await snap()).transitioning; i++) await page.waitForTimeout(250);
@@ -5883,16 +5895,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     {
       const said = [];
       const off = window.__bus.on("notice", (t) => said.push(String(t)));
+      const { afflictionFor } = await import("/src/game/items/afflictions.ts");
+      const bite = afflictionFor("gloom");
       run.setState({ satchel: ["gloom"], effects: { swift: 0, mire: 0, gloom: 0 }, glim: 100, oil: 60 });
       await wait(120);
       run.getState().useItem(0);
       await wait(200);
       off();
-      const all = said.join(" ");
+      // The complete explanation is in the item panel. Guidance retains
+      // the cure; successive notices used to erase the effects immediately.
+      const shown = document.body.innerText;
       out.told = {
-        lands: /clings to you/i.test(all),
-        edge: /veins|lose you/i.test(all),
-        cure: /brazier/i.test(all),
+        lands: shown.includes(bite.lands),
+        edge: shown.includes(bite.edge),
+        cure: shown.includes(bite.cure) && said.some(line => line.includes(bite.cure)),
       };
       run.getState().clearGloom();
     }
@@ -7338,17 +7354,25 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       // out. The raise it is coming down from cannot be interrupted, so
       // the first press has to wait for the flame to arrive.
       await wait(1600);
-      let mothHold = 0;
+      let mothHold = 0, mothUntil = 0;
+      // Departure runs on a rendered frame, which can follow the last
+      // button press. Measure the hold when the creature actually leaves.
+      const offMoth = window.__bus.on("mothLeft", () => {
+        mothUntil = Math.max(mothUntil, run.getState().litUntil);
+        mothHold = Math.max(mothHold, run.getState().litUntil - D.clock());
+      });
       for (let i = 0; i < 6 && run.getState().glim > 0; i++) {
         run.getState().toggleLantern();
         await wait(120);
-        if (!run.getState().mothOn) mothHold = Math.max(mothHold, run.getState().litUntil - D.clock());
       }
-      // The moth notices on its next frame, which is a third of a second here.
-      await wait(900);
+      const departureDeadline = performance.now() + 3000;
+      while (mothHold === 0 && performance.now() < departureDeadline) await wait(50);
+      offMoth();
       out.mothAfterLower = { on: run.getState().mothOn, to: window.__moth?.to, maxHold: +mothHold.toFixed(2),
+        preserved: run.getState().litUntil >= mothUntil,
         hold: +(run.getState().litUntil - D.clock()).toFixed(2), glim: run.getState().glim };
-      out.heldByMoth = mothHold > W.LANTERN_SEEN_HOLD_S + 0.5;
+      out.heldByMoth = mothHold > W.LANTERN_SEEN_HOLD_S + 0.5
+        && mothHold >= W.MOTH_HOLD_S - 0.1 && out.mothAfterLower.preserved;
     }
     // Bats: the roost room, stood in; the dash itself is pressed from
     // outside the page, as the other dashes in this suite are.

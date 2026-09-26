@@ -278,6 +278,7 @@ try {
   assert.match(await page.locator('[data-testid="shove-status"]').innerText(), /recovering/);
   console.log("PASS keyboard shove and recovery feedback");
   await page.evaluate(() => window.__run.setState({ shoveReadyAt: 0 }));
+  await page.waitForFunction(() => document.querySelector('[data-testid="touch-shove"]')?.textContent.includes("READY"));
   await page.locator('[data-testid="touch-shove"]').dispatchEvent("pointerdown", { pointerType: "touch" });
   await page.waitForFunction(() => window.__run.getState().shoveReadyAt > window.__derived.clock());
   console.log("PASS touch shove");
@@ -318,6 +319,8 @@ try {
     const { playerAt } = await import("/src/game/player/where.ts");
     const { cutpurseAt } = await import("/src/game/thief/position.ts");
     const run = window.__run, id = run.getState().currentRoomId;
+    let notice = "";
+    const off = window.__bus.on("notice", (line) => { notice = line; });
     const reset = () => run.setState({ shoveReadyAt: 0, harrierRetreatUntil: 0, wardenStaggerUntil: 0, wardenWounds: 0,
       wardenRoomId: id, harrierAwake: true, harrierRoomId: window.__run.getState().currentRoomId, harrierSlain: false });
     Object.assign(playerAt, { x: 0, z: 0 });
@@ -325,26 +328,41 @@ try {
     Object.assign(wardenAt, { x: 0, z: -2, roomId: id });
     reset();
     const hit = run.getState().shove(0, -1);
+    const hitNotice = notice;
     const retreated = run.getState().harrierRetreatUntil > window.__derived.clock();
     const staggered = run.getState().wardenStaggerUntil > window.__derived.clock();
     const noWounds = run.getState().wardenWounds === 0;
     const cooldown = !run.getState().shove(0, -1);
     reset();
     run.getState().shove(0, 1);
+    const missNotice = notice;
     const behindMiss = run.getState().harrierRetreatUntil === 0 && run.getState().wardenStaggerUntil === 0;
     reset();
     run.setState({ paused: true });
     const paused = !run.getState().shove(0, -1) && run.getState().shoveReadyAt === 0;
     Object.assign(cutpurseAt, { x: 0, z: -2, roomId: id });
-    run.setState({ paused: false, harrierAwake: false, wardenRoomId: null, thiefPhase: "fleeing", thiefHolding: 2, thiefKey: false,
-      shoveReadyAt: 0, gems: 1 });
+    run.setState({ paused: false, harrierAwake: false, wardenRoomId: null, thiefPhase: "fleeing", thiefHolding: 2, thiefKey: true,
+      shoveReadyAt: 0, gems: 1, keys: 0 });
     run.getState().shove(0, -1);
-    const recovered = run.getState().thiefPhase === "away" && run.getState().gems === 3 && run.getState().thiefHolding === 0;
+    const recovered = run.getState().thiefPhase === "away" && run.getState().gems === 3 && run.getState().thiefHolding === 0 && run.getState().keys === 1;
+    const recoveredNotice = notice;
+    run.setState({ thiefPhase: "stalking", thiefHolding: 0, thiefKey: false, shoveReadyAt: 0 });
+    run.getState().shove(0, -1);
+    const emptyNotice = notice;
+    off();
     run.getState().startRun(11);
-    return { hit, retreated, staggered, noWounds, cooldown, behindMiss, paused, recovered };
+    return { hit, retreated, staggered, noWounds, cooldown, behindMiss, paused, recovered,
+      feedback: { hitNotice, missNotice, recoveredNotice, emptyNotice } };
   });
-  assert.ok(Object.values(combat).every(Boolean), JSON.stringify(combat));
+  const { feedback, ...combatChecks } = combat;
+  assert.ok(Object.values(combatChecks).every(Boolean), JSON.stringify(combatChecks));
   console.log("PASS combat range, facing, retreat, stagger, stolen-gem recovery, cooldown and pause guards");
+  assert.match(feedback.hitNotice, /Harrier.*driven off.*Warden.*staggered/);
+  assert.match(feedback.missNotice, /missed.*Face the threat/);
+  assert.match(feedback.recoveredNotice, /Cutpurse.*2 gems.*iron key.*recovered/);
+  assert.match(feedback.emptyNotice, /Cutpurse.*driven off/);
+  assert.doesNotMatch(feedback.emptyNotice, /recovered|recoils/);
+  console.log("PASS shove feedback names affected threats and actual recovered loot", feedback);
   const immuneDungeon = L.generateDungeon({ seed: 41, floor: 3 });
   const immunePost = immuneDungeon.rooms.find((r) => Object.values(r.links).includes(immuneDungeon.endId));
   const immuneShoves = await page.evaluate(async ({ dungeon, roomId }) => {
@@ -380,7 +398,7 @@ try {
   assert.equal(immuneShoves.keeper.stalled, false, "shoving the Keeper grants no escape window");
   assert.match(immuneShoves.reaper.notice, /pass through the Reaper.*Sprint/);
   assert.equal(immuneShoves.reaper.stalled, false, "shoving the Reaper grants no hold");
-  assert.ok(immuneShoves.mixed.retreat && immuneShoves.mixed.notice.includes("Move while it recoils"),
+  assert.ok(immuneShoves.mixed.retreat && immuneShoves.mixed.notice.includes("Harrier driven off"),
     "a successful shove against another threat takes priority over immunity feedback");
   console.log("PASS immune shove feedback and unchanged Keeper and Reaper counterplay");
   const watchedDungeon = L.generateDungeon({ seed: 11, floor: 3 });

@@ -5,7 +5,7 @@ import { FloorSurface } from "./FloorSurface";
 
 import { HAZARD_RADIUS, trapHazards } from "../dungeon/layout";
 import { floorRects } from "../dungeon/footprint";
-import { DIRS, inscribedRadius, type Room as RoomData } from "../dungeon/types";
+import { DIRS, type Room as RoomData } from "../dungeon/types";
 import { Barring } from "../interact/Barring";
 import { DoorTrigger } from "../interact/DoorTrigger";
 import { Gem } from "../props/Gem";
@@ -18,6 +18,7 @@ import { sentryFor } from "../sentry/placement";
 import { Sentry } from "../sentry/Sentry";
 import { Cutpurse } from "../thief/Cutpurse";
 import { Hoard } from "../thief/Hoard";
+import { nestPosition } from "../thief/nest";
 import { Reaper } from "../reaper/Reaper";
 import { Warden } from "../warden/Warden";
 import type { Patch } from "../warden/steer";
@@ -258,9 +259,13 @@ function RoomTraps({ room, seed }: { room: RoomData; seed: number }) {
 }
 
 /** The heap, in the one room on the floor that has one. */
-function RoomNest({ roomId, half }: { roomId: string; half: number }) {
-  const isNest = useRun((s) => s.nestRoomId === roomId && (s.nestGems > 0 || s.nestKey));
-  return isNest ? <Hoard roomId={roomId} half={half} /> : null;
+function RoomNest({ room, seed }: { room: RoomData; seed: number }) {
+  const isNest = useRun((s) => s.nestRoomId === room.id && (s.nestGems > 0 || s.nestKey));
+  const hasKey = useRun(s => s.dungeon?.keyRoomId === room.id);
+  const watcher = useWatcherPost(room, seed);
+  const at = useMemo(() => isNest ? nestPosition(room, seed, { key: hasKey ? keyFor(room, seed) : null, sentry: watcher }) : null,
+    [room, seed, isNest, hasKey, watcher]);
+  return at ? <Hoard position={at} /> : null;
 }
 
 export function Room({ room, seed, showCeiling = true }: RoomProps) {
@@ -379,7 +384,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
       <RoomHarrier room={room} />
       <RoomKeeper room={room} />
       <PlacedDevices roomId={room.id} />
-      <RoomNest roomId={room.id} half={inscribedRadius(room)} />
+      <RoomNest room={room} seed={seed} />
       {hazards.map((p, i) => (
         <Hazard key={i} position={p} />
       ))}

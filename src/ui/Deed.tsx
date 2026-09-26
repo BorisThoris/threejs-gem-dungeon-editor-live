@@ -4,6 +4,7 @@ import { DEEDS, type DeedId } from "../game/deeds/catalog";
 import { bus } from "../game/events";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
 import { useTouchControls } from "../game/input/device";
+import { afterRunSeconds } from "../game/state/runTimer";
 
 /**
  * The card that says a deed was done.
@@ -25,15 +26,21 @@ export function DeedToast() {
   const [shown, setShown] = useState<DeedId | null>(null);
 
   useEffect(() => {
-    let timer = 0;
-    const off = bus.on("deedEarned", ({ id }) => {
-      setShown(id as DeedId);
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setShown(null), HOLD_MS);
-    });
+    let cancel: (() => void) | undefined;
+    const offs = [
+      bus.on("deedEarned", ({ id }) => {
+        setShown(id as DeedId);
+        cancel?.();
+        cancel = afterRunSeconds(HOLD_MS / 1000, () => setShown(null));
+      }),
+      bus.on("runStarted", () => {
+        cancel?.();
+        setShown(null);
+      }),
+    ];
     return () => {
-      off();
-      window.clearTimeout(timer);
+      offs.forEach((off) => off());
+      cancel?.();
     };
   }, []);
 

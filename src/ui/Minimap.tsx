@@ -78,7 +78,7 @@ export function Minimap() {
   // The nest goes on the dial the moment something of yours is in it. That
   // is the whole difference between a theft and a punishment: the gems are
   // not gone, they are somewhere, and the map says where.
-  const nestRoomId = useRun((s) => (s.nestGems > 0 && s.nestSeen ? s.nestRoomId : null));
+  const nestRoomId = useRun((s) => ((s.nestGems > 0 || s.nestKey) && s.nestSeen ? s.nestRoomId : null));
   /**
    * The two rooms the readout names and the map did not mark.
    *

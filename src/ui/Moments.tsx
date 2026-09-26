@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
+import { useRun } from "../game/state/run";
+import { afterRunSeconds } from "../game/state/runTimer";
 import { MOMENTS, type Moment, type MomentRow } from "./momentBeats";
 import { FONT, colors, text } from "./overlay";
 
@@ -26,6 +28,7 @@ import { FONT, colors, text } from "./overlay";
  */
 
 export function Moments() {
+  const paused = useRun((s) => s.paused);
   const [moment, setMoment] = useState<{ m: Moment; at: number } | null>(null);
 
   useEffect(() => {
@@ -56,13 +59,13 @@ export function Moments() {
         })
       )
     );
+    offs.push(bus.on("runStarted", () => setMoment(null)));
     return () => offs.forEach((off) => off());
   }, []);
 
   useEffect(() => {
     if (!moment) return;
-    const t = window.setTimeout(() => setMoment(null), moment.m.hold);
-    return () => window.clearTimeout(t);
+    return afterRunSeconds(moment.m.hold / 1000, () => setMoment(null));
   }, [moment]);
 
   if (!moment) return null;
@@ -86,6 +89,7 @@ export function Moments() {
           gap: 14,
           background: m.wash,
           animation: `${m.title ? "gd-moment-in" : "gd-moment"} ${m.hold}ms ease-out forwards`,
+          animationPlayState: paused ? "paused" : "running",
           fontFamily: FONT,
           textAlign: "center",
           padding: "0 8vw",

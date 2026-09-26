@@ -105,6 +105,18 @@ try {
   assert.ok(startDoor, "generated floor has a doorway from start");
   const neighbor = startDoor.split("|").find((id) => id !== "start");
   await page.locator('[data-testid="signal-to"]').selectOption(neighbor);
+  await source.selectOption("impulse:ironDropped");
+  const ringing = await page.getByTestId("signal-arrival").innerText();
+  await page.locator('#signal-age').fill("1");
+  assert.equal(await page.getByTestId("signal-arrival").innerText(), ringing,
+    "loose iron keeps ringing long enough for listeners to react");
+  await compareLiveDin("ringing iron");
+  await page.locator('#signal-age').fill("4");
+  assert.notEqual(await page.getByTestId("signal-arrival").innerText(), ringing,
+    "the iron's clatter fades after ringing");
+  await compareLiveDin("fading iron");
+  await source.selectOption("impulse:bombBurst");
+  await page.locator('#signal-age').fill("0");
   const sourceLink = new URL(await page.locator('[data-testid="signal-play-source"]').getAttribute("href"));
   const listenerLink = new URL(await page.locator('[data-testid="signal-play-listener"]').getAttribute("href"));
   assert.deepEqual([sourceLink.searchParams.get("seed"), sourceLink.searchParams.get("floor"), sourceLink.searchParams.get("room")],

@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
+import { keysLabel, SLOT_ACTIONS } from "../game/input/bindings";
 import { ITEMS, nameOf } from "../game/items/catalog";
 import { CHARGE_COLOUR, chargeWord } from "../game/items/charge";
+import { itemUseBlurb } from "../game/items/feedback";
 import { satchelSlots, useRun } from "../game/state/run";
+import { afterRunSeconds } from "../game/state/runTimer";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 
@@ -27,6 +30,7 @@ export function Satchel() {
   // the marks are on, including for a plain kind, so "no word" never has
   // to be read as information by somebody who cannot see the band.
   const marks = useSettings((s) => s.highContrast);
+  const bindings = useSettings((s) => s.bindings);
   // Four for everyone but the Courier, who traded two of them for speed.
   // Drawn from the run rather than the constant, so a two-slot satchel
   // shows two slots instead of two full ones and two that can never fill.
@@ -76,10 +80,13 @@ export function Satchel() {
               touchAction: "manipulation",
               userSelect: "none",
               WebkitUserSelect: "none",
+              overflowWrap: "anywhere",
             }}
           >
             <div style={{ fontSize: text.small, color: colors.dim, marginBottom: 6 }}>
-              <span style={{ color: id ? colors.accent : colors.dim }}>{i + 1}</span>
+              <span style={{ color: id ? colors.accent : colors.dim }}>
+                {touch ? i + 1 : keysLabel(bindings[SLOT_ACTIONS[i]])}
+              </span>
               {id ? ` ${ITEMS[id].family}` : " —"}
             </div>
             {id && look && (
@@ -156,7 +163,8 @@ export function ItemLog() {
     const offs = [
       bus.on("itemUsed", ({ id, cruel }) => {
         const item = ITEMS[id as keyof typeof ITEMS];
-        setLine({ text: `${item.name}. ${item.blurb}`, cruel, at: Date.now() });
+        const charge = useRun.getState().charges[item.id];
+        setLine({ text: `${item.name}. ${itemUseBlurb(item.id, charge)}`, cruel, at: Date.now() });
       }),
       bus.on("itemTaken", ({ id }) => {
         const known = useRun.getState().identified.includes(id as never);
@@ -173,8 +181,7 @@ export function ItemLog() {
 
   useEffect(() => {
     if (!line) return;
-    const t = window.setTimeout(() => setLine(null), 4200);
-    return () => window.clearTimeout(t);
+    return afterRunSeconds(4.2, () => setLine(null));
   }, [line]);
 
   if (!line) return null;
@@ -187,7 +194,10 @@ export function ItemLog() {
         left: "50%",
         bottom: device === "phone" ? 128 : 118,
         transform: "translateX(-50%)",
-        maxWidth: 560,
+        width: "max-content",
+        maxWidth: "min(560px, calc(100vw - 32px))",
+        boxSizing: "border-box",
+        overflowWrap: "anywhere",
         padding: "9px 15px",
         borderRadius: 6,
         background: colors.panel,

@@ -12,7 +12,6 @@ import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dung
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
-  AVARICE_GEMS,
   BANISH_CALM,
   DREAD_ALARM,
   ECHOES_S,
@@ -34,7 +33,7 @@ import {
   type Appearances,
   type ItemId,
 } from "../items/catalog";
-import { chargesFor, inverted, lifted, scaled, type Charge, type Charges } from "../items/charge";
+import { avariceGems, chargesFor, healingLives, inverted, lifted, scaled, type Charge, type Charges } from "../items/charge";
 import { DEFAULT_DELVER, DELVERS, delverOr, knownFrom, type DelverId } from "../delvers/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
@@ -52,6 +51,7 @@ import { chestKey, placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
 import { sentryFor } from "../sentry/placement";
 import { nestRoom } from "../thief/nest";
+import { stolenLootLabel } from "../thief/loot";
 import { biomeFor } from "../rooms/biomes";
 import { keeperPostPosition, keeperPostsFor } from "../keeper/posts";
 import { BODIES, type Body } from "../mobs/body";
@@ -93,6 +93,7 @@ import {
   GRATE_HOLD_S,
   HARRIER_DOWN_S,
   HARRIER_RETREAT_S,
+  INTERACT_RADIUS,
   KEEPER_FLOOR,
   KEEPER_STALL_S,
   KEEPER_STRIKE_GRACE_S,
@@ -279,6 +280,7 @@ export interface RunState {
    */
   glimUpAt: number;
   oil: number;
+  /** Shared visibility deadline: lantern afterglow cannot shorten a moth's hold. */
   litUntil: number;
   /** Whether a Scroll of Mapping has shown this floor. */
   mapped: boolean;
@@ -560,6 +562,8 @@ export interface RunState {
    * key that spends a slot however the thing in it works.
    */
   placeDevice: (slot: number) => boolean;
+  /** Recover reusable loose iron from the current room into a free satchel slot. */
+  recoverIron: (key: string) => boolean;
   /** Learn what a slot holds without spending it. The shop charges for this. */
   identifySlot: (slot: number) => boolean;
   /**
@@ -1553,6 +1557,12 @@ export const useRun = create<RunState>()(
        */
       const charge = s.charges[id];
       const until = (seconds: number) => now + scaled(seconds, charge);
+      // Both Gloom and cursed Mapping impose the same darkness. Keep the
+      // deadline, flame and recovery guidance together whichever caused it.
+      const applyGloom = (seconds: number) => {
+        set({ effects: { ...get().effects, gloom: now + seconds }, glim: 0, glimUpAt: 0 });
+        bus.emit("lanternOut");
+      };
 
       /**
        * A device is not drunk or read: it goes on the floor where the
@@ -1576,7 +1586,6 @@ export const useRun = create<RunState>()(
        * term, two systems dead.
        */
       if (isDevice(id) || isBomb(id)) {
-        set({ floorRecord: { ...s.floorRecord, spentAnItem: true } });
         get().placeDevice(slot);
         return;
       }
@@ -1592,21 +1601,21 @@ export const useRun = create<RunState>()(
 
       switch (id) {
         case "healing":
-          get().gainLife();
           // Blessed, it is worth two - if there is room for two. Cursed,
           // it heals and the floor hears you retching, which is the shape
           // every cursed thing here takes: it still does its job, and it
           // costs you something on the way.
-          if (charge === "blessed") get().gainLife();
+          for (let life = 0; life < healingLives(charge); life++) get().gainLife();
           if (charge === "cursed") get().raiseAlarm(1);
           break;
         case "swiftness":
-          set({ effects: { ...get().effects, swift: until(SWIFTNESS_S), mire: 0 } });
+          set({ effects: { ...get().effects, swift: until(SWIFTNESS_S), mire: 0 }, mireOpened: 0 });
           break;
         case "mire":
           // Cruel already, so the charge runs the other way: blessed means
           // a shorter mire, cursed a longer one.
           set({
+            mireOpened: running(s, s.effects.mire) ? s.mireOpened : 0,
             effects: {
               ...get().effects,
               mire: now + inverted(MIRE_S, charge),
@@ -1630,19 +1639,14 @@ export const useRun = create<RunState>()(
            * here is new - it is the lantern's own rules arriving without
            * having been asked for.
            */
-          set({
-            effects: { ...get().effects, gloom: now + inverted(GLOOM_S, charge) },
-            glim: 0,
-            glimUpAt: 0,
-          });
-          bus.emit("lanternOut");
+          applyGloom(inverted(GLOOM_S, charge));
           break;
         case "mapping":
           set({ mapped: true });
           // A cursed map is a map, and then the dark. It still did what it
           // said on the label, which is the rule for every cursed thing
           // here: the trap is the price, never the promise.
-          if (charge === "cursed") set({ effects: { ...get().effects, gloom: now + GLOOM_S * 0.5 } });
+          if (charge === "cursed") applyGloom(GLOOM_S * 0.5);
           break;
         case "echoes": {
           // Thrown as far as the floor goes: the room the Warden would have
@@ -1689,7 +1693,7 @@ export const useRun = create<RunState>()(
           // for less noise, cursed is fewer for more. It is the one item
           // where the charge changes what the trade is rather than how
           // much of it there is.
-          const gems = charge === "blessed" ? AVARICE_GEMS + 1 : charge === "cursed" ? 1 : AVARICE_GEMS;
+          const gems = avariceGems(charge);
           set({ gems: get().gems + gems, gemsTotal: get().gemsTotal + gems });
           get().raiseAlarm(inverted(AVARICE_ALARM, charge));
           break;
@@ -1712,19 +1716,12 @@ export const useRun = create<RunState>()(
         }
       }
       /**
-       * And both edges are stated the moment it lands.
-       *
-       * Never discovered across runs: a dual edge the player has to find
-       * out about over three deaths is a pure loss in the run they are
-       * currently in, which is the failure this table exists to fix. The
-       * cure is said with it, because a named task nobody has been told
-       * about is a subtraction wearing a task's clothes.
+       * Item feedback describes both edges and the cure from the affliction
+       * table; guidance keeps the cure available longer. Two consecutive notices
+       * would erase the first before the player could read it.
        */
       const bite = afflictionFor(id);
-      if (bite) {
-        bus.emit("notice", `${bite.lands} ${bite.edge}`);
-        bus.emit("notice", bite.cure);
-      }
+      if (bite) bus.emit("notice", bite.cure);
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
     },
 
@@ -1753,14 +1750,12 @@ export const useRun = create<RunState>()(
 
       set({
         satchel: s.satchel.filter((_, i) => i !== slot),
+        floorRecord: { ...s.floorRecord, spentAnItem: true },
         identified: s.identified.includes(id) ? s.identified : [...s.identified, id],
         placed: [
           ...s.placed,
-          // A knot of iron is spent the moment it lands; the other two are
-          // live until something walks into them or their time runs out.
-          // It stays on the floor either way, because a player who cannot
-          // see where they dropped the loud thing cannot learn to avoid
-          // dropping it there.
+          // Iron makes one noise when it lands, then waits to be recovered.
+          // Other devices stay live until triggered or their time runs out.
           {
             key,
             id,
@@ -1801,8 +1796,18 @@ export const useRun = create<RunState>()(
           bus.emit("notice", "The fuse is lit.");
           break;
       }
-      bus.emit("devicePlaced", { id, cruel: ITEMS[id].cruel });
+      bus.emit("devicePlaced", { id, cruel: ITEMS[id].cruel, roomId, x: at.x, z: at.z });
       bus.emit("itemUsed", { id, cruel: ITEMS[id].cruel });
+      return true;
+    },
+
+    recoverIron: (key) => {
+      const s = get();
+      const device = s.placed.find((d) => d.key === key && d.id === "rattle");
+      if (!canControl(s) || !device || device.roomId !== s.currentRoomId
+        || Math.hypot(playerAt.x - device.x, playerAt.z - device.z) > INTERACT_RADIUS) return false;
+      if (!get().takeItem("rattle", undefined, [device.x, device.z])) return false;
+      set((s) => ({ placed: s.placed.filter((d) => d.key !== key) }));
       return true;
     },
 
@@ -1859,7 +1864,7 @@ export const useRun = create<RunState>()(
         // are what stop this being a dead run.
         if (s.keys > 0) {
           set({ keys: s.keys - 1, thiefPhase: "fleeing", thiefKey: true });
-          bus.emit("thiefTook", { gems: 0 });
+          bus.emit("thiefTook", { gems: 0, key: true });
           return true;
         }
         // It got to you and there was nothing left. It leaves rather than
@@ -1868,7 +1873,7 @@ export const useRun = create<RunState>()(
         return false;
       }
       set({ gems: s.gems - 1, thiefHolding: s.thiefHolding + 1, thiefPhase: "fleeing" });
-      bus.emit("thiefTook", { gems: 1 });
+      bus.emit("thiefTook", { gems: 1, key: false });
       return true;
     },
 
@@ -1891,9 +1896,9 @@ export const useRun = create<RunState>()(
         // The nest goes on the map the moment it costs you something. A
         // theft you cannot answer is a punishment; a theft with an address
         // is a decision about how much further you are willing to walk.
-        nestSeen: s.nestSeen || held > 0,
+        nestSeen: s.nestSeen || held > 0 || s.thiefKey,
       });
-      if (held > 0) bus.emit("thiefFled", { gems: held, roomId: s.nestRoomId });
+      if (held > 0 || s.thiefKey) bus.emit("thiefFled", { gems: held, key: s.thiefKey, roomId: s.nestRoomId });
     },
 
     thiefCaught: () => {
@@ -1906,13 +1911,12 @@ export const useRun = create<RunState>()(
         thiefCameFrom: null,
         thiefHolding: 0,
         gems: s.gems + held,
-        // Caught with the key on it: it drops that too, like everything
-        // else, and one press picks it back up off the floor.
+        // Catching it returns the key immediately, alongside its gems.
         thiefKey: false,
         keys: s.keys + (s.thiefKey ? 1 : 0),
         thiefNextAt: runClock(s) + CUTPURSE_SHY_S,
       });
-      bus.emit("thiefCaught", { gems: held });
+      bus.emit("thiefCaught", { gems: held, key: s.thiefKey });
       if (s.thiefKey) bus.emit("keyTaken");
     },
 
@@ -1925,7 +1929,7 @@ export const useRun = create<RunState>()(
         keys: s.keys + (s.nestKey ? 1 : 0),
         nestKey: false,
       });
-      bus.emit("nestEmptied", { gems: s.nestGems });
+      bus.emit("nestEmptied", { gems: s.nestGems, key: s.nestKey });
       if (s.nestKey) bus.emit("keyTaken");
       return true;
     },
@@ -2118,7 +2122,7 @@ export const useRun = create<RunState>()(
         // Blind rather than between two states.
         const at = GLIM_BANDS.findIndex((b) => b.id === glimBand(s.glim).id);
         const to = GLIM_BANDS[Math.min(GLIM_BANDS.length - 1, at + 1)].at;
-        set({ glim: to, litUntil: now + LANTERN_SEEN_HOLD_S });
+        set({ glim: to, litUntil: Math.max(s.litUntil, now + LANTERN_SEEN_HOLD_S) });
         bus.emit("lanternToggled", { raised: to > 0 });
         return;
       }
@@ -2126,12 +2130,13 @@ export const useRun = create<RunState>()(
       // The dark clings: the flame will not come up while it does, which
       // is the whole of what the gloom now is. The cure is a place to
       // stand rather than a price to pay, so this is a wait, not a wall.
-      if (running(s, s.effects.gloom)) {
-        bus.emit("notice", "The dark clings to you. The wick will not catch.");
+      const blocked = lanternRaiseBlock(s);
+      if (blocked === "gloom") {
+        bus.emit("notice", `The wick will not catch. ${afflictionFor("gloom")!.cure}`);
         return;
       }
-      if (s.oil < RAISE_OIL) {
-        bus.emit("notice", "There is not enough oil to bring it back up.");
+      if (blocked === "oil") {
+        bus.emit("notice", "There is not enough oil to bring it back up. Buy oil at a shop.");
         return;
       }
       // Seen from the moment it starts to go up, rather than when it
@@ -2141,7 +2146,7 @@ export const useRun = create<RunState>()(
         glim: GLIM_MAX,
         glimUpAt: now + RAISE_S,
         oil: Math.max(0, s.oil - RAISE_OIL),
-        litUntil: now + RAISE_S + LANTERN_SEEN_HOLD_S,
+        litUntil: Math.max(s.litUntil, now + RAISE_S + LANTERN_SEEN_HOLD_S),
         // Written down where it happens, because the promise made at the
         // font is judged on facts the floor was keeping anyway.
         floorRecord: { ...s.floorRecord, raisedLantern: true },
@@ -2167,18 +2172,20 @@ export const useRun = create<RunState>()(
      */
     burnOilEntering: (alreadyWalked) => {
       const s = get();
-      if (s.glim <= 0 || s.oil <= 0) return;
+      // Raising can spend the last measure. The lit lamp must still go out
+      // when the next room asks for oil that the flask no longer holds.
+      if (s.glim <= 0) return;
       const spend = oilForRoom(alreadyWalked) * (s.glim / GLIM_MAX);
       const oil = Math.max(0, s.oil - spend);
       const now = runClock(s);
       if (oil <= 0) {
         // It goes out on its own, and says so: a light that simply stopped
         // reaching would read as the floor getting darker.
-        set({ oil: 0, glim: 0, glimUpAt: 0, litUntil: now + LANTERN_SEEN_HOLD_S });
+        set({ oil: 0, glim: 0, glimUpAt: 0, litUntil: Math.max(s.litUntil, now + LANTERN_SEEN_HOLD_S) });
         bus.emit("lanternOut");
         return;
       }
-      set({ oil, litUntil: now + LANTERN_SEEN_HOLD_S });
+      set({ oil, litUntil: Math.max(s.litUntil, now + LANTERN_SEEN_HOLD_S) });
     },
 
     /**
@@ -2270,15 +2277,16 @@ export const useRun = create<RunState>()(
     dropKey: () => {
       const s = get();
       if (s.keys < 1 || !s.currentRoomId || !canControl(s)) return false;
+      const at = { x: playerAt.x, z: playerAt.z };
       set({
         keys: s.keys - 1,
         keyLyingIn: s.currentRoomId,
-        keyLyingAt: { x: playerAt.x, z: playerAt.z },
+        keyLyingAt: at,
       });
       // Where the key is, not where the player is - which are the same
       // place this frame and will not be in a moment, and that difference
       // is the whole of what a dropped key is for.
-      bus.emit("keyDropped", { roomId: s.currentRoomId });
+      bus.emit("keyDropped", { roomId: s.currentRoomId, ...at });
       return true;
     },
 
@@ -2295,7 +2303,7 @@ export const useRun = create<RunState>()(
       if (s.glim <= 0) return;
       // No refund. The oil that went into raising it is burnt, which is
       // what makes a draft cost something rather than annoy.
-      set({ glim: 0, glimUpAt: 0, litUntil: runClock(s) + LANTERN_SEEN_HOLD_S });
+      set({ glim: 0, glimUpAt: 0, litUntil: Math.max(s.litUntil, runClock(s) + LANTERN_SEEN_HOLD_S) });
       bus.emit("lanternOut");
     },
 
@@ -2460,24 +2468,26 @@ export const useRun = create<RunState>()(
         return false;
       };
       set({ shoveReadyAt: now + SHOVE_COOLDOWN_S });
-      let hit = false;
+      const outcomes: string[] = [];
       if (s.thiefPhase !== "away" && reaches(cutpurseAt)) {
         get().thiefCaught();
-        hit = true;
+        const recovered = stolenLootLabel(s.thiefHolding, s.thiefKey);
+        outcomes.push(`Cutpurse driven off${recovered ? `; ${recovered} recovered` : ""}.`);
       }
       if (s.harrierAwake && !s.harrierSlain && !harrierAt.away && reaches(harrierAt)) {
         // A defence buys space; bombs still own downing it onto traps.
         set({ harrierRetreatUntil: Math.max(s.harrierRetreatUntil, now + 4) });
-        hit = true;
+        outcomes.push("Harrier driven off.");
       }
       if (s.wardenRoomId === room.id && reaches(wardenAt)) {
         set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
-        hit = true;
+        outcomes.push("Warden staggered; move now.");
       }
+      const hit = outcomes.length > 0;
       const reaper = !hit && s.reaperAwake && reaches(reaperAt);
       const keeper = !hit && !reaper && keeperHolds(s) && keeperPostsFor(s.dungeon, s.floor)
         .some((p) => p.roomId === room.id && reaches({ ...keeperPostPosition(room, p.dir), roomId: room.id }));
-      bus.emit("notice", hit ? "Shove! Move while it recoils." : reaper
+      bus.emit("notice", hit ? `Shove! ${outcomes.join(" ")}` : reaper
         ? "Shoves pass through the Reaper. Sprint to the stairs; a blast buys time." : keeper
           ? "Shoves cannot move the Keeper. Gather the toll, then use a bomb and escape while it kneels." : blocked
         ? "Shove blocked by solid cover. Step around it."
@@ -2945,7 +2955,6 @@ export const noiseHoldFor = (s: RunState, surface?: Footing): number => {
 
 export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
 
-/** Whether the lantern is up and still has oil in it. */
 /**
  * Whether the lantern is showing any light at all.
  *
@@ -2954,7 +2963,9 @@ export const wardenHears = (s: RunState): boolean => running(s, s.noisyUntil);
  * with a threshold, and keeping both in the store is how they drift.
  */
 export const lanternRaised = (s: RunState): boolean => s.glim > 0;
-export const lanternLit = (s: RunState): boolean => s.glim > 0 && s.oil > 0;
+// Oil pays for raising and room entry. Spending the last measure still
+// lights the current room; burnOilEntering lowers the glim at the next one.
+export const lanternLit = lanternRaised;
 
 /** The band the flame is in, and what that band buys. */
 export const lanternBand = (s: RunState) => glimBand(lanternLit(s) ? s.glim : 0);
@@ -3101,6 +3112,10 @@ const EMPTY_BARS: Set<string> = new Set();
 
 /** Whether a Scroll of Gloom is still blacking out the map. */
 export const mapIsDark = (s: RunState): boolean => running(s, s.effects.gloom);
+
+/** The action and its recovery guidance agree on what prevents relighting. */
+export const lanternRaiseBlock = (s: RunState): "gloom" | "oil" | null =>
+  mapIsDark(s) ? "gloom" : s.oil < RAISE_OIL ? "oil" : null;
 
 /**
  * What the exit charges on this floor, after relics. Never below one.

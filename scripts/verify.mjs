@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { once } from "node:events";
 import { createWriteStream, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { finished } from "node:stream/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 
@@ -20,15 +21,15 @@ const focused = requested.length > 0;
 const unknownFlags = args.filter(arg => arg !== "--full" && arg !== "--systems" && arg !== "--list" && !arg.startsWith("--only="));
 if (unknownFlags.length) throw new Error(`Unknown verification option: ${unknownFlags.join(", ")}`);
 const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
-const fullChecks = ["test:world", "test:walk-navigation", "test:prod", "test:desktop"];
+const fullChecks = ["test:world", "test:walk-navigation", "test:nest-placement", "test:prod", "test:desktop"];
 const systemChecks = ["test:lighting", "test:service-trail", "test:handbuilt", "test:water-sound"];
 const baseBrowserChecks = ["core-flow-browser-check.mjs", "sprint-noise-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs"];
 const fullBrowserChecks = ["gameplay-check.mjs", "pad-check.mjs", "touch-check.mjs", "audio-check.mjs", "perf-check.mjs",
-  "walk-run.mjs",
+  "walk-run.mjs", "harrier-windup-browser-check.mjs", "touch-shove-browser-check.mjs", "readout-interaction-browser-check.mjs", "cutpurse-loot-browser-check.mjs",
   "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
   "ambient-behavior-browser-check.mjs", "trap-combat-browser-check.mjs", "exploration-browser-check.mjs",
   "ecology-browser-check.mjs", "architecture-browser-check.mjs", "scenario-matrix-browser-check.mjs", "capture-scenario-review.mjs",
-  "overlay-check.mjs"];
+  "overlay-check.mjs", "tome-browser-check.mjs", "keyboard-bindings-browser-check.mjs", "input-boundary-browser-check.mjs", "focus-pause-browser-check.mjs", "control-labels-browser-check.mjs", "run-restart-browser-check.mjs", "item-feedback-browser-check.mjs", "iron-knot-browser-check.mjs"];
 const systemBrowserChecks = ["world-browser-check.mjs", "block-lighting-browser-check.mjs", "terrain-browser-check.mjs",
   "terrain-stealth-browser-check.mjs", "footstep-collision-browser-check.mjs", "grate-browser-check.mjs", "interaction-probe-browser-check.mjs",
   "watercourse-browser-check.mjs", "water-browser-check.mjs", "secret-clue-browser-check.mjs",
@@ -127,7 +128,7 @@ async function ready(port, server) {
 let server;
 const failures = [];
 let fatalError = null;
-function saveReport(status) {
+async function saveReport(status) {
   const report = { schemaVersion: 2, mode, status, startedAt: runStartedAt,
     updatedAt: new Date().toISOString(),
     ...(status === "running" ? {} : { finishedAt: new Date().toISOString() }),
@@ -137,7 +138,18 @@ function saveReport(status) {
   mkdirSync(reportDir, { recursive: true });
   const temporary = `${reportPath}.${process.pid}.tmp`;
   writeFileSync(temporary, JSON.stringify(report, null, 2) + "\n");
-  renameSync(temporary, reportPath);
+  // Windows may briefly lock the destination while a scanner or reader
+  // holds it. Keep replacement atomic and retry only transient lock errors;
+  // never truncate the previous report to work around a locked rename.
+  for (let attempt = 0; ; attempt++) {
+    try {
+      renameSync(temporary, reportPath);
+      break;
+    } catch (error) {
+      if (attempt >= 9 || !["EPERM", "EACCES", "EBUSY"].includes(error.code)) throw error;
+      await delay(50 * (attempt + 1));
+    }
+  }
   return report;
 }
 async function check(label, kind, command, args, env) {
@@ -148,7 +160,7 @@ async function check(label, kind, command, args, env) {
   const result = { label, kind, status: "running", startedAt,
     logFile: relative(root, logPath).replaceAll("\\", "/"), durationMs: 0 };
   results.push(result);
-  saveReport("running");
+  await saveReport("running");
   try { await run(label, command, args, env, logPath); }
   catch (error) {
     status = "failed";
@@ -159,11 +171,11 @@ async function check(label, kind, command, args, env) {
   } finally {
     Object.assign(result, { status, durationMs: Math.round(performance.now() - started),
       ...(message ? { error: message } : {}) });
-    saveReport("running");
+    await saveReport("running");
   }
 }
 try {
-  saveReport("running");
+  await saveReport("running");
   for (const script of checks) await check(script, "source", "yarn", [script]);
   if (browserChecks.length) {
     const port = await freePort();
@@ -198,7 +210,7 @@ try {
   }
   const passed = results.filter(result => result.status === "passed").length;
   try {
-    const report = saveReport(process.exitCode ? "failed" : "passed");
+    const report = await saveReport(process.exitCode ? "failed" : "passed");
     const slowest = [...results].sort((a, b) => b.durationMs - a.durationMs).slice(0, 3)
       .map(result => `${result.label} ${(result.durationMs / 1000).toFixed(1)}s`).join(", ");
     console.log(`\nVerification: ${passed}/${results.length} checks passed in ${(report.durationMs / 1000).toFixed(1)}s.`);

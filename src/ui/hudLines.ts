@@ -1,4 +1,5 @@
 import { BOMB_PRICE, KEEPER_FLOOR } from "../game/world";
+import { stolenLootLabel } from "../game/thief/loot";
 
 /**
  * What the readout says, in what order, in one voice.
@@ -91,6 +92,7 @@ export interface HudFacts {
   heatSays: string;
   heatBand: number;
   reaper: boolean;
+  reaperHere: boolean;
   wardenAwake: boolean;
   wardenSays: string;
   wardenTone: HudLine["tone"];
@@ -99,7 +101,7 @@ export interface HudFacts {
   warded: boolean;
   keeper: "holds" | "kneels" | null;
   keeperUp: number;
-  harrier: "roosts" | "hunting" | "away" | "down" | null;
+  harrier: "roosts" | "hunting" | "away" | "down" | "elsewhere" | null;
   harrierUp: number;
   lanternLit: boolean;
   /**
@@ -116,6 +118,7 @@ export interface HudFacts {
   oil: number;
   barSeconds: number;
   nestGems: number;
+  nestKey: boolean;
   relics: readonly string[];
   /**
    * What the delver has written in the Ledger, and it is the only fact
@@ -155,13 +158,15 @@ const oilWord = (oil: number): string =>
  * Pure, so the checks can read the order without a browser and without
  * the HUD having been drawn.
  */
-export function hudLines(f: HudFacts): HudLine[] {
+export function hudLines(f: HudFacts, compact = false): HudLine[] {
   const out: HudLine[] = [];
   const add = (line: HudLine) => out.push(line);
 
   // Rank 0: something is taking a life.
   if (f.reaper) {
-    add({ id: "reaper", label: "IT IS HERE", body: "the exit, now", rank: 0, tone: "danger", mark: "!!!!" });
+    add(f.reaperHere
+      ? { id: "reaper", label: "IT IS HERE", body: "the exit, now", rank: 0, tone: "danger", mark: "!!!!" }
+      : { id: "reaper", label: "REAPER", body: "elsewhere on this floor · reach the stairs", rank: 1, tone: "gold" });
   }
   if (f.keeper) {
     add({
@@ -226,13 +231,15 @@ export function hudLines(f: HudFacts): HudLine[] {
   if (f.harrier && f.harrier !== "hunting") {
     add({
       id: "harrier",
-      label: "ABOVE",
+      label: f.harrier === "elsewhere" ? "HARRIER" : "ABOVE",
       body:
         f.harrier === "roosts"
           ? `a harrier roosts here${DOT}quietly`
-          : f.harrier === "away"
-            ? "the harrier wheels away"
-            : `the harrier is down${DOT}spikes would end it`,
+          : f.harrier === "elsewhere"
+            ? "elsewhere · listen for wings"
+            : f.harrier === "away"
+              ? "the harrier wheels away"
+              : `the harrier is down${DOT}spikes would end it`,
       rank: f.harrier === "roosts" ? 4 : 1,
       tone: "gold",
     });
@@ -300,8 +307,8 @@ export function hudLines(f: HudFacts): HudLine[] {
     const veins = f.learned.includes("gemvein") ? `${DOT}veins from ${f.veinBand} down` : "";
     add({ id: "bargain", label: "DARK", body: f.lanternBuys + veins, rank: 4, tone: "accent" });
   }
-  if (f.nestGems > 0) {
-    add({ id: "stolen", label: "STOLEN", body: `${f.nestGems}${DOT}in its nest, on the map`, rank: 3, tone: "accent" });
+  if (f.nestGems > 0 || f.nestKey) {
+    add({ id: "stolen", label: "STOLEN", body: `${stolenLootLabel(f.nestGems, f.nestKey)}${DOT}in its nest, on the map`, rank: 3, tone: "accent" });
   }
 
   // Rank 4: where you are.
@@ -358,8 +365,10 @@ export function hudLines(f: HudFacts): HudLine[] {
   }
 
   // Stable within a rank: the order above, which is not a judgement.
+  // A compact card may scroll: health must be visible before its threat list.
+  const priority = (line: HudLine) => compact && line.id === "lives" ? -1 : line.rank;
   return out
     .map((line, at) => ({ line, at }))
-    .sort((a, b) => a.line.rank - b.line.rank || a.at - b.at)
+    .sort((a, b) => priority(a.line) - priority(b.line) || a.at - b.at)
     .map(({ line }) => line);
 }

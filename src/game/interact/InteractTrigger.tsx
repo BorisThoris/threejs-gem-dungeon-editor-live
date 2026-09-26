@@ -50,7 +50,7 @@ const publish = (text: string | null, enabled = true) => {
   if (text === lastText && (text === null || enabled === lastEnabled)) return;
   lastText = text;
   lastEnabled = enabled;
-  bus.emit("prompt", text === null ? null : { key: "E", text, enabled });
+  bus.emit("prompt", text === null ? null : { text, enabled });
 };
 
 /**

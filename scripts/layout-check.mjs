@@ -43,6 +43,7 @@ writeFileSync(
    export * from "${root}src/game/mobs/body";
    export * from "${root}src/game/heat/coefficient";
    export * from "${root}src/game/heat/pledge";
+   export { useRun, runClock } from "${root}src/game/state/run";
    export * from "${root}src/game/cycle/director";
    export * from "${root}src/game/cycle/menace";
    export * from "${root}src/game/cycle/state";
@@ -1505,6 +1506,82 @@ check("500 dungeons across every floor size: connected, legal, and a vault that 
   check("a promise nobody made is never kept", L.wasKept(null, empty) === false);
   check("and one that was made is settled on the floor's own record",
     L.wasKept(P[0].id, empty) === true && L.wasKept(P[0].id, { ...empty, raisedLantern: true, barredADoor: true, spentAnItem: true }) === false);
+}
+// The floor record follows successful actions, including through a slot press.
+{
+  const run = L.useRun;
+  const original = run.getState();
+  try {
+    let dungeon, tiled, bare;
+    for (let seed = 1; seed <= 50; seed++) {
+      dungeon = L.generateRunFloor(seed, 1);
+      tiled = dungeon.rooms.find(room => !L.snareSets(L.surfaceOf(room)));
+      bare = dungeon.rooms.find(room => L.snareSets(L.surfaceOf(room)));
+      if (tiled && bare) break;
+    }
+    check("the snare pledge fixture has both refused and usable ground", !!tiled && !!bare);
+    if (tiled && bare) for (const action of ["useItem", "placeDevice"]) {
+      for (const [room, allowed] of [[tiled, false], [bare, true]]) {
+        run.setState({ ...original, phase: "playing", dungeon, currentRoomId: room.id,
+          transitioning: false, satchel: ["snare"] }, true);
+        run.getState().takePledge("unspent");
+        run.getState()[action](0);
+        const after = run.getState();
+        check(`${action} ${allowed ? "placement breaks" : "refusal keeps"} the Unspent pledge`,
+          after.floorRecord.spentAnItem === allowed
+          && L.wasKept(after.pledge, after.floorRecord) === !allowed
+          && after.satchel.length === (allowed ? 0 : 1)
+          && after.placed.length === (allowed ? 1 : 0));
+      }
+    }
+    const use = id => {
+      run.setState({ satchel: [id] });
+      run.getState().useItem(0);
+    };
+    run.setState({ ...original, phase: "playing", transitioning: false }, true);
+    use("mire");
+    run.getState().openedContainer();
+    use("mire");
+    check("renewing an active Mire preserves work toward its cure", run.getState().mireOpened === 1);
+    run.getState().openedContainer();
+    use("swiftness");
+    check("Swiftness clears Mire and its old cure progress",
+      run.getState().effects.mire === 0 && run.getState().mireOpened === 0);
+    use("mire");
+    run.getState().openedContainer();
+    check("a new Mire does not inherit containers worked under an old one",
+      run.getState().effects.mire > 0 && run.getState().mireOpened === 1);
+    run.setState({ mireOpened: 2, effects: { ...run.getState().effects, mire: -1 } });
+    use("mire");
+    check("a Mire after natural expiry also starts a fresh cure", run.getState().mireOpened === 0);
+  } finally { run.setState(original, true); }
+}
+// Shared visibility deadlines must survive a shorter source of afterglow.
+{
+  const run = L.useRun, original = run.getState();
+  const actions = [
+    ["lowering", s => s.toggleLantern()],
+    ["raising", s => s.toggleLantern()],
+    ["snuffing", s => s.snuffLantern()],
+    ["room oil use", s => s.burnOilEntering(false)],
+    ["empty oil", s => s.burnOilEntering(false)],
+  ];
+  try {
+    for (const [label, action] of actions) for (const withMoth of [false, true]) {
+      run.setState({ ...original, phase: "playing", transitioning: false,
+        glim: label === "raising" ? 0 : L.GLIM_MAX,
+        oil: label === "empty oil" ? 0 : 60, glimUpAt: 0, litUntil: 0 }, true);
+      if (withMoth) {
+        run.getState().mothLands();
+        run.getState().mothLeaves();
+      }
+      const previous = run.getState().litUntil, before = L.runClock(run.getState());
+      action(run.getState());
+      const after = run.getState().litUntil;
+      check(`${label} ${withMoth ? "preserves the moth's longer" : "starts the lantern's"} afterglow`,
+        after >= previous && after >= before + L.LANTERN_SEEN_HOLD_S);
+    }
+  } finally { run.setState(original, true); }
 }
 // If this ever reads zero the shipped templates are not registered, and
 // every dungeon checked above is one the game would never build.
@@ -4502,6 +4579,7 @@ check("the shipped room templates reach the floors the game generates", authored
     patience: 9,
     patienceShort: true,
     reaper: false,
+    reaperHere: true,
     wardenAwake: true,
     wardenSays: "Hunting",
     wardenTone: "danger",
@@ -4520,6 +4598,7 @@ check("the shipped room templates reach the floors the game generates", authored
     relics: ["Warden's Lantern"],
   };
   const lines = L.hudLines(loud);
+  check("compact readouts put health before the scrollable threat list", L.hudLines(loud, true)[0].id === "lives");
 
   check("the readout has a line for every system that is saying something", lines.length >= 10, `${lines.length} lines`);
   check(
@@ -4553,6 +4632,13 @@ check("the shipped room templates reach the floors the game generates", authored
 
   // The Reaper is the one thing that cannot be outwalked, so it is first.
   const doomed = L.hudLines({ ...loud, reaper: true });
+  const distant = L.hudLines({ ...loud, reaper: true, reaperHere: false, harrier: "elsewhere" });
+  check("threats in other rooms do not claim immediate presence or outrank a local attacker",
+    ["reaper", "harrier"].every(id => {
+      const line = distant.find(line => line.id === id);
+      return line.body.includes("elsewhere") && line.rank > distant.find(line => line.id === "warden").rank
+        && !["IT IS HERE", "ABOVE"].includes(line.label);
+    }), distant.filter(line => ["reaper", "harrier"].includes(line.id)).map(line => line.body).join("; "));
   check(
     "and when the floor's own end is in the room, it is the first thing said",
     doomed[0].id === "reaper",

@@ -76,6 +76,9 @@ export function DinDriver() {
       bus.on("propBroken", ({ roomId }) => strike("propBroken", roomId)),
       bus.on("sluiceOpened", ({ roomId, x, z }) => strike("sluiceOpened", roomId, x, z)),
       bus.on("snareSprung", () => strike("snareSprung", null)),
+      bus.on("devicePlaced", ({ id, roomId, x, z }) => {
+        if (id === "rattle") strike("ironDropped", roomId, x, z);
+      }),
       bus.on("batsRoused", () => strike("batsRoused", null)),
       bus.on("croakersDove", ({ roomId }) => strike("splash", roomId)),
       bus.on("shardbacksChimed", ({ roomId, x, z }) => strike("shardbacksChimed", roomId, x, z)),
@@ -109,15 +112,15 @@ export function DinDriver() {
         din.hold("carried:key", "carriedKey", s.dungeon.rooms, s.currentRoomId, 1, 0, 0, bars);
       }),
       bus.on("vaultOpened", () => din.release("carried:key")),
-      bus.on("thiefTook", () => din.release("carried:key")),
+      bus.on("thiefTook", ({ key }) => { if (key) din.release("carried:key"); }),
       /**
        * Metal on stone. It is the loudest thing the player owns that
        * costs nothing to use, and it lands where the key lands rather
        * than where the player ends up - which is the entire point of it.
        */
-      bus.on("keyDropped", ({ roomId }) => {
+      bus.on("keyDropped", ({ roomId, x, z }) => {
         din.release("carried:key");
-        strike("keyDropped", roomId);
+        strike("keyDropped", roomId, x, z);
       }),
       bus.on("keySetOnPlate", () => din.release("carried:key")),
 

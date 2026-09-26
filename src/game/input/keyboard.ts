@@ -25,19 +25,23 @@
  * the list), and no action is called that.
  */
 
-import type { Action } from "./bindings";
+import { isGameplayKey, type Action } from "./bindings";
 import { keysFor } from "../state/settings";
+import { canControl, useRun } from "../state/run";
 
 const PRESS_TTL_MS = 1000;
 
 const held = new Set<string>();
 const pressed = new Map<string, number>();
 let installed = 0;
+let unsubscribeControl: (() => void) | undefined;
 
 function onKeyDown(event: KeyboardEvent) {
-  if (event.repeat) return;
+  if (!isGameplayKey(event)) return;
   held.add(event.code);
-  pressed.set(event.code, performance.now());
+  if (canControl(useRun.getState())) {
+    pressed.set(event.code, performance.now());
+  }
 }
 
 function onKeyUp(event: KeyboardEvent) {
@@ -53,12 +57,18 @@ function onBlur() {
 /** Attach the listeners. Safe to call from several components; refcounted. */
 export function installKeyboard(): () => void {
   if (installed++ === 0) {
+    // The TTL bridges slow gameplay frames, never a menu or room change.
+    // Clear synchronously on both sides of a control boundary so even a
+    // lock and unlock between rendered frames cannot replay an old press.
+    unsubscribeControl = useRun.subscribe(canControl, () => pressed.clear());
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
   }
   return () => {
     if (--installed === 0) {
+      unsubscribeControl?.();
+      unsubscribeControl = undefined;
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
@@ -94,17 +104,18 @@ export const keyboard = {
    * moment somebody may.
    *
    * An action may have several keys - W and Up are both forward - so
-   * `held` is any of them, and a press is consumed from the first that has
-   * one. Consuming exactly one matters: two keys bound to one action must
-   * not fire it twice if a player is somehow holding both.
+   * `held` is any of them. Consume all pending alternatives together:
+   * both Shift keys, or a key and its on-screen button, are one action
+   * when they arrive before the frame reads them. Leaving an alternative
+   * queued would fire it again on the next frame and undo a sprint toggle.
    */
   actionDown: (action: Action): boolean => keysFor(action).some((code) => held.has(code)),
   consumeAction: (action: Action): boolean => {
-    if (fresh(action) && pressed.delete(action)) return true;
+    let consumed = fresh(action) && pressed.delete(action);
     for (const code of keysFor(action)) {
-      if (fresh(code) && pressed.delete(code)) return true;
+      if (fresh(code) && pressed.delete(code)) consumed = true;
     }
-    return false;
+    return consumed;
   },
   peekAction: (action: Action): boolean =>
     fresh(action) || keysFor(action).some((code) => fresh(code)),
@@ -116,6 +127,6 @@ export const keyboard = {
    * stick, and that is `touch.ts`.
    */
   pressAction: (action: Action): void => {
-    pressed.set(action, performance.now());
+    if (canControl(useRun.getState())) pressed.set(action, performance.now());
   },
 };

@@ -3,14 +3,15 @@ import { Fragment, useCallback, useRef, useState, type CSSProperties } from "rea
 import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
 import { enterImmersive, useTouchControls } from "../game/input/device";
-import { keysLabel } from "../game/input/bindings";
+import { keysLabel, SLOT_ACTIONS } from "../game/input/bindings";
+import { SHOVE_COOLDOWN_S } from "../game/player/combat";
 import { useDeeds } from "../game/state/deeds";
 import { useLedger } from "../game/state/ledger";
 import { LEDGER_LESSONS } from "../game/ledger/lessons";
 import { useRecords } from "../game/state/records";
 import { useRun } from "../game/state/run";
 import { useSettings } from "../game/state/settings";
-import { FLOORS, tollForFloor } from "../game/world";
+import { BARRICADE_KITS, FLOORS, tollForFloor } from "../game/world";
 import { Options } from "./PauseMenu";
 import { FONT, body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { Keypad } from "./Keypad";
@@ -19,6 +20,11 @@ import { WORLD_STYLE } from "../game/rooms/style";
 
 const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
+
+// The rule stays the same when its button changes between keyboard and touch.
+const shoveHelp = `Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for ${SHOVE_COOLDOWN_S} seconds between shoves.`;
+const lanternHelp = "More light helps you see farther and makes you easier to spot. Each press lowers the light one band. From darkness, press again to raise it fully; raising takes time and oil. Entering rooms with light also spends oil. Buy oil at shops.";
+const barricadeHelp = `Block a doorway with one of ${BARRICADE_KITS} reusable kits per floor. The bar stays until you tear it down to recover the kit. It blocks you too and makes the Warden seek another route. Hammering is loud.`;
 
 /**
  * A thing to look at, rather than a thing to do.
@@ -66,6 +72,7 @@ export function MainMenu() {
   // The controls page describes whichever is in the player's hands.
   const touch = useTouchControls();
   const bindings = useSettings((s) => s.bindings);
+  const toggleSprint = useSettings((s) => s.toggleSprint);
   // A phone wants the whole screen and wants it sideways, and the tap that
   // starts the run is the gesture the browser needs to be asked on.
   const begin = (seed?: number) => {
@@ -172,7 +179,7 @@ export function MainMenu() {
           </>
         ) : (
           <>
-            <dl data-testid="controls-help" style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}>
+            <dl className="gd-control-help" data-testid="controls-help" style={{ ...body, textAlign: "left" }}>
               <dt style={{ color: colors.accent }}>Move</dt>
               <dd style={{ margin: 0 }}>Forward: {keysLabel(bindings.forward)}; backward: {keysLabel(bindings.back)}; left: {keysLabel(bindings.left)}; right: {keysLabel(bindings.right)}. Or the left stick.</dd>
               <dt style={{ color: colors.accent }}>Look</dt>
@@ -180,25 +187,21 @@ export function MainMenu() {
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>{keysLabel(bindings.interact)} at a door, counter or lectern, or A on a pad</dd>
               <dt style={{ color: colors.accent }}>Shove</dt>
-              <dd style={{ margin: 0 }}>Left click, {keysLabel(bindings.shove)}, or RT charges and shoves a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves.</dd>
+              <dd style={{ margin: 0 }}>Left click, {keysLabel(bindings.shove)}, or RT charges and shoves a close threat in front of you. {shoveHelp}</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
-              <dd style={{ margin: 0 }}>Slots 1–4: {[bindings.slot1, bindings.slot2, bindings.slot3, bindings.slot4].map(keysLabel).join("; ")}. Drink or read that slot, or use X, Y and the shoulders on a pad.</dd>
+              <dd style={{ margin: 0 }}>Slots 1–4: {SLOT_ACTIONS.map(action => keysLabel(bindings[action])).join("; ")}. Drink, read, or set down that slot's item, or use X, Y and the shoulders on a pad.</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
               <dd style={{ margin: 0 }}>
-                Hold {keysLabel(bindings.sprint)}, or L3. The Warden is slower than you are - but running is
+                {toggleSprint ? `Press ${keysLabel(bindings.sprint)} to run; press again to walk.` : `Hold ${keysLabel(bindings.sprint)} to run.`} On a pad, hold L3. The Warden is slower than you are - but running is
                 loud, and while it can hear you it walks straight for you.
               </dd>
               <dt style={{ color: colors.accent }}>Lantern</dt>
               <dd style={{ margin: 0 }}>
-                {keysLabel(bindings.lantern)}, or click the right stick. Up, you see the room and everything down
-                here sees you; down, you have a hand's worth of glow and nothing knows
-                where you are. It only burns oil while it is up, and braziers fill it.
+                {keysLabel(bindings.lantern)}, or click the right stick. {lanternHelp}
               </dd>
               <dt style={{ color: colors.accent }}>Bar a door</dt>
               <dd style={{ margin: 0 }}>
-                {keysLabel(bindings.bar)} at a doorway, or d-pad down. It goes off the Warden's map for
-                forty-five seconds and it walks round - and hammering it up is the
-                loudest thing you can do down here.
+                {keysLabel(bindings.bar)} at a doorway, or d-pad down. {barricadeHelp}
               </dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
@@ -231,25 +234,26 @@ function TouchHelp() {
     ["Look", "Drag on the other half."],
     ["Use", "USE at a door, counter, chest or lectern. It lights when something is in reach."],
     ["Satchel", "Tap a slot to drink, read, or set down what is in it."],
-    ["Shove", "SHOVE a close threat in front of you. Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for 2.4 seconds between shoves."],
+    ["Shove", `SHOVE a close threat in front of you. ${shoveHelp}`],
     [
       "Run",
       "Shove the stick past its rim, or tap RUN. It ends when you let the stick go. The Warden is slower than you are - but running is loud, and while it can hear you it walks straight for you.",
     ],
     [
       "Lantern",
-      "LAMP. Up, you see the room and everything down here sees you; down, you have a hand's worth of glow and nothing knows where you are. It only burns oil while it is up, and braziers fill it.",
+      `LAMP. ${lanternHelp}`,
     ],
     [
       "Bar a door",
-      "BAR at a doorway. It goes off the Warden's map for forty-five seconds and it walks round - and hammering it up is the loudest thing you can do down here.",
+      `BAR at a doorway. ${barricadeHelp}`,
     ],
     ["Pause", "The II by the map."],
   ];
   return (
     <dl
       data-testid="controls-touch"
-      style={{ ...body, textAlign: "left", display: "grid", gridTemplateColumns: "auto 1fr", gap: "4px 18px" }}
+      className="gd-control-help"
+      style={{ ...body, textAlign: "left" }}
     >
       {rows.map(([label, value]) => (
         <Fragment key={label}>

@@ -6,13 +6,26 @@ const port = process.argv[2] ?? process.env.PORT ?? "5198";
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+const captionFailures = [];
+async function checkCaptionPlacement(caption, label) {
+  const layout = await caption.evaluate(element => {
+    const a = element.getBoundingClientRect();
+    const overlaps = ["guidance", "hud", "minimap", "touch-pause", "touch-buttons", "touch-stick"].filter(id => {
+      const b = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+      return b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    });
+    return { overlaps, readable: element.clientHeight + 1 >= parseFloat(getComputedStyle(element).lineHeight) + 12 };
+  });
+  assert.deepEqual(layout.overlaps, [], `${label}: caption clears guidance and controls`);
+  assert.ok(layout.readable, `${label}: at least one complete caption line is visible`);
+}
 try {
   for (const [name, width, height, touch] of [["desktop", 1280, 800, false], ["phone", 844, 390, true], ["tablet", 1024, 768, true]]) {
     const context = await browser.newContext({ viewport: { width, height }, screen: { width, height }, hasTouch: touch, isMobile: touch });
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
-    await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ touchControls: "on" })));
+    await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ touchControls: "on", captions: true })));
     await page.goto(`http://127.0.0.1:${port}/`);
     await page.locator('[data-testid="menu-start"]').click();
     await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
@@ -32,9 +45,60 @@ try {
         return g && g.left >= 0 && g.right <= innerWidth && boxes.every((b) => g.left >= b.right || g.right <= b.left || g.top >= b.bottom || g.bottom <= b.top);
       });
       assert.ok(await page.locator('[data-testid="guidance"]').evaluate((g) => g.scrollWidth <= g.clientWidth), "guidance text wraps inside its panel");
+      const overlap = await page.getByTestId("guidance").evaluate(g => {
+        const a = g.getBoundingClientRect();
+        return [...document.querySelectorAll('[data-testid="touch-buttons"] button')].filter(button => {
+          const b = button.getBoundingClientRect();
+          return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        }).map(button => button.getAttribute("data-testid"));
+      });
+      if (overlap.length) await page.screenshot({ path: `output/verification/guidance-overlap-${name}.png` });
+      assert.deepEqual(overlap, [], `${name} scale ${scale}: guidance leaves touch actions readable`);
+      assert.ok(await page.getByTestId("hud-lives").evaluate(lives => {
+        const a = lives.getBoundingClientRect(), b = lives.closest('[data-testid="hud"]').getBoundingClientRect();
+        return a.top >= b.top && a.bottom <= b.bottom && a.bottom <= innerHeight;
+      }), `${name} scale ${scale}: lives remain visible without scrolling`);
+      const fit = await page.getByTestId("guidance").evaluate(g => {
+        const box = g.getBoundingClientRect(), style = getComputedStyle(g);
+        return { visible: box.top >= 0 && box.bottom <= innerHeight && box.left >= 0 && box.right <= innerWidth,
+          readable: g.clientHeight >= parseFloat(style.lineHeight) + 20,
+          overflowing: g.scrollHeight > g.clientHeight + 1, interactive: style.pointerEvents === "auto" };
+      });
+      assert.ok(fit.visible && fit.readable, `${name} scale ${scale}: guidance has readable space inside the viewport: ${JSON.stringify(fit)}`);
+      if (fit.overflowing) {
+        assert.ok(fit.interactive, "overflowing guidance can be scrolled");
+        await page.getByTestId("guidance").focus();
+        await page.keyboard.press("End");
+        await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').scrollTop > 0);
+        await page.getByTestId("guidance").evaluate(g => { g.scrollTop = 0; g.blur(); });
+      }
       assert.match(await page.getByTestId("hud-prepare").innerText(), /final stairs need a bomb/);
       console.log(`PASS ${name}: guidance clears HUD, minimap and pause at text scale ${scale}`);
-      if (scale === 1 && process.env.OVERLAY_SCREENSHOTS) await page.screenshot({ path: join(process.env.OVERLAY_SCREENSHOTS, `overlay-${name}.png`) });
+      await page.evaluate(() => window.__bus.emit("bellcapWarning", { roomId: window.__run.getState().currentRoomId, x: 0, z: 0 }));
+      const caption = page.getByText("The bellcaps swell toward your light. Lower the lantern or step away.", { exact: true });
+      await checkCaptionPlacement(caption, `${name} scale ${scale}`);
+      const fits = await caption.evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight
+          && element.scrollWidth <= element.clientWidth;
+      });
+      console.log(`${fits ? "PASS" : "FAIL"} ${name}: the complete environmental caption fits at text scale ${scale}`);
+      if (!fits) captionFailures.push(`${name} scale ${scale}`);
+      const lessonText = await page.evaluate(async () => {
+        const { LEDGER_LESSONS } = await import("/src/game/ledger/lessons.ts");
+        const longest = LEDGER_LESSONS.reduce((a, b) => a.entry.length > b.entry.length ? a : b);
+        window.__bus.emit("lessonLearned", { id: longest.id });
+        return longest.entry;
+      });
+      const lessonFits = await page.getByText(lessonText, { exact: true }).evaluate(element => {
+        const box = element.getBoundingClientRect();
+        return box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight
+          && element.scrollWidth <= element.clientWidth;
+      });
+      await checkCaptionPlacement(page.getByText(lessonText, { exact: true }), `${name} Ledger scale ${scale}`);
+      console.log(`${lessonFits ? "PASS" : "FAIL"} ${name}: the longest Ledger caption fits at text scale ${scale}`);
+      if (!lessonFits) captionFailures.push(`${name} Ledger scale ${scale}`);
+      if (process.env.OVERLAY_SCREENSHOTS) await page.screenshot({ path: join(process.env.OVERLAY_SCREENSHOTS, `overlay-${name}${scale === 1 ? "" : "-large"}.png`) });
     }
     await page.setViewportSize({ width: width - 120, height });
     await page.waitForFunction(() => {
@@ -55,6 +119,28 @@ try {
     assert.match(reaperHelp, /Shoves cannot stop it/);
     assert.match(reaperHelp, /keep moving while its fuse burns/);
     console.log(`PASS ${name}: Reaper warning explains running, shove immunity and moving during a bomb fuse`);
+    if (touch) {
+      for (const side of ["right", "left"]) {
+        await page.evaluate(async side => (await import("/src/game/state/settings.ts")).useSettings.getState().setStickSide(side), side);
+        await page.waitForFunction(() => {
+          const g = document.querySelector('[data-testid="guidance"]').getBoundingClientRect();
+          return g.top >= 0 && g.bottom <= innerHeight && ["hud", "minimap", "touch-pause", "touch-buttons", "touch-stick"].every(id => {
+            const b = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+            return !b || g.left >= b.right || g.right <= b.left || g.top >= b.bottom || g.bottom <= b.top;
+          });
+        });
+      }
+      await page.getByTestId("guidance").evaluate(g => { g.scrollTop = g.scrollHeight; });
+      await page.evaluate(() => window.__bus.emit("notice", "The Harrier draws back. Dodge or shove."));
+      await page.waitForFunction(() => {
+        const g = document.querySelector('[data-testid="guidance"]');
+        return g.textContent.includes("The Harrier draws back") && g.scrollTop === 0;
+      });
+      await page.getByTestId("hud").evaluate(g => { g.scrollTop = g.scrollHeight; });
+      await page.evaluate(() => window.__run.setState({ lives: 1 }));
+      await page.waitForFunction(() => document.querySelector('[data-testid="hud"]').scrollTop === 0);
+      console.log(`PASS ${name}: both thumb layouts remain clear; new warnings and life changes return to view`);
+    }
     if (name === "desktop") {
       await page.evaluate(async () => {
         const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
@@ -104,4 +190,5 @@ try {
     assert.deepEqual(errors, [], "layout has no runtime errors");
     await context.close();
   }
+  assert.deepEqual(captionFailures, [], "caption warnings stay inside the viewport");
 } finally { await browser.close(); }

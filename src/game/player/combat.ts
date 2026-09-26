@@ -15,6 +15,15 @@ export const HARRIER_WINDUP_S = 0.7;
 /** The warning must begin where the suggested shove can already reach. */
 export const HARRIER_WINDUP_REACH = SHOVE_REACH - 0.25;
 
+/** HUD and touch controls describe the same run-clock charge and recovery. */
+export function shoveStatusAt(state: { shoveReadyAt: number; shoveChargingAt: number | null }, now: number) {
+  const remaining = Math.max(0, Math.ceil((state.shoveReadyAt - now) * 10) / 10);
+  const charge = state.shoveChargingAt === null ? null
+    : Math.max(0, Math.min(100, Math.round((now - state.shoveChargingAt) / SHOVE_CHARGE_S * 100)));
+  const progress = charge ?? Math.max(0, Math.min(100, (1 - remaining / SHOVE_COOLDOWN_S) * 100));
+  return { remaining, charge, progress };
+}
+
 /** A forward 100-degree arc. Looking away is a miss, even at close range. */
 export function inShoveArc(x: number, z: number, fx: number, fz: number): boolean {
   const distance = Math.hypot(x, z);

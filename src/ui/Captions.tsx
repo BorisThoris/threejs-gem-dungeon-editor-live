@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { bus } from "../game/events";
 import { ledgerLessonBy } from "../game/ledger/lessons";
 import { knows } from "../game/state/ledger";
+import { stolenLootLabel } from "../game/thief/loot";
 import { useRun } from "../game/state/run";
+import { afterRunSeconds } from "../game/state/runTimer";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
+import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow";
 
 /**
  * What the game just said out loud, in words.
@@ -18,8 +21,8 @@ import { FONT, colors, text } from "./overlay";
  * a dungeon, but the ones a player is meant to act on.
  *
  * Off by default, because a hearing player does not need them and a line
- * of text is a thing on the screen. On, they sit under the middle, the
- * place a subtitle goes, and never take the pointer.
+ * of text is a thing on the screen. Readouts reserves space beside guidance;
+ * a caption only takes the pointer when its full text needs scrolling.
  */
 const HOLD_MS = 2600;
 
@@ -29,19 +32,26 @@ type Line = { text: string; key: number };
 export function Captions() {
   const on = useSettings((s) => s.captions);
   const [line, setLine] = useState<Line | null>(null);
+  const panel = usePanelOverflow(line?.key);
+  const captionElement = panel.element;
+  const expired = useRef(false);
 
   useEffect(() => {
     if (!on) {
       setLine(null);
       return;
     }
-    let timer = 0;
+    let cancel: (() => void) | undefined;
     let n = 0;
     const say = (text: string) => {
       n += 1;
+      expired.current = false;
       setLine({ text, key: n });
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => setLine(null), HOLD_MS);
+      cancel?.();
+      cancel = afterRunSeconds(HOLD_MS / 1000, () => {
+        expired.current = true;
+        if (document.activeElement !== captionElement.current) setLine(null);
+      });
     };
     /**
      * Which side something is on, in words.
@@ -52,6 +62,10 @@ export function Captions() {
      */
     const side = (pan: number) => (pan < -0.2 ? " (left)" : pan > 0.2 ? " (right)" : "");
     const offs = [
+      bus.on("runStarted", () => {
+        cancel?.();
+        setLine(null);
+      }),
       bus.on("sluiceOpened", () => say("Iron teeth turn. Water rushes down the channel.")),
       bus.on("bellcapWarning", () => say("The bellcaps swell toward your light. Lower the lantern or step away.")),
       bus.on("bellcapBurst", () => say("The bellcaps pop. Spores hiss across the channel.")),
@@ -164,9 +178,13 @@ export function Captions() {
       bus.on("wardenLured", () => say("A clatter, far off")),
       bus.on("sentrySaw", ({ pan }) => say(`A watcher calls out${side(pan)}`)),
       bus.on("thiefCame", () => say("Something small skitters in")),
-      bus.on("thiefTook", () => say("It snatches a gem")),
-      bus.on("thiefFled", () => say("It is away with it")),
-      bus.on("thiefCaught", () => say("It drops what it had")),
+      bus.on("thiefTook", ({ gems, key }) => say(`The Cutpurse snatches ${stolenLootLabel(gems, key)}.`)),
+      bus.on("thiefFled", ({ gems, key }) => say(`The Cutpurse escapes; ${stolenLootLabel(gems, key)} in its nest.`)),
+      bus.on("thiefCaught", ({ gems, key }) => {
+        const loot = stolenLootLabel(gems, key);
+        say(loot ? `Cutpurse caught; ${loot} recovered.` : "Cutpurse driven off.");
+      }),
+      bus.on("nestEmptied", ({ gems, key }) => say(`Nest emptied; ${stolenLootLabel(gems, key)} recovered.`)),
       bus.on("doorBarred", () => say("Hammering - loud")),
       bus.on("barBroken", ({ byWarden }) =>
         say(byWarden ? "The bar splinters" : "You lift the bar")
@@ -179,18 +197,27 @@ export function Captions() {
     ];
     return () => {
       offs.forEach((off) => off());
-      window.clearTimeout(timer);
+      cancel?.();
     };
-  }, [on]);
+  }, [on, captionElement]);
 
   if (!on || !line) return null;
   return (
     <div
+      ref={panel.ref}
+      data-testid="caption"
+      role="status"
+      aria-atomic="true"
+      tabIndex={panel.overflow ? 0 : undefined}
+      onKeyDown={readoutKeys}
+      onMouseDown={readoutMouse}
+      onPointerDown={event => { if (panel.overflow) event.currentTarget.focus({ preventScroll: true }); }}
+      onBlur={() => { if (expired.current) setLine(null); }}
       style={{
-        position: "fixed",
-        left: "50%",
-        bottom: "22%",
-        transform: "translateX(-50%)",
+        flex: "0 1 auto",
+        minHeight: `calc(${text.body} * 1.45 + 14px)`,
+        overflowY: "auto",
+        boxSizing: "border-box",
         padding: "6px 14px",
         borderRadius: 4,
         background: "rgba(5, 6, 8, 0.78)",
@@ -198,9 +225,10 @@ export function Captions() {
         fontFamily: FONT,
         fontSize: text.body,
         color: colors.ink,
-        whiteSpace: "nowrap",
-        pointerEvents: "none",
-        zIndex: 940,
+        lineHeight: 1.45,
+        textAlign: "center",
+        overflowWrap: "anywhere",
+        pointerEvents: panel.overflow ? "auto" : "none",
       }}
     >
       {line.text}

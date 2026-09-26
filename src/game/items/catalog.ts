@@ -1,4 +1,5 @@
 import { createRng, shuffle } from "../rng";
+import { afflictionBlurb } from "./afflictions";
 
 /**
  * What a dungeon holds besides gems.
@@ -17,7 +18,7 @@ import { createRng, shuffle } from "../rng";
  * once the floor's own furniture could stop it, the obvious next thing to
  * ask was whether the player could bring some.
  *
- * Every item is one use. None of them is strictly a trap - the worst of
+ * Most items are one use; loose iron can be recovered. None is strictly a trap - the worst of
  * them rouse the floor, which is survivable and sometimes even worth it if
  * you were leaving anyway.
  */
@@ -89,7 +90,7 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "healing",
     family: "potion",
     name: "Potion of Healing",
-    blurb: "Restores a life.",
+    blurb: "Restores life.",
     cruel: false,
   },
   swiftness: {
@@ -103,14 +104,14 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "dread",
     family: "potion",
     name: "Potion of Dread",
-    blurb: "The floor wakes. The Warden knows where you are.",
+    blurb: afflictionBlurb("dread"),
     cruel: true,
   },
   mire: {
     id: "mire",
     family: "potion",
     name: "Potion of Mire",
-    blurb: "Your legs go heavy for a while.",
+    blurb: afflictionBlurb("mire"),
     cruel: true,
   },
   mapping: {
@@ -131,14 +132,14 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "avarice",
     family: "scroll",
     name: "Scroll of Avarice",
-    blurb: "Two gems, and the floor notices.",
+    blurb: "Gems, and the floor notices.",
     cruel: false,
   },
   gloom: {
     id: "gloom",
     family: "scroll",
     name: "Scroll of Gloom",
-    blurb: "Your map goes dark for a while.",
+    blurb: afflictionBlurb("gloom"),
     cruel: true,
   },
   echoes: {
@@ -159,7 +160,7 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "rattle",
     family: "device",
     name: "Knot of Loose Iron",
-    blurb: "It goes down loudly. The floor wakes, and the Warden knows where you are.",
+    blurb: afflictionBlurb("rattle"),
     cruel: true,
   },
   wardstone: {

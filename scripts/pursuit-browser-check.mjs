@@ -90,6 +90,10 @@ try {
   await page.waitForTimeout(2800);
   const paused = await page.evaluate(() => { const s = window.__run.getState(); return [s.wardenRoomId, s.reaperRoomId, s.harrierRoomId, s.thiefRoomId]; });
   assert.deepEqual(paused, Array(4).fill(first.a), "pause preserves the delay");
+  assert.match(await page.getByTestId("hud-harrier").innerText(), /elsewhere/i,
+    "a Harrier left in the previous room is not reported overhead");
+  assert.match(await page.getByTestId("hud-reaper").innerText(), /elsewhere/i,
+    "a Reaper left in the previous room is not reported here");
   await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => { const s = window.__run.getState(); return [s.wardenRoomId, s.reaperRoomId, s.harrierRoomId, s.thiefRoomId].every(r => r === s.currentRoomId); }, null, { timeout: 30000 })
     .catch(async error => {
@@ -100,6 +104,8 @@ try {
     });
   const entries = await page.evaluate(() => { const s = window.__run.getState(); s.pause(); return [s.wardenCameFrom, s.reaperCameFrom, s.harrierCameFrom, s.thiefCameFrom]; });
   assert.deepEqual(entries, Array(4).fill(first.a), "all pursuers enter through the source room doorway");
+  await page.waitForFunction(() => document.querySelector('[data-testid="hud-reaper"]')?.textContent.includes("IT IS HERE")
+    && document.querySelector('[data-testid="hud-harrier"]')?.textContent.includes("face it and shove"));
   const second = await depart();
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   const escaped = await page.evaluate(source => {
@@ -115,6 +121,9 @@ try {
   assert.equal(after.reaper, second.a, "Reaper stays behind when trail breaks");
   assert.equal(after.harrier, second.a, "Harrier stays behind when trail breaks");
   assert.equal(after.thief, "away", "Cutpurse abandons a broken trail");
+  assert.match(await page.getByTestId("hud-harrier").innerText(), /elsewhere/i);
+  assert.match(await page.getByTestId("hud-reaper").innerText(), /elsewhere/i);
+  console.log("PASS threat guidance distinguishes delayed arrivals and broken trails from attackers in this room");
   assert.deepEqual(errors, []);
   console.log(`PASS ${unit} pursuit/awareness/cover checks; live delayed arrivals, pause, doorway identity and room skipping`);
 } finally { await browser.close(); }

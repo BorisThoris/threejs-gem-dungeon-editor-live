@@ -79,11 +79,14 @@ export function Player() {
    * Whether a toggled sprint is currently on.
    *
    * A ref rather than state: it changes on a keypress and is read in the
-   * frame loop, and nothing renders differently for it. Not reset when the
-   * setting changes - a player who switches to toggle mid-run finds the
-   * sprint off, which is where it starts.
+   * frame loop, and nothing renders differently for it. Changing the input
+   * mode forgets the old toggle, so switching back cannot silently restart
+   * a noisy sprint. Reset synchronously with settings, before another frame.
    */
   const sprinting = useRef(false);
+  useEffect(() => useSettings.subscribe((settings, previous) => {
+    if (settings.toggleSprint !== previous.toggleSprint) sprinting.current = false;
+  }), []);
 
   const scratch = useMemo(
     () => ({

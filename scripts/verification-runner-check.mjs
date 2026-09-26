@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = mkdtempSync(join(tmpdir(), "gem-verification-"));
@@ -64,6 +64,36 @@ try {
   assert.equal(failed.checks[0].status, "passed");
   assert.equal(failed.checks[1].status, "failed");
   assert.match(failed.checks[1].error, /exited 7/);
+  // Windows scanners/readers can briefly deny atomic replacement of a
+  // report. Exercise the real runner with that filesystem failure injected.
+  writeFileSync(join(scripts, "water-sound-check.mjs"), probe);
+  const lockedRename = join(fixture, "locked-rename.mjs");
+  writeFileSync(lockedRename, `import fs from "node:fs";
+    import { syncBuiltinESMExports } from "node:module";
+    const rename = fs.renameSync;
+    let attempts = 0;
+    fs.renameSync = (from, to) => {
+      if (to.endsWith("focused.json") && (process.env.REPORT_ALWAYS_LOCKED || attempts++ % 3 < 2)) {
+        throw Object.assign(new Error("simulated Windows report lock"), { code: "EPERM" });
+      }
+      return rename(from, to);
+    };
+    syncBuiltinESMExports();`);
+  const underLock = always => spawnSync(process.execPath,
+    [join(scripts, "verify.mjs"), "--only=test:handbuilt", "--only=test:water-sound"],
+    { encoding: "utf8", timeout: 15000, env: { ...process.env,
+      NODE_OPTIONS: `--import=${pathToFileURL(lockedRename).href}`,
+      REPORT_ALWAYS_LOCKED: always ? "1" : "" } });
+  const recovered = underLock(false);
+  assert.equal(recovered.status, 0, recovered.stdout + recovered.stderr);
+  const recoveredReport = readFileSync(reportPath, "utf8");
+  assert.equal(JSON.parse(recoveredReport).status, "passed");
+  const locked = underLock(true);
+  assert.notEqual(locked.status, 0);
+  assert.equal(locked.error, undefined, "a persistent lock must fail within the retry bound");
+  assert.match(locked.stderr, /simulated Windows report lock/);
+  assert.equal(readFileSync(reportPath, "utf8"), recoveredReport,
+    "a persistent lock leaves the last complete report intact");
   console.log("PASS verification runner: inventory, listing, live progress, durable logs and terminal success/failure reports");
 } finally {
   // fixture is the exact fresh directory returned by mkdtempSync above.

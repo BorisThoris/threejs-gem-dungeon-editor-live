@@ -3,7 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import { SNARE_RADIUS } from "../items/catalog";
-import { runClock, useRun, wardNow, type PlacedDevice } from "../state/run";
+import { InteractTrigger } from "../interact/InteractTrigger";
+import { runClock, satchelSlots, useRun, wardNow, type PlacedDevice } from "../state/run";
 import { GROUND_Y } from "../world";
 import { floorRiseAt } from "../worldbuilding/elevation";
 
@@ -12,8 +13,8 @@ import { floorRiseAt } from "../worldbuilding/elevation";
  *
  * Drawn small and low: a device is a mark on the floor rather than
  * furniture, and it has to be readable from across the room without being
- * mistaken for something to pick up. A sprung snare stays as wreckage, so
- * a player can see that the room's one answer has already been spent.
+ * mistaken for furniture. A sprung snare stays as wreckage; the loose iron
+ * keeps a pickup prompt because it can be used again.
  */
 export function PlacedDevices({ roomId }: { roomId: string }) {
   const room = useRun(s => s.dungeon?.rooms.find(r => r.id === roomId));
@@ -108,10 +109,18 @@ function WardStone({ device }: { device: PlacedDevice }) {
   );
 }
 
-/** The knot of iron, lying where it landed and doing nothing further. */
+/** Its clatter is over; the iron can be collected and used elsewhere. */
 function IronKnot({ device }: { device: PlacedDevice }) {
+  const hasSpace = useRun((s) => s.satchel.length < satchelSlots(s));
   return (
     <group position={[device.x, GROUND_Y, device.z]}>
+      <InteractTrigger
+        position={[0, 0.08, 0]}
+        label="Pick up the loose iron"
+        enabled={hasSpace}
+        blockedReason="Your satchel is full. Use something first."
+        onInteract={() => useRun.getState().recoverIron(device.key)}
+      />
       {[
         [0, 0.06, 0],
         [0.12, 0.05, 0.08],

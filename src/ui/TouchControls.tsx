@@ -12,7 +12,8 @@ import {
   setTouchStick,
   subscribeTouchSprint,
 } from "../game/input/touch";
-import { canControl, useRun } from "../game/state/run";
+import { canControl, runClock, useRun } from "../game/state/run";
+import { shoveStatusAt } from "../game/player/combat";
 import { useSettings } from "../game/state/settings";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, text } from "./overlay";
 
@@ -309,8 +310,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
       onPress={() => keyboard.pressAction("bar")}
     />
   );
-  const shove = <TouchButton key="shove" testId="touch-shove" label="SHOVE" size={size.button}
-    onPress={() => keyboard.pressAction("shove")} />;
+  const shove = <ShoveButton key="shove" size={size.big} />;
 
   const inset = `calc(${size.margin}px + env(safe-area-inset-${side}, 0px))`;
   const gap = Math.round(size.margin * 0.7);
@@ -324,7 +324,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
         display: "grid",
         gridTemplateColumns:
           side === "right" ? `${size.button}px ${size.button}px ${size.big}px` : `${size.big}px ${size.button}px ${size.button}px`,
-        gridTemplateRows: `${size.button}px ${size.big}px`,
+        gridTemplateRows: `${size.big}px ${size.big}px`,
         gap,
         alignItems: "end",
         justifyItems: side === "right" ? "end" : "start",
@@ -337,6 +337,21 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
       {side === "right" ? [bar, lantern, shove, <span key="gap" />, run, use] : [shove, lantern, bar, use, run, <span key="gap" />]}
     </div>
   );
+}
+
+function ShoveButton({ size }: { size: number }) {
+  const [, refresh] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => refresh(value => value + 1), 50);
+    return () => window.clearInterval(timer);
+  }, []);
+  const run = useRun.getState();
+  const { charge, remaining } = shoveStatusAt(run, runClock(run));
+  const unavailable = !canControl(run) || charge !== null || remaining > 0;
+  return <TouchButton testId="touch-shove" label="SHOVE" size={size}
+    detail={charge !== null ? "WINDUP" : remaining ? `WAIT ${remaining.toFixed(1)}s` : "READY"}
+    unavailable={unavailable} on={charge !== null} lit={!unavailable}
+    onPress={() => keyboard.pressAction("shove")} />;
 }
 
 /**
@@ -376,6 +391,8 @@ function TouchButton({
   testId,
   on = false,
   lit = false,
+  detail,
+  unavailable = false,
 }: {
   label: string;
   size: number;
@@ -385,6 +402,8 @@ function TouchButton({
   on?: boolean;
   /** Pressing it now would do something: USE with a thing in reach. */
   lit?: boolean;
+  detail?: string;
+  unavailable?: boolean;
 }) {
   const border = on ? colors.gold : lit ? colors.accent : colors.line;
   const style: CSSProperties = {
@@ -394,18 +413,20 @@ function TouchButton({
     borderRadius: "50%",
     border: `2px solid ${border}`,
     background: on ? "rgba(255, 212, 121, 0.24)" : lit ? "rgba(127, 227, 255, 0.22)" : "rgba(10, 12, 18, 0.55)",
-    color: on ? colors.gold : lit ? colors.accent : colors.ink,
+    color: on ? colors.gold : lit ? colors.accent : unavailable ? colors.dim : colors.ink,
     fontFamily: FONT,
     fontSize: text.small,
     letterSpacing: "0.04em",
     display: "flex",
+    flexDirection: "column",
+    gap: detail ? 5 : 0,
     alignItems: "center",
     justifyContent: "center",
     touchAction: "none",
     userSelect: "none",
     WebkitUserSelect: "none",
     WebkitTouchCallout: "none",
-    cursor: "pointer",
+    cursor: unavailable ? "default" : "pointer",
     transition: "border-color 120ms, background 120ms",
   };
   return (
@@ -415,18 +436,20 @@ function TouchButton({
       data-testid={testId}
       data-on={on ? "yes" : "no"}
       data-lit={lit ? "yes" : "no"}
-      aria-label={label}
+      aria-label={detail ? `${label} · ${detail}` : label}
+      aria-disabled={unavailable || undefined}
       style={style}
       // The press, not the release: a thumb on USE at a door wants the
       // door now, and a press that waits for the lift feels like lag.
       onPointerDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        onPress();
+        if (!unavailable) onPress();
       }}
       onContextMenu={(e) => e.preventDefault()}
     >
       {label}
+      {detail && <span style={{ fontSize: "0.65em", whiteSpace: "nowrap" }}>{detail}</span>}
     </button>
   );
 }

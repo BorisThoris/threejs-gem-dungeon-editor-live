@@ -60,12 +60,14 @@ try {
     const gameplayFile = `${stem}.jpg`, sceneFile = `${stem}-scene.jpg`;
     const litGameplayFile = `${stem}-lit.jpg`, litSceneFile = `${stem}-lit-scene.jpg`;
     const canvas = page.locator("canvas").first();
+    // Pausing also freezes arrival cards and earned deeds. Review the room
+    // with its persistent HUD, without resuming enemies to expire those cards.
+    const reviewStyle = '[data-testid="pause-menu"], [data-testid^="moment-"], [data-testid="deed-toast"] { visibility: hidden !important; }';
     const gameplayImage = await canvas.screenshot({ type: "jpeg", quality: 86,
-      style: '[data-testid="pause-menu"] { visibility: hidden !important; }' });
+      style: reviewStyle });
     const sceneImage = await canvas.screenshot({ type: "jpeg", quality: 86,
-      style: `[data-testid="pause-menu"], [data-testid="hud"], [data-testid="minimap"], [data-testid="guidance"],
-        [data-testid="prompt"], [data-testid="scenario-badge"], [data-testid="deed-toast"],
-        [data-testid^="moment-"] { visibility: hidden !important; }` });
+      style: `${reviewStyle} [data-testid="hud"], [data-testid="minimap"], [data-testid="guidance"],
+        [data-testid="prompt"], [data-testid="scenario-badge"] { visibility: hidden !important; }` });
     const sceneHash = createHash("sha256").update(sceneImage).digest("hex");
     assert.ok(sceneImage.length > 10000 && !sceneHashes.has(sceneHash),
       `${test.kind}/${test.shape} produced a blank or duplicate scene capture`);
@@ -79,22 +81,24 @@ try {
     assert.equal(await page.evaluate(() => window.__run.getState().lives), livesBeforeLight,
       `${test.kind}/${test.shape} light comparison keeps the player out of combat damage`);
     const litGameplayImage = await canvas.screenshot({ type: "jpeg", quality: 86,
-      style: '[data-testid="pause-menu"] { visibility: hidden !important; }' });
+      style: reviewStyle });
     const litSceneImage = await canvas.screenshot({ type: "jpeg", quality: 86,
-      style: `[data-testid="pause-menu"], [data-testid="hud"], [data-testid="minimap"], [data-testid="guidance"],
-        [data-testid="prompt"], [data-testid="scenario-badge"], [data-testid="deed-toast"],
-        [data-testid^="moment-"] { visibility: hidden !important; }` });
+      style: `${reviewStyle} [data-testid="hud"], [data-testid="minimap"], [data-testid="guidance"],
+        [data-testid="prompt"], [data-testid="scenario-badge"] { visibility: hidden !important; }` });
     const litHash = createHash("sha256").update(litSceneImage).digest("hex");
     assert.ok(litSceneImage.length > 10000 && litHash !== sceneHash,
       `${test.kind}/${test.shape} has a distinct raised-lantern view`);
     const exposure = await sceneExposure(page, sceneImage, litSceneImage);
     assert.ok(exposure.lit >= 20 && exposure.lit - exposure.dark >= 3,
       `${test.kind}/${test.shape} needs a visible raised-lantern scene: ${JSON.stringify(exposure)}`);
+    const gameplayExposure = await sceneExposure(page, gameplayImage, litGameplayImage);
+    assert.ok(gameplayExposure.lit >= exposure.lit * 0.6,
+      `${test.kind}/${test.shape} gameplay capture obscures the room: ${JSON.stringify({ scene: exposure, gameplay: gameplayExposure })}`);
     await writeFile(join(output, gameplayFile), gameplayImage);
     await writeFile(join(output, sceneFile), sceneImage);
     await writeFile(join(output, litGameplayFile), litGameplayImage);
     await writeFile(join(output, litSceneFile), litSceneImage);
-    rows.push({ ...test, gameplayFile, sceneFile, sceneSha256: sceneHash, exposure,
+    rows.push({ ...test, gameplayFile, sceneFile, sceneSha256: sceneHash, exposure, gameplayExposure,
       litGameplayFile, litSceneFile, litSceneSha256: litHash, url, playablePath });
     console.log(`${String(index + 1).padStart(2, "0")}/${cases.length} ${test.kind}/${test.shape} · seed ${test.seed} floor ${test.floor} ${test.roomId} · scene ${exposure.dark.toFixed(1)} → ${exposure.lit.toFixed(1)}`);
   }

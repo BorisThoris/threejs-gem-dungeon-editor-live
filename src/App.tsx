@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 
 import { bus } from "./game/events";
 import { installKeyboard, keyboard } from "./game/input/keyboard";
+import { isGameplayKey, SLOT_ACTIONS } from "./game/input/bindings";
 // Registers the shipped room templates for their side effect, and it has
 // to be somebody's import: `templates.ts` is the registry and must not
 // reach for content, so the entry point is what runs the registration.
@@ -18,7 +19,7 @@ import { canControl, useRun } from "./game/state/run";
 import { useRecords } from "./game/state/records";
 import { useSettings } from "./game/state/settings";
 import { Audio } from "./game/systems/GameAudio";
-import { Hint } from "./ui/Hint";
+import { Readouts } from "./ui/Readouts";
 import { Hud } from "./ui/Hud";
 import { MainMenu } from "./ui/MainMenu";
 import { Minimap } from "./ui/Minimap";
@@ -27,7 +28,6 @@ import { Prompt } from "./ui/Prompt";
 import { PuzzleOverlay } from "./ui/PuzzleOverlay";
 import { RunSummary } from "./ui/RunSummary";
 import { useMixerSettings } from "./game/systems/mixer";
-import { Captions } from "./ui/Captions";
 import { UI_SCALE_VAR } from "./ui/overlay";
 import { DeedToast } from "./ui/Deed";
 import { ItemLog, Satchel } from "./ui/Satchel";
@@ -43,16 +43,27 @@ import { Moments } from "./ui/Moments";
 function usePauseKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.code !== "Escape" || event.repeat) return;
+      if (event.code !== "Escape" || event.repeat || event.defaultPrevented) return;
       const run = useRun.getState();
-      if (run.phase !== "playing" || run.inputLocks > 0) return;
+      if (run.phase !== "playing" || (!run.paused && run.inputLocks > 0)) return;
       // The Esc that released the pointer already paused; do not undo it.
       if (run.paused && performance.now() - lockLossPause.at < 400) return;
+      event.preventDefault();
       if (run.paused) run.resume();
       else run.pause();
     };
+    // A free cursor has no pointer lock to lose. This also covers mobile
+    // tab switches, where visibility can change without a window blur.
+    const onBlur = () => useRun.getState().pause();
+    const onVisibility = () => { if (document.hidden) onBlur(); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 }
 
@@ -79,17 +90,22 @@ function useUiScale() {
   }, [uiScale]);
 }
 
-const SLOT_ACTIONS = ["slot1", "slot2", "slot3", "slot4"] as const;
-
 function useSatchelKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (!isGameplayKey(event)) return;
+      const modifier = event.ctrlKey || event.altKey;
       // The lantern, beside the satchel keys because it is the same kind
       // of thing: a hand doing something, refused by the store whenever
       // the player is not in control. Which key that is belongs to the
       // player now (`input/bindings.ts`), so nothing here names one.
       const bindings = useSettings.getState().bindings;
+      if (modifier && canControl(useRun.getState()) &&
+        ["lantern", "mark", "dropKey", ...SLOT_ACTIONS].some((action) =>
+          bindings[action as keyof typeof bindings].includes(event.code))) {
+        // Alt acting in the game must not also focus the browser menu.
+        event.preventDefault();
+      }
       if (bindings.lantern.includes(event.code)) {
         if (canControl(useRun.getState())) useRun.getState().toggleLantern();
         return;
@@ -302,14 +318,13 @@ export default function App() {
       <Audio />
       <Hud />
       <Minimap />
-      <Hint />
+      <Readouts />
       <Prompt />
       <Satchel />
       <ItemLog />
       {/* The stick, the look drag and the buttons, on anything held in
           the hands. Renders nothing on a desktop until it is touched. */}
       <TouchControls />
-      <Captions />
       <DeedToast />
       <PuzzleOverlay />
       {paused && phase === "playing" && <PauseMenu />}

@@ -7,11 +7,8 @@ import { modifiers } from "../relics/catalog";
 import { lanternBand, lanternLit, useRun } from "../state/run";
 
 /**
- * The light the player carries, and the clock that burns it.
- *
- * Both in one component because they are one fact: the light is on
- * exactly while the oil is going down, and splitting them would be two
- * places deciding whether the lantern is lit.
+ * The light the player carries. The store owns whether it is lit and
+ * spends oil when raising it or entering a room; this component draws it.
  *
  * The light is eased rather than switched. A lamp that snapped between
  * fifteen metres and five read as the renderer glitching; over a third of
@@ -23,16 +20,9 @@ import { lanternBand, lanternLit, useRun } from "../state/run";
  * with nothing on screen, so four taps of the lantern key produced two
  * changes in the room. Now every tap is a smaller room.
  *
- * The oil is spent in the store, but not every frame - the store's own
- * comment on `makeNoise` says why, and this is the same problem with a
- * tighter loop. Whole seconds are accumulated here and flushed, so a run
- * writes to the store about once a second instead of sixty times, and the
- * number a player sees is the same either way because it is displayed in
- * seconds.
  */
 export function Lantern() {
   const light = useRef<PointLight>(null);
-  const unflushed = useRef(0);
   /**
    * The reach the flame is currently at, in world units - eased towards
    * the band's, so the change reads as a hand moving.
@@ -61,9 +51,8 @@ export function Lantern() {
     if (!l) return;
     const run = useRun.getState();
     /**
-     * `lanternBand` already answers "and what if it is out of oil" - an
-     * unlit lantern reads as the bottom band - so this asks one question
-     * instead of asking whether it is lit and then which band it is on.
+     * An extinguished lantern reads as the bottom band. An empty flask
+     * can still carry a flame paid for when it was raised in this room.
      */
     const band = lanternBand(run);
 

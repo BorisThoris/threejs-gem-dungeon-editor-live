@@ -1,6 +1,6 @@
 import type { Room } from "../dungeon/types";
 import { aged, carriesTo, AUDIBLE } from "./carry";
-import { EMISSIONS, HELD, loudnessIn, type EmissionId, type HeldId } from "./emissions";
+import { EMISSIONS, HELD, decayDelayFor, loudnessIn, type EmissionId, type HeldId } from "./emissions";
 import { answersTo, SUSCEPTIBILITY, type ReceiverId } from "./susceptibility";
 import type { Tag } from "./tags";
 
@@ -34,8 +34,8 @@ interface Live {
   z: number;
   /** Where it is still audible, and how much of it arrives. */
   reach: Map<string, number>;
-  /** The Din's clock when it happened. Sustained sources ignore this. */
-  bornAt: number;
+  /** When ringing ends and fading begins, on the Din's clock. */
+  decaysAt: number;
   sustained: boolean;
   /** What made it. Carried for the teaching lines and the Ledger, never matched on. */
   source: string;
@@ -83,7 +83,7 @@ export function advance(now: number): void {
   // Drop what has fallen below hearing. Sustained sources never expire.
   for (let i = live.length - 1; i >= 0; i--) {
     const s = live[i];
-    if (!s.sustained && aged(s.magnitude, clock - s.bornAt) < AUDIBLE) live.splice(i, 1);
+    if (!s.sustained && aged(s.magnitude, clock - s.decaysAt) < AUDIBLE) live.splice(i, 1);
   }
 }
 
@@ -125,7 +125,7 @@ export function strike(
     x,
     z,
     reach: carriesTo(rooms, room.id, magnitude, bars),
-    bornAt: clock,
+    decaysAt: clock + decayDelayFor(id),
     sustained: false,
     source: id,
   });
@@ -159,7 +159,7 @@ export function hold(
     x,
     z,
     reach: carriesTo(rooms, roomId, magnitude, bars),
-    bornAt: clock,
+    decaysAt: clock,
     sustained: true,
     source: id,
   });
@@ -185,7 +185,7 @@ export function arriving(tag: Tag, roomId: string): number {
     if (!s.tags.includes(tag)) continue;
     const here = s.reach.get(roomId);
     if (here === undefined) continue;
-    const now = s.sustained ? here : aged(here, clock - s.bornAt);
+    const now = s.sustained ? here : aged(here, clock - s.decaysAt);
     if (now > best) best = now;
   }
   return best;
@@ -205,7 +205,7 @@ export function strongest(out: Arrival, tag: Tag, roomId: string): boolean {
     if (!s.tags.includes(tag)) continue;
     const here = s.reach.get(roomId);
     if (here === undefined) continue;
-    const now = s.sustained ? here : aged(here, clock - s.bornAt);
+    const now = s.sustained ? here : aged(here, clock - s.decaysAt);
     if (now > bestAt) {
       bestAt = now;
       best = s;
@@ -280,6 +280,6 @@ export const liveCount = (): number => live.length;
 export function snapshot(roomId: string): { source: string; tags: readonly Tag[]; here: number }[] {
   return live.map((s) => {
     const here = s.reach.get(roomId) ?? 0;
-    return { source: s.source, tags: s.tags, here: s.sustained ? here : aged(here, clock - s.bornAt) };
+    return { source: s.source, tags: s.tags, here: s.sustained ? here : aged(here, clock - s.decaysAt) };
   });
 }

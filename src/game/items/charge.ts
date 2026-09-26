@@ -1,5 +1,5 @@
 import { createRng } from "../rng";
-import { ITEM_IDS, type ItemId } from "./catalog";
+import { AVARICE_GEMS, ITEM_IDS, type ItemId } from "./catalog";
 
 /**
  * Whether a thing in this dungeon is blessed, plain, or cursed.
@@ -77,6 +77,11 @@ export const scaled = (base: number, charge: Charge): number =>
 /** The same, for a thing that is worse the more of it there is. */
 export const inverted = (base: number, charge: Charge): number =>
   charge === "blessed" ? Math.max(1, Math.round(base * 0.5)) : charge === "cursed" ? Math.round(base * 1.5) : base;
+
+/** Discrete rewards, shared by the store and the explanation after use. */
+export const healingLives = (charge: Charge): number => charge === "blessed" ? 2 : 1;
+export const avariceGems = (charge: Charge): number =>
+  charge === "blessed" ? AVARICE_GEMS + 1 : charge === "cursed" ? 1 : AVARICE_GEMS;
 
 /** The word on its own, for a place that has room for a column of them. */
 export const chargeWord = (charge: Charge): string => (charge === "plain" ? "" : charge);
