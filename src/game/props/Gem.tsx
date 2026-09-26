@@ -51,7 +51,7 @@ export function Gem({ roomId, position, takeLabel }: GemProps) {
   if (taken) return null;
 
   return (
-    <group ref={group} position={position}>
+    <group name="collectible-gem" ref={group} position={position}>
       <mesh castShadow>
         <octahedronGeometry args={[0.28, 0]} />
         <meshStandardMaterial

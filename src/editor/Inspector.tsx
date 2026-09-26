@@ -21,36 +21,53 @@ export function Inspector() {
   const [rotation, setRotation] = useState(0);
   const [scale, setScale] = useState(1);
   const info = CATALOG[kind];
+  const transformable = info.transformable !== false;
+  const choose = (next: PropKind) => {
+    setKind(next);
+    setRotation(0);
+    setScale(1);
+  };
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: 16, height: "100%", minHeight: 0 }}>
       <div style={{ ...panel, overflow: "auto" }}>
         <div style={label}>PROP</div>
         {PROP_KINDS.map((k) => (
-          <div
+          <button
             key={k}
-            onClick={() => setKind(k)}
+            type="button"
+            data-testid={`inspector-prop-${k}`}
+            onClick={() => choose(k)}
             style={{
+              display: "block",
+              width: "100%",
               padding: "7px 10px",
               marginBottom: 4,
               borderRadius: 4,
               cursor: "pointer",
               fontSize: 10,
+              textAlign: "left",
+              color: colors.ink,
               background: k === kind ? "rgba(127,227,255,0.12)" : "transparent",
               border: `1px solid ${k === kind ? colors.accent : "transparent"}`,
             }}
           >
             {CATALOG[k].title}
-          </div>
+          </button>
         ))}
-        <div style={{ ...label, marginTop: 14 }}>ROTATION {Math.round((rotation * 180) / Math.PI)}°</div>
-        <input type="range" min={0} max={Math.PI * 2} step={Math.PI / 8} value={rotation} onChange={(e) => setRotation(Number(e.target.value))} style={{ width: "100%" }} />
-        <div style={{ ...label, marginTop: 10 }}>SCALE {scale.toFixed(2)}</div>
-        <input type="range" min={0.5} max={2} step={0.05} value={scale} onChange={(e) => setScale(Number(e.target.value))} style={{ width: "100%" }} />
+        {transformable ? <>
+          <div style={{ ...label, marginTop: 14 }}>ROTATION {Math.round((rotation * 180) / Math.PI)}°</div>
+          <input data-testid="inspector-rotation" type="range" min={0} max={Math.PI * 2} step={Math.PI / 8}
+            value={rotation} onChange={(e) => setRotation(Number(e.target.value))} style={{ width: "100%" }} />
+          <div style={{ ...label, marginTop: 10 }}>SCALE {scale.toFixed(2)}</div>
+          <input data-testid="inspector-scale" type="range" min={0.5} max={2} step={0.05}
+            value={scale} onChange={(e) => setScale(Number(e.target.value))} style={{ width: "100%" }} />
+        </> : <p style={small}>Fixed-size gameplay effect.</p>}
         <div style={{ ...small, marginTop: 14 }}>
           Footprint radius {info.radius} · {info.solid ? "blocks the player" : "walk-through"}
         </div>
-        <input style={{ ...field, marginTop: 10 }} readOnly value={`{ kind: "${kind}", x: 0, z: 0, rotation: ${rotation.toFixed(2)} }`} />
+        <input data-testid="inspector-placement" style={{ ...field, marginTop: 10 }} readOnly
+          value={`{ kind: "${kind}", x: 0, z: 0${transformable ? `, rotation: ${rotation.toFixed(2)}, scale: ${scale.toFixed(2)}` : ""} }`} />
       </div>
       <div style={{ ...panel, padding: 6 }}>
         <Canvas shadows camera={{ fov: 45, position: [4, 3, 4] }} style={{ background: "#0a0c12", borderRadius: 6 }}>

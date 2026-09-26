@@ -78,6 +78,16 @@ export function carriesTo(
   magnitude: number,
   bars: ReadonlySet<string> = new Set()
 ): Map<string, number> {
+  return flood(rooms, fromId, magnitude, bars);
+}
+
+function flood(
+  rooms: readonly Room[],
+  fromId: string,
+  magnitude: number,
+  bars: ReadonlySet<string>,
+  previous?: Map<string, string>,
+): Map<string, number> {
   const byId = new Map(rooms.map((room) => [room.id, room]));
   const reach = new Map<string, number>();
   if (magnitude < AUDIBLE || !byId.has(fromId)) return reach;
@@ -98,19 +108,35 @@ export function carriesTo(
       if (!next || bars.has(barKey(id, next))) continue;
       if ((reach.get(next) ?? 0) >= through) continue;
       reach.set(next, through);
+      previous?.set(next, id);
       pending.push(next);
     }
   }
   return reach;
 }
 
-/**
- * What arrives in one room from one source, without flooding the rest.
- *
- * The frame loops ask this question about themselves several times a
- * second and the answer for every other room is thrown away, so the flood
- * is the wrong shape for the common case.
- */
+/** The winning doorway route, recorded by the same flood that computes carry. */
+export function carryRoute(
+  rooms: readonly Room[],
+  fromId: string,
+  toId: string,
+  magnitude: number,
+  bars: ReadonlySet<string> = new Set(),
+): { rooms: string[]; strengths: number[]; magnitude: number } {
+  const previous = new Map<string, string>();
+  const reach = flood(rooms, fromId, magnitude, bars, previous);
+  const arriving = reach.get(toId);
+  if (arriving === undefined) return { rooms: [], strengths: [], magnitude: 0 };
+  const route = [toId];
+  while (route[0] !== fromId) {
+    const parent = previous.get(route[0]);
+    if (!parent) return { rooms: [], strengths: [], magnitude: 0 };
+    route.unshift(parent);
+  }
+  return { rooms: route, strengths: route.map((id) => reach.get(id) ?? 0), magnitude: arriving };
+}
+
+/** One-room lookup with the same audible floor as the full carry map. */
 export function carriesFrom(
   rooms: readonly Room[],
   fromId: string,
@@ -118,6 +144,7 @@ export function carriesFrom(
   magnitude: number,
   bars: ReadonlySet<string> = new Set()
 ): number {
-  if (fromId === toId) return magnitude;
+  if (fromId === toId)
+    return magnitude >= AUDIBLE && rooms.some((room) => room.id === fromId) ? magnitude : 0;
   return carriesTo(rooms, fromId, magnitude, bars).get(toId) ?? 0;
 }

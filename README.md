@@ -183,6 +183,8 @@ clock you are losing, then what the door costs, then what you can spend,
 then where you are. Nothing urgent is said in colour alone, and the map
 marks the places the readout names - the roost you have walked into, the
 stairs the Keeper is standing across.
+At desktop size the readout uses close leading so even a crowded bottom-floor
+encounter leaves room in view; `yarn verify` measures that budget on a live run.
 
 A blast is seen as well as heard - a flash, embers thrown out and pulled
 back down, dust across the floor, the view knocked harder the nearer it
@@ -333,9 +335,8 @@ gem - what the shop is really selling is finding out sooner.
 
 Every menu can be driven from the pad alone - the title screen, the pause
 menu, the end of a run - so the game can be played on a machine with no
-keyboard. `yarn test:pad` plays it that way. The one thing that still wants
-a keyboard is typing a seed and answering the library's tome; on a Deck
-those go through Steam's on-screen keyboard.
+keyboard. The seed entry and library tome have pad controls too.
+`yarn test:pad` plays those flows.
 
 ### On a phone or a tablet
 
@@ -390,6 +391,9 @@ yarn dev            # http://localhost:5173
 yarn build          # dist/, what Cloudflare Pages and Electron ship
 yarn typecheck      # must be clean; there is no error budget
 yarn lint
+yarn verify         # typecheck, lint, layout, Rapier prop overlap, Sentry, bat flight, core flow, sprint noise, test hall, and signal graph
+yarn verify:full    # adds shipped builds, controller and touch playthroughs, gameplay, audio, performance, creature rendering, and focused browser checks
+yarn verify:systems # specialist lighting, water, creatures, and worldbuilding checks
 yarn test:smoke     # drives the real game in a browser (see below)
 yarn test:perf      # what a room costs, against a written-down budget
 yarn test:prod      # builds dist and plays it, the way it actually ships
@@ -402,8 +406,72 @@ yarn generate-icon  # redraw build/icon.png
 ## The editor
 
 In a development build, `http://localhost:5173/?editor` opens the authoring
-tools. They write into the same registries the game reads, so nothing made
-in them can fail to reach a run:
+tools. Authoring tabs write into the same registries the game reads; inspection
+tabs read the game's own geometry and rules:
+
+The **Test Hall** tab lays every prop on one flat floor under fixed lighting.
+Select a station for a close view, then inspect its placement radius and live
+Rapier collider with the one-metre grid. The hall also lists the collider's
+furthest corner, which can exceed the broad placement guide. Scale and rotate
+props that support
+those variants, and open the chest. Sweep rays and the game-owned player
+capsule from both horizontal axes through the live physics world to see which
+props block travel, then verify that the capsule clears a side lane outside
+the placement footprint. `yarn verify`
+opens this hall in Chromium and checks every catalog kind, collider, lane,
+and variant control.
+Select a sweep result to see its exact path and contact point in the hall.
+Player lanes draw a capsule with the game's dimensions at Rapier's measured
+contact distance; clear lanes show the capsule at the end. Changing the prop
+or its transform clears the old trace so it cannot describe stale geometry.
+The **Scenarios** tab lists a deterministic playable case for each room kind
+and footprint. Filter the cases, inspect one in the World atlas, or play its
+seeded room. The full browser matrix mounts every case and checks its spawn,
+rendering and control state.
+For visual review, run `yarn dev --port 5199` and then `yarn review:rooms`.
+Open `output/scenario-review/index.html` for a browsable gallery or
+`output/scenario-review/contact.jpg` for one contact sheet. Each case pairs
+lantern-down and raised-lantern room images, with HUD captures for both. The
+gallery's development-server field defaults to port 5199; change it if the
+game is running elsewhere, then its Play links open the saved scenario paths.
+The run pauses before capture so encounter damage cannot change the comparison.
+The manifest records the seed, floor, room and image hashes. To check one case,
+run `node scripts/capture-scenario-review.mjs 5199 --case=normal/elbow --out=output/scenario-review/check`.
+`yarn verify:full` regenerates the gallery and checks that every raised-lantern
+scene is visible and brighter than its lantern-down view. The images remain
+review aids rather than pixel goldens.
+For creature review, start the development server on port 5234 and run
+`yarn test:creatures`. The check renders each creature in a generated native
+room, measures its visible pixels, exercises selected reactions and pause
+behavior, and writes `output/creature-gallery/index.html` plus a contact sheet.
+The **World** atlas accepts the run seed shown on a summary, derives the chosen
+floor's seed with the game's descent rule, and highlights the shortest open-door
+route from the start. Enable the Foreman's Tally room bias when reproducing a
+floor generated while carrying that relic. **Play this room** opens a shareable
+development link that stages that seed, depth, and selected room in the real
+game; the back link restores the atlas selection. A hidden room opens its
+cracked wall first so the player can walk back out. The full verification gate
+mounts representative rooms covering every generated kind and footprint.
+It also presses the interact key to walk back through the opened hidden-room
+doorway.
+While playing a development build, pause to open the current room in the World
+atlas or replay a fresh copy in a new tab. The links carry the run seed, depth,
+room, and the room bias used when that floor was generated; the paused run stays
+open in its original tab.
+The **Signals** graph reads the live emission, doorway carry, and creature
+susceptibility tables. Choose source and listener rooms to see the winning
+doorway route and strength at each room. Bar a doorway or vary event age to
+inspect which receivers answer and which thresholds are missed. It
+uses the same run seed, depth, and room-bias controls as the atlas. Play
+links open either selected room in a fresh development run while preserving
+the graph in its tab. `yarn verify` checks its nodes, response behavior and
+playable links in Chromium, then compares displayed arrivals and receiver
+counts with the live Din channel for silent, carried, barred, decaying, held
+and underfoot signals.
+Use **Link to this graph** to share an investigation. The link restores the
+seed, depth, room bias, source and listener rooms, barred door, event age,
+underfoot material, held strength and selected receiver, including after reload.
+Unknown declarations and rooms fall back to valid settings.
 
 - **Rooms** - lay out a room on a grid, see it in the real room shell, and
   mark it live. The generator then places it whenever it needs a room of
@@ -473,6 +541,41 @@ The maintained policy, baseline and issue ledger are in
 
 ## Testing
 
+Run `yarn verify` before sending a change: it starts a fresh Vite server on a
+free port and closes it after the browser checks. CI runs it on pushes and
+pull requests. `yarn verify:full` adds the deep smoke script and
+slower focused checks, including packaged web and desktop builds, controller
+and touch playthroughs, and the scenario lighting gallery. Both gates write a
+per-check timing and failure report to `output/verification/short.json` or
+`full.json`.
+`yarn verify:systems` runs the specialist lighting, service-trail,
+handbuilt-prop, terrain noise, wall-collision footsteps, and worldbuilding browser checks through that same fresh-server
+runner. It continues through failures and writes `output/verification/systems.json`
+so independent systems can be triaged in one pass.
+It also checks water-audio headroom, stereo separation and smoothness, plus
+the rendered biome, footprint and landmark-trail review. That review saves
+screenshots and scene measurements in `output/world-review/`.
+Each check also saves stdout and stderr in `output/verification/<mode>-logs/`;
+its JSON result includes the relative `logFile` path. Logs are streamed to the
+terminal and flushed before the result is recorded. CI runs the systems gate
+as a separate job and keeps both gates' reports and logs even on failure.
+Reports use schema version 2 and are atomically replaced at run start and
+before/after each check. An active run has `status: "running"`, an `updatedAt`
+timestamp, and no `finishedAt`; completed checks remain visible beside the
+active check. An interrupted report is evidence of an unfinished run, not a
+pass or proof that its process is still alive.
+For a focused rerun, use `yarn verify --only=audio-check.mjs` (repeat `--only=`
+for more checks). It starts a fresh server when a browser check is selected,
+skips the server for source-only checks, and writes `output/verification/focused.json`
+without replacing either gate report. An unknown check name fails before any
+check starts.
+Use `yarn verify --list`, `yarn verify:full --list`, or
+`yarn verify:systems --list` to inspect a gate without starting checks or
+replacing reports. Listing also accepts `--only=`. The runner rejects missing
+registered files and any `scripts/*-check.mjs` left outside every gate, so a
+new check must be registered before verification can pass.
+CI keeps the short report as a workflow artifact even when verification fails.
+
 `yarn test:smoke` starts a browser against a dev server on port 5199 and
 plays: menu, start, stand on the floor, explore by pressing E, collect gems,
 walk to the exit's neighbour, be refused without the toll and admitted with
@@ -489,11 +592,16 @@ other and no prop's footprint reaching into a lane or through a wall, spikes
 in every trap room, the gem reachable, the generator connected, every
 arrangement standing each prop on an anchor of its own, every shipped
 template legal in all eight ways round a room can be furnished, and every
-item findable with a look nothing else has.
+item findable with a look nothing else has. It also checks generated sound
+routes against an independent shortest-path distance, with a real doorway
+barred on each sampled floor.
 
 `yarn test:walk` checks the collect–pay–descend loop using physical walking,
 door interaction, shoves, a shop bomb purchase and the Keeper escape. It
-never teleports or restores lives. The
+never teleports or grants lives; when hurt before the final floor, it budgets
+earned gems for shop recovery while reserving the toll and bomb price.
+`yarn verify:full` includes this three-floor
+run and its victory-to-restart check. The
 walker knows the full generated map and avoids known furniture and hazards;
 this is traversal and counterplay evidence, not a human balance playtest.
 Set `PORT` to the running dev server (default 5200), `CHROMIUM_PATH` to your
@@ -535,8 +643,9 @@ reading of a touch and not a stand-in for one.
 the budget above. It also walks one floor four times over to catch a room
 that forgets to dispose what it made.
 
-`yarn test:prod` is the only one that touches the build that actually
-ships. Everything else drives the dev server, and the production bundle is
+`yarn test:prod` checks the web build that actually ships, and
+`yarn verify:full` includes it along with the packaged desktop check. Most
+other browser checks drive the dev server, and the production bundle is
 a different program: `import.meta.env.DEV` is statically false, so every
 probe the other checks lean on is gone and the editor is dropped entirely.
 So this one builds `dist`, serves it, and plays it the way a stranger
@@ -557,9 +666,10 @@ Playwright default.
 ## Desktop packaging
 
 Electron Builder produces `dist-electron/`. The entry point is CommonJS
-(`electron/main.cjs`) because `package.json` sets `"type": "module"`. The
-Linux AppImage is verified to launch and run with no network; Windows and
-macOS targets need their own hosts.
+(`electron/main.cjs`) because `package.json` sets `"type": "module"`.
+`yarn test:desktop` rebuilds the current web assets and a directory package,
+then starts it through its real launcher to check the menu, a run, pause and
+resume. It runs on Windows and Linux; macOS needs a macOS host.
 
 ## Cloudflare Pages
 

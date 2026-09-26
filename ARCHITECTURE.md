@@ -6,6 +6,22 @@ built on.
 
 ## The rule: one owner per fact
 
+The development interaction probe retains only mounted triggers. Each trigger
+owns its debug row and removes its previous label on change and on unmount;
+cleanup cannot remove a row currently owned by another same-labelled trigger.
+
+Timed grate expiry is published by the run store's `expireGrate`, stepped by
+the room's Barring frame loop. Doors and grate meshes therefore observe the
+same opening without waiting for unrelated state changes. It reads the paused
+run clock and clears only the timed grate, leaving player barricades intact.
+Each mounted grate attempts one drop per visit, so lifting or blocking it
+with wire does not retrigger it every frame. Re-entering re-arms the trap.
+The movement probe waits for the visible open-door prompt after expiry. Its
+planner derives wall clearance from the player capsule and wall thickness,
+turns before moving, and permits only outward escape from an existing hazard
+overlap. A focused geometry check preserves that escape without allowing
+solid penetration or crossing hazards; run seed 404 exercises the full route.
+
 The art-direction contract is [World Style](docs/WORLD_STYLE.md), also visible
 in Credits and the editor. `rooms/districts.ts` grows connected regions on the
 door graph and assigns each room's biome. Every biome consumer reads that
@@ -29,6 +45,37 @@ The editor's World tab inspects the full generated graph and room blueprints;
 the player's minimap remembers only visited waterworks landmarks.
 
 The ongoing expansion is tracked in [The inhabited dungeon](docs/WORLD_EXPANSION.md).
+
+`dungeon/runFloor.ts` owns the run seed's descent sequence and the generation
+options for each depth, including the last-floor tableau and Foreman's Tally
+room bias. The run store, World atlas, Signals graph, and seeded checks call
+that recipe. A seed from the run summary therefore names the same floor in
+the tools that the player entered.
+The development-only Atlas scenario link starts a real run and uses the run
+store's floor descent reset before staging the chosen room. It spawns at a
+real doorway; a hidden chamber first uses the run store's `revealSecret` action
+to open its return door. The author can play the exact generated room without shipping
+scenario controls or a second floor-state initializer to players.
+Each generated dungeon records whether Tally biased its rooms when that floor
+was built. Development links in the pause menu read that snapshot, so buying
+Tally mid-floor cannot make the Atlas or a fresh replay show a different layout.
+The editor's Scenario shelf and the full browser matrix call the same
+`scenarioCoverageCases` selector. It scans generated floors until every
+declared room kind and footprint has a playable representative, so new kinds
+and shapes surface as missing coverage instead of silently escaping review.
+`capture-scenario-review.mjs` uses those cases and the live WebGL scene for
+lantern-down and raised-lantern architecture and gameplay images. It pauses
+each run before capture and records the scenario URLs and image hashes in a
+local gallery, keeping visual review tied to the same rooms
+the browser matrix mounts. The full gate also measures scene exposure in each
+dark and raised-lantern pair, catching black or ineffective light without
+freezing the art to pixel goldens.
+The gallery stores the scenario URL owner's path and lets reviewers choose
+the current development-server origin, so links remain usable after the
+verification server's temporary port closes.
+`creature-render-check.mjs` stages each creature in a generated native room,
+checks its visible contribution and selected responses, then builds a local
+gallery and contact sheet from those same live renders for visual review.
 
 `worldbuilding/serviceTrail.ts` selects the optional real-door route from the
 reliquary to an existing secret wall. Its stored route drives copper masonry
@@ -195,6 +242,15 @@ Two stores that both claimed the player's stats. So:
   x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's
   reach is computed once when it happens and never again, so a frame loop
   asking "what can I hear" is a map lookup rather than a flood.
+  `carryRoute` records the winning predecessors during that same flood for
+  the editor's Signals graph. The route and arrival strength therefore use
+  the game's doorway and bar decisions, not a second path finder. Source and
+  listener play links use the same scenario URL builder as the rest of the
+  editor, so the graph's seed, floor and room bias open playable fixtures. The
+  browser gate compares graph readouts with the live Din's strike, hold and
+  receiver answers across representative sources and routes. The layout gate
+  separately checks generated carry routes against shortest-path distances
+  and verifies every displayed edge stays open when a bar is placed.
 - **Where a creature is on the awareness ladder is `ladder/state.ts`, and
   only `LadderDriver` steps it.** Two informants know different halves of
   the world - a floor-level driver knows what the Din is delivering into a
@@ -303,7 +359,22 @@ Two stores that both claimed the player's stats. So:
   `src/game/props/specs.ts`, apart from the components that draw it. Four
   things need those numbers and none of them wants a React tree: the room's
   single collider body, the placement filters, the editor's outlines, and
-  the layout check, which runs in node.
+  the layout check, which runs in node. Placement radii are broad clearances,
+  not the exact corners of a rotated collider; `propCollidersOverlap` uses the
+  catalog's cylinder and cuboid shapes to check authored templates and final
+  generated dressing for physical intersections. `propColliderAxisExtents`
+  checks the actual rotated reach against doorway lanes and square walls;
+  template validation reports these failures while the author can still move
+  the prop. `rooms/propClearance.ts` checks cuboid corners and edges or a
+  cylinder's radius against the shared floor outline, including shaped room
+  shoulders and inner walls. The layout gate checks final dressing with it;
+  the Test Hall browser check sweeps rays and the player capsule against the
+  mounted Rapier bodies, checks a side lane beyond each physical footprint,
+  and confirms the catalog's rotated axis extents match live physics. Selecting
+  a hall result draws its recorded query origin, direction and measured contact;
+  the capsule ghost uses the same player dimensions as the sweep. The short gate also
+  compares `propCollidersOverlap` against Rapier's shape intersection query
+  for every solid prop pair under varied scales and rotations.
 - Which anchors a kind's own content stands on is one table in
   `src/game/rooms/anchors.ts`. It used to be a third argument to
   `registerRoomKind`, which put the answer wherever the component happened
@@ -345,6 +416,11 @@ Two stores that both claimed the player's stats. So:
   the same argument the colliders already won. The lights are not instanced
   and cannot be - a light is not drawn - so there is still one per brazier,
   flickering out of step.
+- `src/game/props/FurnitureBatches.tsx` draws repeated fixed furniture,
+  including urns, in room-local instance batches. The catalog's standalone
+  urn delegates to that renderer, so the editor and rooms share its geometry.
+  Urn facets stay modest because instancing submits all copies in a visible
+  batch even when an individual urn would have been culled.
 - The anchor rings are spaced from `PROP_SPECS`, not from magic numbers: the
   widest furnishing an arrangement can place decides how far `near` stands
   from the lanes, how far `far` stands from `near`, and how far the corner
@@ -407,7 +483,10 @@ Two stores that both claimed the player's stats. So:
   same answers without talking to each other, and each step is handed what
   the ones before it took. Every gap in that order was a bug that shipped:
   a quarter of watchers stood inside a prop or on the gem, and two thirds
-  of keys lay under the furniture.
+  of keys lay under the furniture. `Room` uses one key-aware Sentry placement
+  for the drawn post and the threats that read it; the fast browser gate
+  holds those positions together on a seed where omitting the key moves the
+  post to the opposite anchor.
 - What the Sentry's four constants mean together is
   `src/game/sentry/beam.ts`: how long the beam holds a fixed direction, and
   how long it takes to walk out of it at a given distance. One line, checked
@@ -702,6 +781,9 @@ Two stores that both claimed the player's stats. So:
   whatever point in the file it happens to reach. No two lines may share a
   label and nothing drawn in the danger tone may lack a high-contrast
   mark; both are held by `yarn test:layout`.
+  The desktop card keeps those lines but uses tighter leading. The quick
+  browser gate measures a crowded third-floor HUD against a 425-pixel height
+  budget at 1280×800 and checks that the guidance panel remains clear.
 - The four moments the arc turns on are a table in `ui/momentBeats.ts` and
   one player in `ui/Moments.tsx`: an event, a hold, a wash and what it
   says. The descent holds the floor's blurb on the black rather than
@@ -1214,6 +1296,19 @@ registries the game reads:
   treasure arrangements became code nothing could reach. Export the JSON to
   ship it.
 
+  Draft storage treats IDs as dictionary keys without inherited properties.
+  Persisted entries must match their template ID; only boolean `true` enables
+  a draft, and invalid timestamps fall back to zero. The systems gate imports
+  reserved-looking IDs, reloads them, and checks registration and removal.
+  Optional names, stories, tableau IDs and prop slot names must be strings;
+  slot operations must be actual operation strings, without coercion. Mixed
+  imports report malformed entries while retaining valid room templates.
+  Failed writes retain session edits and expose a store-owned save status to
+  the Room Builder. Its warning stays until a successful save; authors can
+  retry or export all current templates as an importable JSON array. The same
+  check forces quota failure, rescues the unsaved room by export, and verifies
+  retry persistence across reload.
+
   An authored room's props go through the same filters the seeded dressing
   does, and anything that fails is dropped without a word - so a template
   that breaks a rule renders as a sparse room rather than as an error.
@@ -1230,8 +1325,31 @@ registries the game reads:
   is a template validated in a shape the player may never be shown. It does
   that per-prop and per-pair rather than by enumerating variants, so the
   check stays cheap while the content multiplies.
+  When slot rules are chained, shuffle validation carries forward the kinds
+  produced by preceding rules. A layout invariant compares those possible
+  kinds with the resolver across seeds and district supply traditions.
+  Counted substitutions share their clamped count between resolution and
+  validation, so zero/all replacements do not warn about impossible props.
 - **Surfaces**: the painter and the mosaic tool save a 128x128 image under a
   surface id. `useSurface(id)` in any room picks it up at once.
+  The painter owns a unique request token for each image decode. A callback
+  from a previous selection or an unmounted painter cannot draw into its tile.
+  Painting, undo and save wait for the selected image; failed decodes preserve
+  the stored override until the author explicitly resets it. The systems gate
+  tests out-of-order loads, corrupt images, save guards and unmount cleanup.
+  Custom surface IDs only select a built-in painter when the registry owns
+  that key. Inherited names such as `__proto__` use the procedural fallback;
+  the Painter check creates and saves these IDs without crashes or blank tiles.
+  Its active custom ID stays in the surface selector before its first save and
+  after reset, so the visible selection always agrees with the save destination.
+  The registry owns failed-save status shared by Painter and Mosaic. Failed
+  writes retain session overrides, with PNG recovery downloads and a retry
+  that saves all overrides without invalidating textures. The systems gate
+  forces quota errors and verifies downloads, cross-tool warnings and reload.
+  Mosaic cells and their saved texture use the same normalized shape paths,
+  rendered as SVG in the grid and Path2D in the output canvas. Its browser check
+  compares all five preview shapes with saved pixels and opens the result in
+  the painter, so preview-only geometry cannot drift from the authored surface.
 - **Props**: the inspector shows one catalogue entry at a time; the
   catalogue is the only list of props, and the room builder places from it.
 
@@ -1400,11 +1518,17 @@ the store it is writing to.
   production bundle has no probe handles and no editor, so that one is
   played through the menu and the keyboard alone and the rest is read off
   the built files.
+  Its rendered-world guard decodes screenshot pixels before measuring light
+  and shade variation, and must reject encoded solid black and white frames.
+  Compressed image bytes are not evidence that the scene drew anything.
 - `yarn test:perf` reads three's own counters - draw calls, triangles, live
   geometries and textures - for every room of every floor, and the heap
   while the player sprints. Frame time is not measured, because the machine
   this runs on has no GPU and a millisecond here says nothing about a Steam
-  Deck; those counters are CPU-side and mean the same thing everywhere.
+  Deck; those counters are CPU-side and mean the same thing everywhere. Its
+  room report attributes meshes to the closest named scene owner and requires
+  every visible mesh to have one. New render components should name their
+  root group so a draw-call regression points to its source.
 - Whether a purchase may be made is `canSpend` in `src/game/state/run.ts`,
   and the shop asks it about all three things it sells. The exit is the only
   thing a run must be able to afford - a floor can hold as few as one gem
@@ -1447,6 +1571,8 @@ the store it is writing to.
   the capture, the stick's throw, the rim that starts the run, two fingers
   down at once. What it cannot say is how a thumb feels about the sizes,
   or what iOS Safari does with the full-screen request.
+  The full verification gate runs both input playthroughs with its fresh
+  development server, using the installed Playwright browser on Windows.
 - `yarn test:smoke` drives the real game in a browser: start, stand on the
   floor, explore by pressing E, collect, reach the exit's neighbour, be
   refused unpaid and admitted paid, win, restart, die. Every serious bug this

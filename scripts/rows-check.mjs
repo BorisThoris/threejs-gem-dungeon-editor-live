@@ -25,7 +25,7 @@
  */
 import { chromium } from "playwright-core";
 const PORT = process.env.PORT || process.argv[2] || "5199";
-const CHROMIUM = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const CHROMIUM = process.env.CHROMIUM_PATH || undefined;
 const browser = await chromium.launch({ executablePath: CHROMIUM,
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--autoplay-policy=no-user-gesture-required"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -48,17 +48,19 @@ const out = await page.evaluate(async () => {
   const lowerTo = async (band) => { for (let i = 0; i < 8 && run.getState().glim > band; i++) { run.getState().toggleLantern(); await wait(150); } await wait(400); };
 
   // A floor with rats, a moth room and a Sentry (floor 2 has sentries).
-  let d = null, ratRoom = null, sentryRoom = null;
-  for (let seed = 1; seed < 60 && !(ratRoom && sentryRoom); seed++) {
+  const { generateRunFloor } = await import("/src/game/dungeon/runFloor.ts");
+  let d = null, ratRoom = null, sentryRoom = null, pondRoom = null;
+  for (let seed = 1; seed < 60 && !(ratRoom && sentryRoom && pondRoom); seed++) {
     run.getState().startRun(seed);
     await wait(600);
-    run.setState({ floor: 2, phase: "playing" });
-    d = run.getState().dungeon;
+    d = generateRunFloor(seed, 2);
+    run.setState({ dungeon: d, floor: 2, phase: "playing" });
     ratRoom = d.rooms.find((r) => A.ratsFor(r, d.seed).length > 0 && r.size >= 16) ?? null;
     sentryRoom = d.rooms.find((r) => window.__sentryFor(r, d.seed, 2)) ?? null;
+    pondRoom = d.rooms.find((r) => A.croakersFor(r, d.seed).length > 0) ?? null;
     res.seed = seed;
   }
-  if (!d || !ratRoom || !sentryRoom) return { error: "no floor with rats and a sentry found", ratRoom: !!ratRoom, sentryRoom: !!sentryRoom };
+  if (!d || !ratRoom || !sentryRoom || !pondRoom) return { error: "no floor with rats, a sentry, and croakers found", ratRoom: !!ratRoom, sentryRoom: !!sentryRoom, pondRoom: !!pondRoom };
 
   // --- Rats: a barrel bursting across the room scatters them. ---
   await enter(ratRoom.id);
@@ -104,18 +106,21 @@ const out = await page.evaluate(async () => {
   await enter(sentryRoom.id);
   const post = window.__sentryFor(sentryRoom, d.seed, 2);
   await tp(post.at[0] + 2, post.at[2] + 2);
+  const { playerLightIn } = await import("/src/game/ladder/sight.ts");
+  const { SUSCEPTIBILITY } = await import("/src/game/din/susceptibility.ts");
+  const sentryLight = () => ({ lit: window.__sentry?.lit_by_light, level: playerLightIn(sentryRoom.id) });
   await lowerTo(0);
   await wait(3600);
-  const dark = window.__sentry?.lit_by_light;
+  const dark = sentryLight();
   run.getState().toggleLantern();
   await wait(1800);
-  const lit = window.__sentry?.lit_by_light;
+  const lit = sentryLight();
   await lowerTo(26);
-  const dimmed = { lit: window.__sentry?.lit_by_light, wisp: run.getState().wispOut };
+  const dimmed = { ...sentryLight(), wisp: run.getState().wispOut };
   await lowerTo(0);
   await wait(3600);
-  const out = { lit: window.__sentry?.lit_by_light, wisp: run.getState().wispOut };
-  res.sentry = { dark, lit, dimmed, out };
+  const out = { ...sentryLight(), wisp: run.getState().wispOut };
+  res.sentry = { dark, lit, dimmed, out, threshold: SUSCEPTIBILITY.sentry.answers.bright };
 
   // --- Toads: they sing in a wet room, hush underfoot, and go under at a noise. ---
   // A plain room for preference: a trap room's plate, crossed by the
@@ -195,9 +200,11 @@ else {
     ok("a quarter flame is under its row, so it goes to the wisp instead and leaves your lantern", out.moth.dim.drawn && out.moth.dim.to === "wisp" && !out.moth.dim.on && out.moth.dim.wisp === true, JSON.stringify(out.moth.dim));
     ok("and with the lantern down and the wisp gone it is back on its perch", !out.moth.dark.drawn && out.moth.dark.wisp === false, JSON.stringify(out.moth.dark));
   }
-  ok("the Sentry's row: no light in the room is no light, a full lantern is", out.sentry.dark === false && out.sentry.lit === true, JSON.stringify(out.sentry));
+  ok("the Sentry follows local light at its row's threshold, including room fixtures",
+    [out.sentry.dark, out.sentry.lit, out.sentry.dimmed, out.sentry.out].every((sample) => sample.lit === (sample.level >= out.sentry.threshold)) && out.sentry.lit.lit === true,
+    JSON.stringify(out.sentry));
   ok("a quarter flame is under its row, but the wisp beside you is not: that is the wisp's price", out.sentry.dimmed.lit === true && out.sentry.dimmed.wisp === true, JSON.stringify(out.sentry.dimmed));
-  ok("and the lantern down, the wisp gone, its patience is whole again", out.sentry.out.lit === false && out.sentry.out.wisp === false, JSON.stringify(out.sentry.out));
+  ok("the lantern down removes the wisp and its light contribution", out.sentry.out.wisp === false && out.sentry.out.level < out.sentry.dimmed.level, JSON.stringify(out.sentry.out));
   ok("a bomb next door downs the Harrier through its row", out.harrier.placed && out.harrier.downed, JSON.stringify(out.harrier));
   if (out.toads) {
     ok("the toads sing in a wet room with nobody near them", out.toads.singing.singing === out.toads.spots && out.toads.singing.under === 0, JSON.stringify(out.toads.singing));

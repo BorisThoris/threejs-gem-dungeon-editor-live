@@ -1,4 +1,4 @@
-import { BoxGeometry, Color, Float32BufferAttribute, TorusGeometry, type BufferGeometry } from "three";
+import { BoxGeometry, Color, ConeGeometry, Float32BufferAttribute, TorusGeometry, type BufferGeometry } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { DARK_WOOD_LIT, WOOD_LIT } from "./furnitureStyle";
 
@@ -79,6 +79,17 @@ export function finishedWoodGeometry(kind: "chair" | "crate" | "table"): BufferG
   const joined = mergeGeometries([light, dark]);
   light.dispose(); dark.dispose();
   if (!joined) throw new Error(`finished ${kind} wood could not be joined`);
+  return joined;
+}
+
+/** Five fixed iron points form one silhouette and one submission per hazard.
+ * The warning disc stays separate because it is translucent and unlit. */
+export function spikePatchGeometry(): BufferGeometry {
+  const spots = [[0, 0], [.35, .2], [-.3, .28], [.15, -.32], [-.25, -.22]];
+  const pieces = spots.map(([x, z]) => new ConeGeometry(.09, .45, 6).translate(x, .22, z));
+  const joined = mergeGeometries(pieces);
+  pieces.forEach(piece => piece.dispose());
+  if (!joined) throw new Error("spike patch could not be joined");
   return joined;
 }
 

@@ -119,6 +119,6 @@ export function ContactShadows({ placements, extra }: ContactShadowsProps) {
   useEffect(() => () => geometry.dispose(), [geometry]);
   if (geometry.index?.count === 0) return null;
   return (
-    <mesh geometry={geometry} material={shadowMaterial()} renderOrder={1} />
+    <mesh name="prop-contact-shadows" geometry={geometry} material={shadowMaterial()} renderOrder={1} />
   );
 }

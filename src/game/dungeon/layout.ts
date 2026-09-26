@@ -437,8 +437,8 @@ function freeAnchor(room: Room, seedKey: string, reserved: Vec3[], height: numbe
   return [best[0], GROUND_Y + height, best[2]];
 }
 
-/** Radius of one spike patch, shared with the Hazard prop. */
-export const HAZARD_RADIUS = 1.2;
+/** Radius of one spike patch, owned by the prop catalog and shared with Hazard. */
+export const HAZARD_RADIUS = PROP_SPECS.spikes.radius;
 
 /**
  * How much clear floor is left between a patch's reach and the wall.

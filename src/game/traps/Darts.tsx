@@ -41,6 +41,13 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
     let at = run.sprung[trap.key];
     const age = at === undefined ? Infinity : now - at;
     const phase = age < DART_WARNING_S ? 1 : age < DART_WARNING_S + DART_FLIGHT_S ? 2 : 0;
+    if (import.meta.env.DEV) {
+      const w = window as unknown as { __dartProbe?: Record<string, unknown> };
+      w.__dartProbe = { key: trap.key, now, age, phase,
+        wardenRoom: wardenAt.roomId, wardenOn: wardenAt.roomId === room.id && onPlate(wardenAt.x, wardenAt.z),
+        wardenX: wardenAt.x, wardenZ: wardenAt.z,
+        playerOn: onPlate(state.camera.position.x, state.camera.position.z) };
+    }
     if (phase !== shown.current) { shown.current = phase; setVisual(phase); }
     if (!canControl(run)) return;
     const cam = state.camera.position;
@@ -73,7 +80,7 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
   const flying = visual === 2;
 
   return (
-    <group position={[trap.x, GROUND_Y, trap.z]} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
+    <group name="trap-darts" position={[trap.x, GROUND_Y, trap.z]} rotation={[0, alongX ? 0 : Math.PI / 2, 0]}>
       {/* The plate: a worn slab, a shade darker than the floor, and two
           holes in the jambs either side of the lane that say what it is.
           Local x is along the lane and local z across it, which is the

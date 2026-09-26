@@ -27,7 +27,8 @@ import { chromium } from "playwright-core";
 
 const PORT = process.env.PORT || "5199";
 const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  process.env.CHROMIUM_PATH ||
+  (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 const URL = `http://127.0.0.1:${PORT}/`;
 
 let failures = 0;
@@ -391,7 +392,7 @@ const PHONE = { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile:
   );
   ok(
     "phone: the bar hint names the button",
-    await until(page, async () => /BAR shuts it/.test((await promptText()) ?? "")),
+    await until(page, async () => /BAR barricades/.test((await promptText()) ?? "")),
     JSON.stringify(await promptText())
   );
   const roomBefore = (await snap(page)).room;

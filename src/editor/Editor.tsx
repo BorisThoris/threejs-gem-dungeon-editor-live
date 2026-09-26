@@ -6,15 +6,21 @@ import { Inspector } from "./Inspector";
 import { Mosaic } from "./Mosaic";
 import { Painter } from "./Painter";
 import { RoomBuilder } from "./RoomBuilder";
+import { ScenarioShelf } from "./ScenarioShelf";
+import { SignalGraph } from "./SignalGraph";
+import { TestHall } from "./TestHall";
 import { WorldAtlas } from "./WorldAtlas";
 import { shell, tab, topbar } from "./styles";
 
-type Tab = "rooms" | "props" | "surfaces" | "mosaic" | "world";
+type Tab = "rooms" | "props" | "hall" | "cases" | "signals" | "surfaces" | "mosaic" | "world";
 
 const TABS: { id: Tab; title: string }[] = [
   { id: "world", title: "WORLD" },
   { id: "rooms", title: "ROOMS" },
   { id: "props", title: "PROPS" },
+  { id: "hall", title: "TEST HALL" },
+  { id: "cases", title: "SCENARIOS" },
+  { id: "signals", title: "SIGNALS" },
   { id: "surfaces", title: "SURFACES" },
   { id: "mosaic", title: "MOSAIC" },
 ];
@@ -23,12 +29,15 @@ const TABS: { id: Tab; title: string }[] = [
  * The authoring tools, on top of the game's own modules.
  *
  * Reached with `?editor` in development only; the production bundle never
- * contains this tree. Every tool here writes into something the game reads:
- * rooms into the template registry, surfaces into the texture registry.
- * Nothing authored here can fail to reach a run.
+ * contains this tree. Authoring tools write into the game's template and
+ * texture registries. Inspection tools read the same geometry and rules as
+ * play, so a diagnostic describes the shipped simulation.
  */
 export default function Editor() {
-  const [current, setCurrent] = useState<Tab>("rooms");
+  const [current, setCurrent] = useState<Tab>(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    return TABS.some(tab => tab.id === requested) ? requested as Tab : "rooms";
+  });
   return (
     <div style={shell}>
       <div style={topbar}>
@@ -51,6 +60,9 @@ export default function Editor() {
         {current === "rooms" && <RoomBuilder />}
         {current === "world" && <WorldAtlas />}
         {current === "props" && <Inspector />}
+        {current === "hall" && <TestHall />}
+        {current === "cases" && <ScenarioShelf />}
+        {current === "signals" && <SignalGraph />}
         {current === "surfaces" && <Painter />}
         {current === "mosaic" && <Mosaic />}
       </div>

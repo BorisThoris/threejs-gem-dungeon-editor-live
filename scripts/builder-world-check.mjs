@@ -53,7 +53,7 @@ try {
     return !getTemplate(previewTemplateId(id));
   }, draft.template.id);
   assert.ok(cleaned);
-  await page.getByLabel("World seed").fill("1");
+  await page.getByLabel("Run seed").fill("1");
   await page.getByRole("button", { name: "Landmark route", exact: true }).click();
   assert.ok(await page.getByTestId("atlas-secret-route").count() > 0,
     "the atlas traces the landmark expedition across real doors");

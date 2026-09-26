@@ -68,6 +68,13 @@ try {
     window.__bus.emit("lookSet", { yaw: Math.PI / 2, pitch: 0 });
   });
   await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const run = window.__run;
+    run.setState({ barredDoor: "a|b", barUntil: window.__derived.clock() + 0.8 });
+  });
+  await page.getByTestId("prompt-text").filter({ hasText: "The grate is still down" }).waitFor();
+  await page.waitForFunction(() => window.__run.getState().barredDoor === null, null, { timeout: 3000 });
+  await page.getByTestId("prompt-text").filter({ hasText: "Open a chamber" }).waitFor({ timeout: 3000 });
   await page.keyboard.press("KeyB");
   await page.waitForFunction(() => window.__run.getState().barricades.includes("a|b"));
   await page.waitForFunction(() => document.querySelector('[data-testid="bars-stock"]').textContent.includes("2/3"));

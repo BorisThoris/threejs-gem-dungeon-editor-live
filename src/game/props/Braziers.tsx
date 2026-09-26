@@ -200,7 +200,7 @@ export function Braziers({ places, roomId }: { places: PropPlacement[]; roomId?:
   const at = useMemo(() => places, [places]);
   if (at.length === 0) return null;
   return (
-    <group>
+    <group name="braziers">
       <Firelight places={at} />
       {PARTS.map((part) => (
         <Part key={part.key} part={part} places={at} />

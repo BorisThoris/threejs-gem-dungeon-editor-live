@@ -2,17 +2,17 @@ import { useLayoutEffect, useRef } from "react";
 import { Matrix4, Vector3, type InstancedMesh } from "three";
 
 import type { PropPlacement } from "../dungeon/types";
-import { IRON, WOOD_LIT } from "./furnitureStyle";
+import { IRON, WOOD_LIT, type BatchedFurnitureKind } from "./furnitureStyle";
 import { geo, mat } from "./shared";
 
-type FurnitureKind = "barrel" | "chair" | "crate" | "table";
 type Part = {
   key: string;
-  kind: FurnitureKind;
+  kind: BatchedFurnitureKind;
   geometry: () => ReturnType<typeof geo>;
   material: () => ReturnType<typeof mat>;
   at?: [number, number, number];
   size?: [number, number, number];
+  castShadow?: boolean;
 };
 
 /** Fixed wood furniture bakes its two tints into vertex colors and uses one
@@ -28,6 +28,12 @@ const PARTS: readonly Part[] = [
     material: () => mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true }) },
   { key: "finished-table", kind: "table", geometry: () => geo("finished-table"),
     material: () => mat({ color: "#ffffff", roughness: 0.85, surface: "wood", vertexColors: true }) },
+  { key: "urn-body", kind: "urn", geometry: () => geo("sphere", 1, 10, 6),
+    material: () => mat({ color: "#8a5a44", roughness: 0.7 }), at: [0, 0.6, 0], size: [0.36, 0.36, 0.36] },
+  { key: "urn-neck", kind: "urn", geometry: () => geo("cylinder", 0.16, 0.12, 0.26, 8),
+    material: () => mat({ color: "#7a4e3a", roughness: 0.7 }), at: [0, 1.02, 0], castShadow: false },
+  { key: "urn-foot", kind: "urn", geometry: () => geo("cylinder", 0.2, 0.24, 0.24, 8),
+    material: () => mat({ color: "#7a4e3a", roughness: 0.75 }), at: [0, 0.12, 0], castShadow: false },
 ];
 
 function FurniturePart({ part, places }: { part: Part; places: PropPlacement[] }) {
@@ -48,7 +54,7 @@ function FurniturePart({ part, places }: { part: Part; places: PropPlacement[] }
     target.instanceMatrix.needsUpdate = true;
     target.computeBoundingSphere();
   }, [part, places]);
-  return <instancedMesh ref={mesh} name={`furniture-${part.key}`} castShadow
+  return <instancedMesh ref={mesh} name={`furniture-${part.key}`} castShadow={part.castShadow !== false}
     args={[part.geometry(), part.material(), places.length]} />;
 }
 

@@ -43,7 +43,7 @@ export function IronKey({ roomId, position }: IronKeyProps) {
   const at: [number, number, number] = lying ? [lying.x, position[1] + rise, lying.z] : position;
 
   return (
-    <group ref={group} position={at}>
+    <group name="iron-key" ref={group} position={at}>
       {/* A bow, a shaft and two teeth: unmistakably a key at a glance. */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.12, 0.035, 8, 16]} />

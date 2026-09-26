@@ -32,9 +32,7 @@ import { chromium } from "playwright-core";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const PORT = process.env.PORT || process.argv.find((arg, index) => index > 1 && /^\d+$/.test(arg)) || "5199";
 const THRESHOLD_ONLY = process.argv.includes("--threshold-only");
-const CHROMIUM =
-  process.env.CHROMIUM_PATH ||
-  (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
+const CHROMIUM = process.env.CHROMIUM_PATH || undefined;
 
 let failures = 0;
 const ok = (label, cond, detail = "") => {
@@ -401,19 +399,23 @@ ok(
    * says how close everything else was, which is the difference between a
    * diagnosis and another shrug.
    */
-  let tightest = null;
+  const margins = [];
   for (const [label, peak] of heard) {
     const bar = LOUD_CUES.some((c) => label === c || label.startsWith(`${c}(`))
       ? floorLevel * LOUD
       : AUDIBLE;
     const margin = peak / bar;
-    if (tightest === null || margin < tightest.margin) tightest = { label, peak, bar, margin };
+    margins.push({ label, peak, bar, margin });
   }
+  margins.sort((a, b) => a.margin - b.margin);
+  const tightest = margins[0];
   if (tightest)
     console.log(
       `  tightest margin: ${tightest.label} at ${tightest.peak.toFixed(4)} against ` +
         `${tightest.bar.toFixed(4)} - ${((tightest.margin - 1) * 100).toFixed(0)}% clear`
     );
+  console.log(`  lowest margins: ${margins.slice(0, 8).map((cue) =>
+    `${cue.label} ${((cue.margin - 1) * 100).toFixed(0)}%`).join(", ")}`);
 }
 if (THRESHOLD_ONLY) {
   await browser.close();
@@ -501,8 +503,12 @@ for (const [start, stop, args] of VOICES) {
 {
   const airs = await page.evaluate(async (flush) => {
     const ambience = window.__ambience;
+    const { AIRS } = await import("/src/game/rooms/biomes.ts");
     const out = {};
-    for (const id of ["drip", "wind", "ember", "creak", "hum", "hollow", "spore", "sift", "tick", "hiss", "wick"]) {
+    for (const id of AIRS.filter(id => id !== "still")) {
+      // A previous air's fade must not supply this air's measured peak.
+      ambience.setAir("still");
+      await new Promise((r) => setTimeout(r, 1200 + flush));
       // From the moment it is set: the timed airs drop their first sound
       // at once and a creak's next may be seven seconds off, and the held
       // ones come up over a second and a half. One window covers both.
@@ -516,8 +522,11 @@ for (const [start, stop, args] of VOICES) {
     out.still = { level: await window.__listen(600), running: ambience.airId() };
     return out;
   }, FLUSH_MS);
-  const quietAirs = Object.entries(airs).filter(([id, a]) => id !== "still" && a.level < AUDIBLE).map(([id, a]) => `${id} ${a.level.toFixed(4)}`);
+  const quietAirs = Object.entries(airs).filter(([id, a]) => id !== "still" && (a.level < AUDIBLE || a.running !== id)).map(([id, a]) => `${id} ${a.level.toFixed(4)} (${a.running})`);
   ok("every biome's air is heard over the room", quietAirs.length === 0, quietAirs.join(", ") || Object.entries(airs).filter(([id]) => id !== "still").map(([id, a]) => `${id} ${a.level.toFixed(3)}`).join(", "));
+  console.log(`  air headroom: ${Object.entries(airs).filter(([id]) => id !== "still")
+    .sort((a, b) => a[1].level - b[1].level)
+    .map(([id, a]) => `${id} ${((a.level / AUDIBLE - 1) * 100).toFixed(0)}%`).join(", ")}`);
   ok("and a still room is the room tone and nothing else", airs.still.level < AUDIBLE && airs.still.running === null, `${airs.still.level.toFixed(4)} against ${AUDIBLE.toFixed(4)}`);
 }
 

@@ -26,13 +26,15 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = fileURLToPath(new URL("..", import.meta.url));
 const DESKTOP = process.argv.includes("--desktop");
 const PORT = process.env.PORT || (DESKTOP ? "9334" : "5199");
 const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+  process.env.CHROMIUM_PATH ||
+  (process.platform === "linux" ? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" : undefined);
 
 let failures = 0;
 const ok = (label, cond, detail = "") => {

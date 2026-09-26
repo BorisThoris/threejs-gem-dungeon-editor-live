@@ -118,7 +118,7 @@ export function Watercourse({ room }: { room: Room }) {
   });
   if (!room.waterway) return null;
   const role = room.waterway.role;
-  return <group>
+  return <group name="watercourse">
     <Blocks blocks={blocks.map((b, i) => {
       const basin = role !== "channel" && i === blocks.length - 1;
       return { ...b, position: [b.position[0], GROUND_Y + 0.032, b.position[2]],

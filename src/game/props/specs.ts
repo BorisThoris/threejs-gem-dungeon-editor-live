@@ -1,4 +1,4 @@
-import type { PropKind } from "../dungeon/types";
+import type { PropKind, PropPlacement } from "../dungeon/types";
 
 /**
  * What every prop is, as data: how big its footprint is, whether it blocks
@@ -22,12 +22,36 @@ export type ColliderSpec =
   | { shape: "cuboid"; args: [number, number, number]; y: number }
   | { shape: "cylinder"; args: [number, number]; y: number };
 
+/** Furthest horizontal point of a collider, independent of prop rotation. */
+export const colliderFootprintRadius = (collider: ColliderSpec): number =>
+  collider.shape === "cuboid" ? Math.hypot(collider.args[0], collider.args[2]) : collider.args[1];
+
+/** Exact world-axis reach of a rotated collider used for lane and wall checks. */
+export function propColliderAxisExtents(placement: PropPlacement): { x: number; z: number } | null {
+  const collider = PROP_SPECS[placement.kind].collider;
+  if (!collider) return null;
+  const scale = Math.abs(placement.scale ?? 1);
+  if (collider.shape === "cylinder") {
+    const radius = collider.args[1] * scale;
+    return { x: radius, z: radius };
+  }
+  const turn = placement.rotation ?? 0;
+  const cosine = Math.abs(Math.cos(turn));
+  const sine = Math.abs(Math.sin(turn));
+  return {
+    x: scale * (collider.args[0] * cosine + collider.args[2] * sine),
+    z: scale * (collider.args[0] * sine + collider.args[2] * cosine),
+  };
+}
+
 export interface PropSpec {
   title: string;
-  /** Footprint radius in room units, for the editor and for lane checks. */
+  /** Placement radius in room units; broad clearance around a prop. */
   radius: number;
   /** Whether it blocks the player. */
   solid: boolean;
+  /** Fixed-size gameplay effects do not read placement scale or rotation. */
+  transformable?: false;
   /**
    * Architecture rather than furniture: a piece an author builds a room out
    * of, which no seeded arrangement ever stands on an anchor.
@@ -75,9 +99,56 @@ export const PROP_SPECS: Record<PropKind, PropSpec> = {
   statue: { title: "Statue", radius: 0.55, solid: true, collider: { shape: "cylinder", args: [1.15, 0.5], y: 1.15 } },
   table: { title: "Table", radius: 1, solid: true, collider: { shape: "cuboid", args: [0.9, 0.41, 0.5], y: 0.41 } },
   tile: { title: "Floor inlay", radius: 1, solid: false },
-  torch: { title: "Brazier", radius: 0.4, solid: false },
+  torch: { title: "Brazier", radius: 0.4, solid: false, transformable: false },
   urn: { title: "Urn", radius: 0.4, solid: true, collider: { shape: "cylinder", args: [0.6, 0.36], y: 0.6 } },
   wall: { title: "Wall segment", radius: 1.5, solid: true, authored: true, collider: { shape: "cuboid", args: [1.5, 1.5, 0.2], y: 1.5 } },
   web: { title: "Cobweb", radius: 0.7, solid: false },
-  spikes: { title: "Spikes", radius: 1.2, solid: false },
+  spikes: { title: "Spikes", radius: 1.2, solid: false, transformable: false },
 };
+
+/** Horizontal intersection of the colliders Rapier builds for two placements. */
+export function propCollidersOverlap(a: PropPlacement, b: PropPlacement): boolean {
+  const ca = PROP_SPECS[a.kind].collider;
+  const cb = PROP_SPECS[b.kind].collider;
+  if (!ca || !cb) return false;
+  const sa = Math.abs(a.scale ?? 1);
+  const sb = Math.abs(b.scale ?? 1);
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const ra = colliderFootprintRadius(ca) * sa;
+  const rb = colliderFootprintRadius(cb) * sb;
+  if (Math.hypot(dx, dz) >= ra + rb) return false;
+  if (ca.shape === "cylinder" && cb.shape === "cylinder") return true;
+
+  const circleBox = (circle: PropPlacement, radius: number, box: PropPlacement,
+    halfX: number, halfZ: number): boolean => {
+    const turn = box.rotation ?? 0;
+    const x = circle.x - box.x;
+    const z = circle.z - box.z;
+    const localX = x * Math.cos(turn) - z * Math.sin(turn);
+    const localZ = x * Math.sin(turn) + z * Math.cos(turn);
+    const outsideX = Math.max(Math.abs(localX) - halfX, 0);
+    const outsideZ = Math.max(Math.abs(localZ) - halfZ, 0);
+    return outsideX * outsideX + outsideZ * outsideZ < radius * radius - 1e-9;
+  };
+  if (ca.shape === "cylinder" && cb.shape === "cuboid")
+    return circleBox(a, ca.args[1] * sa, b, cb.args[0] * sb, cb.args[2] * sb);
+  if (ca.shape === "cuboid" && cb.shape === "cylinder")
+    return circleBox(b, cb.args[1] * sb, a, ca.args[0] * sa, ca.args[2] * sa);
+  if (ca.shape !== "cuboid" || cb.shape !== "cuboid") return false;
+
+  const axes = (turn: number): [number, number][] => [
+    [Math.cos(turn), -Math.sin(turn)],
+    [Math.sin(turn), Math.cos(turn)],
+  ];
+  const aa = axes(a.rotation ?? 0);
+  const bb = axes(b.rotation ?? 0);
+  return [...aa, ...bb].every(([x, z]) => {
+    const extent = (basis: [number, number][], halfX: number, halfZ: number) =>
+      halfX * Math.abs(x * basis[0][0] + z * basis[0][1])
+      + halfZ * Math.abs(x * basis[1][0] + z * basis[1][1]);
+    return Math.abs(dx * x + dz * z)
+      < extent(aa, ca.args[0] * sa, ca.args[2] * sa)
+      + extent(bb, cb.args[0] * sb, cb.args[2] * sb) - 1e-6;
+  });
+}

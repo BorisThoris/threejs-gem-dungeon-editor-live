@@ -25,7 +25,7 @@ import { resolveSlots } from "../game/rooms/slots";
 import { previewTemplateId } from "../game/rooms/templates";
 import { ROOM_SIZE_DEFAULT, ROOM_SIZES } from "../game/world";
 import { colors } from "../ui/overlay";
-import { download, draftStore, isRoomTemplate, newDraftId, useDrafts } from "./drafts";
+import { download, draftStore, isRoomTemplate, newDraftId, useDrafts, useDraftSaveFailed } from "./drafts";
 import { Preview } from "./Preview";
 import { button, field, label, panel, secondaryButton, small } from "./styles";
 
@@ -48,6 +48,7 @@ const CELL_PX = 22;
  */
 export function RoomBuilder() {
   const drafts = useDrafts();
+  const saveFailed = useDraftSaveFailed();
   const [activeId, setActiveId] = useState<string | null>(drafts[0]?.template.id ?? null);
   const [tool, setTool] = useState<PropKind>("barrel");
   const [selected, setSelected] = useState<number | null>(null);
@@ -169,6 +170,15 @@ export function RoomBuilder() {
           <input type="file" accept="application/json" onChange={importJson} style={{ display: "none" }} />
         </label>
         <div style={{ ...label, marginTop: 18 }}>DRAFTS</div>
+        {saveFailed && <div role="alert" style={{ ...small, marginBottom: 12 }}>
+          Draft changes are only in this session. Browser storage could not save them.
+          Export your drafts before closing or reloading, or retry saving.
+          <button style={{ ...secondaryButton, marginTop: 8 }} onClick={draftStore.retrySave}>Retry saving drafts</button>
+        </div>}
+        {drafts.length > 0 && <button style={{ ...secondaryButton, marginBottom: 8 }}
+          onClick={() => download("room-drafts.json", JSON.stringify(drafts.map(d => d.template), null, 2))}>
+          Export all drafts
+        </button>}
         {drafts.length === 0 && <div style={small}>None yet.</div>}
         {drafts.map((d) => (
           <div

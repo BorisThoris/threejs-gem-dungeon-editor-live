@@ -7,14 +7,18 @@ mkdirSync(output, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
   headless: true, args: ["--no-sandbox"] });
 const errors = [], review = [];
+// The verification runner passes a port; direct review calls may pass a case name.
+const argument = process.argv[2];
+const portArgument = argument && /^\d+$/.test(argument) ? argument : undefined;
+const wantedCase = portArgument ? undefined : argument;
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-  await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5199"}/`);
+  await page.goto(`http://127.0.0.1:${portArgument ?? process.env.PORT ?? "5199"}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
-  for (const wanted of (process.argv[2] ? [process.argv[2]] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "junction", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
+  for (const wanted of (wantedCase ? [wantedCase] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "junction", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
     const fixture = await page.evaluate(async wanted => {
       const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
       const { isUnlitRoom } = await import("/src/game/lighting/field.ts");

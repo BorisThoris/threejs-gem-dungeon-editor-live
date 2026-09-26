@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { chromium } from "playwright-core";
 import { join } from "node:path";
 
+const port = process.argv[2] ?? process.env.PORT ?? "5198";
+
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 try {
@@ -11,7 +13,7 @@ try {
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ touchControls: "on" })));
-    await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5198"}/`);
+    await page.goto(`http://127.0.0.1:${port}/`);
     await page.locator('[data-testid="menu-start"]').click();
     await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
     await page.evaluate(() => {
@@ -62,9 +64,9 @@ try {
         settings.bind("sprint", "KeyR");
         window.__bus.emit("wardenEntered", { roomId: window.__run.getState().currentRoomId });
       });
-      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT briefly staggers"));
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Left click / Q / RT briefly staggers"));
       await page.evaluate(() => window.__bus.emit("harrierWoke"));
-      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Q or RT to drive it off"));
+      await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Left click / Q / RT to drive it off"));
       await page.evaluate(() => window.__bus.emit("lanternToggled", { raised: true }));
       await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("L puts it down"));
       await page.evaluate(() => {
@@ -90,13 +92,13 @@ try {
       const help = page.getByTestId("controls-help");
       assert.match(await help.innerText(), /Forward: I/);
       assert.match(await help.innerText(), /U at a door/);
-      assert.match(await help.innerText(), /Q or RT shoves/);
+      assert.match(await help.innerText(), /Left click, Q, or RT charges and shoves/);
       assert.match(await help.innerText(), /Slots 1–4: 7;/);
       assert.match(await help.innerText(), /L, or click the right stick/);
       await page.evaluate(async () => {
         (await import("/src/game/state/settings.ts")).useSettings.getState().bind("shove", "KeyZ");
       });
-      await page.waitForFunction(() => document.querySelector('[data-testid="controls-help"]').textContent.includes("Z or RT shoves"));
+      await page.waitForFunction(() => document.querySelector('[data-testid="controls-help"]').textContent.includes("Left click, Z, or RT charges and shoves"));
       console.log("PASS controls menu shows rebound movement, use, shove, satchel and lantern keys and updates live");
     }
     assert.deepEqual(errors, [], "layout has no runtime errors");

@@ -33,3 +33,10 @@ scripts/authoring/authored.json
 # Local world-building browser review captures.
 output/world-review/
 output/playwright/
+output/scenario-review/
+output/creature-gallery/
+output/verification/
+output/audio/
+output/pursuit-verify/
+output/signal-graph.png
+output/test-hall.png

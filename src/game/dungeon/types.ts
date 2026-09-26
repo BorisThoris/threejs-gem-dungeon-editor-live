@@ -226,6 +226,8 @@ export interface Room {
 }
 
 export interface Dungeon {
+  /** Generation choice fixed when this floor was built, even if a relic is bought later. */
+  roomBias: boolean;
   serviceTrail?: import("../worldbuilding/serviceTrail").ServiceTrail;
   /** A district landmark's physical route to this floor's sealed history. */
   secretTrail?: import("../worldbuilding/secretTrail").SecretTrail;

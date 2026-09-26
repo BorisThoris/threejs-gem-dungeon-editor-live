@@ -4,6 +4,7 @@ import { getSurface,
   getSurfaceOverride, hasSurfaceOverride, listSurfaces, setSurfaceImage } from "../game/textures/registry";
 import { colors } from "../ui/overlay";
 import { button, field, label, panel, secondaryButton, small } from "./styles";
+import { SurfaceSaveStatus } from "./SurfaceSaveStatus";
 
 const SIZE = 128;
 const VIEW = 384;
@@ -36,6 +37,10 @@ export function Painter() {
   const painting = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const undo = useRef<ImageData[]>([]);
+  const loadRequest = useRef<object | null>(null);
+  const [loadedSurface, setLoadedSurface] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const ready = loadedSurface === surfaceId;
   const [, bump] = useState(0);
 
   const ctx = () => canvasRef.current!.getContext("2d")!;
@@ -50,12 +55,21 @@ export function Painter() {
   };
 
   const loadSurface = (id: string) => {
+    const request = {};
+    loadRequest.current = request;
+    setLoadedSurface(null);
+    setLoadError(false);
+    painting.current = false;
+    last.current = null;
+    undo.current = [];
     const draw = (image: CanvasImageSource) => {
+      if (request !== loadRequest.current || !canvasRef.current) return;
       const g = ctx();
       g.clearRect(0, 0, SIZE, SIZE);
       g.drawImage(image, 0, 0, SIZE, SIZE);
       undo.current = [];
       refreshPreview();
+      setLoadedSurface(id);
       bump((n) => n + 1);
     };
     // An authored surface is decoded from its stored image, not read off
@@ -65,6 +79,9 @@ export function Painter() {
     if (url) {
       const image = new Image();
       image.onload = () => draw(image);
+      image.onerror = () => {
+        if (request === loadRequest.current && canvasRef.current) setLoadError(true);
+      };
       image.src = url;
       return;
     }
@@ -73,6 +90,11 @@ export function Painter() {
 
   useEffect(() => {
     loadSurface(surfaceId);
+    return () => {
+      loadRequest.current = null;
+      painting.current = false;
+      last.current = null;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surfaceId]);
 
@@ -109,6 +131,7 @@ export function Painter() {
   };
 
   const onDown = (e: PointerEvent<HTMLCanvasElement>) => {
+    if (!ready) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     undo.current.push(ctx().getImageData(0, 0, SIZE, SIZE));
     if (undo.current.length > 30) undo.current.shift();
@@ -119,7 +142,7 @@ export function Painter() {
     refreshPreview();
   };
   const onMove = (e: PointerEvent<HTMLCanvasElement>) => {
-    if (!painting.current) return;
+    if (!ready || !painting.current) return;
     const p = toTile(e);
     const from = last.current ?? p;
     const steps = Math.max(1, Math.ceil(Math.hypot(p.x - from.x, p.y - from.y) / Math.max(1, size / 3)));
@@ -133,6 +156,7 @@ export function Painter() {
   };
 
   const doUndo = () => {
+    if (!ready) return;
     const prev = undo.current.pop();
     if (prev) {
       ctx().putImageData(prev, 0, 0);
@@ -141,6 +165,7 @@ export function Painter() {
   };
 
   const save = () => {
+    if (!ready) return;
     setSurfaceImage(surfaceId, canvasRef.current!.toDataURL("image/png"));
     bump((n) => n + 1);
   };
@@ -148,13 +173,16 @@ export function Painter() {
     setSurfaceImage(surfaceId, null);
     loadSurface(surfaceId);
   };
+  const surfaces = listSurfaces();
+  // A new or reset custom surface has no override yet, but is still the active tile.
+  if (!surfaces.some(surface => surface.id === surfaceId)) surfaces.push({ id: surfaceId, custom: false });
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "240px auto 1fr", gap: 16, minHeight: 0 }}>
       <div style={{ ...panel, overflow: "auto" }}>
         <div style={label}>SURFACE</div>
-        <select style={field} value={surfaceId} onChange={(e) => setSurfaceId(e.target.value)}>
-          {listSurfaces().map((s) => (
+        <select aria-label="Surface" style={field} value={surfaceId} onChange={(e) => setSurfaceId(e.target.value)}>
+          {surfaces.map((s) => (
             <option key={s.id} value={s.id}>
               {s.id}
               {s.custom ? " (painted)" : ""}
@@ -199,10 +227,10 @@ export function Painter() {
         <button style={{ ...secondaryButton, borderColor: eraser ? colors.accent : colors.line }} onClick={() => setEraser(!eraser)}>
           Eraser {eraser ? "on" : "off"}
         </button>
-        <button style={secondaryButton} onClick={doUndo}>
+        <button style={secondaryButton} disabled={!ready} onClick={doUndo}>
           Undo
         </button>
-        <button style={button} onClick={save}>
+        <button style={button} disabled={!ready} onClick={save}>
           Save as "{surfaceId}"
         </button>
         {hasSurfaceOverride(surfaceId) && (
@@ -210,12 +238,17 @@ export function Painter() {
             Reset to default
           </button>
         )}
+        {!ready && <p role="status" style={small}>{loadError
+          ? "Saved surface could not be loaded. Reset to default to replace it."
+          : "Loading saved surface…"}</p>}
         <div style={small}>Saving changes every floor and wall using this surface, in a running game too.</div>
+        <SurfaceSaveStatus />
       </div>
       <div style={{ ...panel, padding: 6 }}>
         <div style={label}>TILE</div>
         <canvas
           ref={canvasRef}
+          aria-label="Paint surface" aria-busy={!ready && !loadError}
           width={SIZE}
           height={SIZE}
           onPointerDown={onDown}

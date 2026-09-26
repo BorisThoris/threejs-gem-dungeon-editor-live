@@ -7,6 +7,7 @@ import { createRng } from "../rng";
 import { BIOME, biomeIdFor } from "../rooms/biomes";
 import { placementsFor } from "../rooms/placements";
 import type { MobId } from "./body";
+import { batFlightRadius } from "./batFlight";
 
 /**
  * Where the floor's ambient life is. One owner, derived from the room and
@@ -84,8 +85,20 @@ export function roostFor(room: Room, seed: number): Spot | null {
   if (!livesHere("bat", room, seed)) return null;
   const rng = createRng(`${seed}:${room.id}:roost`);
   if (rng() < 0.2) return null;
-  const spread = room.size * 0.3;
-  return { x: (rng() - 0.5) * spread, z: (rng() - 0.5) * spread };
+  // Ring and elbow chambers can have empty space at their geometric centre.
+  // A roost chosen from the bounding square used to hang bats over a sealed
+  // core, where even a zero-radius flight orbit clipped through its walls.
+  // Keep the original central candidate in ordinary rooms, then search the
+  // real floor union for shaped rooms.
+  for (let attempt = 0; attempt < 64; attempt++) {
+    const spread = room.size * (attempt === 0 ? 0.3 : 0.85);
+    const x = (rng() - 0.5) * spread, z = (rng() - 0.5) * spread;
+    // The ceiling structure owns real solid airspace. A legal floor point
+    // alone can still put the flock inside a corbel; keep only a point that
+    // has room for the wing span and a positive orbit.
+    if (insideRoom(room, x, z, 1) && batFlightRadius(room, { x, z }) > 0.05) return { x, z };
+  }
+  return null;
 }
 
 /**

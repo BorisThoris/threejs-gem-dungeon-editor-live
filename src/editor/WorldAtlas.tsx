@@ -4,7 +4,8 @@ import { channelSediment } from "../game/worldbuilding/channelSediment";
 import { roomPlaceName } from "../game/rooms/placeName";
 import { BIOME, biomeIdFor } from "../game/rooms/biomes";
 import { useMemo, useState } from "react";
-import { generateDungeon } from "../game/dungeon/generate";
+import { shortestPath } from "../game/dungeon/generate";
+import { generateRunFloor, runFloorSeed } from "../game/dungeon/runFloor";
 import { DIRS, DIR_STEP } from "../game/dungeon/types";
 import { doorReach } from "../game/dungeon/footprint";
 import { DISTRICTS } from "../game/rooms/districts";
@@ -46,16 +47,21 @@ import { districtHandoverFor } from "../game/worldbuilding/districtThresholds";
 import { thresholdEchoSitesFor } from "../game/worldbuilding/thresholdEcho";
 import { channelFrameFor } from "../game/worldbuilding/channelFrames";
 import { sealedThresholdFor } from "../game/worldbuilding/structuralPattern";
+import { MAX_SCENARIO_SEED, scenarioSeedInput, scenarioUrl } from "./scenario";
 
 const INK = { gardens: "#8ebf9b", works: "#c99867", tombs: "#a59ec5" };
 const GRID = 112;
+const atlasParams = new URLSearchParams(window.location.search);
+const querySeed = Number(atlasParams.get("seed"));
+const queryFloor = Number(atlasParams.get("floor"));
 
 /** Inspect the generated world, including hidden routes. This is an authoring
  * view; the player's map continues to reveal only what they have discovered. */
 export function WorldAtlas() {
-  const [seed, setSeed] = useState(72);
-  const [floor, setFloor] = useState(2);
-  const [selected, setSelected] = useState("start");
+  const [seed, setSeed] = useState(Number.isInteger(querySeed) && querySeed >= 1 && querySeed <= MAX_SCENARIO_SEED ? querySeed : 72);
+  const [floor, setFloor] = useState(Number.isInteger(queryFloor) && queryFloor >= 1 && queryFloor <= 3 ? queryFloor : 2);
+  const [roomBias, setRoomBias] = useState(atlasParams.get("bias") === "1");
+  const [selected, setSelected] = useState(atlasParams.get("room") ?? "start");
   const [waterPreview, setWaterPreview] = useState<"flowing" | "drained" | "timeline">("flowing");
   const [drainSeconds, setDrainSeconds] = useState(6);
   const previewOpened = waterPreview === "flowing" ? null : 0;
@@ -66,8 +72,9 @@ export function WorldAtlas() {
   const [lighting, setLighting] = useState(true);
   const [terrain, setTerrain] = useState(true);
   const [noise, setNoise] = useState(false);
+  const [showRoute, setShowRoute] = useState(false);
   const [probe, setProbe] = useState<{ room: Room; x: number; z: number } | null>(null);
-  const dungeon = useMemo(() => generateDungeon({ seed, floor }), [seed, floor]);
+  const dungeon = useMemo(() => generateRunFloor(seed, floor, roomBias), [seed, floor, roomBias]);
   const room = dungeon.rooms.find(r => r.id === selected) ?? dungeon.rooms[0];
   const probeX = probe?.room === room ? probe.x : 0, probeZ = probe?.room === room ? probe.z : 0;
   const probeGround = footingAt(room, probeX, probeZ, previewOpened, previewClock);
@@ -80,6 +87,7 @@ export function WorldAtlas() {
       setProbe({ room, x, z });
   };
   const byId = useMemo(() => new Map(dungeon.rooms.map(r => [r.id, r])), [dungeon]);
+  const route = showRoute ? shortestPath(dungeon.rooms, dungeon.startId, room.id) : null;
   const extent = useMemo(() => {
     const xs = dungeon.rooms.map(r => r.grid.x), zs = dungeon.rooms.map(r => r.grid.z);
     return { x: (Math.min(...xs) - 0.6) * GRID, y: (Math.min(...zs) - 0.6) * GRID,
@@ -124,15 +132,18 @@ export function WorldAtlas() {
   const outfall = dungeon.rooms.find(r => r.waterway?.role === "outfall");
   return <div>
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "end", gap: 16, marginBottom: 18 }}>
-      <label style={label}>WORLD SEED
-        <input aria-label="World seed" type="number" min={1} max={4294967295} value={seed} style={{ ...field, width: 160 }}
-          onChange={e => setSeed(Math.max(1, Math.min(4294967295, Math.floor(Number(e.target.value) || 1))))} />
+      <label style={label}>RUN SEED
+        <input aria-label="Run seed" type="number" min={1} max={MAX_SCENARIO_SEED} value={seed} style={{ ...field, width: 160 }}
+          onChange={e => setSeed(scenarioSeedInput(e.target.value))} />
       </label>
       <label style={label}>DEPTH
         <select aria-label="World depth" value={floor} onChange={e => setFloor(Number(e.target.value))} style={{ ...field, width: 100 }}>
           {[1, 2, 3].map(n => <option key={n} value={n}>{n}</option>)}
         </select>
       </label>
+      <label style={{ ...small, cursor: "pointer" }}><input data-testid="atlas-room-bias" type="checkbox" checked={roomBias}
+        onChange={event => setRoomBias(event.target.checked)} /> Foreman's Tally room bias</label>
+      <span data-testid="atlas-floor-seed" style={small}>Floor seed {runFloorSeed(seed, floor)}</span>
       <button style={{ ...button, width: "auto" }} onClick={() => setSeed(s => (s + 1) >>> 0 || 1)}>Next seed</button>
       <button style={{ ...button, width: "auto" }} disabled={!livingRooms.length} onClick={() => {
         const next = (livingRooms.findIndex(r => r.id === room.id) + 1) % livingRooms.length;
@@ -146,12 +157,19 @@ export function WorldAtlas() {
         onClick={() => dungeon.secretTrail && setSelected(dungeon.secretTrail.sourceId)}>Landmark route</button>
       <button style={{ ...button, width: "auto" }} disabled={!secretHost}
         onClick={() => secretHost && setSelected(secretHost.id)}>Secret threshold</button>
+      <button style={{ ...button, width: "auto" }} aria-pressed={showRoute}
+        onClick={() => setShowRoute(value => !value)}>Route from start</button>
+      <a data-testid="atlas-play-room" href={scenarioUrl({ seed, floor, roomId: room.id, roomBias })}
+        style={{ ...button, width: "auto", textDecoration: "none", display: "inline-block" }}>Play this room →</a>
       <span style={small}>{dungeon.rooms.length} rooms · {dungeon.rooms.filter(r => r.waterway).length} on the watercourse</span>
+      {showRoute && <span data-testid="atlas-route-length" style={small}>
+        {route ? `${route.length - 1} doors from start to ${room.id}` : `No open route to ${room.id}`}
+      </span>}
     </div>
     <div style={{ display: "grid", gridTemplateColumns: "minmax(420px, 1.4fr) minmax(340px, 1fr)", gap: 20 }}>
       <section style={panel}>
         <div style={label}>THE CONNECTED FLOOR</div>
-        <p style={small}>Select a room to inspect its true footprint. Bronze arrows follow the water downstream. Dashed branches are hidden walls. Copper dots follow the maintenance rubbing; paired gold strokes trace the district landmark's sealed history.</p>
+        <p style={small}>Select a room to inspect its true footprint, then use Play this room to open a shareable development scenario in the real game. Bronze arrows follow the water downstream. Dashed branches are hidden walls. Copper dots follow the maintenance rubbing; paired gold strokes trace the district landmark's sealed history.</p>
         <svg aria-label="Generated world map" role="img" viewBox={`${extent.x} ${extent.y} ${extent.width} ${extent.height}`}
           style={{ width: "100%", height: 540, background: "#0b1012", borderRadius: 8 }}>
           <defs><marker id="atlas-flow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
@@ -161,6 +179,12 @@ export function WorldAtlas() {
             const next = byId.get(id)!;
             return <line key={`${r.id}:${id}`} x1={r.grid.x * GRID} y1={r.grid.z * GRID} x2={next.grid.x * GRID} y2={next.grid.z * GRID} stroke="#49514f" strokeWidth={3} />;
           }))}
+          {route?.slice(1).map((id, i) => {
+            const a = byId.get(route[i])!, b = byId.get(id)!;
+            return <line key={`route-${id}`} data-testid="atlas-route-edge"
+              x1={a.grid.x * GRID} y1={a.grid.z * GRID} x2={b.grid.x * GRID} y2={b.grid.z * GRID}
+              stroke="#7fe3ff" strokeWidth={7} opacity={0.75} pointerEvents="none" />;
+          })}
           {dungeon.serviceTrail?.route.slice(1).map((id, i) => {
             const a = byId.get(dungeon.serviceTrail!.route[i])!, b = byId.get(id)!;
             return <line key={`service-${id}`} x1={a.grid.x * GRID + 6} y1={a.grid.z * GRID + 6}
@@ -179,7 +203,7 @@ export function WorldAtlas() {
             const shape = minimapFootprint(r, 62), color = INK[r.district ?? "tombs"];
             const downstream = r.waterway?.downstream;
             return <g key={r.id} data-testid="atlas-room" data-room-id={r.id} transform={`translate(${r.grid.x * GRID} ${r.grid.z * GRID})`}
-              role="button" tabIndex={0} aria-label={`${KIND_TITLE[r.kind]} ${r.id}`} onClick={() => setSelected(r.id)}
+              role="button" tabIndex={0} aria-pressed={r.id === room.id} aria-label={`${KIND_TITLE[r.kind]} ${r.id}`} onClick={() => setSelected(r.id)}
               onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(r.id); } }} style={{ cursor: "pointer" }}>
               <path d={shape.floor} fill={r.id === room.id ? "#34443c" : "#19231f"} />
               <path d={shape.walls} fill="none" stroke={r.id === room.id ? "#f3d087" : color} strokeWidth={r.id === room.id ? 3 : 1.5} />

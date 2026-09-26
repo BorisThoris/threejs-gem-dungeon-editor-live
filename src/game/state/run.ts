@@ -3,7 +3,7 @@ import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
 import { footingCarry, type Footing } from "../rooms/underfoot";
-import { generateDungeon } from "../dungeon/generate";
+import { generateRunFloor } from "../dungeon/runFloor";
 import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
 import { serviceCatch } from "../worldbuilding/serviceTrail";
 import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
@@ -973,23 +973,13 @@ export const useRun = create<RunState>()(
 
     startRun: (seed, delverId) => {
       const floor = 1;
-      const rules = floorRules(floor);
       // The one they asked for, the one they last used, or the Vagrant.
       // Falling back rather than throwing because this comes off a saved
       // preference, and a build that renames a delver must not make an old
       // save unable to start a run.
       const delver = delverOr(delverId ?? useRecords.getState().lastDelver);
-      const dungeon = generateDungeon({
-        seed,
-        floor,
-        minRooms: rules.minRooms,
-        maxRooms: rules.maxRooms,
-        // No `lastFloor` here: a run begins on floor one, which is never
-        // the floor the Keeper stands on, so the set piece that describes
-        // it has nothing to point at. Only the descent can stage it.
-        // What a delver opens with can already bias their first floor.
-        pays: modifiers(delver.relics).biasesRooms,
-      });
+      // What a delver opens with can already bias their first floor.
+      const dungeon = generateRunFloor(seed, floor, modifiers(delver.relics).biasesRooms);
       if (transitionFallback) window.clearTimeout(transitionFallback);
       set({
         phase: "playing",
@@ -1255,17 +1245,8 @@ export const useRun = create<RunState>()(
         // still dark from the door, and stays so until the new start room
         // reports in.
         const floor = s.floor + 1;
-        const rules = floorRules(floor);
-        const dungeon = generateDungeon({
-          seed: (s.dungeon.seed * 7919 + floor) >>> 0,
-          floor,
-          minRooms: rules.minRooms,
-          maxRooms: rules.maxRooms,
-          lastFloor: floor === FLOORS,
-          // Bought on the way down, felt on the floor below - which is
-          // the only place a meta purchase is allowed to be felt at all.
-          pays: modifiers(s.relics).biasesRooms,
-        });
+        // Bought on the way down, felt on the floor below.
+        const dungeon = generateRunFloor(s.runSeed, floor, modifiers(s.relics).biasesRooms);
         set({
           floor,
           dungeon,
@@ -3088,6 +3069,12 @@ export const alarmFloorFor = (s: RunState): number => alarmFloorOn(s.floor, s.de
 /** The timed trap grate currently standing, or null. */
 export const barredNow = (s: RunState): string | null =>
   s.barredDoor && running(s, s.barUntil) ? s.barredDoor : null;
+
+/** Publish timed grate expiry so subscribed doors and meshes see the same opening. */
+export function expireGrate(): void {
+  const state = useRun.getState();
+  if (state.barredDoor && !barredNow(state)) useRun.setState({ barredDoor: null, barUntil: 0 });
+}
 
 export const barsRemaining = (s: RunState): number => Math.max(0, BARRICADE_KITS - s.barricades.length);
 export const doorIsBarred = (s: RunState, from: string | null, to: string | null): boolean => {

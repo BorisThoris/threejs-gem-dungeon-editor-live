@@ -1,8 +1,9 @@
-import { cornerSpots, inDoorLane, orientationOf, overhangsLane, shapeFits } from "../dungeon/layout";
+import { LANE_HALF_WIDTH, cornerSpots, inDoorLane, laneAxes, orientationOf, overhangsLane, shapeFits } from "../dungeon/layout";
 import { insideRoom } from "../dungeon/footprint";
 import { type Room, type RoomTemplate } from "../dungeon/types";
-import { PROP_SPECS } from "../props/specs";
+import { PROP_SPECS, propColliderAxisExtents, propCollidersOverlap } from "../props/specs";
 import { reservedAnchorsFor } from "./anchors";
+import { propColliderFitsRoom } from "./propClearance";
 import { claimedSpots, gemFor, keyFor } from "./kinds";
 import { kindOptions } from "./slots";
 import { orientProps } from "./templates";
@@ -116,7 +117,8 @@ export function templateProblems(
       // a table's near metre through a wall or into a doorway and call it
       // legal - the same blind spot that had the seeded arrangements standing
       // props inside each other.
-      if (Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half) {
+      const broadWall = Math.abs(p.x) + spec.radius > half || Math.abs(p.z) + spec.radius > half;
+      if (broadWall) {
         say(spec.title, "reaches through a wall");
       } else if (t.shape !== "square" && !insideRoom(room, p.x, p.z, spec.radius)) {
         say(spec.title, "reaches off the drawn floor of this shape");
@@ -128,8 +130,24 @@ export function templateProblems(
       if (spec.solid && inDoorLane(p.x, p.z, room)) {
         say(spec.title, "stands in a doorway's path and will be dropped");
       }
-      if (spec.solid && overhangsLane(p.x, p.z, spec.radius, room)) {
+      const broadLane = spec.solid && overhangsLane(p.x, p.z, spec.radius, room);
+      if (broadLane) {
         say(spec.title, "reaches into a doorway's path");
+      }
+      const extents = propColliderAxisExtents({ ...p, kind });
+      if (extents) {
+        const lanes = laneAxes(room);
+        if (!broadLane && ((lanes.x && Math.abs(p.x) - extents.x < LANE_HALF_WIDTH - 1e-6)
+          || (lanes.z && Math.abs(p.z) - extents.z < LANE_HALF_WIDTH - 1e-6))) {
+          say(spec.title, "its collider reaches into a doorway's path");
+        }
+        if (!broadWall && t.shape === "square" && (Math.abs(p.x) + extents.x > half + 1e-6
+          || Math.abs(p.z) + extents.z > half + 1e-6)) {
+          say(spec.title, "its collider reaches through a wall");
+        }
+        if (t.shape !== "square" && !propColliderFitsRoom(room, { ...p, kind })) {
+          say(spec.title, "its collider reaches off the drawn floor");
+        }
       }
       if (reserved.some((a) => Math.hypot(a[0] - p.x, a[2] - p.z) < CLEAR_OF_CONTENT)) {
         say(spec.title, "stands where this room's own content stands and will be dropped");
@@ -163,7 +181,9 @@ export function templateProblems(
         for (const otherKind of options[j]) {
           const other = PROP_SPECS[otherKind];
           if (!other) continue;
-          if (apart < 1e-3 || (spec.solid && other.solid && apart < spec.radius + other.radius)) {
+          if (apart < 1e-3 || (spec.solid && other.solid &&
+            (apart < spec.radius + other.radius
+              || propCollidersOverlap({ ...p, kind }, { ...q, kind: otherKind })))) {
             say(spec.title, `stands inside the ${other.title}`);
           }
         }

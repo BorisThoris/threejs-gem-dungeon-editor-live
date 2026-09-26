@@ -5,7 +5,7 @@ import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 const bundle=join(mkdtempSync(join(tmpdir(),'sentry-projection-')), 'bundle.mjs');
-await build({stdin:{contents:`import './src/game/rooms/shipped'; export * from './src/game/sentry/beamProjection'; export * from './src/game/worldbuilding/elevation'; export * from './src/game/dungeon/generate'; export * from './src/game/dungeon/types'; export * from './src/game/dungeon/footprint'; export * from './src/game/sentry/placement'; export * from './src/game/world';`,resolveDir:process.cwd()},define:{'import.meta.env.DEV':'false','import.meta.env':'{}'},bundle:true,platform:'node',format:'esm',outfile:bundle});
+await build({stdin:{contents:`import './src/game/rooms/shipped'; export * from './src/game/sentry/beamProjection'; export * from './src/game/worldbuilding/elevation'; export * from './src/game/dungeon/generate'; export * from './src/game/dungeon/runFloor'; export * from './src/game/dungeon/types'; export * from './src/game/dungeon/footprint'; export * from './src/game/sentry/placement'; export * from './src/game/world';`,resolveDir:process.cwd()},define:{'import.meta.env.DEV':'false','import.meta.env':'{}'},bundle:true,platform:'node',format:'esm',outfile:bundle});
 const L=await import(pathToFileURL(bundle));
 const flat = {...L.generateDungeon({seed:72,floor:2}).rooms[0],size:20,shape:'square',links:{},secret:undefined,wings:{}};
 const flatVertices=[];L.beamProjector(flat)([0,0,0],0,flatVertices);
@@ -33,11 +33,8 @@ assert.ok(raised>0);console.log({checked,raised,maxTriangles});
 
 let generated = 0, shifted = 0, apses = 0, samples = 0;
 for (let seed = 1; seed <= 24; seed++) {
-  let next = seed;
   for (let floor = 1; floor <= 3; floor++) {
-    const rules = L.floorRules(floor);
-    const dungeon = L.generateDungeon({ seed: next, floor, minRooms: rules.minRooms, maxRooms: rules.maxRooms, lastFloor: floor === 3 });
-    next = (dungeon.seed * 7919 + floor + 1) >>> 0;
+    const dungeon = L.generateRunFloor(seed, floor);
     for (const room of dungeon.rooms) {
       if (!L.terracesFor(room).length) continue;
       const watcher = L.sentryFor(room, dungeon.seed, floor);
@@ -46,6 +43,8 @@ for (let seed = 1; seed <= 24; seed++) {
       if (Object.values(room.wingOffsets ?? {}).some(x => x !== 0)) shifted++;
       if (Object.values(room.wingProfiles ?? {}).includes('apse')) apses++;
       const output = [], project = L.beamProjector(room), origin = watcher.at;
+      assert.ok(L.insideRoom(room, origin[0], origin[2]),
+        `Sentry post stands inside its room: ${JSON.stringify({seed,floor,room:room.id,shape:room.shape,origin})}`);
       for (let turn = 0; turn < 36; turn++) {
         project(origin, turn * Math.PI / 18, output);
         for (let i = 0; i < output.length; i += 9) {
@@ -55,7 +54,8 @@ for (let seed = 1; seed <= 24; seed++) {
           if (area < 1e-9) continue;
           for (const w of [[1/3,1/3,1/3],[.8,.1,.1],[.1,.8,.1],[.1,.1,.8]]) {
             const v = a.map((_, k) => a[k]*w[0]+b[k]*w[1]+c[k]*w[2]+origin[k]);
-            assert.ok(L.insideRoom(room, v[0], v[2]), 'generated beam remains inside walls');
+            assert.ok(L.insideRoom(room, v[0], v[2]),
+              `generated beam remains inside walls: ${JSON.stringify({seed,floor,room:room.id,shape:room.shape,size:room.size,origin,v,turn,i})}`);
             assert.ok(Math.abs(v[1]-L.floorHeightAt(room,v[0],v[2])-L.BEAM_LIFT)<1e-6,
               JSON.stringify({seed,floor,room:room.id,v}));
             samples++;

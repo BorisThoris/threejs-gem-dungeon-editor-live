@@ -45,6 +45,7 @@ export function DeedToast() {
 
   return (
     <div
+      data-testid="deed-toast"
       style={{
         position: "fixed",
         right: 20,

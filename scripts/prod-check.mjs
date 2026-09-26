@@ -18,15 +18,16 @@
  *
  * It builds and serves dist itself, so it needs no terminal of its own.
  */
-import { execSync, spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { gzipSync } from "node:zlib";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
 const PORT = process.env.PROD_PORT || "5198";
-const CHROMIUM =
-  process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
+const CHROMIUM = process.env.CHROMIUM_PATH || undefined;
+const root = fileURLToPath(new URL("..", import.meta.url));
 
 let failures = 0;
 const ok = (label, cond, detail = "") => {
@@ -36,7 +37,7 @@ const ok = (label, cond, detail = "") => {
 
 // --- What is in the bundle, before anything is loaded ----------------------
 
-const dist = new URL("../dist/", import.meta.url).pathname;
+const dist = join(root, "dist");
 const files = [];
 const walk = (dir) => {
   for (const name of readdirSync(dir)) {
@@ -96,17 +97,31 @@ if (taken) {
   process.exit(1);
 }
 
-// Its own process group, and killed as one: npx launches vite, so killing
-// npx leaves the server holding the port.
-const started = spawn("npx", ["vite", "preview", "--port", PORT, "--strictPort"], {
-  cwd: new URL("..", import.meta.url).pathname,
-  stdio: "ignore",
-  detached: true,
+// Launch Vite directly, so the process we stop is the server itself.
+const vite = join(root, "node_modules", "vite", "bin", "vite.js");
+const started = spawn(process.execPath, [vite, "preview", "--host", "127.0.0.1", "--port", PORT, "--strictPort"], {
+  cwd: root,
+  stdio: ["ignore", "pipe", "pipe"],
+  detached: process.platform !== "win32",
+  windowsHide: true,
+});
+let serverOutput = "";
+for (const stream of [started.stdout, started.stderr]) {
+  stream.on("data", (chunk) => {
+    serverOutput = (serverOutput + chunk.toString()).slice(-4000);
+  });
+}
+started.on("error", (error) => {
+  serverOutput = `${serverOutput}\n${error}`;
 });
 let stopped = false;
 const stop = () => {
   if (stopped) return;
   stopped = true;
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/PID", String(started.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+    return;
+  }
   try {
     process.kill(-started.pid, "SIGKILL");
   } catch {
@@ -153,7 +168,12 @@ while (!up && Date.now() < deadline) {
     .catch(() => false);
   if (!up) await new Promise((r) => setTimeout(r, 500));
 }
-ok("the built site is served and loads", up);
+ok("the built site is served and loads", up, up ? "" : serverOutput.trim() || `preview exited with ${started.exitCode}`);
+if (!up) {
+  await browser.close();
+  stop();
+  process.exit(1);
+}
 await page.waitForTimeout(6000);
 
 ok("nothing 404s", missing.length === 0, missing.slice(0, 3).join(" | "));
@@ -175,20 +195,19 @@ ok("nothing 404s", missing.length === 0, missing.slice(0, 3).join(" | "));
  * and it catches `__THREE__`, which is three.js's own revision marker and
  * not ours to remove.
  */
-const declared = [
-  ...new Set(
-    // Any `.__name`, not `window.__name` or `w.__name`. The components
-    // write theirs through a cast - `(window as unknown as {...}).__sentry`
-    // - so a pattern anchored on the object misses exactly the idiom most
-    // of them use. Proved by leaking one on purpose: written that way it
-    // walked straight past the first version of this.
-    execSync(`grep -rhoE "\\.__[A-Za-z][A-Za-z0-9]*" ${new URL("../src/", import.meta.url).pathname} || true`)
-      .toString()
-      .split("\n")
-      .map((line) => line.trim().slice(1))
-      .filter((name) => /^__[A-Za-z][A-Za-z0-9]*$/.test(name))
-  ),
-].sort();
+// Any `.__name`, not only `window.__name`: most probes use a typed cast.
+const sourceFiles = [];
+const walkSource = (dir) => {
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) walkSource(path);
+    else if (/\.[jt]sx?$/.test(name)) sourceFiles.push(path);
+  }
+};
+walkSource(join(root, "src"));
+const declared = [...new Set(sourceFiles.flatMap((path) =>
+  [...readFileSync(path, "utf8").matchAll(/\.__[A-Za-z][A-Za-z0-9]*/g)].map(([match]) => match.slice(1))
+))].sort();
 ok("the source declares probes for the checks to read", declared.length >= 10, `${declared.length}: ${declared.join(" ")}`);
 const leaked = await page.evaluate((names) => names.filter((n) => window[n] !== undefined), declared);
 ok("and not one of them survives into the shipped game", leaked.length === 0, leaked.join(", "));
@@ -217,19 +236,45 @@ await page.waitForTimeout(9000);
 const hud = await page.evaluate(() => document.body.innerText);
 ok("starting a run shows the HUD", /LIVES/.test(hud) && /GEMS/.test(hud) && /FLOOR/.test(hud), hud.slice(0, 60).replace(/\n/g, " · "));
 
-/** What the canvas is actually drawing, as a rough colour signature. */
-const painted = async () => {
-  const shot = await page.screenshot({ clip: { x: 300, y: 250, width: 600, height: 380 } });
+/** Decode pixels: compressed PNG bytes also vary in a completely blank image. */
+const pixels = (target, shot) => target.evaluate(async encoded => {
+  const image = new Image();
+  image.src = `data:image/png;base64,${encoded}`;
+  await image.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 40;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
   let sum = 0;
-  let varies = new Set();
-  for (let i = 0; i < shot.length; i += 997) {
-    sum += shot[i];
-    varies.add(shot[i] >> 4);
+  const shades = new Set();
+  for (let i = 0; i < data.length; i += 4) {
+    const light = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    sum += light;
+    shades.add(light >> 4);
   }
-  return { sum, shades: varies.size };
-};
+  return { sum, mean: sum / (canvas.width * canvas.height), shades: shades.size };
+}, shot.toString("base64"));
+const showsWorld = sample => sample.mean > 2 && sample.shades > 3;
+// Exercise the same decoder and guard with real encoded, uniformly blank images.
+for (const colour of ["black", "white"]) {
+  const blank = await page.evaluate(colour => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 600;
+    canvas.height = 380;
+    const context = canvas.getContext("2d");
+    context.fillStyle = colour;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png").split(",")[1];
+  }, colour);
+  const sample = await pixels(page, Buffer.from(blank, "base64"));
+  ok(`the rendered-world guard rejects a ${colour} frame`, !showsWorld(sample), JSON.stringify(sample));
+}
+const painted = async () => pixels(page,
+  await page.screenshot({ clip: { x: 300, y: 250, width: 600, height: 380 } }));
 const first = await painted();
-ok("the world is drawn rather than a black rectangle", first.shades > 3, JSON.stringify(first));
+ok("the world is drawn rather than a black rectangle", showsWorld(first), JSON.stringify(first));
 
 // Walk. There are no probes here, so what is checked is that holding a key
 // changes what is on the screen and breaks nothing.
@@ -304,12 +349,11 @@ for (const [label, store] of STALE) {
   // No probes in the shipped bundle, so the evidence is what is drawn.
   const lit = await p2.evaluate(() => document.body.innerText);
   const shot = await p2.screenshot({ clip: { x: 440, y: 250, width: 400, height: 300 } });
-  const shades = new Set();
-  for (let i = 0; i < shot.length; i += 997) shades.add(shot[i] >> 4);
+  const sample = await pixels(p2, shot);
   ok(
     `it starts with ${label}`,
-    menu && /lives|gems/i.test(lit) && shades.size > 3 && bad.length === 0,
-    `menu ${menu}, hud ${/lives|gems/i.test(lit)}, ${shades.size} shades drawn` +
+    menu && /lives|gems/i.test(lit) && showsWorld(sample) && bad.length === 0,
+    `menu ${menu}, hud ${/lives|gems/i.test(lit)}, pixels ${JSON.stringify(sample)}` +
       (bad.length ? `, errors ${JSON.stringify(bad.slice(0, 1))}` : "")
   );
   await ctx.close();

@@ -116,7 +116,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
 
   return (
     <>
-      <group position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
+      <group name="doorway" position={position} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
         <DoorFrame />
         {lamp ? (
           <>

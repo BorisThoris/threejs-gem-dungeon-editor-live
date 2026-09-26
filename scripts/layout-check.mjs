@@ -26,6 +26,7 @@ writeFileSync(
    export * from "${root}src/game/dungeon/layout";
    export * from "${root}src/game/dungeon/footprint";
    export * from "${root}src/game/dungeon/generate";
+   export * from "${root}src/game/dungeon/runFloor";
    export * from "${root}src/game/dungeon/types";
    export * from "${root}src/game/items/catalog";
    export * from "${root}src/game/items/charge";
@@ -76,6 +77,7 @@ writeFileSync(
    export * from "${root}src/game/puzzles/anchors";
    export * from "${root}src/game/textures/registry";
    export * from "${root}src/game/rooms/validate";
+   export * from "${root}src/game/rooms/propClearance";
    export * from "${root}src/game/systems/bearing";
    export * from "${root}src/game/systems/pace";
    export * from "${root}src/game/arena/sweep";
@@ -147,26 +149,10 @@ const dist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
  * One owner for how a run walks its floors, so no block has to remember
  * the descent's seed derivation again.
  */
-const runFloors = (seed, floors = 3) => {
-  const out = [];
-  let next = seed;
-  for (let floor = 1; floor <= floors; floor++) {
-    const rules = L.floorRules(floor);
-    // `lastFloor` included, because a run's own descent passes it and a
-    // helper that walks the floors WITHOUT it is walking floors the game
-    // does not build - which is how the staged set piece read as never
-    // placed at all.
-    const d = L.generateDungeon({
-      seed: next,
-      minRooms: rules.minRooms,
-      maxRooms: rules.maxRooms,
-      lastFloor: floor === floors,
-    });
-    out.push(d);
-    next = (d.seed * 7919 + (floor + 1)) >>> 0;
-  }
-  return out;
-};
+const runFloors = (seed, floors = 3) =>
+  Array.from({ length: floors }, (_, index) => L.generateRunFloor(seed, index + 1));
+check("a run seed yields the recorded descent seeds", L.runFloorSeed(72, 1) === 72
+  && L.runFloorSeed(72, 2) === 570170 && L.runFloorSeed(72, 3) === 220208937);
 const room = (size, kind = "normal", shape = "square") => ({ id: "r", kind, seed: 0, grid: { x: 0, z: 0 }, size, shape, links: { north: "a" } });
 /**
  * Every set of doors a room can have: all fifteen non-empty combinations.
@@ -606,6 +592,16 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
     L.templateProblems(t, 60).map((p) => `${t.id} prop ${p.index}: ${p.reason}`)
   );
   check("every shipped template is one the game will draw whole", problems.length === 0, problems.join("; ") || "none");
+  const cornerNearLane = { kind: "crate", x: 3.25, z: 3.25, rotation: Math.PI / 4 };
+  const physicalLaneProblems = L.templateProblems({ id: "physical-lane-fixture", kind: "normal", size: 16,
+    shape: "square", props: [cornerNearLane] });
+  check("the editor warns when a rotated collider reaches past its placement guide into a door lane",
+    !L.overhangsLane(cornerNearLane.x, cornerNearLane.z, L.PROP_SPECS.crate.radius)
+      && physicalLaneProblems.some((p) => p.reason.includes("collider reaches into a doorway's path")));
+  const shapedClearanceProblems = L.templateProblems({ id: "shaped-clearance-fixture", kind: "normal",
+    size: 20, shape: "cross", props: [{ kind: "crate", x: 6, z: 4.5, rotation: Math.PI / 4 }] });
+  check("the editor warns when a collider corner crosses a shaped floor edge",
+    shapedClearanceProblems.some((p) => p.reason.includes("collider reaches off the drawn floor")));
 
   /**
    * And in every way round a room can be furnished.
@@ -651,16 +647,8 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   let authored = 0;
   const perKind = new Map();
   for (let seed = 1; seed <= 40; seed++) {
-    let next = seed;
     for (let floor = 1; floor <= 3; floor++) {
-      const rules = L.floorRules(floor);
-      const d = L.generateDungeon({
-        seed: next,
-        minRooms: rules.minRooms,
-        maxRooms: rules.maxRooms,
-        lastFloor: floor === 3,
-      });
-      next = (d.seed * 7919 + (floor + 1)) >>> 0;
+      const d = L.generateRunFloor(seed, floor);
       for (const r of d.rooms) {
         rooms++;
         KINDS_WITH_ROOMS.add(r.kind);
@@ -978,11 +966,34 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
 // inside another, and nothing downstream would notice - the door-lane and
 // gem filters only ever compare a prop to the room, never to another prop.
 {
+  const shelf = { kind: "bookshelf", x: 0, z: 0, rotation: 0 };
+  const cornerCrate = { kind: "crate", x: 1.2, z: 0.6 };
+  check("physical collider checks catch corners outside the placement circles",
+    Math.hypot(cornerCrate.x, cornerCrate.z) > L.PROP_SPECS.bookshelf.radius + L.PROP_SPECS.crate.radius
+      && L.propCollidersOverlap(shelf, cornerCrate));
+  check("turning a shelf changes its blocking shape",
+    !L.propCollidersOverlap({ ...shelf, rotation: Math.PI / 2 }, cornerCrate));
+  check("collider lane reach turns with a bookshelf",
+    Math.abs(L.propColliderAxisExtents(shelf).x - 0.8) < 1e-9
+      && Math.abs(L.propColliderAxisExtents({ ...shelf, rotation: Math.PI / 2 }).x - 0.225) < 1e-9);
+  const crossRoom = { ...room(20, "normal"), shape: "cross",
+    links: { north: "n", south: "s", east: "e", west: "w" } };
+  const shoulderCrate = { kind: "crate", x: 6, z: 4.5, rotation: 0 };
+  check("rotated collider corners must clear a shaped room's shoulder",
+    L.propColliderFitsRoom(crossRoom, shoulderCrate)
+      && !L.propColliderFitsRoom(crossRoom, { ...shoulderCrate, rotation: Math.PI / 4 }));
+  check("collider checks honour scale and circular props",
+    L.propCollidersOverlap({ kind: "crate", x: 0, z: 0 }, { kind: "crate", x: 1, z: 0, scale: 1.5 })
+      && !L.propCollidersOverlap({ kind: "crate", x: 0, z: 0 }, { kind: "crate", x: 1.1, z: 0, scale: 1.5 })
+      && L.propCollidersOverlap({ kind: "barrel", x: 0, z: 0 }, { kind: "barrel", x: 0.8, z: 0 })
+      && !L.propCollidersOverlap({ kind: "barrel", x: 0, z: 0 }, { kind: "barrel", x: 0.9, z: 0 }));
   const kinds = Object.keys(L.LAYOUTS);
   let stacked = 0;
   let offAnchor = 0;
   let inRealLane = 0;
   let intersecting = 0;
+  let physicalOverlaps = 0;
+  const physicalExamples = [];
   let overhangsLane = 0;
   let throughWall = 0;
   let arrangements = 0;
@@ -1050,6 +1061,10 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
               for (let j = i + 1; j < solid.length; j++) {
                 const b = solid[j];
                 if (Math.hypot(a.x - b.x, a.z - b.z) < ra + L.PROP_SPECS[b.kind].radius) intersecting++;
+                if (L.propCollidersOverlap(a, b)) {
+                  physicalOverlaps++;
+                  if (physicalExamples.length < 3) physicalExamples.push(`${kind} ${a.kind}/${b.kind} at ${size}`);
+                }
               }
               // A brazier is not solid - you can walk through one - but a
               // table standing in one is still a table standing in one.
@@ -1066,6 +1081,8 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
   check("every prop stands on an anchor, so it is clear of the lanes by construction", offAnchor === 0, `${offAnchor} loose`);
   check("no prop stands in a lane the room it is in actually has", inRealLane === 0, `${inRealLane} would be dropped`);
   check("no two solid props stand inside each other", intersecting === 0, `${intersecting} of ${arrangements} arrangements`);
+  check("no two live prop colliders intersect in generated arrangements", physicalOverlaps === 0,
+    physicalExamples.join("; ") || `${arrangements} arrangements clear`);
   check("no solid prop's footprint overhangs a lane the room has", overhangsLane === 0, `${overhangsLane} overhang`);
   check("no solid prop's footprint reaches through a wall", throughWall === 0, `${throughWall} through`);
   check("the arrangements were walked in rooms that have a middle", withMiddle > 0, `${withMiddle} of ${arrangements}`);
@@ -1904,17 +1921,14 @@ check("the shipped room templates reach the floors the game generates", authored
   const perKind = {};
   for (let run = 1; run <= 40; run++) {
     const seen = new Set();
-    let seed = run;
     for (let floor = 1; floor <= 3; floor++) {
-      const rules = L.floorRules(floor);
-      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      const d = L.generateRunFloor(run, floor);
       for (const room of d.rooms) {
         const sig = look(room, d.seed);
         rooms++;
         if (!seen.has(sig)) { seen.add(sig); distinct++; }
         (perKind[room.kind] ??= new Set()).add(sig);
       }
-      seed = (d.seed * 7919 + floor + 1) >>> 0;
     }
   }
   const share = distinct / rooms;
@@ -2947,10 +2961,14 @@ check("the shipped room templates reach the floors the game generates", authored
   const inProp = [];
   const onGem = [];
   const inLane = [];
+  const outside = [];
+  const propIntersections = [];
+  const colliderLaneOverhangs = [];
+  const colliderFloorOverhangs = [];
+  let inspectedRooms = 0;
   for (const floor of [1, 2, 3]) {
-    const rules = L.floorRules(floor);
     for (let seed = 1; seed <= 120; seed++) {
-      const d = L.generateDungeon({ seed, minRooms: rules.minRooms, maxRooms: rules.maxRooms });
+      const d = L.generateRunFloor(seed, floor);
       for (const room of d.rooms) {
         const where = `${room.kind} on floor ${floor} of seed ${seed}`;
         // The room in the order it is assembled: gem, key, watcher,
@@ -2964,6 +2982,22 @@ check("the shipped room templates reach the floors the game generates", authored
           sentry: sentry?.at ?? null,
           key,
         });
+        inspectedRooms++;
+        const lanes = L.laneAxes(room);
+        for (const p of ps) {
+          const extents = L.propColliderAxisExtents(p);
+          if (!extents) continue;
+          if ((lanes.x && Math.abs(p.x) - extents.x < L.LANE_HALF_WIDTH - 1e-6)
+            || (lanes.z && Math.abs(p.z) - extents.z < L.LANE_HALF_WIDTH - 1e-6)) {
+            if (colliderLaneOverhangs.length < 5) colliderLaneOverhangs.push(`${p.kind} in ${where}`);
+          }
+          if (!L.propColliderFitsRoom(room, p) && colliderFloorOverhangs.length < 5)
+            colliderFloorOverhangs.push(`${p.kind} in ${where}`);
+        }
+        for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+          if (L.propCollidersOverlap(ps[i], ps[j]) && propIntersections.length < 5)
+            propIntersections.push(`${ps[i].kind}/${ps[j].kind} in ${where}`);
+        }
         if (key) {
           keysLaid++;
           for (const p of ps) {
@@ -2977,6 +3011,7 @@ check("the shipped room templates reach the floors the game generates", authored
         }
         if (!sentry) continue;
         watched++;
+        if (!L.insideRoom(room, sentry.at[0], sentry.at[2], POST)) outside.push(where);
         for (const p of ps) {
           const gap = Math.hypot(p.x - sentry.at[0], p.z - sentry.at[2]);
           if (gap < POST + L.PROP_SPECS[p.kind].radius) inProp.push(`${p.kind} in a ${where}`);
@@ -2988,9 +3023,17 @@ check("the shipped room templates reach the floors the game generates", authored
     }
   }
   check("the floors checked are watched at all", watched > 300, `${watched} watched rooms`);
+  check("actual room dressing has no intersecting prop colliders", propIntersections.length === 0,
+    propIntersections.join("; ") || `${inspectedRooms} rooms clear`);
+  check("physical prop colliders leave the real doorway lanes open", colliderLaneOverhangs.length === 0,
+    colliderLaneOverhangs.join("; ") || `${inspectedRooms} rooms clear`);
+  check("physical prop colliders stay on the real floor outline", colliderFloorOverhangs.length === 0,
+    colliderFloorOverhangs.join("; ") || `${inspectedRooms} rooms clear`);
   check("no Sentry stands inside a prop", inProp.length === 0, inProp.slice(0, 3).join("; ") || `${watched} clear`);
   check("no Sentry stands on the gem", onGem.length === 0, onGem.slice(0, 3).join("; ") || `${watched} clear`);
   check("no Sentry stands in a doorway's path", inLane.length === 0, inLane.slice(0, 3).join("; ") || `${watched} clear`);
+  check("every Sentry post fits inside its real room footprint", outside.length === 0,
+    outside.slice(0, 3).join("; ") || `${watched} inside`);
   // The key is the same rule and the worse offender: it was put at the
   // anchor furthest from the room's content and the gem, and the furniture
   // then went down knowing nothing about it. 65% of keys lay inside a prop
@@ -4951,8 +4994,19 @@ check("the shipped room templates reach the floors the game generates", authored
   const four = line(4);
   const reach = L.carriesTo(four, "r0", 1);
   check("a sound is at full strength in the room it happened in", reach.get("r0") === 1);
+  check("single-room carry obeys the audible floor and requires a real room",
+    L.carriesFrom(four, "r0", "r0", 1) === 1
+      && L.carriesFrom(four, "r0", "r0", L.AUDIBLE) === L.AUDIBLE
+      && L.carriesFrom(four, "r0", "r0", L.AUDIBLE / 2) === 0
+      && L.carriesFrom(four, "missing", "missing", 1) === 0);
   check("one doorway costs it 65%", Math.abs(reach.get("r1") - 0.35) < 1e-9, `${reach.get("r1")}`);
   check("two doorways, and it is a rumour", Math.abs(reach.get("r2") - 0.1225) < 1e-9, `${reach.get("r2")}`);
+  const fourRoute = L.carryRoute(four, "r0", "r2", 1);
+  check("the carried strength names the doors it crossed",
+    fourRoute.rooms.join(" > ") === "r0 > r1 > r2"
+      && fourRoute.strengths.every((strength, index) => Math.abs(strength - reach.get(fourRoute.rooms[index])) < 1e-9)
+      && Math.abs(fourRoute.magnitude - reach.get("r2")) < 1e-9,
+    `${fourRoute.rooms.join(" > ")} at ${fourRoute.magnitude}`);
   /**
    * And the flood terminates where the file says it does, rather than
    * walking the whole dungeon to deliver numbers no receiver could act on.
@@ -4997,6 +5051,63 @@ check("the shipped room templates reach the floors the game generates", authored
   /** A bar is a wall the player paid a gem and eight seconds of hammering for. */
   const barred = L.carriesTo(four, "r0", 1, new Set([L.barKey("r0", "r1")]));
   check("a barred doorway stops sound as well as stopping the Warden", barred.get("r1") === undefined && barred.get("r0") === 1);
+  check("the route inspector reports silence when a bar cuts the only route",
+    L.carryRoute(four, "r0", "r1", 1, new Set([L.barKey("r0", "r1")])).rooms.length === 0);
+  const roundBar = L.carryRoute(ring, "a", "d", 1, new Set([L.barKey("a", "b")]));
+  check("the winning route follows the open way around a bar",
+    roundBar.rooms.join(" > ") === "a > c > d" && Math.abs(roundBar.magnitude - 0.1225) < 1e-9,
+    roundBar.rooms.join(" > "));
+
+  // Generated floors contain loops, side rooms, secret walls and optional
+  // bars that the four-room fixture cannot represent. Use an independent
+  // breadth-first distance as the oracle for the uniform doorway cost, then
+  // require the displayed route itself to use real unbarred links.
+  let routeProbes = 0;
+  const routeErrors = [];
+  for (let seed = 1; seed <= 24; seed++) for (let floor = 1; floor <= 3; floor++) {
+    const dungeon = L.generateRunFloor(seed, floor, seed % 2 === 0);
+    const byId = new Map(dungeon.rooms.map(room => [room.id, room]));
+    const edges = dungeon.rooms.flatMap(room => Object.values(room.links)
+      .filter(next => next && room.id < next).map(next => ({ from: room.id, to: next, key: L.barKey(room.id, next) })));
+    const chosen = edges[seed % edges.length];
+    const sources = new Set([dungeon.startId, dungeon.endId, dungeon.vaultId, chosen?.from, chosen?.to].filter(Boolean));
+    const distance = (from, to, bars) => {
+      const queue = [[from, 0]], seen = new Set([from]);
+      for (let i = 0; i < queue.length; i++) {
+        const [id, steps] = queue[i];
+        if (id === to) return steps;
+        for (const next of Object.values(byId.get(id)?.links ?? {})) {
+          if (!next || seen.has(next) || bars.has(L.barKey(id, next))) continue;
+          seen.add(next);
+          queue.push([next, steps + 1]);
+        }
+      }
+      return Infinity;
+    };
+    for (const barredKey of [null, chosen?.key]) {
+      const bars = new Set(barredKey ? [barredKey] : []);
+      for (const from of sources) for (const target of dungeon.rooms) {
+        const steps = distance(from, target.id, bars);
+        const expected = Math.pow(L.DOORWAY, steps);
+        const audible = Number.isFinite(steps) && expected >= L.AUDIBLE - 1e-12;
+        const route = L.carryRoute(dungeon.rooms, from, target.id, 1, bars);
+        routeProbes++;
+        const valid = !audible ? route.rooms.length === 0 && route.magnitude === 0
+          : route.rooms.length === steps + 1 && route.rooms[0] === from
+            && route.rooms.at(-1) === target.id
+            && Math.abs(route.magnitude - expected) < 1e-9
+            && route.strengths.length === route.rooms.length
+            && route.rooms.every((id, index) =>
+              Math.abs(route.strengths[index] - Math.pow(L.DOORWAY, index)) < 1e-9
+              && (index === 0 || Object.values(byId.get(route.rooms[index - 1])?.links ?? {}).includes(id)
+                && !bars.has(L.barKey(route.rooms[index - 1], id))));
+        if (!valid && routeErrors.length < 5)
+          routeErrors.push(`${seed}/${floor} ${from}→${target.id} bar=${barredKey ?? "none"}: ${route.rooms.join(">")}`);
+      }
+    }
+  }
+  check("generated signal routes use the shortest audible unbarred path",
+    routeErrors.length === 0, `${routeProbes} probes; ${routeErrors.join(" | ") || "all agree"}`);
 
   check("a sound halves every two and a half seconds", Math.abs(L.aged(1, L.HALF_LIFE_S) - 0.5) < 1e-9);
   check("and is gone, rather than ending on a frame boundary at 0.01", L.aged(1, 30) < L.AUDIBLE);
@@ -5366,16 +5477,8 @@ check("the shipped room templates reach the floors the game generates", authored
   let elsewhere = 0;
   let ordinary = 0;
   for (let seed = 1; seed <= 60; seed++) {
-    let next = seed;
     for (let floor = 1; floor <= 3; floor++) {
-      const rules = L.floorRules(floor);
-      const d = L.generateDungeon({
-        seed: next,
-        minRooms: rules.minRooms,
-        maxRooms: rules.maxRooms,
-        lastFloor: floor === 3,
-      });
-      next = (d.seed * 7919 + (floor + 1)) >>> 0;
+      const d = L.generateRunFloor(seed, floor);
       for (const r of d.rooms) {
         const path = L.shortestPath(d.rooms, r.id, d.endId);
         const away = path ? path.length - 1 : Infinity;
@@ -5755,6 +5858,19 @@ check("the shipped room templates reach the floors the game generates", authored
   }
   check("district alternatives are all checked for footprint clearance",
     L.kindOptions(props, [localRule])[0].sort().join(",") === "barrel,crate,skull,urn");
+  const chainedRules = [localRule, { slot: "vessel", op: "shuffle", into: [] }];
+  const chainedOptions = L.kindOptions(props, chainedRules);
+  check("a shuffle validates the kinds produced by earlier slot rules",
+    [undefined, "gardens", "works", "tombs"].every(district =>
+      Array.from({ length: 12 }, (_, seed) => L.resolveSlots(props, chainedRules, seed, district))
+        .every(resolved => resolved.every((prop, index) => chainedOptions[index].includes(prop.kind)))));
+  for (const [n, expected] of [[0, "urn"], [3, "pillar"], [8, "pillar"]]) {
+    const limited = [{ slot: "vessel", op: "nsubst", into: ["pillar", "urn"], n }];
+    const possibilities = L.kindOptions(props, limited);
+    check(`counted substitution validates only attainable kinds when n=${n}`,
+      possibilities.slice(0, 3).every(kinds => kinds.length === 1 && kinds[0] === expected)
+      && L.resolveSlots(props, limited, "count-limit").slice(0, 3).every(prop => prop.kind === expected));
+  }
   check("a district cannot turn dressing into an unchecked reward",
     !L.keepsItsWorth(props, { ...localRule, byDistrict: { tombs: ["chest"] } }));
   check("district slot imports accept valid rules and reject malformed choices",

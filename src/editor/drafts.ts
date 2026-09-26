@@ -9,7 +9,7 @@ import { SHIPPED } from "../game/rooms/shipped";
 /**
  * Room templates under construction.
  *
- * Drafts live in localStorage so a reload during authoring loses nothing.
+ * Drafts are saved to localStorage; failed writes are reported for export or retry.
  * A draft marked enabled is registered with the game's template registry
  * when this module loads, so starting a run from the editor plays it - the
  * generator picks templates by kind. Shipping a template means exporting it
@@ -36,6 +36,7 @@ export function isRoomTemplate(value: unknown): value is RoomTemplate {
   if (!value || typeof value !== "object") return false;
   const t = value as Record<string, unknown>;
   if (typeof t.id !== "string" || !t.id) return false;
+  if ([t.name, t.story, t.tableau].some(text => text !== undefined && typeof text !== "string")) return false;
   if (!has(ROOM_KINDS, t.kind) || !has(SHAPES, t.shape)) return false;
   if (typeof t.size !== "number" || !(ROOM_SIZES as readonly number[]).includes(t.size)) return false;
   if (!Array.isArray(t.props)) return false;
@@ -48,24 +49,33 @@ export function isRoomTemplate(value: unknown): value is RoomTemplate {
       Number.isFinite(q.x) &&
       Number.isFinite(q.z) &&
       (q.rotation === undefined || Number.isFinite(q.rotation)) &&
-      (q.scale === undefined || Number.isFinite(q.scale))
+      (q.scale === undefined || Number.isFinite(q.scale)) &&
+      (q.slot === undefined || typeof q.slot === "string")
     );
   });
 }
 const listeners = new Set<() => void>();
-let drafts: Record<string, Draft> = {};
+// Imported IDs are arbitrary strings, including names inherited by plain objects.
+let drafts: Record<string, Draft> = Object.create(null);
 let snapshot: Draft[] = [];
+let saveFailed = false;
 
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Record<string, Draft>) : {};
-    drafts = {};
-    for (const [id, draft] of Object.entries(parsed)) {
-      if (draft && isRoomTemplate(draft.template)) drafts[id] = draft;
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    drafts = Object.create(null);
+    const entries = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.entries(parsed) : [];
+    for (const [id, value] of entries) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const draft = value as Record<string, unknown>;
+      if (isRoomTemplate(draft.template) && draft.template.id === id) {
+        drafts[id] = { template: draft.template, enabled: draft.enabled === true,
+          updatedAt: typeof draft.updatedAt === "number" && Number.isFinite(draft.updatedAt) ? draft.updatedAt : 0 };
+      }
     }
   } catch {
-    drafts = {};
+    drafts = Object.create(null);
   }
   snapshot = Object.values(drafts).sort((a, b) => b.updatedAt - a.updatedAt);
 }
@@ -74,8 +84,10 @@ function save() {
   snapshot = Object.values(drafts).sort((a, b) => b.updatedAt - a.updatedAt);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
+    saveFailed = false;
   } catch {
-    // Quota or privacy mode: the draft still exists for this session.
+    // Keep session work available for export and retry, but never imply it is durable.
+    saveFailed = true;
   }
   listeners.forEach((l) => l());
 }
@@ -92,6 +104,8 @@ for (const draft of Object.values(drafts)) {
 
 export const draftStore = {
   all: (): Draft[] => snapshot,
+  saveFailed: (): boolean => saveFailed,
+  retrySave: save,
   get: (id: string): Draft | undefined => drafts[id],
 
   put(template: RoomTemplate, enabled = drafts[template.id]?.enabled ?? false): void {
@@ -125,6 +139,7 @@ export const draftStore = {
 };
 
 export const useDrafts = (): Draft[] => useSyncExternalStore(draftStore.subscribe, draftStore.all);
+export const useDraftSaveFailed = (): boolean => useSyncExternalStore(draftStore.subscribe, draftStore.saveFailed);
 
 export const newDraftId = (kind: string): string =>
   `${kind}-${Math.random().toString(36).slice(2, 7)}`;

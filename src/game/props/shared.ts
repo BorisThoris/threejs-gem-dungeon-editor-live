@@ -20,7 +20,7 @@ import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
 import { croakerGeometry } from "../mobs/croakerGeometry";
 import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
 import { harrierBodyGeometry, harrierWingGeometry } from "../mobs/harrierGeometry";
-import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, finishedWoodGeometry, tableLegGeometry } from "./handbuiltGeometry";
+import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, finishedWoodGeometry, spikePatchGeometry, tableLegGeometry } from "./handbuiltGeometry";
 
 /**
  * One of each shape, and one of each material, for the whole program.
@@ -74,7 +74,8 @@ export type GeometryKind =
   | "barrel-hoops"
   | "finished-chair"
   | "finished-crate"
-  | "finished-table";
+  | "finished-table"
+  | "spike-patch";
 
 const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   box: (a) => new BoxGeometry(...(a as [number, number, number])),
@@ -104,6 +105,7 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   "finished-chair": () => finishedWoodGeometry("chair"),
   "finished-crate": () => finishedWoodGeometry("crate"),
   "finished-table": () => finishedWoodGeometry("table"),
+  "spike-patch": () => spikePatchGeometry(),
 };
 
 /** The one geometry of this shape and these dimensions. */

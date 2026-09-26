@@ -21,6 +21,7 @@ const specimens = {
   "finished chair": [models.finishedWoodGeometry("chair"), 54],
   "finished crate": [models.finishedWoodGeometry("crate"), 36],
   "finished table": [models.finishedWoodGeometry("table"), 44],
+  "spike patch": [models.spikePatchGeometry(), 60],
 };
 for (const [name, [geometry, expected]] of Object.entries(specimens)) {
   assert.equal(triangles(geometry), expected, `${name} removes its buried or excess faces`);
@@ -31,6 +32,10 @@ for (const [name, [geometry, expected]] of Object.entries(specimens)) {
     const colors = geometry.attributes.color;
     assert.equal(colors.count, geometry.attributes.position.count, `${name} bakes both wood tints`);
     assert.ok(colors.getX(0) > colors.getX(colors.count - 1), `${name} retains lighter top and darker supports`);
+  }
+  if (name === "spike patch") {
+    assert.ok(geometry.boundingBox.min.x < -.3 && geometry.boundingBox.max.x > .35,
+      "hazard keeps all five points inside its original footprint");
   }
   geometry.dispose();
 }

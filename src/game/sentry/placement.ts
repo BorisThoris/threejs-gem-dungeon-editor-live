@@ -1,4 +1,5 @@
-import { quadrantSpots, type Vec3 } from "../dungeon/layout";
+import { overhangsLane, quadrantSpots, type Vec3 } from "../dungeon/layout";
+import { insideRoom } from "../dungeon/footprint";
 import type { Room } from "../dungeon/types";
 import { claimedSpots, gemFor } from "../rooms/kinds";
 import { createRng } from "../rng";
@@ -52,17 +53,19 @@ export function sentryFor(room: Room, seed: number, floor: number, alsoTaken: Ve
   // The room shell and the dressing both know which room that is; this
   // does not, and does not need to.
   const taken = [...claimedSpots(room), ...(gem ? [gem] : []), ...alsoTaken];
+  const stands = (spot: Vec3) => insideRoom(room, spot[0], spot[2], SENTRY_POST_RADIUS)
+    && !overhangsLane(spot[0], spot[2], SENTRY_POST_RADIUS, room);
   const free = (spot: Vec3) =>
     !taken.some((t) => Math.hypot(spot[0] - t[0], spot[2] - t[2]) < CLEAR_OF_CONTENT);
-  const far = quadrantSpots(room, "far");
+  const far = quadrantSpots(room, "far").filter(stands);
+  const near = quadrantSpots(room, "near").filter(stands);
   // Furthest ring first, which is where a watcher belongs; the inner ring
   // rather than stand in something, and the far ring anyway rather than
   // leave a floor's watched room unwatched.
-  const spots = far.filter(free).length
-    ? far.filter(free)
-    : quadrantSpots(room, "near").filter(free).length
-      ? quadrantSpots(room, "near").filter(free)
-      : far;
+  const spots = far.filter(free).length ? far.filter(free)
+    : near.filter(free).length ? near.filter(free)
+    : far.length ? far : near;
+  if (!spots.length) return null;
   const at = spots[Math.floor(rng() * spots.length)];
   // Seeded, not random: the beam's starting angle is half of what makes a
   // Sentry room what it is, and a seed that does not reproduce it is not

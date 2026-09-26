@@ -26,15 +26,15 @@ broad slowdown.
 
 The recorded pre-strata baseline across the fixed 78-room corpus is 78 draw
 calls, 7,208 visible triangles, 87 live geometries and 10 live textures. The
-latest run peaks at 78 calls, 7,288 triangles, 96 geometries and 11 textures.
+latest run peaks at 79 calls, 8,254 triangles, 86 geometries and 11 textures.
 The previous sweeps reached 79 calls and 7,352 triangles, or 85 calls and
 7,400 triangles, as the active Warden shifted through sampled rooms; all are
 within budget. Geological and district border marks share one batch, and the
 new channel banks use terrain's existing deposit instance draw with per-cell
 color. Threshold approach sounds add no scene geometry or held audio voice.
-Ten repeated room laps showed no geometry growth, and the 574-frame sprint
+Ten repeated room laps showed no geometry growth, and the 550-frame sprint
 sample retained no heap after
-collection. The conservative 85-call observation leaves 11 calls of
+collection. The current 79-call observation leaves 17 calls of
 hard-budget headroom. New ecology should keep using fixed
 instanced batches, as the shardback, kiln-newt and brine-crab colonies do with two
 submissions per room.
@@ -53,7 +53,8 @@ comparable across that environment.
 | Hidden-room approaches and dark galleries | Stable | The sealed chamber's district marks now extend from its real cracked-wall entrance in the two existing secret-history batches, following local floor height. Raised gallery terminal lamps remain active in 209 dark gallery rooms without a new fixture or draw batch. The 360-floor generation audit verifies 2,616 legal approach cuts; live browser review covers all nine history and reward combinations plus an unlit flooded gallery with the carried lantern lowered. The fixed 78-room sweep remains at 78 calls, 7,288 triangles, 97 geometries and 11 textures. Ten revisits add no geometry, a 573-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. |
 | Repeated furniture | Stable | Barrel, chair, crate and table copies share one instance draw per model part within each room. The same generated Sealkeepers' Circuit falls from 71 to 59 calls at 5,166 triangles, with all four tables and chairs verified in their batches. The 78-room sweep peaks at 78 calls, 7,288 triangles, 97 geometries and 11 textures; ten revisits add no geometry, a 361-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. Renderer resource counts can vary with sampled live scene state. |
 | Handbuilt furniture | Stable | Chairs, tables, crates and barrels now join fixed pieces by material. A one-of-each set falls from 17 to eight draws and 448 to 302 triangles; that fixture is a model-level comparison, not a claim about the full room. The isolated 78-room sweep peaks at 79 calls, 7,288 triangles, 91 geometries and 10 textures. Ten revisits add no geometry, a 419-frame sprint retains no heap, and 20,000 held-audio updates retain one voice with zero bytes per update. The new furnished Sealkeepers' Circuit renders at 71 calls and 5,166 triangles in direct review. |
-| Dense trap rooms | Tracked | The report now attributes hot rooms to named scene owners. The 85-call trap is led by building blocks and room architecture at 1,796 triangles each; unlabelled content owns 43 smaller batches, while the active Warden adds six. Consolidating unlabelled content remains the clearest draw-call opportunity. |
+| Dense trap rooms | Tracked | The fixed sweep peaks at 79 calls in a trap room. Named scene owners now account for every visible mesh across all 78 rooms; building blocks contribute 12 batches and the active Warden six in the hottest room. |
+| Repeated urns | Stable | The standalone catalog urn and room-local batch share one renderer. Five urns in the former triangle hotspot use three instance batches instead of 15 separate meshes. Instancing reduced culling granularity, so the urn body and rims use fewer facets; the fixed sweep falls from 8,358 to 8,254 peak triangles while staying at 79 calls. The Test Hall and 78-room performance checks pass. |
 | Draw calls | Watch | The fixed corpus peaks at 85 of 96 calls in a dense trap room with the Warden present. The border handover adds no separate batch; keep new room-scale decoration in shared batches. |
 | Structural faces | Monitored | A dense trap room owns the 7,400-triangle peak with 1,400 triangles of hard-budget headroom. The previous 8,072 peak fell when flat strata marks became planes. Simplify hidden or repeated construction faces before raising the budget. |
 | Terrain shaders | Stable | Thirteen biome variants share existing bed submissions and textures. Keep future material effects quantized and free of extra lights or passes. |

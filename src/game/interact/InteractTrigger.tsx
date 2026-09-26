@@ -68,6 +68,12 @@ interface TriggerDebug {
   enabled: boolean;
 }
 
+type DebugEntry = { label: string | null; row: TriggerDebug };
+function removeDebugEntry(entry: DebugEntry) {
+  const table = (window as unknown as { __triggers?: Record<string, TriggerDebug> }).__triggers;
+  if (entry.label !== null && table?.[entry.label] === entry.row) delete table[entry.label];
+}
+
 export function InteractTrigger({
   position,
   label,
@@ -79,15 +85,18 @@ export function InteractTrigger({
   const anchor = useRef<Group>(null);
   const world = useMemo(() => new Vector3(), []);
   const id = useMemo(() => ({}), []);
+  const debug = useMemo<DebugEntry | null>(() => import.meta.env.DEV
+    ? { label: null, row: { x: 0, z: 0, dist: 0, enabled: true } } : null, []);
 
   useEffect(
     () => () => {
       // Unmounting while in range would leave this contending forever.
       contenders.delete(id);
       usable.delete(id);
+      if (debug) removeDebugEntry(debug);
       if (contenders.size === 0) publish(null);
     },
-    [id]
+    [id, debug]
   );
 
   useFrame((state) => {
@@ -98,12 +107,14 @@ export function InteractTrigger({
     const dz = cam.z - world.z;
     const distSq = dx * dx + dz * dz;
 
-    if (import.meta.env.DEV) {
+    if (debug) {
       // Written into one object per trigger, not a fresh one every frame:
       // this ran ~500 times a second and its toFixed calls made strings.
       const w = window as unknown as { __triggers?: Record<string, TriggerDebug> };
       const table = (w.__triggers ??= {});
-      const row = (table[label] ??= { x: 0, z: 0, dist: 0, enabled: true });
+      if (debug.label !== label) { removeDebugEntry(debug); debug.label = label; }
+      const row = debug.row;
+      table[label] = row;
       row.x = world.x;
       row.z = world.z;
       row.dist = Math.sqrt(distSq);

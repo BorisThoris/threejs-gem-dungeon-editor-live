@@ -123,12 +123,14 @@ function useSatchelKeys() {
  * unreachable there and the whole editor tree is dropped from the bundle.
  */
 const Editor = import.meta.env.DEV ? lazy(() => import("./editor/Editor")) : null;
+const ScenarioBadge = import.meta.env.DEV ? lazy(() => import("./editor/ScenarioBadge")) : null;
 const wantsEditor = () =>
   import.meta.env.DEV && new URLSearchParams(window.location.search).has("editor");
 
 export default function App() {
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
+  const scenarioParams = import.meta.env.DEV ? new URLSearchParams(window.location.search) : null;
   usePauseKeys();
   useSatchelKeys();
   useUiScale();
@@ -143,6 +145,15 @@ export default function App() {
   useLedgerWatch();
 
   useEffect(() => installKeyboard(), []);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV || !new URLSearchParams(window.location.search).has("scenario")) return;
+    void import("./editor/scenario").then(async (module) => {
+      const scenario = module.scenarioFromSearch(window.location.search);
+      if (!scenario) throw Error("Invalid development scenario URL");
+      await module.launchScenario(scenario);
+    }).catch((error) => console.error("Scenario launch failed", error));
+  }, []);
 
 
   useEffect(() => {
@@ -284,6 +295,8 @@ export default function App() {
   return (
     <>
       <Scene />
+      {ScenarioBadge && scenarioParams?.has("scenario") &&
+        <Suspense fallback={null}><ScenarioBadge /></Suspense>}
       <Transitions />
       <Moments />
       <Audio />

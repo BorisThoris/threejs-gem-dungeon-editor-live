@@ -25,6 +25,7 @@ const DROP_AFTER_S = 2;
  */
 export function Grate({ room, trap }: { room: Room; trap: Trap }) {
   const arrivedAt = useRef<number | null>(null);
+  const attempted = useRef(false);
   const dir = trap.dir ?? "north";
   const [dx, , dz] = doorPosition(room, dir);
   const alongX = Math.abs(dx) > Math.abs(dz);
@@ -34,15 +35,18 @@ export function Grate({ room, trap }: { room: Room; trap: Trap }) {
 
   useFrame(({ camera }) => {
     const run = useRun.getState();
-    if (!cameUnderIt || !to || down) return;
+    if (!cameUnderIt || !to || down || attempted.current) return;
     if (!canControl(run)) return;
     const now = runClock(run);
     if (arrivedAt.current === null) arrivedAt.current = now;
-    if (now - arrivedAt.current >= DROP_AFTER_S && Math.hypot(camera.position.x - dx, camera.position.z - dz) >= 5) run.dropGrate(to);
+    if (now - arrivedAt.current >= DROP_AFTER_S && Math.hypot(camera.position.x - dx, camera.position.z - dz) >= 5) {
+      attempted.current = true;
+      run.dropGrate(to);
+    }
   });
 
   return (
-    <group position={[dx * 0.97, GROUND_Y, dz * 0.97]} rotation={[0, alongX ? Math.PI / 2 : 0, 0]}>
+    <group name="trap-grate" position={[dx * 0.97, GROUND_Y, dz * 0.97]} rotation={[0, alongX ? Math.PI / 2 : 0, 0]}>
       {/* The bars, hanging in the lintel until they drop. */}
       {[-0.9, -0.45, 0, 0.45, 0.9].map((x) => (
         <mesh key={x} position={[x, down ? DOOR_HEIGHT / 2 : DOOR_HEIGHT + 0.9, 0]}>

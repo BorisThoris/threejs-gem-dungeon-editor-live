@@ -25,6 +25,7 @@ const cache = new Map<string, Texture>();
 const overrides = new Map<string, string>();
 const listeners = new Set<() => void>();
 let version = 0;
+let saveFailed = false;
 
 // --- Procedural defaults ---------------------------------------------------
 
@@ -136,7 +137,7 @@ function paintDefault(id: string): HTMLCanvasElement {
   canvas.width = SIZE;
   canvas.height = SIZE;
   const ctx = canvas.getContext("2d")!;
-  const painter = PAINTERS[id as BuiltinSurface] ?? PAINTERS.stone;
+  const painter = Object.hasOwn(PAINTERS, id) ? PAINTERS[id as BuiltinSurface] : PAINTERS.stone;
   painter(ctx, createRng(`surface:${id}`));
   return canvas;
 }
@@ -210,8 +211,10 @@ if (typeof window !== "undefined") loadPersisted();
 function persist() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(overrides)));
+    saveFailed = false;
   } catch {
-    // Quota or privacy mode: the override still applies for this session.
+    // Session overrides remain available for recovery without claiming durability.
+    saveFailed = true;
   }
 }
 
@@ -268,6 +271,17 @@ const subscribe = (listener: () => void) => {
   listeners.add(listener);
   return () => listeners.delete(listener);
 };
+
+export function useSurfaceSaveFailed(): boolean {
+  // Refresh recovery downloads when another surface changes while saving is failing.
+  useSyncExternalStore(subscribe, () => version);
+  return useSyncExternalStore(subscribe, () => saveFailed);
+}
+export function retrySurfaceSave(): void {
+  persist();
+  // Persistence alone does not change textures or invalidate their GPU cache.
+  listeners.forEach(listener => listener());
+}
 
 /**
  * A surface tiled `repeatX` by `repeatY` times. Returns a per-caller clone so

@@ -89,6 +89,8 @@ export function Reaper({ room, cover = [] }: { room: Room; cover?: readonly Patc
       probe.y = g.position.y;
       probe.facing = g.rotation.y;
       probe.distance = distance;
+      probe.sees = sees ? 1 : 0;
+      probe.hasTrail = target ? 1 : 0;
       probe.stalled = stalled ? 1 : 0;
       probe.room = room.id;
     }

@@ -43,6 +43,8 @@ try {
       const at = pursuitArrival(room, dir);
       check(insideRoom(room, at.x, at.z, .6), `${shape}/${dir}: arrival inside doorway`);
       check(Math.abs(Math.hypot(at.x, at.z) - (doorReach(room, dir) - .9)) < .001, `${shape}/${dir}: correct threshold`);
+      const harrier = pursuitArrival(room, dir, 1.1);
+      check(insideRoom(room, harrier.x, harrier.z, 1), `${shape}/${dir}: Harrier can leave its landing`);
     }
     p.resetPursuit();
     return results.length;

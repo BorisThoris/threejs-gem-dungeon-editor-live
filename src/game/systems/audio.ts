@@ -607,7 +607,9 @@ const AIR_VOICES: Partial<Record<AirId, { build: HeldBuilder; level: number }>> 
     },
   },
   hiss: {
-    level: 0.16,
+    // Keep the condenser pressure audible above the slowly wandering room bed.
+    // At 0.16 its measured peak could fall just below that bed's audibility bar.
+    level: 0.22,
     build: (ctx, into) => {
       const pressure = heldNoise(ctx, into, "bandpass", 980, 1.8, null);
       const valve = ctx.createOscillator();
@@ -837,8 +839,8 @@ export const sfx = {
    * open door. One short source per approach, never a held border voice. */
   threshold(site: ThresholdEchoSite, pan = 0) {
     if (site.district === "gardens") {
-      noiseBurst(0.17, 0.2, 720, pan, true);
-      tone(104, 0.24, "triangle", 0.16, 76, pan, true);
+      noiseBurst(0.17, 0.27, 720, pan, true);
+      tone(104, 0.24, "triangle", 0.21, 76, pan, true);
     }
     else if (site.district === "works") tone(154, 0.16, "square", 0.15, 108, pan, true);
     else if (site.district === "tombs") tone(294, 0.3, "triangle", 0.18, 220, pan, true);
@@ -866,7 +868,7 @@ export const sfx = {
   },
   /** A restrained continuation of the landmark signature at each learned route step. */
   secretTrail(id: LandmarkId = "rootwell", final = false) {
-    const gain = final ? 0.13 : 0.095;
+    const gain = final ? 0.13 : 0.12;
     if (id === "rootwell") {
       noiseBurst(0.08, gain, 680);
       tone(final ? 126 : 104, 0.2, "triangle", gain, 76);
@@ -881,16 +883,17 @@ export const sfx = {
   /** The physical end of a district gallery answering the player's arrival. */
   galleryResponse(district: DistrictId = "tombs", pan = 0, secretFlank = false, answerPan = -pan * .55) {
     if (district === "gardens") {
-      noiseBurst(0.22, 0.15, 560, pan, true);
-      tone(92, 0.32, "triangle", 0.12, 70, pan, true);
+      noiseBurst(0.22, 0.21, 560, pan, true);
+      tone(92, 0.32, "triangle", 0.16, 70, pan, true);
       if (secretFlank) later(135, () => noiseBurst(0.16, 0.055, 410, answerPan, true));
     } else if (district === "works") {
-      for (const [delay, pitch, gain] of [[0, 174, 0.09], [72, 147, 0.075], [166, 196, 0.06]] as const)
+      noiseBurst(0.075, 0.14, 1200, pan, true);
+      for (const [delay, pitch, gain] of [[0, 174, 0.14], [72, 147, 0.12], [166, 196, 0.095]] as const)
         later(delay, () => tone(pitch, 0.09, "square", gain, pitch * 0.72, pan, true));
       if (secretFlank) later(275, () => noiseBurst(0.07, 0.045, 980, answerPan, true));
     } else {
-      tone(220, 0.38, "triangle", 0.1, 164, pan, true);
-      later(145, () => tone(secretFlank ? 277 : 247, 0.46, "triangle", 0.075, 185, answerPan, true));
+      tone(220, 0.38, "triangle", 0.14, 164, pan, true);
+      later(145, () => tone(secretFlank ? 277 : 247, 0.46, "triangle", 0.1, 185, answerPan, true));
     }
   },
   beetleScatter(pan = 0) {
@@ -920,9 +923,9 @@ export const sfx = {
   },
   /** Brittle shell and small claws crossing a dry salt shelf. */
   brineScuttle(pan = 0) {
-    noiseBurst(0.07, 0.15, 3600, pan);
-    later(48, () => tone(920, 0.07, "triangle", 0.1, 560, pan));
-    later(105, () => noiseBurst(0.055, 0.12, 2900, pan));
+    noiseBurst(0.07, 0.2, 3600, pan);
+    later(48, () => tone(920, 0.07, "triangle", 0.13, 560, pan));
+    later(105, () => noiseBurst(0.055, 0.16, 2900, pan));
   },
   /** Three imperfect glass notes: the whole resonance ring answering at once. */
   shardChime(pan = 0) {

@@ -39,7 +39,7 @@ export function Pit({ room, trap }: { room: Room; trap: Trap }) {
   });
 
   return (
-    <group position={[trap.x, GROUND_Y, trap.z]}>
+    <group name="trap-pit" position={[trap.x, GROUND_Y, trap.z]}>
       {open ? (
         <>
           <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>

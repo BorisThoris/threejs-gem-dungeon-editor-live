@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 
 import { HAZARD_RADIUS } from "../dungeon/layout";
 import { canControl, useRun } from "../state/run";
+import { geo, mat } from "./shared";
 
 interface HazardProps {
   position: [number, number, number];
@@ -34,24 +35,11 @@ export function Hazard({ position, radius = HAZARD_RADIUS }: HazardProps) {
 
   return (
     <group position={position}>
-      {SPIKES.map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.22, z]} castShadow>
-          <coneGeometry args={[0.09, 0.45, 6]} />
-          <meshStandardMaterial color="#b9c2cc" metalness={0.75} roughness={0.35} />
-        </mesh>
-      ))}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <circleGeometry args={[radius, 20]} />
-        <meshBasicMaterial color="#8a1f2d" transparent opacity={0.28} />
-      </mesh>
+      <mesh name="spike-patch" castShadow geometry={geo("spike-patch")}
+        material={mat({ color: "#b9c2cc", metalness: 0.75, roughness: 0.35 })} />
+      <mesh name="spike-warning" rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}
+        geometry={geo("circle", radius, 20)}
+        material={mat({ basic: true, color: "#8a1f2d", transparent: true, opacity: 0.28 })} />
     </group>
   );
 }
-
-const SPIKES: [number, number][] = [
-  [0, 0],
-  [0.35, 0.2],
-  [-0.3, 0.28],
-  [0.15, -0.32],
-  [-0.25, -0.22],
-];

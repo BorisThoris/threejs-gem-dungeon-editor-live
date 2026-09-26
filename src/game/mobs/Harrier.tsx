@@ -89,7 +89,10 @@ export function Harrier({ room }: { room: Room }) {
     // Wheeling away, or kept out by the grate: unseen until it returns.
     const kept = away || barred;
     if (!p.placed && !kept && canControl(run)) {
-      const start = cameFrom && entry ? pursuitArrival(room, entry) : encounterArrival(room, entry, cam, obstacles, 1);
+      // roomStep below requires one metre of clearance. The ordinary
+      // pursuit landing is only 0.9m in and leaves this body unable to take
+      // even an inward step from its own doorway.
+      const start = cameFrom && entry ? pursuitArrival(room, entry, 1.1) : encounterArrival(room, entry, cam, obstacles, 1);
       p.placed = true;
       p.x = start.x;
       p.z = start.z;
@@ -98,6 +101,7 @@ export function Harrier({ room }: { room: Room }) {
     const dx = cam.x - p.x;
     const dz = cam.z - p.z;
     const distance = Math.hypot(dx, dz);
+    let sees = false;
 
     // Where it is, written at the end of the frame - after the step - so
     // what a check reads is where it will be downed, not where it was a
@@ -110,7 +114,8 @@ export function Harrier({ room }: { room: Room }) {
       harrierAt.away = kept;
       if (import.meta.env.DEV) {
         const w = window as unknown as { __harrier?: Record<string, unknown> };
-        w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance: Math.hypot(cam.x - p.x, cam.z - p.z), down, away, barred, tell: tell.current };
+        w.__harrier = { x: p.x, z: p.z, room: room.id, roost, via: entry, distance: Math.hypot(cam.x - p.x, cam.z - p.z), down, away, barred, tell: tell.current,
+          sees, target: remembered.current };
       }
     };
 
@@ -155,7 +160,7 @@ export function Harrier({ room }: { room: Room }) {
       report();
       return;
     }
-    const sees = roomSegmentClear(room, p.x, p.z, cam.x, cam.z) && sightLineClear(p, cam, obstacles);
+    sees = roomSegmentClear(room, p.x, p.z, cam.x, cam.z) && sightLineClear(p, cam, obstacles);
     if (sees) {
       remembered.current = { x: cam.x, z: cam.z };
       perceive("harrier", room.id, now);

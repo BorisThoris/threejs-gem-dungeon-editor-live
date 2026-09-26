@@ -10,6 +10,7 @@ import { Hazard } from "./Hazard";
 import { Braziers } from "./Braziers";
 import { geo, mat } from "./shared";
 import { DARK_WOOD_LIT, IRON, WOOD_LIT } from "./furnitureStyle";
+import { FurnitureBatches } from "./FurnitureBatches";
 import { PROP_SPECS, type PropSpec } from "./specs";
 
 // The numbers live in specs.ts, which has no React in it: the collider
@@ -283,10 +284,8 @@ function Statue(p: PropProps) {
 /** An urn: taller and narrower than a barrel, and fired rather than staved. */
 function Urn(p: PropProps) {
   return (
-    <group {...frame(p)}>
-      <mesh position={[0, 0.6, 0]} castShadow scale={0.36} geometry={geo("sphere", 1, 12, 10)} material={mat({ color: "#8a5a44", roughness: 0.7 })} />
-      <mesh position={[0, 1.02, 0]} geometry={geo("cylinder", 0.16, 0.12, 0.26, 10)} material={mat({ color: "#7a4e3a", roughness: 0.7 })} />
-      <mesh position={[0, 0.12, 0]} geometry={geo("cylinder", 0.2, 0.24, 0.24, 10)} material={mat({ color: "#7a4e3a", roughness: 0.75 })} />
+    <group position={p.position}>
+      <FurnitureBatches placements={[{ kind: "urn", x: 0, z: 0, scale: p.scale, rotation: p.rotation }]} />
     </group>
   );
 }
@@ -379,7 +378,7 @@ export const CATALOG = Object.fromEntries(
 
 export function Prop({ kind, ...rest }: PropProps & { kind: PropKind }) {
   const Component = CATALOG[kind].component;
-  return <Component {...rest} />;
+  return <group name={`prop-${kind}`}><Component {...rest} /></group>;
 }
 
 /**

@@ -66,13 +66,16 @@ export interface SlottedPlacement extends PropPlacement {
 const choicesOf = (rule: SlotRule): PropKind[] =>
   [...new Set([...rule.into, ...Object.values(rule.byDistrict ?? {}).flat()])];
 
+const substitutionCount = (rule: SlotRule, count: number): number =>
+  Math.max(0, Math.min(count, rule.n ?? 1));
+
 /** Imported rules must not produce an unknown prop or an empty choice. */
 export function isSlotRule(value: unknown): value is SlotRule {
   if (!value || typeof value !== "object") return false;
   const rule = value as Record<string, unknown>;
   const choices = (v: unknown) => Array.isArray(v) && v.length > 0 &&
     v.every(kind => typeof kind === "string" && Object.hasOwn(PROP_SPECS, kind));
-  if (typeof rule.slot !== "string" || !rule.slot || !["subst", "shuffle", "nsubst"].includes(String(rule.op))) return false;
+  if (typeof rule.slot !== "string" || !rule.slot || typeof rule.op !== "string" || !["subst", "shuffle", "nsubst"].includes(rule.op)) return false;
   if (rule.op === "shuffle") {
     if (!Array.isArray(rule.into) || !rule.into.every(kind => typeof kind === "string" && Object.hasOwn(PROP_SPECS, kind))) return false;
   } else if (!choices(rule.into)) return false;
@@ -140,7 +143,7 @@ export function resolveSlots(
       const kind = into[Math.floor(rng() * into.length)];
       for (const i of indices) out[i].kind = kind;
     } else if (rule.op === "nsubst") {
-      const n = Math.max(0, Math.min(indices.length, rule.n ?? 1));
+      const n = substitutionCount(rule, indices.length);
       const order = shuffle(rng, indices);
       const [chosen, rest] = [into[0], into[1] ?? into[0]];
       order.forEach((i, at) => {
@@ -213,13 +216,17 @@ export function kindOptions(
     const indices = props.map((p, i) => (p.slot === rule.slot ? i : -1)).filter((i) => i >= 0);
     if (indices.length === 0) continue;
     // A shuffle draws from the composition it was given; the other two
-    // draw from what the rule offers. `nsubst` uses both of its entries -
-    // every position can be either the real one or one of the rest.
+    // draw from what the rule offers. Counted substitution uses both entries
+    // only when some positions receive each kind.
+    const n = substitutionCount(rule, indices.length);
     const options =
       rule.op === "shuffle"
-        ? indices.map((i) => props[i].kind)
+        ? indices.flatMap((i) => out[i])
         : rule.op === "nsubst"
-          ? [rule.into, ...Object.values(rule.byDistrict ?? {})].flatMap(into => into.slice(0, 2))
+          ? [rule.into, ...Object.values(rule.byDistrict ?? {})].flatMap(into => [
+            ...(n > 0 ? [into[0]] : []),
+            ...(n < indices.length ? [into[1] ?? into[0]] : []),
+          ])
           : choicesOf(rule);
     const unique = [...new Set(options)];
     for (const i of indices) out[i] = unique;

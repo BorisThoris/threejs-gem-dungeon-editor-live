@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   ACTIONS,
@@ -16,6 +16,8 @@ import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
 
+const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
+
 /** Esc pauses; the run is untouched underneath and resumes where it was. */
 export function PauseMenu() {
   const resume = useRun((s) => s.resume);
@@ -24,13 +26,14 @@ export function PauseMenu() {
   const panelRef = useRef<HTMLDivElement>(null);
   usePadMenu({ container: panelRef, onBack: resume });
   return (
-    <div style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.72)" }}>
+    <div data-testid="pause-menu" style={{ ...fullscreen, background: "rgba(5, 6, 8, 0.72)" }}>
       <div style={panel} ref={panelRef}>
         <h2 style={title}>PAUSED</h2>
         <p style={body}>The dungeon waits.</p>
         <button style={button} data-testid="pause-resume" onClick={resume}>
           Resume
         </button>
+        {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
         <Naming />
         <Options />
         <button style={secondaryButton} data-testid="pause-quit" onClick={quitToMenu}>

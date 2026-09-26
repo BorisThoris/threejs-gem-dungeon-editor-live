@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright-core";
 
-mkdirSync("output/playwright", { recursive: true });
+mkdirSync("output/world-review/secret-history", { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -95,7 +95,7 @@ try {
       return { pixels, image, probe, entrance, trailMarks: trail.length,
         historyMeshes: history.children.length, rewardChildren: reward.children.length };
     }, fixture);
-    writeFileSync(`output/playwright/secret-history-${key}.png`, Buffer.from(result.image.split(",")[1], "base64"));
+    writeFileSync(`output/world-review/secret-history/${key}.png`, Buffer.from(result.image.split(",")[1], "base64"));
     delete result.image;
     assert.equal(result.probe.title, fixture.story.title);
     assert.equal(result.probe.purpose, fixture.story.purpose);

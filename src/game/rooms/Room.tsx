@@ -92,11 +92,15 @@ interface RoomProps {
  * stepped through a doorway - every four to nine seconds, for a subtree of
  * a hundred elements. Here the subscription costs one component.
  */
-function useWatcherPost(room: RoomData, seed: number) {
+function useSentryPlacement(room: RoomData, seed: number) {
   const floor = useRun((s) => s.floor);
   const hasKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
-  return useMemo(() => sentryFor(room, seed, floor, hasKey ? [keyFor(room, seed)] : [])?.at ?? null,
+  return useMemo(() => sentryFor(room, seed, floor, hasKey ? [keyFor(room, seed)] : []),
     [room, seed, floor, hasKey]);
+}
+
+function useWatcherPost(room: RoomData, seed: number) {
+  return useSentryPlacement(room, seed)?.at ?? null;
 }
 
 function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[]; seed: number }) {
@@ -283,7 +287,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
   const holdsKey = useRun((s) => s.dungeon?.keyRoomId === room.id || s.keyLyingIn === room.id);
   const floor = useRun((s) => s.floor);
   const light = floorRules(floor).light;
-  const sentry = sentryFor(room, seed, floor);
+  const sentry = useSentryPlacement(room, seed);
   const hazards = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
   // The same patches the player is charged for, in the shape the Warden's
   // steering reads. One list: a second opinion about where the spikes are
@@ -380,7 +384,7 @@ export function Room({ room, seed, showCeiling = true }: RoomProps) {
         <Hazard key={i} position={p} />
       ))}
 
-      {Content && <Content room={room} />}
+      {Content && <group name={`room-content-${room.kind}`}><Content room={room} /></group>}
     </group>
   );
 }

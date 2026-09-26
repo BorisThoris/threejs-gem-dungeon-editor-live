@@ -4,7 +4,7 @@ import { doorPosition } from "../dungeon/layout";
 import { DIRS, type Dir, type Room } from "../dungeon/types";
 import { keyboard } from "../input/keyboard";
 import { readGamepad } from "../input/gamepad";
-import { canControl, useRun } from "../state/run";
+import { canControl, expireGrate, useRun } from "../state/run";
 import { INTERACT_RADIUS } from "../world";
 import { bus } from "../events";
 
@@ -29,6 +29,7 @@ export function Barring({ room }: { room: Room }) {
     // Not while a menu or a puzzle is up, and not through the black frame
     // between two rooms: the same predicate everything else asks.
     if (!canControl(run)) return;
+    expireGrate();
 
     // Consume each press once, including misses, so approaching a door
     // later cannot unexpectedly build a barricade from an old press.

@@ -34,8 +34,8 @@ export interface GenerateOptions {
   floor?: number;
   /**
    * Rooms including start and end. How big a floor is belongs to the floor,
-   * so callers pass `floorRules(floor)`; the default is the first floor's,
-   * for the editor and for anything asking for "a dungeon".
+   * The defaults come from `floorRules(floor)`. Pass an override only when
+   * deliberately testing a different room count.
    */
   minRooms?: number;
   maxRooms?: number;
@@ -433,6 +433,7 @@ export function generateDungeon(options: GenerateOptions = {}): Dungeon {
   }
   assignWatercourse(rooms, "start", vault?.id ?? null);
   return {
+    roomBias: !!options.pays,
     serviceTrail: serviceTrailFor(rooms, vault?.id ?? null),
     secretTrail: secretTrailFor(rooms, vault?.id ?? null),
     seed,

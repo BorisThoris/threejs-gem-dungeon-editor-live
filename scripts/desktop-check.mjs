@@ -16,18 +16,29 @@
  * the desktop one - through the menu and the keyboard, because a packaged
  * build has no probes in it either.
  *
- * Needs a virtual display (xvfb-run) and a Linux `dir` build, which it makes
- * if there is not one already.
+ * Builds the current web assets and a directory package for this host, then
+ * starts that package. Linux uses Xvfb; Windows and macOS use their native
+ * window server.
  */
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const root = new URL("..", import.meta.url).pathname;
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
-const EXECUTABLE = pkg.build.linux.executableName;
-const OUT = join(root, "dist-electron/linux-unpacked");
+const product = pkg.build.productName;
+const platform = process.platform;
+const layouts = {
+  win32: { target: "--win", directory: "win-unpacked", executable: `${product}.exe`, asar: "resources/app.asar" },
+  linux: { target: "--linux", directory: "linux-unpacked", executable: pkg.build.linux.executableName, asar: "resources/app.asar" },
+  darwin: { target: "--mac", directory: "mac", executable: `${product}.app/Contents/MacOS/${product}`, asar: `${product}.app/Contents/Resources/app.asar` },
+};
+const layout = layouts[platform];
+if (!layout) throw Error(`No desktop package check for ${platform}`);
+const OUT = join(root, "dist-electron", layout.directory);
+const executable = join(OUT, layout.executable);
 const PORT = process.env.DESKTOP_PORT || "9333";
 
 let failures = 0;
@@ -36,14 +47,14 @@ const ok = (label, cond, detail = "") => {
   console.log(`${cond ? "PASS" : "FAIL"}  ${label}${detail ? "  - " + detail : ""}`);
 };
 
-if (!existsSync(join(OUT, EXECUTABLE))) {
-  console.log("Building the Linux package...");
-  execFileSync("npx", ["electron-builder", "--linux", "dir"], { cwd: root, stdio: "inherit" });
-}
+console.log(`Building the current ${platform} desktop package...`);
+execFileSync(process.execPath, [join(root, "node_modules", "vite", "bin", "vite.js"), "build"], { cwd: root, stdio: "inherit" });
+execFileSync(process.execPath, [join(root, "node_modules", "electron-builder", "out", "cli", "cli.js"), layout.target, "dir"],
+  { cwd: root, stdio: "inherit" });
 
 // --- What is in the package ------------------------------------------------
 
-ok(`the package has an executable called ${EXECUTABLE}`, existsSync(join(OUT, EXECUTABLE)));
+ok(`the package has an executable called ${layout.executable}`, existsSync(executable));
 
 /**
  * The name in the build config and the name in the Steam instructions are
@@ -52,20 +63,17 @@ ok(`the package has an executable called ${EXECUTABLE}`, existsSync(join(OUT, EX
  * and the only way to know is to compare it with what the builder made.
  */
 const steamDoc = readFileSync(join(root, "steam/README.md"), "utf8");
-const product = pkg.build.productName;
 /**
  * What each platform's launch executable is called, derived from the build
  * config rather than typed out again. electron-builder names the Windows
  * binary and the macOS bundle after the product; Linux takes whatever
  * executableName says, and said the npm package's name until this cycle.
  *
- * Only the Linux one can be built and started here - Windows packaging
- * needs Wine for the icon step and macOS needs Xcode's tooling to sign -
- * so for the other two this is the whole check, and it is still the one
- * that would have caught the bug.
+ * The current host's package is built and started below. The other platform
+ * names are still checked against the shipping instructions.
  */
 const launches = [
-  ["Linux", EXECUTABLE],
+  ["Linux", pkg.build.linux.executableName],
   ["Windows", `${product}.exe`],
   ["macOS", `${product}.app`],
 ];
@@ -88,7 +96,7 @@ for (const [platform, name, where] of [
   }
 }
 
-const asar = join(OUT, "resources/app.asar");
+const asar = join(OUT, layout.asar);
 ok("the game is packed into an asar", existsSync(asar), asar);
 const packed = readFileSync(asar, "utf8");
 // Path strings survive in the asar's header, so it can be asked what it
@@ -137,14 +145,15 @@ if (stale) {
  * spawned ourselves, each in its own group, can actually be killed.
  */
 const DISPLAY = `:${90 + (Number(PORT) % 8)}`;
-const xvfb = spawn("Xvfb", [DISPLAY, "-screen", "0", "1280x800x24", "-nolisten", "tcp"], {
-  stdio: "ignore",
-  detached: true,
-});
-await new Promise((r) => setTimeout(r, 1500));
+const xvfb = platform === "linux"
+  ? spawn("Xvfb", [DISPLAY, "-screen", "0", "1280x800x24", "-nolisten", "tcp"], {
+    stdio: "ignore", detached: true,
+  })
+  : null;
+if (xvfb) await new Promise((r) => setTimeout(r, 1500));
 
 const app = spawn(
-  join(OUT, EXECUTABLE),
+  executable,
   [
     "--no-sandbox",
     "--windowed",
@@ -153,18 +162,24 @@ const app = spawn(
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
   ],
-  // Its own process group, so the whole tree can be killed: xvfb-run is a
-  // shell that launches the app, and killing the shell leaves the app.
-  { cwd: OUT, stdio: ["ignore", "pipe", "pipe"], detached: true, env: { ...process.env, DISPLAY } }
+  // A separate process group on Unix lets cleanup stop the whole tree;
+  // Windows cleanup uses taskkill /T for the same reason.
+  { cwd: OUT, stdio: ["ignore", "pipe", "pipe"], detached: platform !== "win32", windowsHide: true,
+    env: xvfb ? { ...process.env, DISPLAY } : process.env }
 );
 let appOutput = "";
 app.stdout.on("data", (d) => (appOutput += d));
 app.stderr.on("data", (d) => (appOutput += d));
+app.on("error", (error) => (appOutput += `\n${error}`));
 let stopped = false;
 const stop = () => {
   if (stopped) return;
   stopped = true;
-  for (const child of [app, xvfb]) {
+  for (const child of [app, xvfb].filter(Boolean)) {
+    if (platform === "win32") {
+      if (child.pid) spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+      continue;
+    }
     try {
       process.kill(-child.pid, "SIGKILL");
     } catch {
@@ -180,7 +195,7 @@ process.on("exit", stop);
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => (stop(), process.exit(1)));
 
 let browser = null;
-for (let i = 0; i < 30 && !browser; i++) {
+for (let i = 0; i < 60 && !browser; i++) {
   await new Promise((r) => setTimeout(r, 1000));
   browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`).catch(() => null);
 }
@@ -208,6 +223,15 @@ if (browser) {
       /LIVES/.test(hud) && /FLOOR/.test(hud),
       hud.slice(0, 60).replace(/\n/g, " · ")
     );
+    await page.keyboard.press("Escape");
+    const paused = await page.locator('[data-testid="pause-resume"]').waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+    ok("Escape pauses the packaged game", paused);
+    if (paused) {
+      await page.locator('[data-testid="pause-resume"]').click();
+      const resumed = await page.locator('[data-testid="pause-resume"]').waitFor({ state: "hidden", timeout: 10000 })
+        .then(() => true).catch(() => false);
+      ok("the packaged game resumes from its pause menu", resumed);
+    }
     ok(
       "it loads from the packaged files rather than a dev server",
       await page.evaluate(() => location.protocol === "file:").catch(() => false)

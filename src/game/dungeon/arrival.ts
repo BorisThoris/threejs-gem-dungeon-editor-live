@@ -3,9 +3,9 @@ import { spawnAfterTravel } from "./layout";
 import { DIRS, DIR_STEP, OPPOSITE, halfSize, type Dir, type Room } from "./types";
 
 /** Pursuers visibly enter the actual doorway; attack grace protects its landing. */
-export function pursuitArrival(room: Room, from: Dir): { x: number; z: number } {
+export function pursuitArrival(room: Room, from: Dir, inset = 0.9): { x: number; z: number } {
   const axis = DIR_STEP[from];
-  const along = doorReach(room, from) - 0.9;
+  const along = doorReach(room, from) - inset;
   return { x: axis.x * along, z: axis.z * along };
 }
 
