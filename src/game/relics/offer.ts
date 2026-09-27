@@ -63,14 +63,14 @@ export const OFFERS: Record<OfferId, Offer> = {
   chit: {
     id: "chit",
     name: "Assayer's Chit",
-    does: "You may open a chest and find the thing under the thing.",
+    does: "You may take an extra item from a chest if your satchel has room.",
     kind: "odds",
     price: 2,
   },
   tally: {
     id: "tally",
     name: "Foreman's Tally",
-    does: "You may expect a room that pays where a plain one would have been.",
+    does: "You may find paying rooms on later floors where plain rooms would have been.",
     kind: "odds",
     price: 2,
   },
@@ -115,7 +115,7 @@ export const OFFERS: Record<OfferId, Offer> = {
   cut: {
     id: "cut",
     name: "Company Seal",
-    does: "You may open any vault on the floor with the one key that was cut.",
+    does: "You may unlock a vault without spending your iron key.",
     kind: "options",
     price: 4,
   },

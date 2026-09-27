@@ -1,6 +1,6 @@
 import { createRng, shuffle } from "../rng";
 import { OFFERS, OFFER_IDS, pairFor, type OfferId } from "./offer";
-import { DASH_SPEED, WALK_SPEED } from "../world";
+import { DASH_SPEED, FLOORS, WALK_SPEED } from "../world";
 
 /**
  * What gems buy besides a way out - and what they are no longer allowed
@@ -47,6 +47,18 @@ export interface Relic {
 export const RELICS: Record<RelicId, Relic> = Object.fromEntries(
   OFFER_IDS.map((id) => [id, { id, name: OFFERS[id].name, blurb: OFFERS[id].does, price: OFFERS[id].price }])
 ) as Record<RelicId, Relic>;
+
+/** Planning text uses the same effects and pair recipes as the run. */
+export function relicDescription(id: RelicId, floor: number): string {
+  return id === "tally" && floor >= FLOORS
+    ? "No later floors remain to change plain rooms into paying rooms." : RELICS[id].blurb;
+}
+
+export function relicOfferDescription(id: RelicId, floor: number, held: readonly RelicId[]): string {
+  const before = pairFor(held);
+  const completed = pairFor([...held, id]).filter(pair => !before.includes(pair));
+  return [relicDescription(id, floor), ...completed.map(pair => `Completes ${pair.name}: ${pair.does}`)].join(" ");
+}
 
 export interface RunModifiers {
   /**

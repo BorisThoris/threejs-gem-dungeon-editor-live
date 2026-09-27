@@ -5889,6 +5889,17 @@ check("the shipped room templates reach the floors the game generates", authored
   check("and every pair names two offers that exist", L.PAIRS.every((p) => p.of.every((id) => L.OFFER_IDS.includes(id))));
   check("no offer is in two pairs, so a pair is a choice", new Set(L.PAIRS.flatMap((p) => p.of)).size === L.PAIRS.length * 2);
   check("a pair pays only when both are held", L.pairFor([L.PAIRS[0].of[0]]).length === 0 && L.pairFor(L.PAIRS[0].of).length === 1);
+  for (const pair of L.PAIRS) for (const id of pair.of) {
+    const other = pair.of.find(other => other !== id);
+    check(`${id} previews its pair only when the partner is held`,
+      L.relicOfferDescription(id, 1, [other]).includes(`Completes ${pair.name}: ${pair.does}`) &&
+      !L.relicOfferDescription(id, 1, []).includes("Completes") &&
+      !L.relicOfferDescription(id, 1, [...pair.of]).includes("Completes"));
+  }
+  check("the last-floor Tally explains its limit without hiding its possible pair",
+    L.relicOfferDescription("tally", L.FLOORS, ["chit"]).includes("No later floors remain") &&
+    L.relicOfferDescription("tally", L.FLOORS, ["chit"]).includes("Completes The Full Count") &&
+    !L.relicOfferDescription("tally", 1, []).includes("No later floors remain"));
   check("and no pair's payoff is a number either", L.PAIRS.every((p) => !/\d|%/.test(p.does)));
 
   /**

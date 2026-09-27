@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { quadrantSpots, type Vec3 } from "../dungeon/layout";
 import { secretStory } from "../dungeon/secret";
 import type { Room } from "../dungeon/types";
-import { offeredAt, priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
+import { offeredAt, priceOn, relicOfferDescription, RELIC_IDS, RELICS, type RelicId } from "../relics/catalog";
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -327,6 +327,7 @@ function RelicStand({
 }) {
   const gems = useRun((s) => s.gems);
   const taken = useRun((s) => s.relics.includes(id));
+  const held = useRun((s) => s.relics);
   const relic = RELICS[id];
   const price = fixed ?? priceOn(relic, floor);
   const cost = useShopCost(price);
@@ -356,7 +357,7 @@ function RelicStand({
       )}
       <InteractTrigger
         position={[0, 0, 0]}
-        label={`${relic.name}, ${cost} - ${relic.blurb}`}
+        label={`${relic.name}, ${cost} - ${relicOfferDescription(id, floor, held)}`}
         enabled={!taken && affordable}
         blockedReason={
           taken

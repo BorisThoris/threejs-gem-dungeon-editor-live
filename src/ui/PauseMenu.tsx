@@ -17,6 +17,7 @@ import { body, button, colors, fullscreen, panel, secondaryButton, text, title }
 import { usePadMenu } from "./padMenu";
 import { Minimap } from "./Minimap";
 import { SatchelInspection } from "./SatchelInspection";
+import { RelicInspection } from "./RelicInspection";
 
 const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
 
@@ -51,6 +52,7 @@ export function PauseMenu() {
           </p>
         </div>}
         <SatchelInspection />
+        <RelicInspection />
         {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
         <Naming />
         <Options />

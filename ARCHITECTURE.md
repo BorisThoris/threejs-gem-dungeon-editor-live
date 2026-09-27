@@ -612,6 +612,15 @@ Two stores that both claimed the player's stats. So:
   passage. `booksSpent` survives descent and resets with the run. Ordinary
   `spendGems` pays the exit and cannot consume the pair. Free relics need no
   reserve. `shop-payment-browser-check.mjs` holds these promises together.
+  Relic offers preview newly completed pairs from that same recipe table.
+  `relicDescription` names the Tally's later-floor timing and warns when no
+  later floor remains. Pause-menu relic inspection reads the catalogue,
+  missing partners, recorded `fullCountFloor` and `booksSpent`; reviewing a
+  kit cannot buy, use or identify anything. The relic-planning browser check
+  follows each advertised pair through a real shop purchase, then checks its
+  reminder, spent trade, new-run reset, phone layout and controller access.
+  Long offers wrap beneath the interaction key when a narrow screen cannot
+  fit both columns, keeping the whole purchase legible at large text sizes.
 - Where the camera is pointing is `src/game/input/look.ts`, written once a
   frame by the look controls. The minimap turns with it. It is deliberately
   not store state: it changes every frame a mouse moves, and the HUD would

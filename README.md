@@ -110,10 +110,17 @@ Warden stops wandering and walks straight for the room you are in. Walking
 is quiet. So every corridor is the same small question as the floor itself:
 fast, or unnoticed.
 
-Gems also buy relics at the shop, which change a run's rules: a lantern
-that shows you where the Warden is, boots that make you quicker, a charm
-that eats a hit, a ledger that makes every exit cheaper. Every gem spent
-there is a gem you do not carry out.
+Gems also buy relics at the shop. The Assayer's Chit finds an extra chest
+item when the satchel has room; the Company Seal keeps your iron key after
+unlocking a vault. Foreman's Tally biases rooms on later floors, so buying
+it on the final floor cannot change that floor's rooms. Relics combine into
+pairs that reveal cracks in dim light, fill a vault with a hoard, or let a
+shop take your key once when cash would touch your passage money.
+
+Shop prompts show when an offer completes a pair. Inspect relics in the pause
+menu to review effects and missing partners, remember the hoard's recorded
+floor, and check whether the key trade has been spent. Every gem spent at the
+shop is a gem you do not carry out.
 
 The arena is the one room that fights back. Its gem sits on a plinth in the
 middle, and lifting it bars the doors and sets three arms of spikes turning

@@ -34,6 +34,7 @@ export function Prompt() {
         maxWidth: "calc(100vw - 32px)",
         boxSizing: "border-box",
         display: "flex",
+        flexWrap: "wrap",
         alignItems: "center",
         gap: 12,
         padding: "12px 18px",
@@ -54,7 +55,7 @@ export function Prompt() {
         background: prompt.enabled ? colors.accent : "#5a5f6e" }}>
         {touch ? "USE" : keysLabel(interact)}
       </span>
-      <span data-testid="prompt-text" style={{ minWidth: 0, overflowWrap: "anywhere", lineHeight: 1.5,
+      <span data-testid="prompt-text" style={{ minWidth: 0, flex: "1 1 14em", overflowWrap: "anywhere", lineHeight: 1.5,
         color: prompt.enabled ? colors.ink : colors.danger }}>
         {prompt.text}
       </span>
