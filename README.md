@@ -239,6 +239,11 @@ generator will only put the lock on a room the floor can be walked without,
 and never on the way to the exit, so a vault is a detour worth taking
 rather than a wall across the run - you can always leave without it, and
 you will always wonder what was in it.
+Its key buys one entry, and the Company Seal lets you keep that key. A bomb
+at the doorway or a known Wire Snare spent on the exposed latch also opens it.
+The wire is then unavailable for trapping a pursuer; the key can instead
+weigh a plate, be dropped as a distraction, or pay a shop with the right relic
+pair. The bar drops after entry whichever method you chose.
 
 You pick who goes down. Five delvers, each trading one thing the run needs
 for another: the Vagrant brings nothing and owes nothing, the Tomb Robber

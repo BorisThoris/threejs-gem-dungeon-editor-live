@@ -305,6 +305,16 @@ Two stores that both claimed the player's stats. So:
   A key kept by the Company Seal remains a carried signal after unlocking;
   Din reads the remaining inventory rather than treating every vault opening
   as a spent key. The carried-signals check holds both cases to that rule.
+  The vault's exposed latch also accepts one known Wire Snare through `wireVault`.
+  `vaultMechanismPosition` owns its visible fitting, interaction and store reach
+  check. This explicit use consumes wire, records an item spent for the vow,
+  and emits the existing vault sound; it creates no live trap. Requiring a
+  named device preserves unknown-item identities and the Ratcatcher's knowledge.
+  Ground placement still refuses glazed tile, while wire attached to a wall
+  mechanism works there. All three opening methods use `unlocked` for one entry
+  and the same bar reset on arrival. The vault-choice browser check exercises
+  real wire and key interactions on every doorway orientation, including tile,
+  Company Seal retention, pause/reach guards and the actual entry reset.
 - **The difference between the creatures is `ladder/caps.ts`, not their
   files.** Every one of them runs the same state machine; a rat is a rat
   because its cap is 2 and a Reaper is a Reaper because its min and max are

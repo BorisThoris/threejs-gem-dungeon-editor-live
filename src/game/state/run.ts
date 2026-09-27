@@ -9,7 +9,7 @@ import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/wat
 import { serviceCatch } from "../worldbuilding/serviceTrail";
 import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
 import { roomSegmentClear } from "../dungeon/footprint";
-import { doorPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
+import { doorPosition, vaultMechanismPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
   AVARICE_ALARM,
@@ -372,7 +372,7 @@ export interface RunState {
   thiefKey: boolean;
   /** The Cutpurse got away with the key, and the nest has it. */
   nestKey: boolean;
-  /** Vaults already opened, so a door stays open once it has been. */
+  /** Vaults opened for one entry; the bar resets after crossing the threshold. */
   unlocked: string[];
   /**
    * The room whose key has been picked up. Kept apart from `unlocked`,
@@ -704,6 +704,8 @@ export interface RunState {
   snuffLantern: () => void;
   /** Spend a key on a vault. Returns false without one. */
   unlockRoom: (roomId: string) => boolean;
+  /** Spend a Wire Snare at the adjacent vault's exposed mechanism for one entry. */
+  wireVault: () => boolean;
   /** The Warden walks to another room. */
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
@@ -2334,6 +2336,30 @@ export const useRun = create<RunState>()(
       // what makes a draft cost something rather than annoy.
       set({ glim: 0, glimUpAt: 0, litUntil: Math.max(s.litUntil, runClock(s) + LANTERN_SEEN_HOLD_S) });
       bus.emit("lanternOut");
+    },
+
+    wireVault: () => {
+      const s = get();
+      const here = currentRoom(s);
+      const vaultId = s.dungeon?.vaultId;
+      const slot = s.satchel.indexOf("snare");
+      if (!canControl(s) || !here || !vaultId || slot < 0 || !s.identified.includes("snare") || s.unlocked.includes(vaultId)
+        || s.sealedRoomId === here.id || doorIsBarred(s, here.id, vaultId)) return false;
+      const dir = (Object.keys(here.links) as Dir[]).find(dir => here.links[dir] === vaultId);
+      if (!dir) return false;
+      const [x, , z] = vaultMechanismPosition(here, dir);
+      if (Math.hypot(playerAt.x - x, playerAt.z - z) > CLOSE_REACH) return false;
+      // Wire attached to the latch is spent here, never also a live ground
+      // trap. Glazed-floor placement rules do not apply to this wall fitting.
+      set({
+        satchel: s.satchel.filter((_, i) => i !== slot),
+        floorRecord: { ...s.floorRecord, spentAnItem: true },
+        unlocked: [...s.unlocked, vaultId],
+      });
+      bus.emit("vaultOpened", { roomId: vaultId });
+      bus.emit("itemUsed", { id: "snare", cruel: false, purpose: "vault" });
+      bus.emit("notice", "The wire holds the vault mechanism. One way in; the bar drops behind you.");
+      return true;
     },
 
     unlockRoom: (roomId) => {

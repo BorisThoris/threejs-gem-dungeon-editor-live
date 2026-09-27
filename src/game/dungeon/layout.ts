@@ -58,6 +58,14 @@ export function doorPosition(room: Room, dir: Dir): Vec3 {
   return [step.x * half, GROUND_Y, step.z * half];
 }
 
+/** The vault's exposed latch, on the inner face of the right-hand jamb. */
+export function vaultMechanismPosition(room: Room, dir: Dir): Vec3 {
+  const [x, y, z] = doorPosition(room, dir);
+  const step = DIR_STEP[dir];
+  return [x - step.z * DOOR_WIDTH / 2 - step.x * 0.3, y + 1.2,
+    z + step.x * DOOR_WIDTH / 2 - step.z * 0.3];
+}
+
 export interface Spawn {
   position: Vec3;
   /** Camera yaw, radians. */

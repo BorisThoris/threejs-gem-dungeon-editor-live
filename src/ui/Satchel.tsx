@@ -161,10 +161,10 @@ export function ItemLog() {
 
   useEffect(() => {
     const offs = [
-      bus.on("itemUsed", ({ id, cruel }) => {
+      bus.on("itemUsed", ({ id, cruel, purpose }) => {
         const item = ITEMS[id as keyof typeof ITEMS];
         const charge = useRun.getState().charges[item.id];
-        setLine({ text: `${item.name}. ${itemUseBlurb(item.id, charge)}`, cruel, at: Date.now() });
+        setLine({ text: `${item.name}. ${itemUseBlurb(item.id, charge, purpose)}`, cruel, at: Date.now() });
       }),
       bus.on("itemTaken", ({ id }) => {
         const known = useRun.getState().identified.includes(id as never);

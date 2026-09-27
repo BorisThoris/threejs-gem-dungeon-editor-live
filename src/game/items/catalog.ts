@@ -153,7 +153,7 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "snare",
     family: "device",
     name: "Wire Snare",
-    blurb: "Set where you stand. The next thing to walk into it is wounded and held.",
+    blurb: "Set where you stand. The next thing to walk into it is wounded and held. Or spend it at a vault's exposed mechanism for one entry.",
     cruel: false,
   },
   rattle: {

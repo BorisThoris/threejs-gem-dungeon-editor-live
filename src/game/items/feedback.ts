@@ -3,7 +3,8 @@ import { ITEMS, type ItemId } from "./catalog";
 import { avariceGems, healingLives, type Charge } from "./charge";
 
 /** Explain the charged kind just used, including costs hidden by its appearance. */
-export function itemUseBlurb(id: ItemId, charge: Charge): string {
+export function itemUseBlurb(id: ItemId, charge: Charge, purpose?: "vault"): string {
+  if (id === "snare" && purpose === "vault") return "Spent holding the vault mechanism for one entry.";
   if (id === "avarice") {
     const gems = avariceGems(charge);
     return `${gems} ${gems === 1 ? "gem" : "gems"}, and the floor notices.`;

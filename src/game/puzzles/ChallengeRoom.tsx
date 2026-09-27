@@ -219,7 +219,7 @@ function PlateKey({ roomId }: { roomId: string }) {
   return (
     <InteractTrigger
       position={[0, 0.5, 0]}
-      label="Set the iron key on the plate"
+      label="Set the iron key on the plate · the plate keeps it"
       radius={CLOSE_REACH}
       onInteract={() => useRun.getState().setKeyOnPlate(roomId)}
     />

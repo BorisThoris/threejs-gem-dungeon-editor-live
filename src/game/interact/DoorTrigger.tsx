@@ -1,4 +1,5 @@
-import { doorPosition } from "../dungeon/layout";
+import { doorPosition, vaultMechanismPosition } from "../dungeon/layout";
+import { modifiers } from "../relics/catalog";
 import { useTouchControls } from "../input/device";
 import { roomById, type Dir, type Room } from "../dungeon/types";
 import { barsRemaining, doorIsBarred, keeperHolds, keeperStalled, tollNow, useRun } from "../state/run";
@@ -6,7 +7,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 import { barKey } from "../warden/bars";
-import { DOOR_HEIGHT, DOOR_WIDTH, FLOORS, WALL_THICKNESS } from "../world";
+import { CLOSE_REACH, DOOR_HEIGHT, DOOR_WIDTH, FLOORS, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
 
 const KIND_LABEL: Record<string, string> = {
@@ -73,6 +74,8 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const sealed = useRun((s) => s.sealedRoomId === room.id);
   const vaultId = useRun((s) => s.dungeon?.vaultId ?? null);
   const keys = useRun((s) => s.keys);
+  const keepsKey = useRun(s => modifiers(s.relics).anyVault);
+  const hasWire = useRun(s => s.identified.includes("snare") && s.satchel.includes("snare"));
   const unlocked = useRun((s) => (toId ? s.unlocked.includes(toId) : false));
   const dungeon = useRun((s) => s.dungeon);
   // Whether this is the barred doorway, and whether a bar could be put on
@@ -95,7 +98,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
 
   const isExit = target.kind === "end";
   const kept = isExit && held;
-  // A vault stays locked until a key is spent on it, and then stays open.
+  // Every method buys one entry; travel drops the bar behind the player.
   const locked = target.id === vaultId && !unlocked;
   const enabled = ownBar || (!barred && (!isExit || gems >= toll) && !kept && !sealed && (!locked || keys > 0));
   /**
@@ -137,6 +140,24 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
           <pointLight position={[0, 1.1, 0]} color={SPILL} intensity={1.5} distance={4.5} decay={2} />
         )}
       </group>
+      {target.id === vaultId && <group position={vaultMechanismPosition(room, dir)} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
+        <mesh>
+          <boxGeometry args={[0.24, 0.48, 0.18]} />
+          <meshStandardMaterial color="#80715a" metalness={0.65} roughness={0.6} />
+        </mesh>
+        <mesh rotation={[0, 0, locked ? 0 : Math.PI / 4]}>
+          <boxGeometry args={[0.4, 0.07, 0.24]} />
+          <meshStandardMaterial color="#c3a777" metalness={0.65} roughness={0.5} />
+        </mesh>
+      </group>}
+      {locked && !barred && !sealed && <InteractTrigger
+        position={vaultMechanismPosition(room, dir)}
+        radius={CLOSE_REACH}
+        label="Wire the vault mechanism · spend 1 Wire Snare for one entry"
+        enabled={hasWire}
+        blockedReason="Use a known Wire Snare to hold this mechanism for one entry."
+        onInteract={() => useRun.getState().wireVault()}
+      />}
       {/* The planks, if this is the one. Drawn across the gap and low, so
           a player can see at a glance which doorway they shut and from
           which side - it is the only thing in the game they have changed
@@ -160,7 +181,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
         position={position}
         label={
           ownBar ? "Tear down your barricade · recover 1 kit" : locked
-            ? `Unlock the vault (1 iron key)`
+            ? `Unlock the vault · ${keepsKey ? "keep your key with Company Seal" : "spend 1 iron key"} · one entry`
             : barred
               ? "The grate is still down"
               : // The bar's key is said on the prompt the player is already
@@ -172,7 +193,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
                 (isExit
                   ? `${knelt ? "Pay the toll and go - now" : "Pay the toll"} (${toll} gems) · ${floor >= FLOORS ? "escape" : `descend to floor ${floor + 1}; no return`}`
                     + (stolenGems > 0 ? ` · leave ${stolenGems} stolen ${stolenGems === 1 ? "gem" : "gems"} behind` : "")
-                  : `Open ${KIND_LABEL[target.kind] ?? "the door"}`) +
+                  : `Open ${target.id === vaultId ? "the vault" : KIND_LABEL[target.kind] ?? "the door"}`) +
                 (isExit || locked ? "" : `   ·   ${touch ? "BAR" : keysLabel(barBinding)} barricades (${stock} left)`)
         }
         enabled={enabled}
@@ -182,7 +203,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
             : sealed
             ? "The door will not move"
             : locked
-              ? "The vault is locked. Its key is somewhere on this floor."
+              ? "The vault is locked. Use its key, bomb this door, or wire the exposed mechanism."
               : `The exit needs ${toll} gems (${gems}/${toll})`
         }
         onInteract={() => {
