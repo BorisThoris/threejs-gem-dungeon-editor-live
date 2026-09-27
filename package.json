@@ -27,6 +27,7 @@
         "test:lighting": "node scripts/block-lighting-check.mjs",
         "test:lighting-browser": "node scripts/block-lighting-browser-check.mjs",
         "test:layout": "node scripts/layout-check.mjs",
+        "test:full-count": "node scripts/full-count-geometry-check.mjs",
         "test:nest-placement": "node scripts/nest-placement-check.mjs",
         "test:verification": "node scripts/verification-runner-check.mjs",
         "test:walk-navigation": "node scripts/walk-navigation-check.mjs",

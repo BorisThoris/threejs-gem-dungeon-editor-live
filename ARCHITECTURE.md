@@ -572,13 +572,20 @@ Two stores that both claimed the player's stats. So:
   the failure mode a table invites: `cracksShow` had a reader from the day
   it landed, `fullCount` and `booksBalance` had none, and a player who
   assembled either pair over three floors was told they had and then played
-  a run that was identical. The Full Count's floor is `hoardFloorFor` in
-  the same file - one floor per run, never the last, the same one on a
-  replay of the seed - and `Dressing.tsx` is the only thing that asks;
-  where the hoard actually lands is `placements.ts`, which sweeps a lattice
-  over the vault rather than the anchor rings, because a full vault has
-  already taken the rings and laying the hoard on them left eleven vaults
-  in forty no fuller than an unlocked one. The Books Balance offers a
+  a run that was identical. The Full Count's floor is selected by
+  `hoardFloorFor` when the pair is completed and recorded as `fullCountFloor`
+  in the run store. It selects a remaining floor, including the last when
+  acquired there, survives descent and resets with the run. Replaying the
+  same seed and acquisition floor gives the same destination. The shared
+  `rooms/dressingContext.ts` resolves vault, key, Sentry and hoard facts for
+  rendering, creature obstacles, shove and blast furniture, chest inspection
+  and the atlas. `placements.ts` appends the extra chests after ordinary
+  vault furniture so existing loot identities stay stable. Its lattice
+  follows the room outline and leaves player-sized aisles. The independent
+  flood in `test:full-count` checks access from entrances to every chest
+  across generated vaults; `full-count-browser-check.mjs` checks late pair
+  acquisition, real chest interaction, shared obstacles and run lifetime.
+  The Books Balance offers a
   one-time key trade when cash would touch the exit reserve. `shopPayment`
   owns that quote; shop prompts, `canSpend` and `spendAtShop` read it.
   The key leaves inventory and its carried sound, while gems remain for

@@ -20,13 +20,13 @@ const requested = args.filter(arg => arg.startsWith("--only=")).map(arg => arg.s
 const focused = requested.length > 0;
 const unknownFlags = args.filter(arg => arg !== "--full" && arg !== "--systems" && arg !== "--list" && !arg.startsWith("--only="));
 if (unknownFlags.length) throw new Error(`Unknown verification option: ${unknownFlags.join(", ")}`);
-const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
+const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:full-count", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
 const fullChecks = ["test:world", "test:walk-navigation", "test:nest-placement", "test:prod", "test:desktop"];
 const systemChecks = ["test:lighting", "test:service-trail", "test:handbuilt", "test:water-sound"];
 const baseBrowserChecks = ["core-flow-browser-check.mjs", "dev-artifact-browser-check.mjs", "sprint-noise-browser-check.mjs", "din-clock-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs", "cutpurse-distraction-browser-check.mjs", "delver-choices-browser-check.mjs", "shop-payment-browser-check.mjs"];
 const fullBrowserChecks = ["gameplay-check.mjs", "pad-check.mjs", "touch-check.mjs", "audio-check.mjs", "perf-check.mjs",
   "walk-run.mjs", "harrier-windup-browser-check.mjs", "touch-shove-browser-check.mjs", "readout-interaction-browser-check.mjs", "cutpurse-loot-browser-check.mjs", "key-drop-input-browser-check.mjs",
-  "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
+  "full-count-browser-check.mjs", "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
   "ambient-behavior-browser-check.mjs", "carried-signals-browser-check.mjs", "trap-combat-browser-check.mjs", "exploration-browser-check.mjs",
   "ecology-browser-check.mjs", "architecture-browser-check.mjs", "scenario-matrix-browser-check.mjs", "capture-scenario-review.mjs",
   "overlay-check.mjs", "tome-browser-check.mjs", "keyboard-bindings-browser-check.mjs", "input-boundary-browser-check.mjs", "focus-pause-browser-check.mjs", "control-labels-browser-check.mjs", "run-restart-browser-check.mjs", "item-feedback-browser-check.mjs", "iron-knot-browser-check.mjs"];

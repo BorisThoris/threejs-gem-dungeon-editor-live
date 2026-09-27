@@ -150,7 +150,7 @@ export const PAIRS: readonly Pair[] = [
   {
     of: ["chit", "tally"],
     name: "The Full Count",
-    does: "One floor in the run is carrying a hoard it should not be carrying.",
+    does: "A vault on a remaining floor fills with a hoard. Seek it before descending past it.",
   },
   {
     of: ["cant", "cut"],
@@ -165,14 +165,16 @@ export const pairFor = (held: readonly OfferId[]): Pair[] =>
 /**
  * WHICH floor of a run carries the hoard The Full Count promises.
  *
- * One floor, and the same one every time a seed is replayed - a pair whose
- * payoff moved around would be a pair nobody could plan a route for. The
- * last floor is excluded on the reward mix's own rule: floor three pays only
- * into this run, and a hoard is the most this-run thing there is, so it
- * would be the obvious place and therefore not a discovery.
+ * Fixed when the pair is completed, among the floors still reachable.
+ * Early completion prefers the upper floors; completing it on the last
+ * floor still pays there. Replaying the seed and acquisition floor gives
+ * the same destination. The store records it so descent cannot move it.
  */
-export const hoardFloorFor = (seed: number, floors: number): number =>
-  1 + (Math.abs(Math.trunc(seed)) % Math.max(1, floors - 1));
+export const hoardFloorFor = (seed: number, floors: number, acquiredOn = 1): number => {
+  const first = Math.max(1, Math.min(floors, acquiredOn));
+  const last = Math.max(first, floors - 1);
+  return first + (Math.abs(Math.trunc(seed)) % (last - first + 1));
+};
 
 /**
  * The reward mix, as a tuned ratio that DECLINES WITH DEPTH.

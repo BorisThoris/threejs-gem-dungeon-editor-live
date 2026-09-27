@@ -39,6 +39,7 @@ import { Pit } from "../traps/Pit";
 import { trapsFor } from "../traps/placement";
 import { biomeFor } from "./biomes";
 import { gemFor, keyFor, KIND_CONTENT } from "./kinds";
+import { useRoomDressing } from "./useDressing";
 import { Cut, Names } from "../deepworks/Cut";
 import { Draft } from "./Draft";
 import { Walls } from "./Walls";
@@ -100,12 +101,9 @@ function useSentryPlacement(room: RoomData, seed: number) {
     [room, seed, floor, hasKey]);
 }
 
-function useWatcherPost(room: RoomData, seed: number) {
-  return useSentryPlacement(room, seed)?.at ?? null;
-}
-
 function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[]; seed: number }) {
-  const watcher = useWatcherPost(room, seed);
+  const dressing = useRoomDressing(room, seed);
+  const watcher = dressing.sentry ?? null;
   const here = useRun((s) => s.wardenRoomId === room.id);
   // Snares the player has set in this room wound it as the floor's own
   // spikes do, and are deliberately not in the list it steers round: a
@@ -118,7 +116,7 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
   // spikes it steers round once wary are still `hazards`; what bites it
   // and what it always walks round are the body's own answers.
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.warden, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher, dressing), [room, seed, placed, broken, watcher, dressing]);
   return here ? <Warden room={room} hazards={wounding} avoid={hazards} obstacles={furniture} /> : null;
 }
 
@@ -128,14 +126,15 @@ function RoomWarden({ room, hazards, seed }: { room: RoomData; hazards: Patch[];
  * room around it should not re-render when it does.
  */
 function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
-  const watcher = useWatcherPost(room, seed);
+  const dressing = useRoomDressing(room, seed);
+  const watcher = dressing.sentry ?? null;
   const visiting = useRun((s) => s.thiefPhase !== "away");
   const here = useRun((s) => s.thiefRoomId === room.id);
   const placed = useRun((s) => s.placed);
   const sprung = useRun((s) => s.sprung);
   const broken = useRun((s) => s.broken);
   const wounding = useMemo<Patch[]>(() => bitesFor(BODIES.cutpurse, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
+  const furniture = useMemo<Patch[]>(() => obstaclesFor(BODIES.cutpurse, room, seed, placed, broken, watcher, dressing), [room, seed, placed, broken, watcher, dressing]);
   return visiting && here ? <Cutpurse room={room} hazards={wounding} obstacles={furniture} /> : null;
 }
 
@@ -143,11 +142,12 @@ function RoomThief({ room, seed }: { room: RoomData; seed: number }) {
  * The Reaper occupies its own room and arrives only after its pursuit delay.
  */
 function RoomReaper({ room, seed }: { room: RoomData; seed: number }) {
-  const watcher = useWatcherPost(room, seed);
+  const dressing = useRoomDressing(room, seed);
+  const watcher = dressing.sentry ?? null;
   const placed = useRun((s) => s.placed);
   const broken = useRun((s) => s.broken);
-  const cover = useMemo(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher),
-    [room, seed, placed, broken, watcher]);
+  const cover = useMemo(() => obstaclesFor(BODIES.warden, room, seed, placed, broken, watcher, dressing),
+    [room, seed, placed, broken, watcher, dressing]);
   const awake = useRun((s) => s.reaperAwake);
   const here = useRun((s) => s.reaperRoomId === room.id);
   return awake && here ? <Reaper room={room} cover={cover} /> : null;
@@ -159,7 +159,8 @@ function RoomReaper({ room, seed }: { room: RoomData; seed: number }) {
  * reads the body table for what it walks round and what bites it.
  */
 function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
-  const watcher = useWatcherPost(room, seed);
+  const dressing = useRoomDressing(room, seed);
+  const watcher = dressing.sentry ?? null;
   const here = useRun((s) => s.currentRoomId === room.id);
   const isMothRoom = useRun((s) => (s.dungeon ? mothRoom(s.dungeon) === room.id : false));
   const placed = useRun((s) => s.placed);
@@ -167,10 +168,10 @@ function RoomAmbient({ room, seed }: { room: RoomData; seed: number }) {
   const holes = useMemo(() => ratsFor(room, seed), [room, seed]);
   const roost = useMemo(() => roostFor(room, seed), [room, seed]);
   const pools = useMemo(() => croakersFor(room, seed), [room, seed]);
-  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
+  const ratWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.rat, room, seed, placed, broken, watcher, dressing), [room, seed, placed, broken, watcher, dressing]);
   const sprung = useRun((s) => s.sprung);
   const ratBites = useMemo<Patch[]>(() => bitesFor(BODIES.rat, room, seed, placed, sprung), [room, seed, placed, sprung]);
-  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken, watcher), [room, seed, placed, broken, watcher]);
+  const mothWalls = useMemo<Patch[]>(() => obstaclesFor(BODIES.moth, room, seed, placed, broken, watcher, dressing), [room, seed, placed, broken, watcher, dressing]);
   if (!here) return null;
   return (
     <>
@@ -261,10 +262,9 @@ function RoomTraps({ room, seed }: { room: RoomData; seed: number }) {
 /** The heap, in the one room on the floor that has one. */
 function RoomNest({ room, seed }: { room: RoomData; seed: number }) {
   const isNest = useRun((s) => s.nestRoomId === room.id && (s.nestGems > 0 || s.nestKey));
-  const hasKey = useRun(s => s.dungeon?.keyRoomId === room.id);
-  const watcher = useWatcherPost(room, seed);
-  const at = useMemo(() => isNest ? nestPosition(room, seed, { key: hasKey ? keyFor(room, seed) : null, sentry: watcher }) : null,
-    [room, seed, isNest, hasKey, watcher]);
+  const dressing = useRoomDressing(room, seed);
+  const at = useMemo(() => isNest ? nestPosition(room, seed, dressing) : null,
+    [room, seed, isNest, dressing]);
   return at ? <Hoard position={at} /> : null;
 }
 

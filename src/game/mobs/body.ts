@@ -4,7 +4,7 @@ import type { Room } from "../dungeon/types";
 import { SNARE_RADIUS } from "../items/catalog";
 import { PROP_SPECS, type PropSpec } from "../props/specs";
 import { BREAKABLE, breakKey } from "../props/breakable";
-import { placementsFor } from "../rooms/placements";
+import { placementsFor, type DressingOptions } from "../rooms/placements";
 import { gemFor } from "../rooms/kinds";
 import { snaresIn, type PlacedDevice } from "../state/run";
 import { trapsFor } from "../traps/placement";
@@ -80,7 +80,8 @@ export function obstaclesFor(
   seed: number,
   placed: readonly PlacedDevice[],
   broken: readonly string[] = [],
-  watcher: Vec3 | null = null
+  watcher: Vec3 | null = null,
+  dressing: DressingOptions = {}
 ): Patch[] {
   void placed;
   if (body === "ghost") return [];
@@ -97,7 +98,7 @@ export function obstaclesFor(
   const content = fixtures.filter((p) => body === "ground" || p.height >= FLIGHT_HEIGHT)
     .map((p) => ({ x: p.x, z: p.z, r: p.r + BODY_HALF_WIDTH, berth: 0 }));
   // A barrel that has burst is not in anyone's way any more.
-  return [...content, ...placementsFor(room, seed, { sentry: watcher })
+  return [...content, ...placementsFor(room, seed, { ...dressing, sentry: watcher })
     .filter((p) => PROP_SPECS[p.kind].solid && !(BREAKABLE.has(p.kind) && broken.includes(breakKey(room, p))))
     .filter((p) => body === "ground" || !clearedInFlight(PROP_SPECS[p.kind], p.scale ?? 1))
     .map((p) => ({ x: p.x, z: p.z, r: PROP_SPECS[p.kind].radius * (p.scale ?? 1) + BODY_HALF_WIDTH, berth: 0 }))];

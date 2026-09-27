@@ -8,8 +8,7 @@ import { encounterArrival, pursuitArrival } from "../dungeon/arrival";
 import { perceive } from "../ladder/pursuit";
 import { sightLineClear } from "../ladder/sight";
 import * as ladder from "../ladder/state";
-import { keyFor } from "../rooms/kinds";
-import { sentryFor } from "../sentry/placement";
+import { useRoomDressing } from "../rooms/useDressing";
 import { bus } from "../events";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { HARRIER_ENTRY_GRACE_S, HARRIER_WINDUP_REACH, HARRIER_WINDUP_S } from "../player/combat";
@@ -55,15 +54,14 @@ export function Harrier({ room }: { room: Room }) {
   const broken = useRun((s) => s.broken);
   const sprung = useRun((s) => s.sprung);
   const seed = dungeon?.seed ?? 0;
+  const dressing = useRoomDressing(room, seed);
   const roost = useMemo(() => (dungeon ? harrierRoostFor(dungeon, floor) : null), [dungeon, floor]);
   const entry = useMemo(() => DIRS.find(d => room.links[d] === cameFrom)
     ?? (dungeon && roost ? harrierEntryFor(dungeon, roost, room.id) : null), [cameFrom, dungeon, roost, room]);
   const to = entry ? room.links[entry] : undefined;
   const obstacles = useMemo(() => {
-    const key = dungeon?.keyRoomId === room.id ? keyFor(room, seed) : null;
-    const watcher = sentryFor(room, seed, floor, key ? [key] : []);
-    return obstaclesFor(BODIES.harrier, room, seed, placed, broken, watcher?.at ?? null);
-  }, [room, seed, placed, broken, dungeon?.keyRoomId, floor]);
+    return obstaclesFor(BODIES.harrier, room, seed, placed, broken, dressing.sentry, dressing);
+  }, [room, seed, placed, broken, dressing]);
   // What would bite it on the ground: the ground body's list, read only while it is down.
   const bites = useMemo(() => bitesFor("ground", room, seed, placed, sprung), [room, seed, placed, sprung]);
 

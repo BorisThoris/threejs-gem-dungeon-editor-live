@@ -37,6 +37,7 @@ import { avariceGems, chargesFor, healingLives, inverted, lifted, scaled, type C
 import { DEFAULT_DELVER, DELVERS, delverOr, knownFrom, type DelverId } from "../delvers/catalog";
 import { useRecords } from "./records";
 import { modifiers, type RelicId } from "../relics/catalog";
+import { hoardFloorFor } from "../relics/offer";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
 import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../player/combat";
@@ -48,8 +49,8 @@ import { cutpurseAt } from "../thief/position";
 import { reaperAt } from "../reaper/position";
 import { BREAKABLE, breakKey, shielded, spillFor } from "../props/breakable";
 import { chestKey, placementsFor } from "../rooms/placements";
-import { gemFor, keyFor } from "../rooms/kinds";
-import { sentryFor } from "../sentry/placement";
+import { roomDressingOptions } from "../rooms/dressingContext";
+import { gemFor } from "../rooms/kinds";
 import { nestRoom } from "../thief/nest";
 import { stolenLootLabel } from "../thief/loot";
 import { biomeFor } from "../rooms/biomes";
@@ -214,6 +215,8 @@ export interface RunState {
   delver: DelverId;
   /** Relics held. What they do is decided in relics/catalog.ts. */
   relics: RelicId[];
+  /** The remaining floor selected when The Full Count is completed. */
+  fullCountFloor: number | null;
   /** What is in the satchel, oldest first. Four slots, used with 1-4. */
   satchel: ItemId[];
   /** Items whose appearance the player has worked out, this run. */
@@ -848,6 +851,7 @@ export const useRun = create<RunState>()(
     failed: [],
     trials: {},
     relics: [],
+    fullCountFloor: null,
     satchel: [],
     identified: [],
     delver: DEFAULT_DELVER,
@@ -1011,6 +1015,7 @@ export const useRun = create<RunState>()(
         failed: [],
         trials: {},
         relics: [...delver.relics],
+        fullCountFloor: modifiers(delver.relics).fullCount ? hoardFloorFor(dungeon.seed, FLOORS) : null,
         satchel: [...delver.satchel],
         identified: knownFrom(delver),
         appearances: appearancesFor(dungeon.seed),
@@ -1479,8 +1484,13 @@ export const useRun = create<RunState>()(
     addRelic: (id, at) => {
       const s = get();
       if (s.relics.includes(id)) return;
-      set({ relics: [...s.relics, id] });
+      const relics = [...s.relics, id];
+      const fullCountFloor = s.fullCountFloor ?? (modifiers(relics).fullCount ? hoardFloorFor(s.runSeed, FLOORS, s.floor) : null);
+      set({ relics, fullCountFloor });
       bus.emit("relicTaken", { id, x: at?.[0], z: at?.[1] });
+      if (s.fullCountFloor === null && fullCountFloor !== null) {
+        bus.emit("notice", `The Full Count: a hoard fills the vault on floor ${fullCountFloor}. Seek it before descending past it.`);
+      }
     },
 
     takeItem: (id, from, at) => {
@@ -2463,9 +2473,9 @@ export const useRun = create<RunState>()(
       if (!Number.isFinite(forwardX) || !Number.isFinite(forwardZ) || Math.hypot(forwardX, forwardZ) < 0.01) return false;
       const room = roomById(s.dungeon, s.currentRoomId);
       if (!room) return false;
-      const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
-      const watcher = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : [])?.at ?? null;
-      const standing = placementsFor(room, s.dungeon.seed, { asVault: s.dungeon.vaultId === room.id, key, sentry: watcher })
+      const dressing = roomDressingOptions(s, room, s.dungeon.seed);
+      const watcher = dressing.sentry ?? null;
+      const standing = placementsFor(room, s.dungeon.seed, dressing)
         .filter((p) => !s.broken.includes(breakKey(room, p)));
       let blocked = false;
       const reaches = (target: { x: number; z: number; roomId: string | null }) => {
@@ -2648,7 +2658,7 @@ export const useRun = create<RunState>()(
       // chests do not shift anybody's index.
       const blastRoom = roomById(s.dungeon, roomId);
       const standing = blastRoom
-        ? placementsFor(blastRoom, s.dungeon.seed)
+        ? placementsFor(blastRoom, s.dungeon.seed, roomDressingOptions(s, blastRoom, s.dungeon.seed))
             .filter((p) => BREAKABLE.has(p.kind))
             .map((p) => ({ kind: p.kind, x: p.x, z: p.z, key: breakKey(blastRoom, p) }))
             .filter((p) => !s.broken.includes(p.key))
@@ -3256,10 +3266,7 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
       const s = useRun.getState();
       const room = s.dungeon ? roomById(s.dungeon, roomId) : null;
       if (!room || !s.dungeon) return [];
-      const asVault = s.dungeon.vaultId === room.id;
-      const key = s.dungeon.keyRoomId === room.id ? keyFor(room, s.dungeon.seed) : null;
-      const sentry = sentryFor(room, s.dungeon.seed, s.floor, key ? [key] : [])?.at ?? null;
-      return placementsFor(room, s.dungeon.seed, { asVault, sentry, key })
+      return placementsFor(room, s.dungeon.seed, roomDressingOptions(s, room, s.dungeon.seed))
         .map((p, i) => (p.kind === "chest" ? chestKey(room.id, i) : null))
         .filter((k): k is string => k !== null);
     },

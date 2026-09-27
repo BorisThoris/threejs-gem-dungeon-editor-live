@@ -15,7 +15,7 @@ import { memoryAnchors } from "../puzzles/anchors";
 import { createRng, shuffle } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { SATCHEL_SLOTS, nameOf, rollItem } from "../items/catalog";
+import { nameOf, rollItem } from "../items/catalog";
 import { describe } from "../items/charge";
 import { Braziers } from "../props/Braziers";
 import { ContactShadows } from "../props/ContactShadows";
@@ -23,12 +23,12 @@ import { FurnitureBatches } from "../props/FurnitureBatches";
 import { BATCHED_FURNITURE } from "../props/furnitureStyle";
 import { BREAKABLE, breakKey } from "../props/breakable";
 import { Prop, PropColliders } from "../props/catalog";
-import { useRun } from "../state/run";
-import { gemFor, keyFor, reservedAnchors } from "./kinds";
+import { satchelSlots, useRun } from "../state/run";
+import { useRoomDressing } from "./useDressing";
+import { gemFor, reservedAnchors } from "./kinds";
 import { CLOSE_REACH } from "../world";
 import { biomeFor } from "./biomes";
 import { arrangementFor, type Spots } from "./layouts";
-import { sentryFor } from "../sentry/placement";
 import { authoredProps } from "./templates";
 
 interface DressingProps {
@@ -38,42 +38,16 @@ interface DressingProps {
   seed: number;
 }
 import { chestKey, placementsFor } from "./placements";
-import { modifiers } from "../relics/catalog";
-import { hoardFloorFor } from "../relics/offer";
-import { FLOORS } from "../world";
 
 export { placementsFor, type DressingOptions } from "./placements";
 
 
 /** Seeded per room, so it is the same every time you walk back in. */
 export function Dressing({ room, seed, hoard = false }: DressingProps) {
-  const asVault = useRun((s) => s.dungeon?.vaultId === room.id) || hoard;
-  const hasKey = useRun((s) => s.dungeon?.keyRoomId === room.id);
-  const floor = useRun((s) => s.floor);
-  // The order a room is assembled in: the gem, then the key, then the
-  // watcher, then the furniture. Each is worked out from the room and the
-  // seed alone, so the room shell and this arrive at the same answers
-  // without talking to each other.
-  const key = useMemo(() => (hasKey ? keyFor(room, seed) : null), [room, seed, hasKey]);
-  const sentry = useMemo(
-    () => sentryFor(room, seed, floor, key ? [key] : [])?.at ?? null,
-    [room, seed, floor, key]
-  );
-  /**
-   * The Full Count: on one floor of a run that holds the pair, the vault is
-   * carrying more than that floor should be.
-   *
-   * Read here rather than in the generator because it is a fact about the
-   * RUN and not about the dungeon - the same seed played without the pair
-   * builds the same rooms, and only what stands in one of them differs.
-   */
-  const seal = useRun((s) => modifiers(s.relics).fullCount);
-  const runSeed = useRun((s) => s.runSeed);
-  const brimming =
-    seal && asVault && floor === hoardFloorFor(runSeed, FLOORS);
+  const dressing = useRoomDressing(room, seed);
   const placements = useMemo(
-    () => placementsFor(room, seed, { asVault, sentry, key, brimming }),
-    [room, seed, asVault, sentry, key, brimming]
+    () => placementsFor(room, seed, { ...dressing, asVault: dressing.asVault || hoard }),
+    [room, seed, dressing, hoard]
   );
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.
@@ -190,7 +164,7 @@ function Chests({ room, placements }: { room: Room; placements: PropPlacement[] 
    * claims it can be outranks the door standing beside it, and the player
    * cannot leave the room the game is telling them to loot.
    */
-  const full = useRun((s) => s.satchel.length >= SATCHEL_SLOTS);
+  const full = useRun((s) => s.satchel.length >= satchelSlots(s));
   const charges = useRun((s) => s.charges);
 
   return (

@@ -15,7 +15,6 @@ import {
   type Vec3,
 } from "../dungeon/layout";
 import { memoryAnchors } from "../puzzles/anchors";
-import { inscribedRadius } from "../dungeon/types";
 import { createRng, shuffle } from "../rng";
 import type { PropPlacement, Room, RoomKind } from "../dungeon/types";
 import { CATALOG } from "../props/catalog";
@@ -27,6 +26,7 @@ import { authoredProps } from "./templates";
 import { secretStoryFor } from "../dungeon/secret";
 import { insideRoom } from "../dungeon/footprint";
 import { isUnlitRoom } from "../lighting/field";
+import { PLAYER_CAPSULE_RADIUS, WALL_THICKNESS } from "../world";
 
 
 /** How close a prop may stand to the gem or to the kind's own content. */
@@ -232,7 +232,17 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
   // ones.
   const chests = (ps: PropPlacement[]) => ps.filter((p) => p.kind === "chest").length;
   const vaulted = room.template ? own : dress("treasure");
-  const picked = chests(vaulted) >= chests(own) ? vaulted : own;
+  let picked = chests(vaulted) >= chests(own) ? vaulted : own;
+  // Establish the ordinary vault first. Hoard chests are appended, so a
+  // fallback chest already opened never moves or changes its loot key.
+  if (chests(picked) === 0) {
+    for (const spot of [...far, ...near, ...centre]) {
+      const chest: PropPlacement = { kind: "chest", x: spot[0], z: spot[2], rotation: 0 };
+      if (!allowed(chest) || picked.some(p => near2(p, spot, 1.4))) continue;
+      picked = [...picked, chest];
+      break;
+    }
+  }
 
   /**
    * The hoard The Full Count promises: chests at every anchor this room has
@@ -258,49 +268,32 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
      * door lanes, clear of the gem, the key, the watcher and the room's
      * own content.
      *
-     * Two chests are half a metre across each, so 1.1 is the closest two
-     * can stand without touching.
+     * Preserve a player-sized aisle between chests and existing furniture.
+     * Merely avoiding collider overlap can wall off most of the reward.
      */
-    const CLEAR_OF_HOARD = 1.1;
-    const STEP = 1.1;
+    const AISLE = 2 * PLAYER_CAPSULE_RADIUS + 0.5;
+    const STEP = 2 * CHEST_RADIUS + AISLE;
     const out = [...picked];
     const half = room.size / 2;
-    const reach = inscribedRadius(room);
-    for (let x = -half + STEP; x < half; x += STEP) {
-      for (let z = -half + STEP; z < half; z += STEP) {
-        // Inside the drawn floor of a shaped room, and off its walls.
-        if (Math.hypot(x, z) + CHEST_RADIUS > reach) continue;
-        const chest: PropPlacement = { kind: "chest", x: +x.toFixed(2), z: +z.toFixed(2), rotation: 0 };
-        if (!allowed(chest)) continue;
-        if (out.some((p) => near2(p, [chest.x, 0, chest.z], CLEAR_OF_HOARD))) continue;
-        out.push(chest);
+    const edge = half - CHEST_RADIUS - WALL_THICKNESS / 2;
+    const fill = (step: number, justOne = false) => {
+      for (let x = -edge; x <= edge; x += step) {
+        for (let z = -edge; z <= edge; z += step) {
+          if (!insideRoom(room, x, z, CHEST_RADIUS + WALL_THICKNESS / 2)) continue;
+          const chest: PropPlacement = { kind: "chest", x: +x.toFixed(2), z: +z.toFixed(2), rotation: 0 };
+          if (!allowed(chest)) continue;
+          if (out.some(p => near2(p, [chest.x, 0, chest.z],
+            CHEST_RADIUS + CATALOG[p.kind].radius * (p.scale ?? 1) + (CATALOG[p.kind].solid ? AISLE : 0.2)))) continue;
+          out.push(chest);
+          if (justOne) return;
+        }
       }
-    }
+    };
+    fill(STEP);
+    // A tight authored vault can fit a cache between coarse lattice points.
+    // Search that remaining space without reducing its walking clearance.
+    if (out.length === picked.length) fill(0.35, true);
     if (chests(out) > chests(picked)) return out;
-  }
-  if (chests(picked) > 0) return picked;
-
-  /**
-   * A locked room with no chest in it at all: eight percent of them,
-   * measured over nine hundred floors. The arrangement's chests had been
-   * filtered out by whatever the room already had standing in it.
-   *
-   * One goes back at the first anchor that passes the same rules the
-   * arrangement's own props are held to and is clear of what is already
-   * there - furthest ring first, because that is where a chest looks like
-   * it belongs. It fixes the ones with room for it and leaves about seven
-   * percent, and those turn out to be exactly the set pieces: a locked
-   * challenge room, memory trial or shop, whose own content is the reward
-   * and whose anchors are all spoken for. `yarn test:layout` holds the
-   * line there - a locked room is never a plain chamber with nothing
-   * extra in it.
-   */
-  const CLEAR_OF_PROPS = 1.4;
-  for (const spot of [...far, ...near, ...centre]) {
-    const chest: PropPlacement = { kind: "chest", x: spot[0], z: spot[2], rotation: 0 };
-    if (!allowed(chest)) continue;
-    if (picked.some((p) => near2(p, spot, CLEAR_OF_PROPS))) continue;
-    return [...picked, chest];
   }
   return picked;
 }

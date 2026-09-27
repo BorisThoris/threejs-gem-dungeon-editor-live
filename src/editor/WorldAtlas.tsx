@@ -12,6 +12,7 @@ import { DISTRICTS } from "../game/rooms/districts";
 import { KIND_TITLE, keyFor } from "../game/rooms/kinds";
 import { sentryFor } from "../game/sentry/placement";
 import { placementsFor } from "../game/rooms/placements";
+import { roomDressingOptions } from "../game/rooms/dressingContext";
 import { PROP_SPECS } from "../game/props/specs";
 import { watercourseBlocks, waterStation, waterLevel } from "../game/worldbuilding/watercourse";
 import { minimapFootprint } from "../ui/minimapGeometry";
@@ -97,9 +98,7 @@ export function WorldAtlas() {
   const blueprint = useMemo(() => minimapFootprint(room, 360), [room]);
   const scale = 360 / (2 * Math.max(...DIRS.map(dir => doorReach(room, dir))));
   const props = useMemo(() => {
-    const key = dungeon.keyRoomId === room.id ? keyFor(room, dungeon.seed) : null;
-    const sentry = sentryFor(room, dungeon.seed, floor, key ? [key] : [])?.at ?? null;
-    return placementsFor(room, dungeon.seed, { asVault: room.id === dungeon.vaultId, sentry, key });
+    return placementsFor(room, dungeon.seed, roomDressingOptions({ dungeon, floor }, room, dungeon.seed));
   }, [room, dungeon, floor]);
   const station = useMemo(() => room.waterway && room.waterway.role !== "channel" ? waterStation(room) : null, [room]);
   const ink = INK[room.district ?? "tombs"];
