@@ -22,6 +22,7 @@ const isElectron = () =>
   typeof navigator !== "undefined" && /electron/i.test(navigator.userAgent);
 
 // The rule stays the same when its button changes between keyboard and touch.
+const keyDropHelp = "Set the iron key down to make a clatter where it lands. Use it as a lure, then pick it back up with Use.";
 const shoveHelp = `Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for ${SHOVE_COOLDOWN_S} seconds between shoves.`;
 const lanternHelp = "More light helps you see farther and makes you easier to spot. Each press lowers the light one band. From darkness, press again to raise it fully; raising takes time and oil. Entering rooms with light also spends oil. Buy oil at shops.";
 const barricadeHelp = `Block a doorway with one of ${BARRICADE_KITS} reusable kits per floor. The bar stays until you tear it down to recover the kit. It blocks you too and makes the Warden seek another route. Hammering is loud.`;
@@ -203,6 +204,8 @@ export function MainMenu() {
               <dd style={{ margin: 0 }}>
                 {keysLabel(bindings.bar)} at a doorway, or d-pad down. {barricadeHelp}
               </dd>
+              <dt style={{ color: colors.accent }}>Drop key</dt>
+              <dd style={{ margin: 0 }}>{keysLabel(bindings.dropKey)}, or d-pad left. {keyDropHelp}</dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>
@@ -247,6 +250,7 @@ function TouchHelp() {
       "Bar a door",
       `BAR at a doorway. ${barricadeHelp}`,
     ],
+    ["Drop key", `DROP KEY appears while you carry one. ${keyDropHelp}`],
     ["Pause", "The II by the map."],
   ];
   return (

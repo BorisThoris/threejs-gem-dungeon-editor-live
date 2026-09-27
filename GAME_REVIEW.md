@@ -1,6 +1,45 @@
 # Whole-repository game review
 Date: 14 September 2026. Reviewed current upstream commit `67afe31`.
 
+## Follow-up, 27 September 2026
+
+The assessment below records the original audit, not the current release state.
+The preceding refinement pass built and exercised both the web and Windows
+desktop releases, passed the 50-check full gate, and completed a real-input
+survival run. This follow-up has reproduced and fixed three remaining findings:
+
+- Finding 3: carried light is rebuilt from run state after descent. The new
+  carried-signals check covers full, dimmed and dark lanterns, key inventory,
+  wisp presence, room entry and restart.
+- Finding 4: broken-bar events preserve the actual doorway and actor's side.
+  The barricade check now verifies remote grate noise and local kit recovery.
+- Finding 5: d-pad left and a contextual touch DROP KEY control call the same
+  store action as the keyboard. The new input check covers pickup, held input,
+  control boundaries and both phone/tablet thumb layouts at maximum text size.
+
+A separate delayed-frame regression found newly emitted sounds inheriting the
+previous frame's age. Din now timestamps each event from the paused run clock;
+the clock check covers fresh strength, pause and resumed decay. These focused
+checks pass. Broader verification of this follow-up is recorded by the normal
+verification reports; the historical findings below remain for audit context.
+
+The extended pass also reproduced a falling grate emitting the player-built
+barricade event. The trap now retains its own caption, lesson and single metal
+impact instead of announcing construction and playing duplicate hammering.
+The walking probe now tracks its target through the actual shove windup;
+it previously turned back to navigation before the attack resolved. Five
+audio measurements also found the catacomb air only 19–29% above the room
+bed, below the suite's 30% floor; its held gain was raised from 0.36 to 0.48.
+
+Release validation passed the web and Windows package checks, layout suite,
+all 30 extended system checks across the recorded runs, and the focused
+regressions. The normal-input three-floor run crossed 19 doors, bought and
+used its Keeper bomb, escaped with two lives, and restarted from the summary.
+The initial full run passed 47/53 checks; its six failures have focused
+follow-ups, including the corrected deed fixture. A creature timeout and the
+last scenario's exposure assertion passed unchanged on focused reruns; the
+full gate was not repeated. Original failures remain in the local reports.
+
 ## Assessment
 
 The current game has a substantial, connected playable core. It is **not ready for a Windows release as checked in**, and the newer shared awareness architecture is only partly connected to the creatures it claims to govern. Passing the existing gameplay checks does not cover those integration gaps.

@@ -52,7 +52,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    watch: { ignored: ['**/output/**'] }
+    watch: { ignored: ['**/output/**', '**/dist-electron/**'] }
   },
   optimizeDeps: {
     exclude: ['electron'],

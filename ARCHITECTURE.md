@@ -16,11 +16,19 @@ same opening without waiting for unrelated state changes. It reads the paused
 run clock and clears only the timed grate, leaving player barricades intact.
 Each mounted grate attempts one drop per visit, so lifting or blocking it
 with wire does not retrigger it every frame. Re-entering re-arms the trap.
+Its `trapSprung` event owns the falling-metal sound, caption, guidance and
+Din impulse. `doorBarred` means the player constructed a barricade; a trap
+must not also claim construction, hammering or a spent kit. The grate check
+holds those visible and simulation responses together.
 The movement probe waits for the visible open-door prompt after expiry. Its
 planner derives wall clearance from the player capsule and wall thickness,
 turns before moving, and permits only outward escape from an existing hazard
 overlap. A focused geometry check preserves that escape without allowing
 solid penetration or crossing hazards; run seed 404 exercises the full route.
+When defending, the probe reacts to the Warden's visible approach warning
+and keeps aiming at the threat until the real shove finishes charging, then
+re-samples its route. It never grants health or
+shortens the game's windup to compensate for missed attacks.
 
 The art-direction contract is [World Style](docs/WORLD_STYLE.md), also visible
 in Credits and the editor. `rooms/districts.ts` grows connected regions on the
@@ -76,9 +84,16 @@ so a frozen full-screen card cannot silently replace the room being reviewed.
 The gallery stores the scenario URL owner's path and lets reviewers choose
 the current development-server origin, so links remain usable after the
 verification server's temporary port closes.
+The world review starts a fresh run for each environment, checks that the
+player is alive in the expected room, then pauses before photographing it.
+Accumulated pressure from earlier fixtures cannot turn a later room review
+into a screenshot of the defeat screen.
 `creature-render-check.mjs` stages each creature in a generated native room,
 checks its visible contribution and selected responses, then builds a local
 gallery and contact sheet from those same live renders for visual review.
+Vite ignores generated review and desktop-package directories. The development
+artifact check writes packaging files while a run is paused and verifies that
+neither the page nor the server restarts.
 
 `worldbuilding/serviceTrail.ts` selects the optional real-door route from the
 reliquary to an existing secret wall. Its stored route drives copper masonry
@@ -254,6 +269,19 @@ Two stores that both claimed the player's stats. So:
   receiver answers across representative sources and routes. The layout gate
   separately checks generated carry routes against shortest-path distances
   and verifies every displayed edge stays open when a bar is placed.
+  `DinDriver` advances that same paused run clock before translating each
+  event as well as on frames. A new impulse cannot inherit the previous
+  frame's age after a long task. The Din clock browser check delays a frame,
+  emits a real event, and checks fresh strength, pause and resumed decay.
+  Breaking or lifting a bar preserves its edge and actor-side doorway in
+  the event. `warden/bars.ts` resolves that site through `doorPosition`, and
+  Din uses it even when the player is elsewhere. The barricade browser
+  check verifies both remote grate breaking and local kit recovery.
+  Floor resets clear old emissions and rebuild carried lantern, key and wisp
+  signals from current run state. Room entry uses the same reconstruction,
+  preserving the lantern's actual band without trailing duplicate sources.
+  The carried-signals browser check follows full, dimmed and dark lanterns,
+  the floor-local key and the wisp through entry, descent and restart.
 - **Where a creature is on the awareness ladder is `ladder/state.ts`, and
   only `LadderDriver` steps it.** Two informants know different halves of
   the world - a floor-level driver knows what the Din is delivering into a
@@ -570,6 +598,12 @@ Two stores that both claimed the player's stats. So:
   owners. Its sprint instructions follow the current hold/press setting;
   controller sprint remains held. The same browser check changes the setting
   through the menu and guards the room-based oil and reusable-kit guidance.
+  Dropping the iron key uses the store's `dropKey` action on keyboard, d-pad
+  left and the contextual touch DROP KEY button. The store owns placement,
+  sound and control guards; both help layouts explain its use as a lure.
+  `key-drop-input-browser-check.mjs` drops and recovers it through real pad
+  and touch inputs, checks maximum text size and both thumb layouts, and
+  guards held presses and input boundaries against queued drops.
   The store's shove action builds its notice from the effects it applied:
   Harrier retreat, Warden stagger, and Cutpurse recovery. One shove can name
   several targets; an empty-handed Cutpurse never claims recovered loot.

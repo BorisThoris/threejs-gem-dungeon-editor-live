@@ -175,7 +175,7 @@ export function Audio() {
       bus.on("keeperStruck", () => sfx.wardenStrike()),
       bus.on("keeperKnelt", () => sfx.grind()),
       bus.on("keeperRose", () => sfx.barDoor()),
-      bus.on("trapSprung", ({ kind }) => (kind === "grate" ? sfx.barDoor() : kind === "darts" ? sfx.clatter() : sfx.grind())),
+      bus.on("trapSprung", ({ kind }) => (kind === "grate" ? sfx.grateDrop() : kind === "darts" ? sfx.clatter() : sfx.grind())),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),

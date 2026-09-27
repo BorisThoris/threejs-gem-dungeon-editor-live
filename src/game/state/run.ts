@@ -70,7 +70,7 @@ import { AFFLICTIONS, BATCH, afflictionFor } from "../items/afflictions";
 import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
 import { reaches as dinReaches } from "../din/din";
-import { barKey } from "../warden/bars";
+import { barKey, barSite } from "../warden/bars";
 import { pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
@@ -2246,8 +2246,10 @@ export const useRun = create<RunState>()(
       if (!here || !Object.values(here.links).includes(toRoomId)) return false;
       const key = barKey(here.id, toRoomId);
       if (!s.barricades.includes(key)) return false;
+      const site = barSite(s.dungeon, key, here.id);
+      if (!site) return false;
       set({ barricades: s.barricades.filter(bar => bar !== key) });
-      bus.emit("barBroken", { byWarden: false });
+      bus.emit("barBroken", { byWarden: false, ...site });
       bus.emit("notice", "Barricade removed. Kit recovered.");
       return true;
     },
@@ -2255,8 +2257,9 @@ export const useRun = create<RunState>()(
     breakBar: (byWarden = true) => {
       const s = get();
       if (!s.barredDoor) return;
+      const site = s.dungeon ? barSite(s.dungeon, s.barredDoor, byWarden ? s.wardenRoomId : s.currentRoomId) : null;
       set({ barredDoor: null, barUntil: 0 });
-      bus.emit("barBroken", { byWarden });
+      if (site) bus.emit("barBroken", { byWarden, ...site });
     },
 
     takeKey: (roomId) => {
@@ -2408,12 +2411,10 @@ export const useRun = create<RunState>()(
         bus.emit("notice", "The grate comes down on the wire and stops.");
         return;
       }
-      // A bar the player did not make: shorter, and silent - nobody
-      // hammered anything - but the Warden breaks it the same way, and is
-      // heard doing it.
+      // The trap owns its falling-metal feedback. Player construction has
+      // a separate event; the Warden still breaks this bar the same way.
       set({ barredDoor: key, barUntil: runClock(s) + GRATE_HOLD_S });
       bus.emit("trapSprung", { key: `${s.currentRoomId}:grate`, kind: "grate", by: "player" });
-      bus.emit("doorBarred", { roomId: s.currentRoomId, toRoomId });
     },
 
     markBombBought: () => set({ bombBought: true }),

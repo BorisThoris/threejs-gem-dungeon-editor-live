@@ -19,7 +19,7 @@ const snapshot = () => page.evaluate(() => {
     player: window.__playerDebug, toll: window.__derived.toll(), satchel: s.satchel,
     keeper: window.__derived.keeper(), bombs: window.__derived.bombs(), clock: window.__derived.clock(),
     bombPrice: window.__world.BOMB_PRICE, lifePrice: window.__world.GEMS_PER_LIFE, maxLives: s.maxLives, reaper: s.reaperAwake,
-    shoveReady: s.shoveReadyAt <= window.__derived.clock(), frames: window.__perf?.frames,
+    shoveReady: s.shoveChargingAt === null && s.shoveReadyAt <= window.__derived.clock(), frames: window.__perf?.frames,
     threats: [s.wardenRoomId === s.currentRoomId && window.__warden ? { ...window.__warden, kind: "warden" } : null,
       window.__harrier?.room === s.currentRoomId && !window.__harrier.away && !window.__harrier.down ? window.__harrier : null].filter(Boolean) };
 });
@@ -110,13 +110,32 @@ async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper
           else await page.keyboard.up("ShiftLeft");
           sprinting = wantsSprint;
         }
-        const threat = s.threats.find((p) => Math.hypot(p.x - s.player.x, p.z - s.player.z) < 2.8);
+        // A head-on Warden closes during our charge. React to the visible
+        // approach tell instead of waiting until it is already within reach.
+        // The Harrier hovers in range during its own windup.
+        const threat = s.threats.find((p) => p.kind === "warden" ? p.tell > 0.1
+          : Math.hypot(p.x - s.player.x, p.z - s.player.z) < 2.8);
         if (process.env.WALK_SHOVE !== "off" && s.shoveReady && threat) {
+          console.log("DEFEND", JSON.stringify({ kind: threat.kind ?? "harrier", tell: threat.tell,
+            distance: Math.hypot(threat.x - s.player.x, threat.z - s.player.z) }));
           await page.keyboard.up("KeyW");
           moving = false;
           await page.evaluate((yaw) => window.__bus.emit("lookSet", { yaw, pitch: 0 }), Math.atan2(s.player.x - threat.x, s.player.z - threat.z));
           await page.keyboard.press("Space");
-          await page.waitForTimeout(80);
+          // The shove resolves after its run-clock windup, using the aim at
+          // impact. Turning back to the route after 80ms aimed the actual
+          // attack away from the threat. Keep tracking it until it resolves.
+          await page.waitForFunction(kind => {
+            const state = window.__run.getState(), now = window.__derived.clock();
+            if (state.phase !== "playing" || state.shoveReadyAt > now) return true;
+            const target = kind === "warden" ? window.__warden : window.__harrier;
+            const player = window.__playerDebug;
+            if (target && player) window.__bus.emit("lookSet", {
+              yaw: Math.atan2(player.x - target.x, player.z - target.z), pitch: 0,
+            });
+            return false;
+          }, threat.kind);
+          continue; // Re-sample position and threats after the charged action.
         }
         const dx = point.x - s.player.x, dz = point.z - s.player.z, distance = Math.hypot(dx, dz);
         if (distance < (point === plan.at(-1) ? arrivalRadius : 0.12)) break;

@@ -57,14 +57,36 @@ export function DinDriver() {
       const { s, bars } = floor();
       const room = at(s.dungeon, roomId ?? s.currentRoomId);
       if (!s.dungeon || !room) return;
+      // Events can arrive between frames. Dating one from the previous
+      // frame makes a new sound arrive already faded after a long task.
+      din.advance(runClock(s));
       din.strike(id, s.dungeon.rooms, room, x, z, bars, surface);
     };
 
+    /** Rebuild carried facts from their owner, including after a floor reset. */
+    const carryIntoRoom = () => {
+      const { s, bars } = floor();
+      if (!s.dungeon || !s.currentRoomId) return;
+      for (const [key, id, active, magnitude] of [
+        ["lantern", "lantern", s.glim > 0, s.glim / 100],
+        ["carried:key", "carriedKey", s.keys > 0, undefined],
+        ["wisp", "wisp", s.wispOut, undefined],
+      ] as const) {
+        if (active) din.hold(key, id, s.dungeon.rooms, s.currentRoomId, magnitude, 0, 0, bars);
+        else din.release(key);
+      }
+    };
+    const resetFloor = () => {
+      din.reset();
+      carryIntoRoom();
+    };
+
     const off = [
-      /** A new floor has heard nothing yet. */
-      bus.on("runStarted", () => din.reset()),
-      bus.on("floorDescended", () => din.reset()),
+      /** A new floor forgets old sounds, but still sees what came downstairs. */
+      bus.on("runStarted", resetFloor),
+      bus.on("floorDescended", resetFloor),
       bus.on("runLost", () => din.reset()),
+      bus.on("roomEntered", carryIntoRoom),
 
       /** The loudest thing in the game, and the only source of [blast]. */
       bus.on("bombBurst", ({ roomId, x, z }) => strike("bombBurst", roomId, x, z)),
@@ -82,7 +104,7 @@ export function DinDriver() {
       bus.on("batsRoused", () => strike("batsRoused", null)),
       bus.on("croakersDove", ({ roomId }) => strike("splash", roomId)),
       bus.on("shardbacksChimed", ({ roomId, x, z }) => strike("shardbacksChimed", roomId, x, z)),
-      bus.on("barBroken", () => strike("barBroken", null)),
+      bus.on("barBroken", ({ roomId, x, z }) => strike("barBroken", roomId, x, z)),
       bus.on("doorBarred", ({ roomId }) => strike("doorBarred", roomId)),
       bus.on("vaultOpened", ({ roomId }) => strike("vaultOpened", roomId)),
       bus.on("thiefCame", ({ roomId }) => strike("cutpurse", roomId)),
@@ -160,33 +182,6 @@ export function DinDriver() {
     ];
     return () => off.forEach((fn) => fn());
   }, []);
-
-  /**
-   * A held source moves with its holder. The lantern and the key are in
-   * the player's hands, so they belong to whichever room the player is
-   * standing in, and re-holding on the same key replaces rather than
-   * trailing a line of lit rooms behind them.
-   */
-  useEffect(
-    () =>
-      bus.on("roomEntered", ({ roomId }) => {
-        const s = useRun.getState();
-        if (!s.dungeon) return;
-        const bars = barsNow(s);
-        for (const [key, id] of [
-          ["lantern", "lantern"],
-          ["carried:key", "carriedKey"],
-          ["wisp", "wisp"],
-        ] as const) {
-          // The lantern moves at whatever band it is currently on, rather
-          // than at the magnitude the table declares: it is the one held
-          // source whose strength the player is choosing continuously.
-          const at = key === "lantern" ? s.glim / 100 : undefined;
-          if (din.holding(key)) din.hold(key, id, s.dungeon.rooms, roomId, at, 0, 0, bars);
-        }
-      }),
-    []
-  );
 
   return null;
 }

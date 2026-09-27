@@ -91,7 +91,7 @@ export interface BusEvents {
    * happens - it came through, or the player lifted it walking out - and
    * they want opposite sounds and opposite reactions.
    */
-  barBroken: { byWarden: boolean };
+  barBroken: { byWarden: boolean; roomId: string; toRoomId: string; x: number; z: number };
   /** A thrown sound has sent it somewhere that is not where the player is. */
   wardenLured: { roomId: string };
   /**

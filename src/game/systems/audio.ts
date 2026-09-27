@@ -560,7 +560,7 @@ const AIR_VOICES: Partial<Record<AirId, { build: HeldBuilder; level: number }>> 
     },
   },
   hollow: {
-    level: 0.36,
+    level: 0.48,
     build: (ctx, into) => {
       // A resonance rather than a breath: the catacomb's own note.
       const wings = heldNoise(ctx, into, "bandpass", 640, 6, null);
@@ -1339,6 +1339,15 @@ export const sfx = {
     tone(660, 0.12, "triangle", 0.16);
     later(90, () => tone(880, 0.14, "triangle", 0.15));
     later(210, () => tone(1320, 0.3, "triangle", 0.12));
+  },
+  /** Falling iron: a short slide, one impact, and the bars ringing out. */
+  grateDrop() {
+    noiseBurst(0.16, 0.18, 2600);
+    later(100, () => {
+      noiseBurst(0.2, 0.3, 1100);
+      tone(180, 0.3, "triangle", 0.28, 100);
+      tone(730, 0.55, "sine", 0.15, 680);
+    });
   },
   /** Hammering: three heavy strikes on wood, loud and slow. */
   barDoor() {

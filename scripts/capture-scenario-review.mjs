@@ -85,6 +85,11 @@ try {
     const litSceneImage = await canvas.screenshot({ type: "jpeg", quality: 86,
       style: `${reviewStyle} [data-testid="hud"], [data-testid="minimap"], [data-testid="guidance"],
         [data-testid="prompt"], [data-testid="scenario-badge"] { visibility: hidden !important; }` });
+    // Preserve a failing view too: exposure assertions need images to diagnose.
+    await writeFile(join(output, gameplayFile), gameplayImage);
+    await writeFile(join(output, sceneFile), sceneImage);
+    await writeFile(join(output, litGameplayFile), litGameplayImage);
+    await writeFile(join(output, litSceneFile), litSceneImage);
     const litHash = createHash("sha256").update(litSceneImage).digest("hex");
     assert.ok(litSceneImage.length > 10000 && litHash !== sceneHash,
       `${test.kind}/${test.shape} has a distinct raised-lantern view`);
@@ -94,10 +99,6 @@ try {
     const gameplayExposure = await sceneExposure(page, gameplayImage, litGameplayImage);
     assert.ok(gameplayExposure.lit >= exposure.lit * 0.6,
       `${test.kind}/${test.shape} gameplay capture obscures the room: ${JSON.stringify({ scene: exposure, gameplay: gameplayExposure })}`);
-    await writeFile(join(output, gameplayFile), gameplayImage);
-    await writeFile(join(output, sceneFile), sceneImage);
-    await writeFile(join(output, litGameplayFile), litGameplayImage);
-    await writeFile(join(output, litSceneFile), litSceneImage);
     rows.push({ ...test, gameplayFile, sceneFile, sceneSha256: sceneHash, exposure, gameplayExposure,
       litGameplayFile, litSceneFile, litSceneSha256: litHash, url, playablePath });
     console.log(`${String(index + 1).padStart(2, "0")}/${cases.length} ${test.kind}/${test.shape} · seed ${test.seed} floor ${test.floor} ${test.roomId} · scene ${exposure.dark.toFixed(1)} → ${exposure.lit.toFixed(1)}`);

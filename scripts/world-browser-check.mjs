@@ -16,6 +16,7 @@ try {
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto(`http://127.0.0.1:${portArgument ?? process.env.PORT ?? "5199"}/`);
+  await page.addStyleTag({ content: '[data-testid="pause-menu"], [data-testid^="moment-"], [data-testid="deed-toast"] { visibility: hidden !important; }' });
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   for (const wanted of (wantedCase ? [wantedCase] : ["mossy", "flooded", "fungal", "foundry", "ash", "salt", "verdigris", "bone", "circle", "hexagon", "triangle", "diamond", "cross", "ring", "elbow", "junction", "crossroads", "rootwell", "hoist", "cantor", "trail-rootwell", "trail-hoist", "trail-cantor"])) {
@@ -41,9 +42,12 @@ try {
           : ["rootwell", "hoist", "cantor"].includes(wanted) ? r.landmark === wanted
           : r.biome === wanted || r.shape === wanted);
         if (!room) continue;
+        // Each view owns a fresh run, including health, heat and room memory.
+        // Reusing the first run let a later review quietly photograph defeat.
+        window.__run.getState().startRun(seed);
         window.__run.setState({ dungeon, floor, currentRoomId: room.id, visited: [room.id],
           transitioning: false, paused: false, inputLocks: 0, wardenRoomId: null, harrierAwake: false,
-          thiefPhase: "away", reaperAwake: false, invulnerableUntil: 1e9,
+          thiefPhase: "away", reaperAwake: false,
           glim: wanted === "relay" ? 90 : 0, oil: 100 });
         const spawnZ = wanted === "gallery" || wanted === "dark-gallery" ? -room.size / 2 + 3
           : wanted === "ring" ? -ringCoreWidth(room.size) / 2 - 2.2 : 0;
@@ -116,6 +120,15 @@ try {
       assert.equal(await page.locator('[data-testid="map-secret-trail"]').count(), 1,
         "the learned route persists on its visited minimap room");
     }
+    const captureState = await page.evaluate(() => {
+      const s = window.__run.getState();
+      s.pause();
+      return { phase: s.phase, lives: s.lives, roomId: s.currentRoomId };
+    });
+    assert.equal(captureState.phase, "playing", `${wanted} captures a living room, not a defeat screen`);
+    assert.ok(captureState.lives > 0);
+    assert.equal(captureState.roomId, fixture.roomId);
+    await page.getByTestId("pause-menu").waitFor({ state: "attached" });
     await page.screenshot({ path: `${output}/${wanted}.png` });
     review.push({ wanted, ...fixture, player: await page.evaluate(() => ({ ...window.__playerDebug })), perf: await page.evaluate(() => ({ ...window.__perf })) });
   }

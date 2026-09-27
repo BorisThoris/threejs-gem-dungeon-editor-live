@@ -50,6 +50,7 @@ function PadPause() {
     // no guard of its own here.
     if (pad.lanternPressed && canControl(run)) run.toggleLantern();
     if (pad.markPressed) run.toggleMark();
+    if (pad.dropKeyPressed) run.dropKey();
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || (!run.paused && run.inputLocks > 0)) return;
     if (run.paused) run.resume();

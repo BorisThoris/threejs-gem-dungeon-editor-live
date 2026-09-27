@@ -4863,15 +4863,20 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.getState().emptyNest();
     await sleep(150);
 
-    // The Warden coming through a bar.
-    run.setState({ barredDoor: "a|b", barUntil: 1e9 });
-    run.getState().breakBar(true);
-    await sleep(150);
-    // And the player lifting one, which must not earn it.
-    run.setState({ barredDoor: "a|b", barUntil: 1e9 });
-    run.getState().breakBar(false);
+    // Use an actual doorway: break feedback carries its physical site.
+    const barRoom = s.dungeon.rooms.find(room => room.id === s.currentRoomId);
+    const barTo = Object.values(barRoom.links)[0];
+    const bar = window.__bars.barKey(barRoom.id, barTo);
+    // Recovering the player's kit must not earn the Warden's deed.
+    run.setState({ currentRoomId: barRoom.id, transitioning: false, barricades: [bar] });
+    out.lifted = run.getState().tearDownBar(barTo);
     await sleep(150);
     out.afterLift = [...out.earned];
+    // The Warden breaking that real edge must earn it exactly once.
+    run.setState({ barredDoor: bar, barUntil: 1e9, wardenRoomId: barTo });
+    run.getState().breakBar(true);
+    await sleep(150);
+    out.afterBreak = [...out.earned];
 
     // Winning: out, the haul, no lives lost, and the floor taken dark.
     // The last floor's stairs are kept since run 18: the Keeper kneels
@@ -4909,8 +4914,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
   );
   ok(
     "the Warden coming through a bar is a deed; lifting your own is not",
-    deeds.afterLift.filter((id) => id === "shutout").length === 1,
-    JSON.stringify(deeds.afterLift)
+    deeds.lifted && !deeds.afterLift.includes("shutout") && deeds.afterBreak.filter((id) => id === "shutout").length === 1,
+    JSON.stringify({ lifted: deeds.lifted, afterLift: deeds.afterLift, afterBreak: deeds.afterBreak })
   );
   ok(
     "getting out earns the escape, the haul and the unspent lives",

@@ -268,6 +268,7 @@ const CUES = [
   ["key", 400, []],
   ["named", 400, []],
   ["grind", 600, []],
+  ["grateDrop", 750, []],
   ["release", 400, []],
   ["relic", 600, []],
   ["wardenNear", 500, [-0.5]],

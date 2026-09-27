@@ -49,6 +49,8 @@ export interface GamepadState {
   lanternPressed: boolean;
   /** D-pad up: mark or unmark the room on the map. Rising edge. */
   markPressed: boolean;
+  /** D-pad left: set the carried iron key down. Rising edge. */
+  dropKeyPressed: boolean;
   /**
    * D-pad down: bar the nearest doorway. Rising edge.
    *
@@ -120,6 +122,7 @@ const state: GamepadState = {
   backPressed: false,
   lanternPressed: false,
   markPressed: false,
+  dropKeyPressed: false,
   barPressed: false,
   shovePressed: false,
   menuX: 0,
@@ -137,6 +140,7 @@ function clear(): void {
     state.barPressed =
     state.shovePressed =
     state.markPressed =
+    state.dropKeyPressed =
       false;
   state.slotPressed.fill(false);
   state.menuX = state.menuY = 0;
@@ -194,6 +198,7 @@ function poll(now: number): void {
   state.barPressed = risingEdge(pad, DPAD.down);
   state.shovePressed = risingEdge(pad, 7);
   state.markPressed = risingEdge(pad, DPAD.up);
+  state.dropKeyPressed = risingEdge(pad, DPAD.left);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 

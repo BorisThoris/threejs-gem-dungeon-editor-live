@@ -267,6 +267,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
   useEffect(() => bus.on("prompt", setPrompt), []);
   const sprint = useSyncExternalStore(subscribeTouchSprint, () => readTouch().sprint, () => false);
   const lanternUp = useRun((s) => s.glim > 0);
+  const hasKey = useRun((s) => s.keys > 0);
 
   const use = (
     <TouchButton
@@ -311,6 +312,17 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
     />
   );
   const shove = <ShoveButton key="shove" size={size.big} />;
+  const dropKey = hasKey ? (
+    <TouchButton
+      key="drop-key"
+      testId="touch-drop-key"
+      label="DROP"
+      detail="KEY"
+      size={size.button}
+      unavailable={!inControl}
+      onPress={() => useRun.getState().dropKey()}
+    />
+  ) : <span key="gap" />;
 
   const inset = `calc(${size.margin}px + env(safe-area-inset-${side}, 0px))`;
   const gap = Math.round(size.margin * 0.7);
@@ -334,7 +346,7 @@ function Buttons({ size, side, inControl }: { size: Sizes; side: "left" | "right
         touchAction: "none",
       }}
     >
-      {side === "right" ? [bar, lantern, shove, <span key="gap" />, run, use] : [shove, lantern, bar, use, run, <span key="gap" />]}
+      {side === "right" ? [bar, lantern, shove, dropKey, run, use] : [shove, lantern, bar, use, run, dropKey]}
     </div>
   );
 }

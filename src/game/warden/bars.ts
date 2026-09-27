@@ -1,4 +1,5 @@
-import { roomById, type Dungeon, type Room } from "../dungeon/types";
+import { roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
+import { doorPosition } from "../dungeon/layout";
 
 /**
  * Doorways the player has barred, and the floor as the Warden sees it.
@@ -15,6 +16,20 @@ import { roomById, type Dungeon, type Room } from "../dungeon/types";
  */
 
 export const barKey = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+/** The actual doorway, on the actor's side of an undirected bar edge. */
+export function barSite(dungeon: Dungeon, key: string, actorRoomId: string | null) {
+  const ends = key.split("|");
+  if (ends.length !== 2) return null;
+  const roomId = actorRoomId && ends.includes(actorRoomId) ? actorRoomId : ends[0];
+  const toRoomId = ends.find(id => id !== roomId);
+  const room = roomById(dungeon, roomId);
+  if (!room || !toRoomId) return null;
+  const dir = (Object.keys(room.links) as Dir[]).find(dir => room.links[dir] === toRoomId);
+  if (!dir) return null;
+  const [x, , z] = doorPosition(room, dir);
+  return { roomId, toRoomId, x, z };
+}
 
 /** The rooms reachable from `fromId` without crossing any of `bars`. */
 export function reachableAround(
