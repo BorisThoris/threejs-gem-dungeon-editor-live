@@ -1113,10 +1113,10 @@ export const sfx = {
     later(80, () => tone(880, 0.26, "triangle", 0.28));
   },
   /** Stone grinding: the arena's doors closing and its arms starting. */
-  grind() {
-    tone(70, 1.1, "sawtooth", 0.32, 46);
-    noiseBurst(0.9, 0.24, 420);
-    later(500, () => noiseBurst(0.7, 0.16, 300));
+  grind(pan = 0) {
+    tone(70, 1.1, "sawtooth", 0.32, 46, pan);
+    noiseBurst(0.9, 0.24, 420, pan);
+    later(500, () => noiseBurst(0.7, 0.16, 300, pan));
   },
   /** The arms stopping and the doors giving. */
   release() {
@@ -1341,12 +1341,12 @@ export const sfx = {
     later(210, () => tone(1320, 0.3, "triangle", 0.12));
   },
   /** Falling iron: a short slide, one impact, and the bars ringing out. */
-  grateDrop() {
-    noiseBurst(0.16, 0.18, 2600);
+  grateDrop(pan = 0) {
+    noiseBurst(0.16, 0.18, 2600, pan);
     later(100, () => {
-      noiseBurst(0.2, 0.3, 1100);
-      tone(180, 0.3, "triangle", 0.28, 100);
-      tone(730, 0.55, "sine", 0.15, 680);
+      noiseBurst(0.2, 0.3, 1100, pan);
+      tone(180, 0.3, "triangle", 0.28, 100, pan);
+      tone(730, 0.55, "sine", 0.15, 680, pan);
     });
   },
   /** Hammering: three heavy strikes on wood, loud and slow. */

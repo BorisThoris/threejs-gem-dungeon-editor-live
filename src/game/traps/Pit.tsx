@@ -26,9 +26,9 @@ export function Pit({ room, trap }: { room: Room; trap: Trap }) {
     const isOpen = run.sprung[trap.key] !== undefined;
     if (!isOpen) {
       if (within) {
-        if (run.springTrap(trap.key, "pit", "player")) run.damage("pit");
+        if (run.springTrap(room.id, trap, "player")) run.damage("pit");
       } else if (wardenAt.roomId === room.id && Math.hypot(wardenAt.x - trap.x, wardenAt.z - trap.z) <= PIT_RADIUS) {
-        if (run.springTrap(trap.key, "pit", "warden")) run.wardenWounded(undefined, "pit");
+        if (run.springTrap(room.id, trap, "warden")) run.wardenWounded(undefined, "pit");
       }
       return;
     }

@@ -58,8 +58,17 @@ const TAP = `
           t.ctx = dest.context;
           t.analyser = dest.context.createAnalyser();
           t.analyser.fftSize = 2048;
+          // Listen to the shipped stereo output as well as its mono level.
+          t.splitter = dest.context.createChannelSplitter(2);
+          t.channels = [0, 1].map(channel => {
+            const analyser = dest.context.createAnalyser();
+            analyser.fftSize = 2048;
+            realConnect.call(t.splitter, analyser, channel);
+            return analyser;
+          });
         }
         realConnect.call(this, t.analyser);
+        realConnect.call(this, t.splitter);
       }
       // Capture the score's actual output before the louder room bed masks
       // it. The score still connects to the real master and speakers.
@@ -430,6 +439,36 @@ if (THRESHOLD_ONLY) {
   await browser.close();
   process.exit(failures === 0 ? 0 : 1);
 }
+
+// A correct event bearing is insufficient if a cue discards it. Measure
+// both output channels, including the delayed parts of each trap sound.
+// The continuous bed would dominate the energy between a cue's brief hits.
+await page.evaluate(() => window.__ambience.stop());
+for (const cue of ["clatter", "grind", "grateDrop"]) for (const pan of [-0.75, 0.75]) {
+  const energy = await page.evaluate(async ({ cue, pan }) => {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    const analysers = window.__tap.channels;
+    const buffers = analysers.map(a => new Float32Array(a.fftSize));
+    const energy = [0, 0];
+    window.__sfx[cue](pan);
+    const until = performance.now() + 900;
+    while (performance.now() < until) {
+      analysers.forEach((a, channel) => {
+        a.getFloatTimeDomainData(buffers[channel]);
+        for (const value of buffers[channel]) energy[channel] += value * value;
+      });
+      await new Promise(resolve => setTimeout(resolve, 12));
+    }
+    return energy;
+  }, { cue, pan });
+  const near = pan < 0 ? 0 : 1, far = 1 - near;
+  ok(`${cue} is heard on its ${pan < 0 ? "left" : "right"} side`, energy[near] > energy[far] * 2,
+    `L ${energy[0].toFixed(2)}, R ${energy[1].toFixed(2)}`);
+}
+await page.evaluate(async () => {
+  window.__ambience.start();
+  await new Promise(resolve => setTimeout(resolve, 2000));
+});
 
 // The one held sound: it starts, it keeps going, and it stops.
 const held = await page.evaluate(

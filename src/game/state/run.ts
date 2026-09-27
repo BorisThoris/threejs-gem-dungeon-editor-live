@@ -10,6 +10,7 @@ import { serviceCatch } from "../worldbuilding/serviceTrail";
 import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
 import { roomSegmentClear } from "../dungeon/footprint";
 import { gratePosition, reachesGrate } from "../traps/geometry";
+import type { Trap } from "../traps/placement";
 import { doorPosition, vaultMechanismPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
@@ -751,7 +752,7 @@ export interface RunState {
    * was not armed - a plate still re-arming, a pit already open - so the
    * thing that stepped on it knows whether anything happened.
    */
-  springTrap: (key: string, kind: "darts" | "pit", by: "player" | "warden") => boolean;
+  springTrap: (roomId: string, trap: Trap, by: "player" | "warden") => boolean;
   /** A grate dropped behind the player: that doorway is barred, briefly, and not by them. */
   dropGrate: (toRoomId: string) => void;
   /** The shop's bomb for this floor is sold. */
@@ -1843,7 +1844,7 @@ export const useRun = create<RunState>()(
       const device = s.placed.find((d) => d.key === key);
       if (!device || !device.live) return;
       set({ placed: s.placed.map((d) => (d.key === key ? { ...d, live: false } : d)) });
-      bus.emit("snareSprung", { by });
+      bus.emit("snareSprung", { by, key, roomId: device.roomId, x: device.x, z: device.z });
       // Something small sprang it: the wire is spent and nothing is wounded.
       // That is the whole cost of setting a snare where the rats run.
       if (by !== "warden") return;
@@ -2442,13 +2443,15 @@ export const useRun = create<RunState>()(
       if (!heard) bus.emit("wardenHeard");
     },
 
-    springTrap: (key, kind, by) => {
+    springTrap: (roomId, trap, by) => {
       const s = get();
+      const { key, kind, x, z } = trap;
+      if (kind === "grate" || !s.dungeon || !roomById(s.dungeon, roomId)) return false;
       const now = runClock(s);
       const was = s.sprung[key];
       if (was !== undefined && (kind === "pit" || now - was < DART_REARM_S)) return false;
       set({ sprung: { ...s.sprung, [key]: now } });
-      bus.emit("trapSprung", { key, kind, by });
+      bus.emit("trapSprung", { key, kind, by, roomId, x, z });
       return true;
     },
 
@@ -2490,16 +2493,17 @@ export const useRun = create<RunState>()(
        * rather than a special case written for the grate.
        */
       const wire = snaresIn(s.placed, here.id).find(d => reachesGrate(here, dir, d.x, d.z, SNARE_RADIUS));
+      const [x, , z] = gratePosition(here, dir);
       if (wire) {
         set({ placed: s.placed.map(d => d.key === wire.key ? { ...d, live: false, holdingDoor: key } : d) });
-        bus.emit("trapSprung", { key: `${here.id}:grate`, kind: "grate", by: "player", heldByWire: true });
+        bus.emit("trapSprung", { key: `${here.id}:grate`, kind: "grate", by: "player", roomId: here.id, x, z, heldByWire: true });
         bus.emit("notice", "The wire holds this grate up and cannot catch a creature now.");
         return;
       }
       // The trap owns its falling-metal feedback. Player construction has
       // a separate event; the Warden still breaks this bar the same way.
       set({ barredDoor: key, barUntil: runClock(s) + GRATE_HOLD_S });
-      bus.emit("trapSprung", { key: `${s.currentRoomId}:grate`, kind: "grate", by: "player" });
+      bus.emit("trapSprung", { key: `${here.id}:grate`, kind: "grate", by: "player", roomId: here.id, x, z });
     },
 
     markBombBought: () => set({ bombBought: true }),

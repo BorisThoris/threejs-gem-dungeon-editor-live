@@ -55,7 +55,7 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
       const playerOn = onPlate(cam.x, cam.z);
       const wardenOn = wardenHere && onPlate(wardenAt.x, wardenAt.z);
       if (!playerOn && !wardenOn) return;
-      if (!run.springTrap(trap.key, "darts", playerOn ? "player" : "warden")) return;
+      if (!run.springTrap(room.id, trap, playerOn ? "player" : "warden")) return;
       at = useRun.getState().sprung[trap.key];
     }
     if (at === undefined || now - at < DART_WARNING_S || now - at >= DART_WARNING_S + DART_FLIGHT_S) return;

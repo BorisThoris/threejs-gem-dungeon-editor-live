@@ -135,6 +135,8 @@ room next door is heard through that wall - left, right or ahead, turning as
 you turn - and a watcher calling out is heard from its post. It is the
 difference between knowing something is close and knowing which door not to
 take.
+Dart plates, opening pits and falling grates also sound from their actual
+positions, so their cues tell you where the floor moved.
 
 Once it is in the room with you it is heard continuously rather than
 announced: a low presence that swells as it closes and moves across the

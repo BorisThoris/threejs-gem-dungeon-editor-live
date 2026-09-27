@@ -300,6 +300,13 @@ Two stores that both claimed the player's stats. So:
   object's local bearing or its neighbouring doorway. The Din browser check
   detonates a real device against generated furniture and compares event,
   hearing and audio positions, including repeat-detonation refusal.
+  Trap events preserve their origin too. Darts and pits pass the same `Trap`
+  placement used by their rendered bodies into `springTrap`; grates read
+  `gratePosition`, and snares read their placed device. Din and positional
+  audio consume that event rather than guessing the current room or its
+  centre. The Din browser check covers generated mechanisms, local and remote
+  wire, and repeated-trigger refusal; the audio check measures left and right
+  output for clatter, grinding stone and falling iron, including delayed notes.
   Floor resets clear old emissions and rebuild carried lantern, key and wisp
   signals from current run state. Room entry uses the same reconstruction,
   preserving the lantern's actual band without trailing duplicate sources.

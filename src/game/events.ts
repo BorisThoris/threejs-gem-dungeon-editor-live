@@ -216,7 +216,7 @@ export interface BusEvents {
   /** A blast is holding it where it stands. */
   reaperStalled: undefined;
   /** A snare on the floor went off, and what set it off. */
-  snareSprung: { by: "warden" | "rat" | "cutpurse" };
+  snareSprung: { by: "warden" | "rat" | "cutpurse"; key: string; roomId: string; x: number; z: number };
   /** The moth settled on the raised lantern. */
   mothLanded: undefined;
   /** And left it, carrying the light in the Warden's eye a while. */
@@ -254,7 +254,7 @@ export interface BusEvents {
   /** A draft of air from a cracked wall, felt for the first time this visit. */
   draftFelt: { roomId: string };
   /** One of the floor's own traps went off, and what set it off. */
-  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden"; heldByWire?: boolean };
+  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden"; roomId: string; x: number; z: number; heldByWire?: boolean };
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

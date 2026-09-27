@@ -20,6 +20,12 @@ function towards(roomId: string): number {
   );
 }
 
+/** Local mechanisms have a bearing; neighbouring ones sound through their door. */
+function sourcePan({ roomId, x, z }: { roomId: string; x: number; z: number }): number {
+  return roomId === useRun.getState().currentRoomId
+    ? sideOf(x - playerAt.x, z - playerAt.z) : towards(roomId);
+}
+
 /** Sound cues, driven entirely by bus events. Renders nothing. */
 export function Audio() {
   const playing = useRun((s) => s.phase === "playing");
@@ -150,8 +156,8 @@ export function Audio() {
       bus.on("reaperWoke", () => sfx.wardenHere()),
       bus.on("reaperStruck", () => sfx.wardenStrike()),
       bus.on("reaperStalled", () => sfx.wardenWound()),
-      bus.on("snareSprung", ({ by }) => {
-        if (by !== "warden") sfx.clatter();
+      bus.on("snareSprung", (event) => {
+        if (event.by !== "warden") sfx.clatter(sourcePan(event));
       }),
       bus.on("mothLanded", () => sfx.named()),
       bus.on("mothLeft", () => sfx.take()),
@@ -160,8 +166,7 @@ export function Audio() {
       // the roost itself, with a side, while the player is in its room.
       bus.on("batsRoused", () => sfx.batsBurst()),
       bus.on("draftFelt", () => sfx.draft()),
-      bus.on("propBroken", ({ roomId, x, z }) => sfx.clatter(roomId === useRun.getState().currentRoomId
-        ? sideOf(x - playerAt.x, z - playerAt.z) : towards(roomId))),
+      bus.on("propBroken", (event) => sfx.clatter(sourcePan(event))),
       bus.on("wallSound", ({ flavour }) => sfx.throughWall(flavour)),
       bus.on("mapMarked", () => sfx.setDown()),
       bus.on("wispCame", () => sfx.named()),
@@ -178,7 +183,12 @@ export function Audio() {
       bus.on("keeperStruck", () => sfx.wardenStrike()),
       bus.on("keeperKnelt", () => sfx.grind()),
       bus.on("keeperRose", () => sfx.barDoor()),
-      bus.on("trapSprung", ({ kind }) => (kind === "grate" ? sfx.grateDrop() : kind === "darts" ? sfx.clatter() : sfx.grind())),
+      bus.on("trapSprung", (event) => {
+        const pan = sourcePan(event);
+        if (event.kind === "grate") sfx.grateDrop(pan);
+        else if (event.kind === "darts") sfx.clatter(pan);
+        else sfx.grind(pan);
+      }),
       bus.on("thiefTook", () => sfx.snatch()),
       bus.on("thiefFled", () => sfx.thiefFled()),
       bus.on("thiefCaught", () => sfx.thiefDropped()),

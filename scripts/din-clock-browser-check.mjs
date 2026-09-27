@@ -93,6 +93,78 @@ try {
   assert.equal(debris.localPan, debris.expectedLocalPan, "the clatter uses the same local origin as creature hearing");
   assert.deepEqual(debris.remotePans, debris.events.map(() => debris.remotePan), "remote debris sounds toward its doorway");
   console.log("PASS broken furniture: real blast, per-object signal origin, positional clatter and no repeated event");
+  const traps = await page.evaluate(async () => {
+    const { trapsFor } = await import("/src/game/traps/placement.ts");
+    const { sideOf, sideOfNeighbour } = await import("/src/game/systems/bearing.ts");
+    const { playerAt } = await import("/src/game/player/where.ts");
+    const run = window.__run, din = window.__din, results = [];
+    for (const kind of ["darts", "pit", "grate", "snare"]) {
+      let dungeon, placed;
+      for (let seed = 1; seed <= 24; seed++) {
+        run.getState().startRun(seed);
+        run.getState().roomReady(run.getState().dungeon.startId);
+        dungeon = run.getState().dungeon;
+        placed = dungeon.rooms.flatMap(room => trapsFor(room, dungeon.seed, dungeon.endId)
+          .filter(trap => trap.kind === kind).map(trap => ({ room, trap })))[0];
+        if (placed || kind === "snare") break;
+      }
+      const room = kind === "snare" ? dungeon.rooms.find(r => r.id === run.getState().currentRoomId) : placed?.room;
+      if (!room) throw Error(`No generated ${kind} fixture in 24 seeds`);
+      const trap = kind === "snare" ? { key: "origin-wire", kind, x: 3, z: -4 } : placed.trap;
+      run.setState({ currentRoomId: room.id, paused: false, transitioning: false, inputLocks: 0 });
+      if (kind === "snare") run.setState({ placed: [{ ...trap, id: "snare", roomId: room.id, live: true }] });
+      din.reset();
+      const events = [], pans = [], cue = kind === "pit" ? "grind" : kind === "grate" ? "grateDrop" : "clatter";
+      const original = window.__sfx[cue];
+      window.__sfx[cue] = (...args) => { pans.push(args[0] ?? 0); original(...args); };
+      const off = window.__bus.on(kind === "snare" ? "snareSprung" : "trapSprung", event => events.push(event));
+      const trigger = () => kind === "snare" ? run.getState().springSnare(trap.key, "rat")
+        : kind === "grate" ? run.getState().dropGrate(room.links[trap.dir])
+        : run.getState().springTrap(room.id, trap, "player");
+      try {
+        trigger();
+        const heard = din.emptyArrival();
+        const audible = din.strongest(heard, "loud", room.id);
+        const expectedPan = sideOf(trap.x - playerAt.x, trap.z - playerAt.z);
+        trigger();
+        results.push({ kind, expected: { roomId: room.id, x: trap.x, z: trap.z },
+          event: events[0], count: events.length, heard, audible, pan: pans[0], expectedPan });
+      } finally { off(); window.__sfx[cue] = original; }
+    }
+    // A device keeps its origin even after the delver has left its room.
+    run.getState().startRun(11);
+    run.getState().roomReady(run.getState().dungeon.startId);
+    const s = run.getState();
+    const { here, to } = s.dungeon.rooms.flatMap(here => Object.values(here.links)
+      .map(to => ({ here, to, pan: sideOfNeighbour(here, to) })))
+      .sort((a, b) => Math.abs(b.pan) - Math.abs(a.pan))[0];
+    run.setState({ currentRoomId: here.id,
+      placed: [{ key: "remote-wire", id: "snare", roomId: to, x: -3, z: 4, live: true }] });
+    din.reset();
+    const original = window.__sfx.clatter;
+    let pan;
+    window.__sfx.clatter = (...args) => { pan = args[0] ?? 0; original(...args); };
+    try {
+      run.getState().springSnare("remote-wire", "rat");
+      const heard = din.emptyArrival();
+      const audible = din.strongest(heard, "snared", to);
+      results.push({ kind: "remote snare", expected: { roomId: to, x: -3, z: 4 },
+        heard, audible, pan, expectedPan: sideOfNeighbour(here, to) });
+    } finally { window.__sfx.clatter = original; }
+    return results;
+  });
+  console.log(JSON.stringify(traps));
+  for (const trap of traps) {
+    assert.equal(trap.audible, true, `${trap.kind} reaches listeners in its actual room`);
+    assert.deepEqual({ roomId: trap.heard.fromRoomId, x: trap.heard.x, z: trap.heard.z }, trap.expected,
+      `${trap.kind} directs investigation to its mechanism rather than the room center or the player`);
+    assert.equal(trap.pan, trap.expectedPan, `${trap.kind} uses the same origin for player audio`);
+    if (trap.event) {
+      assert.deepEqual({ roomId: trap.event.roomId, x: trap.event.x, z: trap.event.z }, trap.expected);
+      assert.equal(trap.count, 1, `${trap.kind} cannot announce another trigger before rearming`);
+    }
+  }
+  console.log("PASS generated traps and placed snares share their actual origins with investigation and positional audio");
   assert.deepEqual(errors, []);
   console.log("PASS sound event time: fresh after a delayed frame, frozen on pause, decaying on resume");
 } finally { await browser.close(); }

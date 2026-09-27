@@ -130,10 +130,10 @@ export const LESSONS: readonly Lesson[] = [
 
   // The ten loops. Each names the rule the player has just met and what
   // it is for, in the order they are likely to meet them.
-  lesson({ id: "darts", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "player", line: "Step clear while the plate lights. The volley hits whoever stays on it, including the Warden.", sample: { key: "k", kind: "darts", by: "player" } }),
-  lesson({ id: "darts-warden", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "warden", line: "The Warden sprang the plate. The floor's traps are yours to use, and they do not care who walks in.", sample: { key: "k", kind: "darts", by: "warden" } }),
-  lesson({ id: "pit", event: "trapSprung", when: ({ kind }) => kind === "pit", line: "The floor gave way. It is a spike patch now, for anything that walks - you, the rats, the Warden.", sample: { key: "k", kind: "pit", by: "player" } }),
-  lesson({ id: "grate", event: "trapSprung", when: ({ kind, heldByWire }) => kind === "grate" && !heldByWire, line: "A grate dropped behind you. That doorway is barred - to it, and to you, until it lifts. An unlit bomb can jam it open; wire under the falling bars prevents the drop.", sample: { key: "k", kind: "grate", by: "player" } }),
+  lesson({ id: "darts", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "player", line: "Step clear while the plate lights. The volley hits whoever stays on it, including the Warden.", sample: { roomId: "start", x: 0, z: 0, key: "k", kind: "darts", by: "player" } }),
+  lesson({ id: "darts-warden", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "warden", line: "The Warden sprang the plate. The floor's traps are yours to use, and they do not care who walks in.", sample: { roomId: "start", x: 0, z: 0, key: "k", kind: "darts", by: "warden" } }),
+  lesson({ id: "pit", event: "trapSprung", when: ({ kind }) => kind === "pit", line: "The floor gave way. It is a spike patch now, for anything that walks - you, the rats, the Warden.", sample: { roomId: "start", x: 0, z: 0, key: "k", kind: "pit", by: "player" } }),
+  lesson({ id: "grate", event: "trapSprung", when: ({ kind, heldByWire }) => kind === "grate" && !heldByWire, line: "A grate dropped behind you. That doorway is barred - to it, and to you, until it lifts. An unlit bomb can jam it open; wire under the falling bars prevents the drop.", sample: { roomId: "start", x: 0, z: 0, key: "k", kind: "grate", by: "player" } }),
   lesson({ id: "draft", event: "draftFelt", line: "A draft, from that wall. Something is behind it, and a bomb would find out." }),
   lesson({
     id: "wall",
@@ -165,7 +165,7 @@ export const LESSONS: readonly Lesson[] = [
     ? "The wicklings leaned toward that cracked wall before they went dark. Their ember tips read the chantry draft."
     : "The wicklings snuffed into the wax. Quiet lets their ember tips rise again.", sample: { roomId: "r", towardSecret: true } }),
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
-  lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
+  lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat", key: "wire", roomId: "start", x: 0, z: 0 } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
   lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
   lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper; save ${BOMB_PRICE} extra gems for a shop bomb. With the toll ready, set a bomb from your satchel, dodge the blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),

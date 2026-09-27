@@ -109,12 +109,12 @@ export function DinDriver() {
       bus.on("bombBurst", ({ roomId, x, z }) => strike("bombBurst", roomId, x, z)),
       bus.on("bellcapBurst", ({ roomId, x, z }) => strike("bellcapBurst", roomId, x, z)),
 
-      bus.on("trapSprung", ({ kind }) =>
-        strike(kind === "grate" ? "grateDrop" : kind === "pit" ? "pitOpened" : "dartsFired", null)
+      bus.on("trapSprung", ({ kind, roomId, x, z }) =>
+        strike(kind === "grate" ? "grateDrop" : kind === "pit" ? "pitOpened" : "dartsFired", roomId, x, z)
       ),
       bus.on("propBroken", ({ roomId, x, z }) => strike("propBroken", roomId, x, z)),
       bus.on("sluiceOpened", ({ roomId, x, z }) => strike("sluiceOpened", roomId, x, z)),
-      bus.on("snareSprung", () => strike("snareSprung", null)),
+      bus.on("snareSprung", ({ roomId, x, z }) => strike("snareSprung", roomId, x, z)),
       bus.on("devicePlaced", ({ id, roomId, x, z }) => {
         if (id === "rattle") strike("ironDropped", roomId, x, z);
       }),

@@ -199,6 +199,12 @@ try {
       run.setState({ wardenRoomId: s.currentRoomId, wardenWounds: 0, wardenStaggerUntil: 0, lastDamageAt: Infinity });
     });
     await page.waitForFunction(() => !!window.__scene.getObjectByName("creature-warden"));
+    // Mount precedes the body's first-frame arrival placement. Wait for that
+    // placement before positioning the body on the hazard under examination.
+    await page.waitForFunction(async () => {
+      const { wardenAt } = await import("/src/game/warden/position.ts");
+      return wardenAt.roomId === window.__run.getState().currentRoomId && window.__warden?.sinceArrival > 0;
+    });
     await page.evaluate(pit => window.__scene.getObjectByName("creature-warden").position.set(pit.x, 0, pit.z), fixture.pit);
     await page.waitForFunction(() => window.__contactWounds.some(e => e.source === "pit"));
     await page.waitForFunction(() => window.__trapCaptions.some(line => line.includes("stumbles into the pit")));
