@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus } from "../events";
+import type { DamageSource } from "../player/damage";
 import { footingCarry, type Footing } from "../rooms/underfoot";
 import { generateRunFloor } from "../dungeon/runFloor";
 import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
@@ -509,6 +510,8 @@ export interface RunState {
   /** Counted, not flagged: a puzzle overlay and a menu may both hold it. */
   inputLocks: number;
   lastDamageAt: number;
+  /** Source of the most recent hit that actually cost a life. */
+  lastDamageSource: DamageSource | null;
   /**
    * Seconds spent in the pause menu. Timed things - a potion, the damage
    * cooldown - are deadlines on `runClock`, which is wall time less this,
@@ -759,7 +762,7 @@ export interface RunState {
    */
   wardenWounded: (hold?: number) => void;
   /** Take a hit. Returns false if inside the invulnerability window. */
-  damage: () => boolean;
+  damage: (source: DamageSource) => boolean;
   gainLife: () => boolean;
   clearRoom: (roomId: string) => void;
   failRoom: (roomId: string) => void;
@@ -932,6 +935,7 @@ export const useRun = create<RunState>()(
     transitioning: false,
     inputLocks: 0,
     lastDamageAt: -Infinity,
+    lastDamageSource: null,
     pausedFor: 0,
     pausedAt: 0,
     startedAt: 0,
@@ -1105,6 +1109,7 @@ export const useRun = create<RunState>()(
         transitioning: true,
         inputLocks: 0,
         lastDamageAt: -Infinity,
+        lastDamageSource: null,
         pausedFor: 0,
         pausedAt: 0,
         // `pausedFor` and `pausedAt` are cleared in this same write, so the
@@ -1453,7 +1458,7 @@ export const useRun = create<RunState>()(
       return true;
     },
 
-    damage: () => {
+    damage: (source = "unknown") => {
       const s = get();
       if (s.phase !== "playing") return false;
       const now = runClock(s);
@@ -1463,7 +1468,7 @@ export const useRun = create<RunState>()(
       // is bought changes the odds a run faces, never how much it can
       // take. Nothing replaces it, because nothing should.
       const lives = Math.max(0, s.lives - 1);
-      set({ lives, lastDamageAt: now });
+      set({ lives, lastDamageAt: now, lastDamageSource: source });
       bus.emit("damaged");
       if (lives === 0) {
         set({ phase: "lost", endedAt: now });
@@ -2362,7 +2367,7 @@ export const useRun = create<RunState>()(
       if (!s.dungeon || !s.currentRoomId) return;
       // The hit goes through the ordinary damage path, so the charm, the
       // cooldown and the death check all stay in one place.
-      if (!get().damage()) return;
+      if (!get().damage("warden")) return;
       const away = banishTo(s.dungeon, s.currentRoomId, WARDEN_BANISH_DISTANCE);
       if (away) set({ wardenRoomId: away, wardenCameFrom: null, wardenLure: null, lureUntil: 0 });
       bus.emit("wardenStruck");
@@ -2520,7 +2525,7 @@ export const useRun = create<RunState>()(
       // Hit and run: it wheels away whether or not the hit landed, so a
       // player inside the invulnerability window is not hovered over.
       set({ harrierRetreatUntil: now + HARRIER_RETREAT_S });
-      if (get().damage()) bus.emit("harrierStruck");
+      if (get().damage("harrier")) bus.emit("harrierStruck");
     },
 
     downHarrier: () => {
@@ -2554,7 +2559,7 @@ export const useRun = create<RunState>()(
       const now = runClock(s);
       if (now - s.keeperLastStrikeAt < KEEPER_STRIKE_GRACE_S) return;
       set({ keeperLastStrikeAt: now });
-      if (get().damage()) bus.emit("keeperStruck");
+      if (get().damage("keeper")) bus.emit("keeperStruck");
     },
 
     wakeReaper: () => {
@@ -2571,7 +2576,7 @@ export const useRun = create<RunState>()(
       if (now - s.reaperLastStrikeAt < REAPER_STRIKE_GRACE_S) return;
       // The ordinary damage path, as the Warden's strike is: the charm,
       // the cooldown and the death check stay in one place.
-      if (!get().damage()) return;
+      if (!get().damage("reaper")) return;
       set({ reaperLastStrikeAt: now });
       bus.emit("reaperStruck");
     },
@@ -2681,7 +2686,7 @@ export const useRun = create<RunState>()(
         if (spilled) bus.emit("notice", spilled === 1 ? "Something glints in the wreck." : `${spilled} gems glint in the wreck.`);
       }
       // The player, if they did not walk - and nothing stood between.
-      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage();
+      if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage("bomb");
       /**
        * Who the blast reaches is the receiver's business, not the bomb's.
        *

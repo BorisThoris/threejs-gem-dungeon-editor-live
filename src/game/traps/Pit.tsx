@@ -26,7 +26,7 @@ export function Pit({ room, trap }: { room: Room; trap: Trap }) {
     const isOpen = run.sprung[trap.key] !== undefined;
     if (!isOpen) {
       if (within) {
-        if (run.springTrap(trap.key, "pit", "player")) run.damage();
+        if (run.springTrap(trap.key, "pit", "player")) run.damage("pit");
       } else if (wardenAt.roomId === room.id && Math.hypot(wardenAt.x - trap.x, wardenAt.z - trap.z) <= PIT_RADIUS) {
         if (run.springTrap(trap.key, "pit", "warden")) run.wardenWounded();
       }
@@ -35,7 +35,7 @@ export function Pit({ room, trap }: { room: Room; trap: Trap }) {
     // Open: it bites the player on entry, as the spikes do. The Warden's
     // own hazard list has it now, so nothing here charges it twice.
     if (!within) inside.current = false;
-    else if (!inside.current && run.damage()) inside.current = true;
+    else if (!inside.current && run.damage("pit")) inside.current = true;
   });
 
   return (

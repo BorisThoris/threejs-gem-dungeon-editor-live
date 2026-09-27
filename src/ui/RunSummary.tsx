@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
 import { DEEDS } from "../game/deeds/catalog";
+import { DAMAGE_CAUSES } from "../game/player/damage";
 import { DELVERS } from "../game/delvers/catalog";
 import { useDeeds } from "../game/state/deeds";
 import { useRecords } from "../game/state/records";
@@ -19,6 +20,8 @@ import { enterImmersive } from "../game/input/device";
  */
 export function RunSummary() {
   const phase = useRun((s) => s.phase);
+  const source = useRun((s) => s.lastDamageSource);
+  const cause = source && source !== "unknown" ? DAMAGE_CAUSES[source] : null;
   const gemsTotal = useRun((s) => s.gemsTotal);
   const carried = useRun((s) => s.gems);
   const relics = useRun((s) => s.relics.length);
@@ -64,6 +67,11 @@ export function RunSummary() {
             None of it comes back up.
           </p>
         )}
+        {!won && cause && <div data-testid="summary-cause" style={{ margin: "12px 0 16px", textAlign: "left",
+          borderLeft: `2px solid ${colors.danger}`, paddingLeft: 12 }}>
+          <p style={{ ...body, color: colors.ink, marginBottom: 6 }}>{cause.happened}</p>
+          <p style={{ ...body, fontSize: text.small, marginBottom: 0 }}>{cause.retry}</p>
+        </div>}
         {/* It is a demo, and the screen a player reaches after winning is
             the one place to say so without it being an advertisement in
             the middle of a game. Only on a win: telling somebody who just

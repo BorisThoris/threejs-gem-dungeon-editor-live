@@ -100,7 +100,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
     } else {
       setOutcome("sprung");
       run.failRoom(room.id);
-      run.damage();
+      run.damage("idol");
       bus.emit("puzzleResult", { roomId: room.id, completed: false });
     }
   };

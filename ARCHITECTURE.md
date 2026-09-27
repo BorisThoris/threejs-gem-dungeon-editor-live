@@ -500,6 +500,14 @@ Two stores that both claimed the player's stats. So:
   twice. It holds no progression: nothing it remembers changes what a run
   is. Settings live beside it in `settings.ts`, separately, because a run
   is a thing you lose and a preference is not.
+  The damage action records `lastDamageSource` only when it removes a life.
+  Enemy strikes, floor hazards, puzzle penalties and blasts pass their source
+  through that same action. Cooldown-refused and post-run hits cannot replace
+  the fatal cause, and starting either kind of replay clears it. The loss
+  summary reads `player/damage.ts` for the explanation and next-run tip;
+  an escape never presents an earlier hit as its ending. The death-review
+  browser check follows real strikes, hazard contact and a satchel bomb through
+  the summary and replay, including large phone text.
 - Whether a room can be locked is `reachableWithout` in `generate.ts`: a
   vault only goes on a room that every other room can be reached without.
   Being off the shortest path is not enough - a room can be off the route

@@ -182,7 +182,7 @@ export function MemoryRoom({ room }: RoomKindProps) {
     const m = run.trialMiss(room.id);
     bus.emit("puzzleResult", { roomId: room.id, completed: false });
     if (m >= MISSES_ALLOWED) {
-      run.damage();
+      run.damage("memory");
       const a = run.trialAttempt(room.id);
       if (a >= ATTEMPTS_ALLOWED) {
         run.failRoom(room.id);

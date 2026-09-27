@@ -198,7 +198,7 @@ function Arms({ patches, live }: { patches: Patch[]; live: boolean }) {
       if (!live || !control) return;
       const dx = cam.x - x;
       const dz = cam.z - z;
-      if (dx * dx + dz * dz <= HAZARD_RADIUS * HAZARD_RADIUS) useRun.getState().damage();
+      if (dx * dx + dz * dz <= HAZARD_RADIUS * HAZARD_RADIUS) useRun.getState().damage("arena");
     });
   });
 

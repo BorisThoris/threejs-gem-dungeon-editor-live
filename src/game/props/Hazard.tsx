@@ -30,7 +30,7 @@ export function Hazard({ position, radius = HAZARD_RADIUS }: HazardProps) {
     // A hit refused by the cooldown does not count as having been taken:
     // standing on the spikes keeps trying, and hurts again when it ends.
     if (!within) inside.current = false;
-    else if (!inside.current && useRun.getState().damage()) inside.current = true;
+    else if (!inside.current && useRun.getState().damage("spikes")) inside.current = true;
   });
 
   return (

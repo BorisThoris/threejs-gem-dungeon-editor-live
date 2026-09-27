@@ -66,7 +66,7 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
     }
     if (hitPlayer.current !== at && onPlate(cam.x, cam.z)) {
       hitPlayer.current = at;
-      run.damage();
+      run.damage("darts");
     }
     if (hitWarden.current !== at && wardenHere && onPlate(wardenAt.x, wardenAt.z)) {
       hitWarden.current = at;
