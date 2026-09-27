@@ -1025,6 +1025,7 @@ Two stores that both claimed the player's stats. So:
   or here, and rank below immediate attackers. The pursuit browser check
   verifies the visible guidance before arrival, after arrival and after a
   broken trail; the layout suite holds their urgency ordering.
+  Threat and resource lines precede equipment controls on every screen.
   The desktop card keeps those lines but uses tighter leading. The quick
   browser gate measures a crowded third-floor HUD against a 425-pixel height
   budget at 1280×800 and checks that the guidance panel remains clear.

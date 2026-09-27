@@ -21,15 +21,19 @@ try {
     const guidance = document.querySelector('[data-testid="guidance"]')?.getBoundingClientRect();
     const lines = [...document.querySelectorAll('[data-testid^="hud-"]')]
       .map(element => element.getAttribute("data-testid"));
+    const instrumentsTop = document.querySelector('[data-testid="bars-stock"]').getBoundingClientRect().top;
+    const prioritiesFirst = ["keeper", "gems", "lives", "lantern"].every(id =>
+      document.querySelector(`[data-testid="hud-${id}"]`).getBoundingClientRect().bottom <= instrumentsTop);
     return { width: hud.width, height: hud.height, bottom: hud.bottom,
       guidanceClear: !guidance || guidance.left >= hud.right || guidance.top >= hud.bottom,
-      lines };
+      prioritiesFirst, lines };
   });
   assert.ok(measured.lines.includes("hud-gems") && measured.lines.includes("hud-lives") &&
     measured.lines.includes("hud-lantern") && measured.lines.includes("hud-floor") &&
     measured.lines.includes("hud-keeper"), "critical and contextual lines remain visible");
   assert.ok(measured.height <= 425 && measured.width <= 465 && measured.guidanceClear,
     `crowded HUD stays within its desktop space budget: ${JSON.stringify(measured)}`);
+  assert.ok(measured.prioritiesFirst, "threats, toll and resources appear before equipment controls");
   if (process.argv.includes("--screenshot")) await page.screenshot({ path: "output/hud-after.png" });
   assert.deepEqual(errors, [], "HUD layout has no browser errors");
   console.log(`PASS  crowded HUD ${Math.round(measured.width)}×${Math.round(measured.height)} px and guidance clear`);

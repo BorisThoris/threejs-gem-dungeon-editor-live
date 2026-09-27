@@ -225,7 +225,6 @@ export function Hud() {
         zIndex: 900,
       }}
     >
-      {!compact && instruments}
       {lines.map((line, i) => {
         if (compact && line.rank >= 4) return null;
         /**
@@ -291,7 +290,7 @@ export function Hud() {
           </div>
         );
       })}
-      {compact && instruments}
+      <div style={{ marginTop: compact ? 5 : 8 }}>{instruments}</div>
     </div>
   );
 }
