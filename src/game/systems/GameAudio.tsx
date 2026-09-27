@@ -149,7 +149,7 @@ export function Audio() {
       bus.on("reaperStruck", () => sfx.wardenStrike()),
       bus.on("reaperStalled", () => sfx.wardenWound()),
       bus.on("snareSprung", ({ by }) => {
-        if (by === "rat") sfx.clatter();
+        if (by !== "warden") sfx.clatter();
       }),
       bus.on("mothLanded", () => sfx.named()),
       bus.on("mothLeft", () => sfx.take()),

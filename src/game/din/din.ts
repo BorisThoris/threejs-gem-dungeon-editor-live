@@ -196,12 +196,14 @@ export function arriving(tag: Tag, roomId: string): number {
  * the half a Warden needs, because "there was a noise" is not actionable
  * and "there was a noise in the cistern" is.
  *
- * Returns false and leaves `out` alone when nothing is arriving.
+ * Returns false and leaves `out` alone when nothing is arriving. An impulse
+ * query excludes sustained conditions without teaching the receiver source names.
  */
-export function strongest(out: Arrival, tag: Tag, roomId: string): boolean {
+export function strongest(out: Arrival, tag: Tag, roomId: string, kind: "any" | "impulse" = "any"): boolean {
   let best: Live | null = null;
   let bestAt = 0;
   for (const s of live) {
+    if (kind === "impulse" && s.sustained) continue;
     if (!s.tags.includes(tag)) continue;
     const here = s.reach.get(roomId);
     if (here === undefined) continue;
@@ -229,13 +231,13 @@ export function strongest(out: Arrival, tag: Tag, roomId: string): boolean {
  * consult a susceptibility block, so the "defaults to answering nothing"
  * rule has two places it could be broken and two places to check.
  */
-export function answering(out: Arrival, who: ReceiverId, roomId: string): boolean {
+export function answering(out: Arrival, who: ReceiverId, roomId: string, kind: "any" | "impulse" = "any"): boolean {
   const sus = SUSCEPTIBILITY[who];
   let found = false;
   let bestAt = 0;
   const probe = SCRATCH;
   for (const tag of Object.keys(sus.answers) as Tag[]) {
-    if (!strongest(probe, tag, roomId)) continue;
+    if (!strongest(probe, tag, roomId, kind)) continue;
     if (!answersTo(sus, tag, probe.magnitude)) continue;
     // Compared against the receiver's own threshold, not raw: a Warden a
     // hair over its hearing threshold and well over its fear one is

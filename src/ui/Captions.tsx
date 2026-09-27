@@ -178,6 +178,7 @@ export function Captions() {
       bus.on("wardenLured", () => say("A clatter, far off")),
       bus.on("sentrySaw", ({ pan }) => say(`A watcher calls out${side(pan)}`)),
       bus.on("thiefCame", () => say("Something small skitters in")),
+      bus.on("thiefDistracted", () => say("The Cutpurse turns toward the clatter.")),
       bus.on("thiefTook", ({ gems, key }) => say(`The Cutpurse snatches ${stolenLootLabel(gems, key)}.`)),
       bus.on("thiefFled", ({ gems, key }) => say(`The Cutpurse escapes; ${stolenLootLabel(gems, key)} in its nest.`)),
       bus.on("thiefCaught", ({ gems, key }) => {

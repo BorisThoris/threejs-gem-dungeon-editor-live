@@ -102,7 +102,7 @@ export const SUSCEPTIBILITY: Record<ReceiverId, Susceptibility> = {
   cutpurse: {
     answers: { carried: 0.1, metal: 0.2 },
     deaf: ["bright"],
-    tell: "It comes for what you hold, and it can hear metal.",
+    tell: "It hears the key you carry. A metal clatter turns it aside; once it has stolen something, it runs for the door.",
   },
 
   /**

@@ -53,6 +53,21 @@ try {
       if (sample.glim > 0) assert.equal(sample.sources.find(s => s.source === "lantern").here, sample.glim / 100, "receivers in the destination get the actual band strength");
     }
   }
+  const vaults = await page.evaluate(() => [false, true].map(seal => {
+    const run = window.__run;
+    run.getState().startRun(72);
+    run.getState().roomReady(run.getState().dungeon.startId);
+    run.getState().takeKey(run.getState().dungeon.keyRoomId);
+    run.setState({ relics: seal ? ["cut"] : [] });
+    const opened = run.getState().unlockRoom(run.getState().dungeon.vaultId);
+    return { seal, opened, keys: run.getState().keys, held: window.__din.holding("carried:key") };
+  }));
+  for (const vault of vaults) {
+    assert.equal(vault.opened, true);
+    assert.equal(vault.keys, vault.seal ? 1 : 0);
+    assert.equal(vault.held, vault.keys > 0, "opening a vault only silences a key that was actually spent");
+  }
+  console.log("PASS Company Seal: a retained key remains audible; a spent key does not");
   assert.deepEqual(errors, []);
   console.log("PASS carried signals: full, dim and dark lanterns, key and wisp through entry, descent and restart");
 } finally { await browser.close(); }

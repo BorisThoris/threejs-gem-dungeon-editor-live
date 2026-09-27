@@ -4,14 +4,18 @@ import { Group, Vector3 } from "three";
 
 import { doorPosition } from "../dungeon/layout";
 import { encounterArrival, pursuitArrival } from "../dungeon/arrival";
-import { perceive } from "../ladder/pursuit";
+import { forgetTrail, perceive } from "../ladder/pursuit";
 import { sightLineClear } from "../ladder/sight";
 import * as ladder from "../ladder/state";
 import { playerAt } from "../player/where";
 import { roomSegmentClear, roomStep } from "../dungeon/footprint";
 import { cutpurseAt } from "./position";
 import { DIRS, halfSize, type Dir, type Room } from "../dungeon/types";
-import { canControl, runClock, useRun } from "../state/run";
+import { barsNow, canControl, runClock, useRun } from "../state/run";
+import * as din from "../din/din";
+import { bus } from "../events";
+import { pathAround } from "../warden/bars";
+import { IronKeyModel } from "../props/IronKey";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { floorHeightAt } from "../worldbuilding/elevation";
@@ -56,9 +60,13 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
   const arrivedAt = useRef<number | null>(null);
   const phase = useRun((s) => s.thiefPhase);
   const holding = useRun((s) => s.thiefHolding);
+  const holdingKey = useRun((s) => s.thiefKey);
   const cameFrom = useRun(s => s.thiefCameFrom);
   const remembered = useRef<{ x: number; z: number } | null>(null);
   const scratch = useMemo(() => ({ to: new Vector3() }), []);
+  const heard = useMemo(() => din.emptyArrival(), []);
+  const distracted = useRef(false);
+  const soundRoute = useRef<{ signature: string; at: { x: number; z: number } | null }>({ signature: "", at: null });
 
   /** The doorway it came in by, which is also the one it leaves by. */
   const door = useMemo<{ dir: Dir; at: [number, number] }>(() => {
@@ -102,13 +110,41 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     }
     const sees = roomSegmentClear(room, g.position.x, g.position.z, state.camera.position.x, state.camera.position.z)
       && sightLineClear(g.position, state.camera.position, obstacles);
-    if (sees && run.thiefPhase === "stalking") {
+    // A fresh metal clatter diverts its attention even from visible pockets.
+    // Held possessions are not clatters: otherwise the key in your hands
+    // would drown out every deliberate distraction on the floor.
+    let noise: { x: number; z: number } | null = null;
+    let remoteNoise = false;
+    if (run.thiefPhase === "stalking" && din.answering(heard, "cutpurse", room.id, "impulse")) {
+      if (heard.fromRoomId === room.id) noise = heard;
+      else if (run.dungeon) {
+        const bars = barsNow(run);
+        const signature = `${heard.fromRoomId}:${[...bars].sort().join(",")}`;
+        if (soundRoute.current.signature !== signature) {
+          const route = pathAround(run.dungeon.rooms, room.id, heard.fromRoomId, bars);
+          const dir = DIRS.find(d => room.links[d] === route?.[1]);
+          const at = dir ? doorPosition(room, dir) : null;
+          soundRoute.current = { signature, at: at ? { x: at[0] * 0.9, z: at[2] * 0.9 } : null };
+        }
+        noise = soundRoute.current.at;
+        remoteNoise = !!noise;
+      }
+    }
+    if (noise) {
+      if (!distracted.current) {
+        forgetTrail("cutpurse");
+        ladder.loseTrail("cutpurse");
+        bus.emit("thiefDistracted", { roomId: room.id, fromRoomId: heard.fromRoomId });
+      }
+      ladder.report("cutpurse", 2, false, true, heard.fromRoomId);
+    } else if (run.thiefPhase === "stalking" && (sees || din.reaches("cutpurse", "carried", room.id))) {
       remembered.current = { x: state.camera.position.x, z: state.camera.position.z };
       perceive("cutpurse", room.id, runClock(run));
-      ladder.report("cutpurse", 3, true, true, room.id);
+      ladder.report("cutpurse", sees ? 3 : 2, sees, true, room.id);
     }
+    distracted.current = !!noise;
     if (runClock(run) - arrivedAt.current < 1.5) return;
-    if (run.thiefPhase === "stalking" && !remembered.current) return;
+    if (run.thiefPhase === "stalking" && !noise && !remembered.current) return;
     // The same cap everything that moves on a delta uses. A hitch must not
     // teleport it out of the room with your gem any more than it may
     // teleport the Warden onto you.
@@ -121,10 +157,10 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     const target =
       run.thiefPhase === "fleeing"
         ? { x: door.at[0], z: door.at[1] }
-        : remembered.current!;
+        : noise ?? remembered.current!;
     const dx = target.x - g.position.x;
     const dz = target.z - g.position.z;
-    const distance = Math.hypot(dx, dz) || 1;
+    const distance = Math.hypot(dx, dz);
     g.rotation.y = Math.atan2(dx, dz);
     // It runs rather than drifts: a fast, low scurry with the body dipping.
     g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.abs(Math.sin(t * 14)) * 0.06;
@@ -137,6 +173,9 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
       probe.toPlayer = Math.hypot(cam.x - g.position.x, cam.z - g.position.z);
       probe.phase = run.thiefPhase;
       probe.holding = run.thiefHolding;
+      probe.distracted = noise ? 1 : 0;
+      probe.targetX = target.x;
+      probe.targetZ = target.z;
     }
 
     sfx.skitter(
@@ -159,12 +198,16 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     if (!standing) inHazard.current = false;
     else if (!inHazard.current) {
       inHazard.current = true;
-      if (standing.key) useRun.getState().springSnare(standing.key);
+      if (standing.key) useRun.getState().springSnare(standing.key, "cutpurse");
       useRun.getState().thiefCaught();
       return;
     }
 
     if (run.thiefPhase === "stalking") {
+      if (noise) {
+        if (remoteNoise && distance <= 0.35) useRun.getState().thiefEscapes();
+        return;
+      }
       if (sees && Math.hypot(cam.x - g.position.x, cam.z - g.position.z) <= CUTPURSE_TOUCH_RADIUS
         && roomSegmentClear(room, g.position.x, g.position.z, cam.x, cam.z)) useRun.getState().thiefSteals();
       return;
@@ -225,6 +268,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
           <pointLight color="#7fe6ff" intensity={2.5} distance={3.5} decay={1.6} />
         </group>
       )}
+      {holdingKey && <group position={[0, 0.52, 0.18]} rotation={[0, 0, Math.PI / 3]}><IronKeyModel /></group>}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
         <circleGeometry args={[0.34, 14]} />
         <meshBasicMaterial color="#0b0a10" transparent opacity={0.45} />

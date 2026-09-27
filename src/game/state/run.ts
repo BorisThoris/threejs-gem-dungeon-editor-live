@@ -138,7 +138,7 @@ export interface PlacedDevice {
 }
 
 /** What can set a snare off: the thing it was set for, or something small. */
-export type SnareSpringer = "warden" | "rat";
+export type SnareSpringer = import("../events").BusEvents["snareSprung"]["by"];
 
 /**
  * One line of a named batch: this bottle, the player says, is that potion.

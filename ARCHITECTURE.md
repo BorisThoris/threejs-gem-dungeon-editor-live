@@ -289,6 +289,22 @@ Two stores that both claimed the player's stats. So:
   way it is looking - so both `report` and exactly one caller advances the
   machine. Two callers stepping the same capacitor gives a guard that
   flickers between their two views.
+  The Cutpurse asks Din for declared impulse responses before pursuing
+  pockets. A metal clatter turns it toward the source while the sound remains
+  above its hearing threshold; held metal instead reveals the carrier.
+  Din owns that impulse/held distinction and the thresholds, so the creature
+  never lists keys, rattles or grates by name. Its existing body navigation
+  and hazard list govern the investigation. A sound in another room points
+  it at an open doorway using the existing barred-door route owner; reaching
+  that doorway ends the visit. Turning aside forgets the old player trail,
+  while a thief already escaping with loot ignores new distractions.
+  `cutpurse-distraction-browser-check.mjs` exercises actual drop inputs,
+  physical movement, pause, escape and a rattle leading into a placed snare.
+  A sprung snare names the actual body. Catching the Cutpurse spends the
+  wire and recovers its loot without crediting a wound on a distant Warden.
+  A key kept by the Company Seal remains a carried signal after unlocking;
+  Din reads the remaining inventory rather than treating every vault opening
+  as a spent key. The carried-signals check holds both cases to that rule.
 - **The difference between the creatures is `ladder/caps.ts`, not their
   files.** Every one of them runs the same state machine; a rat is a rat
   because its cap is 2 and a Reaper is a Reaper because its min and max are

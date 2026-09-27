@@ -24,6 +24,11 @@ export function perceive(who: Pursuer, room: string, now: number): void {
   Object.assign(trails[who], { seenRoom: room, seenAt: now });
 }
 
+/** Attention turned elsewhere: an earlier glimpse cannot renew this chase. */
+export function forgetTrail(who: Pursuer): void {
+  trails[who] = fresh();
+}
+
 /** Returns true when another doorway has broken an unfinished chase. */
 export function leaveTrail(who: Pursuer, enemyRoom: string | null, from: string, to: string,
   now: number, detected: boolean): boolean {

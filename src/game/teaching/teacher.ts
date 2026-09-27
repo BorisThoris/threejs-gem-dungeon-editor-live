@@ -93,6 +93,7 @@ export const LESSONS: readonly Lesson[] = [
     line: (_, touch) => `A Cutpurse wants your pockets. Face it and use ${shoveControl(touch)} when close. Catching or shoving it recovers anything it steals.`,
   }),
   lesson({ id: "robbed", event: "thiefFled", line: "It took that to its nest. The nest is on your map - your belongings are not gone, they are somewhere." }),
+  lesson({ id: "thief-metal", event: "thiefDistracted", line: "Metal turns the Cutpurse aside before it steals. Leave while it investigates, or lead it into a snare. You can recover your bait." }),
   // Every time: running out is a thing to be told about whenever it
   // happens, because the answer to it is somewhere else in the room.
   lesson({ id: "dry", event: "lanternOut", every: true, line: (_, touch) => {

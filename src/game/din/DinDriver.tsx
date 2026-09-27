@@ -63,18 +63,25 @@ export function DinDriver() {
       din.strike(id, s.dungeon.rooms, room, x, z, bars, surface);
     };
 
+    const carryKey = () => {
+      const { s, bars } = floor();
+      if (!s.dungeon || !s.currentRoomId) return;
+      if (s.keys > 0) din.hold("carried:key", "carriedKey", s.dungeon.rooms, s.currentRoomId, undefined, 0, 0, bars);
+      else din.release("carried:key");
+    };
+
     /** Rebuild carried facts from their owner, including after a floor reset. */
     const carryIntoRoom = () => {
       const { s, bars } = floor();
       if (!s.dungeon || !s.currentRoomId) return;
       for (const [key, id, active, magnitude] of [
         ["lantern", "lantern", s.glim > 0, s.glim / 100],
-        ["carried:key", "carriedKey", s.keys > 0, undefined],
         ["wisp", "wisp", s.wispOut, undefined],
       ] as const) {
         if (active) din.hold(key, id, s.dungeon.rooms, s.currentRoomId, magnitude, 0, 0, bars);
         else din.release(key);
       }
+      carryKey();
     };
     const resetFloor = () => {
       din.reset();
@@ -128,23 +135,21 @@ export function DinDriver() {
        * something the Cutpurse can hear; putting it in a lock is the
        * loudest legitimate thing on the floor.
        */
-      bus.on("keyTaken", () => {
-        const { s, bars } = floor();
-        if (!s.dungeon || !s.currentRoomId) return;
-        din.hold("carried:key", "carriedKey", s.dungeon.rooms, s.currentRoomId, 1, 0, 0, bars);
-      }),
-      bus.on("vaultOpened", () => din.release("carried:key")),
-      bus.on("thiefTook", ({ key }) => { if (key) din.release("carried:key"); }),
+      bus.on("keyTaken", carryKey),
+      // The Company Seal turns the key without spending it. The inventory,
+      // not the name of the action, decides whether it is still audible.
+      bus.on("vaultOpened", carryKey),
+      bus.on("thiefTook", carryKey),
       /**
        * Metal on stone. It is the loudest thing the player owns that
        * costs nothing to use, and it lands where the key lands rather
        * than where the player ends up - which is the entire point of it.
        */
       bus.on("keyDropped", ({ roomId, x, z }) => {
-        din.release("carried:key");
+        carryKey();
         strike("keyDropped", roomId, x, z);
       }),
-      bus.on("keySetOnPlate", () => din.release("carried:key")),
+      bus.on("keySetOnPlate", carryKey),
 
       /**
        * The lantern is a condition, not an event: it is true for as long

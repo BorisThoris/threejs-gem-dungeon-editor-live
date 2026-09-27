@@ -115,6 +115,8 @@ export interface BusEvents {
   devicePlaced: { id: string; cruel: boolean; roomId?: string; x?: number; z?: number };
   /** Something small has come into the room, and it wants what you carry. */
   thiefCame: { roomId: string };
+  /** A metal clatter pulled its attention away from the player's trail. */
+  thiefDistracted: { roomId: string; fromRoomId: string };
   /** It took gems or the iron key and is running for a doorway. */
   thiefTook: { gems: number; key: boolean };
   /** It made it out with them, and they are in its nest now. */
@@ -212,7 +214,7 @@ export interface BusEvents {
   /** A blast is holding it where it stands. */
   reaperStalled: undefined;
   /** A snare on the floor went off, and what set it off. */
-  snareSprung: { by: "warden" | "rat" };
+  snareSprung: { by: "warden" | "rat" | "cutpurse" };
   /** The moth settled on the raised lantern. */
   mothLanded: undefined;
   /** And left it, carrying the light in the Warden's eye a while. */
