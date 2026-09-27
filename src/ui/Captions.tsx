@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { bus } from "../game/events";
+import { bus, type BusEvents } from "../game/events";
 import { ledgerLessonBy } from "../game/ledger/lessons";
 import { knows } from "../game/state/ledger";
 import { stolenLootLabel } from "../game/thief/loot";
@@ -25,6 +25,12 @@ import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow"
  * a caption only takes the pointer when its full text needs scrolling.
  */
 const HOLD_MS = 2600;
+const WOUND_CAPTIONS: Record<BusEvents["wardenWounded"]["source"], string> = {
+  spikes: "It recoils - the spikes have it",
+  pit: "It stumbles into the pit - move while it recoils",
+  darts: "The darts strike it - move while it recoils",
+  snare: "Your snare catches it - move while it struggles",
+};
 
 /** The cues worth words, and the words. */
 type Line = { text: string; key: number };
@@ -80,7 +86,7 @@ export function Captions() {
       bus.on("wardenNearby", () => say("Footsteps, through the wall")),
       bus.on("wardenEntered", () => say("It is in the room")),
       bus.on("wardenStruck", () => say("It reaches you")),
-      bus.on("wardenWounded", () => say("It recoils - the spikes have it")),
+      bus.on("wardenWounded", ({ source }) => say(WOUND_CAPTIONS[source])),
       bus.on("wardenRouted", () => say("It flees into the dark")),
       bus.on("floorHeat", ({ name }) => say(name)),
       /**

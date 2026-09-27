@@ -120,8 +120,8 @@ export function bitesFor(
   // floor's.
   const pits = trapsFor(room, seed, null).filter((t) => t.kind === "pit" && sprung[t.key] !== undefined);
   return [
-    ...spikes.map(([x, , z]) => ({ x, z, r: HAZARD_RADIUS })),
-    ...pits.map((t) => ({ x: t.x, z: t.z, r: PIT_RADIUS })),
-    ...snaresIn(placed, room.id).map((d) => ({ x: d.x, z: d.z, r: SNARE_RADIUS, key: d.key })),
+    ...spikes.map(([x, , z]) => ({ x, z, r: HAZARD_RADIUS, woundSource: "spikes" as const })),
+    ...pits.map((t) => ({ x: t.x, z: t.z, r: PIT_RADIUS, woundSource: "pit" as const })),
+    ...snaresIn(placed, room.id).map((d) => ({ x: d.x, z: d.z, r: SNARE_RADIUS, key: d.key, woundSource: "snare" as const })),
   ];
 }

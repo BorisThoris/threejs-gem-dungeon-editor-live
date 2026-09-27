@@ -317,6 +317,11 @@ Two stores that both claimed the player's stats. So:
   physical movement, pause, escape and a rattle leading into a placed snare.
   A sprung snare names the actual body. Catching the Cutpurse spends the
   wire and recovers its loot without crediting a wound on a distant Warden.
+  Warden wound events carry their actual cause: spikes, pit, darts or snare.
+  The shared body hazard keeps that cause when an opened pit becomes a
+  permanent patch. Captions read the event rather than calling every wound
+  spikes. The trap combat check follows real dart, pit and placed-snare
+  contact through the event and rendered caption, including an open pit.
   A key kept by the Company Seal remains a carried signal after unlocking;
   Din reads the remaining inventory rather than treating every vault opening
   as a spent key. The carried-signals check holds both cases to that rule.

@@ -9,10 +9,18 @@ try {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
+  await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ captions: true })));
   await page.goto(`http://127.0.0.1:${port}/`);
   await page.waitForFunction(() => !!window.__run && !!window.__traps);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__run.getState().phase === "playing");
+  await page.evaluate(() => {
+    window.__trapCaptions = [];
+    new MutationObserver(() => {
+      const line = document.querySelector('[data-testid="caption"]')?.textContent;
+      if (line && window.__trapCaptions.at(-1) !== line) window.__trapCaptions.push(line);
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  });
   const result = await page.evaluate(async (dartOnly) => {
     const run = window.__run, T = window.__traps, D = window.__derived;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -42,7 +50,8 @@ try {
     window.__bus.emit("teleport", { position: [bait.x, 1.5, bait.z] });
     await wait(400);
     let wounds = 0;
-    const offWound = window.__bus.on("wardenWounded", () => wounds++);
+    const woundSources = [];
+    const offWound = window.__bus.on("wardenWounded", e => { wounds++; woundSources.push(e.source); });
     const sprungBy = [];
     const offSpring = window.__bus.on("trapSprung", (e) => { if (e.kind === "darts") sprungBy.push(e.by); });
     const volleySamples = [];
@@ -60,7 +69,7 @@ try {
     }
     offWound();
     offSpring();
-    out.dart = { wounds, room: dartRoom.id, size: dartRoom.size, entry: dartEntry, plate: [dart.x, dart.z], bait,
+    out.dart = { wounds, woundSources, room: dartRoom.id, size: dartRoom.size, entry: dartEntry, plate: [dart.x, dart.z], bait,
       sprungBy, volleySamples: volleySamples.slice(-15), probe: window.__dartProbe,
       sprungAt: run.getState().sprung[dart.key], clock: D.clock(),
       player: window.__playerDebug && [window.__playerDebug.x, window.__playerDebug.z],
@@ -86,13 +95,16 @@ try {
     const pz = pit.z + (pit.z - entry.z) / span * 1.8;
     window.__bus.emit("teleport", { position: [px, 1.5, pz] });
     await wait(400);
+    const pitWounds = [];
+    const offPitWound = window.__bus.on("wardenWounded", e => pitWounds.push(e.source));
     run.setState({ wardenRoomId: pitRoom.id, wardenCameFrom: entry.id, alarm: 4 });
     const t1 = performance.now();
     while (D.sprung()[pit.key] === undefined && performance.now() - t1 < 30000) {
       run.getState().makeNoise(undefined, px, pz);
       await wait(250);
     }
-    out.pit = { opened: D.sprung()[pit.key] !== undefined, room: pitRoom.id, size: pitRoom.size,
+    offPitWound();
+    out.pit = { opened: D.sprung()[pit.key] !== undefined, woundSources: pitWounds, room: pitRoom.id, size: pitRoom.size,
       entry, patch: [pit.x, pit.z], intendedPlayer: [px, pz],
       player: window.__playerDebug && [window.__playerDebug.x, window.__playerDebug.z],
       warden: window.__warden && { x: window.__warden.x, z: window.__warden.z,
@@ -132,8 +144,10 @@ try {
   console.log(JSON.stringify(result, null, 2));
   assert.equal(errors.length, 0, errors.join("\n"));
   assert.ok(result.dart?.wounds > 0, "visible dart plate lures and wounds the Warden");
+  assert.ok(result.dart.woundSources.includes("darts"), "a live dart volley identifies what wounded the Warden");
   if (!process.argv.includes("--dart-only")) {
     assert.equal(result.pit?.opened, true, "visible pit route opens under the Warden");
+    assert.ok(result.pit.woundSources.includes("pit"), "the opening pit identifies its wound");
     assert.equal(result.harrier?.over, true, "Harrier flies over the spike patch");
     assert.equal(result.harrier?.slain, true, "Harrier downed over spikes is slain");
   }
@@ -174,6 +188,45 @@ try {
     assert.equal(after.sprung, before.sprung, "the open pit retains its original sprung state");
     assert.ok(after.revealed && after.visible && after.damagesBodies, "the opened wall, drawn pit and creature hazard agree");
     console.log(`PASS a player-opened pit persists through secret revelation (seed ${fixture.seed})`);
+
+    // Contact the already opened pit through the Warden's ordinary body
+    // loop. Its cause must survive becoming a permanent floor hazard.
+    await page.evaluate(() => {
+      const run = window.__run, s = run.getState();
+      window.__contactWounds = [];
+      window.__bus.on("wardenWounded", e => window.__contactWounds.push(e));
+      window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+      run.setState({ wardenRoomId: s.currentRoomId, wardenWounds: 0, wardenStaggerUntil: 0, lastDamageAt: Infinity });
+    });
+    await page.waitForFunction(() => !!window.__scene.getObjectByName("creature-warden"));
+    await page.evaluate(pit => window.__scene.getObjectByName("creature-warden").position.set(pit.x, 0, pit.z), fixture.pit);
+    await page.waitForFunction(() => window.__contactWounds.some(e => e.source === "pit"));
+    await page.waitForFunction(() => window.__trapCaptions.some(line => line.includes("stumbles into the pit")));
+
+    // Place the snare through its real slot input, then bring the actual
+    // Warden body into it. No wound or snare event is injected by the test.
+    await page.evaluate(() => window.__run.getState().startRun(11));
+    await page.waitForFunction(() => !window.__run.getState().transitioning);
+    await page.evaluate(() => {
+      const run = window.__run, s = run.getState();
+      window.__contactWounds = [];
+      run.setState({ satchel: ["snare"], wardenRoomId: s.currentRoomId, lastDamageAt: Infinity });
+      window.__bus.emit("teleport", { position: [0, 1.5, 0] });
+    });
+    await page.waitForFunction(() => !!window.__scene.getObjectByName("creature-warden") && Math.hypot(window.__playerDebug.x, window.__playerDebug.z) < .1);
+    await page.keyboard.press("1");
+    await page.waitForFunction(() => window.__run.getState().placed.some(d => d.id === "snare" && d.live));
+    await page.evaluate(() => {
+      const snare = window.__run.getState().placed.find(d => d.id === "snare");
+      window.__bus.emit("teleport", { position: [4, 1.5, 4] });
+      window.__scene.getObjectByName("creature-warden").position.set(snare.x, 0, snare.z);
+    });
+    await page.waitForFunction(() => window.__contactWounds.some(e => e.source === "snare"));
+    await page.waitForFunction(() => window.__trapCaptions.some(line => line.includes("Your snare catches it")));
+    assert.equal(await page.evaluate(() => window.__run.getState().placed.find(d => d.id === "snare").live), false);
+    const captions = await page.evaluate(() => window.__trapCaptions);
+    assert.ok(captions.some(line => line.includes("The darts strike it")), "the live volley rendered its own caption");
+    console.log("PASS wound causes and rendered captions: darts, opening pit, open pit and a real placed snare");
   }
   assert.deepEqual(errors, [], "no browser exceptions after trap lifetime checks");
 } finally { await browser.close(); }

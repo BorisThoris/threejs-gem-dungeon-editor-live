@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
-import { bus } from "../events";
+import { bus, type BusEvents } from "../events";
 import type { DamageSource } from "../player/damage";
 import { footingCarry, type Footing } from "../rooms/underfoot";
 import { generateRunFloor } from "../dungeon/runFloor";
@@ -763,11 +763,10 @@ export interface RunState {
   /** The wisp came out, or went out. Called from the frame loop when the light's visibility changes. */
   setWisp: (out: boolean) => void;
   /**
-   * It walked into something that hurt it: the floor's own spikes, or a
-   * snare the player set. `hold` is how long it reels, which is the only
-   * thing the two differ in.
+   * A trap wounded it. `hold` is how long it reels; `source` preserves
+   * which trap worked so feedback can describe the actual encounter.
    */
-  wardenWounded: (hold?: number) => void;
+  wardenWounded: (hold?: number, source?: BusEvents["wardenWounded"]["source"]) => void;
   /** Take a hit. Returns false if inside the invulnerability window. */
   damage: (source: DamageSource) => boolean;
   gainLife: () => boolean;
@@ -1854,7 +1853,7 @@ export const useRun = create<RunState>()(
       // The charge of the kind that was set, read now rather than stored
       // on the device: the shop can lift a kind after a snare is already
       // on the floor, and the wire in the ground is the same wire.
-      get().wardenWounded(scaled(SNARE_HOLD_S, s.charges.snare));
+      get().wardenWounded(scaled(SNARE_HOLD_S, s.charges.snare), "snare");
     },
 
     thiefArrives: () => {
@@ -2653,7 +2652,7 @@ export const useRun = create<RunState>()(
       bus.emit("reaperStalled");
     },
 
-    wardenWounded: (hold = WARDEN_STAGGER_S) => {
+    wardenWounded: (hold = WARDEN_STAGGER_S, source = "spikes") => {
       const s = get();
       if (!s.wardenRoomId || !s.dungeon || !s.currentRoomId) return;
       const now = runClock(s);
@@ -2666,13 +2665,13 @@ export const useRun = create<RunState>()(
       const wounds = s.wardenWounds + 1;
       if (wounds < WARDEN_WOUNDS_TO_ROUT) {
         set({ wardenWounds: wounds, wardenStaggerUntil: now + hold });
-        bus.emit("wardenWounded", { wounds });
+        bus.emit("wardenWounded", { wounds, source });
         return;
       }
 
       // Routed: thrown across the floor, the count reset, and from here on
       // it knows better.
-      bus.emit("wardenWounded", { wounds });
+      bus.emit("wardenWounded", { wounds, source });
       get().routWarden();
     },
 

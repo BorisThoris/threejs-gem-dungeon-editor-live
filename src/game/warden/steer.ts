@@ -16,6 +16,7 @@
 
 import { roomSegmentClear, roomWaypoint } from "../dungeon/footprint";
 import type { Room } from "../dungeon/types";
+import type { BusEvents } from "../events";
 import { obstacleWaypoint } from "./route";
 
 export interface Patch {
@@ -29,6 +30,8 @@ export interface Patch {
    * down under, so springing it can find it again.
    */
   key?: string;
+  /** A damaging patch retains its cause after a trap has opened. */
+  woundSource?: BusEvents["wardenWounded"]["source"];
   /**
    * The berth this patch demands, when it is not the caller's. A spike
    * patch wants the wide margin the Warden keeps from anything that

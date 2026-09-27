@@ -43,8 +43,8 @@ export interface BusEvents {
   wardenNearby: { roomId: string };
   /** It reached the player. */
   wardenStruck: undefined;
-  /** The floor's own spikes bit it. `wounds` is how many it has taken. */
-  wardenWounded: { wounds: number };
+  /** The trap that actually wounded it, and how many wounds it has taken. */
+  wardenWounded: { wounds: number; source: "spikes" | "pit" | "darts" | "snare" };
   /**
    * Wounded once too often: thrown across the floor, and from now on it
    * walks round what hurt it.

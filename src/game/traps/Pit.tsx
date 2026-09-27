@@ -28,7 +28,7 @@ export function Pit({ room, trap }: { room: Room; trap: Trap }) {
       if (within) {
         if (run.springTrap(trap.key, "pit", "player")) run.damage("pit");
       } else if (wardenAt.roomId === room.id && Math.hypot(wardenAt.x - trap.x, wardenAt.z - trap.z) <= PIT_RADIUS) {
-        if (run.springTrap(trap.key, "pit", "warden")) run.wardenWounded();
+        if (run.springTrap(trap.key, "pit", "warden")) run.wardenWounded(undefined, "pit");
       }
       return;
     }

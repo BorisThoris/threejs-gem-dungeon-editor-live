@@ -364,7 +364,7 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       // A patch that names itself is a snare, and springing it goes through
       // the same door so the two cannot drift apart.
       if (standing.key) useRun.getState().springSnare(standing.key);
-      else useRun.getState().wardenWounded();
+      else useRun.getState().wardenWounded(undefined, standing.woundSource);
     }
   });
 

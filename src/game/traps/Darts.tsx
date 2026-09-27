@@ -70,7 +70,7 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
     }
     if (hitWarden.current !== at && wardenHere && onPlate(wardenAt.x, wardenAt.z)) {
       hitWarden.current = at;
-      run.wardenWounded();
+      run.wardenWounded(undefined, "darts");
     }
   });
 
