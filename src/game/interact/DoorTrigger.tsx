@@ -140,7 +140,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
           <pointLight position={[0, 1.1, 0]} color={SPILL} intensity={1.5} distance={4.5} decay={2} />
         )}
       </group>
-      {target.id === vaultId && <group position={vaultMechanismPosition(room, dir)} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
+      {target.id === vaultId && <group name="vault-mechanism" position={vaultMechanismPosition(room, dir)} rotation={[0, alongZ ? Math.PI / 2 : 0, 0]}>
         <mesh>
           <boxGeometry args={[0.24, 0.48, 0.18]} />
           <meshStandardMaterial color="#80715a" metalness={0.65} roughness={0.6} />
