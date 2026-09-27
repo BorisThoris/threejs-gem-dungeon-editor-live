@@ -16,6 +16,13 @@ same opening without waiting for unrelated state changes. It reads the paused
 run clock and clears only the timed grate, leaving player barricades intact.
 Each mounted grate attempts one drop per visit, so lifting or blocking it
 with wire does not retrigger it every frame. Re-entering re-arms the trap.
+`traps/geometry.ts` owns the bar positions and their contact with floor wire.
+Only a live snare touching that sweep catches the grate. It then becomes a
+committed `holdingDoor` device rather than remaining a creature trap. A nearby
+player can also spend an unlit bomb to jam a dropped grate open. Its device has
+no fuse and cannot detonate. Both holds persist on that door through revisits
+and clear with placed devices on descent. The grate, traversal and feedback
+read that same state; other doorways and player barricades remain independent.
 Its `trapSprung` event owns the falling-metal sound, caption, guidance and
 Din impulse. `doorBarred` means the player constructed a barricade; a trap
 must not also claim construction, hammering or a spent kit. The grate check

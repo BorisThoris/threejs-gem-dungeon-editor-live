@@ -133,7 +133,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "darts", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "player", line: "Step clear while the plate lights. The volley hits whoever stays on it, including the Warden.", sample: { key: "k", kind: "darts", by: "player" } }),
   lesson({ id: "darts-warden", event: "trapSprung", when: ({ kind, by }) => kind === "darts" && by === "warden", line: "The Warden sprang the plate. The floor's traps are yours to use, and they do not care who walks in.", sample: { key: "k", kind: "darts", by: "warden" } }),
   lesson({ id: "pit", event: "trapSprung", when: ({ kind }) => kind === "pit", line: "The floor gave way. It is a spike patch now, for anything that walks - you, the rats, the Warden.", sample: { key: "k", kind: "pit", by: "player" } }),
-  lesson({ id: "grate", event: "trapSprung", when: ({ kind }) => kind === "grate", line: "A grate dropped behind you. That doorway is barred - to it, and to you, until it lifts.", sample: { key: "k", kind: "grate", by: "player" } }),
+  lesson({ id: "grate", event: "trapSprung", when: ({ kind, heldByWire }) => kind === "grate" && !heldByWire, line: "A grate dropped behind you. That doorway is barred - to it, and to you, until it lifts. An unlit bomb can jam it open; wire under the falling bars prevents the drop.", sample: { key: "k", kind: "grate", by: "player" } }),
   lesson({ id: "draft", event: "draftFelt", line: "A draft, from that wall. Something is behind it, and a bomb would find out." }),
   lesson({
     id: "wall",

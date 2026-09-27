@@ -119,7 +119,8 @@ export function Audio() {
       // so the identify-by-use bookkeeping stays in one place - so this
       // takes the cue and the swallow below is told to skip devices.
       bus.on("devicePlaced", ({ cruel }) => (cruel ? sfx.clatter() : sfx.setDown())),
-      bus.on("itemUsed", ({ id, cruel }) => {
+      bus.on("itemUsed", ({ id, cruel, purpose }) => {
+        if (purpose === "grate") return;
         if (ITEMS[id as ItemId]?.family === "device") return;
         if (cruel) sfx.bitter();
         else sfx.drink();

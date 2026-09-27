@@ -9,6 +9,7 @@ import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/wat
 import { serviceCatch } from "../worldbuilding/serviceTrail";
 import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
 import { roomSegmentClear } from "../dungeon/footprint";
+import { gratePosition, reachesGrate } from "../traps/geometry";
 import { doorPosition, vaultMechanismPosition, spawnAfterTravel, spawnAtStart, crackSpot } from "../dungeon/layout";
 import { DIR_STEP, OPPOSITE, roomById, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import {
@@ -137,6 +138,8 @@ export interface PlacedDevice {
   live: boolean;
   /** A bomb's deadline on the run's clock. Only bombs have one. */
   fuseAt?: number;
+  /** A committed device holding this grate edge; it cannot also be a live trap. */
+  holdingDoor?: string;
 }
 
 /** What can set a snare off: the thing it was set for, or something small. */
@@ -706,6 +709,8 @@ export interface RunState {
   unlockRoom: (roomId: string) => boolean;
   /** Spend a Wire Snare at the adjacent vault's exposed mechanism for one entry. */
   wireVault: () => boolean;
+  /** Commit an unlit bomb to holding a nearby, currently dropped grate open. */
+  propGrate: (toRoomId: string) => boolean;
   /** The Warden walks to another room. */
   moveWarden: (roomId: string) => void;
   /** It reached the player: a life, unless the charm pays, and it is thrown back. */
@@ -2448,19 +2453,48 @@ export const useRun = create<RunState>()(
       return true;
     },
 
+    propGrate: (toRoomId) => {
+      const s = get();
+      const here = currentRoom(s);
+      const slot = s.satchel.indexOf("bomb");
+      if (!canControl(s) || !here || slot < 0) return false;
+      const key = barKey(here.id, toRoomId);
+      if (barredNow(s) !== key || s.placed.some(d => d.holdingDoor === key)) return false;
+      const dir = (Object.keys(here.links) as Dir[]).find(dir => here.links[dir] === toRoomId);
+      if (!dir) return false;
+      const [x, , z] = gratePosition(here, dir);
+      if (Math.hypot(playerAt.x - x, playerAt.z - z) > CLOSE_REACH) return false;
+      set({
+        satchel: s.satchel.filter((_, i) => i !== slot),
+        floorRecord: { ...s.floorRecord, spentAnItem: true },
+        placed: [...s.placed, { key: `${key}:prop`, id: "bomb", roomId: here.id, x, z, live: false, holdingDoor: key }],
+        barredDoor: null, barUntil: 0,
+      });
+      bus.emit("devicePlaced", { id: "bomb", cruel: false, roomId: here.id, x, z });
+      bus.emit("itemUsed", { id: "bomb", cruel: false, purpose: "grate" });
+      bus.emit("notice", "The unlit bomb jams this grate open. The bomb stays here.");
+      return true;
+    },
+
     dropGrate: (toRoomId) => {
       const s = get();
-      if (!s.currentRoomId || !s.dungeon) return;
-      const key = barKey(s.currentRoomId, toRoomId);
-      if (key === barredNow(s)) return;
+      const here = currentRoom(s);
+      if (!here || !s.dungeon) return;
+      const dir = (Object.keys(here.links) as Dir[]).find(dir => here.links[dir] === toRoomId);
+      if (!dir) return;
+      const key = barKey(here.id, toRoomId);
+      if (key === barredNow(s) || s.placed.some(d => d.holdingDoor === key)) return;
       /**
        * A snare set in the channel holds it. The snare is briefed as a
        * device that holds a moving thing in place, and a portcullis on
        * its way down is a moving thing - so this is the brief paying out
        * rather than a special case written for the grate.
        */
-      if (snaresIn(s.placed, s.currentRoomId).length > 0) {
-        bus.emit("notice", "The grate comes down on the wire and stops.");
+      const wire = snaresIn(s.placed, here.id).find(d => reachesGrate(here, dir, d.x, d.z, SNARE_RADIUS));
+      if (wire) {
+        set({ placed: s.placed.map(d => d.key === wire.key ? { ...d, live: false, holdingDoor: key } : d) });
+        bus.emit("trapSprung", { key: `${here.id}:grate`, kind: "grate", by: "player", heldByWire: true });
+        bus.emit("notice", "The wire holds this grate up and cannot catch a creature now.");
         return;
       }
       // The trap owns its falling-metal feedback. Player construction has

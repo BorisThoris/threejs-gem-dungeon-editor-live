@@ -2,10 +2,12 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 
 import { doorPosition } from "../dungeon/layout";
+import { InteractTrigger } from "../interact/InteractTrigger";
 import type { Room } from "../dungeon/types";
 import { barredNow, canControl, runClock, useRun } from "../state/run";
 import { barKey } from "../warden/bars";
-import { DOOR_HEIGHT, GROUND_Y } from "../world";
+import { CLOSE_REACH, DOOR_HEIGHT } from "../world";
+import { GRATE_BARS, GRATE_BAR_HALF, gratePosition } from "./geometry";
 import type { Trap } from "./placement";
 
 /** How long after coming in under it the grate drops, on the run's clock: behind you, not on you. */
@@ -32,10 +34,12 @@ export function Grate({ room, trap }: { room: Room; trap: Trap }) {
   const to = room.links[dir];
   const cameUnderIt = useRun((s) => s.currentRoomId === room.id && s.enteredBy === dir);
   const down = useRun((s) => (to ? barredNow(s) === barKey(room.id, to) : false));
+  const held = useRun(s => !!to && s.placed.some(d => d.holdingDoor === barKey(room.id, to)));
+  const hasBomb = useRun(s => s.satchel.includes("bomb"));
 
   useFrame(({ camera }) => {
     const run = useRun.getState();
-    if (!cameUnderIt || !to || down || attempted.current) return;
+    if (!cameUnderIt || !to || down || held || attempted.current) return;
     if (!canControl(run)) return;
     const now = runClock(run);
     if (arrivedAt.current === null) arrivedAt.current = now;
@@ -46,12 +50,17 @@ export function Grate({ room, trap }: { room: Room; trap: Trap }) {
   });
 
   return (
-    <group name="trap-grate" position={[dx * 0.97, GROUND_Y, dz * 0.97]} rotation={[0, alongX ? Math.PI / 2 : 0, 0]}>
+    <group name="trap-grate" position={gratePosition(room, dir)} rotation={[0, alongX ? Math.PI / 2 : 0, 0]}>
+      {down && to && <InteractTrigger position={[0, 1, 0]} radius={CLOSE_REACH}
+        label="Jam the grate open · spend 1 unlit bomb"
+        enabled={hasBomb}
+        blockedReason="The grate will lift. An unlit bomb can jam it open sooner."
+        onInteract={() => useRun.getState().propGrate(to)} />}
       {/* The bars, hanging in the lintel until they drop. */}
-      {[-0.9, -0.45, 0, 0.45, 0.9].map((x) => (
+      {GRATE_BARS.map((x) => (
         <mesh key={x} position={[x, down ? DOOR_HEIGHT / 2 : DOOR_HEIGHT + 0.9, 0]}>
-          <boxGeometry args={[0.08, DOOR_HEIGHT, 0.08]} />
-          <meshStandardMaterial color="#2b2b30" metalness={0.6} roughness={0.5} />
+          <boxGeometry args={[GRATE_BAR_HALF * 2, DOOR_HEIGHT, GRATE_BAR_HALF * 2]} />
+          <meshStandardMaterial color={held ? "#887a58" : "#2b2b30"} metalness={0.6} roughness={0.5} />
         </mesh>
       ))}
     </group>

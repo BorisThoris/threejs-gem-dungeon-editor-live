@@ -174,7 +174,7 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "bomb",
     family: "bomb",
     name: "Black Powder Bomb",
-    blurb: "Set it down and walk. Three seconds. It hurts whatever is near it, and cracked walls do not survive it.",
+    blurb: "Set it down and walk. Three seconds. It hurts whatever is near it, and cracked walls do not survive it. Or leave it unlit to jam a dropped grate open.",
     cruel: false,
   },
 };

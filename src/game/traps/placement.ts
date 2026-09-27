@@ -7,7 +7,7 @@ import { insideRoom } from "../dungeon/footprint";
 import { placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
 import { PIT_RADIUS, WALL_THICKNESS } from "../world";
-import { TRAP_FOOTPRINT } from "./geometry";
+import { gratePosition, TRAP_FOOTPRINT } from "./geometry";
 
 /**
  * Where the floor's traps are, and what each one is to a body.
@@ -91,7 +91,7 @@ export function trapsFor(room: Room, seed: number, endId: string | null): Trap[]
       }
     } else if (kind === "grate" && doors.length >= 2) {
       const dir = doors[Math.floor(rng() * doors.length)];
-      const [dx, , dz] = doorPosition(room, dir);
+      const [dx, , dz] = gratePosition(room, dir);
       out.push({ key: `${room.id}:grate:${dir}`, kind, x: dx, z: dz, dir });
     } else if (kind === "pit") {
       // A spot off every lane, clear of the furniture, and never on what

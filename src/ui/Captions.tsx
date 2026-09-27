@@ -162,10 +162,10 @@ export function Captions() {
       bus.on("keeperStruck", () => say("The Keeper's halberd")),
       bus.on("keeperKnelt", () => say("The Keeper kneels")),
       bus.on("keeperRose", () => say("The Keeper rises")),
-      bus.on("trapSprung", ({ kind, by }) =>
+      bus.on("trapSprung", ({ kind, by, heldByWire }) =>
         say(
           kind === "grate"
-            ? "A grate drops behind you"
+            ? heldByWire ? "Wire catches the falling grate" : "A grate drops behind you"
             : kind === "darts"
               ? by === "warden"
                 ? "A plate clicks under it - darts"

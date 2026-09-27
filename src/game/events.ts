@@ -106,7 +106,7 @@ export interface BusEvents {
   /** Something went into the satchel. */
   itemTaken: { id: string; x?: number; z?: number };
   /** Something came out of it, and is now known for what it was. */
-  itemUsed: { id: string; cruel: boolean; purpose?: "vault" };
+  itemUsed: { id: string; cruel: boolean; purpose?: "vault" | "grate" };
   /** The shopkeeper put a name to something without it being spent. */
   itemNamed: { id: string };
   /** A kind was lifted a step: cursed to plain, or plain to blessed. */
@@ -254,7 +254,7 @@ export interface BusEvents {
   /** A draft of air from a cracked wall, felt for the first time this visit. */
   draftFelt: { roomId: string };
   /** One of the floor's own traps went off, and what set it off. */
-  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden" };
+  trapSprung: { key: string; kind: "darts" | "pit" | "grate"; by: "player" | "warden"; heldByWire?: boolean };
   shrineKept: { roomId: string };
   puzzleOpen: PuzzleRequest;
   puzzleResult: { roomId: string; completed: boolean };

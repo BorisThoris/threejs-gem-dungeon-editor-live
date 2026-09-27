@@ -5,7 +5,7 @@ import { Group } from "three";
 import { SNARE_RADIUS } from "../items/catalog";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { runClock, satchelSlots, useRun, wardNow, type PlacedDevice } from "../state/run";
-import { GROUND_Y } from "../world";
+import { DOOR_HEIGHT, GROUND_Y } from "../world";
 import { floorRiseAt } from "../worldbuilding/elevation";
 
 /**
@@ -56,16 +56,17 @@ function Snare({ device }: { device: PlacedDevice }) {
       }),
     []
   );
-  const colour = device.live ? "#8f9aa8" : "#4a4a52";
+  const holding = !!device.holdingDoor;
+  const colour = holding ? "#b3a06d" : device.live ? "#8f9aa8" : "#4a4a52";
   return (
     <group position={[device.x, GROUND_Y, device.z]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 0]}>
         <ringGeometry args={[SNARE_RADIUS * 0.66, SNARE_RADIUS * 0.78, 24]} />
-        <meshBasicMaterial color={colour} transparent opacity={device.live ? 0.75 : 0.3} />
+        <meshBasicMaterial color={colour} transparent opacity={device.live || holding ? 0.75 : 0.3} />
       </mesh>
       {pegs.map(([x, z], i) => (
-        <mesh key={i} position={[x, device.live ? 0.09 : 0.02, z]}>
-          <boxGeometry args={[0.05, device.live ? 0.18 : 0.04, 0.05]} />
+        <mesh key={i} position={[x, device.live || holding ? 0.09 : 0.02, z]}>
+          <boxGeometry args={[0.05, device.live || holding ? 0.18 : 0.04, 0.05]} />
           <meshStandardMaterial color={colour} metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
@@ -148,7 +149,7 @@ function Bomb({ device }: { device: PlacedDevice }) {
     g.visible = Math.floor(runClock(s) * 14) % 3 !== 0;
   });
   return (
-    <group position={[device.x, GROUND_Y, device.z]}>
+    <group position={[device.x, GROUND_Y + (device.holdingDoor ? DOOR_HEIGHT : 0), device.z]}>
       <mesh position={[0, 0.22, 0]} castShadow>
         <sphereGeometry args={[0.22, 12, 10]} />
         <meshStandardMaterial color="#1c1c20" roughness={0.6} metalness={0.2} />
@@ -156,7 +157,8 @@ function Bomb({ device }: { device: PlacedDevice }) {
       <group ref={fuse} position={[0, 0.44, 0]}>
         <mesh position={[0, 0.12, 0]}>
           <cylinderGeometry args={[0.02, 0.02, 0.24, 6]} />
-          <meshStandardMaterial color="#e8b04a" emissive="#ff7a1a" emissiveIntensity={1.6} />
+          <meshStandardMaterial color={device.holdingDoor ? "#82755d" : "#e8b04a"}
+            emissive="#ff7a1a" emissiveIntensity={device.holdingDoor ? 0 : 1.6} />
         </mesh>
       </group>
     </group>

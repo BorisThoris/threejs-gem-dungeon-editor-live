@@ -115,7 +115,7 @@ export const GATES: readonly Gate[] = [
     id: "grate",
     what: "a dropped grate",
     ways: [
-      "an unlit bomb wedged under it props it",
+      "jam its channel open with an unlit bomb",
       "a snare set in the channel holds it",
     ],
   },

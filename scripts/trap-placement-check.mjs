@@ -44,7 +44,13 @@ for (let seed = 1; seed <= 60; seed++) for (let floor = 1; floor <= 3; floor++) 
     if (JSON.stringify(pits) !== JSON.stringify(L.trapsFor(room, dungeon.seed, null).filter(t => t.kind === "pit"))) failures.push(`${label}: exit context moves pits`);
     for (const trap of traps) {
       counts[trap.kind === "pit" ? "pits" : trap.kind === "darts" ? "darts" : "grates"]++;
-      if (trap.kind === "grate" && room.links[trap.dir] === dungeon.endId) failures.push(`${label}: grate blocks exit`);
+      if (trap.kind === "grate") {
+        if (room.links[trap.dir] === dungeon.endId) failures.push(`${label}: grate blocks exit`);
+        const [x, , z] = L.gratePosition(room, trap.dir);
+        if (trap.x !== x || trap.z !== z) failures.push(`${label}: grate metadata disagrees with its visible bars`);
+        if (!L.reachesGrate(room, trap.dir, x, z, 0)) failures.push(`${label}: the centre bar cannot catch wire`);
+        if (L.reachesGrate(room, trap.dir, 0, 0, 1)) failures.push(`${label}: a grate can catch wire across the room`);
+      }
     }
   }
 }

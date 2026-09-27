@@ -245,6 +245,12 @@ The wire is then unavailable for trapping a pursuer; the key can instead
 weigh a plate, be dropped as a distraction, or pay a shop with the right relic
 pair. The bar drops after entry whichever method you chose.
 
+A floor snare can also catch a falling grate, but only if its wire reaches
+the bars. It then holds that doorway open instead of catching a creature.
+An unlit bomb can jam an already dropped grate open through its interaction
+prompt. Either device stays behind, keeping that grate lifted until you leave
+the floor. Locks and player-built barricades still work independently.
+
 You pick who goes down. Five delvers, each trading one thing the run needs
 for another: the Vagrant brings nothing and owes nothing, the Tomb Robber
 opens with a chart and two gems on a floor that is already stirring, the
