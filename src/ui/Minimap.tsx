@@ -6,26 +6,11 @@ import { useLedger } from "../game/state/ledger";
 import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, text } from "./overlay";
-import { minimapFootprint } from "./minimapGeometry";
+import { mapLayout, minimapFootprint } from "./minimapGeometry";
 import { useCompactViewport } from "../game/input/device";
 
 const SIZE = MINIMAP_SIZE;
-const CELL = 26;
-const GAP = 9;
-const SPACING = CELL + GAP;
-/**
- * The dial pulls back rather than clipping when a floor is too big for it.
- *
- * Floors are 8 rooms at the top of the dungeon and up to 16 at the bottom,
- * and at a fixed spacing the deep ones ran off the rim - so the Robber's
- * Chart, which is bought to see where the gems are, showed less the deeper
- * you went and it mattered most. The spacing shrinks to fit what the player
- * knows, down to a floor where a room is still a readable square.
- */
-const MIN_SPACING = 19;
-/** How far from the middle a room may sit and still be drawn whole. */
-const RIM = SIZE / 2 - CELL / 2 - 4;
-const FADE = "radial-gradient(circle at 50% 50%, #000 58%, transparent 92%)";
+const FADE = "radial-gradient(circle closest-side at 50% 50%, #000 88%, transparent 100%)";
 
 /**
  * The dungeon as the player has seen it, turned to face the way they are.
@@ -41,14 +26,15 @@ const FADE = "radial-gradient(circle at 50% 50%, #000 58%, transparent 92%)";
  * re-rendered at that rate would cost more than it is worth.
  *
  * Rooms are shown once the player has been in one next door, so the map is
- * a record of what has been learned. Two relics add to it: the Warden's
- * Lantern rings the room the Warden is in, the Robber's Chart dots the
- * rooms that still hold a gem.
+ * a record of what has been learned. Mapping and a reported theft add
+ * known rooms. The pause view reads the same knowledge and markers, but
+ * centres the floor and keeps north up so a route can be planned calmly.
  */
 /** One frozen empty list, so a delver without the rod re-renders nothing. */
 const EMPTY: readonly string[] = [];
 
-export function Minimap() {
+export function Minimap({ expanded = false }: { expanded?: boolean }) {
+  const size = expanded ? 360 : SIZE;
   const compact = useCompactViewport();
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
@@ -107,6 +93,7 @@ export function Minimap() {
     return () => window.clearInterval(t);
   }, []);
   const dial = useRef<SVGGElement>(null);
+  const playerHeading = useRef<SVGGElement>(null);
 
   // The map turns to put the player's heading at the top. Smoothed, so a
   // flick of the mouse does not snap the whole dial round.
@@ -126,13 +113,14 @@ export function Minimap() {
       if (delta < -Math.PI) delta += Math.PI * 2;
       shown += delta * 0.25;
       if (dial.current) {
-        dial.current.setAttribute("transform", `rotate(${(shown * 180) / Math.PI})`);
+        dial.current.setAttribute("transform", `rotate(${expanded ? 0 : (shown * 180) / Math.PI})`);
       }
+      if (playerHeading.current) playerHeading.current.setAttribute("transform", `rotate(${expanded ? (-shown * 180) / Math.PI : 0})`);
       raf = requestAnimationFrame(spin);
     };
     raf = requestAnimationFrame(spin);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [expanded]);
 
   const dialled = useMemo(() => {
     if (!dungeon || !currentRoomId) return null;
@@ -151,18 +139,11 @@ export function Minimap() {
     // have walked that far: being told where they went is the point.
     if (nestRoomId) known.add(nestRoomId);
     const shown = dungeon.rooms.filter((r) => known.has(r.id));
-    // Room-grid offsets from the room the player is standing in, and the
-    // spacing that keeps the farthest of them on the dial.
-    const reach = Math.max(
-      1,
-      ...shown.map((r) => Math.max(Math.abs(r.grid.x - here.grid.x), Math.abs(r.grid.z - here.grid.z)))
-    );
-    const spacing = Math.max(MIN_SPACING, Math.min(SPACING, RIM / reach));
-    const cell = CELL * (spacing / SPACING);
+    const { centre, spacing, cell, player } = mapLayout(shown, here, size, expanded);
     const cells = shown.map((r) => ({
       id: r.id,
-      x: (r.grid.x - here.grid.x) * spacing,
-      y: (r.grid.z - here.grid.z) * spacing,
+      x: (r.grid.x - centre.x) * spacing,
+      y: (r.grid.z - centre.z) * spacing,
       state: r.id === currentRoomId ? "here" : seen.has(r.id) ? "seen" : "known",
       footprint: (seen.has(r.id) || mapped || r.id === currentRoomId)
         ? minimapFootprint(r, cell) : null,
@@ -192,31 +173,33 @@ export function Minimap() {
         .filter(([, to]) => to && known.has(to))
         .map(([dir]) => dir),
     }));
-    return { cells, spacing, cell };
-  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned]);
+    return { cells, spacing, cell, player };
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned, size, expanded]);
 
   if (!dialled) return null;
-  const { cells, spacing, cell } = dialled;
+  const { cells, spacing, cell, player } = dialled;
   const playerScale = cells.some((c) => c.state === "here" && c.footprint)
     ? Math.max(0.45, Math.min(0.7, cell / 26 * 0.7)) : 1;
 
   return (
     <div
-      data-testid="minimap"
+      data-testid={expanded ? "floor-map" : "minimap"}
       style={{
-        position: "fixed",
-        top: compact ? 12 : 20,
-        right: compact ? 12 : 20,
-        width: SIZE,
-        height: SIZE,
-        borderRadius: "50%",
+        position: expanded ? "relative" : "fixed",
+        top: expanded ? undefined : compact ? 12 : 20,
+        right: expanded ? undefined : compact ? 12 : 20,
+        width: expanded ? "100%" : size,
+        maxWidth: expanded ? size : undefined,
+        height: expanded ? undefined : size,
+        margin: expanded ? "0 auto" : undefined,
+        borderRadius: expanded ? 6 : "50%",
         background: colors.panel,
         border: `1px solid ${colors.line}`,
         overflow: "hidden",
         fontFamily: FONT,
         pointerEvents: "none",
         zIndex: 900,
-        transform: `scale(${compact ? 0.6 : MINIMAP_SCALE})`,
+        transform: expanded ? undefined : `scale(${compact ? 0.6 : MINIMAP_SCALE})`,
         transformOrigin: "top right",
       }}
     >
@@ -225,21 +208,28 @@ export function Minimap() {
           region is measured against the masked element's bounding box, which
           moves as rooms come and go, so the map would fade unpredictably. */}
       <svg
-        width={SIZE}
-        height={SIZE}
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-hidden={dark}
+        aria-label={expanded ? "Known floor, north up" : "Known rooms, facing forward"}
         style={{
           display: "block",
-          maskImage: FADE,
-          WebkitMaskImage: FADE,
+          width: expanded ? "100%" : undefined,
+          height: expanded ? "auto" : undefined,
+          maskImage: expanded ? undefined : FADE,
+          WebkitMaskImage: expanded ? undefined : FADE,
           opacity: dark ? 0 : 1,
           transition: "opacity 500ms ease",
         }}
       >
-        <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
+        <g transform={`translate(${size / 2} ${size / 2})`}>
           <g ref={dial}>
             {cells.map((c) => (
               <g key={c.id} data-testid="map-room" data-room-id={c.id} data-map-state={c.state}
                 transform={`translate(${c.x} ${c.y})`}>
+                <title>{c.state === "here" ? "You are here" : c.state === "seen" ? "Visited room" : "Unvisited room"}{c.isExit ? ": stairs" : c.isVault ? ": locked vault" : c.isNest ? ": stolen loot" : ""}</title>
                 {c.links.map((dir) => {
                   const dx = dir === "east" ? 1 : dir === "west" ? -1 : 0;
                   const dy = dir === "south" ? 1 : dir === "north" ? -1 : 0;
@@ -321,6 +311,7 @@ export function Minimap() {
                 {c.marked && (
                   <text
                     data-testid="map-mark"
+                    x={expanded ? -cell / 2 - 4 : 0}
                     y={4.5}
                     textAnchor="middle"
                     fontSize={12}
@@ -335,6 +326,7 @@ export function Minimap() {
                     the colour gems are drawn in everywhere else. */}
                 {c.isNest && (
                   <circle
+                    data-testid="map-nest"
                     r={cell / 2 + 2}
                     fill="none"
                     stroke={colors.accent}
@@ -368,15 +360,22 @@ export function Minimap() {
                     fill={colors.danger}
                   />
                 )}
+                {expanded && (c.isExit || c.isVault || c.isNest) && <text
+                  data-testid="map-room-label" textAnchor="middle" y={4} fontSize={11}
+                  fill={c.state === "here" ? onAccent : colors.ink}>
+                  {c.isExit ? "E" : c.isVault ? "V" : "N"}
+                </text>}
               </g>
             ))}
           </g>
         </g>
-        {/* The player: always at the centre, always pointing up. */}
-        <g transform={`translate(${SIZE / 2} ${SIZE / 2})`}>
-          <g data-testid="map-player" transform={`scale(${playerScale})`}>
-            <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={onAccent} stroke={onAccent} strokeWidth={3} />
-            <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
+        {/* The dial turns under you; the north-up pause map turns only your arrow. */}
+        <g transform={`translate(${size / 2 + player.x} ${size / 2 + player.y})`}>
+          <g ref={playerHeading}>
+            <g data-testid="map-player" transform={`scale(${playerScale})`}>
+              <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={onAccent} stroke={onAccent} strokeWidth={3} />
+              <path d="M 0 -9 L 6 7 L 0 3 L -6 7 Z" fill={colors.ink} />
+            </g>
           </g>
         </g>
       </svg>

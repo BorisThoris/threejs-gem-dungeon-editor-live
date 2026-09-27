@@ -2,6 +2,24 @@ import { doorReach, floorRects, wallEdges } from "../game/dungeon/footprint";
 import { DIRS, type Room } from "../game/dungeon/types";
 import { terracesFor, terracePoint } from "../game/worldbuilding/elevation";
 
+/** Fit every known room, including its marker, without clipping at any heading. */
+export function mapLayout(rooms: readonly Room[], here: Room, size: number, expanded = false) {
+  const centre = expanded ? {
+    x: (Math.min(...rooms.map(r => r.grid.x)) + Math.max(...rooms.map(r => r.grid.x))) / 2,
+    z: (Math.min(...rooms.map(r => r.grid.z)) + Math.max(...rooms.map(r => r.grid.z))) / 2,
+  } : here.grid;
+  const reach = Math.max(1, ...rooms.map(r => expanded
+    ? Math.max(Math.abs(r.grid.x - centre.x), Math.abs(r.grid.z - centre.z))
+    : Math.hypot(r.grid.x - centre.x, r.grid.z - centre.z)));
+  const ratio = 26 / 35;
+  // The small dial rotates and is circular: fit radial distance, including
+  // the diagonal of a room. The pause map is north-up and uses its full box.
+  const spacing = Math.min(expanded ? 44 : 35,
+    (size / 2 - 22) / (reach + ratio * (expanded ? 0.5 : Math.SQRT1_2)));
+  return { centre, spacing, cell: spacing * ratio,
+    player: { x: (here.grid.x - centre.x) * spacing, y: (here.grid.z - centre.z) * spacing } };
+}
+
 /** Fit the real floor inside a graph cell, keeping the chamber at its centre. */
 export function minimapFootprint(room: Room, cell: number) {
   const scale = cell / (2 * Math.max(...DIRS.map((dir) => doorReach(room, dir))));

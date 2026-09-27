@@ -506,6 +506,10 @@ ok("Start resumes", !(await someButton(/resume/i)), (await buttons()).join(", ")
 await tap(page, BUTTON.start);
 await page.waitForTimeout(900);
 ok("the pause menu is up to back out of", await someButton(/resume/i), (await buttons()).join(", "));
+ok("the floor map is reachable with the d-pad", await focusOn(page, /^floor map$/i), await focused());
+await tap(page, BUTTON.a);
+ok("A opens the planning map without resuming", await page.evaluate(() =>
+  !!document.querySelector('[data-testid="floor-map"]') && window.__run.getState().paused));
 await tap(page, BUTTON.b);
 await page.waitForTimeout(900);
 ok("B resumes from the pause menu", !(await someButton(/resume/i)), (await buttons()).join(", ") || "no buttons");

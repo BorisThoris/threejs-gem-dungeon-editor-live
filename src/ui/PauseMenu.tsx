@@ -15,11 +15,13 @@ import type { TouchControls } from "../game/state/settings";
 import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
+import { Minimap } from "./Minimap";
 
 const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
 
 /** Esc pauses; the run is untouched underneath and resumes where it was. */
 export function PauseMenu() {
+  const [mapOpen, setMapOpen] = useState(false);
   const resume = useRun((s) => s.resume);
   const quitToMenu = useRun((s) => s.quitToMenu);
   // B resumes, which is what backing out of a pause menu means.
@@ -33,6 +35,20 @@ export function PauseMenu() {
         <button style={button} data-testid="pause-resume" onClick={resume}>
           Resume
         </button>
+        <button style={secondaryButton} data-testid="pause-map" aria-expanded={mapOpen}
+          aria-controls="pause-floor-map" onClick={() => setMapOpen(open => !open)}>
+          {mapOpen ? "Hide floor map" : "Floor map"}
+        </button>
+        {mapOpen && <div id="pause-floor-map" style={{ marginBottom: 16 }}>
+          <Minimap expanded />
+          <p style={{ ...body, fontSize: text.small, marginBottom: 6 }}>
+            North up. The arrow is you. Only visited or mapped rooms show their outline.
+          </p>
+          <p style={{ ...body, fontSize: text.small, marginBottom: 0 }}>
+            E stairs · V locked vault · N stolen loot · ? your mark.<br />
+            Broken ring: Harrier roost. Bar across the stairs: Keeper.
+          </p>
+        </div>}
         {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
         <Naming />
         <Options />

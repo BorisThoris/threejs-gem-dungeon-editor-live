@@ -1008,6 +1008,16 @@ Two stores that both claimed the player's stats. So:
   the harrier's roost, the stairs the Keeper holds - is on the minimap
   too, because a readout and a map that disagree about what is worth
   knowing are two readouts.
+  `Minimap` also draws the north-up floor map opened from the pause menu;
+  both views share the same room knowledge, outlines, marks and Gloom state.
+  The pause view centres the known floor and turns the player's arrow;
+  the small dial centres the player and turns the floor. `mapLayout` in
+  `ui/minimapGeometry.ts` fits the entire known layout, using radial reach
+  for the rotating dial rather than a minimum zoom that clips distant rooms.
+  `map-navigation-browser-check.mjs` uses a real Mapping scroll on a long
+  floor, checks orientation and phone sizing, and verifies that route planning
+  preserves pause, private room shapes, player marks and Gloom. The pad check
+  opens the map through the same pause button using the d-pad and A.
 - Everything that can take a life publishes `tell`, nought to one: how near
   it is to doing it. The body shows that number and the checks read it, so a
   warning cannot be true on screen and false in a test.
