@@ -27,7 +27,10 @@ try {
   await page.keyboard.down("ShiftLeft");
   await page.keyboard.down("KeyW");
   try {
-    await page.waitForFunction(() => window.__derived.hears() && window.__derived.hunts(), null, { timeout: 5000 });
+    // Hearing can become true before the physics probe reports the first
+    // tenth of a metre. Keep the keys held until both promises are observed.
+    await page.waitForFunction(() => window.__derived.hears() && window.__derived.hunts() &&
+      Math.hypot(window.__playerDebug.x, window.__playerDebug.z) > 0.1, null, { timeout: 5000 });
   } finally {
     await page.keyboard.up("KeyW");
     await page.keyboard.up("ShiftLeft");
