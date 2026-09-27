@@ -392,6 +392,11 @@ Two stores that both claimed the player's stats. So:
   Device placement records spending only when the item actually leaves the
   satchel. A snare refused by glazed ground keeps the Unspent pledge; the
   store-level layout check covers both slot use and direct placement.
+  `rooms/anchors.ts` owns the three vow-stone positions. They fit the room's
+  actual floor, stay out of travel lanes and stand apart from the font and
+  one another. Rendering, prompts, reward placement and furniture reservations
+  all read them. Each offer has a visible stone; the browser check selects all
+  three through real prompts in ordinary and revealed hidden shrines.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Everything that makes a sound from somewhere needs it - the
   Warden through a wall, a Sentry from its post, every creature's held

@@ -1,5 +1,12 @@
 import { centreSpots, inDoorLane, quadrantSpots, type Vec3 } from "../dungeon/layout";
 import { diagonalReach, type Room, type RoomKind } from "../dungeon/types";
+import { insideRoom } from "../dungeon/footprint";
+import { floorRiseAt } from "../worldbuilding/elevation";
+import { secretStoryFor } from "../dungeon/secret";
+import { PLEDGES } from "../heat/pledge";
+import { CLOSE_REACH } from "../world";
+import { authoredProps } from "./templates";
+import { PROP_SPECS } from "../props/specs";
 import { challengeAnchors, memoryAnchors } from "../puzzles/anchors";
 
 /**
@@ -146,6 +153,33 @@ export const shrineAnchor = (room: Room): Vec3 => {
   return quadrantSpots(room, "far")[0];
 };
 
+/** The three promises offered beside the font, in pledge catalogue order. */
+export const VOW_CLEARANCE = 0.8;
+export const vowAnchors = (room: Room): Vec3[] => {
+  if (room.kind === "secret" && secretStoryFor(room, room.seed).flavour !== "shrine") return [];
+  const at = shrineAnchor(room);
+  const authored = authoredProps(room);
+  const candidates: Vec3[] = [];
+  for (const radius of [2.4, 4, 5.6]) for (let angle = 0; angle < 16; angle++) {
+    const radians = angle * Math.PI / 8;
+    candidates.push([at[0] + Math.cos(radians) * radius, 0, at[2] + Math.sin(radians) * radius]);
+  }
+  candidates.push(...centreSpots(room), ...quadrantSpots(room, "near"), ...quadrantSpots(room, "far"));
+  const chosen: Vec3[] = [];
+  for (const point of candidates) {
+    const [x, , z] = point;
+    if (!insideRoom(room, x, z, VOW_CLEARANCE) || inDoorLane(x, z, room) || floorRiseAt(room, x, z) !== 0) continue;
+    if (Math.hypot(x - at[0], z - at[2]) < CLOSE_REACH) continue;
+    // Keep an authored composition whole instead of filtering its props away.
+    if (authored.some(p => Math.hypot(x - p.x, z - p.z) <
+      Math.max(VOW_CLEARANCE * 2, VOW_CLEARANCE + PROP_SPECS[p.kind].radius * (p.scale ?? 1)))) continue;
+    if (chosen.some(p => Math.hypot(x - p[0], z - p[2]) < 2)) continue;
+    chosen.push(point);
+    if (chosen.length === PLEDGES.length) break;
+  }
+  return chosen;
+};
+
 /** The lectern the number puzzle is read from. */
 export const libraryLectern = (room: Room): Vec3 => quadrantSpots(room, "near")[3];
 
@@ -157,10 +191,10 @@ export const RESERVED_ANCHORS: Partial<Record<RoomKind, (room: Room) => Vec3[]>>
   library: (room) => [libraryLectern(room)],
   memory: memoryAnchors,
   challenge: challengeAnchors,
-  shrine: (room) => [shrineAnchor(room)],
+  shrine: (room) => [shrineAnchor(room), ...vowAnchors(room)],
   // Every hidden-room reward uses the shrine's one legal focal point: the
   // relic stand, font and story marks all leave the same aisle around it.
-  secret: (room) => [shrineAnchor(room)],
+  secret: (room) => [shrineAnchor(room), ...vowAnchors(room)],
 };
 
 /** The anchors this room's kind has claimed for its own content. */

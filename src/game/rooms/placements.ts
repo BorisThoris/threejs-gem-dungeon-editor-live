@@ -27,6 +27,7 @@ import { secretStoryFor } from "../dungeon/secret";
 import { insideRoom } from "../dungeon/footprint";
 import { isUnlitRoom } from "../lighting/field";
 import { PLAYER_CAPSULE_RADIUS, WALL_THICKNESS } from "../world";
+import { vowAnchors, VOW_CLEARANCE } from "./anchors";
 
 
 /** How close a prop may stand to the gem or to the kind's own content. */
@@ -111,6 +112,7 @@ export interface DressingOptions {
 export function placementsFor(room: Room, seed: number, opts: DressingOptions = {}): PropPlacement[] {
   const authored = authoredProps(room);
   const reserved = reservedAnchors(room);
+  const vows = room.kind === "shrine" || room.kind === "secret" ? vowAnchors(room) : [];
   const gem = gemFor(room, seed);
   const spikes = room.kind === "trap" && gem ? trapHazards(room, gem) : [];
 
@@ -163,6 +165,7 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     if (solid && inDoorLane(p.x, p.z, room)) return false;
     if (solid && CATALOG[p.kind].radius > 0.2 && hidesACrystal(p)) return false;
     if (reserved.some((a) => near2(p, a, CLEAR_OF_CONTENT))) return false;
+    if (solid && vows.some(a => near2(p, a, VOW_CLEARANCE + CATALOG[p.kind].radius * (p.scale ?? 1)))) return false;
     if (opts.sentry && near2(p, opts.sentry, CLEAR_OF_SENTRY)) return false;
     if (opts.key && near2(p, opts.key, CLEAR_OF_KEY)) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;

@@ -4435,6 +4435,32 @@ check("the shipped room templates reach the floors the game generates", authored
     );
   }
 
+  // Every physical pledge choice needs a distinct, exposed place to stand.
+  {
+    let shrines = 0;
+    const failures = [];
+    for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
+      const d = L.generateRunFloor(seed, floor);
+      for (const original of d.rooms.filter(r => r.kind === "shrine" || r.kind === "secret")) {
+        if (original.kind === "secret" && L.secretStoryFor(original, d.seed).flavour !== "shrine") continue;
+        const host = d.rooms.find(r => r.secret?.to === original.id);
+        const room = host?.secret ? { ...original, links: { ...original.links, [L.OPPOSITE[host.secret.dir]]: host.id } } : original;
+        const spots = L.vowAnchors(room), font = L.shrineAnchor(room);
+        const props = L.placementsFor(room, d.seed);
+        shrines++;
+        if (spots.length !== L.PLEDGES.length) failures.push(`${seed}/${floor}/${room.id}: missing choices`);
+        for (const [i, [x, , z]] of spots.entries()) {
+          if (!L.insideRoom(room, x, z, L.VOW_CLEARANCE) || L.inDoorLane(x, z, room)) failures.push(`${seed}/${floor}/${room.id}: outside or in lane`);
+          if (Math.hypot(x - font[0], z - font[2]) < L.CLOSE_REACH) failures.push(`${seed}/${floor}/${room.id}: competes with font`);
+          if (spots.some((p, j) => i !== j && Math.hypot(x - p[0], z - p[2]) < 2)) failures.push(`${seed}/${floor}/${room.id}: choices overlap`);
+          if (props.some(p => L.PROP_SPECS[p.kind].solid && Math.hypot(x - p.x, z - p.z) < L.PROP_SPECS[p.kind].radius * (p.scale ?? 1) + L.PLAYER_CAPSULE_RADIUS)) failures.push(`${seed}/${floor}/${room.id}: furniture blocks choice`);
+        }
+      }
+    }
+    check("every shrine and revealed hidden shrine has all three exposed pledge choices", failures.length === 0,
+      `${shrines} rooms; ${failures.length} failures ${failures.slice(0, 5).join("; ")}`);
+  }
+
   // A room looks the same every time you walk back into it.
   const a = L.biomeIdFor("normal", "room_3", 4242);
   const b = L.biomeIdFor("normal", "room_3", 4242);

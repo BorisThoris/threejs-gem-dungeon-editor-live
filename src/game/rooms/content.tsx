@@ -35,8 +35,8 @@ const NAMING_PRICE = 1;
  */
 const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
-import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, type ShopOfferId } from "./anchors";
-import { offered, pledgeCost } from "../heat/pledge";
+import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, vowAnchors, type ShopOfferId } from "./anchors";
+import { PLEDGES, pledgeCost } from "../heat/pledge";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 import { SecretHistory } from "../worldbuilding/SecretHistory";
 // Room layouts that ship with the game register themselves.
@@ -463,7 +463,7 @@ function Shrine({ room }: RoomKindProps) {
         * rather than a second reading of the same press, on the same
         * arbitration the shop's counter uses.
         */}
-      <Vow room={room} at={at} />
+      <Vow room={room} />
     </>
   );
 }
@@ -477,32 +477,36 @@ function Shrine({ room }: RoomKindProps) {
  * player clears it. A pledge that stayed the same price would be a
  * difficulty setting with extra words.
  */
-function Vow({ room, at }: { room: Room; at: readonly [number, number, number] }) {
+function Vow({ room }: { room: Room }) {
   const pledge = useRun((s) => s.pledge);
   const kept = useRun((s) => s.pledgesKept);
-  const choices = offered(pledge);
   const cost = pledgeCost(kept);
-  const spot: [number, number, number] = [at[0] + VOW_OFF, 0, at[2] + VOW_OFF];
+  const spots = vowAnchors(room);
   return (
     <>
-      {/* A leaning marker stone, so there is something to walk up to. */}
-      <mesh position={[spot[0], 0.62, spot[2]]} rotation={[0, 0.4, 0.06]} castShadow>
-        <boxGeometry args={[0.5, 1.24, 0.22]} />
-        <meshStandardMaterial color={pledge ? "#7b6a4a" : "#575249"} roughness={0.95} />
-      </mesh>
-      {choices.map((p, i) => (
-        <InteractTrigger
-          key={p.id}
-          position={[spot[0] + (i - 1) * VOW_SPREAD, 0, spot[2]]}
+      {PLEDGES.map((p, i) => spots[i] && <group key={p.id} position={spots[i]}
+        rotation={[0, Math.atan2(-spots[i][0], -spots[i][2]), 0]}>
+        <mesh position={[0, 0.62, 0]} rotation={[0, 0, 0.06]} castShadow>
+          <boxGeometry args={[0.5, 1.24, 0.22]} />
+          <meshStandardMaterial color={pledge === p.id ? "#bca16a" : "#575249"} roughness={0.95} />
+        </mesh>
+        {Array.from({ length: i + 1 }, (_, mark) => <mesh key={mark} position={[(mark - i / 2) * 0.12, 0.97, 0.15]}>
+          <boxGeometry args={[0.055, 0.2, 0.05]} />
+          <meshStandardMaterial color="#c6b078" roughness={0.85} />
+        </mesh>)}
+      </group>)}
+      {PLEDGES.map((p, i) => spots[i] && !pledge && (
+        <InteractTrigger key={p.id}
+          position={spots[i]}
           label={`Swear ${p.name} - ${p.vow}. ${cost} alarm now, ${p.pays} gems at the stair`}
           enabled
           radius={CLOSE_REACH}
           onInteract={() => useRun.getState().takePledge(p.id)}
         />
       ))}
-      {pledge && (
+      {pledge && spots[PLEDGES.findIndex(p => p.id === pledge)] && (
         <InteractTrigger
-          position={spot}
+          position={spots[PLEDGES.findIndex(p => p.id === pledge)]}
           label="You have sworn on this floor already"
           enabled={false}
           blockedReason="One promise a floor. Keep this one first."
@@ -513,10 +517,6 @@ function Vow({ room, at }: { room: Room; at: readonly [number, number, number] }
     </>
   );
 }
-
-/** How far off the basin the vow stone stands, and how far apart its three. */
-const VOW_OFF = 2.4;
-const VOW_SPREAD = 1.4;
 
 registerRoomKind("shrine", Shrine);
 
