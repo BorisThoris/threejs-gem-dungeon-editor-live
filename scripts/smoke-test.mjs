@@ -5683,7 +5683,8 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     {
       const s = run.getState();
       const plate = s.dungeon.rooms.find((r) => r.kind === "challenge") ?? s.dungeon.rooms[0];
-      run.setState({ keys: 1, keyOnPlateIn: null });
+      run.setState({ keys: 1, keyOnPlateIn: null,
+        cleared: s.cleared.filter(id => id !== plate.id), failed: s.failed.filter(id => id !== plate.id) });
       const set = run.getState().setKeyOnPlate(plate.id) === true;
       out.heavy = { set, on: run.getState().keyOnPlateIn === plate.id, spent: run.getState().keys === 0 };
       run.setState({ keyOnPlateIn: null });

@@ -1727,6 +1727,17 @@ the store it is writing to.
   from the outcome under test. Exposed as a probe, the approach is
   arithmetic: a drop lands 1.4 metres ahead and snaps to the plate from 1.5,
   so standing 2.6 out is inside the snap and outside the altar's body.
+  The optional key sacrifice reads that same live weight result: once a
+  candle holds the plate, its coincident key trigger withdraws so the next
+  press takes the idol. Solved and sprung plates also withdraw the offer;
+  the store refuses key spending on either finished outcome. The focused
+  plate-choice check plays both solutions with a key in hand and confirms
+  that a candle preserves it while the key solution spends it once.
+  Carryable positions remain frame data, while the carried object ID has a
+  shared subscription. Every carry prompt observes pickup, put-down and
+  room-unmount cleanup, so leaving with an idol cannot leave the next room's
+  objects claiming the player's hands are full. The same check returns to a
+  solved room and starts another puzzle while the previous idol is carried.
 - The fill that walks a room reaches the anchors a kind's own content stands
   on as well as the gem - the plate, the lectern, the four pedestals, the
   shop counter. The dressing keeps its props off them, which is not the same

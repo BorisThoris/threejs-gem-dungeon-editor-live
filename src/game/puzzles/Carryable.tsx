@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- `carry` is the
    registry the component writes to and plates read from; they belong together. */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 
@@ -12,13 +12,24 @@ import { GROUND_Y } from "../world";
  *
  * Module data rather than store state: positions change every frame while
  * something is carried, and nothing needs to re-render for that. Plates and
- * puzzles read positions from here.
+ * puzzles read positions from here. Only changes to the carried identity
+ * notify the interaction prompts, including when its room unmounts.
  */
 const positions = new Map<string, Vector3>();
 let carriedId: string | null = null;
+const carryListeners = new Set<() => void>();
+const setCarriedId = (id: string | null) => {
+  if (carriedId === id) return;
+  carriedId = id;
+  carryListeners.forEach(listener => listener());
+};
 
 export const carry = {
   carriedId: (): string | null => carriedId,
+  subscribe(listener: () => void): () => void {
+    carryListeners.add(listener);
+    return () => { carryListeners.delete(listener); };
+  },
   isCarried: (id: string): boolean => carriedId === id,
   positionOf: (id: string): Vector3 | undefined => positions.get(id),
   /** How many carryables rest (not carried) within `radius` of a point, `except` one. */
@@ -73,7 +84,8 @@ const DROP_DISTANCE = 1.4;
  */
 export function Carryable({ id, name, purpose, position, children, onPickUp, snapDrop }: CarryableProps) {
   const group = useRef<Group>(null);
-  const [carried, setCarried] = useState(false);
+  const heldId = useSyncExternalStore(carry.subscribe, carry.carriedId, carry.carriedId);
+  const carried = heldId === id;
   const rest = useRef(new Vector3(...position));
   const scratch = useMemo(() => ({ forward: new Vector3(), aim: new Vector3() }), []);
 
@@ -81,7 +93,7 @@ export function Carryable({ id, name, purpose, position, children, onPickUp, sna
     positions.set(id, rest.current.clone());
     return () => {
       positions.delete(id);
-      if (carriedId === id) carriedId = null;
+      if (carriedId === id) setCarriedId(null);
     };
   }, [id]);
 
@@ -107,8 +119,7 @@ export function Carryable({ id, name, purpose, position, children, onPickUp, sna
 
   const pickUp = () => {
     if (carriedId) return;
-    carriedId = id;
-    setCarried(true);
+    setCarriedId(id);
     onPickUp?.();
   };
 
@@ -123,8 +134,7 @@ export function Carryable({ id, name, purpose, position, children, onPickUp, sna
     );
     const snapped = snapDrop?.(scratch.aim);
     rest.current.copy(snapped ?? scratch.aim);
-    carriedId = null;
-    setCarried(false);
+    setCarriedId(null);
   };
 
   return (
@@ -134,7 +144,7 @@ export function Carryable({ id, name, purpose, position, children, onPickUp, sna
         name={name}
         purpose={purpose}
         carried={carried}
-        someoneElseCarried={!carried && carriedId !== null}
+        someoneElseCarried={!carried && heldId !== null}
         onPickUp={pickUp}
         onPutDown={putDown}
       />

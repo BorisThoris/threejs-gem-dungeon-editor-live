@@ -2328,7 +2328,7 @@ export const useRun = create<RunState>()(
 
     setKeyOnPlate: (roomId) => {
       const s = get();
-      if (s.keys < 1 || s.keyOnPlateIn !== null) return false;
+      if (s.keys < 1 || s.keyOnPlateIn !== null || s.cleared.includes(roomId) || s.failed.includes(roomId)) return false;
       set({ keys: s.keys - 1, keyOnPlateIn: roomId });
       bus.emit("keySetOnPlate", { roomId });
       return true;

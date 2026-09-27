@@ -121,7 +121,7 @@ export function ChallengeRoom({ room }: RoomKindProps) {
 
       {/* The altar and its plate. */}
       <group position={plate}>
-        <PlateKey roomId={room.id} />
+        <PlateKey roomId={room.id} needed={outcome === "pending" && !safeNow} />
         <RigidBody type="fixed" colliders={false}>
           <mesh position={[0, 0.17, 0]} castShadow>
             <cylinderGeometry args={[1.3, 1.4, 0.34, 16]} />
@@ -198,13 +198,13 @@ export function ChallengeRoom({ room }: RoomKindProps) {
 /**
  * Setting the key on the plate.
  *
- * Offered only while there is a key in hand and the plate does not already
- * have one on it. The press spends the key for good: the plate keeps it,
+ * Offered only while the unsolved plate still needs weight and there is
+ * a key in hand. The press spends the key for good: the plate keeps it,
  * and the vault upstairs has to be opened one of its other two ways. That
  * trade is only honest because the gate audit made those other two ways
  * real, which is the argument for auditing per gate written as code.
  */
-function PlateKey({ roomId }: { roomId: string }) {
+function PlateKey({ roomId, needed }: { roomId: string; needed: boolean }) {
   const keys = useRun((s) => s.keys);
   const already = useRun((s) => s.keyOnPlateIn === roomId);
   if (already) {
@@ -215,7 +215,9 @@ function PlateKey({ roomId }: { roomId: string }) {
       </mesh>
     );
   }
-  if (keys < 1) return null;
+  // A candle already paid the weight requirement. The coincident key
+  // trigger must not steal the idol's press or spend a key on a spent trap.
+  if (keys < 1 || !needed) return null;
   return (
     <InteractTrigger
       position={[0, 0.5, 0]}
