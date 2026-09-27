@@ -73,8 +73,16 @@ const out = await page.evaluate(async () => {
   const before = (window.__rats ?? []).map((r) => ({ x: r.x, z: r.z, startled: r.startled }));
   const calm = before.every((r) => !r.startled);
   window.__bus.emit("propBroken", { roomId: ratRoom.id, kind: "barrel", key: "probe:barrel" });
-  await wait(250);
-  const during = (window.__rats ?? []).map((r) => ({ x: r.x, z: r.z, startled: r.startled }));
+  // The receiver runs on a rendered frame. A 250 ms snapshot can precede
+  // that frame under software rendering even though the rats then flee.
+  // Observe the actual response, retaining a bounded failure when absent.
+  let during = [];
+  const reactionDeadline = performance.now() + 4000;
+  do {
+    await wait(50);
+    during = (window.__rats ?? []).filter(r => r.room === ratRoom.id)
+      .map(r => ({ x: r.x, z: r.z, startled: r.startled }));
+  } while (!during.some(r => r.startled) && performance.now() < reactionDeadline);
   await wait(900);
   const after = (window.__rats ?? []).map((r) => ({ x: r.x, z: r.z, startled: r.startled }));
   const moved = before.map((b, i) => Math.hypot((after[i]?.x ?? b.x) - b.x, (after[i]?.z ?? b.z) - b.z));
