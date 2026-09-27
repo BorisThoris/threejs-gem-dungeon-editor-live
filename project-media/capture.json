@@ -1,6 +1,6 @@
 {
   "slug": "threejs-gem-dungeon-editor",
-  "capturedAt": "2026-09-27T12:47:47.614Z",
+  "capturedAt": "2026-09-27T12:52:25.688Z",
   "source": "deployment",
   "url": "https://threejs-gem-dungeon-editor-git.pages.dev/",
   "recipe": {
@@ -55,14 +55,14 @@
       "file": "card.jpg",
       "width": 1600,
       "height": 900,
-      "bytes": 170650,
+      "bytes": 172175,
       "status": "captured",
       "stats": {
-        "mean": 51,
-        "std": 28,
-        "dark": 0.011,
+        "mean": 49,
+        "std": 38,
+        "dark": 0.162,
         "light": 0,
-        "colours": 19
+        "colours": 30
       }
     },
     {
@@ -70,14 +70,14 @@
       "file": "desktop.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 146353,
+      "bytes": 217242,
       "status": "captured",
       "stats": {
-        "mean": 56,
-        "std": 45,
-        "dark": 0.172,
+        "mean": 58,
+        "std": 42,
+        "dark": 0.138,
         "light": 0,
-        "colours": 31
+        "colours": 33
       }
     },
     {
@@ -85,17 +85,17 @@
       "file": "mobile.jpg",
       "width": 430,
       "height": 932,
-      "bytes": 62064,
+      "bytes": 47574,
       "status": "captured",
       "stats": {
-        "mean": 65,
-        "std": 59,
-        "dark": 0.32,
+        "mean": 44,
+        "std": 51,
+        "dark": 0.495,
         "light": 0,
-        "colours": 52
+        "colours": 42
       },
       "skipped": [
-        "action failed (take the pointer): locator.click: Timeout 15000ms exceeded."
+        "optional step skipped (take the pointer): locator.click: Timeout 15000ms exceeded."
       ]
     },
     {
@@ -103,14 +103,14 @@
       "file": "full.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 140949,
+      "bytes": 136606,
       "status": "captured",
       "stats": {
-        "mean": 49,
-        "std": 37,
-        "dark": 0.124,
+        "mean": 48,
+        "std": 22,
+        "dark": 0.017,
         "light": 0,
-        "colours": 26
+        "colours": 23
       }
     },
     {
@@ -118,14 +118,14 @@
       "file": "og.jpg",
       "width": 1200,
       "height": 630,
-      "bytes": 132300,
+      "bytes": 122360,
       "status": "captured",
       "stats": {
-        "mean": 54,
-        "std": 37,
-        "dark": 0.1,
+        "mean": 48,
+        "std": 36,
+        "dark": 0.146,
         "light": 0,
-        "colours": 25
+        "colours": 23
       }
     }
   ]
