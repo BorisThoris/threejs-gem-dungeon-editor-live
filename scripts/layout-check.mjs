@@ -24,6 +24,7 @@ writeFileSync(
   // validating dungeons the game never builds.
   `import "${root}src/game/rooms/shipped";
    export * from "${root}src/game/dungeon/layout";
+   export * as din from "${root}src/game/din/din";
    export * from "${root}src/game/dungeon/footprint";
    export * from "${root}src/game/dungeon/generate";
    export * from "${root}src/game/dungeon/runFloor";
@@ -5242,6 +5243,25 @@ check("the shipped room templates reach the floors the game generates", authored
 
   check("a sound halves every two and a half seconds", Math.abs(L.aged(1, L.HALF_LIFE_S) - 0.5) < 1e-9);
   check("and is gone, rather than ending on a frame boundary at 0.01", L.aged(1, 30) < L.AUDIBLE);
+
+  // Sustained facts belong to their owners, not to the impulse buffer.
+  L.din.reset();
+  const held = [["lamp", "lantern"], ["key", "carriedKey"], ["helper", "wisp"]];
+  for (const [key, id] of held) L.din.hold(key, id, four, "r0");
+  for (let i = 0; i < 128; i++) L.din.strike("keyDropped", four, four[0], i, 0);
+  check("an overflowing sound history cannot erase ongoing lantern, key or wisp signals",
+    held.every(([key]) => L.din.holding(key)) && L.din.arriving("bright", "r0") === 1);
+  check("impulse overflow stays bounded independently of ongoing sources", L.din.liveCount() === 51);
+  const newest = L.din.emptyArrival();
+  L.din.strongest(newest, "metal", "r0", "impulse");
+  check("overflow forgets oldest impulses rather than dropping new events", newest.x === 80, `${newest.x}`);
+  L.din.hold("lamp", "lantern", four, "r0", 0.51);
+  check("re-holding a source replaces it without duplicates even at capacity", L.din.liveCount() === 51);
+  L.din.advance(200);
+  check("expired impulses leave exactly the ongoing sources", L.din.liveCount() === held.length);
+  L.din.release("lamp");
+  check("only the owner releasing a held source extinguishes it", !L.din.holding("lamp") && L.din.liveCount() === 2);
+  L.din.reset();
 
   /**
    * The two facts a player can actually plan against, and the reason the

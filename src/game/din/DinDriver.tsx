@@ -89,6 +89,16 @@ export function DinDriver() {
     };
 
     const off = [
+      // Route changes are store facts, including grate expiry and secret
+      // openings. Refresh sustained sources once per change, never per ear
+      // or frame. Impulses that already arrived retain their history.
+      useRun.subscribe((s, previous) => {
+        if (s.dungeon && (s.dungeon !== previous.dungeon
+          || s.barricades !== previous.barricades || s.barredDoor !== previous.barredDoor
+          || s.barUntil !== previous.barUntil)) {
+          din.refreshHeldReach(s.dungeon.rooms, barsNow(s));
+        }
+      }),
       /** A new floor forgets old sounds, but still sees what came downstairs. */
       bus.on("runStarted", resetFloor),
       bus.on("floorDescended", resetFloor),

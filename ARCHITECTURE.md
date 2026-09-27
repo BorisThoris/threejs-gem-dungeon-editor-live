@@ -267,9 +267,17 @@ Two stores that both claimed the player's stats. So:
   it were completed to it.
 - **How far a thing is heard is `din/carry.ts` and nothing else.** The room
   graph is `Room.links`, which the generator already writes; a doorway costs
-  x0.35, a wall costs x0.00, and a barred doorway is a wall. A signal's
+  x0.35, a wall costs x0.00, and a barred doorway is a wall. An impulse's
   reach is computed once when it happens and never again, so a frame loop
   asking "what can I hear" is a map lookup rather than a flood.
+  Sustained sources refresh that reach when the room graph or its bars change.
+  Building a barricade or dropping a grate blocks ongoing light and carried-key
+  signals; removing, breaking or expiring it restores them without another
+  lantern toggle or key pickup. The carried-signals browser check exercises
+  those store actions while preserving the reach of an already heard impulse.
+  The 48-impulse history limit evicts only impulses. Lantern, key and wisp
+  conditions remain held until their owners release them, even in a noisy
+  room; the layout suite covers overflow, replacement, expiry and release.
   `carryRoute` records the winning predecessors during that same flood for
   the editor's Signals graph. The route and arrival strength therefore use
   the game's doorway and bar decisions, not a second path finder. Source and

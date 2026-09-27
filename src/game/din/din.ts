@@ -16,12 +16,13 @@ import type { Tag } from "./tags";
  * while a component is unmounted between rooms.
  *
  * The one performance decision worth writing down: a signal's REACH is
- * computed once, when it is made, and never again. A flood of the room
+ * computed when it is made, not when a receiver asks. A flood of the room
  * graph is cheap but not free, and doing it per receiver per frame would
  * be the third-worst thing in the game. Loudness decays uniformly with
  * time, so `reach x aged(age)` answers the whole question with an
  * allocation-free map lookup. A doorway barred after a noise was made does
- * not un-hear it, which is also simply true.
+ * not un-hear it, which is also simply true. Sustained sources instead
+ * refresh their reach when the routes change: they are still broadcasting.
  */
 
 interface Live {
@@ -68,7 +69,7 @@ export const emptyArrival = (): Arrival => ({
  * How many impulses can be in flight. Well past what a floor ever makes at
  * once; the cap exists so a bug cannot turn the Din into a leak.
  */
-const MAX_LIVE = 48;
+const MAX_IMPULSES = 48;
 
 let live: Live[] = [];
 let clock = 0;
@@ -116,7 +117,17 @@ export function strike(
   const magnitude = loudnessIn(id, room, surface);
   // Theft is silent, and a silent thing does not take a slot.
   if (magnitude < AUDIBLE || emission.tags.length === 0) return;
-  if (live.length >= MAX_LIVE) live.shift();
+  // A busy room may forget its oldest noise, never a condition whose owner
+  // still holds it. Otherwise enough footfalls silently extinguish a lamp.
+  if (live.length >= MAX_IMPULSES) {
+    let impulses = 0, oldest = -1;
+    for (let i = 0; i < live.length; i++) {
+      if (live[i].sustained) continue;
+      if (oldest < 0) oldest = i;
+      impulses++;
+    }
+    if (impulses >= MAX_IMPULSES) live.splice(oldest, 1);
+  }
   live.push({
     key: null,
     tags: emission.tags,
@@ -168,6 +179,13 @@ export function hold(
 /** The condition ended. */
 export function release(key: string): void {
   for (let i = live.length - 1; i >= 0; i--) if (live[i].key === key) live.splice(i, 1);
+}
+
+/** Ongoing sources use today's routes; already heard impulses keep theirs. */
+export function refreshHeldReach(rooms: readonly Room[], bars: ReadonlySet<string>): void {
+  for (const source of live) {
+    if (source.sustained) source.reach = carriesTo(rooms, source.roomId, source.magnitude, bars);
+  }
 }
 
 /** Whether a sustained source is currently held. */
