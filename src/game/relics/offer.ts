@@ -155,7 +155,7 @@ export const PAIRS: readonly Pair[] = [
   {
     of: ["cant", "cut"],
     name: "The Books Balance",
-    does: "The shop will take the toll's worth in banked gems, once, and say nothing about it.",
+    does: "If a purchase would touch your passage money, the shop will take your iron key instead, once per run.",
   },
 ] as const;
 

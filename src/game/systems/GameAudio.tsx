@@ -109,6 +109,7 @@ export function Audio() {
       bus.on("itemNamed", () => sfx.named()),
       bus.on("fragmentRead", () => sfx.named()),
       bus.on("keyTaken", () => sfx.key()),
+      bus.on("keyTraded", () => sfx.setDown()),
       // Tolerant of a bare emit: a missing pan is a cue in the middle,
       // and a sound effect is never worth throwing out of the frame loop for.
       bus.on("sentrySaw", (e) => sfx.spotted(e?.pan ?? 0)),

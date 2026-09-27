@@ -578,10 +578,13 @@ Two stores that both claimed the player's stats. So:
   where the hoard actually lands is `placements.ts`, which sweeps a lattice
   over the vault rather than the anchor rings, because a full vault has
   already taken the rings and laying the hoard on them left eleven vaults
-  in forty no fuller than an unlocked one. The Books Balance is
-  `booksSpent` on the run store, spent through `canSpend` and recorded by
-  `spendGems`, so the one purchase the toll does not have to cover is
-  counted in the same place every other gem is.
+  in forty no fuller than an unlocked one. The Books Balance offers a
+  one-time key trade when cash would touch the exit reserve. `shopPayment`
+  owns that quote; shop prompts, `canSpend` and `spendAtShop` read it.
+  The key leaves inventory and its carried sound, while gems remain for
+  passage. `booksSpent` survives descent and resets with the run. Ordinary
+  `spendGems` pays the exit and cannot consume the pair. Free relics need no
+  reserve. `shop-payment-browser-check.mjs` holds these promises together.
 - Where the camera is pointing is `src/game/input/look.ts`, written once a
   frame by the look controls. The minimap turns with it. It is deliberately
   not store state: it changes every frame a mouse moves, and the HUD would
@@ -1764,7 +1767,7 @@ the store it is writing to.
   every visible mesh to have one. New render components should name their
   root group so a draw-call regression points to its source.
 - Whether a purchase may be made is `canSpend` in `src/game/state/run.ts`,
-  and the shop asks it about all three things it sells. The exit is the only
+  derived from the same `shopPayment` quote used by every shop offer. The exit is the only
   thing a run must be able to afford - a floor can hold as few as one gem
   more than its toll - so anything else that takes gems has to leave enough
   behind. The rule used to be written into the life purchase alone.

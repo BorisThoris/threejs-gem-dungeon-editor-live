@@ -11,7 +11,7 @@ import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
 import type { ItemId } from "../items/catalog";
 import type { Charges } from "../items/charge";
-import { alarmFloorFor, canSpend, satchelSlots, tollNow, useRun } from "../state/run";
+import { alarmFloorFor, canSpend, satchelSlots, shopPayment, tollNow, useRun } from "../state/run";
 import {
   BOMB_PRICE,
   CLOSE_REACH,
@@ -55,6 +55,12 @@ import "./shipped";
 function Dressed({ room }: RoomKindProps) {
   const seed = useRun((s) => s.dungeon?.seed ?? 0);
   return <Dressing room={room} seed={seed} />;
+}
+
+/** The offered cost follows the same quote the store will accept. */
+function useShopCost(price: number): string {
+  return useRun(s => shopPayment(s, price) === "key" ? "your iron key · once per run"
+    : price === 0 ? "free" : `${price} gem${price === 1 ? "" : "s"}`);
 }
 
 /**
@@ -139,6 +145,11 @@ function Shop({ room }: RoomKindProps) {
   const canBuyOil = useRun((s) => canSpend(s, OIL_PRICE));
   const canAffordBlessing = gems >= BLESSING_PRICE;
   const liftable = worstSlot(satchel, charges);
+  const lifeCost = useShopCost(GEMS_PER_LIFE);
+  const bombCost = useShopCost(BOMB_PRICE);
+  const oilCost = useShopCost(OIL_PRICE);
+  const namingCost = useShopCost(NAMING_PRICE);
+  const blessingCost = useShopCost(BLESSING_PRICE);
 
   return (
     <>
@@ -150,7 +161,7 @@ function Shop({ room }: RoomKindProps) {
       </mesh>
       <InteractTrigger
         {...at.life}
-        label={`Buy a life (${GEMS_PER_LIFE} gem)`}
+        label={`Buy a life (${lifeCost})`}
         enabled={needsLife && canBuyLife}
         blockedReason={
           !needsLife
@@ -162,8 +173,7 @@ function Shop({ room }: RoomKindProps) {
         onInteract={() => {
           const run = useRun.getState();
           if (run.lives >= run.maxLives) return;
-          if (run.gems - GEMS_PER_LIFE < tollNow(run)) return;
-          if (run.spendGems(GEMS_PER_LIFE)) run.gainLife();
+          if (run.spendAtShop(GEMS_PER_LIFE)) run.gainLife();
         }}
       />
       {/* A bomb, one a floor. The shop is not a bomb dispenser; a player who
@@ -172,7 +182,7 @@ function Shop({ room }: RoomKindProps) {
           go rather than after. */}
       <InteractTrigger
         {...at.bomb}
-        label={bombBought ? "The shop's bomb is sold" : `Buy a bomb (${BOMB_PRICE} gems)`}
+        label={bombBought ? "The shop's bomb is sold" : `Buy a bomb (${bombCost})`}
         enabled={!bombBought && canBuyBomb && !satchelFull}
         blockedReason={
           bombBought
@@ -187,7 +197,7 @@ function Shop({ room }: RoomKindProps) {
           const run = useRun.getState();
           if (run.bombBought || run.satchel.length >= satchelSlots(run) || !canSpend(run, BOMB_PRICE)) return;
           if (run.takeItem("bomb", "shop")) {
-            run.spendGems(BOMB_PRICE);
+            run.spendAtShop(BOMB_PRICE);
             run.markBombBought();
           }
         }}
@@ -209,7 +219,7 @@ function Shop({ room }: RoomKindProps) {
        */}
       <InteractTrigger
         {...at.oil}
-        label={oilFull ? "The flask is full" : `Buy oil (${OIL_PRICE} gem)`}
+        label={oilFull ? "The flask is full" : `Buy oil (${oilCost})`}
         enabled={!oilFull && canBuyOil}
         blockedReason={
           oilFull
@@ -221,7 +231,7 @@ function Shop({ room }: RoomKindProps) {
         onInteract={() => {
           const run = useRun.getState();
           if (run.oil >= LANTERN_OIL_FULL || !canSpend(run, OIL_PRICE)) return;
-          if (run.spendGems(OIL_PRICE)) run.buyOil(OIL_MEASURES);
+          if (run.spendAtShop(OIL_PRICE)) run.buyOil(OIL_MEASURES);
         }}
       />
       {/* Knowing is worth buying: a second copy of anything is rare enough
@@ -231,7 +241,7 @@ function Shop({ room }: RoomKindProps) {
         {...at.naming}
         label={
           puzzling >= 0
-            ? `Ask about ${appearances[satchel[puzzling]].unknown} (${NAMING_PRICE} gem)`
+            ? `Ask about ${appearances[satchel[puzzling]].unknown} (${namingCost})`
             : "Ask about your satchel"
         }
         enabled={puzzling >= 0 && canBuyName}
@@ -247,7 +257,7 @@ function Shop({ room }: RoomKindProps) {
           const slot = run.satchel.findIndex((id) => !run.identified.includes(id));
           if (slot < 0) return;
           if (!canSpend(run, NAMING_PRICE)) return;
-          if (run.spendGems(NAMING_PRICE)) run.identifySlot(slot);
+          if (run.spendAtShop(NAMING_PRICE)) run.identifySlot(slot);
         }}
       />
       {/* Lifting a curse. A cursed kind is a real cost the player has been
@@ -257,7 +267,7 @@ function Shop({ room }: RoomKindProps) {
         {...at.blessing}
         label={
           liftable >= 0
-            ? `Have ${appearances[satchel[liftable]].unknown} blessed (${BLESSING_PRICE} gems)`
+            ? `Have ${appearances[satchel[liftable]].unknown} blessed (${blessingCost})`
             : "Have something blessed"
         }
         enabled={liftable >= 0 && canBless}
@@ -276,7 +286,7 @@ function Shop({ room }: RoomKindProps) {
           // meant by pressing this.
           const slot = worstSlot(run.satchel, run.charges);
           if (slot < 0 || !canSpend(run, BLESSING_PRICE)) return;
-          if (run.spendGems(BLESSING_PRICE)) run.blessSlot(slot);
+          if (run.spendAtShop(BLESSING_PRICE)) run.blessSlot(slot);
         }}
       />
       {offer.map((id, i) => (
@@ -319,6 +329,7 @@ function RelicStand({
   const taken = useRun((s) => s.relics.includes(id));
   const relic = RELICS[id];
   const price = fixed ?? priceOn(relic, floor);
+  const cost = useShopCost(price);
   const affordable = useRun((s) => canSpend(s, price));
   const toll = useRun(tollNow);
 
@@ -345,7 +356,7 @@ function RelicStand({
       )}
       <InteractTrigger
         position={[0, 0, 0]}
-        label={`${relic.name}, ${price === 0 ? "free" : `${price} gems`} - ${relic.blurb}`}
+        label={`${relic.name}, ${cost} - ${relic.blurb}`}
         enabled={!taken && affordable}
         blockedReason={
           taken
@@ -358,7 +369,7 @@ function RelicStand({
           const run = useRun.getState();
           if (run.relics.includes(id)) return;
           if (!canSpend(run, price)) return;
-          if (run.spendGems(price)) run.addRelic(id, [position[0], position[2]]);
+          if (run.spendAtShop(price)) run.addRelic(id, [position[0], position[2]]);
         }}
       />
     </group>

@@ -136,6 +136,7 @@ export function DinDriver() {
        * loudest legitimate thing on the floor.
        */
       bus.on("keyTaken", carryKey),
+      bus.on("keyTraded", carryKey),
       // The Company Seal turns the key without spending it. The inventory,
       // not the name of the action, decides whether it is still audible.
       bus.on("vaultOpened", carryKey),

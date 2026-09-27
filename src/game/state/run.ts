@@ -409,11 +409,9 @@ export interface RunState {
   /**
    * The Books Balance has been spent.
    *
-   * The pair lets the shop take the toll's worth out of what has already
-   * been banked, ONCE - which in this economy means one purchase that does
-   * not have to leave the exit's price in hand. "Say nothing about it" is
-   * the pair's own sentence, so nothing announces it: the shop simply
-   * stops refusing, the way a shopkeeper who knows you would.
+   * Once per run, the pair lets a shop take the carried key when a cash
+   * purchase would touch the exit reserve. The displayed cost and payment
+   * both read shopPayment. Passage never spends this allowance.
    */
   booksSpent: boolean;
   /** Which room the Warden is in, or null while it still sleeps. */
@@ -550,6 +548,8 @@ export interface RunState {
     worth?: number
   ) => boolean;
   spendGems: (amount: number) => boolean;
+  /** Pay the displayed shop cost, preserving passage money. */
+  spendAtShop: (amount: number) => boolean;
   /** Take a relic. Does not charge for it; the shop does that. */
   addRelic: (id: RelicId, at?: readonly [number, number]) => void;
   /** Put an item in the satchel. False when there is no room for it. */
@@ -1433,12 +1433,18 @@ export const useRun = create<RunState>()(
 
     spendGems: (amount) => {
       const s = get();
-      if (s.gems < amount) return false;
-      // If this purchase only went through because the pair covered it,
-      // the pair is spent. Read before the gems move, because afterwards
-      // the question cannot be asked.
-      const onTheBooks = s.gems - amount < tollNow(s) && booksWouldCover(s, amount);
-      set({ gems: s.gems - amount, booksSpent: s.booksSpent || onTheBooks });
+      if (!Number.isSafeInteger(amount) || amount < 0 || s.gems < amount) return false;
+      set({ gems: s.gems - amount });
+      return true;
+    },
+
+    spendAtShop: (amount) => {
+      const s = get(), payment = shopPayment(s, amount);
+      if (payment === null) return false;
+      if (payment !== "key") return get().spendGems(amount);
+      set({ keys: s.keys - 1, booksSpent: true });
+      bus.emit("keyTraded");
+      bus.emit("notice", "The shop takes your iron key. Your passage money is untouched.");
       return true;
     },
 
@@ -3135,7 +3141,7 @@ export const tollNow = (s: RunState): number =>
 
 /**
  * How many slots this run's satchel has. Four for everyone but the
- * Courier, who trades two of them for the boots.
+ * Courier, who trades two of them for a third shop offer.
  */
 export const satchelSlots = (s: RunState): number => DELVERS[s.delver].slots;
 
@@ -3184,21 +3190,19 @@ export const spareGems = (s: RunState): number => Math.max(0, s.gems - tollNow(s
  * sells. Buying a life asked; asking the shopkeeper what a potion is, and
  * buying a relic for several gems, did not.
  */
-export const canSpend = (s: RunState, price: number): boolean =>
-  s.gems >= price && (s.gems - price >= tollNow(s) || booksWouldCover(s, price));
+export const canSpend = (s: RunState, price: number): boolean => shopPayment(s, price) !== null;
 
 /**
- * Whether The Books Balance would carry this purchase.
- *
- * The pair's sentence is "the shop will take the toll's worth in banked
- * gems, once, and say nothing about it", and in this economy the only thing
- * the toll's worth buys is the right to spend down past it. So the pair
- * buys exactly one purchase that does not have to leave the exit's price in
- * hand - and the toll is still owed, which is what stops this being a
- * discount. The player has to find it again.
+ * One quote for the prompt and the transaction. Cash comes from surplus;
+ * the pair offers a key trade when cash cannot safely cover the purchase.
+ * Free rewards require neither money nor a key, even before finding the toll.
  */
-export const booksWouldCover = (s: RunState, price: number): boolean =>
-  !s.booksSpent && modifiers(s.relics).booksBalance && s.gems >= price;
+export const shopPayment = (s: RunState, price: number): "gems" | "key" | null => {
+  if (!Number.isSafeInteger(price) || price < 0) return null;
+  if (price === 0 || s.gems - price >= tollNow(s)) return "gems";
+  if (!s.booksSpent && modifiers(s.relics).booksBalance && s.keys > 0) return "key";
+  return null;
+};
 
 export const useCurrentRoom = (): Room | undefined => useRun(roomNow);
 
