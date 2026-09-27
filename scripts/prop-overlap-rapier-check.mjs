@@ -7,7 +7,7 @@ import RAPIER from "@dimforge/rapier3d-compat";
 
 const source = readFileSync(fileURLToPath(new URL("../src/game/props/specs.ts", import.meta.url)), "utf8");
 const compiled = await transform(source, { loader: "ts", format: "esm" });
-const { PROP_SPECS, propCollidersOverlap } = await import(`data:text/javascript;base64,${Buffer.from(compiled.code).toString("base64")}`);
+const { PROP_SPECS, propCollidersOverlap, propBlocksSegment } = await import(`data:text/javascript;base64,${Buffer.from(compiled.code).toString("base64")}`);
 await RAPIER.init({});
 
 const solid = Object.keys(PROP_SPECS).filter(kind => PROP_SPECS[kind].collider);
@@ -61,3 +61,32 @@ for (const firstKind of solid) for (const secondKind of solid) {
 assert.deepEqual(differences, [], `${comparisons} overlap comparisons against Rapier`);
 assert.ok(overlaps > 1000 && overlaps < comparisons - 1000, "the matrix includes both collisions and clearances");
 console.log(`PASS ${comparisons} prop overlap comparisons across ${solid.length} solid kinds, rotations and scales (${overlaps} blocked)`);
+
+// Combat must see the same solid cover that the player can walk around.
+// Broad placement radii used to reject clear shoves beside a bookshelf.
+let rays = 0, hits = 0;
+const rayDifferences = [];
+for (const kind of solid) for (let sample = 0; sample < 480; sample++) {
+  const p = { kind, x: .3, z: -.4, scale: [.5, 1, 1.5][sample % 3], rotation: random() * Math.PI * 2 };
+  const from = { x: (random() - .5) * 5, z: (random() - .5) * 5 };
+  const to = { x: (random() - .5) * 5, z: (random() - .5) * 5 };
+  const height = sample % 2 ? 1.25 : (random() - .1) * 5;
+  const pose = poseFor(p);
+  const ray = new RAPIER.Ray({ ...from, y: height }, { x: to.x - from.x, y: 0, z: to.z - from.z });
+  const physical = shapeFor(p).castRay(ray, pose.position, pose.rotation, 1, true) >= 0;
+  const predicted = propBlocksSegment(p, from, to, height);
+  rays++; if (physical) hits++;
+  if (predicted !== physical && rayDifferences.length < 8) rayDifferences.push({ p, from, to, height, predicted, physical });
+}
+assert.deepEqual(rayDifferences, [], "cover segments agree with Rapier's actual rotated, scaled colliders");
+assert.ok(hits > 200 && hits < rays - 200, "both solid cover and clear attacks were measured");
+for (const rotation of [0, Math.PI / 4, Math.PI / 2]) {
+  const p = { kind: "bookshelf", x: 0, z: 0, rotation, scale: 1 };
+  const turn = (x, z) => ({ x: x * Math.cos(rotation) + z * Math.sin(rotation),
+    z: -x * Math.sin(rotation) + z * Math.cos(rotation) });
+  assert.equal(propBlocksSegment(p, turn(-1.4, .6), turn(1.4, .6), 1.25), false,
+    "a shove along the clear side of a bookshelf stays clear");
+  assert.equal(propBlocksSegment(p, turn(0, -1), turn(0, 1), 1.25), true,
+    "the same bookshelf stops a shove through its face");
+}
+console.log(`PASS ${rays} combat cover rays agree with Rapier (${hits} blocked), including narrow bookshelf side lanes`);

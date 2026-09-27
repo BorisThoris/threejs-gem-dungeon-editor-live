@@ -26,6 +26,40 @@ export type ColliderSpec =
 export const colliderFootprintRadius = (collider: ColliderSpec): number =>
   collider.shape === "cuboid" ? Math.hypot(collider.args[0], collider.args[2]) : collider.args[1];
 
+/** A horizontal segment against the physical collider at a given floor-relative height. */
+export function propBlocksSegment(placement: PropPlacement, from: { x: number; z: number },
+  to: { x: number; z: number }, height: number): boolean {
+  const spec = PROP_SPECS[placement.kind];
+  const collider = spec.collider;
+  if (!spec.solid || !collider) return false;
+  const scale = Math.abs(placement.scale ?? 1);
+  const halfY = collider.args[collider.shape === "cylinder" ? 0 : 1] * scale;
+  const centreY = collider.y * scale;
+  if (height < centreY - halfY || height > centreY + halfY) return false;
+  const turn = placement.rotation ?? 0, cosine = Math.cos(turn), sine = Math.sin(turn);
+  const x = (from.x - placement.x) * cosine - (from.z - placement.z) * sine;
+  const z = (from.x - placement.x) * sine + (from.z - placement.z) * cosine;
+  const dx = (to.x - from.x) * cosine - (to.z - from.z) * sine;
+  const dz = (to.x - from.x) * sine + (to.z - from.z) * cosine;
+  if (collider.shape === "cylinder") {
+    const length2 = dx * dx + dz * dz;
+    const t = length2 > 0 ? Math.max(0, Math.min(1, -(x * dx + z * dz) / length2)) : 0;
+    const radius = collider.args[1] * scale;
+    return (x + dx * t) ** 2 + (z + dz * t) ** 2 <= radius * radius;
+  }
+  // Clip the segment to both local slabs of a rotated box. A placement
+  // radius is useful for furnishing clearance, but is not solid cover.
+  let enter = 0, leave = 1;
+  const clip = (origin: number, delta: number, half: number) => {
+    if (Math.abs(delta) < 1e-12) return Math.abs(origin) <= half;
+    const a = (-half - origin) / delta, b = (half - origin) / delta;
+    enter = Math.max(enter, Math.min(a, b));
+    leave = Math.min(leave, Math.max(a, b));
+    return enter <= leave;
+  };
+  return clip(x, dx, collider.args[0] * scale) && clip(z, dz, collider.args[2] * scale);
+}
+
 /** Exact world-axis reach of a rotated collider used for lane and wall checks. */
 export function propColliderAxisExtents(placement: PropPlacement): { x: number; z: number } | null {
   const collider = PROP_SPECS[placement.kind].collider;

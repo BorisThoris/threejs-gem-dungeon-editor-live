@@ -663,6 +663,11 @@ Two stores that both claimed the player's stats. So:
   several targets; an empty-handed Cutpurse never claims recovered loot.
   The gameplay check compares these notices with the actual combat and
   inventory changes, alongside misses, solid cover and immune targets.
+  Furniture cover reads the actual rotated and scaled collider through
+  `props/specs.ts`'s `propBlocksSegment`, at the hand's height. Broad furnishing
+  radii cannot block an otherwise clear shove beside a narrow bookshelf.
+  The prop oracle compares cover rays with Rapier; the gameplay check follows
+  both clear side lanes and blocked faces through the actual shove and feedback.
   Cutpurse theft, escape and recovery events carry both the gem count and
   whether the iron key changed hands. Captions, the stolen-loot HUD and shove
   feedback name that payload through `thief/loot.ts`; they never infer it from

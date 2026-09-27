@@ -231,6 +231,8 @@ for (const body of ["ground", "flying"]) {
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, []));
 assert.ok(!L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [], [0, 0, -1]), "watcher post blocks a shove through its body");
 assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [], [0.3, 0, -1]), "a shove passing beside the watcher remains clear");
+assert.ok(L.clearShove(chamber, { x: -1.4, z: .6 }, { x: 1.4, z: .6 },
+  [{ kind: "bookshelf", x: 0, z: 0 }]), "a clear path beside a bookshelf is not blocked by its furnishing radius");
 for (const kind of ["table", "chest", "crate", "chair", "barrel"]) {
   assert.ok(L.clearShove(chamber, { x: 0, z: 0 }, { x: 0, z: -2 }, [{ kind, x: 0, z: -1 }]),
     `shove reaches above low ${kind} furniture`);
@@ -433,6 +435,51 @@ try {
   assert.match(watcherCover.blocked.notice, /blocked by solid cover/);
   assert.ok(watcherCover.beside.retreat, "stepping beside the post restores shove counterplay");
   console.log("PASS watcher cover blocks shoves with actionable feedback; stepping aside reaches the threat");
+  const furnitureCover = await page.evaluate(async () => {
+    const { registerPreview, removePreview, previewTemplateId } = await import("/src/game/rooms/templates.ts");
+    const { placementsFor } = await import("/src/game/rooms/placements.ts");
+    const { playerAt } = await import("/src/game/player/where.ts");
+    const run = window.__run, results = [];
+    const templateId = "shove-cover-check";
+    try {
+      for (const rotation of [0, Math.PI / 4, Math.PI / 2]) {
+        registerPreview({ id: templateId, kind: "normal", size: 20, shape: "square",
+          props: [{ kind: "bookshelf", x: -3, z: -3, rotation }] });
+        const before = run.getState(), original = before.dungeon.rooms.find(r => r.id === before.currentRoomId);
+        const room = { ...original, kind: "normal", size: 20, shape: "square",
+          template: previewTemplateId(templateId), links: {}, wings: undefined };
+        const dungeon = { ...before.dungeon, rooms: before.dungeon.rooms.map(r => r.id === room.id ? room : r) };
+        const shelf = placementsFor(room, dungeon.seed).find(p => p.kind === "bookshelf");
+        if (!shelf) throw Error("Authored bookshelf missing from combat fixture");
+        run.setState({ dungeon, floor: 1, currentRoomId: room.id, phase: "playing", transitioning: false,
+          paused: false, inputLocks: 0, wardenRoomId: null, thiefPhase: "away", reaperAwake: false,
+          harrierAwake: true, harrierRoomId: room.id, harrierSlain: false, broken: [] });
+        const turn = shelf.rotation ?? 0;
+        const at = (x, z) => ({ x: shelf.x + x * Math.cos(turn) + z * Math.sin(turn),
+          z: shelf.z - x * Math.sin(turn) + z * Math.cos(turn) });
+        let notice = "";
+        const off = window.__bus.on("notice", text => { notice = text; });
+        const shove = (from, to) => {
+          Object.assign(playerAt, from);
+          Object.assign(window.__harrierAt, to, { roomId: room.id, away: false, down: false });
+          run.setState({ shoveReadyAt: 0, harrierRetreatUntil: 0 });
+          run.getState().shove(to.x - from.x, to.z - from.z);
+          return { retreat: run.getState().harrierRetreatUntil > window.__derived.clock(), notice };
+        };
+        results.push({ rotation, beside: shove(at(-1.4, .6), at(1.4, .6)),
+          through: shove(at(0, -1), at(0, 1)) });
+        off();
+      }
+    } finally { removePreview(templateId); run.getState().startRun(11); }
+    return results;
+  });
+  for (const result of furnitureCover) {
+    assert.ok(result.beside.retreat, "a clear bookshelf side lane permits the actual Harrier counterplay");
+    assert.match(result.beside.notice, /Harrier driven off/);
+    assert.equal(result.through.retreat, false, "the bookshelf face still protects the creature");
+    assert.match(result.through.notice, /blocked by solid cover/);
+  }
+  console.log("PASS rotated bookshelf cover agrees with shove outcomes and feedback");
   await page.waitForFunction(() => !window.__run.getState().transitioning);
   // A real rendered wing: walk from its landing back into the furnished chamber.
   const wing = await page.evaluate(async () => {

@@ -1,6 +1,6 @@
 import { roomSegmentClear } from "../dungeon/footprint";
 import type { PropPlacement, Room } from "../dungeon/types";
-import { PROP_SPECS } from "../props/specs";
+import { propBlocksSegment } from "../props/specs";
 import type { Vec3 } from "../dungeon/layout";
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "../sentry/placement";
 
@@ -41,14 +41,5 @@ export function clearShove(room: Room, from: { x: number; z: number }, to: { x: 
     const t = Math.max(0, Math.min(1, ((watcher[0] - from.x) * dx + (watcher[2] - from.z) * dz) / len2));
     if (Math.hypot(watcher[0] - from.x - dx * t, watcher[2] - from.z - dz * t) < SENTRY_POST_RADIUS) return false;
   }
-  return !props.some((p) => {
-    const spec = PROP_SPECS[p.kind], collider = spec.collider;
-    if (!spec.solid || len2 < 0.0001) return false;
-    if (collider) {
-      const top = (collider.y + collider.args[collider.shape === "cylinder" ? 0 : 1]) * (p.scale ?? 1);
-      if (top < SHOVE_HEIGHT) return false;
-    }
-    const t = Math.max(0, Math.min(1, ((p.x - from.x) * dx + (p.z - from.z) * dz) / len2));
-    return Math.hypot(p.x - from.x - dx * t, p.z - from.z - dz * t) < PROP_SPECS[p.kind].radius * (p.scale ?? 1);
-  });
+  return !props.some(p => propBlocksSegment(p, from, to, SHOVE_HEIGHT));
 }
