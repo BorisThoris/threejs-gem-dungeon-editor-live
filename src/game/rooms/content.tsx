@@ -9,9 +9,9 @@ import { offeredAt, priceOn, RELIC_IDS, RELICS, type RelicId } from "../relics/c
 import { createRng, shuffle } from "../rng";
 import { bus } from "../events";
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { SATCHEL_SLOTS, type ItemId } from "../items/catalog";
+import type { ItemId } from "../items/catalog";
 import type { Charges } from "../items/charge";
-import { alarmFloorFor, canSpend, tollNow, useRun } from "../state/run";
+import { alarmFloorFor, canSpend, satchelSlots, tollNow, useRun } from "../state/run";
 import {
   BOMB_PRICE,
   CLOSE_REACH,
@@ -130,7 +130,7 @@ function Shop({ room }: RoomKindProps) {
   // The first thing in the satchel nobody has put a name to yet.
   const bombBought = useRun((s) => s.bombBought);
   const canBuyBomb = useRun((s) => canSpend(s, BOMB_PRICE));
-  const satchelFull = satchel.length >= SATCHEL_SLOTS;
+  const satchelFull = useRun(s => s.satchel.length >= satchelSlots(s));
   const puzzling = satchel.findIndex((id) => !identified.includes(id));
   const canAffordName = gems >= NAMING_PRICE;
   const charges = useRun((s) => s.charges);
@@ -185,9 +185,9 @@ function Shop({ room }: RoomKindProps) {
         }
         onInteract={() => {
           const run = useRun.getState();
-          if (run.bombBought || run.satchel.length >= SATCHEL_SLOTS || !canSpend(run, BOMB_PRICE)) return;
-          if (run.spendGems(BOMB_PRICE)) {
-            run.takeItem("bomb", "shop");
+          if (run.bombBought || run.satchel.length >= satchelSlots(run) || !canSpend(run, BOMB_PRICE)) return;
+          if (run.takeItem("bomb", "shop")) {
+            run.spendGems(BOMB_PRICE);
             run.markBombBought();
           }
         }}

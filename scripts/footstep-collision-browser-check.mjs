@@ -3,14 +3,28 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH});
 try{
  const page=await browser.newPage();await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5217"}/`);await page.locator('[data-testid="menu-start"]').click();
  await page.waitForFunction(()=>window.__run?.getState().phase==='playing'&&!window.__run.getState().transitioning);
+ await page.evaluate(()=>window.__run.getState().startRun(11));
+ await page.waitForFunction(()=>!window.__run.getState().transitioning);
  await page.evaluate(()=>{const s=window.__run.getState(),room=s.dungeon.rooms.find(r=>r.id===s.currentRoomId);const fixture={...room,size:20,shape:'square',links:{},wings:{},biome:'hewn'};
  window.__run.setState({dungeon:{...s.dungeon,rooms:s.dungeon.rooms.map(r=>r.id===room.id?fixture:r)},noisyUntil:0});
  window.__wallSteps=0;window.__wallSprints=0;const step=window.__sfx.step;window.__sfx.step=(...args)=>{window.__wallSteps++;step(...args);};window.__bus.on('sprinted',()=>window.__wallSprints++);
- window.__bus.emit('teleport',{position:[5,1.5,3]});window.__bus.emit('lookSet',{yaw:-Math.PI/2,pitch:0});});
- await page.waitForTimeout(500);await page.locator('canvas').click();await page.keyboard.down('ShiftLeft');await page.keyboard.down('KeyW');await page.waitForTimeout(1800);
+ window.__bus.emit('teleport',{position:[5,1.5,3]});});
+ await page.waitForTimeout(500);await page.locator('canvas').click();
+ await page.waitForFunction(()=>document.pointerLockElement===document.querySelector('canvas'));
+ // Pointer capture may deliver a mouse delta. Aim after capture has settled so
+ // the fixture pushes into the wall instead of sliding diagonally along it.
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ const wallX=await page.evaluate(async()=>{const {WALL_THICKNESS,PLAYER_CAPSULE_RADIUS}=await import('/src/game/world.ts');
+ window.__bus.emit('lookSet',{yaw:-Math.PI/2,pitch:0});
+ const s=window.__run.getState(),room=s.dungeon.rooms.find(r=>r.id===s.currentRoomId);
+ return room.size/2-WALL_THICKNESS/2-PLAYER_CAPSULE_RADIUS;});
+ await page.keyboard.down('ShiftLeft');await page.keyboard.down('KeyW');
+ await page.waitForFunction(x=>window.__playerDebug.x>=x-.02,wallX);
+ await page.waitForTimeout(200);
  const before=await page.evaluate(()=>({steps:window.__wallSteps,sprints:window.__wallSprints,x:window.__playerDebug.x,z:window.__playerDebug.z}));
  await page.waitForTimeout(1600);const after=await page.evaluate(()=>({steps:window.__wallSteps,sprints:window.__wallSprints,x:window.__playerDebug.x,z:window.__playerDebug.z}));
  await page.keyboard.up('KeyW');await page.keyboard.up('ShiftLeft');console.log({before,after});
+ assert.ok(Math.abs(before.z-3)<.02&&Math.abs(after.z-3)<.02,'approach is perpendicular to the wall');
  assert.ok(before.steps>0&&before.sprints>0,'actual approach produces footsteps and sprint noise');assert.ok(Math.hypot(after.x-before.x,after.z-before.z)<.02,'wall actually stops player');
  assert.equal(after.steps,before.steps,'blocked movement adds no footsteps');assert.equal(after.sprints,before.sprints,'blocked movement adds no fresh sprint noise');
  await page.evaluate(()=>window.__bus.emit('teleport',{position:[7,1.5,3]}));await page.waitForTimeout(300);

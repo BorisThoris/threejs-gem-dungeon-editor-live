@@ -557,6 +557,14 @@ Two stores that both claimed the player's stats. So:
   checked against what a floor actually holds, because the two had never
   been compared and the answer was that most floors could not afford one. Nothing else asks whether the player holds the boots -
   it asks the modifiers what the walk speed is.
+  `delvers/catalog.ts` owns starting equipment, known item families and
+  satchel capacity. Starting knowledge is rebuilt for each new delver and
+  persists through descent. The Ratcatcher knows devices they have yet to
+  find, as promised on the selection screen. Shops read `satchelSlots`
+  before offering or selling a bomb and charge only after inventory accepts
+  it. `delver-choices-browser-check.mjs` chooses the Courier, Vagrant and
+  Ratcatcher from the menu, exercises a full bag and a freed slot at a real
+  shop, and checks device recognition across finding, descent and restart.
 - What a PAIR of relics unlocks is declared once in `PAIRS` in
   `src/game/relics/offer.ts` and read through `modifiers(relics)` like any
   other relic effect, so a duo payoff is never a second switch beside the

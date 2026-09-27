@@ -31,7 +31,7 @@ export function Satchel() {
   // to be read as information by somebody who cannot see the band.
   const marks = useSettings((s) => s.highContrast);
   const bindings = useSettings((s) => s.bindings);
-  // Four for everyone but the Courier, who traded two of them for speed.
+  // Four for everyone but the Courier, who traded two for a third shop offer.
   // Drawn from the run rather than the constant, so a two-slot satchel
   // shows two slots instead of two full ones and two that can never fill.
   const slots = useRun(satchelSlots);

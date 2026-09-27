@@ -1,6 +1,5 @@
-import type { ItemId } from "../items/catalog";
+import { ITEMS, ITEM_IDS, SATCHEL_SLOTS, type ItemFamily, type ItemId } from "../items/catalog";
 import type { RelicId } from "../relics/catalog";
-import { SATCHEL_SLOTS } from "../items/catalog";
 import { STARTING_LIVES } from "../world";
 
 /**
@@ -45,6 +44,8 @@ export interface Delver {
   relics: readonly RelicId[];
   /** What is in the satchel, and known for what it is from the start. */
   satchel: readonly ItemId[];
+  /** Families recognized before finding or using an item of that kind. */
+  knownFamilies?: readonly ItemFamily[];
   /** Slots in the satchel, which is not always four. */
   slots: number;
   /** Added to every floor's own starting alarm. */
@@ -108,6 +109,7 @@ export const DELVERS: Record<DelverId, Delver> = {
     gems: 0,
     relics: [],
     satchel: ["snare", "wardstone"],
+    knownFamilies: ["device"],
     slots: SATCHEL_SLOTS,
     alarmBonus: 0,
     alarmFactor: 1,
@@ -143,12 +145,13 @@ export const DELVERS: Record<DelverId, Delver> = {
 };
 
 /**
- * The items a delver starts already knowing. A Ratcatcher who could not
- * tell their own snare from a pouch of iron would be carrying two coin
- * flips rather than two tools, which is the opposite of the trade.
+ * Starting equipment is known, along with the families the delver has
+ * learned. The Ratcatcher recognizes loose iron before finding it, rather
+ * than only recognizing the two tools already in their bag.
  */
 export function knownFrom(delver: Delver): ItemId[] {
-  return [...delver.satchel];
+  return [...new Set([...delver.satchel,
+    ...ITEM_IDS.filter(id => delver.knownFamilies?.includes(ITEMS[id].family))])];
 }
 
 export const DEFAULT_DELVER: DelverId = "vagrant";
