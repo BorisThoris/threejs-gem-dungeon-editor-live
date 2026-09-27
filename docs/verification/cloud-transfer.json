@@ -1,0 +1,213 @@
+{
+  "status": "interrupted-for-cloud-transfer",
+  "sourceRevision": "c360453",
+  "continuationRevision": "f2cef0b21c3bcf6eac7a8ab9a2ac9ddf2cd06c6a",
+  "sourceStartedAt": "2026-09-27T23:06:23.653Z",
+  "sourceSnapshotAt": "2026-09-27T23:29:55.704Z",
+  "command": "yarn verify:full",
+  "host": "Windows; Node 22.22.2; Yarn 1.22.22; Chromium 1243",
+  "checks": [
+    {
+      "label": "test:verification",
+      "status": "passed",
+      "durationMs": 9922
+    },
+    {
+      "label": "typecheck",
+      "status": "passed",
+      "durationMs": 15571
+    },
+    {
+      "label": "lint",
+      "status": "passed",
+      "durationMs": 24882
+    },
+    {
+      "label": "test:layout",
+      "status": "passed",
+      "durationMs": 119781
+    },
+    {
+      "label": "test:full-count",
+      "status": "passed",
+      "durationMs": 12445
+    },
+    {
+      "label": "test:trap-placement",
+      "status": "passed",
+      "durationMs": 4536
+    },
+    {
+      "label": "test:prop-overlap",
+      "status": "passed",
+      "durationMs": 867
+    },
+    {
+      "label": "test:sentry-projection",
+      "status": "passed",
+      "durationMs": 6499
+    },
+    {
+      "label": "test:bat-flight",
+      "status": "passed",
+      "durationMs": 5576
+    },
+    {
+      "label": "test:world",
+      "status": "passed",
+      "durationMs": 74437
+    },
+    {
+      "label": "test:walk-navigation",
+      "status": "passed",
+      "durationMs": 401
+    },
+    {
+      "label": "test:nest-placement",
+      "status": "passed",
+      "durationMs": 8802
+    },
+    {
+      "label": "test:prod",
+      "status": "passed",
+      "durationMs": 92501
+    },
+    {
+      "label": "test:desktop",
+      "status": "passed",
+      "durationMs": 48020
+    },
+    {
+      "label": "core-flow-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 16007
+    },
+    {
+      "label": "dev-artifact-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 6192
+    },
+    {
+      "label": "sprint-noise-browser-check.mjs",
+      "status": "failed",
+      "durationMs": 5075
+    },
+    {
+      "label": "din-clock-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 10870
+    },
+    {
+      "label": "sentry-room-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 3696
+    },
+    {
+      "label": "hud-space-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 4078
+    },
+    {
+      "label": "test-hall-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 11394
+    },
+    {
+      "label": "scenario-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 9411
+    },
+    {
+      "label": "dev-run-links-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 7128
+    },
+    {
+      "label": "signal-graph-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 10353
+    },
+    {
+      "label": "cutpurse-distraction-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 22606
+    },
+    {
+      "label": "delver-choices-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 8228
+    },
+    {
+      "label": "shop-payment-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 8314
+    },
+    {
+      "label": "map-navigation-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 11965
+    },
+    {
+      "label": "gameplay-check.mjs",
+      "status": "passed",
+      "durationMs": 172416
+    },
+    {
+      "label": "pad-check.mjs",
+      "status": "passed",
+      "durationMs": 79826
+    },
+    {
+      "label": "touch-check.mjs",
+      "status": "passed",
+      "durationMs": 69116
+    },
+    {
+      "label": "audio-check.mjs",
+      "status": "passed",
+      "durationMs": 217286
+    },
+    {
+      "label": "perf-check.mjs",
+      "status": "passed",
+      "durationMs": 155733
+    },
+    {
+      "label": "walk-run.mjs",
+      "status": "passed",
+      "durationMs": 106682
+    },
+    {
+      "label": "harrier-windup-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 17879
+    },
+    {
+      "label": "touch-shove-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 12142
+    },
+    {
+      "label": "readout-interaction-browser-check.mjs",
+      "status": "passed",
+      "durationMs": 15067
+    },
+    {
+      "label": "cutpurse-loot-browser-check.mjs",
+      "status": "interrupted",
+      "durationMs": 0
+    }
+  ],
+  "correctedReruns": [
+    {
+      "label": "sprint-noise-browser-check.mjs",
+      "revision": "f2cef0b",
+      "status": "passed",
+      "evidence": [
+        "PASS press-to-sprint keeps running after the sprint key is released",
+        "PASS switching sprint modes resets the old toggle: fresh movement stays quiet",
+        "PASS keyboard sprint in start moves, alerts the Warden, and becomes quiet again"
+      ]
+    }
+  ]
+}
