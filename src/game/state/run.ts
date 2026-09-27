@@ -73,7 +73,7 @@ import { bombCracks, snareSets } from "../verbs/gates";
 import { surfaceOf } from "../din/emissions";
 import { reaches as dinReaches } from "../din/din";
 import { barKey, barSite } from "../warden/bars";
-import { pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
+import { pledgeBlock, pledgeById, pledgeCost, wasKept, type FloorRecord, type PledgeId } from "../heat/pledge";
 import { banishTo, wakingRoom } from "../warden/roam";
 import { behaviourFor } from "../warden/tuning";
 import {
@@ -2077,6 +2077,11 @@ export const useRun = create<RunState>()(
       if (!canControl(s) || s.pledge) return false;
       const p = pledgeById(id);
       if (!p) return false;
+      const blocked = pledgeBlock(id, s.glim);
+      if (blocked) {
+        bus.emit("notice", blocked);
+        return false;
+      }
       set({
         pledge: id,
         alarm: s.alarm + pledgeCost(s.pledgesKept),

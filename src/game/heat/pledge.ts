@@ -48,6 +48,8 @@ export interface Pledge {
   name: string;
   /** The promise, in the delver's own words, for the prompt. */
   vow: string;
+  /** Short reminder while the promise is active. */
+  rule: string;
   /** What it pays at the stair, in gems. */
   pays: number;
   /** Whether the floor's record kept it. */
@@ -57,36 +59,41 @@ export interface Pledge {
 /**
  * What the shrine will hear.
  *
- * Three, and each gives up one of the three things a delver spends on a
- * floor: light, a door, and what they are carrying. Any two of them can be
- * held at once and the third cannot be reached from them, which is what
- * makes taking a second one a decision rather than an accumulation.
+ * Each gives up one thing from acceptance to the stair: light, a door,
+ * or what the delver carries. Only one can be chosen on each floor.
  */
 export const PLEDGES: readonly Pledge[] = [
   {
     id: "unlit",
     name: "Unlit",
-    vow: "to cross this floor without raising the lantern",
+    vow: "to keep the lantern down from now to the stair",
+    rule: "lantern down",
     pays: 3,
     kept: (f) => !f.raisedLantern,
   },
   {
     id: "unbarred",
     name: "Unbarred",
-    vow: "to bar no doorway on this floor",
+    vow: "to bar no doorway from now to the stair",
+    rule: "no door bars",
     pays: 2,
     kept: (f) => !f.barredADoor,
   },
   {
     id: "unspent",
     name: "Unspent",
-    vow: "to take nothing out of the satchel on this floor",
+    vow: "to take nothing out of the satchel from now to the stair",
+    rule: "no satchel use",
     pays: 2,
     kept: (f) => !f.spentAnItem,
   },
 ];
 
 export const pledgeById = (id: PledgeId): Pledge | undefined => PLEDGES.find((p) => p.id === id);
+
+/** The prompt and store agree on what must change before an offer is usable. */
+export const pledgeBlock = (id: PledgeId, glim: number): string | null =>
+  id === "unlit" && glim > 0 ? "Lower the lantern fully before swearing Unlit." : null;
 
 /**
  * What the first pledge of a run costs in heat, and what each one after it

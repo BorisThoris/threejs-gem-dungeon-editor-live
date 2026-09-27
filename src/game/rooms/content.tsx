@@ -36,7 +36,7 @@ const NAMING_PRICE = 1;
 const BLESSING_PRICE = 2;
 import { Dressing } from "./Dressing";
 import { libraryLectern, shopAnchors, shopOffers, shrineAnchor, vowAnchors, type ShopOfferId } from "./anchors";
-import { PLEDGES, pledgeCost } from "../heat/pledge";
+import { PLEDGES, pledgeBlock, pledgeCost, wasKept } from "../heat/pledge";
 import { registerRoomKind, type RoomKindProps } from "./kinds";
 import { SecretHistory } from "../worldbuilding/SecretHistory";
 // Room layouts that ship with the game register themselves.
@@ -479,6 +479,8 @@ function Shrine({ room }: RoomKindProps) {
  */
 function Vow({ room }: { room: Room }) {
   const pledge = useRun((s) => s.pledge);
+  const glim = useRun((s) => s.glim);
+  const record = useRun((s) => s.floorRecord);
   const kept = useRun((s) => s.pledgesKept);
   const cost = pledgeCost(kept);
   const spots = vowAnchors(room);
@@ -498,7 +500,9 @@ function Vow({ room }: { room: Room }) {
       {PLEDGES.map((p, i) => spots[i] && !pledge && (
         <InteractTrigger key={p.id}
           position={spots[i]}
-          label={`Swear ${p.name} - ${p.vow}. ${cost} alarm now, ${p.pays} gems at the stair`}
+          label={`Swear ${p.name} - ${pledgeBlock(p.id, glim) ?? `${p.vow}. ${cost} alarm now, ${p.pays} gems at the stair`}`}
+          // Keep the stone selectable so nearby readable inscriptions cannot
+          // hide its refusal. The store explains it without spending alarm.
           enabled
           radius={CLOSE_REACH}
           onInteract={() => useRun.getState().takePledge(p.id)}
@@ -509,7 +513,8 @@ function Vow({ room }: { room: Room }) {
           position={spots[PLEDGES.findIndex(p => p.id === pledge)]}
           label="You have sworn on this floor already"
           enabled={false}
-          blockedReason="One promise a floor. Keep this one first."
+          blockedReason={wasKept(pledge, record) ? "One promise a floor. Keep this one to earn its reward."
+            : "Your promise is broken. No reward; the alarm remains."}
           radius={CLOSE_REACH}
           onInteract={() => undefined}
         />

@@ -1512,6 +1512,25 @@ check("500 dungeons across every floor size: connected, legal, and a vault that 
   const run = L.useRun;
   const original = run.getState();
   try {
+    for (const band of L.GLIM_BANDS.filter(b => b.at > 0)) {
+      run.setState({ ...original, phase: "playing", transitioning: false, glim: band.at }, true);
+      const before = run.getState();
+      check(`Unlit refuses an already lit ${band.name} lantern without charging alarm`,
+        run.getState().takePledge("unlit") === false && run.getState().pledge === null
+        && run.getState().alarm === before.alarm && run.getState().glim === before.glim);
+    }
+    run.setState({ ...original, phase: "playing", transitioning: false, glim: 0,
+      floorRecord: { raisedLantern: true, barredADoor: true, spentAnItem: true } }, true);
+    check("a lowered lantern can start Unlit despite actions before the promise",
+      run.getState().takePledge("unlit") && L.wasKept("unlit", run.getState().floorRecord));
+    const promisedAlarm = run.getState().alarm;
+    run.getState().toggleLantern();
+    check("raising the lantern after swearing breaks Unlit without refunding its alarm",
+      run.getState().glim > 0 && !L.wasKept("unlit", run.getState().floorRecord)
+      && run.getState().alarm === promisedAlarm);
+    run.getState().snuffLantern();
+    check("lowering the lantern cannot repair a broken promise",
+      !L.wasKept("unlit", run.getState().floorRecord) && !run.getState().takePledge("unspent"));
     let dungeon, tiled, bare;
     for (let seed = 1; seed <= 50; seed++) {
       dungeon = L.generateRunFloor(seed, 1);

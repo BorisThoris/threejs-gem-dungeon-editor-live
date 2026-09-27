@@ -8,6 +8,7 @@ import { RELICS } from "../game/relics/catalog";
 import { ServiceRubbing } from "./ServiceRubbing";
 import { SecretTrailGuide } from "./SecretTrailGuide";
 import { BellcapWarning } from "./BellcapWarning";
+import { wasKept } from "../game/heat/pledge";
 import {
   barredNow,
   barsRemaining,
@@ -67,6 +68,8 @@ export function Hud() {
   const spare = useRun(spareGems);
   const floor = useRun((s) => s.floor);
   const hasBomb = useRun((s) => s.satchel.includes("bomb"));
+  const pledge = useRun((s) => s.pledge);
+  const pledgeKept = useRun((s) => wasKept(s.pledge, s.floorRecord));
   const alarm = useRun((s) => s.alarm);
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
@@ -148,6 +151,7 @@ export function Hud() {
     owed,
     stairsKnown,
     hasBomb,
+    pledge: pledge ? { id: pledge, kept: pledgeKept } : null,
     cutpurse,
     thiefHolding,
     thiefKey,
@@ -215,7 +219,7 @@ export function Hud() {
         borderRadius: 6,
         fontFamily: FONT,
         fontSize: compact ? text.small : text.body,
-        lineHeight: compact ? 1.6 : 1.65,
+        lineHeight: 1.6,
         color: colors.ink,
         pointerEvents: panel.overflow ? "auto" : "none",
         zIndex: 900,

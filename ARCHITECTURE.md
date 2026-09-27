@@ -397,6 +397,13 @@ Two stores that both claimed the player's stats. So:
   one another. Rendering, prompts, reward placement and furniture reservations
   all read them. Each offer has a visible stone; the browser check selects all
   three through real prompts in ordinary and revealed hidden shrines.
+  Vows begin when accepted. Unlit requires the lantern fully down first;
+  the store and shrine prompt share `pledgeBlock`, so an already lit flame
+  cannot bypass the sacrifice. The HUD reads `wasKept` from the same floor
+  record used at settlement and keeps the rule, reward or broken status visible.
+  The settlement lesson names the vow and its actual payout. The browser check
+  keeps and breaks each vow, checks the stair's payment, and follows its reset
+  on descent alongside the physical shrine selection.
 - Which side a sound is on comes from `src/game/systems/bearing.ts` and
   nowhere else. Everything that makes a sound from somewhere needs it - the
   Warden through a wall, a Sentry from its post, every creature's held

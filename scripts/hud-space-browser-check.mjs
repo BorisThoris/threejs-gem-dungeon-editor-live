@@ -14,6 +14,8 @@ try {
     return state?.phase === "playing" && state.floor === 3 && state.currentRoomId === "room_11" && !state.transitioning;
   }, null, { timeout: 20000 });
   await page.getByTestId("hud-keeper").waitFor();
+  await page.evaluate(() => window.__run.getState().takePledge("unspent"));
+  await page.getByTestId("hud-pledge").waitFor();
   const measured = await page.evaluate(() => {
     const hud = document.querySelector('[data-testid="hud"]').getBoundingClientRect();
     const guidance = document.querySelector('[data-testid="guidance"]')?.getBoundingClientRect();

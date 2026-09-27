@@ -1,5 +1,6 @@
 import { BOMB_PRICE, KEEPER_FLOOR } from "../game/world";
 import { stolenLootLabel } from "../game/thief/loot";
+import { pledgeById, type PledgeId } from "../game/heat/pledge";
 
 /**
  * What the readout says, in what order, in one voice.
@@ -68,6 +69,7 @@ export interface HudFacts {
   /** A doorway to the stairs has been seen, so the player can return to it. */
   stairsKnown?: boolean;
   hasBomb?: boolean;
+  pledge?: { id: PledgeId; kept: boolean } | null;
   cutpurse?: "stalking" | "fleeing" | null;
   thiefHolding?: number;
   thiefKey?: boolean;
@@ -274,6 +276,14 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
   });
 
   // Rank 3: what can be spent or lost.
+  const promise = f.pledge && pledgeById(f.pledge.id);
+  if (promise) add({
+    id: "pledge", label: "VOW", rank: 3,
+    body: f.pledge!.kept
+      ? `${promise.name}${DOT}${promise.rule}${DOT}${promise.pays} gems at stair`
+      : `${promise.name} broken${DOT}no reward; alarm remains`,
+    tone: f.pledge!.kept ? "gold" : "dim",
+  });
   add({
     id: "lives",
     label: "LIVES",

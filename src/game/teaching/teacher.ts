@@ -7,6 +7,7 @@ import { afflictionFor } from "../items/afflictions";
 import { BARRICADE_KITS, BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
+import { PLEDGES } from "../heat/pledge";
 
 /**
  * What the game says the first time something matters.
@@ -82,7 +83,11 @@ export const LESSONS: readonly Lesson[] = [
     id: "settled",
     event: "pledgeSettled",
     every: true,
-    line: "The stair settles what was sworn on this floor.",
+    line: ({ id, kept, paid }) => {
+      const name = PLEDGES.find(p => p.id === id)?.name ?? "Your promise";
+      return kept ? `${name} kept. The stair pays ${paid} gems.` : `${name} broken. The stair pays nothing.`;
+    },
+    sample: { id: "unlit", kept: true, paid: 3 },
   }),
   // The one line that has to arrive before the player can act on it:
   // everything else teaches by having just happened, and this by having
