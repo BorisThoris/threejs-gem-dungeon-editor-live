@@ -177,7 +177,7 @@ try {
       }, spent);
       await page.waitForFunction(() => !window.__run.getState().transitioning);
       await page.evaluate(([x, z]) => window.__bus.emit("teleport", { position: [x, 1.5, z] }), exit);
-      await page.waitForFunction(() => /open the exit/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+      await page.waitForFunction(() => /Pay the toll/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
       await page.keyboard.press("e");
       await page.waitForFunction(() => window.__run.getState().floor === 2 && !window.__run.getState().transitioning);
       const descended = await page.evaluate(() => ({ spent: window.__run.getState().booksSpent, gems: window.__run.getState().gems }));

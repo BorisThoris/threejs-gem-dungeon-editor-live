@@ -67,10 +67,14 @@ try {
   await page.keyboard.press("KeyE");
   assert.equal(await page.evaluate(() => window.__run.getState().floor), 1, "unpaid exit refuses travel");
   await page.evaluate((gems) => window.__run.setState({ gems }), needs + 1);
-  await page.waitForFunction(() => /open the exit/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.waitForFunction(() => /Pay the toll/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  assert.match(await page.getByTestId("prompt-text").innerText(), new RegExp(`${needs} gems`),
+    "an affordable stair still quotes the gems it will spend");
+  assert.match(await page.getByTestId("prompt-text").innerText(), /descend to floor 2; no return/,
+    "the doorway explains its irreversible destination before use");
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().floor === 2 && !window.__run.getState().transitioning, null, { timeout: 12000 });
-  assert.ok((await page.evaluate(() => window.__run.getState().gems)) >= 1, "a spare gem survives the toll");
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), 1, "the stair charges exactly its advertised toll");
   const replayFloor = async () => page.evaluate(async () => {
     const { generateRunFloor, runFloorSeed } = await import("/src/game/dungeon/runFloor.ts");
     const state = window.__run.getState();
@@ -94,15 +98,82 @@ try {
   await page.evaluate(([x, z]) => window.__bus.emit("teleport", { position: [x, 1.5, z] }), lastExit.position);
   await page.waitForFunction(() => /exit needs \d+ gems/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
   const lastNeeds = Number((await page.locator('[data-testid="prompt-text"]').innerText()).match(/exit needs (\d+) gems/i)?.[1]);
-  await page.evaluate(gems => window.__run.setState({ gems }), lastNeeds + 1);
-  await page.waitForFunction(() => /open the exit/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  // One stolen gem is in the nest, one is still carried. The offer must
+  // follow both balances, and recovery must remove its warning immediately.
+  const stageTheft = async () => page.evaluate(gems => {
+    const run = window.__run;
+    run.setState({ gems, floorRooms: 0 });
+    for (let i = 0; i < 2; i++) {
+      run.setState({ thiefPhase: "stalking", thiefRoomId: run.getState().currentRoomId });
+      if (!run.getState().thiefSteals()) throw Error("the staged Cutpurse did not steal");
+      if (i === 0) run.getState().thiefEscapes();
+    }
+  }, lastNeeds + 3);
+  await stageTheft();
+  await page.waitForFunction(() => /Pay the toll/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.waitForFunction(() => /leave 2 stolen gems behind/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.evaluate(() => { window.__run.getState().thiefCaught(); window.__run.getState().emptyNest(); });
+  await page.waitForFunction(() => {
+    const text = document.querySelector('[data-testid="prompt-text"]')?.textContent ?? "";
+    return /Pay the toll/.test(text) && !/stolen/.test(text);
+  });
+  await stageTheft();
+  await page.waitForFunction(() => /leave 2 stolen gems behind/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  assert.match(await page.getByTestId("prompt-text").innerText(), new RegExp(`${lastNeeds} gems.*descend to floor 3; no return`));
+  await page.evaluate(async () => {
+    const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
+    settings.setUiScale(1.6);
+    settings.bind("interact", "NumpadSubtract");
+  });
+  for (const [width, height] of [[320, 640], [844, 390], [1280, 800]]) {
+    await page.setViewportSize({ width, height });
+    const fits = await page.getByTestId("prompt").evaluate(el => {
+      const b = el.getBoundingClientRect();
+      return b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight
+        && el.scrollWidth <= el.clientWidth + 1;
+    });
+    assert.ok(fits, `the complete stair offer fits ${width}x${height} at maximum text scale`);
+  }
+  await page.evaluate(async () => {
+    const settings = (await import("/src/game/state/settings.ts")).useSettings.getState();
+    settings.setUiScale(1);
+    settings.bind("interact", "KeyE");
+  });
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().floor === 3 && !window.__run.getState().transitioning, null, { timeout: 12000 });
   const third = await replayFloor();
   assert.ok(third.same && third.floorSeed === third.derived,
     `the final floor replays from the run seed: ${JSON.stringify(third)}`);
+  assert.deepEqual(await page.evaluate(() => {
+    const { gems, thiefHolding, nestGems } = window.__run.getState();
+    return { gems, thiefHolding, nestGems };
+  }), { gems: 1, thiefHolding: 0, nestGems: 0 }, "the quoted payment and abandoned loot match the real descent");
+  const finalExit = await page.evaluate(async () => {
+    const { tollNow } = await import("/src/game/state/run.ts");
+    const run = window.__run;
+    const s = run.getState();
+    const room = s.dungeon.rooms.find(r => Object.values(r.links).includes(s.dungeon.endId));
+    const dir = Object.keys(room.links).find(d => room.links[d] === s.dungeon.endId);
+    const [x, , z] = window.__layout.doorPosition(room, dir);
+    const toll = tollNow(s);
+    run.setState({ currentRoomId: room.id, transitioning: true, gems: toll + 1, floorRooms: 0, lastDamageAt: 1e9 });
+    return { room: room.id, position: [x - Math.sign(x) * 0.8, z - Math.sign(z) * 0.8], toll };
+  });
+  await page.waitForFunction(room => window.__run.getState().currentRoomId === room && !window.__run.getState().transitioning, finalExit.room);
+  await page.evaluate(([x, z]) => window.__bus.emit("teleport", { position: [x, 1.5, z] }), finalExit.position);
+  await page.waitForFunction(() => /Keeper holds the stairs/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.keyboard.press("KeyE");
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), finalExit.toll + 1, "a held stair cannot charge the player");
+  await page.evaluate(() => window.__run.getState().stallKeeper());
+  await page.waitForFunction(() => /Pay the toll and go - now/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  assert.match(await page.getByTestId("prompt-text").innerText(), new RegExp(`${finalExit.toll} gems.*escape`),
+    "the final stair advertises escape for its real toll");
+  assert.doesNotMatch(await page.getByTestId("prompt-text").innerText(), /descend|stolen/);
+  await page.keyboard.press("KeyE");
+  await page.waitForFunction(() => window.__run.getState().phase === "won");
+  assert.equal(await page.evaluate(() => window.__run.getState().gems), 1, "the final stair charges the quoted price exactly once");
   assert.deepEqual(errors, [], "no browser errors during the core flow");
-  console.log(`PASS  menu, ${first.count}-room dungeon, door travel, gem pickup, exit refusal and two replayable descents`);
+  console.log(`PASS  menu, ${first.count}-room dungeon, door travel, gem pickup, quoted tolls, stolen-loot choices, two replayable descents and paid escape`);
 } finally {
   await browser.close();
 }

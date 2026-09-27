@@ -1573,6 +1573,11 @@ src/
    and `thief/nest.ts` guarantees the detour is walkable (never the vault,
    never a room only reachable through it).
 7. The exit door charges `tollForFloor(floor)`, which rises on every floor.
+   Its affordable prompt still quotes `tollNow`, names the next floor and
+   says there is no return; the last stair offers escape. Unrecovered gems
+   in the Cutpurse's hands or nest are shown as loot left behind, using those
+   existing balances. The core browser flow checks the quote and real payment,
+   recovery clearing the warning, and abandoned loot resetting on descent.
    Entering the exit room descends to a fresh dungeon - lives, gems and
    relics carried, alarm and Warden reset to what the new floor's own rules
    say - and the exit of floor `FLOORS` wins. The gems still held at that point are the run's score. Losing the
