@@ -14,7 +14,7 @@ page.setDefaultTimeout(30000);
 page.on("pageerror", (e) => errors.push(String(e)));
 const snapshot = () => page.evaluate(() => {
   const s = window.__run.getState();
-  return { phase: s.phase, floor: s.floor, gems: s.gems, lives: s.lives, roomId: s.currentRoomId,
+  return { phase: s.phase, floor: s.floor, gems: s.gems, lives: s.lives, delver: s.delver, roomId: s.currentRoomId,
     dungeon: s.dungeon, collected: s.gemRooms, transitioning: s.transitioning, paused: s.paused, inputLocks: s.inputLocks,
     player: window.__playerDebug, toll: window.__derived.toll(), satchel: s.satchel,
     keeper: window.__derived.keeper(), bombs: window.__derived.bombs(), clock: window.__derived.clock(),
@@ -181,8 +181,13 @@ try {
       });
     }
   });
-  await page.evaluate((seed) => window.__run.getState().startRun(seed), Number(process.env.WALK_SEED ?? 11));
+  const delver = process.env.WALK_DELVER ?? "vagrant";
+  await page.evaluate(({ seed, delver }) => window.__run.getState().startRun(seed, delver),
+    { seed: Number(process.env.WALK_SEED ?? 11), delver });
   await page.waitForFunction(() => window.__playerDebug);
+  assert.equal(await page.evaluate(() => window.__run.getState().delver), delver, "the walk uses the requested delver");
+  const starting = await snapshot();
+  console.log("DELVER", delver);
   console.log("RENDERER", await page.evaluate(() => {
     const gl = document.querySelector("canvas").getContext("webgl2");
     const extension = gl.getExtension("WEBGL_debug_renderer_info");
@@ -342,8 +347,9 @@ try {
       return s.phase === "playing" && s.floor === 1 && !s.transitioning;
     });
     const fresh = await snapshot();
-    assert.equal(fresh.gems, 0, "a new run starts without the previous haul");
-    assert.equal(fresh.lives, 3, "a new run restores its initial health");
+    assert.equal(fresh.delver, starting.delver, "Run again preserves the selected delver");
+    assert.equal(fresh.gems, starting.gems, "a new run restores its own starting purse");
+    assert.equal(fresh.lives, starting.lives, "a new run restores its own starting health");
     assert.ok(!fresh.reaper && fresh.bombs.length === 0, "previous pursuit and placed bombs do not persist");
     console.log("PASS escaped summary starts a fresh playable run through Run again");
   }

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { chromium } from "playwright-core";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined,
+  args: ["--no-sandbox", ...(process.env.SOFTWARE_GL === "1" ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : [])] });
 try {
   const page = await browser.newPage();
   const errors = [];
@@ -85,9 +86,12 @@ try {
     assert.ok(Math.hypot(before.thief.targetX - before.setup.bait.x, before.thief.targetZ - before.setup.bait.z) < .3,
       `${item} diverts the thief to the real landing, away from the visible player`);
     assert.equal(before.events.length, 1, "one change of attention produces one readable response");
+    // Under software rendering the first observation may arrive after the
+    // thief has reached the bait. Measure from its staged start, not from an
+    // arbitrarily late browser poll that could demand movement past the goal.
     await page.waitForFunction(({ x, z, gap }) => Math.hypot(window.__thief.x - x, window.__thief.z - z) < gap - .7,
       { x: before.thief.targetX, z: before.thief.targetZ,
-        gap: Math.hypot(before.thief.x - before.thief.targetX, before.thief.z - before.thief.targetZ) }, { timeout: 2500 });
+        gap: Math.hypot(before.setup.a.x - before.thief.targetX, before.setup.a.z - before.thief.targetZ) }, { timeout: 6000 });
     await page.evaluate(() => window.__run.getState().pause());
     const paused = await page.evaluate(() => ({ x: window.__thief.x, z: window.__thief.z, time: window.__din.dinClock() }));
     await page.waitForTimeout(350);
