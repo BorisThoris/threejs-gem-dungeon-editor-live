@@ -1003,6 +1003,11 @@ Two stores that both claimed the player's stats. So:
   count and Healing's capacity read the same charge helpers as the store;
   cursed Healing names its noise cost and cursed Mapping includes Gloom's
   effects and cure. The browser check compares the text with actual rewards.
+  Pause-menu satchel inspection reads that same description before use, with
+  the current kind's charge. It exposes effects only for identified kinds
+  and the visibly named bomb. Unknown appearances keep their secrets; opening
+  a slot only expands its description. The satchel-inspection browser check
+  covers knowledge privacy, charged effects, paused input and changing slots.
   The long smoke check reads the visible explanation, not retired notice wording.
   Gloom and cursed Mapping share one application in the run store: the map
   darkens, the flame goes out, and the lantern-out lesson explains the cure.

@@ -16,6 +16,7 @@ import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
 import { Minimap } from "./Minimap";
+import { SatchelInspection } from "./SatchelInspection";
 
 const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
 
@@ -49,6 +50,7 @@ export function PauseMenu() {
             Broken ring: Harrier roost. Bar across the stairs: Keeper.
           </p>
         </div>}
+        <SatchelInspection />
         {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
         <Naming />
         <Options />
