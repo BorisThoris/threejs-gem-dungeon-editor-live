@@ -72,7 +72,7 @@ const out = await page.evaluate(async () => {
   await wait(1500);
   const before = (window.__rats ?? []).map((r) => ({ x: r.x, z: r.z, startled: r.startled }));
   const calm = before.every((r) => !r.startled);
-  window.__bus.emit("propBroken", { roomId: ratRoom.id, kind: "barrel", key: "probe:barrel" });
+  window.__bus.emit("propBroken", { roomId: ratRoom.id, kind: "barrel", key: "probe:barrel", x: 0, z: 0 });
   // The receiver runs on a rendered frame. A 250 ms snapshot can precede
   // that frame under software rendering even though the rats then flee.
   // Observe the actual response, retaining a bounded failure when absent.
@@ -166,7 +166,7 @@ const out = await page.evaluate(async () => {
     await resurface();
     const dove = [];
     const offDove = window.__bus.on("croakersDove", ({ roomId }) => dove.push(roomId));
-    window.__bus.emit("propBroken", { roomId: pond.id, kind: "barrel", key: "probe:pond" });
+    window.__bus.emit("propBroken", { roomId: pond.id, kind: "barrel", key: "probe:pond", x: 0, z: 0 });
     await wait(400);
     const under = { ...window.__croakers, dove: dove.slice(), noises: noises.slice() };
     offDove();

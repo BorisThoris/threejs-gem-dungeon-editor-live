@@ -2738,7 +2738,7 @@ export const useRun = create<RunState>()(
       if (burst.length) {
         let spilled = 0;
         for (const p of burst) {
-          bus.emit("propBroken", { roomId, kind: p.kind, key: p.key });
+          bus.emit("propBroken", { roomId, kind: p.kind, key: p.key, x: p.x, z: p.z });
           if (spillFor(s.dungeon.seed, p.key)) spilled++;
           // A crate blown open is a crate opened, for the mire's cure.
           get().openedContainer();

@@ -29,7 +29,7 @@ try {
   await page.waitForFunction(id => window.__croakers?.room === id && window.__croakers.singing > 0, fixture.room.id);
   const before = await page.evaluate(() => ({ ...window.__croakers }));
   assert.ok(Math.hypot(before.x - fixture.habitats[0].wet.x, before.z - fixture.habitats[0].wet.z) < 0.01, "colony begins at the live channel");
-  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));
+  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId, kind: "barrel", key: "ecology-noise", x: 0, z: 0 }));
   await page.waitForFunction(() => window.__croakers.under === window.__croakers.total);
   assert.equal(await page.evaluate(() => window.__scene.getObjectByName("croaker-0").visible), false, "loud noise hides diving frogs");
   await page.waitForFunction(() => window.__croakers.under === 0, null, { timeout: 20000 });
@@ -52,7 +52,7 @@ try {
       return body && Math.abs(body.position.y - floorHeightAt(room, h.refuge.x, h.refuge.z) - 0.045) < 0.01;
     });
   }, fixture.habitats), "sheltered toads stand on the actual refuge floor");
-  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId }));
+  await page.evaluate(() => window.__bus.emit("propBroken", { roomId: window.__run.getState().currentRoomId, kind: "barrel", key: "ecology-noise", x: 0, z: 0 }));
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => window.__croakers.under), 0, "sheltered toads cannot dive into a dry channel");
   await page.evaluate(() => { window.__run.getState().pause(); window.__run.setState({ currentRoomId: window.__run.getState().dungeon.startId }); });

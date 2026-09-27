@@ -47,18 +47,27 @@ const ok = (label, cond, detail = "") => {
  */
 const TAP = `
   (() => {
-    window.__tap = { analyser: null, ctx: null };
+    window.__tap = { analyser: null, ctx: null, master: null, score: null, captureScore: false };
     const realConnect = AudioNode.prototype.connect;
     AudioNode.prototype.connect = function (dest, ...rest) {
       const out = realConnect.call(this, dest, ...rest);
       if (dest && dest.context && dest === dest.context.destination) {
         const t = window.__tap;
+        t.master = this;
         if (!t.analyser) {
           t.ctx = dest.context;
           t.analyser = dest.context.createAnalyser();
           t.analyser.fftSize = 2048;
         }
         realConnect.call(this, t.analyser);
+      }
+      // Capture the score's actual output before the louder room bed masks
+      // it. The score still connects to the real master and speakers.
+      const t = window.__tap;
+      if (t.captureScore && dest === t.master) {
+        t.score = dest.context.createAnalyser();
+        t.score.fftSize = 8192;
+        realConnect.call(this, t.score);
       }
       return out;
     };
@@ -104,8 +113,7 @@ const TAP = `
      * different answer about whether it had moved at all. What the filter
      * does to the spectrum is not ambiguous.
      */
-    window.__band = async (loHz, hiHz, ms) => {
-      const a = window.__tap.analyser;
+    window.__band = async (loHz, hiHz, ms, a = window.__tap.analyser) => {
       if (!a) return 0;
       const bins = new Uint8Array(a.frequencyBinCount);
       const perBin = window.__tap.ctx.sampleRate / 2 / a.frequencyBinCount;
@@ -739,45 +747,40 @@ ok(
     `${held.toFixed(4)} paused against ${titleOn.toFixed(4)} playing`
   );
 
-  // Underground, a floor that is hunting gets a heartbeat under the
-  // phrase. Nothing else in the mix lives that low but the drone, which
-  // does not change.
-  //
-  // Eighty-eight to a hundred and thirty, and the score's own contribution
-  // to it rather than the band itself.
-  //
-  // Two mistakes were made getting here. Measuring the band flat put 0.63
-  // against 0.59 - the bed's drone at 55Hz and its fifth at 82Hz are in
-  // any band wide enough to hold a heartbeat and are far louder than one -
-  // so each reading is now taken twice, with the score running and with it
-  // stopped, and what is compared is the difference the score makes. And
-  // 40-110Hz still straddled that fifth: once the score was mixed down to
-  // where it belongs it separated a hunted floor from a calm one by 0.005,
-  // which is the analyser's noise. The pulse's attack is at 96Hz, above
-  // the fifth and below the phrase, and measured there the same difference
-  // is 0.018.
+  // Measure the score's real signal before the room bed is mixed into it.
+  // Subtracting two logarithmic FFT readings of the whole mix does not
+  // isolate the score: at 48kHz the old 88-130Hz bins included the drone's
+  // fifth. Its drift could mask a working heartbeat. At maximum tension
+  // the melody also drops an octave into that band, so even a missing
+  // heartbeat could pass. Intermediate tension adds the pulse while the
+  // melody stays above this band. Six seconds includes several beats.
   const beat = async (tension) => {
     await page.evaluate((t) => {
-      window.__music.start("delve");
+      window.__music.stop();
+      window.__tap.score = null;
+      window.__tap.captureScore = true;
+      try { window.__music.start("delve"); }
+      finally { window.__tap.captureScore = false; }
       window.__music.setTension(t);
     }, tension);
     await page.waitForTimeout(3000);
-    const on = await page.evaluate(async () => window.__band(88, 130, 3000));
+    const heard = await page.evaluate(async () => {
+      if (!window.__tap.score) throw new Error("The score did not connect to the master");
+      return window.__band(45, 100, 6000, window.__tap.score);
+    });
     await page.evaluate(() => window.__music.stop());
-    await page.waitForTimeout(1800);
-    const off = await page.evaluate(async () => window.__band(88, 130, 3000));
-    return on - off;
+    return heard;
   };
   await page.evaluate(async () => {
     window.__run.getState().startRun(11);
     await new Promise((r) => setTimeout(r, 1200));
   });
   const calmBeat = await beat(0);
-  const huntedBeat = await beat(1);
+  const huntedBeat = await beat(0.6);
   ok(
     "a floor that is hunting gets a heartbeat the calm one does not",
     huntedBeat > calmBeat + 0.008,
-    `the score adds ${huntedBeat.toFixed(4)} down there when hunted against ${calmBeat.toFixed(4)} when calm`
+    `score signal ${huntedBeat.toFixed(4)} when hunted against ${calmBeat.toFixed(4)} when calm`
   );
 
   // And the volume the player set is the volume it plays at.

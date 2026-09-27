@@ -202,6 +202,9 @@ Two stores that both claimed the player's stats. So:
   wheeling away - are its own rather than borrowed from another creature,
   so a player who has learned what the Cutpurse sounds like is not told
   the Cutpurse is here when the Harrier wakes.
+  The audio check measures the score's heartbeat at its real master input,
+  before the room drone masks it. Intermediate tension keeps the melody
+  above the pulse band, so low melody notes cannot pass for a heartbeat.
 - **What a thing on the floor IS lives in `src/game/din/`, and what a
   creature ANSWERS TO lives beside it in `susceptibility.ts`.** This is the
   same rule pushed one level further and it is the one worth understanding.
@@ -284,6 +287,11 @@ Two stores that both claimed the player's stats. So:
   the event. `warden/bars.ts` resolves that site through `doorPosition`, and
   Din uses it even when the player is elsewhere. The barricade browser
   check verifies both remote grate breaking and local kit recovery.
+  Broken furniture likewise carries its actual placement in `propBroken`.
+  Din preserves that origin for creature hearing, and the clatter uses the
+  object's local bearing or its neighbouring doorway. The Din browser check
+  detonates a real device against generated furniture and compares event,
+  hearing and audio positions, including repeat-detonation refusal.
   Floor resets clear old emissions and rebuild carried lantern, key and wisp
   signals from current run state. Room entry uses the same reconstruction,
   preserving the lantern's actual band without trailing duplicate sources.

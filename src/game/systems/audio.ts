@@ -1076,10 +1076,10 @@ export const sfx = {
    * over there, so it was the wrong cue to have sitting at not quite twice
    * the room tone.
    */
-  clatter() {
-    noiseBurst(0.12, 0.22, 2400);
-    later(140, () => noiseBurst(0.16, 0.15, 1500));
-    later(300, () => tone(120, 0.5, "sine", 0.2, 70));
+  clatter(pan = 0) {
+    noiseBurst(0.12, 0.22, 2400, pan);
+    later(140, () => noiseBurst(0.16, 0.15, 1500, pan));
+    later(300, () => tone(120, 0.5, "sine", 0.2, 70, pan));
   },
   /**
    * A Sentry calling out: two notes climbing, and something hears it.

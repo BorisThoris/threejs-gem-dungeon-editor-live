@@ -160,7 +160,8 @@ export function Audio() {
       // the roost itself, with a side, while the player is in its room.
       bus.on("batsRoused", () => sfx.batsBurst()),
       bus.on("draftFelt", () => sfx.draft()),
-      bus.on("propBroken", () => sfx.clatter()),
+      bus.on("propBroken", ({ roomId, x, z }) => sfx.clatter(roomId === useRun.getState().currentRoomId
+        ? sideOf(x - playerAt.x, z - playerAt.z) : towards(roomId))),
       bus.on("wallSound", ({ flavour }) => sfx.throughWall(flavour)),
       bus.on("mapMarked", () => sfx.setDown()),
       bus.on("wispCame", () => sfx.named()),

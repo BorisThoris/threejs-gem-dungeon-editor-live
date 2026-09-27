@@ -250,7 +250,7 @@ export interface BusEvents {
   /** A sound through a thin wall, and what it says is behind it. */
   wallSound: { roomId: string; flavour: "hoard" | "reliquary" | "shrine"; title: string };
   /** A barrel, crate or urn burst in a blast. */
-  propBroken: { roomId: string; kind: string; key: string };
+  propBroken: { roomId: string; kind: string; key: string; x: number; z: number };
   /** A draft of air from a cracked wall, felt for the first time this visit. */
   draftFelt: { roomId: string };
   /** One of the floor's own traps went off, and what set it off. */
