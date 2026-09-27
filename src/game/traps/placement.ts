@@ -3,9 +3,11 @@ import { DIRS, halfSize, type Dir, type Room, type RoomKind } from "../dungeon/t
 import type { Body } from "../mobs/body";
 import { PROP_SPECS } from "../props/specs";
 import { createRng } from "../rng";
+import { insideRoom } from "../dungeon/footprint";
 import { placementsFor } from "../rooms/placements";
 import { gemFor, keyFor } from "../rooms/kinds";
-import { PIT_RADIUS } from "../world";
+import { PIT_RADIUS, WALL_THICKNESS } from "../world";
+import { TRAP_FOOTPRINT } from "./geometry";
 
 /**
  * Where the floor's traps are, and what each one is to a body.
@@ -37,7 +39,7 @@ export const TRAPS: Record<TrapKind, { springs: readonly Body[]; hurts: readonly
 const TRAP_KINDS: ReadonlySet<RoomKind> = new Set<RoomKind>(["normal", "treasure", "trap", "arena", "shrine"]);
 const inLane = (x: number, z: number, room: Room): boolean =>
   DIRS.some((d) => {
-    if (!room.links[d]) return false;
+    if (!room.links[d] && room.secret?.dir !== d) return false;
     const [dx, , dz] = doorPosition(room, d);
     // The lane runs from the middle to that door: the axis the door is on.
     return Math.abs(dx) > Math.abs(dz)
@@ -48,11 +50,20 @@ const inLane = (x: number, z: number, room: Room): boolean =>
 /** The room's traps: none in the start, the exit, a shop or a puzzle, and at most two. */
 export function trapsFor(room: Room, seed: number, endId: string | null): Trap[] {
   if (!TRAP_KINDS.has(room.kind)) return [];
+  // Breaking a secret wall changes traversal, not traps already learned or
+  // sprung. Reserve its future approach, but seed from the original doors.
+  if (room.secret && room.links[room.secret.dir]) {
+    const links = { ...room.links };
+    delete links[room.secret.dir];
+    room = { ...room, links };
+  }
   const rng = createRng(`${seed}:${room.id}:traps`);
   const roll = rng();
   const count = roll < 0.4 ? 0 : roll < 0.8 ? 1 : 2;
   if (!count) return [];
-  const doors = DIRS.filter((d) => room.links[d] && room.links[d] !== endId);
+  // Exit safety filters the finished list. Removing a door before drawing
+  // random positions changed pits between the renderer and the body table.
+  const doors = DIRS.filter((d) => room.links[d]);
   const half = halfSize(room);
   const solid = placementsFor(room, seed).filter((p) => PROP_SPECS[p.kind].solid);
   const gem = gemFor(room, seed);
@@ -70,6 +81,7 @@ export function trapsFor(room: Room, seed: number, endId: string | null): Trap[]
       for (let tries = 0; tries < 24; tries++) {
         const x = (rng() * 2 - 1) * (half - 2);
         const z = (rng() * 2 - 1) * (half - 2);
+        if (!insideRoom(room, x, z, TRAP_FOOTPRINT.darts + WALL_THICKNESS / 2)) continue;
         if (inLane(x, z, room)) continue;
         if (solid.some((p) => Math.hypot(x - p.x, z - p.z) < PROP_SPECS[p.kind].radius + 1.6)) continue;
         if (gem && Math.hypot(x - gem[0], z - gem[2]) < 2) continue;
@@ -87,6 +99,7 @@ export function trapsFor(room: Room, seed: number, endId: string | null): Trap[]
       for (let tries = 0; tries < 12; tries++) {
         const x = (rng() * 2 - 1) * (half - 1.5);
         const z = (rng() * 2 - 1) * (half - 1.5);
+        if (!insideRoom(room, x, z, PIT_RADIUS + WALL_THICKNESS / 2)) continue;
         if (inLane(x, z, room)) continue;
         if (solid.some((p) => Math.hypot(x - p.x, z - p.z) < PROP_SPECS[p.kind].radius + PIT_RADIUS + 0.4)) continue;
         if (gem && Math.hypot(x - gem[0], z - gem[2]) < HAZARD_RADIUS + PIT_RADIUS + 0.5) continue;
@@ -96,5 +109,5 @@ export function trapsFor(room: Room, seed: number, endId: string | null): Trap[]
       }
     }
   }
-  return out;
+  return out.filter(trap => trap.kind !== "grate" || room.links[trap.dir!] !== endId);
 }

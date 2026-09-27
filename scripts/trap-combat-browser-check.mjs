@@ -138,4 +138,42 @@ try {
     assert.equal(result.harrier?.slain, true, "Harrier downed over spikes is slain");
   }
   console.log("PASS live dart, pit and Harrier spike contact");
+  if (!process.argv.includes("--dart-only")) {
+    const fixture = await page.evaluate(async () => {
+      const { generateRunFloor } = await import("/src/game/dungeon/runFloor.ts");
+      for (let seed = 1; seed <= 60; seed++) {
+        const dungeon = generateRunFloor(seed, 1);
+        for (const room of dungeon.rooms.filter(r => r.secret)) {
+          const pit = window.__traps.trapsFor(room, dungeon.seed, dungeon.endId).find(t => t.kind === "pit");
+          if (!pit) continue;
+          window.__run.getState().startRun(seed);
+          window.__run.setState({ currentRoomId: room.id, transitioning: true, wardenRoomId: null });
+          return { seed, roomId: room.id, pit };
+        }
+      }
+      throw Error("No generated secret host with a pit");
+    });
+    await page.waitForFunction(() => !window.__run.getState().transitioning);
+    await page.evaluate(pit => window.__bus.emit("teleport", { position: [pit.x, 1.5, pit.z] }), fixture.pit);
+    await page.waitForFunction(key => window.__run.getState().sprung[key] !== undefined, fixture.pit.key);
+    const before = await page.evaluate(key => ({ lives: window.__run.getState().lives, sprung: window.__run.getState().sprung[key] }), fixture.pit.key);
+    assert.equal(before.lives, 2, "the visible pit opens through player contact and takes one life");
+    await page.evaluate(roomId => window.__run.getState().revealSecret(roomId), fixture.roomId);
+    const frame = await page.evaluate(() => window.__perf.frames);
+    await page.waitForFunction(frame => window.__perf.frames >= frame + 3, frame);
+    const after = await page.evaluate(({ roomId, pit }) => {
+      const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === roomId);
+      const traps = window.__traps.trapsFor(room, s.dungeon.seed, s.dungeon.endId);
+      const bites = window.__body.bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung);
+      let visible = false;
+      window.__scene.traverse(o => { if (o.name === "trap-pit" && Math.hypot(o.position.x - pit.x, o.position.z - pit.z) < .001) visible = true; });
+      return { pit: traps.find(t => t.key === pit.key), sprung: s.sprung[pit.key], visible,
+        damagesBodies: bites.some(p => p.x === pit.x && p.z === pit.z), revealed: room.links[room.secret.dir] === room.secret.to };
+    }, fixture);
+    assert.deepEqual(after.pit, fixture.pit, "breaking a secret wall cannot reroll an existing pit");
+    assert.equal(after.sprung, before.sprung, "the open pit retains its original sprung state");
+    assert.ok(after.revealed && after.visible && after.damagesBodies, "the opened wall, drawn pit and creature hazard agree");
+    console.log(`PASS a player-opened pit persists through secret revelation (seed ${fixture.seed})`);
+  }
+  assert.deepEqual(errors, [], "no browser exceptions after trap lifetime checks");
 } finally { await browser.close(); }

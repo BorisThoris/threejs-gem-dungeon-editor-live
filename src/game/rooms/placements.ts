@@ -76,6 +76,8 @@ const near2 = (p: PropPlacement, a: Vec3, r: number) =>
  * still a shop - and gets a treasure room's chests around it.
  */
 export interface DressingOptions {
+  /** Seeded trap tells keep their ground when vault furniture is added. */
+  traps?: readonly { x: number; z: number; r: number }[];
   /** This is the floor's locked room. */
   asVault?: boolean;
   /**
@@ -165,6 +167,8 @@ export function placementsFor(room: Room, seed: number, opts: DressingOptions = 
     if (opts.key && near2(p, opts.key, CLEAR_OF_KEY)) return false;
     if (gem && near2(p, gem, solid ? SOLID_CLEAR_OF_GEM : CLEAR_OF_GEM)) return false;
     if (spikes.some((a) => near2(p, a, CLEAR_OF_SPIKES))) return false;
+    if (opts.traps?.some(t => Math.hypot(p.x - t.x, p.z - t.z) <
+      t.r + CATALOG[p.kind].radius * (p.scale ?? 1) + PLAYER_CAPSULE_RADIUS)) return false;
     return true;
   };
 

@@ -796,6 +796,16 @@ Two stores that both claimed the player's stats. So:
   make. An open pit reaches every creature through `bitesFor`, which
   reads `sprung` beside `placed` - the one list of what bites a ground
   body, now with the floor's own holes in it.
+  Trap candidates must fit the real room outline. Exit protection filters
+  grates after seeded placement, so knowing the exit cannot change a pit's
+  location or identity between the scene and creature damage. Trap
+  placement also reserves secret approaches from the start; opening a
+  cracked wall never rerolls existing traps or discards their sprung state.
+  Dart plate dimensions live in `traps/geometry.ts`; drawing, hit detection and ground
+  reservations read them. `roomDressingOptions` reserves seeded trap ground
+  before vault furniture and Full Count chests are placed, keeping the tell
+  exposed without moving an already sprung trap. `test:trap-placement`
+  checks ordinary and brimming rooms, bounds, exit safety and open-pit damage.
 - What is behind the cracked wall is `src/game/dungeon/secret.ts` -
   `secretFlavour(d)` - one owner beside `secretId`; the content
   (`Secret` in `rooms/content.tsx`) asks it and draws a hoard, a

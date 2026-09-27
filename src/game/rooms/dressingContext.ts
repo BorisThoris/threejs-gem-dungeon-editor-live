@@ -3,6 +3,8 @@ import { secretStoryFor } from "../dungeon/secret";
 import { sentryFor } from "../sentry/placement";
 import { keyFor } from "./kinds";
 import type { DressingOptions } from "./placements";
+import { trapsFor } from "../traps/placement";
+import { TRAP_FOOTPRINT } from "../traps/geometry";
 
 /** Facts that change furniture beyond a room's seeded base layout. */
 export interface DressingContext {
@@ -20,5 +22,7 @@ export function roomDressingOptions(s: DressingContext, room: Room, seed: number
     key,
     sentry: sentryFor(room, seed, s.floor, key ? [key] : [])?.at ?? null,
     brimming: vault && s.fullCountFloor === s.floor,
+    traps: trapsFor(room, seed, s.dungeon?.endId ?? null).filter(t => t.kind !== "grate")
+      .map(t => ({ x: t.x, z: t.z, r: TRAP_FOOTPRINT[t.kind] })),
   };
 }

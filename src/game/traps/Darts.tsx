@@ -7,10 +7,8 @@ import { canControl, runClock, useRun } from "../state/run";
 import { wardenAt } from "../warden/position";
 import { DART_FLIGHT_S, GROUND_Y } from "../world";
 import type { Trap } from "./placement";
+import { DART_PLATE_HALF as PLATE_HALF, DART_PLATE_ACROSS as PLATE_ACROSS } from "./geometry";
 
-/** How far along the lane the plate reaches, either side of its centre. */
-const PLATE_HALF = 0.6;
-const PLATE_ACROSS = 0.7;
 const DART_WARNING_S = 0.65;
 
 /**
@@ -90,7 +88,7 @@ export function Darts({ room, trap }: { room: Room; trap: Trap }) {
           at these meshes, so nothing noticed until a picture was taken
           from three strides back and one hole filled the frame. */}
       <mesh position={[0, 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[PLATE_HALF * 2, 1.4]} />
+        <planeGeometry args={[PLATE_HALF * 2, PLATE_ACROSS * 2]} />
         <meshStandardMaterial color={warning ? "#ffb54a" : "#7e5030"} emissive={warning ? "#c85b16" : "#000000"} roughness={1} />
       </mesh>
       {[-1, 1].map((side) => (

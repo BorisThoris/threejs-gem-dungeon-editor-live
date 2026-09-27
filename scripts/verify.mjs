@@ -20,7 +20,7 @@ const requested = args.filter(arg => arg.startsWith("--only=")).map(arg => arg.s
 const focused = requested.length > 0;
 const unknownFlags = args.filter(arg => arg !== "--full" && arg !== "--systems" && arg !== "--list" && !arg.startsWith("--only="));
 if (unknownFlags.length) throw new Error(`Unknown verification option: ${unknownFlags.join(", ")}`);
-const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:full-count", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
+const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:full-count", "test:trap-placement", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
 const fullChecks = ["test:world", "test:walk-navigation", "test:nest-placement", "test:prod", "test:desktop"];
 const systemChecks = ["test:lighting", "test:service-trail", "test:handbuilt", "test:water-sound"];
 const baseBrowserChecks = ["core-flow-browser-check.mjs", "dev-artifact-browser-check.mjs", "sprint-noise-browser-check.mjs", "din-clock-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs", "cutpurse-distraction-browser-check.mjs", "delver-choices-browser-check.mjs", "shop-payment-browser-check.mjs"];
