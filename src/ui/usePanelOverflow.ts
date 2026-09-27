@@ -24,6 +24,9 @@ export function usePanelOverflow(resetKey?: unknown) {
     const content = new MutationObserver(measure);
     resize.observe(panel);
     content.observe(panel, { childList: true, subtree: true, characterData: true });
+    // The shared text scale changes the root style. A capped panel may keep
+    // exactly the same box while its text becomes too tall for that box.
+    content.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
     measure();
     return () => { resize.disconnect(); content.disconnect(); };
   }, [panel]);

@@ -994,6 +994,10 @@ Two stores that both claimed the player's stats. So:
   overflows; otherwise pointer gestures still reach the game. The overlay
   check verifies visible reading space, control clearance and keyboard scroll
   access at maximum text scale.
+  Overflow measurement also observes the root style that owns UI text scale:
+  larger text can outgrow a capped panel without changing its outer box.
+  The readout interaction check holds that box fixed while enlarging and
+  shrinking text, verifying actual keyboard scrolling and restored gestures.
   A new notice or a life-count change resets its readout to the top, keeping
   fresh combat information visible after the player scrolls older details.
   Readout clicks cannot capture the view or shove. Focused readouts keep

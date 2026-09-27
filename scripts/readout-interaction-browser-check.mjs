@@ -16,15 +16,59 @@ try {
   await page.getByTestId("menu-start").tap();
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   await page.waitForTimeout(500);
-  const { captionText, keeperNotice } = await page.evaluate(async () => {
-    const { LEDGER_LESSONS } = await import("/src/game/ledger/lessons.ts");
-    const longest = LEDGER_LESSONS.reduce((a, b) => a.entry.length > b.entry.length ? a : b);
-    let keeperNotice;
-    const off = window.__bus.on("notice", text => { keeperNotice = text; });
+  // A landscape readout can keep the same allotted rectangle while its text
+  // grows. Scrolling must follow the content, not just the panel's border box.
+  const keeperNotice = await page.evaluate(async () => {
+    (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(1);
+    window.__run.getState().lockInput();
+    window.__bus.emit("hint", null);
+    let notice;
+    const off = window.__bus.on("notice", text => { notice = text; });
     window.__bus.emit("keeperBars");
     off();
+    return notice;
+  });
+  await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]')?.textContent.includes("Shoves cannot move the Keeper"));
+  const originalGuidanceStyle = await page.getByTestId("guidance").evaluate(g => {
+    const previous = g.style.cssText;
+    Object.assign(g.style, { width: "340px", height: "150px", minHeight: "0", flex: "none" });
+    return previous;
+  });
+  await page.waitForFunction(() => {
+    const g = document.querySelector('[data-testid="guidance"]');
+    return g.scrollHeight <= g.clientHeight + 1 && getComputedStyle(g).pointerEvents === "none";
+  });
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const smallBox = await page.getByTestId("guidance").evaluate(g => [g.clientWidth, g.clientHeight]);
+  await page.evaluate(async () => (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(1.6));
+  await page.waitForFunction(() => {
+    const g = document.querySelector('[data-testid="guidance"]');
+    return g.scrollHeight > g.clientHeight + 1;
+  });
+  assert.deepEqual(await page.getByTestId("guidance").evaluate(g => [g.clientWidth, g.clientHeight]), smallBox);
+  await page.waitForFunction(() => {
+    const g = document.querySelector('[data-testid="guidance"]');
+    return g.tabIndex === 0 && getComputedStyle(g).pointerEvents === "auto";
+  }, null, { timeout: 5000 });
+  await page.getByTestId("guidance").focus();
+  await page.keyboard.press("End");
+  await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').scrollTop > 0);
+  await page.evaluate(async () => (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(1));
+  await page.waitForFunction(() => {
+    const g = document.querySelector('[data-testid="guidance"]');
+    return g.scrollHeight <= g.clientHeight + 1 && g.tabIndex === -1 && getComputedStyle(g).pointerEvents === "none";
+  });
+  await page.getByTestId("guidance").evaluate((g, previous) => { g.blur(); g.style.cssText = previous; }, originalGuidanceStyle);
+  await page.evaluate(async () => {
+    (await import("/src/game/state/settings.ts")).useSettings.getState().setUiScale(1.6);
+    window.__run.getState().unlockInput();
+  });
+  check(true, "enlarging text enables real scrolling without resizing the panel", null);
+  const captionText = await page.evaluate(async () => {
+    const { LEDGER_LESSONS } = await import("/src/game/ledger/lessons.ts");
+    const longest = LEDGER_LESSONS.reduce((a, b) => a.entry.length > b.entry.length ? a : b);
     window.__bus.emit("lessonLearned", { id: longest.id });
-    return { captionText: longest.entry, keeperNotice };
+    return longest.entry;
   });
   const caption = page.getByTestId("caption");
   await page.waitForFunction(() => {
