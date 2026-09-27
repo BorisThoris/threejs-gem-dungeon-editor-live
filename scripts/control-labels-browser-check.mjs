@@ -27,6 +27,9 @@ try {
     await page.getByTestId(id).waitFor();
     const lantern = await helpRow(id, "Lantern");
     const bar = await helpRow(id, "Bar a door");
+    const drop = await helpRow(id, "Drop key");
+    check(/clatter/i.test(drop) && /pick it back up/i.test(drop) && (touch ? /DROP KEY appears/.test(drop) : /d-pad left/.test(drop)),
+      `${touch ? "touch" : "keyboard"} help explains dropping and recovering the key lure`);
     check(/band/i.test(lantern) && /shop/i.test(lantern) && /enter.*room/i.test(lantern)
       && !/braziers fill/i.test(lantern), `${touch ? "touch" : "keyboard"} help explains the lantern cycle and room-based oil cost`);
     check(/recover.*kit/i.test(bar) && /tear/i.test(bar) && !/forty-five|45/.test(bar),

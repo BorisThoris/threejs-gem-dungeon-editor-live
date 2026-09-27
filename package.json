@@ -80,7 +80,9 @@
         "test:channel-frames": "node scripts/channel-frame-browser-check.mjs",
         "test:audio-threshold": "node scripts/audio-check.mjs --threshold-only",
         "trailers": "node scripts/build-project-trailers.mjs",
-        "trailers:check": "node scripts/build-project-trailers.mjs --check"
+        "trailers:check": "node scripts/build-project-trailers.mjs --check",
+        "test:media": "node --test scripts/project-media.test.mjs",
+        "test:media:e2e": "node scripts/project-media.e2e.mjs"
     },
     "dependencies": {
         "@react-three/drei": "^10.7.6",

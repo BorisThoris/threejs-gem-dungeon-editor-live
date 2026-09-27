@@ -14,12 +14,12 @@ try {
   await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   const fixture = await page.evaluate(async () => {
     const { generateDungeon } = await import("/src/game/dungeon/generate.ts");
-    const { bellcapsFor } = await import("/src/game/worldbuilding/bellcaps.ts");
+    const { bellcapsFor, BELLCAP_COOLDOWN } = await import("/src/game/worldbuilding/bellcaps.ts");
     const { mothRoom } = await import("/src/game/mobs/ambient.ts");
     for (let seed = 1; seed < 200; seed++) {
       const dungeon = generateDungeon({ seed, floor: 1 });
       const room = dungeon.rooms.find(r => r.kind === "normal" && !r.secret && r.id !== mothRoom(dungeon) && bellcapsFor(r).length === 1);
-      if (room) return { dungeon, roomId: room.id, cap: bellcapsFor(room)[0] };
+      if (room) return { dungeon, roomId: room.id, cap: bellcapsFor(room)[0], cooldown: BELLCAP_COOLDOWN };
     }
     throw Error("No colony fixture");
   });
@@ -46,19 +46,35 @@ try {
   const frozen = await page.evaluate(() => { window.__run.getState().pause(); return window.__bellcaps.charge; });
   await page.waitForTimeout(900);
   assert.equal(await page.evaluate(() => window.__bellcaps.charge), frozen, "paused warning does not advance");
+  await page.screenshot({ path: "output/world-review/bellcap-warning.png",
+    style: '[data-testid="pause-menu"] { visibility: hidden !important; }' });
   await page.evaluate(() => window.__run.getState().resume());
-  await page.screenshot({ path: "output/world-review/bellcap-warning.png" });
   await page.waitForFunction(() => Object.keys(window.__run.getState().bellcapBursts).length === 1);
+  // Software-rendered captures can exceed the colony's entire recovery.
+  // Freeze the real clock while photographing and remounting the fixture.
+  const bursts = await page.evaluate(() => {
+    window.__run.getState().pause();
+    return window.__run.getState().bellcapBursts;
+  });
   assert.ok(await page.evaluate(async () => {
     const din = await import("/src/game/din/din.ts");
     return din.snapshot(window.__run.getState().currentRoomId).some(e => e.source === "bellcapBurst" && e.tags.includes("loud"));
   }), "spore discharge sends a real spatial noise signal");
-  await page.screenshot({ path: "output/world-review/bellcap-puff.png" });
-  assert.equal(await page.evaluate(() => window.__run.getState().burstBellcap(0)), false, "colony needs time to recover");
-  const bursts = await page.evaluate(() => window.__run.getState().bellcapBursts);
+  await page.screenshot({ path: "output/world-review/bellcap-puff.png",
+    style: '[data-testid="pause-menu"] { visibility: hidden !important; }' });
+  await page.waitForTimeout((fixture.cooldown + 0.25) * 1000);
+  assert.equal(await page.evaluate(() => {
+    window.__run.getState().resume();
+    const repeated = window.__run.getState().burstBellcap(0);
+    window.__run.getState().pause();
+    return repeated;
+  }), false, "a pause longer than the recovery interval does not refresh the colony");
   await page.evaluate(() => window.__run.setState({ currentRoomId: window.__run.getState().dungeon.startId }));
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => window.__blockLighting?.roomId === window.__run.getState().dungeon.startId);
   await page.evaluate(id => window.__run.setState({ currentRoomId: id }), fixture.roomId);
+  await page.waitForFunction(id => window.__blockLighting?.roomId === id, fixture.roomId);
+  assert.deepEqual(await page.evaluate(() => window.__run.getState().bellcapBursts), bursts, "remounting retains the original burst time");
+  await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(id => window.__bellcaps?.roomId === id && window.__bellcaps.recovering, fixture.roomId);
   assert.deepEqual(await page.evaluate(() => window.__run.getState().bellcapBursts), bursts, "revisiting preserves recovery");
   await page.evaluate(async () => {

@@ -1,21 +1,53 @@
 {
   "slug": "threejs-gem-dungeon-editor",
-  "capturedAt": "2026-09-26T23:24:22.085Z",
+  "capturedAt": "2026-09-27T12:47:47.614Z",
   "source": "deployment",
   "url": "https://threejs-gem-dungeon-editor-git.pages.dev/",
   "recipe": {
     "route": "/",
     "actions": [
       {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Start as the Vagrant"
+        },
+        "label": "start a run"
+      },
+      {
         "type": "waitFor",
         "target": {
           "selector": "canvas"
         },
         "state": "visible",
-        "label": "wait for the loaded 3D scene"
+        "timeoutMs": 60000,
+        "label": "wait for the dungeon to render"
+      },
+      {
+        "type": "wait",
+        "ms": 2500,
+        "label": "let the first gallery settle"
+      },
+      {
+        "type": "click",
+        "target": {
+          "selector": "canvas"
+        },
+        "label": "take the pointer",
+        "optional": true
+      },
+      {
+        "type": "key",
+        "key": "KeyW",
+        "holdMs": 1200,
+        "label": "step off the start"
       }
     ],
-    "waitAfterReadyMs": 3000
+    "waitAfterReadyMs": 1200,
+    "quality": {
+      "minStd": 12,
+      "minColours": 12
+    }
   },
   "profiles": [
     {
@@ -23,40 +55,78 @@
       "file": "card.jpg",
       "width": 1600,
       "height": 900,
-      "bytes": 49768,
-      "status": "captured"
+      "bytes": 170650,
+      "status": "captured",
+      "stats": {
+        "mean": 51,
+        "std": 28,
+        "dark": 0.011,
+        "light": 0,
+        "colours": 19
+      }
     },
     {
       "profile": "desktop",
       "file": "desktop.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 48913,
-      "status": "captured"
+      "bytes": 146353,
+      "status": "captured",
+      "stats": {
+        "mean": 56,
+        "std": 45,
+        "dark": 0.172,
+        "light": 0,
+        "colours": 31
+      }
     },
     {
       "profile": "mobile",
       "file": "mobile.jpg",
       "width": 430,
       "height": 932,
-      "bytes": 27290,
-      "status": "captured"
+      "bytes": 62064,
+      "status": "captured",
+      "stats": {
+        "mean": 65,
+        "std": 59,
+        "dark": 0.32,
+        "light": 0,
+        "colours": 52
+      },
+      "skipped": [
+        "action failed (take the pointer): locator.click: Timeout 15000ms exceeded."
+      ]
     },
     {
       "profile": "full",
       "file": "full.jpg",
       "width": 1440,
       "height": 900,
-      "bytes": 43721,
-      "status": "captured"
+      "bytes": 140949,
+      "status": "captured",
+      "stats": {
+        "mean": 49,
+        "std": 37,
+        "dark": 0.124,
+        "light": 0,
+        "colours": 26
+      }
     },
     {
       "profile": "og",
       "file": "og.jpg",
       "width": 1200,
       "height": 630,
-      "bytes": 41782,
-      "status": "captured"
+      "bytes": 132300,
+      "status": "captured",
+      "stats": {
+        "mean": 54,
+        "std": 37,
+        "dark": 0.1,
+        "light": 0,
+        "colours": 25
+      }
     }
   ]
 }

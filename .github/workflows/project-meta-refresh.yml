@@ -80,6 +80,15 @@ jobs:
           npm install --no-audit --no-fund playwright@1
           npx playwright install --with-deps chromium
 
+      # The recipes must reach the app on the live deployment before anything
+      # is photographed: a loading screen or a moved button fails here, loudly,
+      # instead of becoming the project's card.
+      - name: Drive the screenshot and trailer recipes against the deployment
+        if: steps.deploy.outputs.deployed == 'true'
+        env:
+          PORTFOLIO_ROOT: /tmp/pw
+        run: node scripts/project-media.e2e.mjs --only=shots
+
       # Trailers and rendered posters need the GPU toolchain (Blender, Chrome,
       # NVENC), which only the PC's CI chain has; they are left alone here.
       - name: Refresh screenshots, card, icons and metadata
@@ -91,6 +100,10 @@ jobs:
           else
             node scripts/refresh-project-meta.mjs --no-trailers --no-shots
           fi
+
+      # What was just written has to pass the same contract the push gate runs.
+      - name: Check the media contract
+        run: node --test scripts/project-media.test.mjs
 
       - name: Commit what changed
         run: |

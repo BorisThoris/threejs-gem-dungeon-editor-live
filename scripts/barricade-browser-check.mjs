@@ -12,6 +12,41 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? 5222}/`);
   await page.locator('[data-testid="menu-start"]').click();
   await page.waitForFunction(() => window.__pursuit && window.__awareness && window.__blockLighting && window.__playerDebug);
+  const sounds = await page.evaluate(() => {
+    const run = window.__run, din = window.__din, dungeon = run.getState().dungeon;
+    const from = dungeon.rooms.find(room => room.id !== dungeon.startId && Object.values(room.links).some(id => id !== dungeon.startId));
+    const to = Object.values(from.links).find(id => id !== dungeon.startId);
+    const reverse = dungeon.rooms.find(room => room.id === to);
+    const direction = Object.keys(reverse.links).find(dir => reverse.links[dir] === from.id);
+    const expected = window.__layout.doorPosition(reverse, direction);
+    const events = [];
+    const off = window.__bus.on("barBroken", event => events.push(event));
+    run.setState({ currentRoomId: from.id, transitioning: false, paused: false, inputLocks: 0, placed: [] });
+    run.getState().dropGrate(to);
+    run.setState({ currentRoomId: dungeon.startId, wardenRoomId: to });
+    din.reset();
+    run.getState().breakBar();
+    const remote = din.emptyArrival();
+    din.answering(remote, "warden", to);
+    // Lifting a player-built bar must use the same doorway, from the
+    // player's side, without also sounding at the room centre.
+    run.setState({ currentRoomId: to, barricades: [[from.id, to].sort().join("|")] });
+    din.reset();
+    const removed = run.getState().tearDownBar(from.id);
+    const local = din.emptyArrival();
+    din.answering(local, "warden", to);
+    off();
+    run.getState().startRun(11);
+    return { remote, local, removed, events, roomId: to, toRoomId: from.id, expected };
+  });
+  for (const arrival of [sounds.remote, sounds.local]) {
+    assert.equal(arrival.source, "barBroken");
+    assert.equal(arrival.fromRoomId, sounds.roomId, "bar noise comes from the broken doorway, even when the player is elsewhere");
+    assert.deepEqual([arrival.x, arrival.z], [sounds.expected[0], sounds.expected[2]], "bar noise uses the actual doorway position");
+  }
+  assert.ok(sounds.removed);
+  assert.deepEqual(sounds.events.map(event => event.byWarden), [true, false]);
+  assert.ok(sounds.events.every(event => event.roomId === sounds.roomId && event.toRoomId === sounds.toRoomId), "events retain the broken edge");
   const stock = await page.evaluate(() => {
     const run = window.__run, s = run.getState(), edges = [], seen = new Set();
     for (const room of s.dungeon.rooms) for (const to of Object.values(room.links)) {

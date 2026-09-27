@@ -29,9 +29,11 @@ try {
     await page.waitForFunction(() => document.querySelector('[data-testid="touch-shove"]')?.textContent.includes("WAIT"));
     assert.ok(await page.evaluate(() => window.__touchShoveLabels.some(line => line.includes("WINDUP"))),
       "the actual tap visibly passes through windup before recovery");
-    await page.getByTestId("touch-buttons").screenshot({ path: `output/verification/touch-shove/${name}-recovering.png` });
     await page.evaluate(() => window.__run.getState().pause());
     await page.waitForFunction(() => document.querySelector('[data-testid="touch-shove"]')?.textContent.includes("WAIT"));
+    // Capturing a software-rendered image can outlast the entire cooldown.
+    await page.getByTestId("touch-buttons").screenshot({ path: `output/verification/touch-shove/${name}-recovering.png`,
+      style: '[data-testid="pause-menu"] { visibility: hidden !important; }' });
     const recovery = await button.innerText();
     assert.equal(await button.getAttribute("aria-disabled"), "true");
     const remaining = recovery.match(/\d+\.\ds/)[0];

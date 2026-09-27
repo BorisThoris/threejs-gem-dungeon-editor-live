@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "run",
+      "title": "Gem Dungeon: the first gallery",
+      "kind": "capture",
+      "inputsHash": "4c0e7b1ec2607fd7164b849555b201f87babd08760085f60618c8fa9b8ad7e1e",
+      "builtAt": "2026-09-27T12:45:33.797Z",
+      "source": "project-media/.captures/run.webm",
+      "file": "public/trailers/run.mp4",
+      "poster": "public/trailers/run.jpg",
+      "urlPath": "/trailers/run.mp4",
+      "posterUrlPath": "/trailers/run.jpg",
+      "bytes": 3537149,
+      "width": 1280,
+      "height": 720,
+      "duration": 24,
+      "fps": 30,
+      "orientation": "landscape",
+      "music": "project-media/music/run.m4a",
+      "stats": {
+        "mean": 66,
+        "std": 25,
+        "dark": 0,
+        "light": 0,
+        "colours": 21
+      }
+    }
+  ]
+}

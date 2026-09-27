@@ -44,18 +44,20 @@ export default {
     "showcaseOrder": 4
   },
 
-  // How this project photographs itself (npm run shots): the title screen.
+  // How this project photographs itself (npm run shots): a run in progress,
+  // not the title menu - start as the Vagrant, wait for the dungeon to render,
+  // dismiss the "click to look around" prompt.
   capture: {
     "route": "/",
     "actions": [
-      {
-        "type": "waitFor",
-        "target": { "selector": "canvas" },
-        "state": "visible",
-        "label": "wait for the loaded 3D scene"
-      }
+      { "type": "click", "target": { "role": "button", "name": "Start as the Vagrant" }, "label": "start a run" },
+      { "type": "waitFor", "target": { "selector": "canvas" }, "state": "visible", "timeoutMs": 60000, "label": "wait for the dungeon to render" },
+      { "type": "wait", "ms": 2500, "label": "let the first gallery settle" },
+      { "type": "click", "target": { "selector": "canvas" }, "label": "take the pointer", "optional": true },
+      { "type": "key", "key": "KeyW", "holdMs": 1200, "label": "step off the start" }
     ],
-    "waitAfterReadyMs": 3000
+    "waitAfterReadyMs": 1200,
+    "quality": { "minStd": 12, "minColours": 12 }
   },
 
   scores: {
@@ -85,6 +87,55 @@ export default {
     "background": "#050608",
     "themeColor": "#050608",
     "shortName": "Gem Dungeon"
+  },
+
+  // The trailer is recorded from the deployment through Playwright: the first
+  // gallery of a Vagrant run, walked and looked around, over a music bed
+  // generated locally with ACE-Step. It re-records when the game's source,
+  // this recipe or the music changes (scripts/build-project-trailers.mjs).
+  trailers: {
+    "dir": "public/trailers",
+    "urlPathPrefix": "/trailers",
+    "items": [
+      {
+        "id": "run",
+        "title": "Gem Dungeon: the first gallery",
+        "kind": "capture",
+        "inputs": ["src", "index.html", "public/favicon.svg"],
+        "source": "deployment",
+        "music": "project-media/music/run.m4a",
+        "posterAt": 0.55,
+        "recipe": {
+          "route": "/",
+          "viewport": { "width": 1280, "height": 720 },
+          "durationMs": 24000,
+          "quality": { "minStd": 12, "minColours": 12 },
+          "setup": {
+            "actions": [
+              { "type": "click", "target": { "role": "button", "name": "Start as the Vagrant" }, "label": "start a run" },
+              { "type": "waitFor", "target": { "selector": "canvas" }, "state": "visible", "timeoutMs": 60000, "label": "wait for the dungeon to render" },
+              { "type": "wait", "ms": 2000, "label": "let the first gallery settle" },
+              { "type": "click", "target": { "selector": "canvas" }, "label": "take the pointer" }
+            ],
+            "waitAfterReadyMs": 800
+          },
+          "timeline": [
+            { "type": "mouse", "to": [0.65, 0.5], "steps": 40, "label": "look around" },
+            { "type": "key", "key": "KeyW", "holdMs": 2600, "label": "walk into the gallery" },
+            { "type": "mouse", "to": [0.35, 0.48], "steps": 50, "label": "look left" },
+            { "type": "key", "key": "KeyW", "holdMs": 1800, "label": "keep walking" },
+            { "type": "key", "key": "KeyD", "holdMs": 900, "label": "sidestep" },
+            { "type": "press", "key": "Space", "label": "shove" },
+            { "type": "mouse", "to": [0.7, 0.5], "steps": 50, "label": "turn" },
+            { "type": "key", "key": "KeyW", "holdMs": 2200, "label": "walk on" },
+            { "type": "press", "key": "KeyF", "label": "lantern" },
+            { "type": "key", "key": "KeyA", "holdMs": 800, "label": "sidestep" },
+            { "type": "mouse", "to": [0.5, 0.42], "steps": 40, "label": "look up the hall" },
+            { "type": "key", "key": "KeyW", "holdMs": 3000, "label": "walk to the end" }
+          ]
+        }
+      }
+    ]
   },
 
   media: {

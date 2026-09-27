@@ -1,7 +1,7 @@
 {
   "$schema": "./scripts/project.meta.schema.json",
   "schemaVersion": 1,
-  "generatedAt": "2026-09-26T23:24:22.176Z",
+  "generatedAt": "2026-09-27T12:47:49.190Z",
   "generatedBy": "scripts/generate-project-meta.mjs",
   "identity": {
     "slug": "threejs-gem-dungeon-editor",
@@ -107,72 +107,121 @@
       "test:channel-frames",
       "test:audio-threshold",
       "trailers",
-      "trailers:check"
+      "trailers:check",
+      "test:media",
+      "test:media:e2e"
     ]
   },
   "capture": {
     "route": "/",
     "actions": [
       {
+        "type": "click",
+        "target": {
+          "role": "button",
+          "name": "Start as the Vagrant"
+        },
+        "label": "start a run"
+      },
+      {
         "type": "waitFor",
         "target": {
           "selector": "canvas"
         },
         "state": "visible",
-        "label": "wait for the loaded 3D scene"
+        "timeoutMs": 60000,
+        "label": "wait for the dungeon to render"
+      },
+      {
+        "type": "wait",
+        "ms": 2500,
+        "label": "let the first gallery settle"
+      },
+      {
+        "type": "click",
+        "target": {
+          "selector": "canvas"
+        },
+        "label": "take the pointer",
+        "optional": true
+      },
+      {
+        "type": "key",
+        "key": "KeyW",
+        "holdMs": 1200,
+        "label": "step off the start"
       }
     ],
-    "waitAfterReadyMs": 3000
+    "waitAfterReadyMs": 1200,
+    "quality": {
+      "minStd": 12,
+      "minColours": 12
+    }
   },
   "media": {
     "source": "repo-local",
-    "directory": "/home/runner/work/threejs-gem-dungeon-editor-live/threejs-gem-dungeon-editor-live/project-media",
+    "directory": "C:/Users/Gaming PC/Desktop/Repos/threejs-gem-dungeon-editor-live/project-media",
     "primary": "project-media/card.jpg",
     "images": [
       {
         "profile": "card",
         "file": "card.jpg",
         "path": "project-media/card.jpg",
-        "bytes": 49768,
+        "bytes": 170650,
         "width": 1600,
         "height": 900,
-        "capturedAt": "2026-09-26T23:23:08.620Z"
+        "capturedAt": "2026-09-27T12:46:52.522Z"
       },
       {
         "profile": "desktop",
         "file": "desktop.jpg",
         "path": "project-media/desktop.jpg",
-        "bytes": 48913,
+        "bytes": 146353,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-26T23:23:26.901Z"
+        "capturedAt": "2026-09-27T12:47:03.280Z"
       },
       {
         "profile": "full",
         "file": "full.jpg",
         "path": "project-media/full.jpg",
-        "bytes": 43721,
+        "bytes": 140949,
         "width": 1440,
         "height": 900,
-        "capturedAt": "2026-09-26T23:24:03.732Z"
+        "capturedAt": "2026-09-27T12:47:38.451Z"
       },
       {
         "profile": "mobile",
         "file": "mobile.jpg",
         "path": "project-media/mobile.jpg",
-        "bytes": 27290,
+        "bytes": 62064,
         "width": 430,
         "height": 932,
-        "capturedAt": "2026-09-26T23:23:45.459Z"
+        "capturedAt": "2026-09-27T12:47:27.932Z"
       },
       {
         "profile": "og",
         "file": "og.jpg",
         "path": "project-media/og.jpg",
-        "bytes": 41782,
+        "bytes": 132300,
         "width": 1200,
         "height": 630,
-        "capturedAt": "2026-09-26T23:24:22.061Z"
+        "capturedAt": "2026-09-27T12:47:46.841Z"
+      }
+    ],
+    "trailers": [
+      {
+        "id": "run",
+        "title": "Gem Dungeon: the first gallery",
+        "url": "https://threejs-gem-dungeon-editor-git.pages.dev/trailers/run.mp4",
+        "poster": "https://threejs-gem-dungeon-editor-git.pages.dev/trailers/run.jpg",
+        "file": "public/trailers/run.mp4",
+        "bytes": 3537149,
+        "width": 1280,
+        "height": 720,
+        "duration": 24,
+        "orientation": "landscape",
+        "builtAt": "2026-09-27T12:45:33.797Z"
       }
     ]
   },
@@ -225,21 +274,21 @@
     "devDependencyCount": 20
   },
   "metrics": {
-    "sourceFiles": 454,
-    "testFiles": 2,
-    "sourceLines": 76613,
+    "sourceFiles": 869,
+    "testFiles": 5,
+    "sourceLines": 167513,
     "largestDirectories": [
+      {
+        "directory": "output",
+        "files": 464
+      },
       {
         "directory": "src",
         "files": 295
       },
       {
         "directory": "scripts",
-        "files": 99
-      },
-      {
-        "directory": "output",
-        "files": 55
+        "files": 105
       },
       {
         "directory": ".",
@@ -266,11 +315,11 @@
   "analysisNotes": "The Steam-demo gem run: title screen, seeded runs, pursuers and counterplay, controller and touch input; deployed from main.",
   "git": {
     "branch": "main",
-    "head": "b4cbb33",
-    "lastCommitDate": "2026-09-27T02:20:29+03:00",
-    "lastCommitSubject": "Install ripgrep required by CI layout checks",
-    "commitCount": 491,
-    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live"
+    "head": "9869e5a",
+    "lastCommitDate": "2026-09-26T23:24:22+00:00",
+    "lastCommitSubject": "Refresh screenshots, card, icons and metadata [meta-bot]",
+    "commitCount": 492,
+    "remote": "https://github.com/BorisThoris/threejs-gem-dungeon-editor-live.git"
   },
   "readme": {
     "file": "README.md",

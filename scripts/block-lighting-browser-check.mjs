@@ -74,9 +74,27 @@ try {
   }
   for (let i = 1; i < bands.length; i++) assert.ok(bands[i].intensity < bands[i - 1].intensity, "each band reduces light");
   assert.equal(bands.at(-1).intensity, 0);
-  await page.evaluate(() => window.__run.setState({ glim: 100, oil: 0 }));
-  await page.waitForTimeout(200);
-  assert.equal(await page.evaluate(() => window.__lantern.intensity), 0, "empty oil cannot light the room");
+  // Oil pays for raising and room entry; the last paid raise still lights
+  // this room. Exercise those owners instead of inventing an empty-lit state.
+  const lastRaise = await page.evaluate(async () => {
+    const { RAISE_OIL } = await import("/src/game/lantern/glim.ts");
+    window.__run.setState({ glim: 0, oil: RAISE_OIL });
+    window.__run.getState().toggleLantern();
+    const { glim, oil } = window.__run.getState();
+    return { glim, oil };
+  });
+  assert.equal(lastRaise.oil, 0, "raising spends the last measure of oil");
+  assert.ok(lastRaise.glim > 0, "the paid raise retains its light band");
+  await page.waitForFunction(() => window.__lantern?.distance > 14.8);
+  assert.ok(await page.evaluate(() => window.__lightingCapture().brightness) > dark.brightness * 2,
+    "the last paid raise illuminates the actual room");
+  await page.evaluate(() => window.__run.getState().burnOilEntering(false));
+  await page.waitForFunction(() => window.__lantern?.intensity === 0);
+  assert.equal(await page.evaluate(() => window.__run.getState().glim), 0,
+    "entering another room with no oil extinguishes the lantern");
+  await page.evaluate(() => window.__run.getState().toggleLantern());
+  assert.equal(await page.evaluate(() => window.__run.getState().glim), 0,
+    "an empty flask cannot pay for another raise");
   const sources = await page.evaluate(() => {
     let gpu = 0, block = 0;
     window.__scene.traverseVisible(o => { if (o.isPointLight) { if (o.layers.mask & 1) gpu++; else block++; } });
