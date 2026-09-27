@@ -7,6 +7,7 @@
 // Usage:
 //   npm run trailers                  # rebuild whatever is stale, publish, record
 //   npm run trailers -- --check       # non-zero exit if anything is stale or unpublished
+//   npm run trailers -- --check --buildable-only   # ...ignoring items this machine cannot render
 //   npm run trailers -- --force       # rebuild everything
 //   npm run trailers -- --only=<id>   # one item
 //   npm run trailers -- --list        # what is configured and its state
@@ -90,6 +91,9 @@ const checkOnly = args.includes('--check');
 const force = args.includes('--force');
 const listOnly = args.includes('--list');
 const noBuild = args.includes('--no-build');
+// --check --buildable-only: a stale item whose toolchain (Blender, NVENC) is
+// not on this machine is a warning, not a failure - it is rebuilt where it is.
+const buildableOnly = args.includes('--buildable-only');
 const onlyArg = args.find((argument) => argument.startsWith('--only='));
 const only = onlyArg ? new Set(onlyArg.slice('--only='.length).split(',').map((value) => value.trim())) : null;
 
@@ -129,7 +133,9 @@ for (const item of items) {
   }
 
   if (checkOnly) {
-    if (state.stale) stale.push(item.id + ' (' + state.reason + ')');
+    if (state.stale && buildableOnly && checkRequirements(item.requires ?? []).missing.length > 0) {
+      console.warn('[trailers] ' + item.id + ': stale (' + state.reason + ') but needs ' + checkRequirements(item.requires ?? []).missing.join(', ') + ' - rebuilt where the toolchain is.');
+    } else if (state.stale) stale.push(item.id + ' (' + state.reason + ')');
     else console.log('[trailers] ' + item.id + ': current' + (previous?.builtAt ? ' (built ' + previous.builtAt + ')' : ''));
     continue;
   }
@@ -242,10 +248,23 @@ function describeState(item, previous) {
 }
 
 // An artwork item with no inputs of its own is rendered from its source file.
+// Whatever this toolkit publishes into the static directory (trailers,
+// artwork, the card image, the icon set) is never an input, or a build would
+// invalidate itself.
 function itemInputs(item) {
-  if (Array.isArray(item.inputs)) return item.inputs;
-  if (item.kind === 'artwork' && item.source) return [item.source];
-  return [];
+  let inputs = [];
+  if (Array.isArray(item.inputs)) inputs = item.inputs;
+  else if (item.kind === 'artwork' && item.source) inputs = [item.source];
+  if (inputs.length === 0) return inputs;
+  const staticDir = toPosix(config.social?.staticDir ?? 'public');
+  const iconDir = toPosix(config.icons?.outputDir ?? staticDir);
+  const generated = [
+    publishDirRelative, artworkDirRelative,
+    path.posix.join(staticDir, config.social?.imageName ?? 'og-image.jpg'),
+    ...['favicon.ico', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', config.icons?.manifestName ?? 'site.webmanifest']
+      .map((name) => path.posix.join(iconDir, name))
+  ];
+  return [...inputs, ...generated.map((relative) => ':(exclude)' + relative)];
 }
 
 // A captured trailer is also a function of its recipe and its music bed.

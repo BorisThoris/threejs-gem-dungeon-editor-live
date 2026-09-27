@@ -89,14 +89,15 @@ jobs:
           PORTFOLIO_ROOT: /tmp/pw
         run: node scripts/project-media.e2e.mjs --only=shots
 
-      # Trailers and rendered posters need the GPU toolchain (Blender, Chrome,
-      # NVENC), which only the PC's CI chain has; they are left alone here.
-      - name: Refresh screenshots, card, icons and metadata
+      # Rendered trailers that need the GPU toolchain (Blender, NVENC) declare it
+      # in `requires` and are skipped here with a warning; captured trailers
+      # (Playwright + ffmpeg, both on this runner) re-record when the app changed.
+      - name: Refresh trailers, screenshots, card, icons and metadata
         env:
           PORTFOLIO_ROOT: /tmp/pw
         run: |
           if [ "${{ steps.deploy.outputs.deployed }}" = "true" ]; then
-            node scripts/refresh-project-meta.mjs --no-trailers
+            node scripts/refresh-project-meta.mjs
           else
             node scripts/refresh-project-meta.mjs --no-trailers --no-shots
           fi
