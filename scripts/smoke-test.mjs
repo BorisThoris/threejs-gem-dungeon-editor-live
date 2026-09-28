@@ -2903,9 +2903,10 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const off = window.__bus.on("sentrySaw", () => { called++; });
     run.getState().pause();
     await wait(PAUSE_S * 1000);
+    const held = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit, called };
     run.getState().resume();
     await wait(250);
-    const back = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit, called };
+    const back = { facing: window.__sentry.facing };
     // And that it does turn when nobody is holding it: a beam frozen for
     // good would pass every line above.
     await wait(1200);
@@ -2916,20 +2917,19 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       spin: W.SENTRY_SPIN,
       onBeam: before.inside,
       litBefore: +before.lit.toFixed(2),
-      turnedAcrossPause: +Math.abs(back.facing - before.facing).toFixed(2),
+      turnedAcrossPause: +Math.abs(held.facing - before.facing).toFixed(2),
       turnedAfter: +Math.abs(later - back.facing).toFixed(2),
-      litBack: +back.lit.toFixed(2),
-      insideBack: back.inside,
-      called: back.called,
+      litBack: +held.lit.toFixed(2),
+      insideBack: held.inside,
+      called: held.called,
       alarm: run.getState().alarm,
     };
   });
   ok("the player can be put on the watcher's beam without waiting for it", beam.onBeam === true, JSON.stringify(beam));
   if (beam.onBeam) {
-    // Half the beam's own travel for the pause: it used to cover 3.85
-    // radians of the 3.3 the pause alone is worth, and now covers the
-    // quarter-second of play at the end of it.
-    const budget = beam.spin * beam.pause * 0.5;
+    // Sample while still paused: a slow renderer may turn the beam during
+    // the quarter-second after resume, which is ordinary play, not a leak.
+    const budget = 0.05;
     ok(
       "six seconds in the pause menu do not turn the beam, and leave the player where it left them",
       beam.turnedAcrossPause < budget && beam.insideBack && beam.litBack < beam.pause * 0.5,

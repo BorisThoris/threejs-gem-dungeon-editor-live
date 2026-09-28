@@ -25,6 +25,8 @@ import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow"
  * a caption only takes the pointer when its full text needs scrolling.
  */
 const HOLD_MS = 2600;
+/** Long lessons need enough time to reach the caption before it takes focus. */
+const holdFor = (line: string) => Math.min(12000, Math.max(HOLD_MS, line.trim().split(/\s+/).length * 500));
 const WOUND_CAPTIONS: Record<BusEvents["wardenWounded"]["source"], string> = {
   spikes: "It recoils - the spikes have it",
   pit: "It stumbles into the pit - move while it recoils",
@@ -54,7 +56,7 @@ export function Captions() {
       expired.current = false;
       setLine({ text, key: n });
       cancel?.();
-      cancel = afterRunSeconds(HOLD_MS / 1000, () => {
+      cancel = afterRunSeconds(holdFor(text) / 1000, () => {
         expired.current = true;
         if (document.activeElement !== captionElement.current) setLine(null);
       });

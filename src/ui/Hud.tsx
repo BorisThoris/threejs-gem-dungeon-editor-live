@@ -255,8 +255,8 @@ export function Hud() {
             style={{
               fontSize: ambient ? text.small : undefined,
               opacity: ambient ? 0.72 : 1,
-              marginTop: firstAmbient ? (compact ? 5 : 8) : undefined,
-              paddingTop: firstAmbient ? (compact ? 5 : 8) : undefined,
+              marginTop: firstAmbient ? (compact ? 5 : 6) : undefined,
+              paddingTop: firstAmbient ? (compact ? 5 : 6) : undefined,
               borderTop: firstAmbient ? `1px solid ${colors.line}` : undefined,
             }}
           >

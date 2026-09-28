@@ -99,7 +99,16 @@ try {
   // Supply enough real status rows to exercise the scrollable HUD consistently.
   await page.evaluate(() => window.__run.setState({ floor: 2, thiefPhase: "fleeing", thiefHolding: 2, thiefKey: true }));
   await page.waitForFunction(() => document.querySelector('[data-testid="hud"]').tabIndex === 0);
-  for (const id of ["guidance", "hud"]) {
+  // The earlier notice has a real expiry clock. Stage a fresh one and keep
+  // the same constrained guidance box while testing its reading controls.
+  await page.evaluate(notice => window.__bus.emit("notice", notice), keeperNotice);
+  await guidance.evaluate(g => Object.assign(g.style, { width: "340px", height: "90px", minHeight: "0", flex: "none" }));
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.waitForFunction(() => {
+    const g = document.querySelector('[data-testid="guidance"]');
+    return g.scrollHeight > g.clientHeight + 1 && g.tabIndex === 0;
+  });
+  for (const id of ["hud", "guidance"]) {
     await page.getByTestId(id).focus();
     assert.ok(await page.getByTestId(id).evaluate(el => document.activeElement === el), `${id} receives reading focus`);
     await page.keyboard.press("Space");
