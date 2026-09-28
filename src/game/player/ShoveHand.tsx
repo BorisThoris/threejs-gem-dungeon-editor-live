@@ -57,7 +57,10 @@ export function ShoveHand() {
       sleeve.current.scale.y = 1 / fit;
       sleeve.current.position.set(0.015, -0.16 - extension * Math.cos(0.48), 0.22 + extension * Math.sin(0.48));
     }
-    hand.current.position.set(0.26 + draw * 0.035 - stroke * 0.14, (-0.25 + draw * 0.035 + stroke * 0.075 + breath - recovery * 0.035) / fit, (-0.62 + draw * 0.07 - stroke * 0.3) / fit);
+    // Relax below the exploration view, then return to the same raised poses
+    // for a charged shove and its full extension.
+    const rest = 0.08 * (1 - Math.max(draw, stroke));
+    hand.current.position.set(0.26 + draw * 0.035 - stroke * 0.14, (-0.25 - rest + draw * 0.035 + stroke * 0.075 + breath - recovery * 0.035) / fit, (-0.62 + draw * 0.07 - stroke * 0.3) / fit);
     hand.current.rotation.set(0.12 + draw * 0.5 - stroke * 0.25, -0.18 + stroke * 0.12, -0.12 - draw * 0.18 + recovery * 0.12);
     fingers.current.rotation.x = -0.18 - draw * 0.55 + stroke * 0.32;
     joints.current.forEach((joint, i) => { if (joint) joint.rotation.x = -0.28 - draw * (0.68 + i * 0.035) + stroke * 0.3; });

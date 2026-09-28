@@ -2,9 +2,9 @@
  * teleports, grants lives, or writes gameplay state after starting.
  * This establishes traversal/economy evidence, not a human playtest. */
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH,
   args: process.env.WALK_RENDERER === "hardware"
     ? ["--no-sandbox", "--enable-gpu", "--use-angle=d3d11"]
     : ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
@@ -226,9 +226,15 @@ try {
         const s = window.__run.getState(), room = s.dungeon.rooms.find((r) => r.id === s.currentRoomId);
         return window.__shopOffers(room).find((o) => o.id === "bomb");
       });
-      await walkTo(offer);
+      // The goods have a smaller reach than the counter. A broad waypoint
+      // tolerance can stop outside the bomb's reach and buy a life instead.
+      await walkTo(offer, { arrivalRadius: 0.1 });
+      await page.getByTestId("prompt-text").filter({ hasText: /^Buy a bomb/ }).waitFor();
+      const beforePurchase = await snapshot();
       await page.keyboard.press("KeyE");
       await page.waitForFunction(() => window.__run.getState().satchel.includes("bomb"));
+      assert.equal((await snapshot()).gems, beforePurchase.gems - beforePurchase.bombPrice,
+        "the selected bomb costs its advertised gems");
       console.log("PASS purchased Keeper bomb through the shop interaction");
       continue;
     }

@@ -1,6 +1,9 @@
 import type { Room } from "../dungeon/types";
 import type { BuiltinSurface } from "../textures/registry";
 
+/** The exposed fine bed softens a sprint once the water has fallen away. */
+export const CHANNEL_SEDIMENT_CARRY = 0.7;
+
 const SEDIMENT = {
   gardens: { name: "Garden silt", color: "#756744", surface: "moss" },
   works: { name: "Rust-stained sediment", color: "#735447", surface: "stone" },

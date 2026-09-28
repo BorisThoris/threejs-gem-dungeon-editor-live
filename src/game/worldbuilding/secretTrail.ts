@@ -2,6 +2,8 @@ import { doorReach, insideRoom } from "../dungeon/footprint";
 import { DIRS, DIR_STEP, DIR_YAW, type Dir, type Dungeon, type Room } from "../dungeon/types";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { LANDMARKS, type LandmarkId } from "./landmarks";
+import { learnedTrailGuide } from "./trailGuide";
+import { roomPlaceName } from "../rooms/placeName";
 
 export interface SecretTrail {
   /** The district landmark where the old route can first be understood. */
@@ -117,15 +119,22 @@ export function secretTrailPattern(dungeon: Dungeon, room: Room): SecretTrailPat
     title: `${identity.title} tally` };
 }
 
-/** A concise live direction, only while the player is on the learned route. */
-export function secretTrailText(dungeon: Dungeon, roomId: string): string {
-  const room = dungeon.rooms.find(candidate => candidate.id === roomId);
-  const trail = dungeon.secretTrail, step = room && secretTrailStep(dungeon, room);
-  if (!trail || !step) return "";
-  const opened = !!room?.secret && !!room.links[room.secret.dir];
-  if (step.final) return opened
-    ? `${LANDMARKS[trail.landmark].title} tally · the sealed way stands open.`
-    : `${LANDMARKS[trail.landmark].title} tally · the ${step.onward} wall ends the route.`;
-  const left = trail.route.length - step.index - 1;
-  return `${LANDMARKS[trail.landmark].title} tally · ${step.onward} · ${left} ${left === 1 ? "door" : "doors"} to the sealed wall.`;
+/** The learned tally also helps a delver recover after a side expedition. */
+export function secretTrailText(dungeon: Dungeon, roomId: string, visited: readonly string[] = [], bars?: ReadonlySet<string>): string {
+  const trail = dungeon.secretTrail;
+  if (!trail || !dungeon.rooms.some(room => room.id === roomId)) return "";
+  const title = LANDMARKS[trail.landmark].title;
+  const guide = learnedTrailGuide(dungeon, trail, roomId, visited, bars);
+  const next = dungeon.rooms.find(room => room.id === guide.destinationId);
+  const place = next ? roomPlaceName(next, dungeon.seed) : "the next hall";
+  const doors = `${guide.doors} ${guide.doors === 1 ? "door" : "doors"}`;
+  switch (guide.status) {
+    case "complete": return `${title} tally · the sealed way stands open.`;
+    case "arrived": return `${title} tally · the ${guide.dir} wall ends the route.`;
+    case "follow": return `${title} tally · ${guide.dir} · ${doors} to the sealed wall.`;
+    case "return": return `${title} tally · ${guide.dir} through ${place} · rejoin the trail in ${doors}.`;
+    case "detour": return `${title} trail blocked · detour ${guide.dir} through ${place} · rejoin in ${doors}.`;
+    case "blocked": return `${title} trail blocked${guide.dir ? ` · ${guide.dir} passage barred` : ""} · clear a passage or explore another way.`;
+    default: return `${title} tally · return to the landmark to pick up the trail.`;
+  }
 }

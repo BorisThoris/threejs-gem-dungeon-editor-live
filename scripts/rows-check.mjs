@@ -23,7 +23,7 @@
  * row states it, and this checks it rather than assuming the bands alone
  * decide.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 const PORT = process.env.PORT || process.argv[2] || "5199";
 const CHROMIUM = process.env.CHROMIUM_PATH || undefined;
 const browser = await chromium.launch({ executablePath: CHROMIUM,

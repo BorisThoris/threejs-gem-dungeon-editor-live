@@ -17,19 +17,27 @@
  * build has no probes in it either.
  *
  * Builds the current web assets and a directory package for this host, then
- * starts that package. Linux uses Xvfb; Windows and macOS use their native
- * window server.
+ * starts that package. Linux uses a private Xvfb display. Windows requires
+ * a noninteractive window station so the user's desktop stays undisturbed.
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const product = pkg.build.productName;
 const platform = process.platform;
+if (platform === "win32") {
+  const isolation = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+    "if ([Environment]::UserInteractive) { exit 1 } else { exit 0 }"],
+  { windowsHide: true, stdio: "ignore" });
+  if (isolation.status !== 0) {
+    throw Error("Desktop test blocked: run in a noninteractive Windows session or isolated VM. A hidden shell does not prevent Electron from taking desktop focus.");
+  }
+}
 const layouts = {
   win32: { target: "--win", directory: "win-unpacked", executable: `${product}.exe`, asar: "resources/app.asar" },
   linux: { target: "--linux", directory: "linux-unpacked", executable: pkg.build.linux.executableName, asar: "resources/app.asar" },
@@ -48,9 +56,9 @@ const ok = (label, cond, detail = "") => {
 };
 
 console.log(`Building the current ${platform} desktop package...`);
-execFileSync(process.execPath, [join(root, "node_modules", "vite", "bin", "vite.js"), "build"], { cwd: root, stdio: "inherit" });
+execFileSync(process.execPath, [join(root, "node_modules", "vite", "bin", "vite.js"), "build"], { cwd: root, stdio: "inherit", windowsHide: true });
 execFileSync(process.execPath, [join(root, "node_modules", "electron-builder", "out", "cli", "cli.js"), layout.target, "dir"],
-  { cwd: root, stdio: "inherit" });
+  { cwd: root, stdio: "inherit", windowsHide: true });
 
 // --- What is in the package ------------------------------------------------
 
@@ -152,11 +160,18 @@ const xvfb = platform === "linux"
   : null;
 if (xvfb) await new Promise((r) => setTimeout(r, 1500));
 
+// Keep the test's settings, records and Chromium storage away from real runs.
+// Retain this unique profile beside the ignored verification artifacts.
+const profileRoot = join(root, "output", "verification", "desktop-profiles");
+mkdirSync(profileRoot, { recursive: true });
+const profile = mkdtempSync(join(profileRoot, "run-"));
+
 const app = spawn(
   executable,
   [
     "--no-sandbox",
     "--windowed",
+    `--user-data-dir=${profile}`,
     `--remote-debugging-port=${PORT}`,
     "--use-gl=angle",
     "--use-angle=swiftshader",
@@ -212,6 +227,9 @@ if (browser) {
     page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 200)));
     await page.waitForTimeout(9000);
     const menu = await page.evaluate(() => document.body.innerText).catch(() => "");
+    ok("the packaged game uses an isolated test profile", existsSync(join(profile, "Local Storage")), profile);
+    ok("the desktop profile starts without saved run records",
+      await page.evaluate(() => localStorage.getItem("gem-dungeon.records") === null).catch(() => false));
     ok("the menu comes up in the packaged game", /start/i.test(menu), menu.slice(0, 60).replace(/\n/g, " · "));
 
     const start = await page.$('button:has-text("Start")');

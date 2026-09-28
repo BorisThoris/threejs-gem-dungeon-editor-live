@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 mkdirSync("output/world-review/secret-history", { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });

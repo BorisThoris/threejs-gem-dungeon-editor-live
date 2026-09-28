@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined,
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined,
   args: ["--no-sandbox", ...(process.env.SOFTWARE_GL === "1" ? ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] : [])] });
 try {
   const page = await browser.newPage();
@@ -93,6 +93,9 @@ try {
       { x: before.thief.targetX, z: before.thief.targetZ,
         gap: Math.hypot(before.setup.a.x - before.thief.targetX, before.setup.a.z - before.thief.targetZ) }, { timeout: 6000 });
     await page.evaluate(() => window.__run.getState().pause());
+    // Din publishes the run clock on its next frame. Sample after that final
+    // publication, rather than compare a pre-pause frame with the pause time.
+    await page.waitForFunction(() => window.__din.dinClock() === window.__derived.clock());
     const paused = await page.evaluate(() => ({ x: window.__thief.x, z: window.__thief.z, time: window.__din.dinClock() }));
     await page.waitForTimeout(350);
     assert.deepEqual(await page.evaluate(() => ({ x: window.__thief.x, z: window.__thief.z, time: window.__din.dinClock() })), paused,

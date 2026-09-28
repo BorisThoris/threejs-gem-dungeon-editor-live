@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
 let page;

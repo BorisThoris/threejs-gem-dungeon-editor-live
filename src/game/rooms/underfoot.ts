@@ -1,29 +1,35 @@
 import type { Room } from "../dungeon/types";
-import { waterUnderfoot } from "../worldbuilding/watercourse";
+import { channelUnderfoot, waterUnderfoot } from "../worldbuilding/watercourse";
+import { channelSediment, CHANNEL_SEDIMENT_CARRY } from "../worldbuilding/channelSediment";
 import { BIOME, biomeIdFor } from "./biomes";
 import { terrainFor, type TerrainTile } from "./terrainPattern";
 
-export type Footing = "stone" | "water" | "soft" | "wood" | "metal" | "crust" | "wax";
+export type Footing = "stone" | "water" | "soft" | "wood" | "metal" | "crust" | "wax" | "silt";
 /** Retain authored biome acoustics on their native ground, while paving and
  * water crossings use the material actually visible beneath the player. */
-export function footingCarry(room: Room, footing: Footing): number {
+export function footingMaterial(room: Room, footing: Footing) {
+  if (footing === "silt") return { ground: channelSediment(room).name.toLowerCase(), carry: CHANNEL_SEDIMENT_CARRY };
   const biome = biomeIdFor(room.kind, room.id, room.seed, room);
-  if (footing === "water") return BIOME.flooded.carry;
-  if (footing === "soft") return biome === "fungal" ? BIOME.fungal.carry : biome === "ash" ? BIOME.ash.carry : BIOME.mossy.carry;
-  if (footing === "wood") return BIOME.timber.carry;
-  if (footing === "metal") return biome === "verdigris" ? BIOME.verdigris.carry : BIOME.foundry.carry;
-  if (footing === "crust") return BIOME.salt.carry;
-  if (footing === "wax") return BIOME.tallow.carry;
-  return biome === "bone" ? BIOME.bone.carry : BIOME.hewn.carry;
+  if (footing === "water") return BIOME.flooded;
+  if (footing === "soft") return biome === "fungal" ? BIOME.fungal : biome === "ash" ? BIOME.ash : BIOME.mossy;
+  if (footing === "wood") return BIOME.timber;
+  if (footing === "metal") return biome === "verdigris" ? BIOME.verdigris : BIOME.foundry;
+  if (footing === "crust") return BIOME.salt;
+  if (footing === "wax") return BIOME.tallow;
+  return biome === "bone" ? BIOME.bone : BIOME.hewn;
 }
+
+export const footingCarry = (room: Room, footing: Footing): number => footingMaterial(room, footing).carry;
 const terrainCache = new WeakMap<Room, ReturnType<typeof terrainFor>>();
 const covers = (tile: TerrainTile, x: number, z: number) =>
   Math.abs(x - tile.position[0]) <= tile.size[0] / 2 && Math.abs(z - tile.position[2]) <= tile.size[2] / 2;
 
 /** Sound follows visible surfaces. The drainable channel covers paving;
- * independent wet beds remain wet after the sluice opens. */
+ * its exposed sediment still covers paving after drainage. Independent wet
+ * beds outside the channel remain wet after the sluice opens. */
 export function footingAt(room: Room, x: number, z: number, openedAt: number | null, now: number): Footing {
   if (waterUnderfoot(room, x, z, openedAt, now)) return "water";
+  if (channelUnderfoot(room, x, z)) return "silt";
   let terrain = terrainCache.get(room);
   if (!terrain) { terrain = terrainFor(room); terrainCache.set(room, terrain); }
   if (terrain.paving.some(tile => covers(tile, x, z))) return "stone";

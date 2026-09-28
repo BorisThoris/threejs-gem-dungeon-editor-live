@@ -14,6 +14,8 @@ import { croakerHabitats, croakerMigration } from "./croakerHabitat";
 import { waterLevel } from "../worldbuilding/watercourse";
 import { floorHeightAt } from "../worldbuilding/elevation";
 import { geo, mat } from "../props/shared";
+import { createRoomMemory } from "./roomMemory";
+import { chorus } from "./chorusState";
 
 interface Croaker {
   x: number;
@@ -22,6 +24,12 @@ interface Croaker {
   underUntil: number;
   /** A phase of its own, so the chorus is a chorus and not a metronome. */
   phase: number;
+}
+
+const remember = createRoomMemory<Croaker[]>();
+
+function isUnder(c: Croaker, followsChannel: boolean, drained: boolean, now: number) {
+  return !(drained && followsChannel) && now < c.underUntil;
 }
 
 /**
@@ -49,23 +57,28 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
   const toads = useMemo<Croaker[]>(
     () => {
       const run = useRun.getState(), migration = croakerMigration(run.waterOpenedAt, runClock(run));
-      return habitats.map((h, i) => ({
-        x: h.wet.x + (h.refuge.x - h.wet.x) * migration,
-        z: h.wet.z + (h.refuge.z - h.wet.z) * migration,
-        underUntil: 0, phase: i * 1.7,
-      }));
+      const colony = remember(room, () => habitats.map((_, i) => ({
+        x: 0, z: 0, underUntil: 0, phase: i * 1.7,
+      })));
+      colony.forEach((c, i) => {
+        const h = habitats[i];
+        c.x = h.wet.x + (h.refuge.x - h.wet.x) * migration;
+        c.z = h.wet.z + (h.refuge.z - h.wet.z) * migration;
+      });
+      return colony;
     },
-    [habitats]
+    [room, habitats]
   );
   const heard = useMemo(() => din.emptyArrival(), []);
 
   useEffect(() => () => {
     sfx.chorusStop();
+    if (chorus.room === room.grid) { chorus.room = null; chorus.singing = 0; }
     if (import.meta.env.DEV) {
       const win = window as unknown as { __croakers?: { room?: string } };
       if (win.__croakers?.room === room.id) delete win.__croakers;
     }
-  }, [room.id]);
+  }, [room.id, room.grid]);
 
   useFrame((state) => {
     const run = useRun.getState();
@@ -88,7 +101,7 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
 
     // Their row: [loud] at 0.30, [blast] at 0.10. Anything the floor is
     // that loud about puts every one of them under at once.
-    const up = toads.filter((c, i) => now >= c.underUntil || drained && habitats[i].followsChannel);
+    const up = toads.filter((c, i) => !isUnder(c, habitats[i].followsChannel, drained, now));
     const canDive = up.filter(c => !drained || !habitats[toads.indexOf(c)].followsChannel);
     if (canDive.length && din.answering(heard, "croaker", room.id)) {
       for (const c of canDive) c.underUntil = now + CROAKER_UNDER_S;
@@ -103,18 +116,19 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
     let nearestSinging = Infinity;
     toads.forEach((c, i) => {
       const g = groups.current[i];
-      const under = !(drained && habitats[i].followsChannel) && now < c.underUntil;
+      const under = isUnder(c, habitats[i].followsChannel, drained, now);
       const toCam = Math.hypot(cam.x - c.x, cam.z - c.z);
       const hushed = toCam < CROAKER_HUSH_RADIUS;
+      const sings = !under && !hushed && (!habitats[i].followsChannel || !drained);
       if (g) {
         g.visible = !under;
         // The throat, filling and emptying, in its own time.
-        const breath = hushed ? 0 : Math.max(0, Math.sin(t * 2.6 + c.phase));
+        const breath = sings ? Math.max(0, Math.sin(t * 2.6 + c.phase)) : 0;
         throats.current[i]?.scale.set(1 + breath * 0.25, 1 + breath * 0.45, 1 + breath * 0.25);
         const hopping = habitats[i].followsChannel && migration > 0 && migration < 1;
         g.position.set(c.x, floorHeightAt(room, c.x, c.z) + 0.045 + (hopping ? Math.abs(Math.sin(now * 8 + c.phase)) * 0.13 : 0), c.z);
       }
-      if (!under && !hushed && (!habitats[i].followsChannel || !drained)) {
+      if (sings) {
         singing++;
         sx += c.x;
         sz += c.z;
@@ -122,6 +136,8 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
       }
     });
 
+    chorus.room = toads.length ? room.grid : null;
+    chorus.singing = singing;
     if (singing) {
       // From wherever the chorus is, at a level that says how much of it
       // is left: three toads and one toad are different rooms.
@@ -137,21 +153,24 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
         x: toads[0]?.x ?? 0,
         z: toads[0]?.z ?? 0,
         total: toads.length,
-        up: up.length,
+        up: toads.filter((c, i) => !isUnder(c, habitats[i].followsChannel, drained, now)).length,
         singing,
         migrating: habitats.filter(h => h.followsChannel).length * (migration > 0 && migration < 1 ? 1 : 0),
         sheltered: habitats.filter(h => h.followsChannel).length * (migration === 1 ? 1 : 0),
-        under: toads.filter((c, i) => now < c.underUntil && !(drained && habitats[i].followsChannel)).length,
+        under: toads.filter((c, i) => isUnder(c, habitats[i].followsChannel, drained, now)).length,
       };
     }
   });
 
+  const run = useRun.getState(), now = runClock(run);
+  const drained = !!room.waterway && waterLevel(run.waterOpenedAt, now) < 0.2;
   return (
     <>
       {toads.map((s, i) => (
         <group
           key={i}
           name={`croaker-${i}`}
+          visible={!isUnder(s, habitats[i].followsChannel, drained, now)}
           ref={(el) => {
             groups.current[i] = el;
           }}
@@ -160,7 +179,7 @@ export function Croakers({ room, spots, seed }: { room: Room; spots: Spot[]; see
           scale={1.16}
         >
           <mesh geometry={geo("croaker")} material={mat({ color: "#849b58", roughness: 1 })} />
-          <group ref={el => { throats.current[i] = el; }} position={[0, .16, .245]}>
+          <group name={`croaker-throat-${i}`} ref={el => { throats.current[i] = el; }} position={[0, .16, .245]}>
             <mesh scale={[.23, .14, .09]} geometry={geo("box", 1, 1, 1)} material={mat({ color: "#c5ce91", roughness: 1 })} />
           </group>
           <mesh geometry={geo("croaker-eyes")} material={mat({ color: "#e6d27a", basic: true })} />

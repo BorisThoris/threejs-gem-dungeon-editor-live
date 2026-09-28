@@ -58,6 +58,12 @@ looping threshold voice.
 - Build places with purposes and histories. Creatures need habitats; secrets
   need clues. Furnish arrangements, not disconnected random objects.
 
+The Warden reads as a heavy, cut-cloth figure with broad shoulders and an open,
+dark hood. Its existing approach warning reaches through the arms; a stagger
+bows the hood and drops the arms. Keep these states readable in silhouette,
+driven by the combat owner's warning and stagger state, with no extra light
+or independent animation clock. Merge fixed pieces and share the arm geometry.
+
 Hidden-room marks must begin at the cracked wall that actually opens into the
 room. Carry that room's root, iron or stone workmanship along the floor toward
 its named reward, clipped to the true square or octagonal footprint and low

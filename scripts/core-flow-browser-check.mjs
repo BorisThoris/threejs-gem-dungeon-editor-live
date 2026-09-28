@@ -1,9 +1,9 @@
 /** Fast browser gate for the menu, world mount, and one real door transition. */
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];

@@ -25,7 +25,7 @@
  * run that was not topped up would end somewhere on floor two most times,
  * and a check that fails at random is worse than no check.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM = process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";

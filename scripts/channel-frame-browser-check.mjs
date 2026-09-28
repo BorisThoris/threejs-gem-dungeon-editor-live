@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.env.PORT ?? "5234";
 const browser = await chromium.launch({

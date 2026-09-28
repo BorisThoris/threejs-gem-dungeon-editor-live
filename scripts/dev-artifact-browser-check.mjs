@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const output = resolve("dist-electron");
 mkdirSync(output, { recursive: true });
 const directory = mkdtempSync(join(output, "watch-check-"));
 const files = [join(directory, "LICENSES.chromium.html"), join(directory, "package.tmp")];
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined });
 try {
   const page = await browser.newPage();
   let navigations = 0;

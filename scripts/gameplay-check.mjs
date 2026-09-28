@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url)).replaceAll("\\", "/");
 const temp = mkdtempSync(join(tmpdir(), "gameplay-check-"));
@@ -530,14 +530,17 @@ try {
     const footprint = room?.querySelector('[data-testid="map-room-footprint"]');
     const bounds = footprint?.getBBox();
     return { slabs: footprint?.querySelector("path")?.getAttribute("d").match(/M /g)?.length ?? 0,
-      width: bounds?.width, height: bounds?.height, links: room?.querySelectorAll("line").length,
+      width: bounds?.width, height: bounds?.height,
+      links: [...document.querySelectorAll('[data-testid="minimap"] [data-testid="map-passage"]')]
+        .filter(edge => edge.dataset.from === roomId || edge.dataset.to === roomId)
+        .map(edge => edge.dataset.from === roomId ? edge.dataset.to : edge.dataset.from).sort(),
       playerHeight: document.querySelector('[data-testid="map-player"]')?.getBoundingClientRect().height,
       unknownOutlines: document.querySelectorAll('[data-map-state="known"] [data-testid="map-room-footprint"]').length };
   }, galleryFixture.roomId);
   assert.equal(mapGallery.slabs, L.floorRects(galleryFixture.dungeon.rooms.find((r) => r.id === galleryFixture.roomId)).length,
     "visited map room includes every travel wing and closed gallery");
   assert.ok(mapGallery.width <= 26.001 && mapGallery.height <= 26.001, "room outlines fit their map cells");
-  assert.equal(mapGallery.links, Object.keys(galleryFixture.dungeon.rooms.find((r) => r.id === galleryFixture.roomId).links).length,
+  assert.deepEqual(mapGallery.links, Object.values(galleryFixture.dungeon.rooms.find((r) => r.id === galleryFixture.roomId).links).filter(Boolean).sort(),
     "a closed gallery does not become a map travel connection");
   assert.equal(mapGallery.unknownOutlines, 0, "unexplored rooms do not reveal their internal layouts");
   assert.ok(mapGallery.playerHeight > 7 && mapGallery.playerHeight < 13,

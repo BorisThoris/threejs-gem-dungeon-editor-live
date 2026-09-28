@@ -79,7 +79,7 @@ export interface HudFacts {
   ground: { name: string; says: string; tone: HudLine["tone"] } | null;
   roost: boolean;
   /** Toads at the water's edge, singing - or not, which is the tell. */
-  croakers?: boolean;
+  croakers?: "singing" | "quiet";
   drafty: boolean;
   /**
    * What the floor's heat is CALLED, and the band it is in. Never the
@@ -336,7 +336,7 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
       body:
         `${f.ground.name}${DOT}${f.ground.says}` +
         (f.roost ? `${DOT}bats roost here` : "") +
-        (f.croakers ? `${DOT}toads sing here` : "") +
+        (f.croakers ? `${DOT}${f.croakers === "singing" ? "toads sing here" : "toads are quiet"}` : "") +
         (f.drafty ? `${DOT}a draft` : ""),
       rank: 4,
       tone: f.ground.tone,

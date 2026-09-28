@@ -1027,7 +1027,7 @@ export const sfx = {
       later(45, () => tone(650 * wobble, 0.07, "sine", 0.045 * loud, 880, 0, true));
       return;
     }
-    if (surface === "soft") {
+    if (surface === "soft" || surface === "silt") {
       scuff(0.11, (strong ? 0.3 : 0.22) * loud, 240 * wobble);
       body(60 * wobble, 0.07, "sine", (strong ? 0.2 : 0.14) * loud, 42);
       return;

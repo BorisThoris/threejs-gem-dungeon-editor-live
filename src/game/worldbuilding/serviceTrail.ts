@@ -1,6 +1,7 @@
 import { DIRS, DIR_STEP, type Dungeon, type Room, type Dir } from "../dungeon/types";
 import { doorReach, insideRoom, roomSegmentClear } from "../dungeon/footprint";
 import { roomPlaceName } from "../rooms/placeName";
+import { learnedTrailGuide, type TrailGuide } from "./trailGuide";
 
 export interface ServiceTrail { route: string[]; hostId: string }
 
@@ -37,44 +38,20 @@ export function trailDirection(dungeon: Dungeon, room: Room): Dir | undefined {
   return room.id === trail.hostId ? room.secret?.dir : DIRS.find(dir => room.links[dir] === trail.route[index + 1]);
 }
 
-export interface ServiceTrailGuide {
-  status: "follow" | "catch" | "return" | "complete" | "lost";
-  dir?: Dir;
-  destinationId?: string;
-  doors?: number;
+export interface ServiceTrailGuide extends Omit<TrailGuide, "status"> {
+  status: Exclude<TrailGuide["status"], "arrived"> | "catch";
 }
 
 /** The rubbing names its own route. Recovery directions use only rooms the
  * player has visited, never shortcuts through unexplored or locked space. */
-export function serviceTrailGuide(dungeon: Dungeon, roomId: string, visited: readonly string[] = []): ServiceTrailGuide {
-  const trail = dungeon.serviceTrail, byId = new Map(dungeon.rooms.map(r => [r.id, r]));
-  const room = byId.get(roomId), host = trail && byId.get(trail.hostId);
-  if (!trail || !room || !host) return { status: "lost" };
-  if (host.secret && host.links[host.secret.dir]) return { status: "complete" };
-  const index = trail.route.indexOf(roomId), dir = trailDirection(dungeon, room);
-  if (dir) return roomId === trail.hostId ? { status: "catch", dir, doors: 0 }
-    : { status: "follow", dir, destinationId: trail.route[index + 1], doors: trail.route.length - index - 1 };
-  const known = new Set([...visited, roomId]);
-  const paths = new Map<string, string[]>([[roomId, [roomId]]]);
-  for (const [id, path] of paths) {
-    if (id !== roomId && trail.route.includes(id)) {
-      const dir = DIRS.find(d => room.links[d] === path[1]);
-      if (dir) return { status: "return", dir, destinationId: path[1], doors: path.length - 1 };
-    }
-    const at = byId.get(id);
-    if (!at) continue;
-    for (const dir of DIRS) {
-      const next = at.links[dir];
-      if (!next || !known.has(next) || paths.has(next) || next === dungeon.vaultId || byId.get(next)?.kind === "end") continue;
-      paths.set(next, [...path, next]);
-    }
-  }
-  return { status: "lost" };
+export function serviceTrailGuide(dungeon: Dungeon, roomId: string, visited: readonly string[] = [], bars?: ReadonlySet<string>): ServiceTrailGuide {
+  const guide = learnedTrailGuide(dungeon, dungeon.serviceTrail, roomId, visited, bars);
+  return { ...guide, status: guide.status === "arrived" ? "catch" : guide.status };
 }
 
-export function serviceTrailText(dungeon: Dungeon, roomId: string, visited: readonly string[] = []): string {
+export function serviceTrailText(dungeon: Dungeon, roomId: string, visited: readonly string[] = [], bars?: ReadonlySet<string>): string {
   if (!dungeon.serviceTrail || !dungeon.rooms.some(r => r.id === roomId)) return "";
-  const guide = serviceTrailGuide(dungeon, roomId, visited);
+  const guide = serviceTrailGuide(dungeon, roomId, visited, bars);
   const next = dungeon.rooms.find(r => r.id === guide.destinationId);
   const place = next ? roomPlaceName(next, dungeon.seed) : "the next hall";
   switch (guide.status) {
@@ -82,6 +59,8 @@ export function serviceTrailText(dungeon: Dungeon, roomId: string, visited: read
     case "catch": return `Maintenance rubbing · press the three-notch catch on the ${guide.dir} wall.`;
     case "follow": return `Follow the three-notch copper marks · ${guide.dir} to ${place} · ${guide.doors} ${guide.doors === 1 ? "door" : "doors"} to the catch.`;
     case "return": return `Maintenance rubbing · ${guide.dir} through ${place} · rejoin the copper trail in ${guide.doors} ${guide.doors === 1 ? "door" : "doors"}.`;
+    case "detour": return `Copper trail blocked · detour ${guide.dir} through ${place} · rejoin in ${guide.doors} ${guide.doors === 1 ? "door" : "doors"}.`;
+    case "blocked": return `Copper trail blocked${guide.dir ? ` · ${guide.dir} passage barred` : ""} · clear a passage or explore another way.`;
     default: return "Maintenance rubbing · return to the reliquary and follow the three-notch copper trail.";
   }
 }

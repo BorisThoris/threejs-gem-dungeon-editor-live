@@ -10,6 +10,7 @@ const temp = mkdtempSync(join(tmpdir(), "world-check-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import "${root}src/game/rooms/shipped";\n` + [
   "worldbuilding/passageLighting",
+  "worldbuilding/channelSediment",
   "worldbuilding/landmarks",
   "worldbuilding/secretTrail",
   "worldbuilding/secretHistoryPattern",
@@ -839,19 +840,33 @@ for (let seed = 1; seed <= 120; seed++) for (const floor of [1, 2, 3]) {
       const y = bed.position[1] + (bed.slope?.[0] ?? 0) * (tile.position[0] - bed.position[0]) + (bed.slope?.[1] ?? 0) * (tile.position[2] - bed.position[2]);
       assert.ok(Math.abs(y - tile.position[1]) < 1e-7, "merged beds retain the floor plane");
     }
+    // Compare footing with the visible topmost surface, including the bed
+    // drawn above paving when the watercourse is dry.
+    const channelAt = (x, z) => L.watercourseBlocks(r).some(b =>
+      x >= b.position[0] - b.size[0] / 2 && x <= b.position[0] + b.size[0] / 2 &&
+      z >= b.position[2] - b.size[2] / 2 && z <= b.position[2] + b.size[2] / 2);
     if (["flooded", "mossy", "fungal", "ash", "salt", "verdigris", "tallow"].includes(terrain.biome)) {
       const beds = new Map(terrain.deposits.map(tile => [`${tile.position[0]}:${tile.position[2]}`, tile]));
       for (const tile of terrain.deposits) for (const [dx, dz] of [[1.5, 0], [0, 1.5]]) {
         const next = beds.get(`${tile.position[0] + dx}:${tile.position[2] + dz}`);
         if (!next || tile.size[0] !== 1.5 || tile.size[2] !== 1.5 || next.size[0] !== 1.5 || next.size[2] !== 1.5) continue;
         assert.equal(L.footingAt(r, tile.position[0] + dx / 2, tile.position[2] + dz / 2, 0, 100),
-          terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : terrain.biome === "verdigris" ? "metal" : terrain.biome === "tallow" ? "wax" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
+          channelAt(tile.position[0] + dx / 2, tile.position[2] + dz / 2) ? "silt" : terrain.biome === "flooded" ? "water" : terrain.biome === "salt" ? "crust" : terrain.biome === "verdigris" ? "metal" : terrain.biome === "tallow" ? "wax" : "soft", "adjoining beds have no dry footstep seam after the channel drains");
       }
     }
-    for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), "stone", "dry paving sounds like stone in every biome");
+    for (const b of terrain.paving.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100), channelAt(b.position[0], b.position[2]) ? "silt" : "stone", "paving sounds like stone unless covered by channel sediment");
     for (const b of terrain.deposits.slice(0, 1)) assert.equal(L.footingAt(r, b.position[0], b.position[2], 0, 100),
-      r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : r.biome === "verdigris" ? "metal" : r.biome === "tallow" ? "wax" : "stone", "independent terrain beds retain their material after channel drainage");
+      channelAt(b.position[0], b.position[2]) ? "silt" : r.biome === "flooded" ? "water" : ["mossy", "fungal", "ash"].includes(r.biome) ? "soft" : r.biome === "salt" ? "crust" : r.biome === "verdigris" ? "metal" : r.biome === "tallow" ? "wax" : "stone", "independent terrain beds retain their material after channel drainage");
     if (r.waterway) assert.equal(L.footingAt(r, 0, 0, null, 100), "water", "live channel water covers the paving sound");
+    for (const b of L.watercourseBlocks(r)) {
+      for (const [dx, dz] of [[0, 0], [-0.49, -0.49], [0.49, 0.49]]) {
+        const x = b.position[0] + dx * b.size[0], z = b.position[2] + dz * b.size[2];
+        assert.equal(L.footingAt(r, x, z, null, 100), "water", "the full rendered channel is wet before drainage");
+        assert.equal(L.footingAt(r, x, z, 0, 100), "silt", "the full rendered bed, including terminal basins, is silt after drainage");
+      }
+      assert.equal(L.footingMaterial(r, "silt").ground, L.channelSediment(r).name.toLowerCase(), "ground guidance names the drawn sediment");
+      assert.ok(L.footingCarry(r, "silt") < 1 && L.footingCarry(r, "silt") < L.footingCarry(r, "water"), "drainage leaves a quieter return path");
+    }
     for (const b of [...terrain.paving, ...terrain.deposits]) {
       tiles++;
       const lift = b.position[1] + b.size[1] / 2 - L.floorHeightAt(r, b.position[0], b.position[2]);

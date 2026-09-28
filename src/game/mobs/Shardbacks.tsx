@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, MeshStandardMaterial, Object3D } from "three";
@@ -16,7 +17,7 @@ import { shardbackPose, shardbacksFor, SHARDBACK_COOLDOWN_SECONDS,
   SHARDBACK_LIGHT_REACH, SHARDBACK_WARNING_SECONDS } from "./shardbackHabitat";
 
 interface ShardbackState { charge: number; coolingUntil: number }
-const memory = new WeakMap<Room, ShardbackState>();
+const remember = createRoomMemory<ShardbackState>();
 
 /**
  * Mineral grazers whose raised plates turn light into noise. The whole colony
@@ -28,11 +29,7 @@ export function Shardbacks({ room }: { room: Room }) {
   const bodies = useRef<InstancedMesh>(null), plates = useRef<InstancedMesh>(null);
   const plateMaterial = useRef<MeshStandardMaterial>(null);
   const pose = useMemo(() => new Object3D(), []), arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { charge: 0, coolingUntil: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ charge: 0, coolingUntil: 0 })), [room]);
   const wasWarning = useRef(false);
 
   useEffect(() => () => {

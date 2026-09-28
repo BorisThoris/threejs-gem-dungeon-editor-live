@@ -14,7 +14,7 @@ import { Blocks } from "../rooms/CorridorDetails";
 import type { CorridorBlock } from "../rooms/corridorPattern";
 import { GROUND_Y } from "../world";
 import { floorHeightAt } from "./elevation";
-import { watercourseBlocks, waterLevel, waterTravel, waterFlowUV, waterStation, WATERWAY_NAMES, WATER_CACHE_GEMS } from "./watercourse";
+import { watercourseBlocks, waterLevel, waterTravel, waterFlowUV, waterStation, waterworkDescription, WATERWAY_NAMES, WATER_CACHE_GEMS } from "./watercourse";
 
 /** Each branch carries route-relative UVs, but all branches share one draw.
  * World positions keep the old glint phase through turns and after revisits. */
@@ -156,7 +156,8 @@ export function Watercourse({ room }: { room: Room }) {
       <InteractTrigger position={[station.approach.x, floorHeightAt(room, station.approach.x, station.approach.z) + 1.2, station.approach.z]} radius={2}
         label={role === "sluice" ? "Turn the sluice wheel · drains the watercourse" : `Lift the dry reliquary seal · ${WATER_CACHE_GEMS} gems`}
         enabled={role === "sluice" ? openedAt === null : drained && !taken}
-        blockedReason={role === "sluice" ? "Sluice open · follow the bronze arrows downstream" : taken ? "Reliquary emptied" : "Underwater seal · find the sluice upstream"}
+        blockedReason={role === "sluice" ? "Sluice open · follow the bronze arrows downstream"
+          : waterworkDescription("outfall", openedAt !== null, drained, taken)}
         onInteract={() => useRun.getState().operateWaterway()} />
     </>}
     {import.meta.env.DEV && <WaterProbe room={room} drained={drained} />}

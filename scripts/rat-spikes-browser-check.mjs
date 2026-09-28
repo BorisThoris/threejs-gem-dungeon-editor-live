@@ -1,4 +1,4 @@
-import {chromium} from 'playwright-core';import assert from 'node:assert/strict';
+import {chromium} from './browser-safety.mjs';import assert from 'node:assert/strict';
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH});
 try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));await page.goto(`http://127.0.0.1:${process.env.PORT ?? "5217"}/`);await page.locator('[data-testid="menu-start"]').click();await page.waitForFunction(()=>window.__run?.getState().phase==='playing'&&!window.__run.getState().transitioning);

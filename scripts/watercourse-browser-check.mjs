@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 mkdirSync("output/world-review", { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH, args: ["--no-sandbox"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors = [];
@@ -26,6 +26,12 @@ try {
   await page.evaluate(({ dungeon }) => window.__run.setState({ dungeon, floor: 1, waterOpenedAt: null,
     waterCacheTaken: false, wardenRoomId: null, wardenAwake: false, harrierAwake: false, reaperAwake: false,
     thiefPhase: "away", invulnerableUntil: 1e9, visited: [] }), fixture);
+  const openMap = async () => {
+    await page.evaluate(() => { if (!window.__run.getState().paused) window.__run.getState().pause(); });
+    await page.getByTestId("pause-map").click();
+    await page.getByTestId("floor-map").waitFor();
+  };
+  const waterChoice = role => page.locator(`[data-testid="map-waterwork-choice"][data-water-role="${role}"]`);
   const visit = async id => {
     await page.evaluate(async id => {
       const { waterStation } = await import("/src/game/worldbuilding/watercourse.ts");
@@ -60,6 +66,21 @@ try {
     writeFileSync(`output/world-review/${role}-basin-wet.png`, Buffer.from(image.split(",")[1], "base64"));
   };
   await visit(fixture.cache);
+  await page.getByTestId("prompt-text").filter({ hasText: "Seal underwater" }).waitFor();
+  await openMap();
+  await waterChoice("outfall").filter({ hasText: "Seal underwater" }).waitFor();
+  await page.evaluate(() => window.__run.setState({ mapped: true }));
+  assert.equal(await waterChoice("sluice").count(), 0, "Mapping does not reveal the undiscovered sluice");
+  const planning = await page.evaluate(() => ({ clock: window.__derived.clock(), gems: window.__run.getState().gems,
+    room: window.__run.getState().currentRoomId, marks: window.__run.getState().marks }));
+  await waterChoice("outfall").focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await page.getByTestId("map-selected-service").getAttribute("data-room-id"), fixture.cache);
+  assert.deepEqual(await page.evaluate(() => ({ clock: window.__derived.clock(), gems: window.__run.getState().gems,
+    room: window.__run.getState().currentRoomId, marks: window.__run.getState().marks })), planning,
+    "selecting a known waterwork changes only the map highlight");
+  await page.evaluate(() => window.__run.setState({ mapped: false }));
+  await page.getByTestId("pause-resume").click();
   await reviewBasin("reliquary");
   const waterState = () => page.evaluate(() => {
     let material;
@@ -159,6 +180,9 @@ try {
     const { runClock } = await import("/src/game/state/run.ts");
     window.__run.getState().pause(); const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
   });
+  await openMap();
+  await waterChoice("sluice").filter({ hasText: "channel draining" }).waitFor();
+  await waterChoice("outfall").filter({ hasText: "Water draining" }).waitFor();
   await page.waitForTimeout(100);
   const pausedFlow = await waterState();
   assert.equal(await currentSound(), 0, "pause silences the current voice");
@@ -169,10 +193,23 @@ try {
     const s = window.__run.getState(); return waterLevel(s.waterOpenedAt, runClock(s));
   });
   assert.ok(Math.abs(still - pausedLevel) < 1e-9, "drainage freezes while paused");
+  assert.match(await waterChoice("outfall").innerText(), /Water draining/, "paused map preserves drainage progress");
   const heldFlow = await waterState();
   assert.ok(Math.abs(heldFlow.travel - pausedFlow.travel) < 1e-9 &&
     Math.abs(heldFlow.opacity - pausedFlow.opacity) < 1e-9 && heldFlow.visible === pausedFlow.visible,
   "rendered current and opacity freeze while paused");
+  // Return before drainage finishes: the mechanism must acknowledge the
+  // opened sluice, rather than send the player back to find it again.
+  await visit(fixture.cache);
+  await page.evaluate(() => window.__run.getState().resume());
+  await page.getByTestId("prompt-text").waitFor();
+  assert.match(await page.getByTestId("prompt-text").innerText(), /Water draining/,
+    "the live reliquary agrees with its remembered drainage status");
+  await page.keyboard.press("KeyE");
+  assert.equal(await page.evaluate(() => window.__run.getState().waterCacheTaken), false,
+    "the draining cache remains sealed");
+  await page.evaluate(() => window.__run.getState().pause());
+  await visit(fixture.sluice);
   await page.evaluate(() => window.__run.getState().resume());
   await page.waitForFunction(() => window.__watercourse?.drained);
   const dryFlow = await waterState();
@@ -192,15 +229,45 @@ try {
   assert.ok(sediment.heights.length > 0 && sediment.heights.every(y => Math.abs(y - 0.041) < 1e-6), "sediment retains the original channel base height");
   await page.waitForTimeout(400);
   assert.deepEqual(await waterState(), dryFlow, "the dry current remains stopped");
+  await openMap();
+  await waterChoice("sluice").filter({ hasText: "channel drained" }).waitFor();
+  await waterChoice("outfall").filter({ hasText: "2 gems ready" }).waitFor();
+  assert.equal(await page.evaluate(() => window.__run.getState().currentRoomId), fixture.sluice,
+    "the map remembers the ready reliquary while still at the sluice");
+  await page.getByTestId("pause-resume").click();
   await visit(fixture.cache);
   await page.waitForFunction(() => window.__watercourse?.drained);
   await page.screenshot({ path: "output/world-review/reliquary-drained.png" });
   const before = await page.evaluate(() => window.__run.getState().gems);
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().waterCacheTaken);
+  await page.getByTestId("prompt-text").filter({ hasText: "Reliquary emptied" }).waitFor();
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "dry cache pays two gems");
   await page.evaluate(() => window.__run.getState().operateWaterway());
   assert.equal(await page.evaluate(() => window.__run.getState().gems), before + 2, "cache pays only once");
+  await openMap();
+  await waterChoice("outfall").filter({ hasText: "Reliquary emptied" }).waitFor();
+  await waterChoice("sluice").click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => window.__settings.getState().setUiScale(1.6));
+  for (const role of ["sluice", "outfall"]) {
+    await waterChoice(role).scrollIntoViewIfNeeded();
+    assert.ok(await waterChoice(role).evaluate(el => {
+      const b = el.getBoundingClientRect();
+      return b.left >= 0 && b.right <= innerWidth && el.scrollWidth <= el.clientWidth + 1;
+    }), "large phone waterwork labels remain readable");
+  }
+  await page.getByTestId("map-waterworks").screenshot({ path: "output/world-review/waterworks-map-phone.png" });
+  await page.evaluate(() => window.__run.setState({ effects: { ...window.__run.getState().effects, gloom: window.__derived.clock() + 20 } }));
+  await page.getByTestId("map-waterworks").waitFor({ state: "detached" });
+  await page.evaluate(() => {
+    window.__run.setState({ effects: { ...window.__run.getState().effects, gloom: 0 } });
+    window.__settings.getState().setUiScale(1);
+  });
+  await waterChoice("outfall").waitFor();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByTestId("map-waterworks").screenshot({ path: "output/world-review/waterworks-map-desktop.png" });
+  await page.getByTestId("pause-resume").click();
   assert.match(await page.locator('[data-testid="service-rubbing"]').innerText(), /three-notch|copper trail/,
     "the rubbing gives either its marked route or a return to that route");
   assert.equal(await page.evaluate(() => window.__run.getState().openServiceCatch()), false, "rubbing cannot open the passage remotely");
@@ -245,6 +312,11 @@ try {
     window.__run.getState().roomReady(s.dungeon.endId);
   });
   await page.waitForFunction(() => window.__run.getState().floor === 2);
+  await page.waitForFunction(() => !window.__run.getState().transitioning);
+  await openMap();
+  assert.equal(await page.getByTestId("map-waterwork-choice").count(), 0, "descent clears discovered waterworks");
+  assert.equal(await page.getByTestId("map-selected-service").count(), 0, "descent clears the old planning highlight");
+  await page.getByTestId("pause-resume").click();
   assert.equal(await page.locator('[data-testid="service-rubbing"]').count(), 0, "descent clears the learned rubbing");
   assert.deepEqual(await page.evaluate(() => [window.__run.getState().waterOpenedAt, window.__run.getState().waterCacheTaken]), [null, false], "descent resets circuit state");
   await page.evaluate(() => window.__run.setState({ waterOpenedAt: 3, waterCacheTaken: true }));

@@ -1,4 +1,5 @@
-import { useRun } from "../game/state/run";
+import { useShallow } from "zustand/react/shallow";
+import { barsNow, useRun } from "../game/state/run";
 import { serviceTrailText } from "../game/worldbuilding/serviceTrail";
 
 export function ServiceRubbing() {
@@ -6,8 +7,9 @@ export function ServiceRubbing() {
   const roomId = useRun(s => s.currentRoomId);
   const visited = useRun(s => s.visited);
   const learned = useRun(s => s.waterCacheTaken);
+  const bars = useRun(useShallow(barsNow));
   if (!learned || !dungeon?.serviceTrail || !roomId) return null;
   return <div data-testid="service-rubbing" style={{ color: "#c8a574", marginTop: 8 }}>
-    {serviceTrailText(dungeon, roomId, visited)}
+    {serviceTrailText(dungeon, roomId, visited, bars)}
   </div>;
 }

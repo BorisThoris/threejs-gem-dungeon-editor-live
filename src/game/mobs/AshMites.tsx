@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D } from "three";
@@ -13,7 +14,7 @@ import { floorHeightAt } from "../worldbuilding/elevation";
 import { mitesFor, mitePose, MITE_HIDE_SECONDS } from "./miteHabitat";
 
 interface MiteState { until: number; cover: number }
-const memory = new WeakMap<Room, MiteState>();
+const remember = createRoomMemory<MiteState>();
 
 /** Ash mites comb the windrows until a noise sends the whole colony under. */
 export function AshMites({ room }: { room: Room }) {
@@ -21,11 +22,7 @@ export function AshMites({ room }: { room: Room }) {
   const mesh = useRef<InstancedMesh>(null);
   const scratch = useMemo(() => new Object3D(), []);
   const arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { until: 0, cover: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ until: 0, cover: 0 })), [room]);
   const announced = useRef(false);
 
   useEffect(() => () => {

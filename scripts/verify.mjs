@@ -25,14 +25,14 @@ const fullChecks = ["test:world", "test:walk-navigation", "test:nest-placement",
 const systemChecks = ["test:lighting", "test:service-trail", "test:handbuilt", "test:water-sound"];
 const baseBrowserChecks = ["core-flow-browser-check.mjs", "dev-artifact-browser-check.mjs", "sprint-noise-browser-check.mjs", "din-clock-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs", "cutpurse-distraction-browser-check.mjs", "delver-choices-browser-check.mjs", "shop-payment-browser-check.mjs", "map-navigation-browser-check.mjs"];
 const fullBrowserChecks = ["gameplay-check.mjs", "pad-check.mjs", "touch-check.mjs", "audio-check.mjs", "perf-check.mjs",
-  "walk-run.mjs", "harrier-windup-browser-check.mjs", "touch-shove-browser-check.mjs", "readout-interaction-browser-check.mjs", "cutpurse-loot-browser-check.mjs", "key-drop-input-browser-check.mjs",
-  "full-count-browser-check.mjs", "vault-choice-browser-check.mjs", "plate-choice-browser-check.mjs", "death-review-browser-check.mjs", "satchel-inspection-browser-check.mjs", "relic-planning-browser-check.mjs", "pledge-choice-browser-check.mjs", "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
+  "walk-run.mjs", "harrier-windup-browser-check.mjs", "warden-readability-browser-check.mjs", "teaching-priority-browser-check.mjs", "touch-shove-browser-check.mjs", "readout-interaction-browser-check.mjs", "cutpurse-loot-browser-check.mjs", "key-drop-input-browser-check.mjs",
+  "full-count-browser-check.mjs", "vault-choice-browser-check.mjs", "plate-choice-browser-check.mjs", "death-review-browser-check.mjs", "satchel-inspection-browser-check.mjs", "relic-planning-browser-check.mjs", "remembered-services-browser-check.mjs", "pledge-choice-browser-check.mjs", "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
   "ambient-behavior-browser-check.mjs", "carried-signals-browser-check.mjs", "trap-combat-browser-check.mjs", "exploration-browser-check.mjs",
   "ecology-browser-check.mjs", "architecture-browser-check.mjs", "scenario-matrix-browser-check.mjs", "capture-scenario-review.mjs",
-  "overlay-check.mjs", "tome-browser-check.mjs", "keyboard-bindings-browser-check.mjs", "input-boundary-browser-check.mjs", "focus-pause-browser-check.mjs", "control-labels-browser-check.mjs", "run-restart-browser-check.mjs", "item-feedback-browser-check.mjs", "iron-knot-browser-check.mjs"];
+  "overlay-check.mjs", "tome-browser-check.mjs", "keyboard-bindings-browser-check.mjs", "input-boundary-browser-check.mjs", "focus-pause-browser-check.mjs", "control-labels-browser-check.mjs", "run-restart-browser-check.mjs", "run-discoveries-browser-check.mjs", "item-feedback-browser-check.mjs", "iron-knot-browser-check.mjs"];
 const systemBrowserChecks = ["world-browser-check.mjs", "block-lighting-browser-check.mjs", "terrain-browser-check.mjs",
-  "terrain-stealth-browser-check.mjs", "footstep-collision-browser-check.mjs", "grate-browser-check.mjs", "interaction-probe-browser-check.mjs",
-  "watercourse-browser-check.mjs", "water-browser-check.mjs", "secret-clue-browser-check.mjs",
+  "terrain-stealth-browser-check.mjs", "underfoot-readout-browser-check.mjs", "footstep-collision-browser-check.mjs", "stride-clock-browser-check.mjs", "grate-browser-check.mjs", "interaction-probe-browser-check.mjs",
+  "watercourse-browser-check.mjs", "water-browser-check.mjs", "secret-clue-browser-check.mjs", "trail-guidance-browser-check.mjs",
   "secret-history-browser-check.mjs", "bellcap-browser-check.mjs", "apse-browser-check.mjs",
   "beetle-browser-check.mjs", "rat-spikes-browser-check.mjs", "room-acoustics-check.mjs",
   "builder-world-check.mjs", "draft-storage-browser-check.mjs", "surface-storage-browser-check.mjs", "painter-browser-check.mjs", "mosaic-browser-check.mjs", "rows-check.mjs", "authored-room-browser-check.mjs",
@@ -83,6 +83,7 @@ async function run(label, command, args, env = {}, logPath) {
     const usingYarn = command === "yarn" && Boolean(process.env.npm_execpath);
     const child = spawn(usingYarn ? node : command, usingYarn ? [process.env.npm_execpath, ...args] : args, {
       cwd: root,
+      windowsHide: true,
       stdio: ["inherit", "pipe", "pipe"],
       shell: process.platform === "win32" && command === "yarn" && !usingYarn,
       env: { ...process.env, ...env },
@@ -181,7 +182,7 @@ try {
     const port = await freePort();
     console.log(`\n── fresh Vite server on ${port} ──`);
     server = spawn(node, [vite, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
-      cwd: root, stdio: "inherit", env: process.env,
+      cwd: root, stdio: "inherit", env: process.env, windowsHide: true,
     });
     await ready(port, server);
     for (const script of browserChecks) {
@@ -200,7 +201,7 @@ try {
   if (server && server.exitCode === null) {
     if (process.platform === "win32") {
       await new Promise((resolve) => {
-        const killer = spawn("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+        const killer = spawn("taskkill", ["/PID", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
         killer.once("exit", resolve);
         killer.once("error", resolve);
       });

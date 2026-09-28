@@ -1,9 +1,9 @@
 /** A real keyboard sprint must tell the Warden, then fall quiet again. */
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -68,6 +68,43 @@ try {
       "changing sprint mode away and back cannot restore an old toggle or alert the Warden");
   } finally { await page.keyboard.up("KeyW"); }
   console.log("PASS switching sprint modes resets the old toggle: fresh movement stays quiet");
+  await toggleMode(); // back to hold for the readout cases
+  for (const effect of ["none", "swift", "mire"]) {
+    await page.evaluate(effect => {
+      const s = window.__run.getState(), until = window.__derived.clock() + 30;
+      window.__run.setState({ effects: { ...s.effects, swift: effect === "swift" ? until : 0,
+        mire: effect === "mire" ? until : 0 }, wardenRoomId: null, harrierSlain: true });
+    }, effect);
+    for (const sprint of [false, true]) {
+      await resetPosition();
+      if (sprint) await page.keyboard.down("ShiftLeft");
+      await page.keyboard.down("KeyW");
+      try {
+        await page.waitForFunction(() => Math.hypot(window.__playerDebug.x, window.__playerDebug.z) > 0.4);
+        await page.waitForTimeout(80); // the existing HUD poll samples the moving body
+        const samples = await page.evaluate(async () => {
+          const { playerAt } = await import('/src/game/player/where.ts');
+          const samples = [];
+          for (let i = 0; i < 12; i++) {
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            samples.push({ ...playerAt, hud: document.querySelector('[data-testid="stealth-status"]').textContent });
+          }
+          return samples;
+        });
+        assert.ok(samples.every(sample => sample.gait === (sprint ? "running" : "walking")),
+          `${effect}: gait stays readable between physics steps: ${JSON.stringify(samples)}`);
+        assert.match(await page.getByTestId("stealth-status").innerText(), sprint ? /running/ : /walking/,
+          `${effect}: the readout identifies the gait, not a guessed speed threshold`);
+        assert.equal(await page.evaluate(() => window.__derived.hears()), sprint,
+          `${effect}: only actual running makes fresh sprint noise`);
+      } finally {
+        await page.keyboard.up("KeyW");
+        await page.keyboard.up("ShiftLeft");
+      }
+      await page.getByTestId("stealth-status").filter({ hasText: "still" }).waitFor();
+    }
+  }
+  console.log("PASS walking/running readout agrees with actual noise under normal, swift and mire movement");
   assert.deepEqual(errors, [], "no browser errors");
   console.log(`PASS keyboard sprint in ${room} moves, alerts the Warden, and becomes quiet again`);
 } finally {

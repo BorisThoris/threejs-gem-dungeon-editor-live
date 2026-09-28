@@ -1,6 +1,6 @@
 /** Mount representative generated room kinds and footprints in the real game. */
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
 const base = `http://127.0.0.1:${port}/`;

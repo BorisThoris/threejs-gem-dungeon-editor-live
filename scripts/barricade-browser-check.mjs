@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdirSync } from "node:fs";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1100, height: 760 } }), errors = [];
@@ -108,10 +108,14 @@ try {
     run.setState({ barredDoor: "a|b", barUntil: window.__derived.clock() + 0.8 });
   });
   await page.getByTestId("prompt-text").filter({ hasText: "The grate is still down" }).waitFor();
+  await page.locator('[data-testid="minimap"] [data-barrier="grate"][data-edge="a|b"]').waitFor();
   await page.waitForFunction(() => window.__run.getState().barredDoor === null, null, { timeout: 3000 });
+  await page.getByTestId("map-barrier").waitFor({ state: "detached" });
   await page.getByTestId("prompt-text").filter({ hasText: "Open a chamber" }).waitFor({ timeout: 3000 });
   await page.keyboard.press("KeyB");
   await page.waitForFunction(() => window.__run.getState().barricades.includes("a|b"));
+  await page.locator('[data-testid="minimap"] [data-barrier="barricade"][data-edge="a|b"]').waitFor();
+  assert.equal(await page.getByTestId("map-barrier").count(), 1, "one marker per doorway, not one per side");
   await page.waitForFunction(() => document.querySelector('[data-testid="bars-stock"]').textContent.includes("2/3"));
   assert.match(await page.locator('[data-testid="bars-stock"]').innerText(), /2\/3/);
   await page.waitForFunction(() => document.body.innerText.includes("Tear down your barricade"));
@@ -147,6 +151,7 @@ try {
   assert.deepEqual(await page.evaluate(() => window.__run.getState().barricades), ["a|b"], "Warden cannot instantly destroy the barricade");
   await page.keyboard.press("KeyE");
   await page.waitForFunction(() => window.__run.getState().barricades.length === 0);
+  await page.getByTestId("map-barrier").waitFor({ state: "detached" });
   assert.equal(await page.evaluate(() => window.__run.getState().currentRoomId), "b", "tearing down does not also travel");
   await page.waitForFunction(() => {
     const s = window.__run.getState(); return s.reaperRoomId === "b" && s.harrierRoomId === "b" && s.thiefRoomId === "b";

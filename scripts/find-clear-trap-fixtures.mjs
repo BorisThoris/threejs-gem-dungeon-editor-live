@@ -1,5 +1,5 @@
 /** Locate short, visible routes for live trap checks without playing every seed. */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined,

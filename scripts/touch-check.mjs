@@ -23,7 +23,7 @@
  * Three screens, because the game decides by device: a phone, a tablet,
  * and a desktop that is never touched, which must not grow a stick.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const PORT = process.env.PORT || "5199";
 const CHROMIUM =

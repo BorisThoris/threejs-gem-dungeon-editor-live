@@ -16,7 +16,7 @@
  * about a third again on top. They are not aspirations - they are a tripwire
  * for the day something doubles.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";

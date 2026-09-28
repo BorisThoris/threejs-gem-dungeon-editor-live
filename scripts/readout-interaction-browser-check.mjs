@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
 const failures = [];
 const check = (ok, label, detail) => {
   console.log(`${ok ? "PASS" : "FAIL"} ${label}: ${JSON.stringify(detail)}`);
@@ -113,11 +113,15 @@ try {
   assert.ok(await guidance.evaluate(el => document.activeElement === el), "pointer reading focuses guidance");
   await page.keyboard.press("End");
   await page.waitForTimeout(7000);
+  await page.evaluate(() => window.__bus.emit("beetlesScattered", { roomId: window.__run.getState().currentRoomId }));
   check((await guidance.innerText()).includes(keeperNotice),
-    "the Keeper instructions remain available while the player reads them", null);
+    "the Keeper instructions survive wildlife lessons while the player reads beyond the timeout", null);
   await guidance.evaluate(g => g.blur());
   await page.waitForFunction(notice => !document.querySelector('[data-testid="guidance"]').textContent.includes(notice), keeperNotice);
   check(true, "expired guidance clears when reading ends", null);
+  await page.evaluate(() => window.__bus.emit("beetlesScattered", { roomId: window.__run.getState().currentRoomId }));
+  await page.waitForFunction(() => document.querySelector('[data-testid="guidance"]').textContent.includes("Glow beetles"));
+  check(true, "the next wildlife event can teach after reading ends", null);
   await guidance.focus();
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => window.__run.getState().paused);

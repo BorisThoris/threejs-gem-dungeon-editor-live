@@ -29,6 +29,7 @@ import { wardenAt } from "./position";
 import { patchAt, steerInRoom, type Patch } from "./steer";
 import { behaviourFor } from "./tuning";
 import { floorHeightAt } from "../worldbuilding/elevation";
+import { geo, mat } from "../props/shared";
 
 interface WardenProps {
   room: Room;
@@ -69,6 +70,9 @@ const bandFor = (distance: number): number => {
 export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: WardenProps) {
   const group = useRef<Group>(null);
   const eyes = useRef<Group>(null);
+  const posture = useRef<Group>(null);
+  const hood = useRef<Group>(null);
+  const arms = useRef<(Group | null)[]>([]);
   const glow = useRef<PointLight>(null);
   /**
    * How near this thing is to taking a life, nought to one.
@@ -155,13 +159,15 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
     const t = runClock(run);
     const behaviour = behaviourFor(alarm);
 
-    // It drifts rather than walks: a slow bob, and eyes that always face you.
+    // It drifts rather than walks; the whole silhouette follows its real facing.
     g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.06 + Math.sin(t * 1.6) * 0.05;
 
     const cam = state.camera.position;
     const dx = cam.x - g.position.x;
     const dz = cam.z - g.position.z;
     const distance = Math.hypot(dx, dz);
+    const staggered = wardenStaggered(run);
+    tell.current = staggered ? 0 : Math.max(0, Math.min(1, 1 - (distance - WARDEN_TOUCH_RADIUS) / (WARDEN_TOUCH_RADIUS * 3)));
     if (controlled && wardenSenses(run)) {
       remembered.current = { x: cam.x, z: cam.z };
       perceive("warden", room.id, t);
@@ -296,10 +302,20 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
      * a player watching the room sees the blow coming, and one who backs
      * off sees it settle again. The same number the check reads.
      */
-    tell.current = Math.max(0, Math.min(1, 1 - (distance - WARDEN_TOUCH_RADIUS) / (WARDEN_TOUCH_RADIUS * 3)));
     g.position.y += tell.current * 0.22;
     if (eyes.current) eyes.current.scale.setScalar(1 + tell.current * 1.6);
-    if (glow.current) glow.current.intensity = 5 + behaviour.rouse * 8 + tell.current * 16;
+    if (glow.current) glow.current.intensity = staggered ? 2 : 5 + behaviour.rouse * 8 + tell.current * 16;
+    if (posture.current) {
+      posture.current.scale.y = staggered ? .86 : 1;
+      posture.current.position.y = staggered ? .15 : 0;
+      posture.current.rotation.set(staggered ? .16 : 0, 0, staggered ? Math.sin(t * 22) * .025 : 0);
+    }
+    if (hood.current) hood.current.rotation.x = staggered ? .34 : -tell.current * .08;
+    arms.current.forEach((arm, i) => {
+      if (!arm) return;
+      arm.rotation.x = staggered ? .18 : -tell.current * .95;
+      arm.rotation.z = (i === 0 ? -1 : 1) * (staggered ? .06 : .12 + tell.current * .10);
+    });
     if (canControl(useRun.getState())) {
       sfx.stalk(closeness, sideOf(-dx, -dz));
     } else {
@@ -307,10 +323,8 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
       return;
     }
 
-    // Reeling from the spikes: it neither walks nor strikes. This is the
-    // only thing in the dungeon that stops it, and it is the floor's own
-    // furniture that does it rather than anything the player carries.
-    if (wardenStaggered(useRun.getState())) {
+    // A wound or shove buys the same visible window: no walking or striking.
+    if (staggered) {
       // A shudder in place, so a player who bought this window can see they
       // bought it rather than guessing from a Warden that merely looks slow.
       g.position.y = floorHeightAt(room, g.position.x, g.position.z) + 0.02 + Math.sin(t * 22) * 0.035;
@@ -373,30 +387,18 @@ export function Warden({ room, hazards = [], avoid = hazards, obstacles = [] }: 
 
   return (
     <group name="creature-warden" ref={group} position={entry}>
-      {/* A hooded column that never quite touches the floor. The outer shell
-          is a shade off black so the silhouette has an edge against a dark
-          wall; without it the whole figure vanishes into the room. */}
-      <mesh position={[0, 1.15, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.66, 2.3, 14, 1, true]} />
-        <meshStandardMaterial color="#1b1b24" roughness={1} metalness={0} side={2} />
-      </mesh>
-      <mesh position={[0, 1.15, 0]}>
-        <cylinderGeometry args={[0.26, 0.6, 2.28, 14, 1, true]} />
-        <meshStandardMaterial color="#08080c" roughness={1} side={2} />
-      </mesh>
-      {/* The hood: a shallow cowl over the face, open at the front. */}
-      <mesh position={[0, 2.26, 0]}>
-        <sphereGeometry args={[0.3, 14, 10]} />
-        <meshStandardMaterial color="#101017" roughness={1} />
-      </mesh>
-      {/* Two eyes, clear of the hood so they are never swallowed by it. */}
-      <group ref={eyes} position={[0, 2.24, 0.3]}>
-        {[-0.09, 0.09].map((x) => (
-          <mesh key={x} position={[x, 0, 0]}>
-            <sphereGeometry args={[0.045, 8, 6]} />
-            <meshBasicMaterial color={eyeColour} />
-          </mesh>
-        ))}
+      <group name="warden-posture" ref={posture} dispose={null}>
+        <mesh geometry={geo("warden-body")} material={mat({ color: "#28262f", roughness: 1 })} castShadow />
+        <group name="warden-hood" ref={hood} position={[0, 2, 0]}>
+          <mesh geometry={geo("warden-hood")} material={mat({ color: "#ffffff", vertexColors: true, roughness: 1 })} castShadow />
+          <group ref={eyes} position={[0, .23, .245]}>
+            <mesh geometry={geo("warden-eyes")} material={mat({ color: eyeColour, basic: true })} />
+          </group>
+        </group>
+        {[-1, 1].map((sign, i) => <group name={`warden-arm-${i}`} key={sign}
+          ref={arm => { arms.current[i] = arm; }} position={[sign * .43, 1.71, .03]}>
+          <mesh geometry={geo("warden-arm")} material={mat({ color: "#373236", roughness: 1 })} castShadow />
+        </group>)}
       </group>
       {/* Set ahead of the hood so it lights the room it is walking into
           rather than the front of its own robe. */}

@@ -18,6 +18,7 @@ import {
 import { getSurface, type BuiltinSurface } from "../textures/registry";
 import { skullGeometry, skullSocketsGeometry } from "./skullGeometry";
 import { croakerGeometry } from "../mobs/croakerGeometry";
+import { wardenGeometry } from "../warden/geometry";
 import { batBodyGeometry, batWingGeometry } from "../mobs/batGeometry";
 import { harrierBodyGeometry, harrierWingGeometry } from "../mobs/harrierGeometry";
 import { barrelHoopGeometry, chairLegGeometry, chairWoodGeometry, crateSlatGeometry, finishedWoodGeometry, spikePatchGeometry, tableLegGeometry } from "./handbuiltGeometry";
@@ -61,6 +62,10 @@ export type GeometryKind =
   | "skull"
   | "croaker"
   | "croaker-eyes"
+  | "warden-body"
+  | "warden-hood"
+  | "warden-arm"
+  | "warden-eyes"
   | "bat-body"
   | "bat-wing"
   | "harrier-body"
@@ -91,6 +96,10 @@ const BUILD: Record<GeometryKind, (args: number[]) => BufferGeometry> = {
   skull: () => skullGeometry(),
   croaker: () => croakerGeometry(),
   "croaker-eyes": () => croakerGeometry(true),
+  "warden-body": () => wardenGeometry("body"),
+  "warden-hood": () => wardenGeometry("hood"),
+  "warden-arm": () => wardenGeometry("arm"),
+  "warden-eyes": () => wardenGeometry("eyes"),
   "bat-body": () => batBodyGeometry(),
   "bat-wing": () => batWingGeometry(),
   "harrier-body": () => harrierBodyGeometry(),

@@ -3,6 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import {
   CapsuleCollider,
   RigidBody,
+  useAfterPhysicsStep,
   type RapierRigidBody,
 } from "@react-three/rapier";
 import { Euler, Quaternion, Vector3 } from "three";
@@ -61,6 +62,8 @@ const clampVertical = (y: number) =>
  */
 export function Player() {
   const body = useRef<RapierRigidBody>(null);
+  const physicsSeconds = useRef(0);
+  useAfterPhysicsStep(world => { physicsSeconds.current += world.timestep; });
   const { camera } = useThree();
   useMouseLook();
 
@@ -139,6 +142,7 @@ export function Player() {
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
       setPlayerAt(position[0], position[2]);
+      physicsSeconds.current = 0;
       camera.position.set(position[0], position[1] + EYE_OFFSET, position[2]);
     });
   }, [camera]);
@@ -151,7 +155,10 @@ export function Player() {
     // One writer for where the player is: everything outside the frame loop
     // that needs it - putting a device down on the floor, for one - reads it
     // from there rather than keeping a copy.
-    setPlayerAt(p.x, p.z, delta);
+    const physicsDelta = physicsSeconds.current;
+    physicsSeconds.current = 0;
+    setPlayerAt(p.x, p.z, physicsDelta);
+    const stepped = physicsDelta > 0;
     const b = bob.current;
     // The head dips on each footfall and sways on the stride, at a size
     // meant to be felt rather than seen. Anyone it bothers can switch it off.
@@ -181,6 +188,8 @@ export function Player() {
 
     const run = useRun.getState();
     if (!canControl(run)) {
+      playerAt.gait = "still";
+      playerAt.speed = 0;
       if (run.shoveChargingAt !== null) useRun.setState({ shoveChargingAt: null });
       keyboard.consumeAction("shove");
       scratch.vel.x = 0;
@@ -248,8 +257,12 @@ export function Player() {
     // player does.
     // Input supplies an upper bound, but collision decides the distance.
     // Pressing against a wall is not walking; external shoves are not strides.
-    const moved = Math.min(Math.hypot(dir.x, dir.z), playerAt.speed) * delta;
+    const moved = Math.min(Math.hypot(dir.x, dir.z), playerAt.speed) * physicsDelta;
     const running = dash && moved > 0.001;
+    // Rendering can outpace the fixed physics clock. Preserve the last stride
+    // between physics steps, but clear it when input stops or collision does.
+    if (moved > 0.001) playerAt.gait = running ? "running" : "walking";
+    else if (stepped || mag === 0) playerAt.gait = "still";
     // Running is the only thing in the game that gives the player's room
     // away without costing them anything permanent. The store throttles the
     // write; this just says it is happening.
@@ -258,9 +271,11 @@ export function Player() {
     if (running) run.makeNoise(surface, playerAt.x, playerAt.z);
     const gait = bob.current;
     gait.distance += moved;
-    gait.strength += ((moved > 0.001 ? 1 : 0) - gait.strength) * Math.min(1, delta * 9);
+    gait.strength += ((playerAt.gait !== "still" ? 1 : 0) - gait.strength) * Math.min(1, delta * 9);
     if (gait.distance >= gait.nextStep) {
-      gait.nextStep = gait.distance + STRIDE;
+      // Keep the remainder of this stride instead of losing one frame's
+      // travel at every footfall. Skip, rather than burst, missed slow frames.
+      gait.nextStep = (Math.floor(gait.distance / STRIDE) + 1) * STRIDE;
       gait.strong = !gait.strong;
       sfx.step(gait.strong, running, surface);
     }

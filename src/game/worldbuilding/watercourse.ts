@@ -20,6 +20,14 @@ export const WATERWAY_NAMES = { sluice: "Sluice house", channel: "Settling galle
 export const WATER_CACHE_GEMS = 2;
 export const WATER_DRAIN_SECONDS = 6;
 
+/** The local mechanism and its remembered map entry describe the same phase. */
+export function waterworkDescription(role: "sluice" | "outfall", opened: boolean, drained: boolean, taken: boolean): string {
+  if (role === "sluice") return !opened ? "Wheel unturned · drains the watercourse"
+    : drained ? "Sluice open · channel drained" : "Sluice open · channel draining";
+  return taken ? "Reliquary emptied" : drained ? `${WATER_CACHE_GEMS} gems ready · lift the dry seal`
+    : opened ? "Water draining · return when dry" : "Seal underwater · find the sluice upstream";
+}
+
 export interface WaterStation { x: number; z: number; yaw: number; approach: { x: number; z: number } }
 const stations = new WeakMap<Room, WaterStation | null>();
 
@@ -123,10 +131,15 @@ export function watercourseBlocks(room: Room): CorridorBlock[] {
   return blocks;
 }
 
+/** Both the water and its exposed sediment follow the rendered channel. */
+export function channelUnderfoot(room: Room, x: number, z: number) {
+  return watercourseBlocks(room).some(b =>
+    Math.abs(x - b.position[0]) <= b.size[0] / 2 && Math.abs(z - b.position[2]) <= b.size[2] / 2);
+}
+
 /** Footstep sound samples the same strips the renderer draws. */
 export function waterUnderfoot(room: Room, x: number, z: number, openedAt: number | null, now: number) {
-  return waterLevel(openedAt, now) > 0.1 && watercourseBlocks(room).some(b =>
-    Math.abs(x - b.position[0]) <= b.size[0] / 2 && Math.abs(z - b.position[2]) <= b.size[2] / 2);
+  return waterLevel(openedAt, now) > 0.1 && channelUnderfoot(room, x, z);
 }
 
 export function waterLevel(openedAt: number | null, now: number) {

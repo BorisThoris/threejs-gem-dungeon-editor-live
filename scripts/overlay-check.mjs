@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 import { join } from "node:path";
 
 const port = process.argv[2] ?? process.env.PORT ?? "5198";

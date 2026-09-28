@@ -15,11 +15,10 @@ import { sideOf } from "../systems/bearing";
 import { floorHeightAt } from "../worldbuilding/elevation";
 import { waterLevel } from "../worldbuilding/watercourse";
 import { beetlesFor, beetlePose, BEETLE_SETTLE_SECONDS } from "./beetleHabitat";
+import { createRoomMemory } from "./roomMemory";
 
 interface BeetleState { cover: number; until: number }
-// Room objects survive revisits and are replaced on a new floor/run. The
-// creatures therefore remember recent disturbances without permanent save data.
-const memory = new WeakMap<Room, BeetleState[]>();
+const remember = createRoomMemory<BeetleState[]>();
 
 export function GlowBeetles({ room }: { room: Room }) {
   const habitats = useMemo(() => beetlesFor(room), [room]);
@@ -28,9 +27,8 @@ export function GlowBeetles({ room }: { room: Room }) {
   const scratch = useMemo(() => new Object3D(), []), arrival = useMemo(() => din.emptyArrival(), []);
   const state = useMemo(() => {
     const run = useRun.getState(), dry = waterLevel(run.waterOpenedAt, runClock(run)) <= 0.1;
-    const saved = memory.get(room) ?? habitats.map(() => ({ cover: dry ? 1 : 0, until: 0 }));
+    const saved = remember(room, () => habitats.map(() => ({ cover: dry ? 1 : 0, until: 0 })));
     if (dry) for (const b of saved) b.cover = 1;
-    memory.set(room, saved);
     return saved;
   }, [room, habitats]);
   const announced = useRef(state.some(b => b.cover > 0));

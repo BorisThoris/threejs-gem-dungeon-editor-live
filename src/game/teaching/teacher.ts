@@ -2,12 +2,13 @@ import { useEffect } from "react";
 
 import { bus, type BusEvents } from "../events";
 import { touchControlsActive } from "../input/device";
-import { lanternRaiseBlock, useRun } from "../state/run";
+import { lanternRaiseBlock, runClock, useRun } from "../state/run";
 import { afflictionFor } from "../items/afflictions";
 import { BARRICADE_KITS, BOMB_PRICE, KEEPER_STALL_S, REAPER_STALL_S, floorRules } from "../world";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 import { PLEDGES } from "../heat/pledge";
+import { noticeReading } from "./noticeReading";
 
 /**
  * What the game says the first time something matters.
@@ -40,6 +41,9 @@ export interface Lesson<K extends keyof BusEvents = keyof BusEvents> {
   event: K;
   /** Said every time rather than once a run. */
   every?: boolean;
+  /** Passive wildlife observations must not replace an active notice.
+   * If interrupted, teach on the next occurrence rather than replaying it late. */
+  ambient?: boolean;
   /** Only when this holds for the payload, and the run. */
   when?: (payload: BusEvents[K]) => boolean;
   line: string | ((payload: BusEvents[K], touch: boolean) => string);
@@ -149,19 +153,19 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "wisp", event: "wispCame", line: "A wisp gathers at your light and drifts ahead. It leads to the crack - and everything that hunts by light sees it." }),
   lesson({ id: "moth", event: "mothLanded", line: "A moth settles on the lantern. It will carry the light where you are not, and the Warden follows light." }),
   lesson({ id: "bats", event: "batsRoused", line: "The floor heard those bats. Move clear when they stir to stop a burst; a blast startles them immediately." }),
-  lesson({ id: "croaker", event: "croakersDove", line: "The toads went under. Anything loud does that, and the splash tells the Warden which room - a silent cistern was not silent a moment ago.", sample: { roomId: "r" } }),
-  lesson({ id: "beetle", event: "beetlesScattered", line: "Glow beetles feed around bellcaps. Their low lights show the living banks; noise or a raised lantern sends them into cover. Lower the light and let them settle.", sample: { roomId: "r" } }),
-  lesson({ id: "mite", event: "mitesBurrowed", line: "The ash mites went under. A quiet drift is a warning: something loud may have crossed this room moments ago.", sample: { roomId: "r" } }),
-  lesson({ id: "newt", event: "newtsScurried", line: ({ towardSecret }) => towardSecret
+  lesson({ id: "croaker", ambient: true, event: "croakersDove", line: "The toads went under. Anything loud does that, and the splash tells the Warden which room - a silent cistern was not silent a moment ago.", sample: { roomId: "r" } }),
+  lesson({ id: "beetle", ambient: true, event: "beetlesScattered", line: "Glow beetles feed around bellcaps. Their low lights show the living banks; noise or a raised lantern sends them into cover. Lower the light and let them settle.", sample: { roomId: "r" } }),
+  lesson({ id: "mite", ambient: true, event: "mitesBurrowed", line: "The ash mites went under. A quiet drift is a warning: something loud may have crossed this room moments ago.", sample: { roomId: "r" } }),
+  lesson({ id: "newt", ambient: true, event: "newtsScurried", line: ({ towardSecret }) => towardSecret
     ? "The kiln newts fled into that cracked seam. Old heat finds openings before a delver does."
     : "The kiln newts fled from the fired apron. A loud foundry sends them to the wall.", sample: { roomId: "r", towardSecret: true } }),
-  lesson({ id: "brinecrab", event: "brineCrabsScuttled", line: ({ towardSecret }) => towardSecret
+  lesson({ id: "brinecrab", ambient: true, event: "brineCrabsScuttled", line: ({ towardSecret }) => towardSecret
     ? "The brine crabs fled your light into that cracked seam. Pale shells know the old wall's shadow."
     : "The brine crabs fled your light to the wall. Lower the lantern and they return to the salt crust.", sample: { roomId: "r", towardSecret: true } }),
-  lesson({ id: "copperback", event: "copperbacksFolded", line: ({ towardSecret }) => towardSecret
+  lesson({ id: "copperback", ambient: true, event: "copperbacksFolded", line: ({ towardSecret }) => towardSecret
     ? "The copperbacks folded toward that cracked wall. Their paired shells read the strongest pressure leak."
     : "The copperbacks folded along the old pipe gradient. Quiet returns them to the condenser plates.", sample: { roomId: "r", towardSecret: true } }),
-  lesson({ id: "wickling", event: "wicklingsSnuffed", line: ({ towardSecret }) => towardSecret
+  lesson({ id: "wickling", ambient: true, event: "wicklingsSnuffed", line: ({ towardSecret }) => towardSecret
     ? "The wicklings leaned toward that cracked wall before they went dark. Their ember tips read the chantry draft."
     : "The wicklings snuffed into the wax. Quiet lets their ember tips rise again.", sample: { roomId: "r", towardSecret: true } }),
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
@@ -227,6 +231,10 @@ export function useTeacher() {
     const offs = LESSONS.map((l) =>
       subscribe(l.event, (payload) => {
         if (l.when && !l.when(payload)) return;
+        // One disturbance can trigger both a danger and several animal
+        // reactions. Preserve the danger's reading time, including pause.
+        // Suppressed observations stay untold so their next event can teach.
+        if (l.ambient && (noticeReading.focused || runClock(useRun.getState()) < noticeReading.until)) return;
         if (!l.every) {
           if (told.has(l.id)) return;
           told.add(l.id);

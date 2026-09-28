@@ -2,10 +2,10 @@ import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {chromium} from 'playwright-core';
+import {chromium} from './browser-safety.mjs';
 const reviewDir=resolve('output/creature-gallery');
 mkdirSync(reviewDir,{recursive:true});
-const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH});
+const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH});
 try{
  const page=await browser.newPage({viewport:{width:1280,height:800}}),errors=[];
  const captures=[];
@@ -184,6 +184,22 @@ try{
    const before=await page.evaluate(()=>{window.__run.getState().pause();return window.__wicklings.snuff;});
    await page.waitForTimeout(300);
    assert.equal(await page.evaluate(()=>window.__wicklings.snuff),before,'paused wicklings freeze while hidden in wax');
+  }
+  if(['newts','brinecrabs','copperbacks','wicklings'].includes(kind)){
+   const memory=await page.evaluate(async kind=>{
+    const probe={newts:'__newts',brinecrabs:'__brineCrabs',copperbacks:'__copperbacks',wicklings:'__wicklings'}[kind];
+    const field={newts:'retreat',brinecrabs:'retreat',copperbacks:'fold',wicklings:'snuff'}[kind];
+    const before=window[probe][field],s=window.__run.getState();
+    s.revealSecret(s.currentRoomId);
+    (await import('/src/game/din/din.ts')).reset();
+    window.__run.setState({glim:0});
+    await new Promise(requestAnimationFrame);
+    window.__run.getState().resume();
+    await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
+    const after=window[probe][field];window.__run.getState().pause();
+    return {before,after};
+   },kind);
+   assert.ok(memory.after>=memory.before*.8,`${kind}: opening the cracked wall preserves the recent retreat (${JSON.stringify(memory)})`);
   }
   if(kind==='shardbacks'){
    await page.evaluate(()=>{

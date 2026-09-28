@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';import {chromium} from 'playwright-core';
+import assert from 'node:assert/strict';import {chromium} from './browser-safety.mjs';
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH});
 try{const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(String(e)));await page.goto(`http://127.0.0.1:${process.env.PORT??'5222'}/`);await page.locator('[data-testid="menu-start"]').click();await page.waitForFunction(()=>window.__run?.getState().phase==='playing'&&!window.__run.getState().transitioning);
 const fixture=await page.evaluate(()=>{const s=window.__run.getState(),room=s.dungeon.rooms.find(r=>r.secret);if(!room)throw Error('Missing secret');window.__run.setState({currentRoomId:room.id,transitioning:false,wardenRoomId:null,harrierSlain:true,reaperAwake:false,invulnerableUntil:1e9});window.__bus.emit('teleport',{position:[0,1.5,0]});return {id:room.id,other:s.dungeon.rooms.find(r=>r.id!==room.id).id};});

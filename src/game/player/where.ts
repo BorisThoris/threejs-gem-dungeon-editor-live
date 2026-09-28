@@ -31,18 +31,26 @@ export const playerAt = {
    * sensitive to motion as it is to light.
    */
   speed: 0,
+  /** Actual strides, published by Player alongside footsteps and sprint noise. */
+  gait: "still" as "still" | "walking" | "running",
 };
 
 let lastX = 0;
 let lastZ = 0;
 
-/** Called once a frame by the player body, and by nothing else. */
-export function setPlayerAt(x: number, z: number, delta = 0): void {
+/** The player body supplies elapsed physics time, which may span several
+ * steps or none on a fast render frame. Omit it for a teleport. */
+export function setPlayerAt(x: number, z: number, physicsDelta?: number): void {
   // A room change teleports the body, and a teleport is not a sprint: a
   // frame where the position jumps across the floor would otherwise read
   // as the loudest movement in the game to everything watching.
   const moved = Math.hypot(x - lastX, z - lastZ);
-  playerAt.speed = delta > 0 && moved < 8 ? moved / delta : 0;
+  if (physicsDelta === undefined) {
+    playerAt.speed = 0;
+    playerAt.gait = "still";
+  } else if (physicsDelta > 0) {
+    playerAt.speed = moved < 8 ? moved / physicsDelta : 0;
+  }
   lastX = x;
   lastZ = z;
   playerAt.x = x;

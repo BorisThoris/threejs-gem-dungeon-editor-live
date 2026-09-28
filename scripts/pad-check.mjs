@@ -27,7 +27,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const DESKTOP = process.argv.includes("--desktop");

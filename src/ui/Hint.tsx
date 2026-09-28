@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { bus } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
@@ -6,6 +6,7 @@ import { readTouch } from "../game/input/touch";
 import { canControl, runClock, useRun } from "../game/state/run";
 import { useSettings } from "../game/state/settings";
 import { NOTICE_HOLD_S } from "../game/world";
+import { noticeReading } from "../game/teaching/noticeReading";
 import { colors, FONT, text as textSize } from "./overlay";
 import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow";
 
@@ -25,15 +26,15 @@ export function Hint() {
   const [notice, setNotice] = useState<string | null>(null);
   const panel = usePanelOverflow(notice);
   const noticeElement = panel.element;
-  /** When the notice is due to go, on the run's clock. */
-  const until = useRef(0);
   useEffect(() => bus.on("hint", setText), []);
   useEffect(
-    () =>
-      bus.on("notice", (line) => {
+    () => {
+      const off = bus.on("notice", (line) => {
         setNotice(line);
-        until.current = line === null ? 0 : runClock(useRun.getState()) + NOTICE_HOLD_S;
-      }),
+        noticeReading.until = line === null ? 0 : runClock(useRun.getState()) + NOTICE_HOLD_S;
+      });
+      return () => { off(); noticeReading.until = 0; noticeReading.focused = false; };
+    },
     []
   );
   // On the run's clock, so a notice read in the pause menu is still there
@@ -41,7 +42,7 @@ export function Hint() {
   useEffect(() => {
     if (notice === null) return;
     const t = window.setInterval(() => {
-      if (runClock(useRun.getState()) >= until.current && document.activeElement !== noticeElement.current) setNotice(null);
+      if (runClock(useRun.getState()) >= noticeReading.until && document.activeElement !== noticeElement.current) setNotice(null);
     }, 200);
     return () => window.clearInterval(t);
   }, [notice, noticeElement]);
@@ -71,7 +72,11 @@ export function Hint() {
       onKeyDown={readoutKeys}
       onMouseDown={readoutMouse}
       onPointerDown={event => { if (panel.overflow) event.currentTarget.focus({ preventScroll: true }); }}
-      onBlur={() => { if (runClock(useRun.getState()) >= until.current) setNotice(null); }}
+      onFocus={() => { noticeReading.focused = true; }}
+      onBlur={() => {
+        noticeReading.focused = false;
+        if (runClock(useRun.getState()) >= noticeReading.until) setNotice(null);
+      }}
       style={{
         flex: "0 1 auto",
         minHeight: `calc(${textSize.small} * 1.7 + 22px)`,

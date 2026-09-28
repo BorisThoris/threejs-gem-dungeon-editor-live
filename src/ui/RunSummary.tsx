@@ -1,9 +1,13 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { DEEDS } from "../game/deeds/catalog";
 import { DAMAGE_CAUSES } from "../game/player/damage";
 import { DELVERS } from "../game/delvers/catalog";
+import { FRAGMENTS } from "../game/deepworks/fragments";
+import { ledgerLessonBy } from "../game/ledger/lessons";
 import { useDeeds } from "../game/state/deeds";
+import { useLedger } from "../game/state/ledger";
+import { useLore } from "../game/state/lore";
 import { useRecords } from "../game/state/records";
 import { runSeconds, useRun } from "../game/state/run";
 import { FLOORS } from "../game/world";
@@ -107,6 +111,7 @@ export function RunSummary() {
           {relics === 1 ? "" : "s"} · {known} item{known === 1 ? "" : "s"} named ·{" "}
           {roomsSeen} room{roomsSeen === 1 ? "" : "s"} · {clock(seconds)}
         </p>
+        <RunDiscoveries />
         <p style={{ ...body, fontSize: text.small, marginBottom: 6 }} data-testid="summary-deeds">
           <span style={{ color: colors.dim }}>DEEDS </span>
           {earned.length ? (
@@ -147,4 +152,39 @@ export function RunSummary() {
       </div>
     </div>
   );
+}
+
+/** New knowledge survives either ending; the persistent stores own the list. */
+function RunDiscoveries() {
+  const learned = useLedger((s) => s.learnedThisRun);
+  const read = useLore((s) => s.readThisRun);
+  const [open, setOpen] = useState(false);
+  const lessons = learned.flatMap(id => {
+    const lesson = ledgerLessonBy(id);
+    return lesson ? [lesson] : [];
+  });
+  const fragments = read.flatMap(id => {
+    const fragment = FRAGMENTS.find(f => f.id === id);
+    return fragment ? [fragment] : [];
+  });
+  if (!lessons.length && !fragments.length) return null;
+  const counts = [
+    lessons.length ? `${lessons.length} lesson${lessons.length === 1 ? "" : "s"}` : null,
+    fragments.length ? `${fragments.length} inscription${fragments.length === 1 ? "" : "s"}` : null,
+  ].filter(Boolean).join(" · ");
+  return <>
+    <button style={{ ...secondaryButton, fontSize: text.small }} data-testid="summary-discoveries-toggle"
+      aria-expanded={open} aria-controls="run-discoveries" onClick={() => setOpen(value => !value)}>
+      {open ? "Hide" : "Review"} new knowledge · {counts}
+    </button>
+    {open && <div id="run-discoveries" data-testid="summary-discoveries" style={{ textAlign: "left", marginBottom: 18 }}>
+      <p style={{ ...body, fontSize: text.small, marginBottom: 10 }}>Kept for your next run.</p>
+      {lessons.map(lesson => <div key={lesson.id} tabIndex={0} style={{ borderLeft: `2px solid ${colors.gold}`, paddingLeft: 12, marginBottom: 14 }}>
+        <p style={{ ...body, color: colors.ink, marginBottom: 4 }}>{lesson.entry}</p>
+        {lesson.pays && <p style={{ ...body, fontSize: text.small, marginBottom: 0 }}>{lesson.pays}</p>}
+      </div>)}
+      {fragments.map(fragment => <p key={fragment.id} tabIndex={0} style={{ ...body, fontSize: text.small,
+        borderLeft: `2px solid ${colors.line}`, paddingLeft: 12, marginBottom: 10 }}>{fragment.text}</p>)}
+    </div>}
+  </>;
 }

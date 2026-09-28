@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D } from "three";
@@ -13,7 +14,7 @@ import { floorHeightAt } from "../worldbuilding/elevation";
 import { newtsFor, newtPose, NEWT_HIDE_SECONDS } from "./newtHabitat";
 
 interface NewtState { until: number; retreat: number }
-const memory = new WeakMap<Room, NewtState>();
+const remember = createRoomMemory<NewtState>();
 
 /** Block-cut foundry lizards which give a cracked wall away when startled. */
 export function KilnNewts({ room }: { room: Room }) {
@@ -22,11 +23,7 @@ export function KilnNewts({ room }: { room: Room }) {
   const backs = useRef<InstancedMesh>(null);
   const scratch = useMemo(() => new Object3D(), []);
   const arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { until: 0, retreat: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ until: 0, retreat: 0 })), [room]);
   const announced = useRef(false);
 
   useEffect(() => () => {

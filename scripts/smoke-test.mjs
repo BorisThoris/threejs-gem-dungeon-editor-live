@@ -23,7 +23,7 @@
  * Needs a Chromium binary. Set CHROMIUM_PATH if yours is not at the
  * Playwright default.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const PORT = process.argv[2] || process.env.PORT || "5199";
 const CHROMIUM = process.env.CHROMIUM_PATH || undefined;

@@ -7,6 +7,16 @@ adding a second calculation of the same value.
 
 ## Find the right check
 
+On Windows, run browser checks through the noninteractive launcher
+`D:\gha-runners\headless-tools\Start-IsolatedProcess.ps1`. Headless Chrome
+can still confine the user's physical mouse when this game requests pointer
+lock. Browser scripts must import Playwright from `./browser-safety.mjs`, which
+rejects interactive Windows launches. Keep that guard on new browser scripts.
+The launcher takes `-FilePath` (Node's absolute executable), `-ArgumentString`
+(the check or verification command), and `-WorkingDirectory` (this repository).
+Use a hidden PowerShell launcher and save stdout/stderr or gate artifacts to
+files. Do not replace isolation with a hidden/minimized browser window.
+
 - `yarn typecheck` and `yarn lint` catch source errors.
 - `yarn test:layout` checks generation, room placement, reachability, and
   contracts over many seeds without a browser, including generated sound

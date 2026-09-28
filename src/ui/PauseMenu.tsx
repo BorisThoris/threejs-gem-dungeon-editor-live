@@ -48,7 +48,11 @@ export function PauseMenu() {
           </p>
           <p style={{ ...body, fontSize: text.small, marginBottom: 0 }}>
             E stairs · V locked vault · N stolen loot · ? your mark.<br />
-            Broken ring: Harrier roost. Bar across the stairs: Keeper.
+            S discovered shop · + discovered shrine.<br />
+            ⚙ discovered sluice · ◇ discovered reliquary.<br />
+            Broken ring: Harrier roost. Bar across the stairs: Keeper.<br />
+            × across a passage: your barricade. Three bars: dropped grate.<br />
+            Recover barricade kits at the door. Grates lift with time.
           </p>
         </div>}
         <SatchelInspection />

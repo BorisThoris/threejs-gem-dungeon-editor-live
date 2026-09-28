@@ -31,12 +31,13 @@ import {
   wardenSenses,
   wardenStaggered,
 } from "../game/state/run";
-import { croakersFor, roostFor } from "../game/mobs/ambient";
+import { roostFor } from "../game/mobs/ambient";
+import { chorus } from "../game/mobs/chorusState";
 import { sentryFor } from "../game/sentry/placement";
 import { useLedger } from "../game/state/ledger";
 import { GLIM_BANDS, GEMVEIN_BELOW } from "../game/lantern/glim";
 import { draft } from "../game/rooms/draftState";
-import { biomeFor } from "../game/rooms/biomes";
+import { footingAt, footingMaterial } from "../game/rooms/underfoot";
 
 import { DISTRICTS } from "../game/rooms/districts";
 import { roomPlaceName } from "../game/rooms/placeName";
@@ -87,22 +88,10 @@ export function Hud() {
   const marks = useSettings((s) => s.highContrast);
   const room = useCurrentRoom();
   const dungeonSeed = useRun((s) => s.dungeon?.seed ?? 0);
-  // Loud, quiet, or neither, off the one number the store runs the sprint
-  // on. Nothing here decides anything: `noiseHoldFor` does, and this reads
-  // the same `carry` it reads.
-  const ground = (() => {
-    if (!room) return null;
-    const b = biomeFor(room.kind, room.id, dungeonSeed, room);
-    if (b.carry > 1.1) return { name: b.ground, says: "carries", tone: "danger" as const };
-    if (b.carry < 0.9) return { name: b.ground, says: "swallows sound", tone: "gold" as const };
-    return { name: b.ground, says: "dead", tone: "dim" as const };
-  })();
-
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const croakers = room ? croakersFor(room, dungeonSeed).length > 0 : false;
-  const { heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, reaperHere, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
+  const { ground, croakers, heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, reaperHere, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -310,7 +299,7 @@ function ShoveReadout({ compact }: { compact: boolean }) {
   const { remaining, charge, progress } = shoveStatusAt(run, now);
   const light = run.currentRoomId ? playerLightIn(run.currentRoomId) : 0;
   const lightLabel = light >= 0.5 ? "in bright light" : light >= 0.15 ? "in dim light" : "in shadow";
-  const movement = playerAt.speed > 4.5 ? "running" : playerAt.speed > 0.2 ? "moving" : "still";
+  const movement = playerAt.gait;
   return <div style={{ fontSize: "0.85em" }}>
     <div data-testid="bars-stock" style={{ color: kits ? colors.ink : colors.gold, marginBottom: 4 }}>
       BARS · {kits}/{BARRICADE_KITS} ready{run.barricades.length ? ` · ${run.barricades.length} standing` : ""}
@@ -346,6 +335,8 @@ const TONE: Record<HudLine["tone"], string> = {
  * happened to change the store.
  */
 function useWardenSense(): {
+  ground: HudFacts["ground"];
+  croakers: HudFacts["croakers"];
   heard: boolean;
   seen: boolean;
   lit: boolean;
@@ -378,6 +369,18 @@ function useWardenSense(): {
 } {
   const read = () => {
     const s = useRun.getState();
+    // Position and drainage can change without a store write. Read the same
+    // surface as footsteps, on the existing live-sense poll.
+    const room = s.dungeon?.rooms.find(r => r.id === s.currentRoomId);
+    const material = room ? footingMaterial(room,
+      footingAt(room, playerAt.x, playerAt.z, s.waterOpenedAt, runClock(s))) : null;
+    const ground: HudFacts["ground"] = material ? {
+      name: material.ground,
+      says: material.carry > 1.1 ? "carries" : material.carry < 0.9 ? "swallows sound" : "dead",
+      tone: material.carry > 1.1 ? "danger" : material.carry < 0.9 ? "gold" : "dim",
+    } : null;
+    const croakers: HudFacts["croakers"] = room && chorus.room === room.grid
+      ? chorus.singing > 0 ? "singing" : "quiet" : undefined;
     const lured = lureNow(s) !== null;
     const keeper: "holds" | "kneels" | null = keeperStalled(s) ? "kneels" : keeperHolds(s) ? "holds" : null;
     const harrier: HudFacts["harrier"] = s.harrierSlain
@@ -394,6 +397,8 @@ function useWardenSense(): {
           ? "roosts"
           : null;
     return {
+      ground,
+      croakers,
       heard: !lured && wardenSenses(s),
       seen: !lured && wardenMarked(s),
       lit: lanternLit(s),
@@ -420,7 +425,11 @@ function useWardenSense(): {
     const t = window.setInterval(
       () => setSense((was) => {
         const now = read();
-        return was.heard === now.heard &&
+        return was.ground?.name === now.ground?.name &&
+          was.ground?.says === now.ground?.says &&
+          was.ground?.tone === now.ground?.tone &&
+          was.croakers === now.croakers &&
+          was.heard === now.heard &&
           was.seen === now.seen &&
           was.lit === now.lit &&
           was.oil === now.oil &&

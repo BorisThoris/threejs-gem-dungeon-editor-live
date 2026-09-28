@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D } from "three";
@@ -13,18 +14,14 @@ import { floorHeightAt } from "../worldbuilding/elevation";
 import { copperbackPose, copperbacksFor, COPPERBACK_FOLD_SECONDS } from "./copperbackHabitat";
 
 interface CopperbackState { until: number; fold: number }
-const memory = new WeakMap<Room, CopperbackState>();
+const remember = createRoomMemory<CopperbackState>();
 
 /** Block-cut plate grazers whose shells align with leaks in the old pipework. */
 export function Copperbacks({ room }: { room: Room }) {
   const homes = useMemo(() => copperbacksFor(room), [room]);
   const bodies = useRef<InstancedMesh>(null), shells = useRef<InstancedMesh>(null);
   const scratch = useMemo(() => new Object3D(), []), arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { until: 0, fold: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ until: 0, fold: 0 })), [room]);
   const announced = useRef(false);
 
   useEffect(() => () => {

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, headless: true });
 try {
   const page = await browser.newPage({ viewport: { width: 1100, height: 760 } });
   const errors = [];

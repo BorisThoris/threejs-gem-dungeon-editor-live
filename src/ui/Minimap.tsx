@@ -3,11 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
 import { useLedger } from "../game/state/ledger";
-import { keeperHolds, mapIsDark, useRun } from "../game/state/run";
+import { barredNow, keeperHolds, mapIsDark, runClock, useRun } from "../game/state/run";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
-import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, text } from "./overlay";
+import { barKey } from "../game/warden/bars";
+import { OPPOSITE, type Dir } from "../game/dungeon/types";
+import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, secondaryButton, text } from "./overlay";
 import { mapLayout, minimapFootprint } from "./minimapGeometry";
 import { useCompactViewport } from "../game/input/device";
+import { rememberedLandmarks, rememberedServices, rememberedWaterworks } from "../game/rooms/services";
+import { waterLevel } from "../game/worldbuilding/watercourse";
 
 const SIZE = MINIMAP_SIZE;
 const FADE = "radial-gradient(circle closest-side at 50% 50%, #000 88%, transparent 100%)";
@@ -39,8 +43,25 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
   const visited = useRun((s) => s.visited);
+  const cleared = useRun(s => s.cleared);
+  const bombBought = useRun(s => s.bombBought);
+  const unlocked = useRun((s) => s.unlocked);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
+  const services = useMemo(() => dungeon ? rememberedServices(dungeon, visited, cleared, bombBought, unlocked) : [],
+    [dungeon, visited, cleared, bombBought, unlocked]);
+  const landmarks = useMemo(() => dungeon ? rememberedLandmarks(dungeon, visited) : [], [dungeon, visited]);
   const marks = useRun((s) => s.marks);
   const rubbing = useRun(s => s.waterCacheTaken);
+  const openedAt = useRun(s => s.waterOpenedAt);
+  const [waterSample, setWaterSample] = useState(() => {
+    const s = useRun.getState();
+    return { openedAt: s.waterOpenedAt, drained: waterLevel(s.waterOpenedAt, runClock(s)) === 0 };
+  });
+  const drained = waterSample.openedAt === openedAt ? waterSample.drained
+    : waterLevel(openedAt, runClock(useRun.getState())) === 0;
+  const waterworks = useMemo(() => dungeon ? rememberedWaterworks(dungeon, visited, openedAt !== null,
+    openedAt !== null && drained, rubbing) : [], [dungeon, visited, openedAt, drained, rubbing]);
+  const selected = [...services, ...waterworks, ...landmarks].find(place => place.roomId === selectedService);
   const secretTrailLearned = useRun(s => !!s.dungeon?.secretTrail
     && s.visited.includes(s.dungeon.secretTrail.sourceId));
   /**
@@ -59,8 +80,9 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
   const felts = useRun((s) =>
     knowsDrafts || modifiers(s.relics).marksFeltDrafts ? s.draftsFelt : EMPTY
   );
-  const unlocked = useRun((s) => s.unlocked);
   const mapped = useRun((s) => s.mapped);
+  const barricades = useRun(s => s.barricades);
+  const grate = useRun(barredNow);
   // The nest goes on the dial the moment something of yours is in it. That
   // is the whole difference between a theft and a punishment: the gems are
   // not gone, they are somewhere, and the map says where.
@@ -86,10 +108,15 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
   const keeperKeeps = useRun((s) => (keeperHolds(s) && s.dungeon ? s.dungeon.endId : null));
   const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
 
-  // Gloom runs out on a clock, not on a state change, so the map has to
-  // check rather than wait to be told.
+  // Gloom and drainage advance on the paused run clock without store writes.
   useEffect(() => {
-    const t = window.setInterval(() => setDark(mapIsDark(useRun.getState())), 400);
+    const t = window.setInterval(() => {
+      const s = useRun.getState();
+      setDark(mapIsDark(s));
+      const drained = waterLevel(s.waterOpenedAt, runClock(s)) === 0;
+      setWaterSample(was => was.openedAt === s.waterOpenedAt && was.drained === drained
+        ? was : { openedAt: s.waterOpenedAt, drained });
+    }, 400);
     return () => window.clearInterval(t);
   }, []);
   const dial = useRef<SVGGElement>(null);
@@ -152,13 +179,14 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
       isNest: r.id === nestRoomId,
       isRoost: r.id === roostSeen,
       isKept: r.id === keeperKeeps,
+      service: services.find(service => service.roomId === r.id),
       marked: marks.includes(r.id),
-      waterLandmark: seen.has(r.id) && r.waterway && r.waterway.role !== "channel" ? r.waterway.role : null,
+      waterLandmark: waterworks.find(place => place.roomId === r.id),
       serviceMark: rubbing && seen.has(r.id) && dungeon.serviceTrail?.route.includes(r.id),
       secretTrailMark: secretTrailLearned && seen.has(r.id) && dungeon.secretTrail?.route.includes(r.id),
       // A landmark is learned by standing under it. Once learned it stays
       // on the map as the district's navigation anchor.
-      landmark: seen.has(r.id) ? r.landmark : undefined,
+      landmark: landmarks.find(place => place.roomId === r.id),
       /**
        * The map no longer knows where the Warden is or which rooms still
        * hold a gem. Both were SUBSTITUTES for knowing rather than
@@ -170,18 +198,33 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
        */
       felt: felts.includes(r.id),
       links: Object.entries(r.links)
-        .filter(([, to]) => to && known.has(to))
-        .map(([dir]) => dir),
+        .filter(([, to]) => to && known.has(to) && (mapped || seen.has(r.id) || seen.has(to)))
+        .map(([dir, to]) => ({ dir: dir as Dir, to: to! })),
     }));
-    return { cells, spacing, cell, player };
-  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned, size, expanded]);
+    // Draw each learned edge once. The two room footprints own its endpoints;
+    // the shared edge key owns its barrier, whichever side the player is on.
+    const byId = new Map(cells.map(c => [c.id, c]));
+    const edges = cells.flatMap(c => c.links.flatMap(({ dir, to }) => {
+      const target = byId.get(to);
+      if (!target || c.id > to) return [];
+      const dx = dir === "east" ? 1 : dir === "west" ? -1 : 0;
+      const dy = dir === "south" ? 1 : dir === "north" ? -1 : 0;
+      const start = c.footprint?.doors[dir] ?? cell / 2;
+      const end = target.footprint?.doors[OPPOSITE[dir]] ?? cell / 2;
+      return [{ key: barKey(c.id, to), from: c.id, to, dx, dy,
+        x1: c.x + dx * start, y1: c.y + dy * start,
+        x2: target.x - dx * end, y2: target.y - dy * end,
+        x: (c.x + target.x) / 2, y: (c.y + target.y) / 2 }];
+    }));
+    return { cells, edges, cell, player };
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned, size, expanded, services, waterworks, landmarks]);
 
   if (!dialled) return null;
-  const { cells, spacing, cell, player } = dialled;
+  const { cells, edges, cell, player } = dialled;
   const playerScale = cells.some((c) => c.state === "here" && c.footprint)
     ? Math.max(0.45, Math.min(0.7, cell / 26 * 0.7)) : 1;
 
-  return (
+  return (<>
     <div
       data-testid={expanded ? "floor-map" : "minimap"}
       style={{
@@ -226,25 +269,25 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
       >
         <g transform={`translate(${size / 2} ${size / 2})`}>
           <g ref={dial}>
+            {edges.map(edge => {
+              const barrier = barricades.includes(edge.key) ? "barricade" : grate === edge.key ? "grate" : null;
+              return <g key={edge.key} data-testid="map-passage" data-from={edge.from} data-to={edge.to}>
+                <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2}
+                  stroke="rgba(255,255,255,0.3)" strokeWidth={3.5} />
+                {barrier && <g data-testid="map-barrier" data-edge={edge.key} data-barrier={barrier}
+                  transform={`translate(${edge.x} ${edge.y}) rotate(${edge.dx ? 90 : 0})`}>
+                  <title>{barrier === "barricade" ? "Your barricade — recover the kit at this door" : "Dropped grate — this passage is temporarily blocked"}</title>
+                  <rect x={-5} y={-4} width={10} height={8} rx={1} fill={colors.panel} />
+                  <path d={barrier === "barricade" ? "M -3 -3 L 3 3 M -3 3 L 3 -3" : "M -4 -3 H 4 M -4 0 H 4 M -4 3 H 4"}
+                    fill="none" stroke={barrier === "barricade" ? colors.gold : colors.ink}
+                    strokeWidth={1.7} strokeLinecap="round" />
+                </g>}
+              </g>;
+            })}
             {cells.map((c) => (
               <g key={c.id} data-testid="map-room" data-room-id={c.id} data-map-state={c.state}
                 transform={`translate(${c.x} ${c.y})`}>
-                <title>{c.state === "here" ? "You are here" : c.state === "seen" ? "Visited room" : "Unvisited room"}{c.isExit ? ": stairs" : c.isVault ? ": locked vault" : c.isNest ? ": stolen loot" : ""}</title>
-                {c.links.map((dir) => {
-                  const dx = dir === "east" ? 1 : dir === "west" ? -1 : 0;
-                  const dy = dir === "south" ? 1 : dir === "north" ? -1 : 0;
-                  return (
-                    <line
-                      key={dir}
-                      x1={dx * (c.footprint?.doors[dir] ?? cell / 2)}
-                      y1={dy * (c.footprint?.doors[dir] ?? cell / 2)}
-                      x2={dx * (spacing / 2)}
-                      y2={dy * (spacing / 2)}
-                      stroke="rgba(255,255,255,0.3)"
-                      strokeWidth={3.5}
-                    />
-                  );
-                })}
+                <title>{c.state === "here" ? "You are here" : c.state === "seen" ? "Visited room" : "Unvisited room"}{c.isExit ? ": stairs" : c.isVault ? ": locked vault" : c.isNest ? ": stolen loot" : ""}{c.service ? `: ${c.service.name} · ${c.service.detail}` : ""}</title>
                 {c.footprint ? (
                   <g data-testid="map-room-footprint" data-room-id={c.id}>
                     <path d={c.footprint.floor}
@@ -273,9 +316,10 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
                     marked because they are carrying the rod that writes
                     such things down. Never a room they have not been in:
                     the offer saves the bomb, not the noticing. */}
-                {c.waterLandmark && <text data-testid="map-water-landmark" data-water-role={c.waterLandmark}
+                {c.waterLandmark && <text data-testid="map-water-landmark" data-water-role={c.waterLandmark.role}
                   x={cell * 0.25} y={-cell * 0.2} textAnchor="middle" fontSize={8} fill={c.state === "here" ? onAccent : "#a6c9bf"}>
-                  {c.waterLandmark === "sluice" ? "⚙" : "◇"}
+                  <title>{c.waterLandmark.name} · {c.waterLandmark.detail}</title>
+                  {c.waterLandmark.symbol}
                 </text>}
                 {c.serviceMark && <text data-testid="map-service-mark" x={-cell * 0.25} y={cell * 0.35}
                   textAnchor="middle" fontSize={7} fill={c.state === "here" ? onAccent : "#cc9869"}>Ⅲ</text>}
@@ -284,11 +328,13 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
                   <rect x={-3.4} y={-1} width={2} height={2} transform="rotate(45 -2.4 0)" />
                   <rect x={1.4} y={-1} width={2} height={2} transform="rotate(45 2.4 0)" />
                 </g>}
-                {c.landmark && <g data-testid="map-district-landmark" data-landmark={c.landmark}
+                {c.landmark && <g data-testid="map-district-landmark" data-landmark={c.landmark.id}
+                  transform={c.service ? `translate(0 ${-cell * 0.3}) scale(0.5)` : undefined}
                   stroke={c.state === "here" ? onAccent : colors.gold} strokeWidth={1.4} fill="none">
-                  {c.landmark === "rootwell" ? <>
+                  <title>{c.landmark.name} · {c.landmark.detail}</title>
+                  {c.landmark.id === "rootwell" ? <>
                     <circle r={3.2} /><path d="M -5 0 H 5 M 0 -5 V 5" />
-                  </> : c.landmark === "hoist" ? <>
+                  </> : c.landmark.id === "hoist" ? <>
                     <path d="M -4 -4 V 4 M 4 -4 V 4 M -4 -2 H 4" /><path d="M 0 -2 V 4" />
                   </> : <>
                     <path d="M -4 4 V -1 M 0 4 V -4 M 4 4 V -1" />
@@ -360,8 +406,18 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
                     fill={colors.danger}
                   />
                 )}
+                {c.service && <text data-testid="map-service" data-service={c.service.kind}
+                  data-room-id={c.id} textAnchor="middle" y={3.5} fontSize={expanded ? 10 : 8}
+                  fontWeight={700} fill={c.state === "here" ? onAccent : colors.ink}>
+                  {c.service.symbol}
+                </text>}
+                {expanded && selected?.roomId === c.id && <rect data-testid="map-selected-service"
+                  data-room-id={c.id} x={-cell / 2 - 3} y={-cell / 2 - 3}
+                  width={cell + 6} height={cell + 6} rx={3} fill="none"
+                  stroke={colors.accent} strokeWidth={2} />}
                 {expanded && (c.isExit || c.isVault || c.isNest) && <text
-                  data-testid="map-room-label" textAnchor="middle" y={4} fontSize={11}
+                  data-testid="map-room-label" textAnchor="middle" x={c.service ? -cell * 0.3 : 0}
+                  y={c.service ? -cell * 0.2 : 4} fontSize={c.service ? 7 : 11}
                   fill={c.state === "here" ? onAccent : colors.ink}>
                   {c.isExit ? "E" : c.isVault ? "V" : "N"}
                 </text>}
@@ -396,5 +452,44 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
         </div>
       )}
     </div>
-  );
+    {expanded && !dark && <section aria-label="Discovered services" data-testid="map-services"
+      style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered services · select to highlight</p>
+      {services.length ? services.map(service => <button key={service.roomId}
+        data-testid="map-service-choice" data-room-id={service.roomId} data-service={service.kind}
+        aria-pressed={selected?.roomId === service.roomId}
+        onClick={() => setSelectedService(service.roomId === selectedService ? null : service.roomId)}
+        style={{ ...secondaryButton, textAlign: "left", overflowWrap: "anywhere",
+          borderColor: selected?.roomId === service.roomId ? colors.accent : colors.line }}>
+        <span style={{ display: "block" }}>{service.symbol} · {service.name}</span>
+        <span style={{ display: "block", marginTop: 4, color: colors.dim }}>{service.detail}</span>
+      </button>) : <p style={{ color: colors.dim }}>Visit a shop or shrine to remember it here.</p>}
+    </section>}
+    {expanded && !dark && waterworks.length > 0 && <section aria-label="Discovered waterworks" data-testid="map-waterworks"
+      style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered waterworks · select to highlight</p>
+      {waterworks.map(place => <button key={place.roomId}
+        data-testid="map-waterwork-choice" data-room-id={place.roomId} data-water-role={place.role}
+        aria-pressed={selected?.roomId === place.roomId}
+        onClick={() => setSelectedService(place.roomId === selectedService ? null : place.roomId)}
+        style={{ ...secondaryButton, textAlign: "left", overflowWrap: "anywhere",
+          borderColor: selected?.roomId === place.roomId ? colors.accent : colors.line }}>
+        <span style={{ display: "block" }}>{place.symbol} · {place.name}</span>
+        <span style={{ display: "block", marginTop: 4, color: colors.dim }}>{place.detail}</span>
+      </button>)}
+    </section>}
+    {expanded && !dark && landmarks.length > 0 && <section aria-label="Discovered landmarks" data-testid="map-landmarks"
+      style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered landmarks · select to highlight</p>
+      {landmarks.map(place => <button key={place.roomId}
+        data-testid="map-landmark-choice" data-room-id={place.roomId}
+        aria-pressed={selected?.roomId === place.roomId}
+        onClick={() => setSelectedService(place.roomId === selectedService ? null : place.roomId)}
+        style={{ ...secondaryButton, textAlign: "left", overflowWrap: "anywhere",
+          borderColor: selected?.roomId === place.roomId ? colors.accent : colors.line }}>
+        <span style={{ display: "block" }}>{place.name}</span>
+        <span style={{ display: "block", marginTop: 4, color: colors.dim }}>{place.detail}</span>
+      </button>)}
+    </section>}
+  </>);
 }

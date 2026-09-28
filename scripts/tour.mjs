@@ -27,7 +27,7 @@
  * here asserts anything; looking at the pictures is the check, and what
  * they turn up gets one in `test:smoke` or `test:pad` afterwards.
  */
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 

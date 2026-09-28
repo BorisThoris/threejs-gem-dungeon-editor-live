@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D } from "three";
@@ -13,18 +14,14 @@ import { floorHeightAt } from "../worldbuilding/elevation";
 import { wicklingPose, wicklingsFor, WICKLING_SNUFF_SECONDS } from "./wicklingHabitat";
 
 interface WicklingState { until: number; snuff: number }
-const memory = new WeakMap<Room, WicklingState>();
+const remember = createRoomMemory<WicklingState>();
 
 /** Block-cut wax grazers whose ember tips lean into the chantry's draft. */
 export function Wicklings({ room }: { room: Room }) {
   const homes = useMemo(() => wicklingsFor(room), [room]);
   const bodies = useRef<InstancedMesh>(null), embers = useRef<InstancedMesh>(null);
   const scratch = useMemo(() => new Object3D(), []), arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { until: 0, snuff: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ until: 0, snuff: 0 })), [room]);
   const announced = useRef(false);
 
   useEffect(() => () => {

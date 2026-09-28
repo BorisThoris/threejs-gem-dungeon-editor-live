@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : process.env.PORT || "5199";
 const outArg = process.argv.find(argument => argument.startsWith("--out="));

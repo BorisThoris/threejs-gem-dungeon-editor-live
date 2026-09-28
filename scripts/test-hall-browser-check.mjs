@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
 const executablePath = process.env.CHROMIUM_PATH || undefined;
-const browser = await chromium.launch({ executablePath, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath, args: ["--no-sandbox"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const assertMountedReach = async (kind, scale, rotation) => {

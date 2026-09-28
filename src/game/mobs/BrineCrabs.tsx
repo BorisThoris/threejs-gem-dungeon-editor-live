@@ -1,3 +1,4 @@
+import { createRoomMemory } from "./roomMemory";
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { InstancedMesh, Object3D } from "three";
@@ -15,18 +16,14 @@ import { floorHeightAt } from "../worldbuilding/elevation";
 import { brineCrabPose, brineCrabsFor, BRINE_CRAB_HIDE_SECONDS, BRINE_CRAB_LIGHT_REACH } from "./brineCrabHabitat";
 
 interface BrineCrabState { until: number; retreat: number }
-const memory = new WeakMap<Room, BrineCrabState>();
+const remember = createRoomMemory<BrineCrabState>();
 
 /** Pale block-shell crabs that make light and cracked walls part of one rule. */
 export function BrineCrabs({ room }: { room: Room }) {
   const homes = useMemo(() => brineCrabsFor(room), [room]);
   const limbs = useRef<InstancedMesh>(null), shells = useRef<InstancedMesh>(null);
   const scratch = useMemo(() => new Object3D(), []), arrival = useMemo(() => din.emptyArrival(), []);
-  const state = useMemo(() => {
-    const saved = memory.get(room) ?? { until: 0, retreat: 0 };
-    memory.set(room, saved);
-    return saved;
-  }, [room]);
+  const state = useMemo(() => remember(room, () => ({ until: 0, retreat: 0 })), [room]);
   const announced = useRef(false);
 
   useEffect(() => () => {

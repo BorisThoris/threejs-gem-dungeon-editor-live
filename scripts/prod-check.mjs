@@ -23,7 +23,7 @@ import { gzipSync } from "node:zlib";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const PORT = process.env.PROD_PORT || "5198";
 const CHROMIUM = process.env.CHROMIUM_PATH || undefined;
@@ -132,6 +132,7 @@ process.on("exit", stop);
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => (stop(), process.exit(1)));
 
 const browser = await chromium.launch({
+  headless: true,
   executablePath: CHROMIUM,
   args: [
     "--no-sandbox",

@@ -32,6 +32,9 @@ planner derives wall clearance from the player capsule and wall thickness,
 turns before moving, and permits only outward escape from an existing hazard
 overlap. A focused geometry check preserves that escape without allowing
 solid penetration or crossing hazards; run seed 404 exercises the full route.
+At the shop it approaches the small bomb stand precisely and waits for its
+actual prompt before pressing Use, then verifies the payment. Reaching a
+nearby waypoint is not evidence that the intended offer owns the interaction.
 When defending, the probe reacts to the Warden's visible approach warning
 and keeps aiming at the threat until the real shove finishes charging, then
 re-samples its route. It never grants health or
@@ -53,11 +56,28 @@ bounding rectangle.
 `worldbuilding/watercourse.ts` owns the optional watercourse: its directed door
 route, shallow channel geometry, safe wall anchors and drainage curve. The run
 store owns opening time and the one-time reliquary reward. The renderer, wet
-footstep sounds and world atlas read those facts. Mechanisms use the existing
+footstep sounds and world atlas read those facts.
+`channelUnderfoot` samples those same strips and terminal basins after drainage.
+The exposed bed becomes silt footing rather than inheriting paving underneath;
+`channelSediment.ts` owns its name and quiet carry. HUD guidance, sprint strength,
+noise duration and the soft footstep voice all follow that material. Independent
+wet beds outside the channel stay wet. The world sweep checks the full rendered
+bed and terrain boundaries, and the underfoot browser check compares real
+sprints along the same channel before and after paused-clock drainage.
+Mechanisms use the existing
 interaction system; turning a sluice advertises a loud metal signal through
 Din, so listeners react without learning a new special-case object name.
 The editor's World tab inspects the full generated graph and room blueprints;
-the player's minimap remembers only visited waterworks landmarks.
+the player's minimap remembers only visited waterworks landmarks. Their map
+titles and pause-chart entries share `rooms/services.ts`'s remembered-waterworks
+view. It reads the store's opening/reward facts and `waterLevel`'s drainage
+completion; the existing map poll follows the paused run clock. The circuit's
+`waterworkDescription` supplies the remembered status and local reliquary
+prompt, so an opened sluice cannot still send the player upstream to find it.
+Turning a known sluice can update a previously discovered reliquary, but cannot reveal
+an unvisited endpoint. Selecting a place only highlights its room. The
+watercourse browser check holds map state together with actual valve operation,
+drainage, reward collection, Gloom and floor reset.
 
 The ongoing expansion is tracked in [The inhabited dungeon](docs/WORLD_EXPANSION.md).
 
@@ -107,6 +127,15 @@ reliquary to an existing secret wall. Its stored route drives copper masonry
 marks, rubbing guidance and the authoring atlas. Reading the reliquary enables
 the guarded catch interaction; opening it delegates to `revealSecret`, keeping
 the actual passage, collision and map changes under their existing owner.
+`worldbuilding/trailGuide.ts` owns recovery for both the maintenance rubbing
+and the district landmark tally. It uses the existing barred-edge path finder
+through visited rooms, rejoins beyond blocked trail legs, and never turns a
+clue into knowledge of an unexplored shortcut. Both HUD readers subscribe to
+`barsNow`, including the same published grate expiry as the doors and maps.
+Physical trail marks retain their authored route; only learned guidance changes
+when the player changes the available passages. The source check follows 285
+generated detours to completion without loops; the browser check constructs a
+barricade, walks its known bypass and checks paused grate expiry and clue reset.
 
 `worldbuilding/bellcaps.ts` places light-sensitive colonies on clear channel
 banks and owns exposure, warning and recovery constants. `BellcapColony.tsx`
@@ -122,6 +151,24 @@ room's validated anchor rings. Authored layouts keep control of their props.
 `mobs/croakerHabitat.ts` derives clear channel-to-refuge routes for native toads.
 Their movement reads the existing drain time rather than keeping a second
 environment clock, so pauses and revisits cannot restart the migration.
+`mobs/roomMemory.ts` preserves transient creature state against a room's generated
+grid-address object. Opening a secret replaces the room and links while retaining
+that address; generating a new floor or replay creates fresh addresses. Croakers,
+beetles, mites, shardbacks, newts, brine crabs, copperbacks and wicklings share this
+lifetime rule, with separate state for each species and weak keys for collection.
+`mobs/chorusState.ts` publishes the colony's actual singing count from the same
+frame that drives its audio. The HUD polls this room-scoped fact rather than
+calling the habitat generator to infer singing from presence. A quiet colony
+also stops its singing throat animation. Leaving clears the published room;
+new floor grid addresses cannot inherit an old chorus. The ecology browser
+check follows the text through noise, recovery, drainage and empty rooms.
+The paused run clock owns recovery; initial
+mesh visibility, active responses and the inspection probe read the same
+submersion predicate. Leaving a room cannot erase its frightened silence,
+and a new floor's rooms cannot inherit it. The ecology check opens a real secret
+while the frogs are hidden, then verifies revisits, recovery and fresh-floor reset.
+The creature render check also preserves retreat across opening the cracked wall
+for newts, brine crabs, copperbacks and wicklings.
 
 `worldbuilding/elevation.ts` owns raised gallery surfaces. `Terraces.tsx` feeds
 the same wedge vertices to rendering and physics; moving creatures, rewards,
@@ -133,7 +180,27 @@ non-overlapping strips for `FloorSurface.tsx`. World-space UVs continue across
 chambers, door collars and terraces. `terrainPattern.ts` supplies paving and
 deposit tiles, including slope-aligned gallery pieces split at ramp knees.
 `rooms/underfoot.ts` samples visible surfaces and live channels for footstep
-timbre and sprint carry. Player movement supplies the same material and world
+timbre, sprint carry and the HUD's ground description. Its material owner
+supplies both the ground name and acoustics; the existing HUD sense poll
+samples player position and the paused drainage clock, so crossing paving or
+draining a channel changes the description without requiring a room change.
+`underfoot-readout-browser-check.mjs` checks both directions across moss and
+paving, stationary drainage and its pause boundary.
+`Player` publishes its actual stride state through `playerAt.gait` alongside
+footsteps and sprint noise. The HUD reads that state rather than inferring
+running from speed: swift walking stays walking, slow running stays running,
+and blocked movement stays still. The sprint-noise and footstep-collision
+checks exercise those distinctions through real movement. The readout retains
+the confirmed stride between fixed physics steps; a render frame without a
+physics update is not evidence that the body stopped.
+The player's after-step callback accumulates the world's actual timestep.
+Position speed and stride distance use that elapsed physics time, while the
+head-bob envelope follows the confirmed gait. Render frames without a step
+retain physical speed; teleports and control locks clear it. Footfalls retain
+their distance remainder instead of dropping a frame's travel at every step.
+The stride-clock browser check drives the mounted Rapier scene at 30, 60, 144
+and 240 render frames per second and compares distance, footsteps and speed.
+Player movement supplies the same material and world
 position to audio and `makeNoise`; the store preserves earlier louder deadlines
 and emits throttled `sprinted` signals. `DinDriver` translates those samples
 through the existing room-graph propagation rules. `wardenHeard` remains a
@@ -165,7 +232,7 @@ lamp positions and terrace profiles for its plan and side elevation.
 The watercourse's `waterFlowUV` and `waterTravel` own directional ripple spacing
 and integrated drainage phase. Its held sound samples the same wet strips and
 water level while biome air remains independent. `mobs/beetleHabitat.ts` keeps
-feeding and retreat paths inside validated bellcap space; room-object memory
+feeding and retreat paths inside validated bellcap space; the shared room memory
 preserves recent disturbances on revisits without surviving a new floor.
 
 Every bug the previous tree had in its last month was the same bug: two
@@ -254,6 +321,13 @@ Two stores that both claimed the player's stats. So:
   as finished as the run that added it. Add a creature by adding a row;
   the suite says what is missing. The toads (`croaker`) were the first
   added against it.
+  The Warden's faceted body and open hood use shared geometry from
+  `warden/geometry.ts`. Its reaching arms read the existing approach warning;
+  its bowed hood, lowered arms and dim light read `wardenStaggered`. The
+  inspection probe receives that same frame's warning. Pose changes stop with
+  the run clock, and recovery restores the silhouette without a separate timer.
+  The readability check uses a real shove and verifies pause, recovery, floor
+  clearance and the model's six-draw budget.
 - **What an environment IS is one row of `BIOME` in `rooms/biomes.ts`,
   and it has grown two fields.** A biome was a look, a floor that carries,
   litter and a name for its ground. It now also says what lives in it
@@ -550,6 +624,14 @@ Two stores that both claimed the player's stats. So:
   an escape never presents an earlier hit as its ending. The death-review
   browser check follows real strikes, hazard contact and a satchel bomb through
   the summary and replay, including large phone text.
+  The ending's optional knowledge review reads `learnedThisRun` and
+  `readThisRun` from the existing Ledger and lore stores. Entries and benefits
+  come from their catalogs; only discoveries first recorded in this run appear.
+  Both outcomes retain knowledge, and both replay actions clear only the
+  per-run lists. `run-discoveries-browser-check.mjs` covers duplicate and old
+  entries, loss and escape, both replays, keyboard/controller reading and
+  maximum phone text. Focusable entries let the shared pad menu scroll through
+  long reviews without adding another input handler.
 - Whether a room can be locked is `reachableWithout` in `generate.ts`: a
   vault only goes on a room that every other room can be reached without.
   Being off the shortest path is not enough - a room can be off the route
@@ -943,6 +1025,17 @@ Two stores that both claimed the player's stats. So:
   every time - and is the only thing that emits a teaching `notice`. A
   system that grows a rule the player cannot see adds a row; the store
   changes facts and never says sentences.
+  Passive wildlife lessons are marked `ambient` in that same table. They
+  cannot replace a notice during its reading window. `Hint` alone writes
+  `teaching/noticeReading.ts`'s deadline using `NOTICE_HOLD_S` and the paused
+  run clock; the teacher reads that deadline and the same panel's reading
+  focus. A skipped observation is not marked taught and is
+  eligible on its next occurrence; there is no queue of stale observations.
+  Threat lessons and direct action feedback still interrupt immediately.
+  `teaching-priority-browser-check.mjs` checks concurrent danger/wildlife
+  events, paused reading time, later teaching, once-per-run behavior and reset.
+  The readout interaction check also fires a wildlife event while the player
+  reads beyond the timeout, then verifies teaching resumes after focus leaves.
   Lantern-out guidance reads the store's `lanternRaiseBlock`: Gloom points to
   firelight, insufficient oil to a shop, and a snuffed lamp with oil to the
   current relight control. Raising with the last oil is allowed, but entering
@@ -1091,6 +1184,27 @@ Two stores that both claimed the player's stats. So:
   floor, checks orientation and phone sizing, and verifies that route planning
   preserves pause, private room shapes, player marks and Gloom. The pad check
   opens the map through the same pause button using the d-pad and A.
+  Both maps draw each learned doorway once, with its endpoints taken from
+  the two room footprints. Barricade crosses read the store's `barricades`;
+  temporary grate bars read `barredNow` and its existing expiry publication.
+  A grate lifting cannot erase a barricade on the same edge. Knowing that two
+  unexplored rooms exist does not reveal a connection between them; visiting
+  either endpoint or Mapping teaches that doorway. The map browser check
+  covers this boundary, simultaneous barriers, pause and reset; the barricade
+  check verifies markers through the actual build and recovery controls.
+  `rooms/services.ts` derives remembered shops and fonts from visited rooms,
+  the existing secret story, bomb stock, cleared fonts and vault unlock state.
+  Both maps use those records; Mapping alone never discovers a service.
+  The expanded map lists their real place names and lets keyboard, touch or
+  controller input highlight a room without changing the run or the player's
+  own marks. Gloom hides the list with the chart. The service browser check
+  enters generated rooms through real doors, buys a bomb, uses a locked font,
+  discovers a hidden font, and checks stock, pause, large text and descent.
+  The same memory owner supplies discovered district landmarks, using the
+  arrival name and district table. Their existing map symbols gain titles and
+  the pause chart can highlight their rooms, including the landmark where a
+  learned tally begins. Mapping cannot discover these names. The trail browser
+  check covers naming, selection without run changes, Gloom, phone text and reset.
 - Everything that can take a life publishes `tell`, nought to one: how near
   it is to doing it. The body shows that number and the checks read it, so a
   warning cannot be true on screen and false in a test.
@@ -1582,8 +1696,8 @@ src/
    lure room instead: the Warden walks there rather than towards the player
    and stops listening for footsteps until it arrives or the sound goes
    cold, which is the one thing in the run that buys the right to sprint.
-   How long that giveaway lasts is the room's, not a constant: `noiseHoldFor`
-   scales `NOISE_HOLD_S` by the biome's `carry`, so the same dash is two
+   How long that giveaway lasts follows the actual surface: `noiseHoldFor`
+   scales `NOISE_HOLD_S` by its material's `carry`, so the same dash is two
    seconds across deep moss and seven through standing water, and the HUD
    names the ground so the choice can be made before the dash rather than
    learned by being caught.
@@ -1756,8 +1870,11 @@ the store it is writing to.
   shop counter. The dressing keeps its props off them, which is not the same
   as leaving a way to them: a table and a bookshelf either side of a pedestal
   are both clear of it and both in the way. 0 of 1440.
-- `yarn test:desktop` packages the Linux build, reads what is in it, then
-  starts it under a virtual display and plays it. Electron is Chromium, so
+- `yarn test:desktop` packages the current host's build, reads what is in it,
+  then plays it on an isolated display. Windows rejects an interactive window
+  station; Linux starts a private Xvfb display. Each check uses a fresh profile
+  under ignored verification output and verifies that records start empty.
+  Electron is Chromium, so
   it opens a debugging port and the same tooling that drives the web build
   drives the desktop one. It also holds the build config and the Steam
   instructions to each other: the name of the executable is one fact

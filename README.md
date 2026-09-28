@@ -90,6 +90,22 @@ Press B again, or use the doorway's tear-down prompt, to recover the kit.
 Removing a barricade does not also open the door: use it again to travel.
 Your remaining kits and standing barricades appear in the HUD. Timed trap
 grates are separate and never consume or replace your barricades.
+Both maps mark a barricaded passage with a cross and a dropped grate with
+three bars. Open the floor map from Pause to plan around them; recovering a
+kit or lifting a grate clears its marker. Connections between unexplored
+rooms stay unknown until you visit either side or use Mapping.
+Visited shops and shrines stay marked with S and +. The pause map lists their
+names, the shop's remaining bomb and each font's used state, including hidden
+fonts and entrances that need unlocking. Select an entry to highlight its room.
+Mapping reveals the floor's shape; services must still be discovered in person.
+Discovered landmarks and waterworks also appear by name in the pause map.
+The chart remembers whether a sluice is open and a reliquary is draining,
+ready or emptied. Landmark entries identify where a learned tally begins.
+Learned copper and landmark trails can guide you back through visited rooms
+or around a blocked passage; they cannot reveal an unexplored shortcut.
+
+The current design direction and its implemented refinements are recorded in
+[Game direction](docs/GAME_DIRECTION.md).
 
 The lantern has five light bands. Lowering it is instant; raising it from
 darkness takes 1.4 seconds and costs four oil. Lit travel costs six oil for
@@ -688,6 +704,12 @@ Electron Builder produces `dist-electron/`. The entry point is CommonJS
 `yarn test:desktop` rebuilds the current web assets and a directory package,
 then starts it through its real launcher to check the menu, a run, pause and
 resume. It runs on Windows and Linux; macOS needs a macOS host.
+The Windows check refuses interactive sessions: run it through a private
+noninteractive window station or an isolated VM. A hidden or minimized window
+does not isolate desktop input. Linux uses its own Xvfb display. The check
+creates a unique profile under ignored `output/verification/desktop-profiles/`
+and verifies that it starts without saved records, keeping real game settings
+and records separate. Web build checks use an isolated headless browser.
 
 ## Cloudflare Pages
 

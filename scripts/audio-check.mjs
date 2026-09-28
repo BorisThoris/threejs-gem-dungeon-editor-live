@@ -27,7 +27,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { chromium } from "playwright-core";
+import { chromium } from "./browser-safety.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const PORT = process.env.PORT || process.argv.find((arg, index) => index > 1 && /^\d+$/.test(arg)) || "5199";
@@ -180,6 +180,7 @@ const LOUD = 3;
 const FLUSH_MS = 150;
 
 const browser = await chromium.launch({
+  headless: true,
   ...(CHROMIUM ? { executablePath: CHROMIUM } : {}),
   args: [
     "--no-sandbox",
@@ -266,6 +267,7 @@ const CUES = [
   ["step", 250, [true, true]],
   ["step", 250, [true, false, "water"]],
   ["step", 250, [true, false, "soft"]],
+  ["step", 250, [true, false, "silt"]],
   ["step", 250, [true, false, "wood"]],
   ["step", 250, [true, false, "metal"]],
   ["take", 300, []],
