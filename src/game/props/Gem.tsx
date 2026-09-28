@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 
 interface GemProps {
   roomId: string;
@@ -33,7 +33,7 @@ export function Gem({ roomId, position, takeLabel }: GemProps) {
   useFrame((state) => {
     const g = group.current;
     if (!g) return;
-    const t = state.clock.getElapsedTime();
+    const t = runClock(useRun.getState());
     g.rotation.y = t * 1.4;
     g.position.y = position[1] + Math.sin(t * 2) * 0.18;
     // Not while the run is over or a room is still arriving: a teleport

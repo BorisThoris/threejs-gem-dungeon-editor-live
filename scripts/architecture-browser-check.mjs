@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -48,8 +48,8 @@ try {
     if (process.env.ARCHITECTURE_REVIEW) {
       const image = await page.evaluate(async () => {
         const T = await import("/node_modules/three/build/three.module.js");
-        const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-        renderer.setSize(720, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+        const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+        renderer.setSize(720, 480); renderer.setPixelRatio(1);
         const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
         const camera = new T.PerspectiveCamera(72, 1.5, 0.1, 100);
         camera.position.set(0, 1.65, room.size * 0.16);
@@ -125,8 +125,8 @@ try {
       const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
       const { doorReach } = await import("/src/game/dungeon/footprint.ts");
       const { floorHeightAt } = await import("/src/game/worldbuilding/elevation.ts");
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-      renderer.setSize(720, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 480); renderer.setPixelRatio(1);
       const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
       const axis = DIR_STEP[dir], camera = new T.PerspectiveCamera(68, 1.5, 0.1, 100);
       const lateral = { x: axis.z, z: -axis.x }, mouth = room.size / 2 + 0.65;
@@ -143,8 +143,8 @@ try {
       const T = await import("/node_modules/three/build/three.module.js");
       const { DIR_STEP } = await import("/src/game/dungeon/types.ts");
       const { doorReach } = await import("/src/game/dungeon/footprint.ts");
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-      renderer.setSize(720, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 480); renderer.setPixelRatio(1);
       const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
       const axis = DIR_STEP[dir], camera = new T.PerspectiveCamera(70, 1.5, 0.1, 100);
       camera.position.set(-axis.x * 3.5, 1.65, -axis.z * 3.5);

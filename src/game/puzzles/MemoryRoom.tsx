@@ -264,8 +264,8 @@ function Crystal({
       list[index] = null;
     };
   }, [index, meshes]);
-  useFrame((state) => {
-    if (ref.current) ref.current.rotation.y = state.clock.elapsedTime * 0.8 + index;
+  useFrame(() => {
+    if (ref.current) ref.current.rotation.y = runClock(useRun.getState()) * 0.8 + index;
   });
   const c = COLORS[index % COLORS.length];
   return (

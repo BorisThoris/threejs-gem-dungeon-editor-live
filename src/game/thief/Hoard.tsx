@@ -4,7 +4,7 @@ import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
 import { IronKeyModel } from "../props/IronKey";
-import { useRun } from "../state/run";
+import { runClock, useRun } from "../state/run";
 import { CLOSE_REACH } from "../world";
 import type { Vec3 } from "../dungeon/layout";
 import { NEST_RADIUS } from "./nest";
@@ -40,10 +40,10 @@ export function Hoard({ position }: { position: Vec3 }) {
    */
   const key = useRun((s) => s.nestKey);
 
-  useFrame((state) => {
+  useFrame(() => {
     const g = group.current;
     if (!g) return;
-    g.rotation.y = state.clock.elapsedTime * 0.6;
+    g.rotation.y = runClock(useRun.getState()) * 0.6;
   });
 
   if (gems < 1 && !key) return null;

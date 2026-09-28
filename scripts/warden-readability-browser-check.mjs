@@ -5,7 +5,7 @@ import { chromium } from "./browser-safety.mjs";
 
 const output = resolve("output/playwright/warden");
 mkdirSync(output, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -48,7 +48,7 @@ try {
       camera.position.set(g.position.x + Math.sin(g.rotation.y + .3) * 4,
         g.position.y + 1.6, g.position.z + Math.cos(g.rotation.y + .3) * 4);
       camera.lookAt(g.position.x, g.position.y + 1.25, g.position.z);
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true });
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true });
       const hand = scene.getObjectByName("shove-hand"), handVisible = hand?.visible;
       if (hand) hand.visible = false;
       renderer.setSize(800, 600); renderer.render(scene, camera);

@@ -1,11 +1,11 @@
-import { Suspense } from "react";
+import { Suspense, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 
 import { readGamepad } from "./input/gamepad";
 import { Lantern } from "./player/Lantern";
 import { BlockLighting } from "./lighting/BlockLighting";
-import { isUnlitRoom } from "./lighting/field";
+import { roomAmbience } from "./lighting/ambience";
 import { Player } from "./player/Player";
 import { ShoveHand } from "./player/ShoveHand";
 // Registers what each room kind puts inside its shell.
@@ -29,7 +29,7 @@ import { CycleDriver } from "./cycle/CycleDriver";
 import { HeatDriver } from "./heat/HeatDriver";
 import { WardenDriver } from "./warden/WardenDriver";
 import { PursuitDriver } from "./ladder/PursuitDriver";
-import { CAMERA_FOV, PLAYER_SPAWN_Y, floorRules } from "./world";
+import { CAMERA_FOV, PLAYER_SPAWN_Y } from "./world";
 
 /**
  * Start on a pad toggles pause. Read here, in the frame loop, because the
@@ -67,18 +67,16 @@ function PadPause() {
  * only things that need the new numbers are three lights and the fog.
  */
 function FloorLight() {
-  const light = useRun((s) => floorRules(s.floor).light);
+  const floor = useRun(s => s.floor);
   const room = useCurrentRoom();
   const seed = useRun(s => s.dungeon?.seed ?? 0);
-  // Keep navigation readable even with an empty lantern. Local block light
-  // supplies the contrast; ambient fill must not fall back to near-black.
-  const ambient = room && isUnlitRoom(room, seed) ? 0.65 : Math.max(1.1, light.ambient * 1.6);
+  const light = useMemo(() => roomAmbience(room, seed, floor), [room, seed, floor]);
   return (
     <>
       {/* Depth cue only: the far wall of the largest room is still visible. */}
-      <fog attach="fog" args={["#050608", 10, light.fogFar]} />
-      <ambientLight intensity={ambient} />
-      <hemisphereLight args={[light.sky, "#625443", ambient * 0.9]} />
+      <fog attach="fog" args={[light.fog, light.fogNear, light.fogFar]} />
+      <ambientLight intensity={light.ambient} />
+      <hemisphereLight args={[light.sky, light.ground, light.hemisphere]} />
     </>
   );
 }

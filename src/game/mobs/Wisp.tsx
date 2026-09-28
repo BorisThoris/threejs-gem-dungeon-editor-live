@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Group } from "three";
 
 import type { Room } from "../dungeon/types";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { WISP_LEAD, WISP_SPEED } from "../world";
@@ -37,7 +37,7 @@ export function Wisp({ room }: { room: Room }) {
     }
     const cam = state.camera.position;
     const p = pos.current;
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
     if (!p.placed) {
       p.placed = true;
       const tx = target?.x ?? cam.x;

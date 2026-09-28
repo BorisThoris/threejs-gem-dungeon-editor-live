@@ -70,7 +70,7 @@ try{
     const timber=new T.Box3().setFromObject(scene.getObjectByName('bat-roost-timber'));
     if(Math.abs(box.max.y-timber.min.y)>.01)throw Error('roosting bats must hang directly beneath their timber perch');
    }
-   const renderer=new T.WebGLRenderer({preserveDrawingBuffer:true});renderer.setSize(640,480);renderer.setPixelRatio(1);
+   const renderer=(await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, {preserveDrawingBuffer:true});renderer.setSize(640,480);renderer.setPixelRatio(1);
    const camera=new T.PerspectiveCamera(60,640/480,.05,100);
    const distance=kind==='mites'?0.9:['warden','keeper','reaper','bat','batFlight','harrier'].includes(kind)?4:2.3;
    const {floorHeightAt}=await import('/src/game/worldbuilding/elevation.ts');
@@ -99,10 +99,11 @@ try{
     if(candidate.pixels>frame.pixels)frame=candidate;
    }
    renderer.dispose();
-   return {...frame,visible,bounds:[...box.min.toArray(),...box.max.toArray()],base};
+   return {...frame,visible,bounds:[...box.min.toArray(),...box.max.toArray()],base,
+    renderSettings:{toneMapping:renderer.toneMapping,exposure:renderer.toneMappingExposure,colorSpace:renderer.outputColorSpace}};
   },{name,kind});
   writeFileSync(join(reviewDir,`${kind}.png`),Buffer.from(result.image.split(',')[1],'base64'));delete result.image;
-  captures.push({kind,name,pixels:result.pixels,bounds:result.bounds,view:result.view});
+  captures.push({kind,name,pixels:result.pixels,bounds:result.bounds,view:result.view,renderSettings:result.renderSettings});
   console.log(`${kind}: ${result.pixels} visible pixels`);assert.ok(result.visible&&result.pixels>100,`${kind} must contribute visible pixels in its real room`);
   assert.ok(result.bounds.every(Number.isFinite));
   if(kind==='batFlight'){

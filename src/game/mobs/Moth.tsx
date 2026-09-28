@@ -5,7 +5,7 @@ import { Group } from "three";
 
 import { halfSize, type Room } from "../dungeon/types";
 import * as din from "../din/din";
-import { canControl, useRun } from "../state/run";
+import { canControl, runClock, useRun } from "../state/run";
 import { sfx } from "../systems/audio";
 import { sideOf } from "../systems/bearing";
 import { steerInRoom, type Patch } from "../warden/steer";
@@ -48,7 +48,7 @@ export function Moth({ room, obstacles }: { room: Room; obstacles: readonly Patc
     }
     const cam = state.camera.position;
     const p = pos.current;
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
     /**
      * Its row is [bright] at 0.35, and this is now what it reads rather
      * than whether the lantern is up. Two things follow that a boolean

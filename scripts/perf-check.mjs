@@ -96,6 +96,7 @@ const ok = (label, cond, detail = "") => {
 };
 
 const browser = await chromium.launch({
+  headless: true,
   ...(CHROMIUM ? { executablePath: CHROMIUM } : {}),
   args: [
     "--no-sandbox",

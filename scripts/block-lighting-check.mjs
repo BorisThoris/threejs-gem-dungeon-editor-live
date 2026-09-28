@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 const root = process.cwd().replaceAll("\\", "/"), temp = mkdtempSync(join(tmpdir(), "block-light-"));
 const entry = join(temp, "entry.ts"), out = join(temp, "bundle.mjs");
 writeFileSync(entry, `import '${root}/src/game/rooms/shipped';\n` +
-  ["lighting/field", "lighting/perception", "ladder/sight", "player/where", "dungeon/generate", "rooms/placements", "worldbuilding/passageLighting"].map(p => `export * from '${root}/src/game/${p}';`).join("\n"));
+  ["lighting/field", "lighting/perception", "lighting/ambience", "ladder/sight", "player/where", "dungeon/generate", "rooms/placements", "worldbuilding/passageLighting"].map(p => `export * from '${root}/src/game/${p}';`).join("\n"));
 await build({ entryPoints: [entry], outfile: out, bundle: true, platform: "node", format: "esm", logLevel: "error",
   define: { "import.meta.env.DEV": "false", "import.meta.env": "{}" } });
 const L = await import(pathToFileURL(out).href);
@@ -33,12 +33,38 @@ L.releaseLightField(f);
 assert.equal(L.localLightAt(room.id, -5.5, 0.5), null, "unmount releases field");
 L.updateLightField(f, [source]); assert.deepEqual(f.data, baseline, "updates do not accumulate light");
 L.updateLightField(f, [{ ...source, intensity: 0 }]); assert.equal(sample(f, -5.5, 0.5), 0, "extinguished source is dark");
+const directionAt = (field, x, z) => {
+  const at = (Math.floor((z - field.minZ) / field.cell) * field.width + Math.floor((x - field.minX) / field.cell)) * 4;
+  return Array.from(field.direction.slice(at, at + 4));
+};
+const right = { ...source, x: 4.5, y: 1, z: 0.5 };
+L.updateLightField(f, [right]);
+const encoded = directionAt(f, 0.5, 0.5);
+assert.ok(Math.abs(encoded[0] / 255 * f.width * f.cell + f.minX - right.x) < 0.1, "incident field locates the actual lamp");
+assert.equal(encoded[3], 255, "one source has a coherent direction");
+const radiance = f.data.slice();
+L.updateLightField(f, [{ ...right, y: 5 }]);
+assert.deepEqual(f.data, radiance, "surface direction cannot change shared stealth irradiance");
+assert.ok(Math.abs(directionAt(f, 0.5, 0.5)[1] / 255 * L.LIGHT_FIELD_HEIGHT - 5) < 0.1, "incident field retains source height");
+L.updateLightField(f, [right, { ...right, x: -3.5 }]);
+assert.equal(directionAt(f, 0.5, 0.5)[3], 0, "opposing sources produce balanced fill, not an arbitrary winning direction");
+L.updateLightField(f, []);
+assert.equal(directionAt(f, 0.5, 0.5)[3], 0, "extinction clears the angular field too");
 const ring = L.createLightField({ ...room, shape: "ring" });
 L.updateLightField(ring, [{ ...source, x: -7.5, range: 18 }]);
 assert.equal(sample(ring, 0.5, 0.5), 0, "sealed core does not receive light");
 assert.equal(sample(ring, 7.5, 0.5), 0, "light cannot cross the core to the opposite walk");
 const huge = L.createLightField({ ...room, size: 500 });
 assert.ok(huge.width <= 128 && huge.height <= 128, "authored size cannot exceed grid budget");
+for (const kind of ["normal", "start"]) {
+  const fills = [1, 2, 3].map(floor => L.roomAmbience({ ...room, kind }, 1, floor));
+  assert.ok(fills[0].ambient > fills[1].ambient && fills[1].ambient > fills[2].ambient,
+    `${kind}: descent retains distinct ambient levels`);
+  assert.ok(fills.every(f => f.ambient >= 0.55 && f.ambient < 1.2), "bounded navigation fill");
+}
+assert.ok(L.roomAmbience({ ...room, size: 60 }, 1, 3).fogFar > 60, "large rooms retain their far silhouette");
+assert.notEqual(L.roomAmbience({ ...room, biome: "flooded" }, 1, 2).fog,
+  L.roomAmbience({ ...room, biome: "foundry" }, 1, 2).fog, "air follows the actual material tradition");
 let dark = 0, ordinary = 0;
 for (let seed = 1; seed <= 50; seed++) {
   const dungeon = L.generateDungeon({ seed, floor: 1 });

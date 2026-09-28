@@ -30,7 +30,7 @@ const fullBrowserChecks = ["gameplay-check.mjs", "pad-check.mjs", "touch-check.m
   "ambient-behavior-browser-check.mjs", "carried-signals-browser-check.mjs", "trap-combat-browser-check.mjs", "exploration-browser-check.mjs",
   "ecology-browser-check.mjs", "architecture-browser-check.mjs", "scenario-matrix-browser-check.mjs", "capture-scenario-review.mjs",
   "overlay-check.mjs", "tome-browser-check.mjs", "keyboard-bindings-browser-check.mjs", "input-boundary-browser-check.mjs", "focus-pause-browser-check.mjs", "control-labels-browser-check.mjs", "run-restart-browser-check.mjs", "run-discoveries-browser-check.mjs", "item-feedback-browser-check.mjs", "iron-knot-browser-check.mjs"];
-const systemBrowserChecks = ["world-browser-check.mjs", "block-lighting-browser-check.mjs", "terrain-browser-check.mjs",
+const systemBrowserChecks = ["world-browser-check.mjs", "block-lighting-browser-check.mjs", "visual-clock-browser-check.mjs", "terrain-browser-check.mjs",
   "terrain-stealth-browser-check.mjs", "underfoot-readout-browser-check.mjs", "footstep-collision-browser-check.mjs", "stride-clock-browser-check.mjs", "grate-browser-check.mjs", "interaction-probe-browser-check.mjs",
   "watercourse-browser-check.mjs", "water-browser-check.mjs", "secret-clue-browser-check.mjs", "trail-guidance-browser-check.mjs",
   "secret-history-browser-check.mjs", "bellcap-browser-check.mjs", "apse-browser-check.mjs",

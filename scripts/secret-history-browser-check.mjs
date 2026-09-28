@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "./browser-safety.mjs";
 
 mkdirSync("output/world-review/secret-history", { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -73,7 +73,7 @@ try {
       const history = window.__scene.getObjectByName(`secret-history-${story.material}`);
       const reward = window.__scene.getObjectByName(`secret-reward-${story.flavour}`);
       if (!history || !reward) throw new Error("secret history or reward group did not render");
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
       renderer.setSize(640, 480);
       const box = new T.Box3().setFromObject(reward), center = box.getCenter(new T.Vector3());
       const camera = new T.PerspectiveCamera(58, 640 / 480, .05, 100);

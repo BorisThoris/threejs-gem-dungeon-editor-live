@@ -78,7 +78,7 @@ function Snare({ device }: { device: PlacedDevice }) {
 function WardStone({ device }: { device: PlacedDevice }) {
   const group = useRef<Group>(null);
   const lit = useRef(true);
-  useFrame((state) => {
+  useFrame(() => {
     const g = group.current;
     if (!g) return;
     // Read off the store rather than kept in state: the ward is a deadline
@@ -86,7 +86,7 @@ function WardStone({ device }: { device: PlacedDevice }) {
     // would be a second owner of when that is.
     const holding = wardNow(useRun.getState()) === device.roomId;
     lit.current = holding;
-    const glow = holding ? 0.6 + Math.sin(state.clock.elapsedTime * 2.2) * 0.25 : 0;
+    const glow = holding ? 0.6 + Math.sin(runClock(useRun.getState()) * 2.2) * 0.25 : 0;
     g.scale.setScalar(1);
     const mark = g.children[g.children.length - 1] as { material?: { opacity: number } };
     if (mark?.material) mark.material.opacity = 0.15 + glow * 0.5;

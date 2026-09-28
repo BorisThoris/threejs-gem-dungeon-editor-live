@@ -12,7 +12,7 @@ const caseArg = process.argv.find(argument => argument.startsWith("--case="));
 const output = resolve(outArg ? outArg.slice(6) : "output/scenario-review");
 const base = `http://127.0.0.1:${port}/`;
 await mkdir(output, { recursive: true });
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
 const rows = [];
 const sceneHashes = new Set();
 /** Small, fixed-resolution sample keeps this check independent of JPEG file size. */

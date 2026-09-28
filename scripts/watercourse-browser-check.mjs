@@ -55,8 +55,8 @@ try {
       const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
       const dir = room.waterway.upstream ?? room.waterway.downstream;
       const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-      renderer.setSize(800, 600); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(800, 600); renderer.setPixelRatio(1);
       const camera = new T.PerspectiveCamera(72, 4 / 3, 0.1, 100);
       camera.position.set(axis[0] * 4.5, 2.8, axis[1] * 4.5);
       camera.lookAt(0, 0.1, 0); camera.updateMatrixWorld();

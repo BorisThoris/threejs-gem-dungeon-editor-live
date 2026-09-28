@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "./browser-safety.mjs";
 
 const port = process.env.PORT ?? "5234";
-const browser = await chromium.launch({
+const browser = await chromium.launch({ headless: true,
   ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
   args: ["--no-sandbox"],
 });
@@ -48,8 +48,8 @@ try {
     if (process.env.CHANNEL_FRAME_REVIEW) {
       const image = await page.evaluate(async site => {
         const T = await import("/node_modules/three/build/three.module.js");
-        const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-        renderer.setSize(800, 600); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+        const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+        renderer.setSize(800, 600); renderer.setPixelRatio(1);
         const camera = new T.PerspectiveCamera(72, 4 / 3, 0.1, 100);
         camera.position.set(0, 1.65, 0);
         camera.lookAt(site.x, 4.15, site.z); camera.updateMatrixWorld();

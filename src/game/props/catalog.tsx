@@ -6,6 +6,7 @@ import type { PropPlacement } from "../dungeon/types";
 import { Color, Matrix4, type InstancedMesh, type PointLight } from "three";
 
 import type { PropKind } from "../dungeon/types";
+import { runClock, useRun } from "../state/run";
 import { Hazard } from "./Hazard";
 import { Braziers } from "./Braziers";
 import { geo, mat } from "./shared";
@@ -125,8 +126,8 @@ function Bookshelf(p: PropProps) {
 
 function Candle(p: PropProps) {
   const light = useRef<PointLight>(null);
-  useFrame((state) => {
-    if (light.current) light.current.intensity = 2.5 + Math.sin(state.clock.elapsedTime * 9 + p.position[0]) * 0.4;
+  useFrame(() => {
+    if (light.current) light.current.intensity = 2.5 + Math.sin(runClock(useRun.getState()) * 9 + p.position[0]) * 0.4;
   });
   return (
     <group {...frame(p)}>

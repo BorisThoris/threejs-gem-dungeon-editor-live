@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { DataTexture, NearestFilter, Vector3, Vector4, type Material, type Mesh, type PointLight } from "three";
 import { useCurrentRoom, useRun } from "../state/run";
-import { createLightField, isUnlitRoom, updateLightField, type FieldSource } from "./field";
+import { createLightField, isUnlitRoom, LIGHT_FIELD_HEIGHT, updateLightField, type FieldSource } from "./field";
 import { publishLightField, releaseLightField } from "./perception";
 
 /** Gameplay light transport. Existing animated PointLights are source handles on
  * a non-rendered layer; their colours, motion and intensity still have one owner.
- * Materials share a single nearest-filtered texture, independent of light count. */
+ * Materials share two nearest-filtered textures, independent of light count. */
 export function BlockLighting() {
   const room = useCurrentRoom();
   const field = useMemo(() => room ? createLightField(room) : null, [room]);
@@ -18,8 +18,17 @@ export function BlockLighting() {
     t.needsUpdate = true;
     return t;
   }, [field]);
-  const uniforms = useMemo(() => ({ blockField: { value: null as DataTexture | null }, blockBounds: { value: new Vector4() } }), []);
+  const directionTexture = useMemo(() => {
+    if (!field) return null;
+    const t = new DataTexture(field.direction, field.width, field.height);
+    t.magFilter = t.minFilter = NearestFilter; t.generateMipmaps = false;
+    t.needsUpdate = true;
+    return t;
+  }, [field]);
+  const uniforms = useMemo(() => ({ blockField: { value: null as DataTexture | null },
+    blockDirection: { value: null as DataTexture | null }, blockBounds: { value: new Vector4() } }), []);
   uniforms.blockField.value = texture;
+  uniforms.blockDirection.value = directionTexture;
   if (field) uniforms.blockBounds.value.set(field.minX, field.minZ, field.width * field.cell, field.height * field.cell);
   const materials = useRef(new Map<Material, { compile: Material["onBeforeCompile"]; key: Material["customProgramCacheKey"] }>());
   const lights = useRef(new Map<PointLight, number>());
@@ -27,7 +36,7 @@ export function BlockLighting() {
   const previousField = useRef(field);
   const scratch = useMemo(() => ({ sources: [] as FieldSource[], lights: new Set<PointLight>(), materials: new Set<Material>() }), []);
   const position = useMemo(() => new Vector3(), []);
-  useEffect(() => () => { texture?.dispose(); if (field) releaseLightField(field); }, [texture, field]);
+  useEffect(() => () => { texture?.dispose(); directionTexture?.dispose(); if (field) releaseLightField(field); }, [texture, directionTexture, field]);
   useEffect(() => {
     const patched = materials.current, captured = lights.current;
     return () => {
@@ -39,7 +48,7 @@ export function BlockLighting() {
     };
   }, []);
   useFrame(({ scene }, delta) => {
-    if (!field || !texture) return;
+    if (!field || !texture || !directionTexture) return;
     if (previousField.current !== field) { elapsed.current = 1; previousField.current = field; }
     elapsed.current += delta;
     const { sources, lights: seen, materials: seenMaterials } = scratch;
@@ -55,7 +64,7 @@ export function BlockLighting() {
         for (let parent = light.parent; visible && parent; parent = parent.parent) visible = parent.visible;
         if (elapsed.current >= 0.1 && visible && light.intensity > 0) {
           light.getWorldPosition(position);
-          sources.push({ x: position.x, z: position.z, range: light.distance || 15,
+          sources.push({ x: position.x, y: position.y, z: position.z, range: light.distance || 15,
             intensity: light.intensity, r: light.color.r, g: light.color.g, b: light.color.b });
         }
       }
@@ -67,7 +76,7 @@ export function BlockLighting() {
         const compile = m.onBeforeCompile, key = m.customProgramCacheKey;
         const originalKey = key.call(m);
         materials.current.set(m, { compile, key });
-        m.customProgramCacheKey = () => `${originalKey}:block-light-v2`;
+        m.customProgramCacheKey = () => `${originalKey}:block-light-v3`;
         m.onBeforeCompile = (shader, renderer) => {
           compile.call(m, shader, renderer);
           Object.assign(shader.uniforms, uniforms);
@@ -81,12 +90,29 @@ export function BlockLighting() {
               blockPosition = instanceMatrix * blockPosition;
             #endif
             blockWorld = (modelMatrix * blockPosition).xyz;`);
-          shader.fragmentShader = "varying vec3 blockWorld; uniform sampler2D blockField; uniform vec4 blockBounds;\n" + shader.fragmentShader;
+          shader.fragmentShader = "varying vec3 blockWorld; uniform sampler2D blockField; uniform sampler2D blockDirection; uniform vec4 blockBounds;\n" + shader.fragmentShader;
           shader.fragmentShader = shader.fragmentShader.replace("#include <lights_fragment_end>", `#include <lights_fragment_end>
             vec2 blockUV = (blockWorld.xz - blockBounds.xy) / blockBounds.zw;
             vec3 blockGlow = texture2D(blockField, blockUV).rgb;
+            vec4 blockIncident = texture2D(blockDirection, blockUV);
+            vec3 blockSource = vec3(blockBounds.x + blockIncident.r * blockBounds.z,
+              blockIncident.g * ${LIGHT_FIELD_HEIGHT.toFixed(1)}, blockBounds.y + blockIncident.b * blockBounds.w);
+            vec3 blockToSource = blockSource - blockWorld;
+            vec3 blockRay = blockToSource / max(0.001, length(blockToSource));
+            vec3 blockNormal = inverseTransformDirection(normal, viewMatrix);
+            float blockFacing = max(0.0, dot(blockNormal, blockRay));
+            float blockResponse = 1.0 + blockIncident.a * (-0.42 + 0.9 * blockFacing);
             float blockHeight = 1.0 / (1.0 + max(0.0, floor(blockWorld.y) - 2.0) * 0.18);
-            reflectedLight.indirectDiffuse += diffuseColor.rgb * blockGlow * blockHeight * 2.8;`);
+            // Keep some painted bounce on metals, while their existing authored
+            // roughness and metalness now also receive a practical-light glint.
+            vec3 blockDiffuse = mix(diffuseColor.rgb, material.diffuseColor, 0.7);
+            reflectedLight.indirectDiffuse += blockDiffuse * blockGlow * blockHeight * blockResponse * 2.8;
+            PhysicalMaterial blockMaterial = material;
+            blockMaterial.roughness = max(0.42, material.roughness);
+            vec3 blockViewRay = (viewMatrix * vec4(blockRay, 0.0)).xyz;
+            vec3 blockSpecular = BRDF_GGX(blockViewRay, geometryViewDir, geometryNormal, blockMaterial);
+            reflectedLight.indirectSpecular += min(blockSpecular, vec3(0.65)) * blockGlow * blockHeight *
+              blockIncident.a * blockFacing * 1.6;`);
         };
         m.needsUpdate = true;
       }
@@ -101,7 +127,7 @@ export function BlockLighting() {
     }
     if (elapsed.current < 0.1) return;
     elapsed.current = 0;
-    updateLightField(field, sources); texture.needsUpdate = true;
+    updateLightField(field, sources); texture.needsUpdate = true; directionTexture.needsUpdate = true;
     if (room) publishLightField(room.id, field);
     if (import.meta.env.DEV) Object.assign(window, { __blockLighting: {
       roomId: room?.id, unlit: room ? isUnlitRoom(room, useRun.getState().dungeon?.seed ?? 0) : false,

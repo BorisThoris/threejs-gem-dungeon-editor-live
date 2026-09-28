@@ -1,17 +1,13 @@
 import { useEffect, useMemo } from "react";
 import {
-  BufferAttribute,
-  BufferGeometry,
   CanvasTexture,
-  DoubleSide,
   MeshBasicMaterial,
   type Texture,
 } from "three";
 
 import type { Vec3 } from "../dungeon/layout";
-import type { PropPlacement } from "../dungeon/types";
-import { GROUND_Y } from "../world";
-import { CATALOG } from "./catalog";
+import type { PropPlacement, Room } from "../dungeon/types";
+import { contactShadowGeometry } from "./contactShadowGeometry";
 
 /**
  * The dark under a thing standing on a floor.
@@ -30,19 +26,6 @@ import { CATALOG } from "./catalog";
  * not follow the braziers - but the eye reads contact from the darkening
  * far more than from the direction.
  */
-
-/** Props that do not stand on the floor, so nothing goes under them. */
-const AIRBORNE = new Set(["web", "tile", "spikes"]);
-
-/**
- * How much wider than the prop the blob spreads. Tight enough to read as
- * the prop's own footprint rather than a puddle it is standing in; wide
- * enough to be visible at the distance a player actually looks at a room
- * from, which is across it and not down at their feet.
- */
-const SPREAD = 2.1;
-/** Clear of the tinted floor at GROUND_Y + 0.01, and of the slab under it. */
-const HEIGHT = GROUND_Y + 0.035;
 
 let blob: Texture | null = null;
 
@@ -72,50 +55,21 @@ function shadowMaterial(): MeshBasicMaterial {
   material = new MeshBasicMaterial({
     map: shadowTexture(),
     transparent: true,
-    // Written into the depth buffer it would occlude the props it belongs
-    // to; drawn double-sided it does not care which way the quad was wound.
+    // Written into the depth buffer it would occlude the props it belongs to.
     depthWrite: false,
-    side: DoubleSide,
   });
   return material;
 }
 
-/** One quad per thing, in one geometry: the room's grounding as a single mesh. */
-function shadowGeometry(spots: { x: number; z: number; r: number }[]): BufferGeometry {
-  const position = new Float32Array(spots.length * 12);
-  const uv = new Float32Array(spots.length * 8);
-  const index = new Uint16Array(spots.length * 6);
-  spots.forEach(({ x, z, r }, i) => {
-    const p = i * 12;
-    position.set(
-      [x - r, HEIGHT, z - r, x + r, HEIGHT, z - r, x + r, HEIGHT, z + r, x - r, HEIGHT, z + r],
-      p
-    );
-    uv.set([0, 0, 1, 0, 1, 1, 0, 1], i * 8);
-    const v = i * 4;
-    index.set([v, v + 1, v + 2, v, v + 2, v + 3], i * 6);
-  });
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new BufferAttribute(position, 3));
-  geometry.setAttribute("uv", new BufferAttribute(uv, 2));
-  geometry.setIndex(new BufferAttribute(index, 1));
-  return geometry;
-}
-
 interface ContactShadowsProps {
+  room: Room;
   placements: PropPlacement[];
   /** The room's gem, if it has one: it stands on the floor like anything else. */
   extra?: Vec3[];
 }
 
-export function ContactShadows({ placements, extra }: ContactShadowsProps) {
-  const geometry = useMemo(() => {
-    const spots = placements
-      .filter((p) => !AIRBORNE.has(p.kind))
-      .map((p) => ({ x: p.x, z: p.z, r: CATALOG[p.kind].radius * (p.scale ?? 1) * SPREAD }));
-    for (const at of extra ?? []) spots.push({ x: at[0], z: at[2], r: 0.55 });
-    return shadowGeometry(spots);
-  }, [placements, extra]);
+export function ContactShadows({ room, placements, extra }: ContactShadowsProps) {
+  const geometry = useMemo(() => contactShadowGeometry(room, placements, extra), [room, placements, extra]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   if (geometry.index?.count === 0) return null;
   return (

@@ -2,6 +2,9 @@ import { floorRects, insideRoom } from "../dungeon/footprint";
 import type { Room } from "../dungeon/types";
 import { createRng } from "../rng";
 
+/** Encoding range for the room's virtual light centroid, including raised lamps. */
+export const LIGHT_FIELD_HEIGHT = 16;
+
 /** Sheltered rooms stay readable; ordinary unserviced chambers need a lantern. */
 export function isUnlitRoom(room: Room, seed: number): boolean {
   return (room.kind === "normal" || room.kind === "treasure") &&
@@ -9,7 +12,7 @@ export function isUnlitRoom(room: Room, seed: number): boolean {
 }
 
 export interface FieldSource {
-  x: number; z: number; range: number; intensity: number;
+  x: number; y?: number; z: number; range: number; intensity: number;
   r: number; g: number; b: number;
 }
 
@@ -24,18 +27,22 @@ export function createLightField(room: Room) {
   const width = Math.ceil(spanX / cell), height = Math.ceil(spanZ / cell), count = width * height;
   const open = new Uint8Array(count), data = new Uint8Array(count * 4);
   const energy = new Float32Array(count * 3);
+  // A luminance-weighted incident direction, separate from irradiance so the
+  // gameplay sample does not depend on which way a decorative face is turned.
+  const incident = new Float32Array(count * 3), direction = new Uint8Array(count * 4);
+  const centroid = new Float32Array(count * 3);
   const queue = new Int32Array(count), steps = new Int16Array(count);
   for (let z = 0; z < height; z++) for (let x = 0; x < width; x++)
     open[z * width + x] = +insideRoom(room, minX + (x + 0.5) * cell, minZ + (z + 0.5) * cell);
-  return { minX, minZ, cell, width, height, open, data, energy, queue, steps };
+  return { minX, minZ, cell, width, height, open, data, energy, incident, centroid, direction, queue, steps };
 }
 export type LightField = ReturnType<typeof createLightField>;
 
 /** Flood only through walkable blocks: ring cores and closed walls stop light.
  * Reuses scratch arrays. Source count affects this 10 Hz CPU pass, never the fragment shader. */
 export function updateLightField(f: LightField, sources: readonly FieldSource[]) {
-  const { width, height, open, energy, data, queue, steps, cell } = f;
-  energy.fill(0);
+  const { width, height, open, energy, data, incident, centroid, direction, queue, steps, cell } = f;
+  energy.fill(0); incident.fill(0); centroid.fill(0);
   for (const s of sources) {
     if (s.intensity <= 0 || s.range <= 0) continue;
     const x = Math.floor((s.x - f.minX) / cell), z = Math.floor((s.z - f.minZ) / cell);
@@ -62,6 +69,19 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
       const falloff = Math.max(0, 1 - distance / s.range);
       const value = Math.min(1.6, s.intensity / 14) * Math.pow(falloff, 1.4);
       energy[i * 3] += value * s.r; energy[i * 3 + 1] += value * s.g; energy[i * 3 + 2] += value * s.b;
+      const dx = s.x - (f.minX + (i % width + 0.5) * cell);
+      const dy = (s.y ?? 2) - 1;
+      const dz = s.z - (f.minZ + (Math.floor(i / width) + 0.5) * cell);
+      const length = Math.hypot(dx, dy, dz);
+      const weight = value * (s.r * 0.2126 + s.g * 0.7152 + s.b * 0.0722);
+      centroid[i * 3] += s.x * weight;
+      centroid[i * 3 + 1] += (s.y ?? 2) * weight;
+      centroid[i * 3 + 2] += s.z * weight;
+      if (length > 0.001) {
+        incident[i * 3] += dx / length * weight;
+        incident[i * 3 + 1] += dy / length * weight;
+        incident[i * 3 + 2] += dz / length * weight;
+      }
       if (distance + cell >= s.range) continue;
       const nextStep = steps[i] + 1;
       if (i % width > 0) visit(i - 1, nextStep);
@@ -70,6 +90,8 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
       if (i < width * (height - 1)) visit(i + width, nextStep);
     }
   }
+  const luminance = (at: number) => energy[at * 3] * 0.2126 + energy[at * 3 + 1] * 0.7152 + energy[at * 3 + 2] * 0.0722;
+  const encode = (value: number) => Math.round(Math.max(0, Math.min(1, value)) * 255);
   for (let i = 0; i < open.length; i++) {
     // A single boundary apron lets vertical wall faces read the adjacent floor's light.
     for (let c = 0; c < 3; c++) {
@@ -83,6 +105,23 @@ export function updateLightField(f: LightField, sources: readonly FieldSource[])
       data[i * 4 + c] = Math.round(Math.min(1, value) * 255);
     }
     data[i * 4 + 3] = 255;
+    // Wall faces inherit the brightest adjacent floor cell's incident light.
+    // This is a bounded first angular moment, not another transport solver.
+    let origin = i;
+    if (!open[i]) {
+      if (i % width > 0 && luminance(i - 1) > luminance(origin)) origin = i - 1;
+      if (i % width < width - 1 && luminance(i + 1) > luminance(origin)) origin = i + 1;
+      if (i >= width && luminance(i - width) > luminance(origin)) origin = i - width;
+      if (i < width * (height - 1) && luminance(i + width) > luminance(origin)) origin = i + width;
+    }
+    const total = luminance(origin);
+    // RGB locates the weighted virtual source; alpha says how directional the
+    // light is. Opposing sources cancel the angular moment, producing fill.
+    // A position rather than one fixed normal also lights ceiling undersides.
+    direction[i * 4] = total > 0 ? encode((centroid[origin * 3] / total - f.minX) / (width * cell)) : 0;
+    direction[i * 4 + 1] = total > 0 ? encode(centroid[origin * 3 + 1] / total / LIGHT_FIELD_HEIGHT) : 0;
+    direction[i * 4 + 2] = total > 0 ? encode((centroid[origin * 3 + 2] / total - f.minZ) / (height * cell)) : 0;
+    direction[i * 4 + 3] = total > 0 ? encode(Math.hypot(incident[origin * 3], incident[origin * 3 + 1], incident[origin * 3 + 2]) / total) : 0;
   }
 }
 

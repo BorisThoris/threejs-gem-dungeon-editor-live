@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "./browser-safety.mjs";
 
 const districts = ["gardens", "works", "tombs"];
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -43,8 +43,8 @@ try {
       const T = await import("/node_modules/three/build/three.module.js");
       const seams = window.__scene.getObjectByName("strata-seams");
       if (!seams) throw new Error("strata seam batch did not mount");
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-      renderer.setSize(720, 540); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 540); renderer.setPixelRatio(1);
       const camera = new T.PerspectiveCamera(55, 4 / 3, 0.1, 120);
       const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[fixture.marks[0].dir];
       const target = fixture.marks.reduce((sum, mark) => ({ x: sum.x + mark.position[0] / fixture.marks.length,
@@ -102,8 +102,8 @@ try {
     const T = await import("/node_modules/three/build/three.module.js");
     const batch = window.__scene.getObjectByName("strata-seams");
     if (!batch) throw new Error("threshold batch did not mount");
-    const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-    renderer.setSize(720, 540); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+    const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+    renderer.setSize(720, 540); renderer.setPixelRatio(1);
     const camera = new T.PerspectiveCamera(55, 4 / 3, 0.1, 120);
     const step = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[fixture.handovers[0].dir];
     const target = fixture.handovers.reduce((sum, mark) => ({ x: sum.x + mark.position[0] / fixture.handovers.length,

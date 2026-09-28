@@ -149,7 +149,7 @@ export function Cutpurse({ room, hazards = [], obstacles = [] }: CutpurseProps) 
     // teleport it out of the room with your gem any more than it may
     // teleport the Warden onto you.
     const delta = Math.min(rawDelta, MAX_FRAME_S);
-    const t = state.clock.elapsedTime;
+    const t = runClock(run);
 
     const cam = state.camera.position;
     // Where it is going: at the player while it is stalking, at the doorway

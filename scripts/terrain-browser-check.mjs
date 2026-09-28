@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage();
   const errors = [];
@@ -53,8 +53,8 @@ try {
     if (process.env.TERRAIN_REVIEW) {
       const image = await page.evaluate(async () => {
         const T = await import("/node_modules/three/build/three.module.js");
-        const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-        renderer.setSize(640, 480); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+        const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+        renderer.setSize(640, 480); renderer.setPixelRatio(1);
         const room = window.__run.getState().dungeon.rooms.find(room => room.id === window.__run.getState().currentRoomId);
         const reach = room.size * 0.72;
         const camera = new T.OrthographicCamera(-reach, reach, reach * 0.75, -reach * 0.75, 0.1, 100);

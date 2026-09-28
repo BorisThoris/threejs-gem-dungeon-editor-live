@@ -11,7 +11,7 @@ const ids = [
   "hall-turnkeepers-relay",
 ];
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -52,8 +52,8 @@ try {
       const { roomPlaceName } = await import("/src/game/rooms/placeName.ts");
       const state = window.__run.getState(), room = state.dungeon.rooms.find(room => room.id === state.currentRoomId);
       const T = await import("/node_modules/three/build/three.module.js");
-      const renderer = new T.WebGLRenderer({ preserveDrawingBuffer: true, antialias: true });
-      renderer.setSize(720, 540); renderer.setPixelRatio(1); renderer.outputColorSpace = T.SRGBColorSpace;
+      const renderer = (await import("/scripts/review-renderer.mjs")).createReviewRenderer(T, window.__scene, { preserveDrawingBuffer: true, antialias: true });
+      renderer.setSize(720, 540); renderer.setPixelRatio(1);
       const camera = new T.PerspectiveCamera(58, 4 / 3, 0.1, 120);
       camera.position.set(room.size * 0.34, room.size * 0.54, room.size * 0.48);
       camera.lookAt(0, 0.6, 0); camera.updateMatrixWorld();

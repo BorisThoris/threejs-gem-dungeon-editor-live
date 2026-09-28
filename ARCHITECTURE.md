@@ -169,6 +169,10 @@ and a new floor's rooms cannot inherit it. The ecology check opens a real secret
 while the frogs are hidden, then verifies revisits, recovery and fresh-floor reset.
 The creature render check also preserves retreat across opening the cracked wall
 for newts, brine crabs, copperbacks and wicklings.
+Diagnostic scene captures create their camera renderer through
+`scripts/review-renderer.mjs`, which copies tone mapping, exposure and colour
+space from the mounted game renderer. Review lighting must not become a second
+colour pipeline; the creature manifest records those settings with each view.
 
 `worldbuilding/elevation.ts` owns raised gallery surfaces. `Terraces.tsx` feeds
 the same wedge vertices to rendering and physics; moving creatures, rewards,
@@ -521,6 +525,28 @@ Two stores that both claimed the player's stats. So:
   `src/game/props/ContactShadows.tsx` does the cheap half instead: one soft
   blob under everything that stands on the floor, all of them in a single
   geometry, so a room's grounding costs one draw call and nothing per frame.
+  `props/contactShadowGeometry.ts` derives each footprint from the existing
+  physical prop, including turn and scale, instead of its broad placement radius.
+  It samples `floorHeightAt` for raised gallery pickups and subdivides contact
+  crossing a ramp knee. The gem's shadow reads the same `gemRooms` collection
+  record as its visible model, so it cannot remain after the pickup disappears.
+- `lighting/field.ts` transports local light through the room's existing floor
+  union. Alongside RGB irradiance it keeps a luminance-weighted source centroid
+  and angular coherence in one bounded texture. `BlockLighting` uses the real
+  world normal and surface height to shade faces toward that source, retaining
+  diffuse bounce on the opposing face. Balanced opposing lamps become fill.
+  This is a directional approximation of the existing field, not a shadow map
+  or a second gameplay light calculation: stealth still samples its irradiance.
+  All source positions and heights come from the existing animated PointLights.
+  The lighting checks compare instanced faces, rotations, overhead and low lamps,
+  extinction, room revisits and all thirteen biome renders.
+  The same virtual source supplies a bounded GGX highlight using the material's
+  existing roughness and metalness, so fittings and water retain a different
+  response from rough masonry without a per-source fragment loop.
+  `lighting/ambience.ts` derives background fill and air from the floor's light
+  rules and the room's actual biome. Each descent retains its own intensity;
+  the unlit profile keeps a navigation floor. Fog reach also reads the true
+  floor union so long authored galleries keep their terminal silhouette.
 - What a prop is - footprint, solidity, collider - is data in
   `src/game/props/specs.ts`, apart from the components that draw it. Four
   things need those numbers and none of them wants a React tree: the room's
@@ -1513,6 +1539,11 @@ Two stores that both claimed the player's stats. So:
   to a question nobody had seen asked. Its deadlines go on `runClock` now,
   drained soonest-first by a frame so that a frame long enough to cover two
   of them still runs them in order.
+  Candle flicker, pickup and hoard rotation, ward glow, puzzle crystals and
+  creature phase animations also read that same clock, so their poses and
+  moving highlights freeze through pause without jumping on resume. The
+  visual-clock browser check verifies paused and resumed practical lights,
+  gems, keys and memory crystals in generated rooms.
 - How far into a room's trial the player is belongs to the run, not to the
   component drawing the room. `Scene` mounts only the room the player is
   standing in, so anything a room remembers in `useState` is forgotten at

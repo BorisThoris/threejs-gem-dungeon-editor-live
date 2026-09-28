@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 
 import { InteractTrigger } from "../interact/InteractTrigger";
-import { useRun } from "../state/run";
+import { runClock, useRun } from "../state/run";
 import { CLOSE_REACH } from "../world";
 import { floorRiseAt } from "../worldbuilding/elevation";
 
@@ -31,10 +31,10 @@ export function IronKey({ roomId, position }: IronKeyProps) {
   const room = useRun(s => s.dungeon?.rooms.find(r => r.id === roomId));
   const rise = lying && room ? floorRiseAt(room, lying.x, lying.z) : 0;
 
-  useFrame((state) => {
+  useFrame(() => {
     const g = group.current;
     if (!g) return;
-    const t = state.clock.getElapsedTime();
+    const t = runClock(useRun.getState());
     g.rotation.y = t * 0.9;
     g.position.y = position[1] + rise + Math.sin(t * 1.7) * 0.09;
   });

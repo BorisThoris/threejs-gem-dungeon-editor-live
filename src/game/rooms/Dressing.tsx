@@ -51,10 +51,11 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
   );
   // The gem and the room's own content stand on the same floor the props
   // do, so they are grounded the same way.
+  const gemTaken = useRun(s => s.gemRooms.includes(room.id));
   const grounded = useMemo(() => {
     const gem = gemFor(room, seed);
-    return [...reservedAnchors(room), ...(gem ? [gem] : [])];
-  }, [room, seed]);
+    return [...reservedAnchors(room), ...(gem && !gemTaken ? [gem] : [])];
+  }, [room, seed, gemTaken]);
   // The braziers are drawn as one instanced set rather than one at a time:
   // four of them in every room, seven identical meshes each, and nothing
   // about them ever moves. Split by kind here rather than in the layouts,
@@ -114,7 +115,7 @@ export function Dressing({ room, seed, hoard = false }: DressingProps) {
       {wrecks.map((p) => (
         <Wreck key={breakKey(room, p)} x={p.x} z={p.z} />
       ))}
-      <ContactShadows placements={standing} extra={grounded} />
+      <ContactShadows room={room} placements={standing} extra={grounded} />
       <PropColliders placements={standing} />
       <Chests room={room} placements={placements} />
     </group>
