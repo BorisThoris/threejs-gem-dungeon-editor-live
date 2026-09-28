@@ -36,13 +36,16 @@ function useReadoutBounds(touch: boolean) {
       const right = window.innerWidth - rightEdge + 12;
       const besideHud = window.innerWidth - left - right >= 180;
       const next = besideHud ? { left, right, top: 24 }
-        : { left: 12, right: 12, top: Math.max(h?.bottom ?? 12, map?.getBoundingClientRect().bottom ?? 12) + 12 };
+        : { left: 12, right: 12, top: Math.max(h?.bottom ?? 12, map?.getBoundingClientRect().bottom ?? 12,
+          pause?.getBoundingClientRect().bottom ?? 12) + 12 };
       let bottom = window.innerHeight - 12;
       for (const element of [buttons, stick]) {
         if (!element) continue;
         const box = element.getBoundingClientRect();
         if (box.bottom <= next.top) continue;
-        if (besideHud && box.top > next.top) {
+        // Portrait has a useful band above the thumbs. In short landscape,
+        // retain the side lane so a caption plus guidance still has height.
+        if (box.top > next.top && (besideHud || window.innerHeight > window.innerWidth)) {
           if (box.left < window.innerWidth - next.right && box.right > next.left) bottom = Math.min(bottom, box.top - 12);
         } else if (box.left + box.width / 2 < window.innerWidth / 2) {
           next.left = Math.max(next.left, box.right + 12);

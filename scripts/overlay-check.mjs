@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 const port = process.argv[2] ?? process.env.PORT ?? "5198";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH,
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH,
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const captionFailures = [];
 async function checkCaptionPlacement(caption, label) {

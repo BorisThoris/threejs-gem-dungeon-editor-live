@@ -372,12 +372,13 @@ function ShoveButton({ size }: { size: number }) {
  * Esc and Start do.
  */
 function PauseButton({ size }: { size: Sizes }) {
+  const portrait = usePortrait();
   return (
     <div
       style={{
         position: "fixed",
-        top: `calc(${size.margin}px + env(safe-area-inset-top, 0px))`,
-        right: `calc(${MINIMAP_SIZE * MINIMAP_SCALE + 20 + 14}px + env(safe-area-inset-right, 0px))`,
+        top: `calc(${size.margin + (portrait ? MINIMAP_SIZE * MINIMAP_SCALE + 12 : 0)}px + env(safe-area-inset-top, 0px))`,
+        right: `calc(${portrait ? size.margin : MINIMAP_SIZE * MINIMAP_SCALE + 20 + 14}px + env(safe-area-inset-right, 0px))`,
         zIndex: 600,
       }}
     >
@@ -472,8 +473,8 @@ function TouchButton({
  * starts (`enterImmersive`), and where that is refused this says so, and
  * goes away the moment the phone is turned.
  */
-function Sideways() {
-  const portrait = useSyncExternalStore(
+function usePortrait() {
+  return useSyncExternalStore(
     (fn) => {
       const q = window.matchMedia("(orientation: portrait)");
       q.addEventListener("change", fn);
@@ -482,6 +483,10 @@ function Sideways() {
     () => window.matchMedia("(orientation: portrait)").matches,
     () => false
   );
+}
+
+function Sideways() {
+  const portrait = usePortrait();
   if (!portrait) return null;
   return (
     <div

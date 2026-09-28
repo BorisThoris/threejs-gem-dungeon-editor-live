@@ -14,7 +14,7 @@ irradiance to every surface normal. Vases read as flat discs, and masonry and
 furniture lose their orientation under a carried lamp. Raising every exposure
 would preserve that problem while washing out the practical sources.
 
-## Work in progress
+## Direction and materials
 
 The shared field now also accumulates a light centroid and angular coherence.
 Materials use world-space normals and actual surface height to distinguish
@@ -37,9 +37,9 @@ response. Rough and polished metal measured 137 and 200, retaining highlight
 headroom. The sweep peaked at 79 calls, 8,254 triangles, 92 geometries and 12
 textures, with no growth across settled revisits or retained sprint heap.
 The thirteen biome captures and desktop/portrait checks remain readable. These
-are core-lighting results; the wider visual review below is still outstanding.
+are core-lighting results; the wider visual review is recorded below.
 
-## Remaining review
+## Review scope
 
 - Calibrate ambient fill, local contrast, fog and the descent through all three
   floors. Empty-lantern navigation must remain possible; carrying a flame must
@@ -121,3 +121,48 @@ the private Windows window station with isolated profiles.
 `lighting-shipped-report.json` records all ten release checks passing, including
 those web/Windows builds and Warden readability, architecture, terrain,
 waterworks, hidden-room history, authored rooms, strata and channel frames.
+
+## Combat presentation and narrow screens
+
+The final audit found danger and damage overlays painting above the HUD and
+touch controls. A before-fix browser check reproduced the stacking error for
+lives, Pause and Lamp, and the strongest combined-effect screenshot showed
+those controls visibly dimmed. Both effects now tint the world beneath the
+controls. The proximity pulse freezes on pause; the system's reduced-motion
+preference makes it steady while retaining the warning.
+
+Portrait review also found captions squeezed into a single-letter column by
+thumb controls below them, and Pause overlapping the HUD. Portrait now uses
+the available horizontal band above those controls and puts Pause beneath the
+minimap. Short landscape retains its separate side lane. The two checks in
+`visual-layout-final-report.json` pass for the combined effects, desktop,
+landscape phone, portrait and tablet, normal and enlarged text, and both thumb
+layouts. Readout focus/scrolling was independently verified in
+`visual-presentation-report.json`; its first layout failure was corrected and
+superseded by the final layout run.
+
+The exposure audit of all eighteen captured room pairs is saved locally in
+`lighting-exposure-audit.json`. No pixel in those JPEG scene captures had all
+three channels at or above 250. The deepest unlit elbow is intentionally much
+darker: its door frames, floor route and pickups remain visible, and the raised
+lantern reveals near-field surfaces while the distant roof stays dark. This
+was inspected in the saved scene pair; an image-wide brightness average alone
+would not establish navigability. The presentation retains ACES and the
+handmade texture sampling without adding a fullscreen filter.
+
+## Scope audit
+
+| Requirement | Current evidence |
+| --- | --- |
+| Directional depth and distinct material response, with one gameplay light owner | Transport and rendered face/roughness checks in `lighting-release-report.json`; the shader reads the same field used by perception. |
+| Depth-dependent ambient fill, biome colour, fog reach and usable darkness | Three-depth and thirteen-biome captures; eighteen actual scene pairs; exposure audit and inspection of the darkest elbow and bright ring. |
+| Grounded props and raised pickups | Physical-footprint invariants and live raised-gem collection in `lighting-contact-report.json`. |
+| Paused visual state | The before/after visual-clock regression covers practical lights, gems, keys and memory crystals; the final effects check covers the proximity pulse. |
+| Threats, clues and controls remain readable | Nineteen creature states, Warden approach/shove/recovery, authored room and waterworks checks; final combined-effect captures and browser paint-order checks; caption layout and scrolling checks. |
+| Preserve the handmade style and resource budget | Shared ACES capture pipeline, bounded broad highlights, unchanged texture sampling, no added fullscreen filter; 78-room performance sweep with settled revisit and heap checks. |
+| Ship working web and Windows builds | `visual-final-builds-report.json`: both current builds pass rendering, play, pause and packaging checks; web also boots older save formats. |
+
+These are focused visual and release results, not a claim that every repository
+gate is green. GitHub verification of `cfb4bc3` separately reported a descent
+gem-balance assertion (two versus one) and stale promotional trailer metadata;
+the local core-flow check passed. Those broader CI findings remain open.

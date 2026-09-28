@@ -1107,6 +1107,14 @@ Two stores that both claimed the player's stats. So:
   the doorways worth marking carry one. The cold biomes - flooded, crystal -
   stay cold on purpose, and now read as exceptions rather than as more of
   the same.
+  `ui/Transitions.tsx` paints combat vignettes below both HUD and touch controls;
+  the room can darken or flash without dimming lives, map or buttons. The
+  proximity pulse freezes on pause and becomes a steady warning under the
+  system's reduced-motion preference. The visual-effects browser check uses
+  actual browser paint order at the controls, including portrait, and captures
+  the strongest combined danger/hurt frame. Portrait puts Pause beneath the
+  minimap and reserves a horizontal caption band above the thumbs; short
+  landscape retains its side lane. `Readouts` measures these live footprints.
 - What a relic does to the screen is decided in `modifiers` with
   everything else it does: `lightTint` is the colour of the carried
   lantern, so two relics that both tint it agree whichever was bought

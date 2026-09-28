@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { bus } from "../game/events";
+import { useRun } from "../game/state/run";
 
 const MIN_DARK_MS = 220;
 const HURT_MS = 520;
@@ -21,6 +22,7 @@ export function Transitions() {
   const [dark, setDark] = useState(false);
   const [hurt, setHurt] = useState(0);
   const [dread, setDread] = useState(0);
+  const paused = useRun(s => s.paused);
   const darkSince = useRef(0);
   const reveal = useRef<number | null>(null);
 
@@ -61,9 +63,14 @@ export function Transitions() {
       <style>{`
         @keyframes gd-hurt { from { opacity: 0.7 } to { opacity: 0 } }
         @keyframes gd-dread { 0%, 100% { opacity: var(--gd-dread) } 50% { opacity: calc(var(--gd-dread) * 0.55) } }
+        @media (prefers-reduced-motion: reduce) {
+          .gd-dread { animation: none !important; }
+        }
       `}</style>
       {/* The Warden's closeness, as the room narrowing around the player. */}
       <div
+        data-testid="screen-dread"
+        className="gd-dread"
         style={{
           position: "fixed",
           inset: 0,
@@ -72,12 +79,15 @@ export function Transitions() {
           ["--gd-dread" as string]: String(dread * 0.3),
           opacity: dread * 0.3,
           animation: dread >= 2 ? "gd-dread 1.1s ease-in-out infinite" : undefined,
+          animationPlayState: paused ? "paused" : "running",
           transition: "opacity 500ms ease-out",
           pointerEvents: "none",
-          zIndex: 930,
+          // Tint the world, keeping even the lowest touch controls above it.
+          zIndex: 400,
         }}
       />
       <div
+        data-testid="screen-fade"
         style={{
           position: "fixed",
           inset: 0,
@@ -90,6 +100,7 @@ export function Transitions() {
       />
       {hurt > 0 && (
         <div
+          data-testid="screen-hurt"
           key={hurt}
           style={{
             position: "fixed",
@@ -97,7 +108,7 @@ export function Transitions() {
             background: "radial-gradient(ellipse at center, rgba(180,20,40,0) 45%, rgba(180,20,40,0.9) 100%)",
             animation: `gd-hurt ${HURT_MS}ms ease-out forwards`,
             pointerEvents: "none",
-            zIndex: 940,
+            zIndex: 410,
           }}
         />
       )}
