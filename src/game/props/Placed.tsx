@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group } from "three";
+import { Group, type PointLight } from "three";
 
 import { SNARE_RADIUS } from "../items/catalog";
 import { InteractTrigger } from "../interact/InteractTrigger";
@@ -77,7 +77,7 @@ function Snare({ device }: { device: PlacedDevice }) {
 /** A cairn that glows while it holds, and goes dark when its time is up. */
 function WardStone({ device }: { device: PlacedDevice }) {
   const group = useRef<Group>(null);
-  const lit = useRef(true);
+  const light = useRef<PointLight>(null);
   useFrame(() => {
     const g = group.current;
     if (!g) return;
@@ -85,14 +85,14 @@ function WardStone({ device }: { device: PlacedDevice }) {
     // on the run's clock, and a component that re-rendered when it expired
     // would be a second owner of when that is.
     const holding = wardNow(useRun.getState()) === device.roomId;
-    lit.current = holding;
+    if (light.current) light.current.intensity = holding ? 4 : 0;
     const glow = holding ? 0.6 + Math.sin(runClock(useRun.getState()) * 2.2) * 0.25 : 0;
     g.scale.setScalar(1);
     const mark = g.children[g.children.length - 1] as { material?: { opacity: number } };
-    if (mark?.material) mark.material.opacity = 0.15 + glow * 0.5;
+    if (mark?.material) mark.material.opacity = holding ? 0.15 + glow * 0.5 : 0;
   });
   return (
-    <group ref={group} position={[device.x, GROUND_Y, device.z]}>
+    <group name="device-wardstone" ref={group} position={[device.x, GROUND_Y, device.z]}>
       <mesh position={[0, 0.12, 0]} castShadow>
         <dodecahedronGeometry args={[0.22, 0]} />
         <meshStandardMaterial color="#cfc7ae" roughness={0.85} />
@@ -101,10 +101,10 @@ function WardStone({ device }: { device: PlacedDevice }) {
         <dodecahedronGeometry args={[0.14, 0]} />
         <meshStandardMaterial color="#b9b19a" roughness={0.85} />
       </mesh>
-      <pointLight position={[0, 0.5, 0]} color="#9fd8ff" intensity={4} distance={5} decay={1.8} />
+      <pointLight ref={light} position={[0, 0.5, 0]} color="#9fd8ff" intensity={0} distance={5} decay={1.8} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[1.1, 22]} />
-        <meshBasicMaterial color="#9fd8ff" transparent opacity={0.2} />
+        <meshBasicMaterial color="#9fd8ff" transparent opacity={0} />
       </mesh>
     </group>
   );

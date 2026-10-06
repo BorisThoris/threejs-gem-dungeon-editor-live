@@ -167,7 +167,7 @@ export const ITEMS: Record<ItemId, Item> = {
     id: "wardstone",
     family: "device",
     name: "Ward Stone",
-    blurb: "While it lies here the Warden will not come into this room.",
+    blurb: "Keeps the Warden out of this room for a short time. Setting another Ward Stone moves the protection.",
     cruel: false,
   },
   bomb: {

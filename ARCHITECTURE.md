@@ -978,6 +978,10 @@ Two stores that both claimed the player's stats. So:
   before vault furniture and Full Count chests are placed, keeping the tell
   exposed without moving an already sprung trap. `test:trap-placement`
   checks ordinary and brimming rooms, bounds, exit safety and open-pit damage.
+  The pit records a successful opening fall in its existing contact latch.
+  Remaining over the same hole cannot charge a second life when the damage
+  cooldown ends; leaving and re-entering still hurts. The trap combat check
+  holds the player through that cooldown and then crosses the edge again.
 - What is behind the cracked wall is `src/game/dungeon/secret.ts` -
   `secretFlavour(d)` - one owner beside `secretId`; the content
   (`Secret` in `rooms/content.tsx`) asks it and draws a hoard, a
@@ -1552,6 +1556,12 @@ Two stores that both claimed the player's stats. So:
   moving highlights freeze through pause without jumping on resume. The
   visual-clock browser check verifies paused and resumed practical lights,
   gems, keys and memory crystals in generated rooms.
+  A Ward Stone's light and protective halo read `wardNow`, just like the HUD
+  and pursuit. Expired or replaced stones contribute no lingering light to
+  the shared stealth field, including on a return visit. Inspection explains
+  its charged duration using `WARD_S` and `scaled`, and that another stone
+  moves protection. The visual-clock check covers all charges, pause, expiry
+  and replacement through real slot input.
 - How far into a room's trial the player is belongs to the run, not to the
   component drawing the room. `Scene` mounts only the room the player is
   standing in, so anything a room remembers in `useState` is forgotten at

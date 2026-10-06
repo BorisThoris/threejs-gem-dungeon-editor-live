@@ -7,6 +7,8 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
   args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 try {
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 800 } })).newPage();
+  page.setDefaultTimeout(30000);
+  page.setDefaultNavigationTimeout(120000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(String(error)));
   await page.addInitScript(() => localStorage.setItem("gem-dungeon.settings", JSON.stringify({ captions: true })));
@@ -172,6 +174,17 @@ try {
     await page.waitForFunction(key => window.__run.getState().sprung[key] !== undefined, fixture.pit.key);
     const before = await page.evaluate(key => ({ lives: window.__run.getState().lives, sprung: window.__run.getState().sprung[key] }), fixture.pit.key);
     assert.equal(before.lives, 2, "the visible pit opens through player contact and takes one life");
+    await page.evaluate(async () => {
+      const { DAMAGE_COOLDOWN_S } = await import("/src/game/world.ts");
+      await new Promise(resolve => setTimeout(resolve, (DAMAGE_COOLDOWN_S + .3) * 1000));
+    });
+    assert.equal(await page.evaluate(() => window.__run.getState().lives), before.lives,
+      "the opening fall and standing in that same pit are one contact, even after damage cooldown");
+    await page.evaluate(pit => window.__bus.emit("teleport", { position: [pit.x + window.__world.PIT_RADIUS + 1, 1.5, pit.z] }), fixture.pit);
+    await page.waitForFunction(pit => Math.hypot(window.__playerDebug.x - pit.x, window.__playerDebug.z - pit.z) > window.__world.PIT_RADIUS + .5, fixture.pit);
+    await page.evaluate(pit => window.__bus.emit("teleport", { position: [pit.x, 1.5, pit.z] }), fixture.pit);
+    await page.waitForFunction(lives => window.__run.getState().lives === lives - 1, before.lives);
+    console.log("PASS an opening pit charges once per contact and still hurts on re-entry");
     await page.evaluate(roomId => window.__run.getState().revealSecret(roomId), fixture.roomId);
     const frame = await page.evaluate(() => window.__perf.frames);
     await page.waitForFunction(frame => window.__perf.frames >= frame + 3, frame);
@@ -198,7 +211,13 @@ try {
       window.__bus.emit("teleport", { position: [0, 1.5, 0] });
       run.setState({ wardenRoomId: s.currentRoomId, wardenWounds: 0, wardenStaggerUntil: 0, lastDamageAt: Infinity });
     });
-    await page.waitForFunction(() => !!window.__scene.getObjectByName("creature-warden"));
+    // Mounting the mesh precedes its arrival frame, which sets its spawn.
+    // Wait for that frame before placing the contact fixture on the pit.
+    await page.evaluate(async () => {
+      const { wardenAt } = await import("/src/game/warden/position.ts");
+      window.__wardenContactReady = () => wardenAt.roomId === window.__run.getState().currentRoomId;
+    });
+    await page.waitForFunction(() => window.__wardenContactReady());
     await page.evaluate(pit => window.__scene.getObjectByName("creature-warden").position.set(pit.x, 0, pit.z), fixture.pit);
     await page.waitForFunction(() => window.__contactWounds.some(e => e.source === "pit"));
     await page.waitForFunction(() => window.__trapCaptions.some(line => line.includes("stumbles into the pit")));
@@ -213,7 +232,7 @@ try {
       run.setState({ satchel: ["snare"], wardenRoomId: s.currentRoomId, lastDamageAt: Infinity });
       window.__bus.emit("teleport", { position: [0, 1.5, 0] });
     });
-    await page.waitForFunction(() => !!window.__scene.getObjectByName("creature-warden") && Math.hypot(window.__playerDebug.x, window.__playerDebug.z) < .1);
+    await page.waitForFunction(() => window.__wardenContactReady() && Math.hypot(window.__playerDebug.x, window.__playerDebug.z) < .1);
     await page.keyboard.press("1");
     await page.waitForFunction(() => window.__run.getState().placed.some(d => d.id === "snare" && d.live));
     await page.evaluate(() => {
