@@ -6,7 +6,10 @@ on:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Self-hosted (owner's decision, 2026-10-13): GitHub-hosted jobs are refused while the
+    # account's Actions billing is suspended, so Linux jobs run on the owner's own ARM64 boxes
+    # (the Kinhank and the tablet, Debian in proot, one runner per repo on each).
+    runs-on: [self-hosted, Linux]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -15,7 +18,9 @@ jobs:
           node-version: 22
           cache: yarn
       - name: Install source-check tools
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
+        run: |
+          SUDO=$(command -v sudo || true)
+          $SUDO apt-get update && $SUDO apt-get install -y ripgrep
       - run: yarn install --frozen-lockfile
       - run: npx playwright-core install --with-deps chromium
       - run: yarn verify
@@ -29,7 +34,10 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
   systems:
-    runs-on: ubuntu-latest
+    # Self-hosted (owner's decision, 2026-10-13): GitHub-hosted jobs are refused while the
+    # account's Actions billing is suspended, so Linux jobs run on the owner's own ARM64 boxes
+    # (the Kinhank and the tablet, Debian in proot, one runner per repo on each).
+    runs-on: [self-hosted, Linux]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
