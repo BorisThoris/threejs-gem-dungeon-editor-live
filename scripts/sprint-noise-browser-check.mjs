@@ -78,24 +78,38 @@ try {
     for (const sprint of [false, true]) {
       await resetPosition();
       if (sprint) await page.keyboard.down("ShiftLeft");
+      // Arm observation before pressing Forward: a tool round trip under
+      // software rendering can otherwise consume the entire clear lane.
+      const observation = page.evaluate(async () => {
+        const { playerAt } = await import('/src/game/player/where.ts');
+        const s = window.__run.getState();
+        const half = s.dungeon.rooms.find(room => room.id === s.currentRoomId).size / 2;
+        const samples = [], deadline = performance.now() + 8000;
+        let started = false;
+        while (samples.length < 12 && performance.now() < deadline) {
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          if (!started && playerAt.speed < 0.2) continue;
+          started = true;
+          samples.push({ ...playerAt, heard: window.__derived.hears(),
+            hud: document.querySelector('[data-testid="stealth-status"]').textContent });
+          if (samples.length >= 3 && Math.abs(playerAt.z) >= half - 2) break;
+        }
+        return samples;
+      });
       await page.keyboard.down("KeyW");
       try {
-        await page.waitForFunction(() => Math.hypot(window.__playerDebug.x, window.__playerDebug.z) > 0.4);
-        await page.waitForTimeout(80); // the existing HUD poll samples the moving body
-        const samples = await page.evaluate(async () => {
-          const { playerAt } = await import('/src/game/player/where.ts');
-          const samples = [];
-          for (let i = 0; i < 12; i++) {
-            await new Promise(resolve => requestAnimationFrame(resolve));
-            samples.push({ ...playerAt, hud: document.querySelector('[data-testid="stealth-status"]').textContent });
-          }
-          return samples;
-        });
-        assert.ok(samples.every(sample => sample.gait === (sprint ? "running" : "walking")),
+        const samples = await observation;
+        // A slow renderer can reach the wall during this sample window. Its
+        // correctly stopped body must not be asked to keep saying walking.
+        // Read movement, noise and text together, before another tool round
+        // trip can move the player beyond the observations being asserted.
+        const moving = samples.filter(sample => sample.speed >= 0.2);
+        assert.ok(moving.length >= 3, `${effect}: at least three moving frames exercise the readout: ${JSON.stringify(samples)}`);
+        assert.ok(moving.every(sample => sample.gait === (sprint ? "running" : "walking")),
           `${effect}: gait stays readable between physics steps: ${JSON.stringify(samples)}`);
-        assert.match(await page.getByTestId("stealth-status").innerText(), sprint ? /running/ : /walking/,
-          `${effect}: the readout identifies the gait, not a guessed speed threshold`);
-        assert.equal(await page.evaluate(() => window.__derived.hears()), sprint,
+        assert.ok(moving.some(sample => (sprint ? /running/ : /walking/).test(sample.hud)),
+          `${effect}: the readout identifies the moving gait, not a guessed speed threshold: ${JSON.stringify(samples)}`);
+        assert.ok(moving.every(sample => sample.heard === sprint),
           `${effect}: only actual running makes fresh sprint noise`);
       } finally {
         await page.keyboard.up("KeyW");

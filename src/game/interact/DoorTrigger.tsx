@@ -7,7 +7,7 @@ import { CuboidCollider, RigidBody } from "@react-three/rapier";
 import { useSettings } from "../state/settings";
 import { keysLabel } from "../input/bindings";
 import { barKey } from "../warden/bars";
-import { CLOSE_REACH, DOOR_HEIGHT, DOOR_WIDTH, FLOORS, WALL_THICKNESS } from "../world";
+import { CLOSE_REACH, DOOR_HEIGHT, DOOR_WIDTH, FLOORS, KEEPER_FLOOR, WALL_THICKNESS } from "../world";
 import { InteractTrigger } from "./InteractTrigger";
 
 const KIND_LABEL: Record<string, string> = {
@@ -70,6 +70,7 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
   const toId = room.links[dir];
   const toll = useRun(tollNow);
   const floor = useRun(s => s.floor);
+  const hasBomb = useRun(s => s.satchel.includes("bomb"));
   const stolenGems = useRun(s => s.nestGems + s.thiefHolding);
   const sealed = useRun((s) => s.sealedRoomId === room.id);
   const vaultId = useRun((s) => s.dungeon?.vaultId ?? null);
@@ -191,7 +192,8 @@ export function DoorTrigger({ room, dir }: DoorTriggerProps) {
                 // locked vault do not carry a hint about a thing they will
                 // refuse.
                 (isExit
-                  ? `${knelt ? "Pay the toll and go - now" : "Pay the toll"} (${toll} gems) · ${floor >= FLOORS ? "escape" : `descend to floor ${floor + 1}; no return`}`
+                  ? `${knelt ? "Pay the toll and go - now" : "Pay the toll"} (${toll} gems) · ${floor >= FLOORS ? "choose boss or New Game+" : `descend to floor ${floor + 1}; no return`}`
+                    + (floor === KEEPER_FLOOR - 1 && !hasBomb ? " · no bomb packed; final stairs need one" : "")
                     + (stolenGems > 0 ? ` · leave ${stolenGems} stolen ${stolenGems === 1 ? "gem" : "gems"} behind` : "")
                   : `Open ${target.id === vaultId ? "the vault" : KIND_LABEL[target.kind] ?? "the door"}`) +
                 (isExit || locked ? "" : `   ·   ${touch ? "BAR" : keysLabel(barBinding)} barricades (${stock} left)`)

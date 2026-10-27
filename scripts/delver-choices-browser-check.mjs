@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox", "--mute-audio"] });
 const errors = [];
 try {
-  for (const [id, capacity] of [["courier", 2], ["vagrant", 4]]) {
+  for (const [id, capacity] of [["courier", 12], ["vagrant", 16]]) {
     const page = await browser.newPage();
     page.on("pageerror", error => errors.push(String(error)));
     await page.goto(`http://127.0.0.1:${process.env.PORT ?? 5199}/`);
@@ -49,7 +49,7 @@ try {
       `${id}: a full bag cannot lose gems or consume the shop's bomb`);
     assert.equal(full.enabled, false, `${id}: the offer explains the actual capacity before purchase`);
     assert.match(await page.getByTestId("prompt").innerText(), /satchel is full/i);
-    assert.equal(await page.locator('[data-testid^="satchel-"]').count(), capacity);
+    assert.equal(await page.locator('[data-testid^="satchel-"]').count(), 4, "only the quick belt occupies the HUD");
 
     await page.keyboard.press("1");
     await page.waitForFunction(() => Object.entries(window.__triggers).find(([label]) => label.startsWith("Buy a bomb"))[1].enabled);

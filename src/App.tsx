@@ -34,6 +34,7 @@ import { ItemLog, Satchel } from "./ui/Satchel";
 import { TouchControls } from "./ui/TouchControls";
 import { Transitions } from "./ui/Transitions";
 import { Moments } from "./ui/Moments";
+import { BossStatus, ExpeditionChoice } from "./ui/Expedition";
 
 /**
  * Esc toggles pause while a run is on and no puzzle is up: a puzzle owns
@@ -327,6 +328,8 @@ export default function App() {
       <TouchControls />
       <DeedToast />
       <PuzzleOverlay />
+      <BossStatus />
+      {phase === "crossroads" && <ExpeditionChoice />}
       {paused && phase === "playing" && <PauseMenu />}
       {(phase === "won" || phase === "lost") && <RunSummary />}
     </>

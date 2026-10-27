@@ -1,4 +1,5 @@
-import { ITEMS, ITEM_IDS, SATCHEL_SLOTS, type ItemFamily, type ItemId } from "../items/catalog";
+import { ITEMS, ITEM_IDS, type ItemFamily, type ItemId } from "../items/catalog";
+import { BACKPACK_SLOTS, COURIER_BACKPACK_SLOTS } from "../items/inventory";
 import type { RelicId } from "../relics/catalog";
 import { STARTING_LIVES } from "../world";
 
@@ -46,7 +47,7 @@ export interface Delver {
   satchel: readonly ItemId[];
   /** Families recognized before finding or using an item of that kind. */
   knownFamilies?: readonly ItemFamily[];
-  /** Slots in the satchel, which is not always four. */
+  /** Total backpack capacity, including four quick-access positions. */
   slots: number;
   /** Added to every floor's own starting alarm. */
   alarmBonus: number;
@@ -74,14 +75,14 @@ export const DELVERS: Record<DelverId, Delver> = {
   vagrant: {
     id: "vagrant",
     name: "Vagrant",
-    blurb: "Nothing but the clothes you came in. The dungeon as it is.",
-    brings: "Three lives, four slots, no debts",
+    blurb: "An iron sword and room to carry what you find.",
+    brings: "Three lives, sixteen backpack slots, no debts",
     costs: "Nothing, and nothing extra",
     lives: STARTING_LIVES,
     gems: 0,
     relics: [],
     satchel: [],
-    slots: SATCHEL_SLOTS,
+    slots: BACKPACK_SLOTS,
     alarmBonus: 0,
     alarmFactor: 1,
   },
@@ -95,7 +96,7 @@ export const DELVERS: Record<DelverId, Delver> = {
     gems: 2,
     relics: ["chit"],
     satchel: [],
-    slots: SATCHEL_SLOTS,
+    slots: BACKPACK_SLOTS,
     alarmBonus: 1,
     alarmFactor: 1,
   },
@@ -110,7 +111,7 @@ export const DELVERS: Record<DelverId, Delver> = {
     relics: [],
     satchel: ["snare", "wardstone"],
     knownFamilies: ["device"],
-    slots: SATCHEL_SLOTS,
+    slots: BACKPACK_SLOTS,
     alarmBonus: 0,
     alarmFactor: 1,
   },
@@ -119,12 +120,12 @@ export const DELVERS: Record<DelverId, Delver> = {
     name: "Courier",
     blurb: "Fast hands, small bag. You were never meant to carry much.",
     brings: "The Cutter's Cant: the shop shows you a third thing",
-    costs: "Two satchel slots",
+    costs: "Twelve backpack slots instead of sixteen",
     lives: STARTING_LIVES,
     gems: 0,
     relics: ["cant"],
     satchel: [],
-    slots: 2,
+    slots: COURIER_BACKPACK_SLOTS,
     alarmBonus: 0,
     alarmFactor: 1,
   },
@@ -138,7 +139,7 @@ export const DELVERS: Record<DelverId, Delver> = {
     gems: 0,
     relics: ["hood"],
     satchel: [],
-    slots: SATCHEL_SLOTS,
+    slots: BACKPACK_SLOTS,
     alarmBonus: 0,
     alarmFactor: 2,
   },

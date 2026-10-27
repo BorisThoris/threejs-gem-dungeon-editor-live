@@ -324,7 +324,7 @@ export const BANISH_CALM = 3;
  */
 export const ECHOES_S = 14;
 /** Slots in the satchel. */
-export const SATCHEL_SLOTS = 4;
+export { QUICK_SLOTS as SATCHEL_SLOTS } from "./inventory";
 
 // --- Devices ---------------------------------------------------------------
 

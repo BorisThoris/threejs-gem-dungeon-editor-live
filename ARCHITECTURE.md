@@ -1,7 +1,8 @@
 # Architecture
 
-Gem Dungeon is a first-person dungeon run: find gems, buy your way out of the
-exit, do not die. This document is the map of the code and the one rule it is
+Gem Dungeon is a first-person dungeon run: find gems and equipment, pay the
+floor tolls, then challenge the Crown Warden or carry your gear into a harder
+New Game+ expedition. This document is the map of the code and the one rule it is
 built on.
 
 ## The rule: one owner per fact
@@ -27,8 +28,14 @@ Its `trapSprung` event owns the falling-metal sound, caption, guidance and
 Din impulse. `doorBarred` means the player constructed a barricade; a trap
 must not also claim construction, hammering or a spent kit. The grate check
 holds those visible and simulation responses together.
-The movement probe waits for the visible open-door prompt after expiry. Its
-planner derives wall clearance from the player capsule and wall thickness,
+The movement probe waits for the visible open-door prompt after expiry. If
+damage displaces the player while that offer is being published, it approaches
+again with a bounded retry instead of waiting out of reach. Damage during a
+walk discards the old route and replans from the actual body position. A
+wall-contact start may recover to a fully inset endpoint using capsule and
+wall clearance with a 5 mm contact tolerance; subsequent segments retain the
+planner's extra margin. The planner derives wall clearance from the player
+capsule and wall thickness,
 turns before moving, and permits only outward escape from an existing hazard
 overlap. A focused geometry check preserves that escape without allowing
 solid penetration or crossing hazards; run seed 404 exercises the full route.
@@ -1222,6 +1229,37 @@ Two stores that both claimed the player's stats. So:
   floor, checks orientation and phone sizing, and verifies that route planning
   preserves pause, private room shapes, player marks and Gloom. The pad check
   opens the map through the same pause button using the d-pad and A.
+  `dungeon/knownRoutes.ts` owns the learned doorway graph for both maps and
+  return guidance. Selecting a discovered service, waterwork, landmark, stair
+  or reported nest previews its shortest learned route with a first compass
+  direction. The existing barred-edge path finder supplies the path; a vault
+  or descending stair cannot become an intermediate shortcut. A reported nest
+  teaches a destination without teaching unexplored connections. Blocked and
+  unknown routes remain distinct, and Gloom hides route guidance with the chart.
+  The HUD's existing gem line uses that same route after the toll is gathered;
+  before it is gathered, remembered stolen gems offer a recovery choice.
+  Final-floor guidance reads the real bomb quote, shop stock and satchel space
+  before suggesting the Keeper's stairs. Vow rewards remain deferred until
+  settlement and never count as gems available to pay the current toll.
+  `test:known-routes` compares generated routes against an independent flood;
+  `known-routes-browser-check.mjs` covers real chart selection, pause, barriers,
+  Mapping, Gloom, phone text and replay reset.
+  Previewing remains read-only. The chart's explicit Follow action writes a
+  floor-local `routeTargetId` through `trackRoute`, guarded by `canPlanRoute`.
+  The live HUD and rotating minimap keep following that destination after
+  resuming, using the same learned route and published barrier changes.
+  The HUD retains the gem balance and toll while replacing its automatic
+  direction with the chosen route; the floor counter stays visible and its
+  long place name returns when following stops. Its brief wording fits beside combat.
+  Arrival remains visible until the player stops following or chooses another
+  destination. Gloom hides directions without erasing the choice, and the
+  paused chart can still stop following. Puzzles and transitions prevent
+  route changes; descent, replay and quitting clear the destination.
+  `rooms/services.ts` owns its short label beside the discovered-place names.
+  While a route is explicitly followed, passive rubbing and landmark directions
+  wait; stopping restores them from their existing knowledge. Combat warnings
+  remain visible, so selecting a goal cannot silence a threat or issue two
+  competing sets of directions.
   Both maps draw each learned doorway once, with its endpoints taken from
   the two room footprints. Barricade crosses read the store's `barricades`;
   temporary grate bars read `barredNow` and its existing expiry publication.
@@ -1698,6 +1736,13 @@ src/
   editor/                dev only: rooms, props, surfaces, mosaic
 ```
 
+The penultimate floor's preparation line and final-floor bomb objective share
+`hudLines.ts`'s purchase guidance, using the live shop payment, stock and
+satchel facts supplied by `Hud`. The stair prompt checks carried equipment
+before the irreversible descent and warns about a missing bomb. It does not
+change payment or travel rules. Core-flow coverage follows the prompt through
+packing and removing a bomb; the route check covers preparation before descent.
+
 ## How a run works
 
 1. `startRun(seed)` generates a dungeon: a random walk on a grid, every room
@@ -1861,6 +1906,15 @@ running, and the score is the one thing in the mix allowed to be turned
 down until they clear it.
 
 ## Verification
+
+The runner normally owns a fresh Vite server. For Windows isolation runs where
+starting Vite inside the capped process tree is unreliable, start a task-owned
+server first and pass `--external-port=<localhost-port>` to `scripts/verify.mjs`.
+Keep the browser runner inside the noninteractive launcher. The report records
+the external server and port; the runner never stops that caller-owned server,
+including after a failed check. Stop it explicitly after verification, and do
+not edit runtime sources during the run. `test:verification` checks both the
+passing and failing external-server paths and rejects invalid port arguments.
 
 The runner replaces progress reports atomically. Brief Windows file locks
 receive bounded retries; persistent locks fail without truncating the previous
@@ -2138,3 +2192,61 @@ the store it is writing to.
   "1 rooms" on the last screen a new player sees. What it turns up gets a
   check in `test:smoke` or `test:pad` afterwards, run against the old code
   first to see it go red.
+
+
+## Backpack and weapons
+
+`items/inventory.ts` owns backpack and quick-belt capacities. Delvers carry
+16 consumables (Courier 12); the first four positions remain available to the
+existing keyboard, controller and touch actions. Paused `swapItems` exchanges
+occupied slots without changing knowledge, quantity or run time. Consuming a
+slot still shifts the remaining items forward. `SatchelInspection` exposes the
+whole backpack and belt assignment; `Satchel` renders only the quick belt.
+
+`items/weapons.ts` owns weapon damage, reach, arc, charge, recovery and shop
+prices, plus base creature health. The run store owns the equipped weapon,
+owned weapon collection and remaining creature health. Player input, attack
+resolution, HUD and hand animation read that same table. `shove` is the retained
+input/action name for weapon attacks as well as unarmed defence. Weapons survive
+ordinary descent; creature health resets on the next floor. A slain Warden
+cannot wake again on that floor. Equipment purchases require a paused player
+inside a shop and use the existing passage-reserving payment owner.
+`test:equipment` covers purchase guards, ownership, geometry and real store
+attack damage/cooldown/death. Browser backpack checks cover capacity, rearranging,
+unknown-item privacy, phone layout and controller use.
+
+`progression.ts` owns the NG+ seed step, exponential enemy health/damage
+multiplier, boss health/reward and alternating warning-zone timing. Final stairs
+enter `crossroads`, pausing the run clock until a choice is made. Continuing
+calls the existing run initializer with an explicit carried-state projection:
+weapons, consumables, relics, identities/charges, gems, lives and oil persist;
+room-local resources and effects reset. Carried relics also drive the next
+floor's generation and Full Count selection. Fresh runs reset NG+.
+
+The Crown Warden uses an appended 18m square chamber rendered through the
+existing Room/collision owner. Floor roaming drivers stop during the encounter;
+the bomb driver remains active. `bossBeat` and `bossZoneHits` define alternating
+inner/outer attacks. The store charges damage once per beat; the renderer draws
+those exact warning zones. `woundBoss` owns melee/bomb damage, terminal victory
+and the one-time gem reward. Arena readiness starts the attack clock and emits
+roomEntered to clear the doorway blackout. Victory may continue through the
+same NG+ action. The doubling curve has a finite numeric ceiling at cycle 40.
+
+`test:progression` covers three carried cycles, fresh seeds, actual scaled damage
+and health, boss pause/timing/zones, melee victory and one-time rewards. The
+focused browser check stages generated exit fixtures, then uses real controls
+for the choices and boss combat. On 2026-10-27, the separate movement-only
+seed-11 walk completed three floors and 19 doors with earned recovery and bomb
+purchases, entered the crossroads, carried supplies into NG+, and reset into
+a fresh run. The boss fixture passed real movement/sprint/melee victory and
+continuation. The affected browser suite passed across the initial batch and
+focused HUD correction; the production web build passed rendering, controls,
+equipment switching, probe removal and legacy-settings startup checks.
+These are automated checks, not an unassisted player study or a fresh run of
+the complete desktop/full/system gates.
+
+The viewmodel palette retains canonical colours for reused hand materials
+across equipment changes. Weapon materials remount for the new weapon; taking
+a snapshot of an already-dimmed hand on each swap would compound its shading.
+The equipment browser check repeats swaps and asserts the ambient floor, and
+the crowded-HUD check includes NG+ with a long weapon name.

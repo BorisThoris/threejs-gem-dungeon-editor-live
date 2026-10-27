@@ -18,6 +18,7 @@ import { usePadMenu } from "./padMenu";
 import { Minimap } from "./Minimap";
 import { SatchelInspection } from "./SatchelInspection";
 import { RelicInspection } from "./RelicInspection";
+import { Equipment } from "./Equipment";
 
 const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
 
@@ -45,6 +46,7 @@ export function PauseMenu() {
           <Minimap expanded />
           <p style={{ ...body, fontSize: text.small, marginBottom: 6 }}>
             North up. The arrow is you. Only visited or mapped rooms show their outline.
+            Select a remembered destination to trace a route through learned doorways.
           </p>
           <p style={{ ...body, fontSize: text.small, marginBottom: 0 }}>
             E stairs · V locked vault · N stolen loot · ? your mark.<br />
@@ -56,6 +58,7 @@ export function PauseMenu() {
           </p>
         </div>}
         <SatchelInspection />
+        <Equipment />
         <RelicInspection />
         {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
         <Naming />

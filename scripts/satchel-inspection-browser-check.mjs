@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox", "--mute-audio"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -17,9 +17,9 @@ try {
   await page.keyboard.press("Escape");
   await page.getByTestId("pause-menu").waitFor();
   const pausedClock = await page.evaluate(() => window.__derived.clock());
-  assert.equal(await page.getByRole("button", { name: "Inspect satchel" }).count(), 1,
+  assert.equal(await page.getByTestId("pause-satchel").count(), 1,
     "a paused player can review carried items before spending them");
-  await page.getByRole("button", { name: "Inspect satchel" }).click();
+  await page.getByTestId("pause-satchel").click();
   const row = i => page.getByTestId(`inspect-slot-${i}`);
   await row(0).click();
   assert.match(await row(0).innerText(), /blessed.*Potion of Healing/s);
@@ -51,10 +51,10 @@ try {
   await page.keyboard.press("1");
   await page.waitForFunction(() => window.__run.getState().satchel.length === 3);
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Inspect satchel" }).click();
+  await page.getByTestId("pause-satchel").click();
   assert.match(await row(0).innerText(), /Mapping/, "inspection follows the real slot after consumption");
   assert.equal(await page.getByTestId("inspect-slot-3").count(), 0);
-  await page.getByRole("button", { name: "Hide satchel" }).click();
+  await page.getByTestId("pause-satchel").click();
   await page.evaluate(() => {
     const pad = { id: "Inspection check", index: 0, connected: true, mapping: "standard", timestamp: 0,
       axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
@@ -81,6 +81,33 @@ try {
   assert.match(await row(0).innerText(), /brazier/, "d-pad and A open the learned effect at phone text size");
   await press(1);
   await page.getByTestId("pause-menu").waitFor({ state: "detached" });
+  await page.evaluate(() => {
+    window.__run.setState({ satchel: ["healing", "mapping", "mire", "snare", "bomb", "wardstone"],
+      identified: ["healing", "mapping"], paused: false });
+  });
+  assert.equal(await page.evaluate(() => window.__run.getState().swapItems(4, 0)), false,
+    "combat cannot silently rearrange the belt");
+  await page.keyboard.press("Escape");
+  await page.getByTestId("pause-satchel").click();
+  await row(4).click();
+  const beforeSwap = await page.evaluate(() => ({ items: window.__run.getState().satchel,
+    known: window.__run.getState().identified, clock: window.__derived.clock() }));
+  await page.getByTestId("inventory-to-0").click();
+  const afterSwap = await page.evaluate(() => ({ items: window.__run.getState().satchel,
+    known: window.__run.getState().identified, clock: window.__derived.clock() }));
+  assert.deepEqual(afterSwap.items, ["bomb", "mapping", "mire", "snare", "healing", "wardstone"]);
+  assert.deepEqual([...afterSwap.items].sort(), [...beforeSwap.items].sort(), "all loot survives exchange");
+  assert.deepEqual(afterSwap.known, beforeSwap.known, "moving loot grants no identification");
+  assert.equal(afterSwap.clock, beforeSwap.clock);
+  for (const [from, to] of [[-1, 0], [6, 0], [1.5, 0], [0, 99], [0, 0]]) {
+    assert.equal(await page.evaluate(([from, to]) => window.__run.getState().swapItems(from, to), [from, to]), false);
+  }
+  assert.deepEqual(await page.evaluate(() => window.__run.getState().satchel), afterSwap.items);
+  await page.getByTestId("pause-resume").click();
+  await page.keyboard.press("1");
+  await page.waitForFunction(() => window.__run.getState().placed.some(p => p.id === "bomb"));
+  assert.deepEqual(await page.evaluate(() => window.__run.getState().satchel), afterSwap.items.slice(1),
+    "the promoted item is usable through the existing belt key");
   assert.deepEqual(errors, []);
   console.log("PASS known effects, charge costs, unknown privacy, paused input/clock, phone layout, changed inventory and controller inspection");
 } finally { await browser.close(); }

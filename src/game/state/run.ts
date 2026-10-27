@@ -2,9 +2,13 @@ import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 
 import { bus, type BusEvents } from "../events";
+import { swapInventorySlots } from "../items/inventory";
+import { ENEMY_HEALTH, WEAPONS, weaponFor, type WeaponId } from "../items/weapons";
+import { expeditionPower, expeditionHealth, expeditionSeed, BOSS_ROOM_ID, BOSS_HEALTH, BOSS_REWARD, bossBeat, bossZoneHits } from "../progression";
 import type { DamageSource } from "../player/damage";
 import { footingCarry, type Footing } from "../rooms/underfoot";
 import { generateRunFloor } from "../dungeon/runFloor";
+import { knownFloorGraph } from "../dungeon/knownRoutes";
 import { waterStation, waterLevel, WATER_CACHE_GEMS } from "../worldbuilding/watercourse";
 import { serviceCatch } from "../worldbuilding/serviceTrail";
 import { bellcapsFor, bellcapExposed, BELLCAP_COOLDOWN } from "../worldbuilding/bellcaps";
@@ -23,7 +27,6 @@ import {
   MIRE_LOUDNESS,
   ITEM_IDS,
   RATTLE_ALARM,
-  SATCHEL_SLOTS,
   SNARE_HOLD_S,
   SNARE_RADIUS,
   SWIFTNESS_S,
@@ -42,7 +45,7 @@ import { modifiers, type RelicId } from "../relics/catalog";
 import { hoardFloorFor } from "../relics/offer";
 import { paceFor, type Pace, type PaceEffect } from "../systems/pace";
 import { playerAt } from "../player/where";
-import { clearShove, inShoveArc, SHOVE_COOLDOWN_S, SHOVE_STAGGER_S } from "../player/combat";
+import { clearShove, inShoveArc, SHOVE_STAGGER_S } from "../player/combat";
 import { wardenAt } from "../warden/position";
 import * as ladder from "../ladder/state";
 import { leaveTrail } from "../ladder/pursuit";
@@ -116,7 +119,10 @@ import {
   tollForFloor,
 } from "../world";
 
-export type Phase = "menu" | "playing" | "won" | "lost";
+export type Phase = "menu" | "playing" | "crossroads" | "won" | "lost";
+
+type ExpeditionCarry = Pick<RunState, "newGamePlus" | "satchel" | "weapons" | "equippedWeapon" |
+  "relics" | "identified" | "appearances" | "charges" | "gems" | "lives" | "maxLives" | "oil">;
 
 /**
  * What the Cutpurse is doing. It is only ever in the room the player is
@@ -169,6 +175,11 @@ export interface RunState {
   loseRat: (roomId: string, index: number) => void;
   burstBellcap: (index: number) => boolean;
   phase: Phase;
+  newGamePlus: number;
+  bossActive: boolean;
+  bossHealth: number;
+  bossStartedAt: number;
+  bossLastBeat: number;
   paused: boolean;
   dungeon: Dungeon | null;
   /** 1-based; the run is won on leaving floor FLOORS. */
@@ -221,8 +232,11 @@ export interface RunState {
   relics: RelicId[];
   /** The remaining floor selected when The Full Count is completed. */
   fullCountFloor: number | null;
-  /** What is in the satchel, oldest first. Four slots, used with 1-4. */
+  /** Backpack contents; the first four positions are the quick-access belt. */
   satchel: ItemId[];
+  weapons: WeaponId[];
+  equippedWeapon: WeaponId;
+  enemyHealth: { warden: number; harrier: number };
   /** Items whose appearance the player has worked out, this run. */
   identified: ItemId[];
   /** Which look means which item, this run. Fixed when the run starts. */
@@ -494,6 +508,8 @@ export interface RunState {
    * the game reads a mark, which is what makes it worth making.
    */
   marks: string[];
+  /** An explicitly followed destination on this floor; previewing is local UI. */
+  routeTargetId: string | null;
   /**
    * Rooms whose draft the delver has FELT, which is a different thing
    * from a room the game knows has a crack in it.
@@ -532,7 +548,11 @@ export interface RunState {
   /** The same clock, read when the run is won or lost. */
   endedAt: number;
 
-  startRun: (seed?: number, delver?: DelverId) => void;
+  startRun: (seed?: number, delver?: DelverId, carry?: ExpeditionCarry) => void;
+  continueExpedition: () => boolean;
+  beginBoss: () => boolean;
+  tickBoss: () => void;
+  woundBoss: (damage: number) => boolean;
   quitToMenu: () => void;
   pause: () => void;
   resume: () => void;
@@ -565,6 +585,9 @@ export interface RunState {
   takeItem: (id: ItemId, from?: string, at?: readonly [number, number]) => boolean;
   /** Drink or read what is in a slot, and learn what it was. */
   useItem: (slot: number) => void;
+  swapItems: (from: number, to: number) => boolean;
+  equipWeapon: (id: WeaponId) => boolean;
+  buyWeapon: (id: WeaponId) => boolean;
   /**
    * Put the device in a slot down where the player is standing. Called by
    * `useItem` for anything in the device family, so 1-4 is still the one
@@ -758,6 +781,8 @@ export interface RunState {
   markBombBought: () => void;
   /** Mark the room the player is in on the map, or unmark it. */
   toggleMark: () => void;
+  /** Follow or clear a learned destination from the paused floor chart. */
+  trackRoute: (roomId: string | null) => boolean;
   /** A draft was felt here, by standing in it. */
   feltDraft: (roomId: string) => void;
   /** The wisp came out, or went out. Called from the frame loop when the light's visibility changes. */
@@ -783,6 +808,10 @@ export interface RunState {
 /** The player is in control: not on a menu, not mid-transition, not in a modal. */
 export const canControl = (s: RunState): boolean =>
   s.phase === "playing" && !s.paused && !s.transitioning && s.inputLocks === 0;
+
+/** Route changes belong to deliberate planning on the paused chart. */
+export const canPlanRoute = (s: RunState): boolean =>
+  s.phase === "playing" && s.paused && !s.transitioning && s.inputLocks === 0;
 
 let transitionFallback: number | null = null;
 
@@ -835,6 +864,11 @@ const NO_PLEDGE: FloorRecord = { raisedLantern: false, barredADoor: false, spent
 export const useRun = create<RunState>()(
   subscribeWithSelector((set, get) => ({
     phase: "menu",
+    newGamePlus: 0,
+    bossActive: false,
+    bossHealth: 0,
+    bossStartedAt: 0,
+    bossLastBeat: -1,
     paused: false,
     dungeon: null,
     waterOpenedAt: null,
@@ -862,6 +896,9 @@ export const useRun = create<RunState>()(
     relics: [],
     fullCountFloor: null,
     satchel: [],
+    weapons: ["fists", "sword"],
+    equippedWeapon: "sword",
+    enemyHealth: { ...ENEMY_HEALTH },
     identified: [],
     delver: DEFAULT_DELVER,
     appearances: appearancesFor(0),
@@ -935,6 +972,7 @@ export const useRun = create<RunState>()(
     bombBought: false,
     broken: [],
     marks: [],
+    routeTargetId: null,
     draftsFelt: [],
     wispOut: false,
     wardenMet: false,
@@ -989,7 +1027,7 @@ export const useRun = create<RunState>()(
       return true;
     },
 
-    startRun: (seed, delverId) => {
+    startRun: (seed, delverId, carry) => {
       const floor = 1;
       // The one they asked for, the one they last used, or the Vagrant.
       // Falling back rather than throwing because this comes off a saved
@@ -997,10 +1035,15 @@ export const useRun = create<RunState>()(
       // save unable to start a run.
       const delver = delverOr(delverId ?? useRecords.getState().lastDelver);
       // What a delver opens with can already bias their first floor.
-      const dungeon = generateRunFloor(seed, floor, modifiers(delver.relics).biasesRooms);
+      const dungeon = generateRunFloor(seed, floor, modifiers(carry?.relics ?? delver.relics).biasesRooms);
       if (transitionFallback) window.clearTimeout(transitionFallback);
       set({
         phase: "playing",
+        newGamePlus: 0,
+        bossActive: false,
+        bossHealth: 0,
+        bossStartedAt: 0,
+        bossLastBeat: -1,
         paused: false,
         dungeon,
         floor,
@@ -1025,8 +1068,11 @@ export const useRun = create<RunState>()(
         failed: [],
         trials: {},
         relics: [...delver.relics],
-        fullCountFloor: modifiers(delver.relics).fullCount ? hoardFloorFor(dungeon.seed, FLOORS) : null,
+        fullCountFloor: modifiers(carry?.relics ?? delver.relics).fullCount ? hoardFloorFor(dungeon.seed, FLOORS) : null,
         satchel: [...delver.satchel],
+        weapons: ["fists", "sword"],
+        equippedWeapon: "sword",
+        enemyHealth: expeditionHealth(carry?.newGamePlus ?? 0),
         identified: knownFrom(delver),
         appearances: appearancesFor(dungeon.seed),
         charges: chargesFor(dungeon.seed),
@@ -1106,6 +1152,7 @@ export const useRun = create<RunState>()(
         bombBought: false,
         broken: [],
         marks: [],
+        routeTargetId: null,
         draftsFelt: [],
         wispOut: false,
         wardenLure: null,
@@ -1122,6 +1169,8 @@ export const useRun = create<RunState>()(
         // run clock immediately after it is exactly this.
         startedAt: performance.now() / 1000,
         endedAt: 0,
+        ...carry,
+        ...(carry ? { gemsTotal: carry.gems } : {}),
       });
       const spawn = spawnAtStart();
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
@@ -1133,9 +1182,64 @@ export const useRun = create<RunState>()(
       );
     },
 
+    continueExpedition: () => {
+      const s = get();
+      if (s.phase !== "crossroads" && s.phase !== "won") return false;
+      const newGamePlus = s.newGamePlus + 1;
+      const carry: ExpeditionCarry = { newGamePlus, satchel: [...s.satchel], weapons: [...s.weapons],
+        equippedWeapon: s.equippedWeapon, relics: [...s.relics], identified: [...s.identified],
+        appearances: { ...s.appearances }, charges: { ...s.charges }, gems: s.gems,
+        lives: s.lives, maxLives: s.maxLives, oil: s.oil };
+      get().startRun(expeditionSeed(s.runSeed, newGamePlus), s.delver, carry);
+      bus.emit("notice", `New Game+ ${newGamePlus}: enemy health and incoming damage ×${expeditionPower(newGamePlus)}. Your equipment carries on.`);
+      return true;
+    },
+
+    beginBoss: () => {
+      const s = get();
+      if (s.phase !== "crossroads" || !s.dungeon) return false;
+      const room: Room = { id: BOSS_ROOM_ID, seed: s.dungeon.seed, kind: "start", shape: "square", size: 18,
+        grid: { x: 0, z: 0 }, links: {} };
+      const spent = s.pausedAt > 0 ? performance.now() / 1000 - s.pausedAt : 0;
+      const now = runClock(s);
+      set({ phase: "playing", paused: false, pausedAt: 0, pausedFor: s.pausedFor + spent,
+        dungeon: { ...s.dungeon, rooms: [...s.dungeon.rooms.filter(r => r.id !== BOSS_ROOM_ID), room] },
+        currentRoomId: room.id, visited: [...s.visited, room.id], transitioning: true,
+        bossActive: true, bossHealth: BOSS_HEALTH * expeditionPower(s.newGamePlus),
+        bossStartedAt: now, bossLastBeat: -1, floorEnteredAt: now,
+        wardenRoomId: null, harrierSlain: true, reaperAwake: false, thiefPhase: "away",
+        inputLocks: 0, shoveChargingAt: null, shoveReadyAt: 0 });
+      bus.emit("teleport", { position: [0, 1.5, 6], yaw: 0 });
+      bus.emit("lookSet", { yaw: 0, pitch: 0 });
+      return true;
+    },
+
+    woundBoss: (damage) => {
+      const s = get();
+      if (!s.bossActive || !canControl(s) || !Number.isFinite(damage) || damage <= 0) return false;
+      const bossHealth = Math.max(0, s.bossHealth - damage);
+      set({ bossHealth });
+      if (bossHealth === 0) {
+        set({ bossActive: false, phase: "won", endedAt: runClock(s), gems: get().gems + BOSS_REWARD,
+          gemsTotal: get().gemsTotal + BOSS_REWARD });
+        rememberRun(get());
+        bus.emit("runWon");
+      }
+      return true;
+    },
+
+    tickBoss: () => {
+      const s = get();
+      if (!s.bossActive || !canControl(s)) return;
+      const beat = bossBeat(runClock(s) - s.bossStartedAt);
+      if (beat.warning || s.bossLastBeat >= beat.index) return;
+      set({ bossLastBeat: beat.index });
+      if (bossZoneHits(playerAt.x, playerAt.z, beat.outer)) get().damage("keeper");
+    },
+
     quitToMenu: () => {
       if (transitionFallback) window.clearTimeout(transitionFallback);
-      set({ phase: "menu", paused: false, dungeon: null, currentRoomId: null, transitioning: false, inputLocks: 0 });
+      set({ phase: "menu", paused: false, dungeon: null, currentRoomId: null, routeTargetId: null, transitioning: false, inputLocks: 0 });
     },
 
     pause: () => {
@@ -1153,7 +1257,7 @@ export const useRun = create<RunState>()(
       const s = get();
       const room = currentRoom(s);
       const toId = room?.links[dir];
-      if (!s.dungeon || !room || !toId || !canControl(s)) return;
+      if (!s.dungeon || !room || !toId || !canControl(s) || s.bossActive) return;
       const to = roomById(s.dungeon, toId);
       if (!to) return;
       // The Keeper holds the stairs: the store refuses the exit while it
@@ -1235,6 +1339,11 @@ export const useRun = create<RunState>()(
         window.clearTimeout(transitionFallback);
         transitionFallback = null;
       }
+      if (s.bossActive && roomId === BOSS_ROOM_ID) {
+        set({ transitioning: false, bossStartedAt: runClock(s), bossLastBeat: -1 });
+        bus.emit("roomEntered", { roomId });
+        return;
+      }
       if (s.dungeon && roomId === s.dungeon.endId && s.phase === "playing") {
         /**
          * The stair settles the promise, and it settles it on the way out
@@ -1256,9 +1365,7 @@ export const useRun = create<RunState>()(
           bus.emit("pledgeSettled", { id: s.pledge, kept, paid });
         }
         if (s.floor >= FLOORS) {
-          set({ transitioning: false, phase: "won", endedAt: runClock(s) });
-          rememberRun(get());
-          bus.emit("runWon");
+          set({ transitioning: false, phase: "crossroads", paused: true, pausedAt: performance.now() / 1000 });
           return;
         }
         // Down a floor: a fresh dungeon, the same player. The screen is
@@ -1269,6 +1376,7 @@ export const useRun = create<RunState>()(
         const dungeon = generateRunFloor(s.runSeed, floor, modifiers(s.relics).biasesRooms);
         set({
           floor,
+          enemyHealth: expeditionHealth(s.newGamePlus),
           dungeon,
           currentRoomId: dungeon.startId,
           visited: [dungeon.startId],
@@ -1370,6 +1478,7 @@ export const useRun = create<RunState>()(
           bombBought: false,
           broken: [],
           marks: [],
+          routeTargetId: null,
           draftsFelt: [],
           wispOut: false,
           wardenLure: null,
@@ -1394,7 +1503,7 @@ export const useRun = create<RunState>()(
       // as far from the player as the floor allows.
       const after = get();
       if (
-        !after.wardenRoomId &&
+        !after.wardenRoomId && after.enemyHealth.warden > 0 &&
         after.dungeon &&
         after.floorRooms >= floorRules(after.floor).wardenGrace
       ) {
@@ -1473,7 +1582,7 @@ export const useRun = create<RunState>()(
       // the run's POWER, which is the one thing the split forbids: what
       // is bought changes the odds a run faces, never how much it can
       // take. Nothing replaces it, because nothing should.
-      const lives = Math.max(0, s.lives - 1);
+      const lives = Math.max(0, s.lives - expeditionPower(s.newGamePlus));
       set({ lives, lastDamageAt: now, lastDamageSource: source });
       bus.emit("damaged");
       if (lives === 0) {
@@ -1537,6 +1646,30 @@ export const useRun = create<RunState>()(
         }
       }
       bus.emit("itemTaken", { id, x: at?.[0], z: at?.[1] });
+      return true;
+    },
+
+    equipWeapon: (id) => {
+      const s = get();
+      if (!canPlanRoute(s) || !s.weapons.includes(id) || s.equippedWeapon === id) return false;
+      set({ equippedWeapon: id, shoveChargingAt: null });
+      return true;
+    },
+
+    buyWeapon: (id) => {
+      const s = get();
+      if (!canPlanRoute(s) || roomNow(s)?.kind !== "shop" || !Object.hasOwn(WEAPONS, id) || s.weapons.includes(id)) return false;
+      if (!get().spendAtShop(WEAPONS[id].price)) return false;
+      set({ weapons: [...s.weapons, id], equippedWeapon: id, shoveChargingAt: null });
+      return true;
+    },
+
+    swapItems: (from, to) => {
+      const s = get();
+      if (s.phase !== "playing" || !s.paused || s.transitioning || s.inputLocks !== 0) return false;
+      const satchel = swapInventorySlots(s.satchel, from, to);
+      if (!satchel) return false;
+      set({ satchel });
       return true;
     },
 
@@ -2528,6 +2661,21 @@ export const useRun = create<RunState>()(
       bus.emit("mapMarked", { roomId: id, marked: !marked });
     },
 
+    trackRoute: (roomId) => {
+      const s = get();
+      if (!canPlanRoute(s)) return false;
+      if (roomId === null) { set({ routeTargetId: null }); return true; }
+      if (!s.dungeon || mapIsDark(s)) return false;
+      const nestId = s.nestSeen && (s.nestGems > 0 || s.nestKey) ? s.nestRoomId : null;
+      const graph = knownFloorGraph(s.dungeon, s.visited, s.mapped, nestId);
+      // A charted outline is not a discovered place. Only the stairs and a
+      // reported nest can be followed before standing in their rooms.
+      if (!graph.some(room => room.id === roomId)
+        || !(s.visited.includes(roomId) || roomId === s.dungeon.endId || roomId === nestId)) return false;
+      set({ routeTargetId: roomId });
+      return true;
+    },
+
     wakeHarrier: () => {
       const s = get();
       if (s.harrierAwake || s.harrierSlain || s.phase !== "playing") return;
@@ -2546,38 +2694,47 @@ export const useRun = create<RunState>()(
       const watcher = dressing.sentry ?? null;
       const standing = placementsFor(room, s.dungeon.seed, dressing)
         .filter((p) => !s.broken.includes(breakKey(room, p)));
+      const weapon = weaponFor(s);
       let blocked = false;
       const reaches = (target: { x: number; z: number; roomId: string | null }) => {
-        if (target.roomId !== room.id || !inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ)) return false;
+        if (target.roomId !== room.id || !inShoveArc(target.x - playerAt.x, target.z - playerAt.z, forwardX, forwardZ, weapon.reach, weapon.arc)) return false;
         if (clearShove(room, playerAt, target, standing, watcher)) return true;
         blocked = true;
         return false;
       };
-      set({ shoveReadyAt: now + SHOVE_COOLDOWN_S });
+      set({ shoveReadyAt: now + weapon.recovery });
       const outcomes: string[] = [];
+      if (s.bossActive && weapon.damage > 0 && reaches({ x: 0, z: 0, roomId: BOSS_ROOM_ID })) {
+        get().woundBoss(weapon.damage);
+        outcomes.push(`The Crown Warden: ${get().bossHealth} health.`);
+      }
       if (s.thiefPhase !== "away" && reaches(cutpurseAt)) {
         get().thiefCaught();
         const recovered = stolenLootLabel(s.thiefHolding, s.thiefKey);
         outcomes.push(`Cutpurse driven off${recovered ? `; ${recovered} recovered` : ""}.`);
       }
       if (s.harrierAwake && !s.harrierSlain && !harrierAt.away && reaches(harrierAt)) {
-        // A defence buys space; bombs still own downing it onto traps.
-        set({ harrierRetreatUntil: Math.max(s.harrierRetreatUntil, now + 4) });
-        outcomes.push("Harrier driven off.");
+        const health = Math.max(0, s.enemyHealth.harrier - weapon.damage);
+        set({ enemyHealth: { ...get().enemyHealth, harrier: health }, harrierRetreatUntil: Math.max(s.harrierRetreatUntil, now + 4) });
+        if (health === 0) get().slayHarrier();
+        outcomes.push(health === 0 ? "Harrier slain." : weapon.damage ? `Harrier hit: ${health} health.` : "Harrier driven off.");
       }
       if (s.wardenRoomId === room.id && reaches(wardenAt)) {
-        set({ wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
-        outcomes.push("Warden staggered; move now.");
+        const health = Math.max(0, s.enemyHealth.warden - weapon.damage);
+        set({ enemyHealth: { ...get().enemyHealth, warden: health },
+          wardenRoomId: health === 0 ? null : s.wardenRoomId,
+          wardenStaggerUntil: Math.max(s.wardenStaggerUntil, now + SHOVE_STAGGER_S) });
+        outcomes.push(health === 0 ? "Warden slain. This floor is quieter." : weapon.damage ? `Warden hit: ${health} health.` : "Warden staggered; move now.");
       }
       const hit = outcomes.length > 0;
       const reaper = !hit && s.reaperAwake && reaches(reaperAt);
       const keeper = !hit && !reaper && keeperHolds(s) && keeperPostsFor(s.dungeon, s.floor)
         .some((p) => p.roomId === room.id && reaches({ ...keeperPostPosition(room, p.dir), roomId: room.id }));
-      bus.emit("notice", hit ? `Shove! ${outcomes.join(" ")}` : reaper
+      bus.emit("notice", hit ? `${weapon.name}! ${outcomes.join(" ")}` : reaper
         ? "Shoves pass through the Reaper. Sprint to the stairs; a blast buys time." : keeper
           ? "Shoves cannot move the Keeper. Gather the toll, then use a bomb and escape while it kneels." : blocked
-        ? "Shove blocked by solid cover. Step around it."
-        : "Shove missed. Face the threat and let it come closer.");
+        ? "Attack blocked by solid cover. Step around it."
+        : "Attack missed. Face the threat and let it come closer.");
       return true;
     },
 
@@ -2606,7 +2763,7 @@ export const useRun = create<RunState>()(
       if (!s.harrierAwake || s.harrierSlain) return;
       set({ harrierSlain: true, harrierDownedUntil: 0 });
       bus.emit("harrierSlain");
-      bus.emit("notice", "The harrier is spiked. The floor is quieter.");
+      bus.emit("notice", "The Harrier is defeated. The floor is quieter.");
     },
 
     stallKeeper: () => {
@@ -2751,6 +2908,7 @@ export const useRun = create<RunState>()(
       }
       // The player, if they did not walk - and nothing stood between.
       if (s.currentRoomId === roomId && inBlast(playerAt.x, playerAt.z) && !shield) get().damage("bomb");
+      if (s.bossActive && roomId === BOSS_ROOM_ID && inBlast(0, 0)) get().woundBoss(6);
       /**
        * Who the blast reaches is the receiver's business, not the bomb's.
        *

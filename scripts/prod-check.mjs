@@ -136,6 +136,7 @@ const browser = await chromium.launch({
   executablePath: CHROMIUM,
   args: [
     "--no-sandbox",
+    "--mute-audio",
     "--use-gl=angle",
     "--use-angle=swiftshader",
     "--enable-unsafe-swiftshader",
@@ -292,6 +293,19 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(1200);
 const paused = await page.evaluate(() => document.body.innerText);
 ok("Escape opens the pause menu", /resume|quit|paused/i.test(paused), paused.slice(0, 60).replace(/\n/g, " · "));
+
+// Exercise shipped equipment through visible controls, without development probes.
+const sword = page.getByTestId("weapon-sword");
+const fists = page.getByTestId("weapon-fists");
+await sword.waitFor();
+ok("a fresh shipped run starts with the iron sword equipped", await sword.isDisabled());
+await fists.click();
+ok("the shipped equipment menu can switch to bare hands", await fists.isDisabled() && await sword.isEnabled());
+await sword.click();
+ok("owned weapons can be re-equipped without a shop", await sword.isDisabled() && await fists.isEnabled());
+await page.getByTestId("pause-resume").click();
+await page.getByTestId("shove-status").filter({ hasText: "IRON SWORD" }).waitFor();
+ok("the shipped HUD reflects the equipped weapon", true);
 
 ok("no errors on the console or off it", errors.length === 0, errors.slice(0, 2).join(" | "));
 

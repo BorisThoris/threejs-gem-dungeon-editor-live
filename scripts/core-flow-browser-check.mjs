@@ -1,17 +1,24 @@
 /** Fast browser gate for the menu, world mount, and one real door transition. */
 import assert from "node:assert/strict";
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] || process.env.PORT || "5199";
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+let page;
 try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto(`http://127.0.0.1:${port}/`);
-  await page.locator('[data-testid="menu-start"]').click();
-  await page.waitForFunction(() => window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
+  // Use the player's seeded replay control so failures name a repeatable floor.
+  await page.getByTestId("menu-start").waitFor();
+  await page.getByTestId("menu-records").click();
+  await page.getByTestId("records-seed").fill(process.env.CORE_SEED ?? "11");
+  await page.getByTestId("records-run-seed").click();
+  await page.waitForFunction(() => window.__playerDebug && window.__run?.getState().phase === "playing" && !window.__run.getState().transitioning);
   const first = await page.evaluate(() => {
     const s = window.__run.getState();
     window.__run.setState({ lastDamageAt: 1e9 });
@@ -91,7 +98,7 @@ try {
     const room = state.dungeon.rooms.find(candidate => Object.values(candidate.links).includes(state.dungeon.endId));
     const dir = Object.keys(room.links).find(key => room.links[key] === state.dungeon.endId);
     const [dx, , dz] = window.__layout.doorPosition(room, dir);
-    run.setState({ currentRoomId: room.id, transitioning: room.id !== state.currentRoomId, lastDamageAt: 1e9 });
+    run.setState({ currentRoomId: room.id, transitioning: room.id !== state.currentRoomId, lastDamageAt: 1e9, satchel: [] });
     return { room: room.id, position: [dx - Math.sign(dx) * 0.8, dz - Math.sign(dz) * 0.8] };
   });
   await page.waitForFunction(room => window.__run.getState().currentRoomId === room && !window.__run.getState().transitioning, lastExit.room);
@@ -112,6 +119,14 @@ try {
   await stageTheft();
   await page.waitForFunction(() => /Pay the toll/i.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
   await page.waitForFunction(() => /leave 2 stolen gems behind/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.waitForFunction(() => /no bomb packed; final stairs need one/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
+  await page.evaluate(() => window.__run.setState({ satchel: ["bomb"] }));
+  await page.waitForFunction(() => {
+    const text = document.querySelector('[data-testid="prompt-text"]')?.textContent ?? "";
+    return /Pay the toll/.test(text) && !/no bomb packed/.test(text);
+  });
+  await page.evaluate(() => window.__run.setState({ satchel: [] }));
+  await page.waitForFunction(() => /no bomb packed/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
   await page.evaluate(() => { window.__run.getState().thiefCaught(); window.__run.getState().emptyNest(); });
   await page.waitForFunction(() => {
     const text = document.querySelector('[data-testid="prompt-text"]')?.textContent ?? "";
@@ -166,14 +181,34 @@ try {
   assert.equal(await page.evaluate(() => window.__run.getState().gems), finalExit.toll + 1, "a held stair cannot charge the player");
   await page.evaluate(() => window.__run.getState().stallKeeper());
   await page.waitForFunction(() => /Pay the toll and go - now/.test(document.querySelector('[data-testid="prompt-text"]')?.textContent ?? ""));
-  assert.match(await page.getByTestId("prompt-text").innerText(), new RegExp(`${finalExit.toll} gems.*escape`),
-    "the final stair advertises escape for its real toll");
+  assert.match(await page.getByTestId("prompt-text").innerText(), new RegExp(`${finalExit.toll} gems.*choose boss or New Game`),
+    "the final stair advertises its endgame choice for the real toll");
   assert.doesNotMatch(await page.getByTestId("prompt-text").innerText(), /descend|stolen/);
   await page.keyboard.press("KeyE");
-  await page.waitForFunction(() => window.__run.getState().phase === "won");
+  await page.waitForFunction(() => window.__run.getState().phase === "crossroads");
+  await page.getByTestId("choose-boss").waitFor();
+  await page.getByTestId("choose-ng").waitFor();
   assert.equal(await page.evaluate(() => window.__run.getState().gems), 1, "the final stair charges the quoted price exactly once");
   assert.deepEqual(errors, [], "no browser errors during the core flow");
   console.log(`PASS  menu, ${first.count}-room dungeon, door travel, gem pickup, quoted tolls, stolen-loot choices, two replayable descents and paid escape`);
+} catch (error) {
+  console.error("CORE ERROR", error);
+  if (page) {
+    console.error("CORE FAILURE", JSON.stringify(await page.evaluate(() => {
+      const s = window.__run?.getState();
+      return { seed: s?.runSeed, floor: s?.floor, room: s?.currentRoomId, phase: s?.phase,
+        paused: s?.paused, transitioning: s?.transitioning, inputLocks: s?.inputLocks,
+        player: window.__playerDebug, triggers: window.__triggers,
+        prompt: document.querySelector('[data-testid="prompt-text"]')?.textContent };
+    }).catch(() => null)));
+    const review = process.env.CORE_REVIEW_DIR || (process.platform === "win32"
+      ? `D:/agent-work/gem-dungeon/${new Date().toISOString().slice(0, 10)}-coherent-game/core-failure` : null);
+    if (review) {
+      mkdirSync(review, { recursive: true });
+      await page.screenshot({ path: join(review, "core-flow.png") }).catch(captureError => console.error("Failure capture:", captureError.message));
+    }
+  }
+  throw error;
 } finally {
   await browser.close();
 }

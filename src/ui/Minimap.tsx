@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { look } from "../game/input/look";
 import { modifiers } from "../game/relics/catalog";
 import { useLedger } from "../game/state/ledger";
-import { barredNow, keeperHolds, mapIsDark, runClock, useRun } from "../game/state/run";
+import { barredNow, barsNow, canPlanRoute, keeperHolds, mapIsDark, runClock, useRun } from "../game/state/run";
+import { knownFloorGraph, knownRoute, knownRouteText } from "../game/dungeon/knownRoutes";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
 import { barKey } from "../game/warden/bars";
 import { OPPOSITE, type Dir } from "../game/dungeon/types";
 import { colors, FONT, MINIMAP_SCALE, MINIMAP_SIZE, onAccent, secondaryButton, text } from "./overlay";
 import { mapLayout, minimapFootprint } from "./minimapGeometry";
 import { useCompactViewport } from "../game/input/device";
-import { rememberedLandmarks, rememberedServices, rememberedWaterworks } from "../game/rooms/services";
+import { rememberedLandmarks, rememberedServices, rememberedWaterworks, routeTargetLabel } from "../game/rooms/services";
 import { waterLevel } from "../game/worldbuilding/watercourse";
 
 const SIZE = MINIMAP_SIZE;
@@ -42,6 +44,9 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
   const compact = useCompactViewport();
   const dungeon = useRun((s) => s.dungeon);
   const currentRoomId = useRun((s) => s.currentRoomId);
+  const routeTargetId = useRun(s => s.routeTargetId);
+  const trackRoute = useRun(s => s.trackRoute);
+  const planningAllowed = useRun(canPlanRoute);
   const visited = useRun((s) => s.visited);
   const cleared = useRun(s => s.cleared);
   const bombBought = useRun(s => s.bombBought);
@@ -61,7 +66,6 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
     : waterLevel(openedAt, runClock(useRun.getState())) === 0;
   const waterworks = useMemo(() => dungeon ? rememberedWaterworks(dungeon, visited, openedAt !== null,
     openedAt !== null && drained, rubbing) : [], [dungeon, visited, openedAt, drained, rubbing]);
-  const selected = [...services, ...waterworks, ...landmarks].find(place => place.roomId === selectedService);
   const secretTrailLearned = useRun(s => !!s.dungeon?.secretTrail
     && s.visited.includes(s.dungeon.secretTrail.sourceId));
   /**
@@ -107,6 +111,24 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
   );
   const keeperKeeps = useRun((s) => (keeperHolds(s) && s.dungeon ? s.dungeon.endId : null));
   const [dark, setDark] = useState(() => mapIsDark(useRun.getState()));
+  const bars = useRun(useShallow(barsNow));
+  const graph = useMemo(() => dungeon ? knownFloorGraph(dungeon, visited, mapped, nestRoomId) : [],
+    [dungeon, visited, mapped, nestRoomId]);
+  const destinations = [
+    ...(dungeon && graph.some(room => room.id === dungeon.endId)
+      ? [{ roomId: dungeon.endId, name: "Stairs", detail: "Pay the toll to leave this floor" }] : []),
+    ...(nestRoomId ? [{ roomId: nestRoomId, name: "Stolen loot", detail: "Recover what the Cutpurse left behind" }] : []),
+  ];
+  const selected = [...destinations, ...services, ...waterworks, ...landmarks].find(place => place.roomId === selectedService);
+  const selectedId = selected?.roomId;
+  const route = useMemo(() => dungeon && currentRoomId && selectedId
+    ? knownRoute(graph, currentRoomId, selectedId, dungeon.vaultId, bars) : null,
+  [dungeon, currentRoomId, selectedId, graph, bars]);
+  const followedRoute = useMemo(() => dungeon && currentRoomId && routeTargetId
+    ? knownRoute(graph, currentRoomId, routeTargetId, dungeon.vaultId, bars) : null,
+  [dungeon, currentRoomId, routeTargetId, graph, bars]);
+  const displayedRoute = expanded && route ? route : followedRoute;
+  const routeEdges = new Set(displayedRoute?.rooms.slice(1).map((id, index) => barKey(displayedRoute.rooms[index], id)));
 
   // Gloom and drainage advance on the paused run clock without store writes.
   useEffect(() => {
@@ -154,18 +176,7 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
     const here = dungeon.rooms.find((r) => r.id === currentRoomId);
     if (!here) return null;
     const seen = new Set(visited);
-    const known = new Set<string>();
-    // A Scroll of Mapping shows the floor; walking it is the usual way.
-    if (mapped) for (const room of dungeon.rooms) known.add(room.id);
-    for (const id of visited) {
-      known.add(id);
-      const room = dungeon.rooms.find((r) => r.id === id);
-      for (const link of Object.values(room?.links ?? {})) if (link) known.add(link);
-    }
-    // A nest that has your gems in it is on the map whether or not you
-    // have walked that far: being told where they went is the point.
-    if (nestRoomId) known.add(nestRoomId);
-    const shown = dungeon.rooms.filter((r) => known.has(r.id));
+    const shown = graph;
     const { centre, spacing, cell, player } = mapLayout(shown, here, size, expanded);
     const cells = shown.map((r) => ({
       id: r.id,
@@ -198,7 +209,6 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
        */
       felt: felts.includes(r.id),
       links: Object.entries(r.links)
-        .filter(([, to]) => to && known.has(to) && (mapped || seen.has(r.id) || seen.has(to)))
         .map(([dir, to]) => ({ dir: dir as Dir, to: to! })),
     }));
     // Draw each learned edge once. The two room footprints own its endpoints;
@@ -217,7 +227,7 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
         x: (c.x + target.x) / 2, y: (c.y + target.y) / 2 }];
     }));
     return { cells, edges, cell, player };
-  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned, size, expanded, services, waterworks, landmarks]);
+  }, [dungeon, currentRoomId, visited, mapped, unlocked, nestRoomId, marks, felts, roostSeen, keeperKeeps, rubbing, secretTrailLearned, size, expanded, services, waterworks, landmarks, graph]);
 
   if (!dialled) return null;
   const { cells, edges, cell, player } = dialled;
@@ -274,6 +284,10 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
               return <g key={edge.key} data-testid="map-passage" data-from={edge.from} data-to={edge.to}>
                 <line x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2}
                   stroke="rgba(255,255,255,0.3)" strokeWidth={3.5} />
+                {routeEdges.has(edge.key) && <line data-testid="map-route-edge"
+                  data-from={edge.from} data-to={edge.to}
+                  x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2}
+                  stroke={colors.accent} strokeWidth={3} strokeDasharray="5 3" />}
                 {barrier && <g data-testid="map-barrier" data-edge={edge.key} data-barrier={barrier}
                   transform={`translate(${edge.x} ${edge.y}) rotate(${edge.dx ? 90 : 0})`}>
                   <title>{barrier === "barricade" ? "Your barricade — recover the kit at this door" : "Dropped grate — this passage is temporarily blocked"}</title>
@@ -411,6 +425,10 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
                   fontWeight={700} fill={c.state === "here" ? onAccent : colors.ink}>
                   {c.service.symbol}
                 </text>}
+                {routeTargetId === c.id && (!expanded || selected?.roomId !== c.id) && <rect data-testid="map-route-target"
+                  data-room-id={c.id} x={-cell / 2 - 3} y={-cell / 2 - 3}
+                  width={cell + 6} height={cell + 6} rx={3} fill="none"
+                  stroke={colors.accent} strokeWidth={2} strokeDasharray="4 2" />}
                 {expanded && selected?.roomId === c.id && <rect data-testid="map-selected-service"
                   data-room-id={c.id} x={-cell / 2 - 3} y={-cell / 2 - 3}
                   width={cell + 6} height={cell + 6} rx={3} fill="none"
@@ -452,9 +470,39 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
         </div>
       )}
     </div>
+    {expanded && !planningAllowed && (selected || routeTargetId) && <p style={{ lineHeight: 1.6, color: colors.dim }}>
+      Finish the current interaction before changing your followed route.
+    </p>}
+    {expanded && dungeon && routeTargetId && followedRoute && <section data-testid="map-active-route"
+      aria-label="Followed route" style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
+      <p style={{ lineHeight: 1.6, overflowWrap: "anywhere" }}>
+        Following {routeTargetLabel(dungeon, routeTargetId, nestRoomId, visited, true)} · {dark ? "chart hidden by Gloom" : knownRouteText(followedRoute)}
+      </p>
+      <button data-testid="map-route-stop" style={secondaryButton} disabled={!planningAllowed} onClick={() => trackRoute(null)}>
+        Stop following route
+      </button>
+    </section>}
+    {expanded && !dark && <section aria-label="Return routes" data-testid="map-destinations"
+      style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Plan a route through learned doorways</p>
+      {destinations.map(place => <button key={place.roomId} data-testid="map-destination-choice"
+        data-room-id={place.roomId} aria-pressed={selected?.roomId === place.roomId}
+        onClick={() => setSelectedService(place.roomId === selectedService ? null : place.roomId)}
+        style={{ ...secondaryButton, textAlign: "left", overflowWrap: "anywhere" }}>
+        {place.name} · {place.detail}
+      </button>)}
+      {selected && route && <p data-testid="map-route-summary" data-route-status={route.status}
+        role="status" style={{ lineHeight: 1.6, overflowWrap: "anywhere" }}>
+        {selected.name} · {knownRouteText(route)}
+      </p>}
+      {selected && selected.roomId !== routeTargetId && <button data-testid="map-route-follow"
+        style={secondaryButton} disabled={!planningAllowed} onClick={() => trackRoute(selected.roomId)}>
+        Follow this route while playing
+      </button>}
+    </section>}
     {expanded && !dark && <section aria-label="Discovered services" data-testid="map-services"
       style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
-      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered services · select to highlight</p>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered services · select for a route</p>
       {services.length ? services.map(service => <button key={service.roomId}
         data-testid="map-service-choice" data-room-id={service.roomId} data-service={service.kind}
         aria-pressed={selected?.roomId === service.roomId}
@@ -467,7 +515,7 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
     </section>}
     {expanded && !dark && waterworks.length > 0 && <section aria-label="Discovered waterworks" data-testid="map-waterworks"
       style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
-      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered waterworks · select to highlight</p>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered waterworks · select for a route</p>
       {waterworks.map(place => <button key={place.roomId}
         data-testid="map-waterwork-choice" data-room-id={place.roomId} data-water-role={place.role}
         aria-pressed={selected?.roomId === place.roomId}
@@ -480,7 +528,7 @@ export function Minimap({ expanded = false }: { expanded?: boolean }) {
     </section>}
     {expanded && !dark && landmarks.length > 0 && <section aria-label="Discovered landmarks" data-testid="map-landmarks"
       style={{ marginTop: 12, fontFamily: FONT, fontSize: text.small, color: colors.ink }}>
-      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered landmarks · select to highlight</p>
+      <p style={{ margin: "0 0 8px", color: colors.dim }}>Discovered landmarks · select for a route</p>
       {landmarks.map(place => <button key={place.roomId}
         data-testid="map-landmark-choice" data-room-id={place.roomId}
         aria-pressed={selected?.roomId === place.roomId}

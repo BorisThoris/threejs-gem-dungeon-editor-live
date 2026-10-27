@@ -360,7 +360,7 @@ function ShoveButton({ size }: { size: number }) {
   const run = useRun.getState();
   const { charge, remaining } = shoveStatusAt(run, runClock(run));
   const unavailable = !canControl(run) || charge !== null || remaining > 0;
-  return <TouchButton testId="touch-shove" label="SHOVE" size={size}
+  return <TouchButton testId="touch-shove" label="ATTACK" size={size}
     detail={charge !== null ? "WINDUP" : remaining ? `WAIT ${remaining.toFixed(1)}s` : "READY"}
     unavailable={unavailable} on={charge !== null} lit={!unavailable}
     onPress={() => keyboard.pressAction("shove")} />;

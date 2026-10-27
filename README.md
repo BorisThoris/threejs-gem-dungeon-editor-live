@@ -4,8 +4,13 @@ A first-person dungeon run built on React Three Fiber, Rapier and Zustand,
 packaged for the desktop with Electron.
 
 Three floors down. Each floor is a fresh dungeon, and the door out charges a
-toll that rises as you descend: three, then five, then seven. Whatever you
-are still carrying when you climb out is what you got away with.
+toll that rises as you descend: three, then five, then seven. At the last
+crossroads, challenge the Crown Warden or take your remaining equipment and
+supplies into New Game+. Each new cycle doubles enemy health and incoming
+damage, generates fresh dungeons, and preserves weapons, backpack, relics,
+identified items, gems, lives and oil. Floor keys and placed tools stay behind;
+continuing does not heal you. Defeating the boss awards ten gems and also
+offers the option to continue.
 
 Each floor down is also worse than the one above it. The upper vaults are
 small, unwatched, and slow to notice you. Below that the halls widen,
@@ -20,16 +25,23 @@ furniture, but it is slower than you are, so the question is
 never whether you can escape it. It is whether one more room is worth
 having it between you and the door.
 
-Space or left click (RT on a controller, SHOVE on touch) winds up the hand
-for 0.3 seconds, then pushes back a threat within three metres in front of you. It drives off the Harrier, scatters the
-Cutpurse and recovers anything it stole, or staggers the Warden for a short
-escape window. Each shove needs 2.4 seconds to recover. Solid cover,
-including watcher posts, blocks the hand; a blocked shove prompts you to
-step around it. Shoves do not wound the Warden; traps and bombs remain
-the stronger tools. A shove aimed at the Keeper or Reaper explains that
+Space or left click (RT on a controller, ATTACK on touch) attacks with your
+equipped weapon. You begin with an iron sword. Shops sell a longer-reaching
+spear and a slower, harder-hitting axe; pause to buy or equip weapons and read
+their damage, reach, windup and recovery. Weapons can kill the Warden and
+Harrier. Bare hands still push threats back without damage: a three-metre
+shove with 0.3 seconds of windup and 2.4 seconds of recovery. Attacks also
+scatter the Cutpurse and recover stolen gems. Solid cover, including watcher
+posts, blocks attacks; step around it to strike. Traps and bombs remain useful
+alternatives. An attack aimed at the floor's Keeper or Reaper explains that
 enemy's counterplay instead of telling you to come closer. Ordinary rats flee
 and do not attack. The Harrier gives you time to orient after entering and
 hovers before committing to a dive.
+
+The backpack holds sixteen consumables (twelve for the Courier), with four
+quick-use belt positions. Pause to inspect the backpack and swap an item into
+a belt position. Equipment and carried supplies persist through descents and
+New Game+; starting a fresh run resets acquired gear.
 Ceiling bats stir and flutter for 1.2 seconds before bursting in response
 to nearby noise. Moving clear of the roost cancels that burst; blasts
 startle them immediately. Their noise draws attention but does not hurt you.
@@ -45,6 +57,9 @@ including closed galleries. Unexplored rooms remain simple markers.
 Floor two advises packing a shop bomb before descending, and the HUD
 confirms when it is packed. Bombs carry between floors, so preparing early
 avoids a final-floor shopping detour while the Reaper is closing in.
+Preparation guidance follows the shop's remaining bomb, payment options and
+satchel space. The last descent warns if no bomb is packed before you pay;
+carrying one clears that warning.
 Gather the full final toll before lighting that bomb: the Keeper's kneeling
 window is for escaping, and does not leave time to hunt for missing gems.
 Corridor wings carry seeded ceiling ribs and wall markings, giving long

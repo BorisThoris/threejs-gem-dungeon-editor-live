@@ -18,13 +18,18 @@ const list = args.includes("--list");
 if (full && systems) throw new Error("Choose either --full or --systems");
 const requested = args.filter(arg => arg.startsWith("--only=")).map(arg => arg.slice("--only=".length));
 const focused = requested.length > 0;
-const unknownFlags = args.filter(arg => arg !== "--full" && arg !== "--systems" && arg !== "--list" && !arg.startsWith("--only="));
+const externalPorts = args.filter(arg => arg.startsWith("--external-port="));
+const externalPort = externalPorts.length ? Number(externalPorts[0].split("=")[1]) : null;
+if (externalPorts.length > 1 || (externalPort !== null && (!/^\d+$/.test(externalPorts[0].split("=")[1]) || !Number.isInteger(externalPort) || externalPort < 1 || externalPort > 65535))) {
+  throw new Error("--external-port requires one localhost port from 1 to 65535");
+}
+const unknownFlags = args.filter(arg => arg !== "--full" && arg !== "--systems" && arg !== "--list" && !arg.startsWith("--only=") && !arg.startsWith("--external-port="));
 if (unknownFlags.length) throw new Error(`Unknown verification option: ${unknownFlags.join(", ")}`);
-const baseChecks = ["test:verification", "typecheck", "lint", "test:layout", "test:full-count", "test:trap-placement", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
+const baseChecks = ["test:verification", "typecheck", "lint", "test:known-routes", "test:equipment", "test:progression", "test:layout", "test:full-count", "test:trap-placement", "test:prop-overlap", "test:sentry-projection", "test:bat-flight"];
 const fullChecks = ["test:world", "test:walk-navigation", "test:nest-placement", "test:prod", "test:desktop"];
 const systemChecks = ["test:lighting", "test:service-trail", "test:handbuilt", "test:water-sound"];
-const baseBrowserChecks = ["core-flow-browser-check.mjs", "dev-artifact-browser-check.mjs", "sprint-noise-browser-check.mjs", "din-clock-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs", "cutpurse-distraction-browser-check.mjs", "delver-choices-browser-check.mjs", "shop-payment-browser-check.mjs", "map-navigation-browser-check.mjs"];
-const fullBrowserChecks = ["gameplay-check.mjs", "pad-check.mjs", "touch-check.mjs", "audio-check.mjs", "perf-check.mjs",
+const baseBrowserChecks = ["progression-browser-check.mjs", "equipment-browser-check.mjs", "core-flow-browser-check.mjs", "dev-artifact-browser-check.mjs", "sprint-noise-browser-check.mjs", "din-clock-browser-check.mjs", "sentry-room-browser-check.mjs", "hud-space-browser-check.mjs", "test-hall-browser-check.mjs", "scenario-browser-check.mjs", "dev-run-links-browser-check.mjs", "signal-graph-browser-check.mjs", "cutpurse-distraction-browser-check.mjs", "delver-choices-browser-check.mjs", "shop-payment-browser-check.mjs", "map-navigation-browser-check.mjs"];
+const fullBrowserChecks = ["known-routes-browser-check.mjs", "gameplay-check.mjs", "pad-check.mjs", "touch-check.mjs", "audio-check.mjs", "perf-check.mjs",
   "walk-run.mjs", "harrier-windup-browser-check.mjs", "warden-readability-browser-check.mjs", "teaching-priority-browser-check.mjs", "touch-shove-browser-check.mjs", "readout-interaction-browser-check.mjs", "cutpurse-loot-browser-check.mjs", "key-drop-input-browser-check.mjs",
   "full-count-browser-check.mjs", "vault-choice-browser-check.mjs", "plate-choice-browser-check.mjs", "death-review-browser-check.mjs", "satchel-inspection-browser-check.mjs", "relic-planning-browser-check.mjs", "remembered-services-browser-check.mjs", "pledge-choice-browser-check.mjs", "smoke-test.mjs", "creature-render-check.mjs", "barricade-browser-check.mjs", "pursuit-browser-check.mjs",
   "ambient-behavior-browser-check.mjs", "carried-signals-browser-check.mjs", "trap-combat-browser-check.mjs", "exploration-browser-check.mjs",
@@ -116,7 +121,7 @@ async function freePort() {
 async function ready(port, server) {
   const until = Date.now() + 60000;
   while (Date.now() < until) {
-    if (server.exitCode !== null) throw new Error(`Vite exited ${server.exitCode}`);
+    if (server && server.exitCode !== null) throw new Error(`Vite exited ${server.exitCode}`);
     try {
       const response = await fetch(`http://127.0.0.1:${port}/`);
       if (response.ok) return;
@@ -134,6 +139,7 @@ async function saveReport(status) {
     updatedAt: new Date().toISOString(),
     ...(status === "running" ? {} : { finishedAt: new Date().toISOString() }),
     durationMs: Math.round(performance.now() - runStarted), checks: results,
+    ...(browserChecks.length ? { server: { mode: externalPort ? "external" : "owned", ...(externalPort ? { port: externalPort } : {}) } } : {}),
     ...(focused ? { selectedChecks: requested } : {}),
     ...(fatalError ? { fatalError } : {}) };
   mkdirSync(reportDir, { recursive: true });
@@ -179,9 +185,9 @@ try {
   await saveReport("running");
   for (const script of checks) await check(script, "source", "yarn", [script]);
   if (browserChecks.length) {
-    const port = await freePort();
-    console.log(`\n── fresh Vite server on ${port} ──`);
-    server = spawn(node, [vite, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
+    const port = externalPort ?? await freePort();
+    console.log(`\n── ${externalPort ? "external localhost" : "fresh Vite"} server on ${port} ──`);
+    if (!externalPort) server = spawn(node, [vite, "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
       cwd: root, stdio: "inherit", env: process.env, windowsHide: true,
     });
     await ready(port, server);

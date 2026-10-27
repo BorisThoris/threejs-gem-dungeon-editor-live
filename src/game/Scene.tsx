@@ -23,6 +23,7 @@ import { CutpurseDriver } from "./thief/CutpurseDriver";
 import { WispDriver } from "./mobs/WispDriver";
 import { HarrierDriver } from "./mobs/HarrierDriver";
 import { KeeperDriver } from "./keeper/KeeperDriver";
+import { CrownWarden } from "./keeper/CrownWarden";
 import { Burst } from "./props/Burst";
 import { Taken } from "./props/Taken";
 import { CycleDriver } from "./cycle/CycleDriver";
@@ -111,6 +112,7 @@ function CurrentRoom() {
  */
 export function Scene() {
   const paused = useRun((s) => s.paused);
+  const boss = useRun(s => s.bossActive);
   return (
     <Canvas
       shadows
@@ -127,17 +129,17 @@ export function Scene() {
       {/* The Warden walks the floor whether or not its room is mounted, and
           the Cutpurse's timer runs whichever room the player is standing
           in - both of them need a frame loop that outlives a room. */}
-      <DinDriver />
+      {!boss && <><DinDriver />
       <LadderDriver />
       <WardenDriver />
       <PursuitDriver />
       <CutpurseDriver />
-      <BombDriver />
       <CycleDriver />
       <HeatDriver />
       <WispDriver />
       <HarrierDriver />
-      <KeeperDriver />
+      <KeeperDriver /></>}
+      <BombDriver />
       {/* The light the player carries. Outside the physics tree because it
           follows the camera rather than a body, and it has to keep burning
           while a room is still mounting. */}
@@ -154,6 +156,7 @@ export function Scene() {
           <Player />
           <ShoveHand />
           <CurrentRoom />
+          <CrownWarden />
         </Physics>
       </Suspense>
     </Canvas>

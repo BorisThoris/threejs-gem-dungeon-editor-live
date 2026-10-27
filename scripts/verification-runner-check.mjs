@@ -4,6 +4,8 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdir
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { Worker } from "node:worker_threads";
+import { once } from "node:events";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const fixture = mkdtempSync(join(tmpdir(), "gem-verification-"));
@@ -26,6 +28,24 @@ try {
   assert.equal(focused.stdout.trim(), "focused: 1 checks\nsource  test:water-sound");
   assert.equal(existsSync(join(fixture, "output")), false, "listing cannot create or replace reports");
   assert.notEqual(run("--list", "--only=unknown-check.mjs").status, 0);
+  for (const value of ["0", "65536", "bad", "1.5"]) {
+    assert.notEqual(run("--list", `--external-port=${value}`).status, 0);
+  }
+  const server = new Worker(`const { parentPort } = require('node:worker_threads');
+    const server = require('node:http').createServer((req,res) => res.end('fixture'));
+    server.listen(0, '127.0.0.1', () => parentPort.postMessage(server.address().port));`, { eval: true });
+  try {
+    const [port] = await once(server, "message");
+    const external = run(`--external-port=${port}`, "--only=core-flow-browser-check.mjs");
+    assert.equal(external.status, 0, external.stdout + external.stderr);
+    const result = JSON.parse(readFileSync(join(fixture, "output/verification/focused.json"), "utf8"));
+    assert.deepEqual(result.server, { mode: "external", port });
+    assert.equal(await (await fetch(`http://127.0.0.1:${port}`)).text(), "fixture", "runner leaves the caller's server alive");
+    writeFileSync(join(scripts, "core-flow-browser-check.mjs"), "process.exitCode = 7;");
+    assert.notEqual(run(`--external-port=${port}`, "--only=core-flow-browser-check.mjs").status, 0);
+    assert.equal((await fetch(`http://127.0.0.1:${port}`)).status, 200, "failure also preserves the external server");
+    writeFileSync(join(scripts, "core-flow-browser-check.mjs"), "");
+  } finally { await server.terminate(); }
   const orphan = join(scripts, "unregistered-check.mjs");
   writeFileSync(orphan, "");
   const unregistered = run("--list");

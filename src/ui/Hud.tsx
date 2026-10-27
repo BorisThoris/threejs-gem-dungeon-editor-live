@@ -1,4 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
+import { knownFloorGraph, knownRoute } from "../game/dungeon/knownRoutes";
+import { weaponFor } from "../game/items/weapons";
+import { expeditionPower } from "../game/progression";
 import { shoveStatusAt } from "../game/player/combat";
 import { playerLightIn } from "../game/ladder/sight";
 import { playerAt } from "../game/player/where";
@@ -11,6 +15,7 @@ import { BellcapWarning } from "./BellcapWarning";
 import { wasKept } from "../game/heat/pledge";
 import {
   barredNow,
+  barsNow,
   barsRemaining,
   harrierAway,
   harrierDowned,
@@ -18,11 +23,14 @@ import {
   keeperStalled,
   lanternBand,
   lanternLit,
+  mapIsDark,
   lureNow,
   heatBand,
   heatSays,
   runClock,
   spareGems,
+  satchelSlots,
+  shopPayment,
   tollNow,
   useCurrentRoom,
   useRun,
@@ -41,11 +49,12 @@ import { footingAt, footingMaterial } from "../game/rooms/underfoot";
 
 import { DISTRICTS } from "../game/rooms/districts";
 import { roomPlaceName } from "../game/rooms/placeName";
+import { routeTargetLabel } from "../game/rooms/services";
 
 import { alarmLabel, behaviourFor } from "../game/warden/tuning";
 import { useCompactViewport, useTouchControls } from "../game/input/device";
 import { harrierRoostFor } from "../game/mobs/harrierRoost";
-import { BARRICADE_KITS, FLOORS } from "../game/world";
+import { BARRICADE_KITS, BOMB_PRICE, FLOORS } from "../game/world";
 import { useSettings } from "../game/state/settings";
 import { FONT, colors, text } from "./overlay";
 import { hudLines, type HudFacts, type HudLine } from "./hudLines";
@@ -62,6 +71,7 @@ import { readoutKeys, readoutMouse, usePanelOverflow } from "./usePanelOverflow"
  */
 export function Hud() {
   const compact = useCompactViewport();
+  const boss = useRun(s => s.bossActive);
   const lives = useRun((s) => s.lives);
   const maxLives = useRun((s) => s.maxLives);
   const gems = useRun((s) => s.gems);
@@ -75,8 +85,29 @@ export function Hud() {
   const relics = useRun((s) => s.relics);
   const wardenAwake = useRun((s) => s.wardenRoomId !== null);
   const keys = useRun((s) => s.keys);
-  const stairsKnown = useRun((s) => !!s.dungeon && s.dungeon.rooms.some((r) => s.visited.includes(r.id)
-    && Object.values(r.links).includes(s.dungeon!.endId)));
+  const dungeon = useRun(s => s.dungeon);
+  const visited = useRun(s => s.visited);
+  const mapped = useRun(s => s.mapped);
+  const nestSeen = useRun(s => s.nestSeen);
+  const nestRoomId = useRun(s => s.nestSeen && (s.nestGems > 0 || s.nestKey) ? s.nestRoomId : null);
+  const bars = useRun(useShallow(barsNow));
+  const currentRoomId = useRun(s => s.currentRoomId);
+  const routeTargetId = useRun(s => s.routeTargetId);
+  const bombPayment = useRun(s => shopPayment(s, BOMB_PRICE));
+  const bombBought = useRun(s => s.bombBought);
+  const bombBurning = useRun(s => s.placed.some(device => device.id === "bomb" && device.live
+    && device.fuseAt !== undefined && device.roomId === s.currentRoomId));
+  const satchelFull = useRun(s => s.satchel.length >= satchelSlots(s));
+  const graph = useMemo(() => dungeon ? knownFloorGraph(dungeon, visited, mapped, nestRoomId) : [],
+    [dungeon, visited, mapped, nestRoomId]);
+  const stairsRoute = useMemo(() => dungeon && currentRoomId
+    ? knownRoute(graph, currentRoomId, dungeon.endId, dungeon.vaultId, bars) : undefined,
+    [graph, dungeon, currentRoomId, bars]);
+  const stairsKnown = !!dungeon && graph.some(room => room.id === dungeon.endId);
+  const followedRoute = useMemo(() => dungeon && currentRoomId && routeTargetId ? {
+    label: routeTargetLabel(dungeon, routeTargetId, nestRoomId, visited),
+    guide: knownRoute(graph, currentRoomId, routeTargetId, dungeon.vaultId, bars),
+  } : null, [dungeon, currentRoomId, routeTargetId, nestRoomId, graph, bars, visited]);
   const cutpurse = useRun((s) => s.thiefPhase === "away" ? null : s.thiefPhase);
   const thiefHolding = useRun((s) => s.thiefHolding);
   const thiefKey = useRun((s) => s.thiefKey);
@@ -91,7 +122,7 @@ export function Hud() {
   // Said where the ground is said, because it is the same kind of fact: a
   // dash in here is louder than the ground alone makes it.
   const roost = room ? roostFor(room, dungeonSeed) !== null : false;
-  const { ground, croakers, heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, reaperHere, drafty, harrier, harrierUp, keeper, keeperUp } = useWardenSense();
+  const { ground, croakers, heard, seen, lit, oil, band, lured, reeling, warded, barSeconds, heat, reaper, reaperHere, drafty, harrier, harrierUp, keeper, keeperUp, mapDark } = useWardenSense();
   const wary = useRun((s) => s.wardenWary);
   const wisp = useRun((s) => s.wispOut);
 
@@ -139,6 +170,14 @@ export function Hud() {
     spare,
     owed,
     stairsKnown,
+    stairsRoute,
+    followedRoute,
+    mapDark,
+    nestSeen,
+    bombPayment,
+    bombBought,
+    bombBurning,
+    satchelFull,
     hasBomb,
     pledge: pledge ? { id: pledge, kept: pledgeKept } : null,
     cutpurse,
@@ -183,7 +222,8 @@ export function Hud() {
   // sideways. Closer together and a size down there, so the room is still
   // the thing on the screen.
   const panel = usePanelOverflow(lives);
-  const instruments = <><ShoveReadout compact={compact} /><BellcapWarning /><ServiceRubbing /><SecretTrailGuide /></>;
+  const instruments = <><ShoveReadout compact={compact} />{!boss && <><BellcapWarning />
+    {!followedRoute && <><ServiceRubbing /><SecretTrailGuide /></>}</>}</>;
   return (
     <div
       data-testid="hud"
@@ -216,6 +256,7 @@ export function Hud() {
     >
       {!compact && instruments}
       {lines.map((line, i) => {
+        if (boss && !["lives", "lantern"].includes(line.id)) return null;
         if (compact && line.rank >= 4) return null;
         /**
          * The rank the line already carries, spent on the screen.
@@ -303,12 +344,16 @@ function ShoveReadout({ compact }: { compact: boolean }) {
   return <div style={{ fontSize: "0.85em" }}>
     <div data-testid="bars-stock" style={{ color: kits ? colors.ink : colors.gold, marginBottom: 4 }}>
       BARS · {kits}/{BARRICADE_KITS} ready{run.barricades.length ? ` · ${run.barricades.length} standing` : ""}
+      {run.newGamePlus > 0 && <span data-testid="ng-status" style={{ color: colors.gold }}
+        aria-label={`New Game+ ${run.newGamePlus}: enemy health and incoming damage ×${expeditionPower(run.newGamePlus)}`}>
+        {` · NG+ ${run.newGamePlus} ×${expeditionPower(run.newGamePlus)}`}
+      </span>}
     </div>
     <div data-testid="stealth-status" style={{ color: light >= 0.5 ? colors.gold : colors.dim, marginBottom: 4 }}>
       VISIBILITY · {lightLabel} · {movement}
     </div>
     <div data-testid="shove-status" style={{ color: charge !== null ? colors.gold : remaining ? colors.dim : colors.accent }}>
-    SHOVE · {charge !== null ? `charging ${charge}%` : remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "SHOVE button" : compact ? keysLabel(binding) : `Left click / ${keysLabel(binding)} / RT`}${compact ? " · ready" : " · face a close threat"}`}
+    {weaponFor(run).name.toUpperCase()} · {charge !== null ? `charging ${charge}%` : remaining ? `recovering ${remaining.toFixed(1)}s` : `${touch ? "ATTACK button" : compact ? keysLabel(binding) : `Left click / ${keysLabel(binding)} / RT`} · ready`}
     </div>
     <div aria-hidden="true" style={{ width: 100, height: 2, background: colors.line, marginTop: 4, marginBottom: 5 }}>
       <div style={{ width: `${Math.max(0, Math.min(100, progress))}%`, height: "100%", background: charge !== null ? colors.gold : colors.accent }} />
@@ -335,6 +380,7 @@ const TONE: Record<HudLine["tone"], string> = {
  * happened to change the store.
  */
 function useWardenSense(): {
+  mapDark: boolean;
   ground: HudFacts["ground"];
   croakers: HudFacts["croakers"];
   heard: boolean;
@@ -397,6 +443,7 @@ function useWardenSense(): {
           ? "roosts"
           : null;
     return {
+      mapDark: mapIsDark(s),
       ground,
       croakers,
       heard: !lured && wardenSenses(s),
@@ -425,7 +472,7 @@ function useWardenSense(): {
     const t = window.setInterval(
       () => setSense((was) => {
         const now = read();
-        return was.ground?.name === now.ground?.name &&
+        return was.mapDark === now.mapDark && was.ground?.name === now.ground?.name &&
           was.ground?.says === now.ground?.says &&
           was.ground?.tone === now.ground?.tone &&
           was.croakers === now.croakers &&

@@ -4,6 +4,7 @@ import { bus } from "../game/events";
 import { device, useTouchControls } from "../game/input/device";
 import { keysLabel, SLOT_ACTIONS } from "../game/input/bindings";
 import { ITEMS, nameOf } from "../game/items/catalog";
+import { QUICK_SLOTS } from "../game/items/inventory";
 import { CHARGE_COLOUR, chargeWord } from "../game/items/charge";
 import { itemUseBlurb } from "../game/items/feedback";
 import { satchelSlots, useRun } from "../game/state/run";
@@ -31,9 +32,7 @@ export function Satchel() {
   // to be read as information by somebody who cannot see the band.
   const marks = useSettings((s) => s.highContrast);
   const bindings = useSettings((s) => s.bindings);
-  // Four for everyone but the Courier, who traded two for a third shop offer.
-  // Drawn from the run rather than the constant, so a two-slot satchel
-  // shows two slots instead of two full ones and two that can never fill.
+  // Backpack capacity is separate from the four quick-access belt positions.
   const slots = useRun(satchelSlots);
   // On a touchscreen the slot is the button: there is no 1 to 4, and a
   // row of four things to tap is what a satchel looks like anyway. The
@@ -60,7 +59,7 @@ export function Satchel() {
         zIndex: 900,
       }}
     >
-      {Array.from({ length: slots }, (_, i) => {
+      {Array.from({ length: Math.min(slots, QUICK_SLOTS) }, (_, i) => {
         const id = satchel[i];
         const known = id ? identified.includes(id) : false;
         const look = id ? appearances[id] : null;

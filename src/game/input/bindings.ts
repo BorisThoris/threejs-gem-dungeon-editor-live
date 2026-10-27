@@ -69,7 +69,7 @@ export const ACTION_LABEL: Record<Action, string> = {
   right: "Right",
   sprint: "Run",
   interact: "Use",
-  shove: "Shove",
+  shove: "Attack / shove",
   lantern: "Lantern",
   bar: "Bar a door",
   mark: "Mark the map",

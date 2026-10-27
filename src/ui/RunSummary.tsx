@@ -14,6 +14,7 @@ import { FLOORS } from "../game/world";
 import { body, button, clock, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
 import { enterImmersive } from "../game/input/device";
+import { expeditionPower } from "../game/progression";
 
 /**
  * The end of a run: what happened, what it beat, and the two ways out.
@@ -48,6 +49,7 @@ export function RunSummary() {
   const quitToMenu = useRun((s) => s.quitToMenu);
   const bests = useRecords((s) => s.lastBests);
   const won = phase === "won";
+  const cycle = useRun(s => s.newGamePlus);
   // B leaves for the menu. There is nothing to back out to from the end of
   // a run, and quitting is the less destructive of the two ways on.
   const panelRef = useRef<HTMLDivElement>(null);
@@ -85,8 +87,7 @@ export function RunSummary() {
             style={{ ...body, fontSize: text.small, color: colors.dim, marginBottom: 10 }}
             data-testid="summary-demo"
           >
-            That is the demo: three floors of it. The full dungeon goes deeper, and
-            what is down there does not stay on its own floor.
+            The Crown Warden is defeated. Take your victory, or carry your equipment into another expedition.
           </p>
         )}
         {bests && (bests.haul || bests.depth || bests.speed) && (
@@ -126,6 +127,9 @@ export function RunSummary() {
           <span style={{ color: colors.dim }}> · SEED </span>
           {seed}
         </p>
+        {won && <button style={button} data-testid="summary-ng" onClick={() => {
+          enterImmersive(); useRun.getState().continueExpedition();
+        }}>New Game+ {cycle + 1} · enemy health / incoming damage ×{expeditionPower(cycle + 1)}</button>}
         <button
           style={button}
           data-testid="summary-again"

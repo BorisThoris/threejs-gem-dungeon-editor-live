@@ -18,7 +18,7 @@ import { readTouch } from "../input/touch";
 import { canControl, speedNow, runClock, useRun } from "../state/run";
 import { footingAt } from "../rooms/underfoot";
 import { playerAt } from "./where";
-import { SHOVE_CHARGE_S } from "./combat";
+import { weaponFor } from "../items/weapons";
 import { useSettings } from "../state/settings";
 import { sfx } from "../systems/audio";
 import {
@@ -204,7 +204,7 @@ export function Player() {
     const pad = readGamepad();
     const shovePressed = keyboard.consumeAction("shove") || pad.shovePressed;
     const now = runClock(run);
-    if (run.shoveChargingAt !== null && now - run.shoveChargingAt >= SHOVE_CHARGE_S) {
+    if (run.shoveChargingAt !== null && now - run.shoveChargingAt >= weaponFor(run).charge) {
       useRun.setState({ shoveChargingAt: null });
       camera.getWorldDirection(scratch.dir);
       run.shove(scratch.dir.x, scratch.dir.z);

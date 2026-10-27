@@ -1,5 +1,5 @@
 import { secretStoryFor } from "../dungeon/secret";
-import type { Dungeon } from "../dungeon/types";
+import type { Dungeon, Room } from "../dungeon/types";
 import { roomPlaceName } from "./placeName";
 import { waterworkDescription, WATERWAY_NAMES } from "../worldbuilding/watercourse";
 import { DISTRICTS } from "./districts";
@@ -20,6 +20,28 @@ export interface RememberedService {
   symbol: "S" | "+";
   name: string;
   detail: string;
+}
+
+function serviceKind(room: Room, seed: number): RememberedService["kind"] | null {
+  return room.kind === "shop" ? "shop"
+    : room.kind === "shrine" || (room.kind === "secret" && secretStoryFor(room, seed).flavour === "shrine")
+      ? "shrine" : null;
+}
+
+/** Short names keep followed routes readable beside combat and toll readouts.
+ * The chart retains each place's full name and live description. */
+export function routeTargetLabel(
+  dungeon: Dungeon, roomId: string, nestId: string | null, visited: readonly string[], full = false,
+): string {
+  if (roomId === dungeon.endId) return "Stairs";
+  if (roomId === nestId) return "Stolen loot";
+  if (!visited.includes(roomId)) return "Destination";
+  const room = dungeon.rooms.find(room => room.id === roomId);
+  if (!room) return "Destination";
+  if (full) return roomPlaceName(room, dungeon.seed);
+  if (room.waterway && room.waterway.role !== "channel") return WATERWAY_NAMES[room.waterway.role];
+  const service = serviceKind(room, dungeon.seed);
+  return service === "shop" ? "Shop" : service === "shrine" ? "Shrine" : room.landmark ? "Landmark" : "Room";
 }
 
 /** Waterworks are remembered only after entering their room. Opening a valve
@@ -43,9 +65,7 @@ export function rememberedServices(
 ): RememberedService[] {
   return dungeon.rooms.flatMap(room => {
     if (!visited.includes(room.id)) return [];
-    const kind = room.kind === "shop" ? "shop"
-      : room.kind === "shrine" || (room.kind === "secret" && secretStoryFor(room, dungeon.seed).flavour === "shrine")
-        ? "shrine" : null;
+    const kind = serviceKind(room, dungeon.seed);
     if (!kind) return [];
     const detail = kind === "shop" ? `Oil, lives and relics · bomb ${bombBought ? "sold" : "in stock"}`
       : cleared.includes(room.id) ? "Font used" : "Font unused";

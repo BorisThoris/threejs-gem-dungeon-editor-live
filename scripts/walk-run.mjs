@@ -6,8 +6,8 @@ import { chromium } from "./browser-safety.mjs";
 
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH,
   args: process.env.WALK_RENDERER === "hardware"
-    ? ["--no-sandbox", "--enable-gpu", "--use-angle=d3d11"]
-    : ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
+    ? ["--no-sandbox", "--mute-audio", "--enable-gpu", "--use-angle=d3d11"]
+    : ["--no-sandbox", "--mute-audio", "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] });
 const page = await browser.newPage({ viewport: { width: 640, height: 480 } });
 const errors = [];
 page.setDefaultTimeout(30000);
@@ -17,6 +17,7 @@ const snapshot = () => page.evaluate(() => {
   return { phase: s.phase, floor: s.floor, gems: s.gems, lives: s.lives, delver: s.delver, roomId: s.currentRoomId,
     dungeon: s.dungeon, collected: s.gemRooms, transitioning: s.transitioning, paused: s.paused, inputLocks: s.inputLocks,
     player: window.__playerDebug, toll: window.__derived.toll(), satchel: s.satchel,
+    weapons: s.weapons, equippedWeapon: s.equippedWeapon, relics: s.relics, newGamePlus: s.newGamePlus,
     keeper: window.__derived.keeper(), bombs: window.__derived.bombs(), clock: window.__derived.clock(),
     bombPrice: window.__world.BOMB_PRICE, lifePrice: window.__world.GEMS_PER_LIFE, maxLives: s.maxLives, reaper: s.reaperAwake,
     shoveReady: s.shoveChargingAt === null && s.shoveReadyAt <= window.__derived.clock(), frames: window.__perf?.frames,
@@ -24,7 +25,7 @@ const snapshot = () => page.evaluate(() => {
       window.__harrier?.room === s.currentRoomId && !window.__harrier.away && !window.__harrier.down ? window.__harrier : null].filter(Boolean) };
 });
 
-async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper = false, arrivalRadius = 0.55 } = {}) {
+async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper = false, arrivalRadius = 0.55, replans = 0 } = {}) {
   // A room can report ready before the player probe has sampled its new pose.
   const frame = (await snapshot()).frames;
   if (!prepared) await page.waitForFunction((frame) => window.__perf.frames >= frame + 2, frame);
@@ -44,8 +45,16 @@ async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper
     const blockers = [...obstaclesFor("ground", room, s.dungeon.seed, s.placed, s.broken, sentry?.at ?? null),
       ...bitesFor("ground", room, s.dungeon.seed, s.placed, s.sprung).map(p => ({ ...p, escapable: true })),
       ...trapsFor(room, s.dungeon.seed, s.dungeon.endId).filter((t) => t.kind !== "grate").map((t) => ({ ...t, r: t.kind === "pit" ? PIT_RADIUS + 0.35 : 1.1, escapable: true }))];
-    const clear = (a, b) => roomSegmentClear(room, a.x, a.z, b.x, b.z, roomClearance) && blockers.every(p =>
-      segmentClearsDisc(a, b, p, 0.12, a === start && p.escapable));
+    const clear = (a, b) => {
+      // A hit can leave the real capsule against masonry, outside the
+      // planner's extra comfort margin. Recover to an inset endpoint using
+      // physical clearance (with Rapier contact slop), then resume that margin.
+      const recovering = a === start && !insideRoom(room, a.x, a.z, roomClearance);
+      const clearance = recovering ? PLAYER_CAPSULE_RADIUS + WALL_THICKNESS / 2 - 0.005 : roomClearance;
+      return (!recovering || insideRoom(room, b.x, b.z, roomClearance))
+        && roomSegmentClear(room, a.x, a.z, b.x, b.z, clearance) && blockers.every(p =>
+          segmentClearsDisc(a, b, p, 0.12, a === start && p.escapable));
+    };
     if (target.reach) {
       // Add a continuous approach for a stand almost flush with the wall.
       // A coarse grid can miss its reachable strip by a few centimetres.
@@ -104,6 +113,13 @@ async function walkTo(target, { prepareOnly = false, plan: prepared, untilKeeper
         const s = await snapshot();
         if (untilKeeper && s.keeper.stalled) return;
         if (s.phase !== "playing" || s.roomId !== initial.roomId) throw new Error(`walk interrupted: ${s.phase}, lives ${s.lives}`);
+        if (s.lives < initial.lives) {
+          await page.keyboard.up("KeyW");
+          await page.keyboard.up("ShiftLeft");
+          assert.ok(replans < 3, "damage recovery stays within three route replans");
+          console.log("REPLAN after damage", JSON.stringify({ room: s.roomId, lives: s.lives, player: s.player }));
+          return await walkTo(target, { untilKeeper, arrivalRadius, replans: replans + 1 });
+        }
         const wantsSprint = s.reaper || s.threats.some((p) => p.kind === "warden" && Math.hypot(p.x - s.player.x, p.z - s.player.z) < 5);
         if (wantsSprint !== sprinting) {
           if (wantsSprint) await page.keyboard.down("ShiftLeft");
@@ -200,7 +216,7 @@ try {
     await page.waitForFunction(() => !window.__run.getState().transitioning);
     const s = await snapshot();
     console.log(JSON.stringify({ floor: s.floor, room: s.roomId, gems: s.gems, lives: s.lives, phase: s.phase }));
-    if (s.floor >= stopFloor || s.phase === "won") break;
+    if (s.floor >= stopFloor || s.phase === "won" || s.phase === "crossroads") break;
     if (s.floor === 3 && !carriedBomb) {
       assert.ok(s.satchel.includes("bomb"), "the earlier shop bomb carries into the final floor");
       carriedBomb = true;
@@ -327,7 +343,8 @@ try {
     const target = await page.evaluate(({ id, dir }) => window.__derived.door(id, dir), { id: room.id, dir });
     const axis = { north: [0, -1], south: [0, 1], east: [1, 0], west: [-1, 0] }[dir];
     console.log("DOOR", JSON.stringify({ from: room.id, to: next, dir, target }));
-    await walkTo({ x: target[0] - axis[0] * 0.8, z: target[2] - axis[1] * 0.8 }, { arrivalRadius: 0.2 });
+    const approach = { x: target[0] - axis[0] * 0.8, z: target[2] - axis[1] * 0.8 };
+    await walkTo(approach, { arrivalRadius: 0.2 });
     // A grate can drop while approaching. The interaction is disabled until
     // the game's own deadline lifts it; an immediate E is intentionally ignored.
     await page.waitForFunction(async ({ from, to }) => {
@@ -338,7 +355,28 @@ try {
     assert.equal((await snapshot()).phase, "playing", "walker survives waiting for the doorway to open");
     // Store expiry precedes React's enabled trigger and its published prompt.
     // Act on the same visible offer a player waits for, not the earlier store read.
-    await page.getByTestId("prompt-text").filter({ hasText: /^(Open |Unlock |Pay the toll)/ }).waitFor();
+    let offered = false;
+    for (let attempt = 0; attempt < 4 && !offered; attempt++) {
+      const outcome = await page.waitForFunction(approach => {
+        const state = window.__run.getState(), player = window.__playerDebug;
+        if (state.phase !== "playing") return "ended";
+        const text = document.querySelector('[data-testid="prompt-text"]')?.textContent ?? "";
+        if (/^(Open |Unlock |Pay the toll)/.test(text)) return "offered";
+        // Damage can throw the player away while React publishes an offer.
+        // Re-approach through the planner instead of waiting to die there.
+        if (Math.hypot(player.x - approach.x, player.z - approach.z) > 1) return "displaced";
+        return false;
+      }, approach, { timeout: 5000 });
+      const status = await outcome.jsonValue();
+      await outcome.dispose();
+      assert.notEqual(status, "ended", "walker survives approaching the doorway");
+      offered = status === "offered";
+      if (!offered) {
+        console.log("RECOVER doorway approach after displacement", room.id);
+        await walkTo(approach, { arrivalRadius: 0.2 });
+      }
+    }
+    assert.ok(offered, "the intended doorway offers travel within four approaches");
     await page.keyboard.press("KeyE");
     await page.waitForFunction(({ room, floor }) => window.__run.getState().currentRoomId !== room || window.__run.getState().floor !== floor, { room: room.id, floor: s.floor }, { timeout: 5000 });
     doors++;
@@ -346,8 +384,17 @@ try {
   assert.deepEqual(errors, [], "no browser runtime errors");
   console.log(`PASS movement-only collect/pay/descend: ${doors} doors, no teleports or unearned lives`);
   if (stopFloor === 4) {
-    assert.equal((await snapshot()).phase, "won", "the final paid stairs complete the run");
-    await page.getByTestId("summary-again").click();
+    const earned = await snapshot();
+    assert.equal(earned.phase, "crossroads", "the final paid stairs offer the endgame choice");
+    await page.getByTestId("choose-ng").click();
+    await page.waitForFunction(() => window.__run.getState().newGamePlus === 1 && !window.__run.getState().transitioning);
+    const carried = await snapshot();
+    for (const field of ["satchel", "weapons", "equippedWeapon", "relics", "gems", "lives"]) {
+      assert.deepEqual(carried[field], earned[field], `${field} earned during real traversal carries into NG+`);
+    }
+    await page.keyboard.press("Escape");
+    await page.getByTestId("pause-quit").click();
+    await page.getByTestId("menu-start").click();
     await page.waitForFunction(() => {
       const s = window.__run.getState();
       return s.phase === "playing" && s.floor === 1 && !s.transitioning;
@@ -357,7 +404,8 @@ try {
     assert.equal(fresh.gems, starting.gems, "a new run restores its own starting purse");
     assert.equal(fresh.lives, starting.lives, "a new run restores its own starting health");
     assert.ok(!fresh.reaper && fresh.bombs.length === 0, "previous pursuit and placed bombs do not persist");
-    console.log("PASS escaped summary starts a fresh playable run through Run again");
+    assert.equal(fresh.newGamePlus, 0, "fresh play resets NG+ difficulty");
+    console.log("PASS real expedition reaches crossroads, carries earned resources into NG+, and starts a fresh run");
   }
 } catch (e) {
   console.error(e);

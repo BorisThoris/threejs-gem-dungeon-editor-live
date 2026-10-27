@@ -3,10 +3,11 @@ import type { PropPlacement, Room } from "../dungeon/types";
 import { propBlocksSegment } from "../props/specs";
 import type { Vec3 } from "../dungeon/layout";
 import { SENTRY_POST_HEIGHT, SENTRY_POST_RADIUS } from "../sentry/placement";
+import { WEAPONS, weaponFor, type WeaponId } from "../items/weapons";
 
-export const SHOVE_REACH = 3;
-export const SHOVE_COOLDOWN_S = 2.4;
-export const SHOVE_CHARGE_S = 0.3;
+export const SHOVE_REACH = WEAPONS.fists.reach;
+export const SHOVE_COOLDOWN_S = WEAPONS.fists.recovery;
+export const SHOVE_CHARGE_S = WEAPONS.fists.charge;
 export const SHOVE_STAGGER_S = 0.9;
 /** The hand is below eye level; knee-high furniture stays below its path. */
 export const SHOVE_HEIGHT = 1.25;
@@ -16,20 +17,21 @@ export const HARRIER_WINDUP_S = 0.7;
 export const HARRIER_WINDUP_REACH = SHOVE_REACH - 0.25;
 
 /** HUD and touch controls describe the same run-clock charge and recovery. */
-export function shoveStatusAt(state: { shoveReadyAt: number; shoveChargingAt: number | null }, now: number) {
+export function shoveStatusAt(state: { shoveReadyAt: number; shoveChargingAt: number | null; equippedWeapon?: WeaponId }, now: number) {
+  const weapon = weaponFor(state);
   const remaining = Math.max(0, Math.ceil((state.shoveReadyAt - now) * 10) / 10);
   const charge = state.shoveChargingAt === null ? null
-    : Math.max(0, Math.min(100, Math.round((now - state.shoveChargingAt) / SHOVE_CHARGE_S * 100)));
-  const progress = charge ?? Math.max(0, Math.min(100, (1 - remaining / SHOVE_COOLDOWN_S) * 100));
+    : Math.max(0, Math.min(100, Math.round((now - state.shoveChargingAt) / weapon.charge * 100)));
+  const progress = charge ?? Math.max(0, Math.min(100, (1 - remaining / weapon.recovery) * 100));
   return { remaining, charge, progress };
 }
 
 /** A forward 100-degree arc. Looking away is a miss, even at close range. */
-export function inShoveArc(x: number, z: number, fx: number, fz: number): boolean {
+export function inShoveArc(x: number, z: number, fx: number, fz: number, reach: number = SHOVE_REACH, arc: number = 50): boolean {
   const distance = Math.hypot(x, z);
   const facing = Math.hypot(fx, fz);
-  return facing > 0 && distance <= SHOVE_REACH &&
-    (distance < 0.01 || (x * fx + z * fz) / (distance * facing) >= Math.cos(50 * Math.PI / 180));
+  return facing > 0 && distance <= reach &&
+    (distance < 0.01 || (x * fx + z * fz) / (distance * facing) >= Math.cos(arc * Math.PI / 180));
 }
 
 /** Tall furniture, watcher posts and the room's concave walls stop a shove. */

@@ -1,6 +1,7 @@
 import { BOMB_PRICE, KEEPER_FLOOR } from "../game/world";
 import { stolenLootLabel } from "../game/thief/loot";
 import { pledgeById, type PledgeId } from "../game/heat/pledge";
+import { knownRouteText, type KnownRoute } from "../game/dungeon/knownRoutes";
 
 /**
  * What the readout says, in what order, in one voice.
@@ -68,6 +69,14 @@ export interface HudFacts {
   owed: number;
   /** A doorway to the stairs has been seen, so the player can return to it. */
   stairsKnown?: boolean;
+  stairsRoute?: KnownRoute;
+  followedRoute?: { label: string; guide: KnownRoute } | null;
+  mapDark?: boolean;
+  nestSeen?: boolean;
+  bombPayment?: "gems" | "key" | null;
+  bombBought?: boolean;
+  bombBurning?: boolean;
+  satchelFull?: boolean;
   hasBomb?: boolean;
   pledge?: { id: PledgeId; kept: boolean } | null;
   cutpurse?: "stalking" | "fleeing" | null;
@@ -142,6 +151,32 @@ export interface HudFacts {
 /** The separator between a fact and what qualifies it, everywhere. */
 const DOT = " · ";
 
+/** Both sides of the last descent use the live shop quote and carried gear. */
+function bombNextStep(f: HudFacts): string {
+  if (f.bombBurning) return "bomb burning here · keep clear of the blast";
+  if (f.bombBought) return "shop bomb sold · search unopened chests for a bomb";
+  if (f.bombPayment === null) return `gather ${Math.max(0, BOMB_PRICE - f.spare)} more for a bomb beyond the toll`;
+  if (f.satchelFull) return "free a satchel slot for a bomb";
+  return `find a shop for a bomb${f.bombPayment === "key" ? " · key trade available" : ""}`;
+}
+
+/** The next useful action follows the same balances and final-door state as
+ * the real interactions. A vow's deferred payout cannot pay today's toll. */
+export function floorNextStep(f: HudFacts): string {
+  if (f.owed > 0) return f.nestSeen && f.nestGems > 0
+    ? "recover stolen gems or explore" : "explore for gems";
+  if (f.keeper === "holds" && !f.hasBomb) {
+    return bombNextStep(f);
+  }
+  if (f.mapDark) return "reach the stairs · chart hidden by Gloom";
+  if (f.stairsRoute?.status === "blocked") return "stairs route blocked · check the map";
+  if (f.stairsRoute?.status === "follow") {
+    const doors = f.stairsRoute.rooms.length - 1;
+    return `stairs ${f.stairsRoute.dir} · ${doors} ${doors === 1 ? "door" : "doors"}`;
+  }
+  return `${f.stairsKnown ? "return to" : "find"} the stairs`;
+}
+
 /**
  * How much oil is left, in words.
  *
@@ -185,7 +220,7 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
     });
   }
   if (f.harrier === "hunting") {
-    add({ id: "harrier", label: "ABOVE", body: `face it and shove when close${DOT}a blast downs it`, rank: 0, tone: "danger", mark: "!!!" });
+    add({ id: "harrier", label: "ABOVE", body: `face it and attack when close${DOT}a blast downs it`, rank: 0, tone: "danger", mark: "!!!" });
   }
   if (f.cutpurse === "stalking") {
     add({ id: "cutpurse", label: "CUTPURSE", body: "protect your pockets · face it and shove", rank: 0, tone: "danger", mark: "!!" });
@@ -259,8 +294,8 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
   add({
     id: "gems",
     label: "GEMS",
-    body: `${f.gems}${DOT}toll ${f.toll}${DOT}${f.owed > 0 ? `${f.owed} short · explore for gems`
-      : `${f.spare} spare · ${f.stairsKnown ? "return to" : "find"} the stairs`}`,
+    body: `${f.gems}${DOT}toll ${f.toll}${DOT}${f.owed > 0 ? `${f.owed} short` : `${f.spare} spare`}`
+      + (f.followedRoute ? "" : `${DOT}${floorNextStep(f)}`),
     rank: 2,
     tone: f.owed > 0 ? "danger" : "gold",
     mark: f.owed > 0 ? "!" : undefined,
@@ -270,9 +305,14 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
     id: "prepare",
     label: "PREPARE",
     body: f.hasBomb ? "bomb packed · keep it for the final stairs"
-      : `final stairs need a bomb · shop ${BOMB_PRICE} gems beyond the toll`,
+      : `final stairs need a bomb${DOT}${bombNextStep(f)}`,
     rank: 2,
     tone: f.hasBomb ? "gold" : "ink",
+  });
+
+  if (f.followedRoute) add({
+    id: "route", label: "ROUTE", rank: 2, tone: "accent",
+    body: `${f.followedRoute.label}${DOT}${f.mapDark ? "chart hidden by Gloom" : knownRouteText(f.followedRoute.guide, true)}`,
   });
 
   // Rank 3: what can be spent or lost.
@@ -325,7 +365,7 @@ export function hudLines(f: HudFacts, compact = false): HudLine[] {
   add({
     id: "floor",
     label: "FLOOR",
-    body: `${f.floor}/${f.floors}${DOT}${f.roomTitle}`,
+    body: `${f.floor}/${f.floors}` + (f.followedRoute ? "" : `${DOT}${f.roomTitle}`),
     rank: 4,
     tone: "ink",
   });

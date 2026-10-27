@@ -52,7 +52,7 @@ export interface Lesson<K extends keyof BusEvents = keyof BusEvents> {
 }
 
 const lesson = <K extends keyof BusEvents>(l: Lesson<K>): Lesson => l as unknown as Lesson;
-const shoveControl = (touch: boolean) => touch ? "SHOVE" : `Left click / ${keysLabel(useSettings.getState().bindings.shove)} / RT`;
+const shoveControl = (touch: boolean) => touch ? "ATTACK" : `Left click / ${keysLabel(useSettings.getState().bindings.shove)} / RT`;
 const sprintControl = (touch: boolean) => touch ? "RUN" : `${keysLabel(useSettings.getState().bindings.sprint)} or L3`;
 
 export const LESSONS: readonly Lesson[] = [
@@ -61,7 +61,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({
     id: "here",
     event: "wardenEntered",
-    line: (_, touch) => `The Warden is here. ${shoveControl(touch)} briefly staggers it; traps and blasts wound it. Move clear while it recoils.`,
+    line: (_, touch) => `The Warden is here. ${shoveControl(touch)} strikes with your weapon; bare hands only stagger it. Move clear during recovery.`,
   }),
   lesson({ id: "seen", event: "sentrySaw", line: "The watcher called out. Stay out of the light - it tells the Warden where you are." }),
   // Only worth saying once there is something to hear it: told before the
@@ -171,7 +171,7 @@ export const LESSONS: readonly Lesson[] = [
   lesson({ id: "shardback", event: "shardbacksWarning", line: "Shardbacks are raising their plates. Lower the lantern or back away before the crystal ring answers the room.", sample: { roomId: "r" } }),
   lesson({ id: "rat", event: "snareSprung", when: ({ by }) => by === "rat", line: "A rat sprang your snare. Anything with feet does - the Warden most of all.", sample: { by: "rat" } }),
   lesson({ id: "burst", event: "propBroken", line: "It burst. A barrel between you and a blast takes the blast for you, and now and then there is a gem in the wreck." }),
-  lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)} to drive it off. A blast grounds it where spikes can finish it.` }),
+  lesson({ id: "harrier", event: "harrierWoke", line: (_, touch) => `The Harrier hovers before diving. Face it and use ${shoveControl(touch)}. Weapons wound it; bare hands drive it off. Dodge during recovery.` }),
   lesson({ id: "keeper", event: "keeperBars", line: `Shoves cannot move the Keeper; save ${BOMB_PRICE} extra gems for a shop bomb. With the toll ready, set a bomb from your satchel, dodge the blast, then take the stairs while it kneels for ${KEEPER_STALL_S} seconds.` }),
   lesson({ id: "reaper", event: "reaperWoke", every: true,
     line: (_, touch) => `The Reaper is here. Sprint with ${sprintControl(touch)} to the stairs. Shoves cannot stop it. A bomb holds it for ${REAPER_STALL_S} seconds; keep moving while its fuse burns.` }),

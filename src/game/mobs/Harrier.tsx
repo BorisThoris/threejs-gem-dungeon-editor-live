@@ -194,7 +194,7 @@ export function Harrier({ room }: { room: Room }) {
     if (canWind && now >= recoveringUntil.current) {
       if (windingAt.current === null) {
         windingAt.current = now;
-        bus.emit("notice", "The Harrier draws back. Dodge or shove.");
+        bus.emit("notice", "The Harrier draws back. Dodge or attack.");
         sfx.harrierWind(side);
       }
       tell.current = Math.min(1, (now - windingAt.current) / HARRIER_WINDUP_S);

@@ -151,6 +151,17 @@ reliquary: a player who opened the circuit can follow its bed back while
 advertising less noise. Earlier loud sounds still expire on their original
 deadlines; stepping onto silt does not erase an alarm already raised.
 
+## Implemented refinement: prepare before the last descent
+
+The floor-two preparation line now uses the same live bomb purchase guidance
+as the final floor: remaining gems beyond the toll, a permitted key trade,
+satchel space and sold stock. A bomb already burning on the floor is not
+packed equipment. Carrying a bomb confirms readiness for the final stairs.
+The irreversible descent prompt warns when that equipment is missing, while
+leaving the decision to descend with the player. The warning clears as soon
+as a bomb is carried. This joins preparation, the purchase and the final
+Keeper response into one understandable sequence without changing their rules.
+
 ## Next design questions
 
 The latest 2026-09-28 integration check rebuilt and exercised both the web
@@ -177,3 +188,49 @@ substitute for observing a first-time human player.
 These are follow-up design questions, not claims that the broader inhabited
 dungeon expansion is finished. Its implementation history remains in
 [World Expansion](WORLD_EXPANSION.md).
+
+
+## Current expansion: an equipment-driven dungeon crawler
+
+The requested direction now includes direct combat and a continuing expedition,
+with Barony-style exploration and inventory decisions as inspiration. This
+supersedes the older assumption that the player can only evade creatures.
+Existing sound, light, traps and escape-money choices remain useful alternatives
+to attacking.
+
+Implemented expansion: a 16-item backpack (Courier 12), four quick-use belt
+positions, safe paused rearrangement, an iron sword at the start, and purchasable
+spears/axes with distinct range, arc, damage and timing. Equipped and owned
+weapons persist through ordinary descent. Warden and Harrier health make melee
+attacks consequential; defeating the Warden prevents its return on that floor.
+
+Requirements for the full expansion (implementation and verification):
+
+- A reachable endgame crossroads offering a real boss encounter or a new
+  expedition. The boss needs readable attacks, health, weapon interaction,
+  victory and defeat states, and a clear reward/outcome.
+- New Game+ preserves the player's acquired inventory, weapons, relics and
+  resources, generates fresh floors, and applies a shared exponential difficulty
+  curve. The UI must display the cycle and consequences before commitment.
+- The full loop must be exercised through actual controls: start, explore,
+  acquire/use gear, descend, choose each endgame branch, fight, carry equipment
+  into NG+, and demonstrate increased difficulty over multiple cycles.
+- Update old shove-only teaching and tests to distinguish unarmed defence from
+  equipped attacks, then verify the affected systems and shipped build. Early
+  inventory/equipment checks do not prove completion of this whole expansion.
+
+Verification on 2026-10-27:
+
+| Requirement | Current evidence |
+| --- | --- |
+| A complete expedition reaches the choice | The seed-11 movement-only run crossed 19 doors over three floors, bought recovery and a bomb with earned gems, used the bomb on the Keeper, paid the final toll, and reached the crossroads. No teleports or granted resources after the initial start. |
+| A playable boss branch | The browser fixture chose the Crown Warden, dodged with movement and sprint controls, attacked with the sword until victory, and carried the ten-gem reward into NG+. Combat used no health grants or cooldown edits. Source checks independently cover attack zones, pause, repeated-hit guards, reward uniqueness and lethal damage. |
+| NG+ preserves acquired state and becomes harder | Source checks compare the complete promised carried-state projection across three cycles and verify actual damage and enemy health at 2×, 4× and 8×. The full walk verifies earned supplies survive the UI choice; fresh-run reset is also exercised. |
+| Larger inventory and useful weapon choices | Source and browser checks cover 16/12-slot capacity, four belt slots, paused swaps, unknown-item privacy, shop payment guards, sword/spear/axe ownership and differing attack geometry, timing and damage. Phone controls and repeated-swap rendering are checked. |
+| The changes work with existing systems | All twelve short source checks passed. Twenty-one affected browser checks passed across the batch and the focused crowded-HUD correction, including maps, shops, traps, touch controls, pause, restart and backpack inspection. |
+| The shipped web game works | A fresh production build passed rendering, keyboard movement, pause, sword/bare-hands equipment switching, absence of editor/debug probes, download budget and startup with malformed/older saved settings. |
+
+Coverage limits: full traversal is one Vagrant seed; the boss starts from a
+generated endgame fixture. The complete desktop/full/system gates were not
+rerun for this expansion. First-time player comprehension and long-term balance
+still need human playtesting. The numerical doubling curve caps at cycle 40.

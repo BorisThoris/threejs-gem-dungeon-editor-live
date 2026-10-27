@@ -1217,10 +1217,10 @@ for (const shape of ["circle", "hexagon", "octagon", "diamond", "triangle", "cro
       (d.gems > 0 ? 1 : 0) +
       d.relics.length +
       d.satchel.length +
-      (d.slots > 4 ? 1 : 0);
+      (d.slots > L.DELVERS.vagrant.slots ? 1 : 0);
     const costs =
       (d.lives < L.STARTING_LIVES ? 1 : 0) +
-      (d.slots < 4 ? 1 : 0) +
+      (d.slots < L.DELVERS.vagrant.slots ? 1 : 0) +
       (d.alarmBonus > 0 ? 1 : 0) +
       (d.alarmFactor > 1 ? 1 : 0);
     return gains > 0 && costs === 0;

@@ -4,7 +4,6 @@ import { DEEDS, DEED_IDS } from "../game/deeds/catalog";
 import { DELVERS, DELVER_IDS, DEFAULT_DELVER, type DelverId } from "../game/delvers/catalog";
 import { enterImmersive, useTouchControls } from "../game/input/device";
 import { keysLabel, SLOT_ACTIONS } from "../game/input/bindings";
-import { SHOVE_COOLDOWN_S } from "../game/player/combat";
 import { useDeeds } from "../game/state/deeds";
 import { useLedger } from "../game/state/ledger";
 import { LEDGER_LESSONS } from "../game/ledger/lessons";
@@ -23,7 +22,7 @@ const isElectron = () =>
 
 // The rule stays the same when its button changes between keyboard and touch.
 const keyDropHelp = "Set the iron key down to make a clatter where it lands. Use it as a lure, then pick it back up with Use.";
-const shoveHelp = `Drive off the Harrier or Cutpurse, or briefly stagger the Warden. Recover for ${SHOVE_COOLDOWN_S} seconds between shoves.`;
+const shoveHelp = "Attack with your equipped weapon. Swords balance speed and reach, spears thrust farther, and axes hit harder. Manage equipment in the pause menu; shops sell weapons. Bare hands shove without damage.";
 const lanternHelp = "More light helps you see farther and makes you easier to spot. Each press lowers the light one band. From darkness, press again to raise it fully; raising takes time and oil. Entering rooms with light also spends oil. Buy oil at shops.";
 const barricadeHelp = `Block a doorway with one of ${BARRICADE_KITS} reusable kits per floor. The bar stays until you tear it down to recover the kit. It blocks you too and makes the Warden seek another route. Hammering is loud.`;
 
@@ -187,8 +186,8 @@ export function MainMenu() {
               <dd style={{ margin: 0 }}>Click the game to take the mouse, Esc gives it back; or the right stick</dd>
               <dt style={{ color: colors.accent }}>Use</dt>
               <dd style={{ margin: 0 }}>{keysLabel(bindings.interact)} at a door, counter or lectern, or A on a pad</dd>
-              <dt style={{ color: colors.accent }}>Shove</dt>
-              <dd style={{ margin: 0 }}>Left click, {keysLabel(bindings.shove)}, or RT charges and shoves a close threat in front of you. {shoveHelp}</dd>
+              <dt style={{ color: colors.accent }}>Attack</dt>
+              <dd style={{ margin: 0 }}>Left click, {keysLabel(bindings.shove)}, or RT attacks a close threat in front of you. {shoveHelp}</dd>
               <dt style={{ color: colors.accent }}>Satchel</dt>
               <dd style={{ margin: 0 }}>Slots 1–4: {SLOT_ACTIONS.map(action => keysLabel(bindings[action])).join("; ")}. Drink, read, or set down that slot's item, or use X, Y and the shoulders on a pad.</dd>
               <dt style={{ color: colors.accent }}>Run</dt>
@@ -237,7 +236,7 @@ function TouchHelp() {
     ["Look", "Drag on the other half."],
     ["Use", "USE at a door, counter, chest or lectern. It lights when something is in reach."],
     ["Satchel", "Tap a slot to drink, read, or set down what is in it."],
-    ["Shove", `SHOVE a close threat in front of you. ${shoveHelp}`],
+    ["Attack", `ATTACK a close threat in front of you. ${shoveHelp}`],
     [
       "Run",
       "Shove the stick past its rim, or tap RUN. It ends when you let the stick go. The Warden is slower than you are - but running is loud, and while it can hear you it walks straight for you.",
