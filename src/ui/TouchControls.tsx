@@ -373,15 +373,18 @@ function ShoveButton({ size }: { size: number }) {
  */
 function PauseButton({ size }: { size: Sizes }) {
   const portrait = usePortrait();
+  const inControl = useRun(canControl);
   return (
     <div
       style={{
         position: "fixed",
         top: `calc(${size.margin + (portrait ? MINIMAP_SIZE * MINIMAP_SCALE + 12 : 0)}px + env(safe-area-inset-top, 0px))`,
         right: `calc(${portrait ? size.margin : MINIMAP_SIZE * MINIMAP_SCALE + 20 + 14}px + env(safe-area-inset-right, 0px))`,
-        zIndex: 600,
+        zIndex: 600, display: "flex", gap: 8,
       }}
     >
+      <TouchButton testId="inventory-open" label="BAG" size={Math.round(size.button * 0.8)}
+        unavailable={!inControl} onPress={() => useRun.getState().pause("inventory")} />
       <TouchButton
         testId="touch-pause"
         label="II"

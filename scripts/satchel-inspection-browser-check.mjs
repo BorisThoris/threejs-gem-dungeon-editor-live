@@ -14,25 +14,22 @@ try {
     run.setState({ satchel: ["healing", "mapping", "mire", "bomb"], identified: ["healing", "mapping"],
       charges: { ...run.getState().charges, healing: "blessed", mapping: "cursed", mire: "cursed", bomb: "plain" } });
   });
-  await page.keyboard.press("Escape");
-  await page.getByTestId("pause-menu").waitFor();
+  await page.keyboard.press("KeyI");
+  await page.getByTestId("inventory-panel").waitFor();
   const pausedClock = await page.evaluate(() => window.__derived.clock());
-  assert.equal(await page.getByTestId("pause-satchel").count(), 1,
-    "a paused player can review carried items before spending them");
-  await page.getByTestId("pause-satchel").click();
   const row = i => page.getByTestId(`inspect-slot-${i}`);
   await row(0).click();
-  assert.match(await row(0).innerText(), /blessed.*Potion of Healing/s);
-  assert.match(await row(0).innerText(), /Restores up to 2 lives/);
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /blessed.*Potion of Healing/s);
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /Restores up to 2 lives/);
   await row(1).click();
-  assert.match(await row(1).innerText(), /cursed.*Scroll of Mapping/s);
-  assert.match(await row(1).innerText(), /lantern goes out.*brazier/s);
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /cursed.*Scroll of Mapping/s);
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /lantern goes out.*brazier/s);
   await row(2).click();
-  assert.match(await row(2).innerText(), /cursed/);
-  assert.match(await row(2).innerText(), /still unknown/);
-  assert.doesNotMatch(await row(2).innerText(), /Mire|fifth|containers/, "inspection cannot identify a hidden kind for free");
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /cursed/);
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /effect is unknown/);
+  assert.doesNotMatch(await page.getByTestId("inventory-item-details").innerText(), /Mire|fifth|containers/, "inspection cannot identify a hidden kind for free");
   await row(3).click();
-  assert.match(await row(3).innerText(), /cracked walls/, "a bomb's visible identity needs no discovery");
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /cracked walls/, "a bomb's visible identity needs no discovery");
   await page.keyboard.press("1");
   assert.deepEqual(await page.evaluate(() => ({ satchel: window.__run.getState().satchel,
     known: window.__run.getState().identified, paused: window.__run.getState().paused })),
@@ -47,14 +44,13 @@ try {
   });
   assert.ok(fit, "charged effects fit at maximum phone text size");
   if (process.env.SATCHEL_REVIEW === "1") await page.screenshot({ path: "output/verification/satchel-inspection-phone.png" });
-  await page.getByTestId("pause-resume").click();
+  await page.getByTestId("inventory-close").click();
   await page.keyboard.press("1");
   await page.waitForFunction(() => window.__run.getState().satchel.length === 3);
-  await page.keyboard.press("Escape");
-  await page.getByTestId("pause-satchel").click();
-  assert.match(await row(0).innerText(), /Mapping/, "inspection follows the real slot after consumption");
-  assert.equal(await page.getByTestId("inspect-slot-3").count(), 0);
-  await page.getByTestId("pause-satchel").click();
+  await page.keyboard.press("KeyI");
+  await row(0).click();
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /Mapping/, "inspection follows the real slot after consumption");
+  assert.match(await row(3).getAttribute("aria-label"), /Empty/);
   await page.evaluate(() => {
     const pad = { id: "Inspection check", index: 0, connected: true, mapping: "standard", timestamp: 0,
       axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 })) };
@@ -67,28 +63,21 @@ try {
     await page.evaluate(index => { window.__inspectionPad.buttons[index] = { pressed: false, touched: false, value: 0 }; }, index);
     await page.waitForTimeout(100);
   };
-  await page.getByTestId("pause-resume").focus();
-  for (let step = 0; step < 4; step++) {
-    if (await page.getByTestId("pause-satchel").evaluate(el => el === document.activeElement)) break;
-    await press(13);
-  }
-  assert.ok(await page.getByTestId("pause-satchel").evaluate(el => el === document.activeElement));
-  await press(0);
-  await row(0).waitFor();
+  await page.getByTestId("inventory-close").focus();
   await press(13);
+  for (let step = 0; step < 4 && !(await row(0).evaluate(el => el === document.activeElement)); step++) await press(14);
   assert.ok(await row(0).evaluate(el => el === document.activeElement));
   await press(0);
-  assert.match(await row(0).innerText(), /brazier/, "d-pad and A open the learned effect at phone text size");
+  assert.match(await page.getByTestId("inventory-item-details").innerText(), /brazier/, "d-pad and A open the learned effect at phone text size");
   await press(1);
-  await page.getByTestId("pause-menu").waitFor({ state: "detached" });
+  await page.getByTestId("inventory-panel").waitFor({ state: "detached" });
   await page.evaluate(() => {
     window.__run.setState({ satchel: ["healing", "mapping", "mire", "snare", "bomb", "wardstone"],
       identified: ["healing", "mapping"], paused: false });
   });
   assert.equal(await page.evaluate(() => window.__run.getState().swapItems(4, 0)), false,
     "combat cannot silently rearrange the belt");
-  await page.keyboard.press("Escape");
-  await page.getByTestId("pause-satchel").click();
+  await page.keyboard.press("KeyI");
   await row(4).click();
   const beforeSwap = await page.evaluate(() => ({ items: window.__run.getState().satchel,
     known: window.__run.getState().identified, clock: window.__derived.clock() }));
@@ -103,7 +92,7 @@ try {
     assert.equal(await page.evaluate(([from, to]) => window.__run.getState().swapItems(from, to), [from, to]), false);
   }
   assert.deepEqual(await page.evaluate(() => window.__run.getState().satchel), afterSwap.items);
-  await page.getByTestId("pause-resume").click();
+  await page.getByTestId("inventory-close").click();
   await page.keyboard.press("1");
   await page.waitForFunction(() => window.__run.getState().placed.some(p => p.id === "bomb"));
   assert.deepEqual(await page.evaluate(() => window.__run.getState().satchel), afterSwap.items.slice(1),

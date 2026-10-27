@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH });
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_PATH, args: ["--mute-audio"] });
 const rows = [];
 try {
   for (const fps of [30, 60, 144, 240]) {
@@ -14,6 +14,7 @@ try {
     await page.evaluate(() => window.__run.getState().startRun(11));
     await page.waitForFunction(() => !window.__run.getState().transitioning);
     await page.evaluate(() => {
+      window.__settings.getState().setCameraBob(false);
       const s = window.__run.getState(), room = s.dungeon.rooms.find(r => r.id === s.currentRoomId);
       const fixture = { ...room, size: 20, shape: "square", links: {}, wings: {}, biome: "hewn" };
       window.__run.setState({ dungeon: { ...s.dungeon, rooms: s.dungeon.rooms.map(r => r.id === room.id ? fixture : r) },
@@ -41,7 +42,7 @@ try {
       window.__strideTime = 0;
     });
     let distance = 0;
-    const speeds = [];
+    const speeds = [], cameraSteps = [], cameraGaps = [];
     await page.keyboard.down("ShiftLeft");
     for (let leg = 0; leg < 4; leg++) {
       const key = leg % 2 ? "KeyS" : "KeyW";
@@ -50,27 +51,50 @@ try {
         const { playerAt } = await import("/src/game/player/where.ts");
         const state = window.__strideRoot.getState(), speeds = [];
         let distance = 0, x = window.__playerDebug.x, z = window.__playerDebug.z;
+        let cx = state.camera.position.x, cz = state.camera.position.z;
+        const cameraSteps = [], cameraGaps = [];
         for (let frame = 0; frame < Math.round(fps * 0.4); frame++) {
           window.__strideTime += 1 / fps;
           state.advance(window.__strideTime);
           const p = window.__playerDebug;
           distance += Math.hypot(p.x - x, p.z - z); x = p.x; z = p.z;
           if (frame > 2) speeds.push(playerAt.speed);
+          if (frame > fps * 0.1) cameraSteps.push(Math.hypot(state.camera.position.x - cx, state.camera.position.z - cz));
+          cx = state.camera.position.x; cz = state.camera.position.z;
+          cameraGaps.push(Math.hypot(cx - p.x, cz - p.z));
         }
-        return { distance, speeds };
+        return { distance, speeds, cameraSteps, cameraGaps };
       }, fps);
       await page.keyboard.up(key);
       distance += measured.distance;
       speeds.push(...measured.speeds);
+      cameraSteps.push(...measured.cameraSteps);
+      cameraGaps.push(...measured.cameraGaps);
     }
     await page.keyboard.up("ShiftLeft");
     rows.push({ fps, distance, steps: await page.evaluate(() => window.__strideSteps),
+      maxCameraGap: Math.max(...cameraGaps),
+      frozenCameraFrames: cameraSteps.filter(d => d < 0.0001).length / cameraSteps.length,
       minSpeed: Math.min(...speeds), maxSpeed: Math.max(...speeds) });
+    await page.evaluate(() => window.__run.getState().pause());
+    await page.waitForTimeout(50);
+    assert.ok(await page.evaluate(() => {
+      const state = window.__strideRoot.getState(), before = state.camera.position.clone();
+      for (let i = 0; i < 10; i++) { window.__strideTime += 1 / 144; state.advance(window.__strideTime); }
+      return before.distanceTo(state.camera.position) < 1e-8;
+    }), "pause freezes camera follow immediately");
+    assert.ok(await page.evaluate(() => {
+      window.__bus.emit("teleport", { position: [1, 1.5, 2] });
+      const state = window.__strideRoot.getState();
+      return state.camera.position.x === 1 && state.camera.position.z === 2;
+    }), "teleport sets the camera immediately without crossing the room");
     assert.deepEqual(errors, []);
     await page.close();
   }
   console.log(rows);
   for (const row of rows) {
+    assert.ok(row.maxCameraGap < 0.2, `${row.fps} fps camera stays within 20 cm of the body: ${row.maxCameraGap}`);
+    assert.ok(row.frozenCameraFrames < 0.1, `${row.fps} fps camera moves between physics ticks: ${row.frozenCameraFrames}`);
     assert.ok(row.distance > 10 && row.distance < 14, `${row.fps} fps traverses the actual clear lane`);
     assert.ok(row.steps >= 5 && row.steps <= 7, `${row.fps} fps keeps footsteps in pace with the same distance`);
     assert.ok(row.minSpeed > 7.8 && row.maxSpeed < 8.2, `${row.fps} fps publishes physical speed, not render-frame pulses`);

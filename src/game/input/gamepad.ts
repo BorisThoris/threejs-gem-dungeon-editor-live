@@ -36,6 +36,7 @@ export interface GamepadState {
   /** Rising edge only, true for one frame. */
   interactPressed: boolean;
   pausePressed: boolean;
+  inventoryPressed: boolean;
   /**
    * A rising edge per satchel slot, one button each: X, Y, then the two
    * shoulders. There were two of these, for a satchel of four, so the back
@@ -78,6 +79,7 @@ const MENU_THRESHOLD = 0.6;
 const BUTTON_INTERACT = 0;
 const BUTTON_BACK = 1;
 const BUTTON_PAUSE = 9;
+const BUTTON_INVENTORY = 8;
 const BUTTON_DASH = 10;
 // 11 = R3 / right stick click. The last free button on a standard pad: A,
 // B, X, Y, both shoulders, Start and L3 are all spoken for, and the
@@ -118,6 +120,7 @@ const state: GamepadState = {
   dash: false,
   interactPressed: false,
   pausePressed: false,
+  inventoryPressed: false,
   slotPressed: BUTTON_SLOTS.map(() => false),
   backPressed: false,
   lanternPressed: false,
@@ -135,6 +138,7 @@ function clear(): void {
   state.dash =
     state.interactPressed =
     state.pausePressed =
+    state.inventoryPressed =
     state.backPressed =
     state.lanternPressed =
     state.barPressed =
@@ -200,6 +204,7 @@ function poll(now: number): void {
   state.markPressed = risingEdge(pad, DPAD.up);
   state.dropKeyPressed = risingEdge(pad, DPAD.left);
   state.pausePressed = risingEdge(pad, BUTTON_PAUSE);
+  state.inventoryPressed = risingEdge(pad, BUTTON_INVENTORY);
   for (let i = 0; i < BUTTON_SLOTS.length; i++) state.slotPressed[i] = risingEdge(pad, BUTTON_SLOTS[i]);
 
   // The d-pad and the left stick drive a menu the same way, so a player who

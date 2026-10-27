@@ -245,8 +245,8 @@ if (DESKTOP) {
 } else {
   browser = await chromium.launch({
     executablePath: CHROMIUM,
-    args: ["--no-sandbox", "--use-gl=angle", "--use-angle=swiftshader",
-           "--enable-unsafe-swiftshader", "--disable-background-timer-throttling"],
+    args: ["--mute-audio", "--no-sandbox", "--disable-background-timer-throttling",
+      ...(process.platform === "win32" ? [] : ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"])],
   });
   /**
    * Smaller than a Deck's panel on purpose. Nothing here reads a layout -
@@ -355,7 +355,7 @@ await page.waitForTimeout(9000);
 const hud = await screen();
 ok(
   "A on Start begins a run",
-  /LIVES/.test(hud) && /FLOOR/.test(hud) && (await buttons()).length === 0,
+  /LIVES/.test(hud) && /FLOOR/.test(hud) && await page.getByTestId("inventory-open").isVisible() && !(await someButton(/start as/i)),
   (await buttons()).join(", ") || hud.slice(0, 50).replace(/\n/g, " · ")
 );
 
@@ -832,7 +832,7 @@ const standAtLectern = () =>
     if (run.getState().phase !== "playing") run.getState().startRun(1357);
     await new Promise((r) => setTimeout(r, 1200));
     run.setState({ satchel: ["gloom", "mire", "dread"], identified: [], paused: false });
-    run.getState().pause();
+    run.getState().pause("inventory");
   });
   await page.waitForTimeout(500);
 
@@ -851,16 +851,22 @@ const standAtLectern = () =>
    * different looks, so matching on text would be matching on the seed.
    */
   const walkTo = async (testid) => {
-    for (let i = 0; i < 40; i++) {
-      if (await page.evaluate((t) => document.activeElement?.getAttribute("data-testid") === t, testid)) {
-        return true;
-      }
-      await tap(page, BUTTON.down, 1);
+    // Inventory has a grid beside equipment. Traverse each row with Right,
+    // then Down when it wraps, instead of assuming every menu is one column.
+    const row = new Set();
+    for (let i = 0; i < 100; i++) {
+      const current = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
+      if (current === testid) return true;
+      if (row.has(current)) { row.clear(); await tap(page, BUTTON.down, 1); }
+      else { row.add(current); await tap(page, BUTTON.right, 1); }
     }
     return false;
   };
 
-  let walked = true;
+  const identifyReached = await walkTo("inventory-identify");
+  if (identifyReached) await tap(page, BUTTON.a);
+  ok("controller opens inventory identification", identifyReached);
+  let walked = identifyReached;
   for (const id of ["gloom", "mire", "dread"]) {
     if (!(await walkTo(`name-${id}`))) {
       walked = false;

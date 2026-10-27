@@ -35,6 +35,7 @@ import { TouchControls } from "./ui/TouchControls";
 import { Transitions } from "./ui/Transitions";
 import { Moments } from "./ui/Moments";
 import { BossStatus, ExpeditionChoice } from "./ui/Expedition";
+import { Inventory, InventoryButton } from "./ui/Inventory";
 
 /**
  * Esc toggles pause while a run is on and no puzzle is up: a puzzle owns
@@ -44,6 +45,14 @@ import { BossStatus, ExpeditionChoice } from "./ui/Expedition";
 function usePauseKeys() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (isGameplayKey(event) && useSettings.getState().bindings.inventory.includes(event.code)) {
+        const run = useRun.getState();
+        if (run.phase !== "playing") return;
+        event.preventDefault();
+        if (run.paused && run.pauseView === "inventory") run.resume();
+        else run.pause("inventory");
+        return;
+      }
       if (event.code !== "Escape" || event.repeat || event.defaultPrevented) return;
       const run = useRun.getState();
       if (run.phase !== "playing" || (!run.paused && run.inputLocks > 0)) return;
@@ -147,6 +156,7 @@ const wantsEditor = () =>
 export default function App() {
   const phase = useRun((s) => s.phase);
   const paused = useRun((s) => s.paused);
+  const pauseView = useRun(s => s.pauseView);
   const scenarioParams = import.meta.env.DEV ? new URLSearchParams(window.location.search) : null;
   usePauseKeys();
   useSatchelKeys();
@@ -322,6 +332,7 @@ export default function App() {
       <Readouts />
       <Prompt />
       <Satchel />
+      <InventoryButton />
       <ItemLog />
       {/* The stick, the look drag and the buttons, on anything held in
           the hands. Renders nothing on a desktop until it is touched. */}
@@ -330,7 +341,7 @@ export default function App() {
       <PuzzleOverlay />
       <BossStatus />
       {phase === "crossroads" && <ExpeditionChoice />}
-      {paused && phase === "playing" && <PauseMenu />}
+      {paused && phase === "playing" && (pauseView === "inventory" ? <Inventory /> : <PauseMenu />)}
       {(phase === "won" || phase === "lost") && <RunSummary />}
     </>
   );

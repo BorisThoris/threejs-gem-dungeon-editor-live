@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { chromium } from "./browser-safety.mjs";
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined, args: ["--no-sandbox", "--mute-audio"] });
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   const errors = [];
@@ -9,7 +9,7 @@ try {
   await page.goto(`http://127.0.0.1:${process.env.PORT ?? 5199}/`);
   await page.getByTestId("menu-start").click();
   await page.waitForFunction(() => window.__run && !window.__run.getState().transitioning);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyI");
   assert.equal(await page.getByTestId("pause-relics").count(), 0, "no empty relic section on a fresh Vagrant");
 
   for (const [id, partner, name, flag] of [
@@ -85,7 +85,7 @@ try {
     const bought = await page.evaluate(flag => ({ gems: window.__run.getState().gems,
       active: window.__planningModifiers(window.__run.getState().relics)[flag] }), flag);
     assert.deepEqual(bought, { gems: 30 - offer.price, active: true }, "the advertised pair really activates for the quoted cost");
-    await page.keyboard.press("Escape");
+    await page.keyboard.press("KeyI");
     await page.getByTestId("pause-relics").click();
     await page.getByTestId(`inspect-relic-${id}`).click();
     let description = await page.getByTestId(`inspect-relic-${id}`).innerText();
@@ -119,7 +119,7 @@ try {
     }
   });
   await page.waitForFunction(() => !window.__run.getState().transitioning);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyI");
   await page.getByTestId("pause-relics").click();
   await page.getByTestId("inspect-relic-tally").click();
   const earlier = await page.getByTestId("inspect-relic-tally").innerText();
@@ -129,7 +129,7 @@ try {
 
   await page.evaluate(() => window.__run.getState().startRun(11, "courier"));
   await page.waitForFunction(() => !window.__run.getState().transitioning);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyI");
   await page.getByTestId("pause-relics").click();
   await page.getByTestId("inspect-relic-cant").click();
   assert.match(await page.getByTestId("inspect-relic-cant").innerText(), /Find Company Seal to complete The Books Balance/);
@@ -160,8 +160,8 @@ try {
     await page.evaluate(index => { window.__planningPad.buttons[index] = { pressed: false, touched: false, value: 0 }; }, index);
     await page.waitForTimeout(150);
   };
-  await page.getByTestId("pause-resume").focus();
-  for (let steps = 0; steps < 5; steps++) {
+  await page.getByTestId("inventory-close").focus();
+  for (let steps = 0; steps < 40; steps++) {
     if (await page.getByTestId("pause-relics").evaluate(el => el === document.activeElement)) break;
     await press(13);
   }
@@ -175,7 +175,7 @@ try {
   await press(0);
   assert.match(await page.getByTestId("inspect-relic-cant").innerText(), /Find Company Seal/);
   await press(1);
-  await page.getByTestId("pause-menu").waitFor({ state: "detached" });
+  await page.getByTestId("inventory-panel").waitFor({ state: "detached" });
   assert.deepEqual(errors, []);
   console.log("PASS incomplete pair, next-run reset, paused resources, phone text and controller planning");
 } finally { await browser.close(); }

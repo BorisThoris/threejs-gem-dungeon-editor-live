@@ -1115,7 +1115,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
       ready = !run.getState().transitioning && run.getState().phase === "playing";
     }
     await wait(800);
-    run.getState().pause();
+    run.getState().pause("inventory");
     await wait(5000);
     run.getState().resume();
     await wait(400);
@@ -1242,7 +1242,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.setState({ satchel: ["swiftness"], identified: [] });
     run.getState().useItem(0);
     const quickBefore = window.__derived.walk();
-    run.getState().pause();
+    run.getState().pause("inventory");
     await new Promise((r) => setTimeout(r, 1500));
     run.getState().resume();
     const quickAfter = window.__derived.walk();
@@ -2901,7 +2901,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     const before = { facing: window.__sentry.facing, inside: window.__sentry.inside, lit: window.__sentry.lit };
     let called = 0;
     const off = window.__bus.on("sentrySaw", () => { called++; });
-    run.getState().pause();
+    run.getState().pause("inventory");
     await wait(PAUSE_S * 1000);
     run.getState().resume();
     await wait(250);
@@ -4254,7 +4254,7 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
      */
     const waited = await page.evaluate(async () => {
       const run = window.__run;
-      run.getState().pause();
+      run.getState().pause("inventory");
       await new Promise((r) => setTimeout(r, 17000));
       const sealed = run.getState().sealedRoomId;
       run.getState().resume();
@@ -6080,17 +6080,18 @@ ok("defeat summary appears", await page.evaluate(() => /died down here/i.test(do
     run.getState().startRun(2468);
     await wait(1200);
     run.setState({ satchel: ["gloom", "mire", "dread"], identified: [] });
-    run.getState().pause();
+    run.getState().pause("inventory");
     await wait(300);
     return run.getState().satchel.slice();
   });
 
+  await page.getByTestId("inventory-identify").click();
   const rows = await page.$$eval("[data-testid^='name-']", (els) =>
     els.map((e) => e.getAttribute("data-testid"))
   );
   const carried = named.map((id) => `name-${id}`);
   ok(
-    "the pause menu offers a row for each unnamed thing in the satchel",
+    "Inventory offers a row for each unnamed thing in the satchel",
     carried.every((t) => rows.includes(t)) && rows.includes("name-submit"),
     `rows: ${rows.join(", ")}`
   );

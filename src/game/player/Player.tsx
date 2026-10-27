@@ -63,6 +63,8 @@ const clampVertical = (y: number) =>
 export function Player() {
   const body = useRef<RapierRigidBody>(null);
   const physicsSeconds = useRef(0);
+  const viewPosition = useRef(new Vector3());
+  const viewReady = useRef(false);
   useAfterPhysicsStep(world => { physicsSeconds.current += world.timestep; });
   const { camera } = useThree();
   useMouseLook();
@@ -143,6 +145,8 @@ export function Player() {
       rb.setAngvel({ x: 0, y: 0, z: 0 }, true);
       setPlayerAt(position[0], position[2]);
       physicsSeconds.current = 0;
+      viewPosition.current.set(position[0], position[1], position[2]);
+      viewReady.current = true;
       camera.position.set(position[0], position[1] + EYE_OFFSET, position[2]);
     });
   }, [camera]);
@@ -173,7 +177,19 @@ export function Player() {
       knock = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
       knockX = (Math.random() - 0.5) * SHAKE_AMOUNT * falling;
     }
-    camera.position.set(p.x + sway + knockX, p.y + EYE_OFFSET + dip + knock, p.z);
+    // Physics advances at 60 Hz; copying its pose leaves most 144/240 Hz
+    // frames motionless. Smooth only the view, without allocating snapshots
+    // for every static body or changing collision/stride positions. This
+    // ~11 ms response stays close to the body and resets on every teleport.
+    const view = viewPosition.current;
+    if (!viewReady.current) { view.set(p.x, p.y, p.z); viewReady.current = true; }
+    else if (!useRun.getState().paused) {
+      const follow = 1 - Math.exp(-90 * Math.max(0, delta));
+      view.x += (p.x - view.x) * follow;
+      view.y += (p.y - view.y) * follow;
+      view.z += (p.z - view.z) * follow;
+    }
+    camera.position.set(view.x + sway + knockX, view.y + EYE_OFFSET + dip + knock, view.z);
 
     if (import.meta.env.DEV) {
       const v = rb.linvel();

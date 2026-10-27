@@ -295,6 +295,7 @@ const paused = await page.evaluate(() => document.body.innerText);
 ok("Escape opens the pause menu", /resume|quit|paused/i.test(paused), paused.slice(0, 60).replace(/\n/g, " · "));
 
 // Exercise shipped equipment through visible controls, without development probes.
+await page.getByTestId("pause-inventory").click();
 const sword = page.getByTestId("weapon-sword");
 const fists = page.getByTestId("weapon-fists");
 await sword.waitFor();
@@ -303,7 +304,7 @@ await fists.click();
 ok("the shipped equipment menu can switch to bare hands", await fists.isDisabled() && await sword.isEnabled());
 await sword.click();
 ok("owned weapons can be re-equipped without a shop", await sword.isDisabled() && await fists.isEnabled());
-await page.getByTestId("pause-resume").click();
+await page.getByTestId("inventory-close").click();
 await page.getByTestId("shove-status").filter({ hasText: "IRON SWORD" }).waitFor();
 ok("the shipped HUD reflects the equipped weapon", true);
 

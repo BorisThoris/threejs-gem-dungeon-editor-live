@@ -52,6 +52,11 @@ function PadPause() {
     if (pad.lanternPressed && canControl(run)) run.toggleLantern();
     if (pad.markPressed) run.toggleMark();
     if (pad.dropKeyPressed) run.dropKey();
+    if (pad.inventoryPressed) {
+      if (run.paused && run.pauseView === "inventory") run.resume();
+      else run.pause("inventory");
+      return;
+    }
     if (!pad.pausePressed) return;
     if (run.phase !== "playing" || (!run.paused && run.inputLocks > 0)) return;
     if (run.paused) run.resume();
@@ -107,8 +112,8 @@ function CurrentRoom() {
  * rotation object for every body in the world on every physics step, and a
  * fixed timestep runs several steps on a slow frame - so the frames that
  * were already late allocated the most, which is how a hitch becomes a
- * stutter. Nothing here is interpolated anyway: the camera reads the
- * player's body directly in Player.tsx, and every other body is fixed.
+ * stutter. Player.tsx smooths only the camera follow position; collision and stride
+ * still read the actual body. Every other body is fixed.
  */
 export function Scene() {
   const paused = useRun((s) => s.paused);

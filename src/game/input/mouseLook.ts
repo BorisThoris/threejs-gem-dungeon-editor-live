@@ -97,7 +97,7 @@ export function useMouseLook() {
     });
 
     const onMouseMove = (event: MouseEvent) => {
-      if (document.pointerLockElement !== canvas) return;
+      if (document.pointerLockElement !== canvas || !canControl(useRun.getState())) return;
       // The player's own figures, over the game's. Read off the store at
       // the moment the mouse moves rather than subscribed to: this handler
       // is not a React render and a change takes effect on the next

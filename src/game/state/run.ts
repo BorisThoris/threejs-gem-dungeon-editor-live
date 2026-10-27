@@ -181,6 +181,7 @@ export interface RunState {
   bossStartedAt: number;
   bossLastBeat: number;
   paused: boolean;
+  pauseView: "pause" | "inventory";
   dungeon: Dungeon | null;
   /** 1-based; the run is won on leaving floor FLOORS. */
   floor: number;
@@ -554,7 +555,7 @@ export interface RunState {
   tickBoss: () => void;
   woundBoss: (damage: number) => boolean;
   quitToMenu: () => void;
-  pause: () => void;
+  pause: (view?: "pause" | "inventory") => void;
   resume: () => void;
   /** Walk through the doorway on this wall of the current room. */
   travel: (dir: Dir) => void;
@@ -870,6 +871,7 @@ export const useRun = create<RunState>()(
     bossStartedAt: 0,
     bossLastBeat: -1,
     paused: false,
+    pauseView: "pause",
     dungeon: null,
     waterOpenedAt: null,
     waterCacheTaken: false,
@@ -1045,6 +1047,7 @@ export const useRun = create<RunState>()(
         bossStartedAt: 0,
         bossLastBeat: -1,
         paused: false,
+        pauseView: "pause",
         dungeon,
         floor,
         runSeed: dungeon.seed,
@@ -1242,9 +1245,15 @@ export const useRun = create<RunState>()(
       set({ phase: "menu", paused: false, dungeon: null, currentRoomId: null, routeTargetId: null, transitioning: false, inputLocks: 0 });
     },
 
-    pause: () => {
-      if (get().phase !== "playing" || get().paused) return;
-      set({ paused: true, pausedAt: performance.now() / 1000 });
+    pause: (view) => {
+      const s = get();
+      if (s.phase !== "playing") return;
+      if (view === "inventory" && (s.transitioning || s.inputLocks > 0)) return;
+      if (s.paused) {
+        if (view) set({ pauseView: view });
+        return;
+      }
+      set({ paused: true, pauseView: view ?? "pause", pausedAt: performance.now() / 1000 });
     },
     resume: () => {
       const s = get();
@@ -1320,7 +1329,8 @@ export const useRun = create<RunState>()(
       }
       const spawn = spawnAfterTravel(to, dir);
       bus.emit("teleport", { position: spawn.position, yaw: spawn.yaw });
-      bus.emit("lookSet", { yaw: spawn.yaw, pitch: 0 });
+      // Ordinary doorways share world axes. Keep the player's chosen heading
+      // instead of snapping to the doorway's cardinal yaw and level pitch.
       bus.emit("doorOpened", { toRoomId: toId });
 
       // The destination reports itself mounted; if it never does, hand control

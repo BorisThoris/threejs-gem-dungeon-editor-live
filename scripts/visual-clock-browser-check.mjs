@@ -102,10 +102,9 @@ try {
     const expired = await page.evaluate(() => window.__wardSample());
     assert.equal(expired.intensity, 0, `${charge}: an expired ward cannot keep lighting the room`);
     assert.equal(expired.halo, 0, `${charge}: the protective halo ends with protection`);
-    await page.keyboard.press("Escape");
-    await page.getByTestId("pause-satchel").click();
+    await page.keyboard.press("KeyI");
     await page.getByTestId("inspect-slot-0").click();
-    const description = await page.getByTestId("inspect-slot-0").innerText();
+    const description = await page.getByTestId("inventory-item-details").innerText();
     assert.ok(description.includes(`${duration} seconds`), `${charge}: inspection names the charged protection duration`);
     assert.match(description, /another.*moves the protection/i);
     console.log(`PASS ${charge} ward: paused glow, expiry and ${duration}s explanation`);

@@ -22,7 +22,7 @@ const isElectron = () =>
 
 // The rule stays the same when its button changes between keyboard and touch.
 const keyDropHelp = "Set the iron key down to make a clatter where it lands. Use it as a lure, then pick it back up with Use.";
-const shoveHelp = "Attack with your equipped weapon. Swords balance speed and reach, spears thrust farther, and axes hit harder. Manage equipment in the pause menu; shops sell weapons. Bare hands shove without damage.";
+const shoveHelp = "Attack with your equipped weapon. Swords balance speed and reach, spears thrust farther, and axes hit harder. Manage equipment in Inventory; shops sell weapons. Bare hands shove without damage.";
 const lanternHelp = "More light helps you see farther and makes you easier to spot. Each press lowers the light one band. From darkness, press again to raise it fully; raising takes time and oil. Entering rooms with light also spends oil. Buy oil at shops.";
 const barricadeHelp = `Block a doorway with one of ${BARRICADE_KITS} reusable kits per floor. The bar stays until you tear it down to recover the kit. It blocks you too and makes the Warden seek another route. Hammering is loud.`;
 
@@ -205,6 +205,8 @@ export function MainMenu() {
               </dd>
               <dt style={{ color: colors.accent }}>Drop key</dt>
               <dd style={{ margin: 0 }}>{keysLabel(bindings.dropKey)}, or d-pad left. {keyDropHelp}</dd>
+              <dt style={{ color: colors.accent }}>Inventory</dt>
+              <dd style={{ margin: 0 }}>{keysLabel(bindings.inventory)}, or View/Select on a pad. Inspect items, assign the belt, equip weapons and identify discoveries.</dd>
               <dt style={{ color: colors.accent }}>Pause</dt>
               <dd style={{ margin: 0 }}>Esc, or Start on a pad</dd>
             </dl>
@@ -250,6 +252,7 @@ function TouchHelp() {
       `BAR at a doorway. ${barricadeHelp}`,
     ],
     ["Drop key", `DROP KEY appears while you carry one. ${keyDropHelp}`],
+    ["Inventory", "Tap BAG beside Pause to manage your backpack and equipment."],
     ["Pause", "The II by the map."],
   ];
   return (

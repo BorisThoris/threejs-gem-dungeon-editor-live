@@ -32,6 +32,7 @@ export const ACTIONS = [
   "bar",
   "mark",
   "dropKey",
+  "inventory",
   ...SLOT_ACTIONS,
 ] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -50,6 +51,7 @@ export const DEFAULT_BINDINGS: Bindings = {
   bar: ["KeyB"],
   mark: ["KeyM"],
   dropKey: ["KeyG"],
+  inventory: ["KeyI"],
   slot1: ["Digit1"],
   slot2: ["Digit2"],
   slot3: ["Digit3"],
@@ -74,6 +76,7 @@ export const ACTION_LABEL: Record<Action, string> = {
   bar: "Bar a door",
   mark: "Mark the map",
   dropKey: "Set the key down",
+  inventory: "Inventory",
   slot1: "Satchel 1",
   slot2: "Satchel 2",
   slot3: "Satchel 3",

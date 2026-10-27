@@ -27,7 +27,7 @@ having it between you and the door.
 
 Space or left click (RT on a controller, ATTACK on touch) attacks with your
 equipped weapon. You begin with an iron sword. Shops sell a longer-reaching
-spear and a slower, harder-hitting axe; pause to buy or equip weapons and read
+spear and a slower, harder-hitting axe; open Inventory to equip weapons and read
 their damage, reach, windup and recovery. Weapons can kill the Warden and
 Harrier. Bare hands still push threats back without damage: a three-metre
 shove with 0.3 seconds of windup and 2.4 seconds of recovery. Attacks also
@@ -39,7 +39,7 @@ and do not attack. The Harrier gives you time to orient after entering and
 hovers before committing to a dive.
 
 The backpack holds sixteen consumables (twelve for the Courier), with four
-quick-use belt positions. Pause to inspect the backpack and swap an item into
+quick-use belt positions. Open Inventory to inspect the backpack and swap an item into
 a belt position. Equipment and carried supplies persist through descents and
 New Game+; starting a fresh run resets acquired gear.
 Ceiling bats stir and flutter for 1.2 seconds before bursting in response
@@ -148,7 +148,7 @@ it on the final floor cannot change that floor's rooms. Relics combine into
 pairs that reveal cracks in dim light, fill a vault with a hoard, or let a
 shop take your key once when cash would touch your passage money.
 
-Shop prompts show when an offer completes a pair. Inspect relics in the pause
+Shop prompts show when an offer completes a pair. Inspect relics in the inventory
 menu to review effects and missing partners, remember the hoard's recorded
 floor, and check whether the key trade has been spent. Every gem spent at the
 shop is a gem you do not carry out.
@@ -370,13 +370,14 @@ still owes one, and in what order.
 | `M`, or d-pad up | Mark the room on the map, or unmark it. Nothing reads the mark but you. |
 | `B`, or d-pad down | Bar the doorway you are standing at. Loud. |
 | `Shift`, or L3 | Run. The Warden is slower than you are. |
-| `Esc`, or Start on a pad | Pause: the settings, and naming what you carry |
+| `I`, View/Select on a pad, or Inventory on screen | Backpack, equipment, relics and identification |
+| `Esc`, or Start on a pad | Pause and settings |
 | D-pad or left stick, `A`, `B` | Move the focus in a menu, press what is focused, back out |
 
 There is one interaction verb. Anything you can act on tells you so when
 you are close enough, and E does it.
 
-Working out what is in your satchel is done in the pause menu, where it
+Working out what is in your satchel is done in Inventory, where it
 costs nothing but being wrong. Name all three unknown kinds at once: get
 one wrong and none of them settle, and you are not told which one it was.
 Drinking one tells you too, of course, and the shop will name one for a
@@ -544,7 +545,9 @@ intermittent stutter usually is, and all three are fixed. Rapier's
 interpolation snapshotted a position and rotation object for every body on
 every physics step, and a fixed timestep runs several steps on a late frame,
 so the frames that were already slow allocated the most - interpolation is
-off, and nothing here needs it. A room's props were one rigid body each,
+off. Only the camera follow position is smoothed, with an approximately
+11 ms response and immediate teleport resets, so movement remains fluid
+above the 60 Hz physics rate. Collision and stride use the actual body. A room's props were one rigid body each,
 bodies that never move; they are one static body now. Every noise-based
 sound effect built and filled its own buffer, so the Warden knocking on a
 wall was a synchronous stall every few seconds; there is one shared buffer.

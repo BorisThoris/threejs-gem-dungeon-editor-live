@@ -888,7 +888,7 @@ Two stores that both claimed the player's stats. So:
   the moment it was bought, which is under the player's hand as they turn
   round. The shop's third shelf anchor is reserved whether or not anyone
   holds the Cant, so the furniture does not move either.
-- **Naming is batched, locking, and free, and it lives in the pause menu.**
+- **Naming is batched, locking, and free, and it lives in Inventory.**
   A run learns what a bottle is by drinking it, by paying the shop, or by
   working it out - and the third of those was written down, built, and
   reachable by nothing: `identifyBatch` had no caller anywhere in `src`.
@@ -2250,3 +2250,26 @@ across equipment changes. Weapon materials remount for the new weapon; taking
 a snapshot of an already-dimmed hand on each swap would compound its shading.
 The equipment browser check repeats swaps and asserts the ambient floor, and
 the crowded-HUD check includes NG+ with a long weapon name.
+
+### Inventory and camera input
+
+`run.pauseView` selects the pause options or the dedicated inventory dialog.
+Both use the same paused run clock. `bindings.inventory` owns the keyboard
+shortcut (I by default); controller View/Select and the visible Inventory button
+open the same view. The slot grid, belt assignments, equipment and identification
+read the existing run state and invoke its actions. Rearrangement remains paused
+and swaps through `swapItems`; using an item resumes before calling `useItem`.
+
+Mouse movement obeys `canControl`, just like controller movement. Pointer lock
+alone does not authorize input during room transitions. Ordinary door travel
+preserves camera yaw and pitch; explicit new-run and floor-entry poses still
+set them. `mouse-look-browser-check.mjs` exercises these input boundaries with
+real pointer lock.
+
+The camera follow position is a reusable vector smoothed toward the physical
+body on each rendered frame (approximately 11 ms response). It freezes while
+paused and resets immediately on teleport; mouse/controller rotation is not
+smoothed. Collision, gait, item placement and run progress retain the actual
+body position. The stride clock check drives the real mounted Rapier/R3F loop
+at 30, 60, 144 and 240 FPS, checking travel, footsteps, continuous camera motion,
+a bounded follow distance, pause and teleport behavior.

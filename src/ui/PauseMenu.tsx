@@ -16,9 +16,6 @@ import { useSettings } from "../game/state/settings";
 import { body, button, colors, fullscreen, panel, secondaryButton, text, title } from "./overlay";
 import { usePadMenu } from "./padMenu";
 import { Minimap } from "./Minimap";
-import { SatchelInspection } from "./SatchelInspection";
-import { RelicInspection } from "./RelicInspection";
-import { Equipment } from "./Equipment";
 
 const DevRunLinks = import.meta.env.DEV ? lazy(() => import("../editor/DevRunLinks")) : null;
 
@@ -57,11 +54,10 @@ export function PauseMenu() {
             Recover barricade kits at the door. Grates lift with time.
           </p>
         </div>}
-        <SatchelInspection />
-        <Equipment />
-        <RelicInspection />
+        <button style={secondaryButton} data-testid="pause-inventory" onClick={() => useRun.getState().pause("inventory")}>
+          Inventory and equipment
+        </button>
         {DevRunLinks && <Suspense fallback={null}><DevRunLinks /></Suspense>}
-        <Naming />
         <Options />
         <button style={secondaryButton} data-testid="pause-quit" onClick={quitToMenu}>
           Quit to menu
@@ -89,7 +85,7 @@ export function PauseMenu() {
  * name. The store decides the same way, from the same two functions, so
  * the screen can never offer a batch the store will refuse.
  */
-function Naming() {
+export function Naming() {
   const satchel = useRun((s) => s.satchel);
   const identified = useRun((s) => s.identified);
   const appearances = useRun((s) => s.appearances);

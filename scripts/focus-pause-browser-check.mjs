@@ -3,7 +3,7 @@ import { chromium } from "./browser-safety.mjs";
 
 const port = process.argv[2] ?? process.env.PORT ?? "5199";
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined,
-  args: ["--no-sandbox"] });
+  args: ["--mute-audio", "--no-sandbox"] });
 const failures = [];
 const check = (condition, message) => {
   console.log(`${condition ? "PASS" : "FAIL"} ${message}`);

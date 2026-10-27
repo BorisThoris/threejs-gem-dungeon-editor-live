@@ -22,7 +22,7 @@ try {
     run.getState().roomReady(shop.id);
   });
   await page.waitForFunction(() => !window.__run.getState().transitioning);
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("KeyI");
   await page.getByTestId("weapon-spear").click();
   assert.equal(await page.evaluate(() => window.__run.getState().equippedWeapon), "spear");
   assert.equal(await page.evaluate(() => window.__run.getState().gems), 26);
@@ -47,7 +47,7 @@ try {
   }), true, "equipment controls fit a phone");
   await page.screenshot({ path: `${output}/equipment-phone.png` });
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.getByTestId("pause-resume").click();
+  await page.getByTestId("inventory-close").click();
   await page.getByTestId("shove-status").filter({ hasText: "WATCHMAN'S SPEAR" }).waitFor();
   await page.keyboard.press("Space");
   await page.waitForFunction(() => window.__run.getState().shoveReadyAt > 0);
